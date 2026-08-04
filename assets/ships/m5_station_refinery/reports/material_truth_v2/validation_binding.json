@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.pq022RefineryCandidateBinding.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.refinery-reauthor",
+  "candidateId": "pq022-refinery-material-truth-v2",
+  "assetId": "place_station_refinery",
+  "state": "candidate_only",
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false
+  },
+  "candidate": {
+    "path": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208,
+    "releaseMirrorPath": "assets/ships/m5_station_refinery/release_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "releaseMirrorSha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "releaseMirrorBytes": 23088208
+  },
+  "blender": {
+    "path": "assets/ships/m5_station_refinery/blender/source/material_truth_v2/place_station_refinery.blend",
+    "sha256": "5af14fcf50cb738f17414dd8c4d76576facbd1ac11a7b582cd98d949dab1bf6c",
+    "bytes": 4836089
+  },
+  "generator": {
+    "path": "tools/blender/build_station_refinery_material_truth_v2.py",
+    "sha256": "10ead70b343f38e1ee544397cf4485b159a3e4afced1185d1ed80f605d44e4ab",
+    "bytes": 115474
+  },
+  "buildReport": {
+    "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/build_report.json",
+    "reportSha256": "cdaf9ae8cee94750fd41137923bddd8cce955db3095293837cd89340f1857bfc"
+  },
+  "renderEvidence": {
+    "manifest": "assets/ships/m5_station_refinery/reports/material_truth_v2/render_manifest.json",
+    "manifestSha256": "5eb1422a75150e7a7675940c76911ed29877fc89151388b09885df59c3d24051",
+    "exactSourceReimport": true,
+    "viewCount": 5
+  },
+  "offlineReview": {
+    "report": "assets/ships/m5_station_refinery/reports/material_truth_v2/VISUAL_REVIEW.md",
+    "reportSha256": "350af2048dfa298dc621607a84559a8670cd20a2c3f18765e18f90732b507a73",
+    "preflight": "assets/ships/m5_station_refinery/reports/material_truth_v2/MATERIAL_TRUTH_PREFLIGHT.md",
+    "preflightSha256": "998d93ba6953adaea6a467a968f64b274488665430fb02f4d0321c12f5cabf61",
+    "candidateSideDisposition": {
+      "G1": "KEEP",
+      "G2": "KEEP",
+      "G4": "KEEP",
+      "emissive": "KEEP"
+    }
+  },
+  "admission": {
+    "status": "ready_for_candidate_admission",
+    "reason": "The frozen 49d6a50f candidate now has current Foundry, Khronos, and Blender export-gate evidence; the bounded refresh did not run the candidate-admission CLI."
+  },
+  "validators": {
+    "foundry": {
+      "status": "current",
+      "report": "assets/ships/m5_station_refinery/reports/material_truth_v2/validation/foundry/place_station_refinery.glb.report.json",
+      "reportSha256": "218c3a549446b8baff93579052e7b554b75e51d840ecdbddb249b14cc7cebddd",
+      "candidateSha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+      "candidateBytes": 23088208,
+      "outcome": {
+        "pass": true,
+        "failures": 0,
+        "warnings": 0
+      }
+    },
+    "khronos": {
+      "status": "current",
+      "report": "assets/ships/m5_station_refinery/reports/material_truth_v2/validation/khronos/place_station_refinery.glb.report.json",
+      "reportSha256": "a05841daa543eb525a905eca0ce85c56550ccf6bc0d04ac33b640ec380df950e",
+      "candidateSha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+      "candidateBytes": 23088208,
+      "outcome": {
+        "errors": 0,
+        "warnings": 0,
+        "infos": 0,
+        "hints": 0,
+        "truncated": false
+      }
+    }
+  },
+  "blenderGate": {
+    "status": "current",
+    "report": "assets/ships/m5_station_refinery/reports/material_truth_v2/validation/blender/spaceface_export.report.json",
+    "reportSha256": "acdafecc1d163d39add38da96bdd76570eb7cc2dc77fa3743088e09ac45f60bf",
+    "candidateSha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "candidateBytes": 23088208,
+    "outcome": {
+      "pass": true,
+      "errors": 0,
+      "diagnostics": 5
+    }
+  }
+}

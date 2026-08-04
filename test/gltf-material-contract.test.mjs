@@ -50,6 +50,8 @@ test('material contract normalizes glTF defaults and BasisU texture transport', 
     sampler: texture.sampler,
     extensions: { KHR_texture_basisu: { source: texture.source } },
   }));
+  delete source.materials[0].extensions.KHR_materials_clearcoat.clearcoatRoughnessFactor;
+  release.materials[0].extensions.KHR_materials_clearcoat.clearcoatRoughnessFactor = 0;
   assert.equal(
     assertGltfMaterialContractParity(source, release, 'fixture'),
     gltfMaterialContractSignature(source),
@@ -62,7 +64,7 @@ test('material contract detects sampling and non-texture material regressions', 
   samplingRegression.materials[0].normalTexture.scale = 0.2;
   assert.throws(
     () => assertGltfMaterialContractParity(source, samplingRegression, 'normal scale'),
-    /changed material factors/,
+    /first difference: \$\.materials\[0\]\.normalTexture\.fields\.scale: 0\.9 != 0\.2/,
   );
 
   const transformRegression = structuredClone(source);

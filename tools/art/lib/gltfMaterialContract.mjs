@@ -32,7 +32,7 @@ export function gltfMaterialContract(gltf) {
       alphaMode: material.alphaMode || 'OPAQUE',
       alphaCutoff: material.alphaCutoff ?? 0.5,
       doubleSided: material.doubleSided === true,
-      extensions: normalizeExtensionObject(gltf, material.extensions || {}),
+      extensions: normalizeMaterialExtensions(gltf, material.extensions || {}),
       extras: stableValue(material.extras ?? null),
     }];
   }));
@@ -69,15 +69,53 @@ export function gltfMaterialContractSignature(gltf) {
 }
 
 export function assertGltfMaterialContractParity(sourceGltf, releaseGltf, label = 'GLB pair') {
-  const sourceSignature = gltfMaterialContractSignature(sourceGltf);
-  const releaseSignature = gltfMaterialContractSignature(releaseGltf);
+  const sourceContract = gltfMaterialContract(sourceGltf);
+  const releaseContract = gltfMaterialContract(releaseGltf);
+  const sourceSignature = contractSignature(sourceContract);
+  const releaseSignature = contractSignature(releaseContract);
   if (sourceSignature !== releaseSignature) {
+    const difference = firstContractDifference(sourceContract, releaseContract);
     throw new Error(
       `${label} changed material factors, extensions, texture identity, or texture sampling `
-      + `(${sourceSignature} -> ${releaseSignature})`,
+      + `(${sourceSignature} -> ${releaseSignature}); first difference: ${difference}`,
     );
   }
   return sourceSignature;
+}
+
+function contractSignature(contract) {
+  return createHash('sha256')
+    .update('spaceface-gltf-material-contract-v1\0')
+    .update(JSON.stringify(contract))
+    .digest('hex');
+}
+
+function firstContractDifference(left, right, path = '$') {
+  if (Object.is(left, right)) return null;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right)) {
+      return `${path}: ${JSON.stringify(left)} != ${JSON.stringify(right)}`;
+    }
+    if (left.length !== right.length) return `${path}.length: ${left.length} != ${right.length}`;
+    for (let index = 0; index < left.length; index += 1) {
+      const difference = firstContractDifference(left[index], right[index], `${path}[${index}]`);
+      if (difference) return difference;
+    }
+    return null;
+  }
+  if (left && right && typeof left === 'object' && typeof right === 'object') {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (JSON.stringify([...leftKeys].sort()) !== JSON.stringify([...rightKeys].sort())) {
+      return `${path} keys: ${JSON.stringify([...leftKeys].sort())} != ${JSON.stringify([...rightKeys].sort())}`;
+    }
+    for (const key of leftKeys) {
+      const difference = firstContractDifference(left[key], right[key], `${path}.${key}`);
+      if (difference) return difference;
+    }
+    return null;
+  }
+  return `${path}: ${JSON.stringify(left)} != ${JSON.stringify(right)}`;
 }
 
 function normalizeTextureInfo(gltf, role, info) {
@@ -135,6 +173,33 @@ function normalizeExtensionObject(gltf, value) {
     const child = value[key];
     if (/Texture$/.test(key) && child && typeof child === 'object' && Number.isInteger(child.index)) {
       normalized[key] = normalizeTextureInfo(gltf, key, child);
+    } else {
+      normalized[key] = stableValue(child);
+    }
+  }
+  return normalized;
+}
+
+function normalizeMaterialExtensions(gltf, value) {
+  const normalized = {};
+  for (const key of Object.keys(value).sort()) {
+    const child = value[key];
+    if (key === 'KHR_materials_clearcoat' && child && typeof child === 'object') {
+      normalized[key] = {
+        clearcoatFactor: child.clearcoatFactor ?? 0,
+        clearcoatTexture: normalizeTextureInfo(gltf, 'clearcoatTexture', child.clearcoatTexture),
+        clearcoatRoughnessFactor: child.clearcoatRoughnessFactor ?? 0,
+        clearcoatRoughnessTexture: normalizeTextureInfo(
+          gltf,
+          'clearcoatRoughnessTexture',
+          child.clearcoatRoughnessTexture,
+        ),
+        clearcoatNormalTexture: normalizeTextureInfo(
+          gltf,
+          'clearcoatNormalTexture',
+          child.clearcoatNormalTexture,
+        ),
+      };
     } else {
       normalized[key] = stableValue(child);
     }

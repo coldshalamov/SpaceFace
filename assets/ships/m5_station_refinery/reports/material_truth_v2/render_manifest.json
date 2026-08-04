@@ -1,0 +1,135 @@
+{
+  "schema": "spaceface.refineryExactSourceRenderManifest.v1",
+  "assetId": "place_station_refinery",
+  "candidateId": "pq022-refinery-material-truth-v2",
+  "source": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+  "sourceSha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+  "exactSourceReimport": true,
+  "renderer": "BLENDER_EEVEE",
+  "blenderVersion": "5.1.2",
+  "resolution": [
+    1600,
+    900
+  ],
+  "viewTransform": "AgX",
+  "look": "AgX - Medium High Contrast",
+  "exposure": 1.850000023841858,
+  "lighting": [
+    "PQ022_Key",
+    "PQ022_Fill",
+    "PQ022_Rim",
+    "PQ022_Under",
+    "PQ022_Sun"
+  ],
+  "cameras": [
+    {
+      "name": "process_three_quarter",
+      "position": [
+        163.7428,
+        -116.1794,
+        84.7462
+      ],
+      "target": [
+        10.0,
+        26.175,
+        2.75
+      ],
+      "lensMm": 55.0,
+      "distance": 225.0
+    },
+    {
+      "name": "feed_three_quarter",
+      "position": [
+        -153.2803,
+        -106.0591,
+        83.2403
+      ],
+      "target": [
+        10.0,
+        26.175,
+        2.75
+      ],
+      "lensMm": 55.0,
+      "distance": 225.0
+    },
+    {
+      "name": "side_process",
+      "position": [
+        16.3709,
+        -205.7271,
+        46.0724
+      ],
+      "target": [
+        10.0,
+        26.175,
+        2.75
+      ],
+      "lensMm": 55.0,
+      "distance": 236.0
+    },
+    {
+      "name": "top_flow",
+      "position": [
+        10.0,
+        -0.2862,
+        245.3109
+      ],
+      "target": [
+        10.0,
+        26.175,
+        2.75
+      ],
+      "lensMm": 55.0,
+      "distance": 244.0
+    }
+  ],
+  "emissiveOff": {
+    "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter_emissive_off.png",
+    "camera": "process_three_quarter",
+    "onlyEmissionStrengthChanged": true
+  },
+  "images": [
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter.png",
+      "sha256": "81e8a5a354bb6ba4bce4b3cdad2166e91ac01cc4b985a3500387cf487b89623e",
+      "bytes": 1554603
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/feed_three_quarter.png",
+      "sha256": "315214d462efdccde8ec89f5cd9904579d13f6e4ea00b41337098c986a88aaf6",
+      "bytes": 1522391
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/side_process.png",
+      "sha256": "16856c4c18072b222f47fb5595d49234620390d3b5a8e2edbe0b0fdb751cb192",
+      "bytes": 1471990
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/top_flow.png",
+      "sha256": "5e9e2d99ebdbb050cfb39140178dc3d4ddf5993e4499e59106a4d1e8f86527bd",
+      "bytes": 1439788
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter_emissive_off.png",
+      "sha256": "60860d4507ce45cba0a8997459ff7ce75c819fc21a1f519fd7333b7a4cc4334a",
+      "bytes": 1553418
+    }
+  ],
+  "lod0ImportedBoundsBlender": {
+    "min": [
+      -39.0,
+      -5.75,
+      -25.0
+    ],
+    "max": [
+      59.0,
+      58.1,
+      30.5
+    ],
+    "size": [
+      98.0,
+      63.85,
+      55.5
+    ]
+  }
+}
