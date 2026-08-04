@@ -49,6 +49,12 @@ import {
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import {
+  createStationSideEventVfxFrameScratch,
+  resolveStationSideEventVfxProfile,
+  STATION_SIDE_EVENT_VFX_CAPACITY,
+  writeStationSideEventVfxFrame,
+} from './stationSideEventVfx.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
 import {
@@ -275,6 +281,10 @@ const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed d
 const VFX_RIBBON_TRAILS_HZ = 30;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
+// Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
+// their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
+const VFX_STATION_SIDE_EVENTS_HZ = 12;
+const VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500;
 // PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
 // particles at 30 Hz; slept when no field is deployed. Pool share is a small slice of PARTICLE_CAP
 // (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
@@ -398,6 +408,7 @@ function emptyVfxSubsystemDiag() {
     eventLights: 0,
     fieldFlow: 0,       // PQ-012 continuous field flow particles emitted this frame (pool share)
     lootMagnet: 0,      // magnet-pulled drops drawn as incoming light this frame
+    stationSideEvents: 0, // seeded station operations drawn on pooled sprite/trail substrates
   };
 }
 
@@ -517,7 +528,34 @@ export const vfx = {
     this._cadenceRibbon = 0;
     this._cadenceProjectileTrail = 0;
     this._cadenceLootMagnet = 0;
+    this._cadenceStationSideEvent = 0;
     this._lootMagnetLive = 0;
+    this._stationSideEventSlots = [];
+    for (let i = 0; i < STATION_SIDE_EVENT_VFX_CAPACITY; i++) {
+      this._stationSideEventSlots.push({
+        alive: false,
+        age: 0,
+        duration: 0,
+        eventId: null,
+        stationId: null,
+        entityId: null,
+        kind: null,
+        profile: null,
+        bearing: 0,
+        fromX: 0,
+        fromZ: 0,
+        toX: 0,
+        toZ: 0,
+        centerX: 0,
+        centerZ: 0,
+        lastEmitStep: -1,
+        frame: createStationSideEventVfxFrameScratch(),
+      });
+    }
+    this._stationSideEventCursor = 0;
+    this._stationSideEventActive = 0;
+    this._stationSideEventStarts = 0;
+    this._lastStationSideEventKind = null;
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -668,6 +706,12 @@ export const vfx = {
       lootMagnet: {
         trailed: this._lootMagnetLive || 0,
         cap: LOOT_MAGNET_MAX_TRAILED,
+      },
+      stationSideEvents: {
+        active: this._stationSideEventActive || 0,
+        starts: this._stationSideEventStarts || 0,
+        lastKind: this._lastStationSideEventKind || null,
+        capacity: STATION_SIDE_EVENT_VFX_CAPACITY,
       },
     };
   },
@@ -915,8 +959,9 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._resetEnergyForBoundary(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => this._clearStationSideEvents());
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -926,6 +971,7 @@ export const vfx = {
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
+    add('station:sideEvent', (p) => this._onStationSideEvent(p));
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
@@ -2836,6 +2882,293 @@ export const vfx = {
     const radius = Math.max(3, p && p.radius || 6);
     const classId = big || radius >= 45 ? 'capital' : (radius < 9 ? 'small' : 'ordinary');
     return this._queueExplosion(p, classId);
+  },
+
+  // -------------------------------------------------------------------------
+  // Seeded station-side operations. The simulation director owns occurrence, path, and lifetime;
+  // VFX owns a fixed six-record pool that samples those paths onto the existing instanced trail and
+  // sprite substrates. No ambient event creates a sim entity here, and duplicate event ids are a
+  // no-op. Each family has a silhouette + trajectory read, not merely a different tint.
+  // -------------------------------------------------------------------------
+  _onStationSideEvent(p) {
+    const profile = resolveStationSideEventVfxProfile(p && p.kind);
+    const from = p && p.from;
+    const to = p && p.to;
+    if (!profile || !from || !to
+      || !Number.isFinite(from.x) || !Number.isFinite(from.z)
+      || !Number.isFinite(to.x) || !Number.isFinite(to.z)) return false;
+
+    const eventId = p.eventId == null ? null : String(p.eventId);
+    const slots = this._stationSideEventSlots;
+    if (!slots || !slots.length) return false;
+    if (eventId != null) {
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].alive && slots[i].eventId === eventId) return false;
+      }
+    }
+
+    let station = this._ent(p.stationId);
+    if (!station && typeof p.stationId === 'string') {
+      const numericId = Number(p.stationId);
+      if (Number.isFinite(numericId)) station = this._ent(numericId);
+    }
+    // Orbit/crawl paths require their station center. Refuse a phantom local loop if the station
+    // vanished on a sector boundary before the renderer saw the event.
+    if ((profile.trajectory === 'hull-crawl' || profile.trajectory === 'docking-orbit')
+      && (!station || !station.pos)) return false;
+
+    let slot = null;
+    for (let i = 0; i < slots.length; i++) {
+      const index = (this._stationSideEventCursor + i) % slots.length;
+      if (!slots[index].alive) {
+        slot = slots[index];
+        this._stationSideEventCursor = (index + 1) % slots.length;
+        break;
+      }
+    }
+    if (!slot) {
+      slot = slots[this._stationSideEventCursor];
+      this._stationSideEventCursor = (this._stationSideEventCursor + 1) % slots.length;
+    } else {
+      this._stationSideEventActive++;
+    }
+
+    slot.alive = true;
+    slot.age = 0;
+    slot.duration = Math.max(0.25, Math.min(180,
+      Number.isFinite(p.durationS) ? p.durationS : profile.defaultDurationS));
+    slot.eventId = eventId;
+    slot.stationId = station && station.id != null ? station.id : p.stationId;
+    slot.entityId = p.entityIds && p.entityIds.length ? p.entityIds[0] : null;
+    slot.kind = profile.id;
+    slot.profile = profile;
+    slot.bearing = Number.isFinite(p.bearing) ? p.bearing : 0;
+    slot.fromX = from.x;
+    slot.fromZ = from.z;
+    slot.toX = to.x;
+    slot.toZ = to.z;
+    slot.centerX = station && station.pos ? station.pos.x : (from.x + to.x) * 0.5;
+    slot.centerZ = station && station.pos ? station.pos.z : (from.z + to.z) * 0.5;
+    slot.lastEmitStep = -1;
+
+    this._stationSideEventStarts++;
+    this._lastStationSideEventKind = profile.id;
+    // Wake on the next render frame without waiting a whole cadence interval.
+    this._cadenceStationSideEvent = Math.max(
+      this._cadenceStationSideEvent || 0,
+      1 / VFX_STATION_SIDE_EVENTS_HZ,
+    );
+    return true;
+  },
+
+  _retireStationSideEvent(slot) {
+    if (!slot || !slot.alive) return;
+    slot.alive = false;
+    slot.eventId = null;
+    slot.stationId = null;
+    slot.entityId = null;
+    slot.kind = null;
+    slot.profile = null;
+    slot.lastEmitStep = -1;
+    this._stationSideEventActive = Math.max(0, this._stationSideEventActive - 1);
+  },
+
+  _clearStationSideEvents() {
+    const slots = this._stationSideEventSlots;
+    if (slots) {
+      for (let i = 0; i < slots.length; i++) this._retireStationSideEvent(slots[i]);
+    }
+    this._stationSideEventActive = 0;
+    this._cadenceStationSideEvent = 0;
+  },
+
+  _stationSideEventsRelevant() {
+    return (this._stationSideEventActive || 0) > 0;
+  },
+
+  _updateStationSideEvents(step) {
+    const slots = this._stationSideEventSlots;
+    if (!slots || !slots.length) return 0;
+    const settings = this.state && this.state.settings || null;
+    const video = settings && settings.video || null;
+    const accessibility = settings && settings.accessibility || null;
+    const reducedMotion = !!(
+      (video && video.motionReduce)
+      || (accessibility && accessibility.motionPreference === 'reduce')
+    );
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(this.state.playerId);
+    const drawRange2 = VFX_STATION_SIDE_EVENT_DRAW_RANGE * VFX_STATION_SIDE_EVENT_DRAW_RANGE;
+    let emitted = 0;
+
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (!slot.alive) continue;
+      slot.age += step;
+      if (slot.age >= slot.duration) {
+        this._retireStationSideEvent(slot);
+        continue;
+      }
+
+      const station = this._ent(slot.stationId);
+      if (station && station.pos) {
+        slot.centerX = station.pos.x;
+        slot.centerZ = station.pos.z;
+      } else if (slot.profile.trajectory === 'hull-crawl'
+        || slot.profile.trajectory === 'docking-orbit') {
+        this._retireStationSideEvent(slot);
+        continue;
+      }
+      if (player && player.pos) {
+        const playerDx = slot.centerX - player.pos.x;
+        const playerDz = slot.centerZ - player.pos.z;
+        if (playerDx * playerDx + playerDz * playerDz > drawRange2) continue;
+      }
+      const frame = writeStationSideEventVfxFrame(
+        slot.profile,
+        slot.age,
+        slot.duration,
+        slot.fromX,
+        slot.fromZ,
+        slot.toX,
+        slot.toZ,
+        slot.centerX,
+        slot.centerZ,
+        slot.bearing,
+        reducedMotion,
+        slot.frame,
+      );
+
+      // A budgeted patrol has a real sim ship. Decorate its live pose rather than drawing a second
+      // fake mover; the pure from→to path remains the fallback if spawning degraded to cosmetics.
+      const entity = slot.entityId != null ? this._ent(slot.entityId) : null;
+      if (slot.kind === 'patrol_launch' && slot.entityId != null
+        && (!entity || entity.alive === false || !entity.pos)) {
+        this._retireStationSideEvent(slot);
+        continue;
+      }
+      if (entity && entity.alive !== false && entity.pos) {
+        frame.x = entity.pos.x;
+        frame.z = entity.pos.z;
+        let dx = entity.vel && Number(entity.vel.x) || 0;
+        let dz = entity.vel && Number(entity.vel.z) || 0;
+        const speed = Math.hypot(dx, dz);
+        if (speed <= 1e-5) {
+          const heading = Number.isFinite(entity.rot) ? entity.rot : slot.bearing;
+          dx = Math.cos(heading);
+          dz = Math.sin(heading);
+        }
+        const length = Math.hypot(dx, dz) || 1;
+        frame.dirX = dx / length;
+        frame.dirZ = dz / length;
+        frame.normalX = -frame.dirZ;
+        frame.normalZ = frame.dirX;
+      }
+
+      if (frame.emitStep === slot.lastEmitStep) continue;
+      slot.lastEmitStep = frame.emitStep;
+      emitted += this._emitStationSideEventAccent(slot, reducedMotion);
+    }
+    return emitted;
+  },
+
+  _emitStationSideEventAccent(slot, reducedMotion) {
+    const frame = slot.frame;
+    const x = frame.x;
+    const z = frame.z;
+    const dx = frame.dirX;
+    const dz = frame.dirZ;
+    const nx = frame.normalX;
+    const nz = frame.normalZ;
+    let emitted = 0;
+
+    if (slot.kind === 'hauler_dock') {
+      // Broad parallel cargo rails + a periodic nose lamp: a heavy docking silhouette, never a
+      // fighter streak or a circular marker.
+      emitted += this._spawnStationSideEventStreak(x + nx * 0.64, 0.42, z + nz * 0.64,
+        reducedMotion ? 0.58 : 0.34, 0.26, 2.7, 0.48, '#ffb35c', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(x - nx * 0.64, 0.42, z - nz * 0.64,
+        reducedMotion ? 0.58 : 0.34, 0.26, 2.7, 0.48, '#ffb35c', 0, 0, dx, dz);
+      if (frame.accentSlot % 3 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        x + dx * 1.35,
+        0.44,
+        z + dz * 1.35,
+        0.12,
+        0.32,
+        0.48,
+        0.42,
+        0,
+        '#fff2d0',
+        0,
+        0,
+        1.5,
+        Math.atan2(dz, dx),
+      )) emitted++;
+    } else if (slot.kind === 'patrol_launch') {
+      // A sharp launch chevron and a central drive trace. When entityIds are present this follows
+      // the actual neutral patrol ship instead of inventing a second hull.
+      const backX = x - dx * 0.45;
+      const backZ = z - dz * 0.45;
+      const drift = reducedMotion ? 0 : 5;
+      emitted += this._spawnStationSideEventStreak(backX + nx * 0.34, 0.5, backZ + nz * 0.34,
+        reducedMotion ? 0.42 : 0.22, 0.14, 1.7, 0.68, '#d7e6ff',
+        -dx * drift, -dz * drift, dx * 0.76 - nx * 0.65, dz * 0.76 - nz * 0.65);
+      emitted += this._spawnStationSideEventStreak(backX - nx * 0.34, 0.5, backZ - nz * 0.34,
+        reducedMotion ? 0.42 : 0.22, 0.14, 1.7, 0.68, '#d7e6ff',
+        -dx * drift, -dz * drift, dx * 0.76 + nx * 0.65, dz * 0.76 + nz * 0.65);
+      emitted += this._spawnStationSideEventStreak(x - dx * 0.9, 0.44, z - dz * 0.9,
+        reducedMotion ? 0.48 : 0.24, 0.10, 3.1, 0.48, '#39d0ff',
+        -dx * drift, -dz * drift, dx, dz);
+    } else if (slot.kind === 'repair_drone') {
+      // The crawler leaves a dotted, long-cooling stitch row. There is no ejecta: repair adds
+      // material, and that absence is part of its grayscale read.
+      const rowOffset = (frame.accentSlot - 3) * 0.34;
+      const stitchX = x + dx * rowOffset;
+      const stitchZ = z + dz * rowOffset;
+      emitted += this._spawnStationSideEventStreak(stitchX, 0.34, stitchZ,
+        1.35, 0.075, 0.52, 0.50, '#ffb35c', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(x, 0.48, z,
+        reducedMotion ? 0.52 : 0.34, 0.22, 0.92, 0.46, '#70808a', 0, 0, dx, dz);
+      if (frame.accentSlot % 2 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        stitchX,
+        0.4,
+        stitchZ,
+        0.12,
+        0.30,
+        0.48,
+        0.48,
+        0,
+        '#ffc35c',
+        0,
+        0,
+      )) emitted++;
+    } else if (slot.kind === 'cargo_tractor') {
+      // A compact tractor and broad cargo pod remain physically separated by a visible straight
+      // tether. The pair orbits the docking bubble; it cannot be mistaken for an unladen ship.
+      const podGap = 2.45;
+      const podX = x - dx * podGap;
+      const podZ = z - dz * podGap;
+      emitted += this._spawnStationSideEventStreak(x, 0.44, z,
+        reducedMotion ? 0.56 : 0.34, 0.20, 1.05, 0.58, '#39d0ff', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(podX + nx * 0.34, 0.38, podZ + nz * 0.34,
+        reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(podX - nx * 0.34, 0.38, podZ - nz * 0.34,
+        reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(x - dx * (podGap * 0.5), 0.4, z - dz * (podGap * 0.5),
+        reducedMotion ? 0.56 : 0.34, 0.055, podGap - 0.75, 0.36, '#d7e6ff', 0, 0, dx, dz);
+    }
+    return emitted;
+  },
+
+  _spawnStationSideEventStreak(
+    x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
+  ) {
+    return this._spawnProjectileTrailStreak(
+      x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
+    ) ? 1 : 0;
   },
 
 
@@ -5370,6 +5703,17 @@ export const vfx = {
       sub.arcPreview = 1;
     } else {
       sub.arcPreview = 0;
+    }
+    if (this._stationSideEventsRelevant()) {
+      const stationStep = this._consumeCadence(
+        '_cadenceStationSideEvent',
+        dt,
+        VFX_STATION_SIDE_EVENTS_HZ,
+      );
+      sub.stationSideEvents = stationStep > 0 && this._updateStationSideEvents(stationStep) > 0 ? 1 : 0;
+    } else {
+      this._cadenceStationSideEvent = 0;
+      sub.stationSideEvents = 0;
     }
     if (this._seamMarkersRelevant()) {
       const seamWake = !this._seamMarkersWereRelevant;
