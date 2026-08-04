@@ -98,7 +98,6 @@ test('the probe is broker-gated before exactly one headed system-browser launch'
   assert.ok(source.includes('headless: false'));
   assert.ok(source.includes('findSystemBrowser()'));
   assert.ok(source.includes('SwiftShader|llvmpipe|software'));
-  assert.doesNotMatch(source, /electron\.launch|_electron/);
 });
 
 test('the headed route uses canonical visible fixed-seed New Game and the production game renderer', () => {
@@ -124,7 +123,7 @@ test('the one cell pins all eleven exact identities and thirteen required stills
   for (const still of REQUIRED_STILLS) {
     assert.ok(source.includes(still), `missing required still ${still}`);
   }
-  assert.ok(source.includes("assert.equal(captures.length, SHOT_PLAN.length"));
+  assert.ok(source.includes("assert.equal(captures.length, ACTIVE_SHOT_PLAN.length"));
   assert.ok(source.includes("uniqueAssetCount: capturedKeys.size"));
 });
 

@@ -19,22 +19,51 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  closeOwnedElectronRuntime,
+  createElectronCanonicalUrlTracker,
+  createElectronProcessMonitor,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
+import {
+  assertCurrentPq022RelayBrowserReceipt,
+  normalizePq022RelayReauthorReceipt,
+} from './lib/pq022RelayReauthorParity.mjs';
+import {
+  computeGateDigestsFromManifest,
+  readConsumedClaimLedgerEntry,
+  requireBrokerClaimOrDiagnostic,
+} from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
-import manifest, {
-  createPq022CorridorAssetLeavesManifest,
+import corridorManifest, {
   PQ022_CORRIDOR_ASSET_LEAVES_FIXED_SEED,
 } from './validation-manifests/pq022-corridor-asset-leaves.mjs';
+import relayBrowserManifest from './validation-manifests/pq022-relay-reauthor-browser.mjs';
+import relayElectronManifest from './validation-manifests/pq022-relay-reauthor-electron.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq022-corridor-asset-leaves');
+const ONLY = readEncodedOption('--only');
+const RUNTIME = readEncodedOption('--runtime') || 'browser';
+assert(ONLY == null || ONLY === 'relay-collar', `unsupported PQ-022 --only selector: ${ONLY}`);
+assert(RUNTIME === 'browser' || RUNTIME === 'electron', `unsupported PQ-022 runtime: ${RUNTIME}`);
+assert(ONLY === 'relay-collar' || RUNTIME === 'browser', 'Electron is available only for --only=relay-collar');
+const RELAY_ONLY = ONLY === 'relay-collar';
+const ELECTRON_RUNTIME = RUNTIME === 'electron';
+const manifest = RELAY_ONLY
+  ? (ELECTRON_RUNTIME ? relayElectronManifest : relayBrowserManifest)
+  : corridorManifest;
+const ARTIFACT_ROOT = path.resolve(ROOT, manifest.artifactRoot);
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
-  : PQ022_CORRIDOR_ASSET_LEAVES_FIXED_SEED;
+  : manifest.fixedSeed;
+assert.equal(PQ022_CORRIDOR_ASSET_LEAVES_FIXED_SEED, 47);
 const ADMISSION_TIMEOUT_MS = 180_000;
 
 const ASSETS = Object.freeze([
@@ -109,12 +138,14 @@ const SHOT_PLAN = Object.freeze([
   Object.freeze({ key: 'traffic-cradle', name: '13-helios-cradle-miner.png', framing: 'default', lod: 'lod1' }),
 ]);
 
+const ACTIVE_ASSETS = RELAY_ONLY ? ASSETS.filter((row) => row.key === 'relay-collar') : ASSETS;
+const ACTIVE_SHOT_PLAN = RELAY_ONLY ? SHOT_PLAN.filter((row) => row.key === 'relay-collar') : SHOT_PLAN;
 const ASSET_BY_KEY = new Map(ASSETS.map((row) => [row.key, row]));
 const FRAME_DISTANCE = Object.freeze({ close: 2.35, default: 3.7, far: 7.4 });
 
 const brokerGate = await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
-  manifest: createPq022CorridorAssetLeavesManifest(),
+  manifest,
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
   diagnostic: DIAGNOSTIC,
   explicitDiagnostic: DIAGNOSTIC,
@@ -122,9 +153,9 @@ const brokerGate = await requireBrokerClaimOrDiagnostic({
 });
 
 if (!brokerGate.ok) {
-  console.error(`[pq022-corridor-asset-leaves] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
-  console.error('[pq022-corridor-asset-leaves] invoke via: node scripts/validation-broker-cli.mjs --manifest pq022-corridor-asset-leaves');
-  console.error('[pq022-corridor-asset-leaves] or pass --diagnostic for non-promoting local inspection');
+  console.error(`[${manifest.id}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error(`[${manifest.id}] invoke via: node scripts/validation-broker-cli.mjs --manifest ${manifest.id}`);
+  console.error(`[${manifest.id}] or pass --diagnostic for non-promoting local inspection`);
   process.exit(2);
 }
 
@@ -134,8 +165,15 @@ const manifestIdentity = await readManifestIdentity();
 let server = null;
 let browser = null;
 let context = null;
+let electronApp = null;
+let electronChildProcess = null;
+let electronLaunch = null;
+let electronUrlTracker = null;
+let electronProcessMonitor = null;
 let page = null;
 let issueTracker = null;
+let rootUrl = null;
+let browserReport = null;
 let phase = 'boot';
 let report = null;
 const captures = [];
@@ -147,37 +185,77 @@ let gpu = null;
 let recordedSeed = null;
 
 try {
-  server = await acquireVisualProbeServer({ root: ROOT });
-  const executablePath = findSystemBrowser();
-  assert(executablePath, 'headed Chrome or Edge is required for PQ-022 acceptance');
-  const { chromium } = await loadPlaywright();
-  browser = await chromium.launch({
-    headless: false,
-    executablePath,
-    args: [
-      '--incognito',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-extensions',
-      '--ignore-gpu-blocklist',
-      '--enable-webgl',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=CalculateNativeWinOcclusion',
-      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
-      '--force-device-scale-factor=1',
-    ],
-  });
-  context = await browser.newContext({
-    viewport: VIEWPORT,
-    screen: VIEWPORT,
-    deviceScaleFactor: 1,
-    locale: 'en-US',
-    colorScheme: 'dark',
-    reducedMotion: 'no-preference',
-  });
-  page = await context.newPage();
+  if (ELECTRON_RUNTIME) {
+    phase = 'browser-receipt-prerequisite';
+    const browserReportPath = path.resolve(ROOT, relayBrowserManifest.artifactRoot, 'report.json');
+    browserReport = JSON.parse(await readFile(browserReportPath, 'utf8'));
+    const browserDigests = await computeGateDigestsFromManifest({
+      root: ROOT,
+      manifest: relayBrowserManifest,
+    });
+    const browserClaimId = browserReport?.broker?.claimId;
+    const consumedBrowserClaim = typeof browserClaimId === 'string' && browserClaimId.length > 0
+      ? await readConsumedClaimLedgerEntry(
+        path.resolve(ROOT, relayBrowserManifest.artifactRoot),
+        browserClaimId,
+      )
+      : null;
+    assertCurrentPq022RelayBrowserReceipt({
+      receipt: browserReport,
+      digests: browserDigests,
+      consumedClaim: consumedBrowserClaim,
+    });
+
+    const { _electron: electron } = await loadPlaywright();
+    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq022-relay-reauthor' });
+    electronApp = await electron.launch(electronLaunch.options);
+    electronChildProcess = electronApp.process();
+    electronProcessMonitor = createElectronProcessMonitor({
+      electronApp,
+      childProcess: electronChildProcess,
+    });
+    page = await electronApp.firstWindow({ timeout: 90_000 });
+    electronUrlTracker = createElectronCanonicalUrlTracker(page, {
+      bootstrapTimeoutMs: 10_000,
+      pollIntervalMs: 75,
+      allowAnyLoopbackPort: true,
+    });
+    rootUrl = assertIsolatedElectronRootUrl(await electronUrlTracker.waitForCanonicalRoot(10_000));
+    await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+  } else {
+    server = await acquireVisualProbeServer({ root: ROOT });
+    rootUrl = server.baseUrl;
+    const executablePath = findSystemBrowser();
+    assert(executablePath, 'headed Chrome or Edge is required for PQ-022 acceptance');
+    const { chromium } = await loadPlaywright();
+    browser = await chromium.launch({
+      headless: false,
+      executablePath,
+      args: [
+        '--incognito',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-extensions',
+        '--ignore-gpu-blocklist',
+        '--enable-webgl',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=CalculateNativeWinOcclusion',
+        `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
+        '--force-device-scale-factor=1',
+      ],
+    });
+    context = await browser.newContext({
+      viewport: VIEWPORT,
+      screen: VIEWPORT,
+      deviceScaleFactor: 1,
+      locale: 'en-US',
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+    });
+    page = await context.newPage();
+  }
   page.setDefaultTimeout(30_000);
   page.setDefaultNavigationTimeout(90_000);
   await page.addInitScript(() => {
@@ -186,7 +264,7 @@ try {
   issueTracker = collectPageIssues(page, { includeWarnings: false });
 
   phase = 'seeded-new-game';
-  recordedSeed = await bootSeededFlight(page, server.baseUrl);
+  recordedSeed = await bootSeededFlight(page, rootUrl, { navigateInitialRoot: !ELECTRON_RUNTIME });
   assert.equal(recordedSeed, FIXED_SEED, 'New Game must consume the broker seed');
 
   phase = 'gpu-contract';
@@ -197,18 +275,20 @@ try {
 
   phase = 'helios-live-subjects';
   await enterSector(page, 'sector_helios_prime');
-  runtimeSubjects.set('station-trade-hub', await locateSubject(page, {
-    type: 'station', stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub',
-  }));
-  runtimeSubjects.set('station-military', await locateSubject(page, {
-    type: 'station', stationId: 'station_coalition', archetypeGlb: 'place_station_military',
-  }));
-  runtimeSubjects.set('gate-jump-ring', await locateSubject(page, {
-    type: 'station', isGate: true, archetypeGlb: 'place_gate_jump_ring',
-  }));
-  runtimeSubjects.set('station-billboard', await locateSubject(page, {
-    type: 'fx', poiId: 'poi_memorial', placeId: 'place_station_billboard',
-  }));
+  if (!RELAY_ONLY) {
+    runtimeSubjects.set('station-trade-hub', await locateSubject(page, {
+      type: 'station', stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub',
+    }));
+    runtimeSubjects.set('station-military', await locateSubject(page, {
+      type: 'station', stationId: 'station_coalition', archetypeGlb: 'place_station_military',
+    }));
+    runtimeSubjects.set('gate-jump-ring', await locateSubject(page, {
+      type: 'station', isGate: true, archetypeGlb: 'place_gate_jump_ring',
+    }));
+    runtimeSubjects.set('station-billboard', await locateSubject(page, {
+      type: 'fx', poiId: 'poi_memorial', placeId: 'place_station_billboard',
+    }));
+  }
 
   phase = 'relay-owner-placement';
   relayPlacement = await createRelayOnLiveRock(page);
@@ -221,84 +301,97 @@ try {
     detail: 'asteroidSites._ensureBeacon placed the shipped relay on a live Helios asteroid; no fixture renderer or entity shape',
   });
 
-  phase = 'traffic-owner-fixtures';
-  trafficFixtures = await createTrafficOwnerFixtures(page);
-  for (const row of ASSETS.filter((asset) => asset.role)) {
-    const fixture = trafficFixtures[row.role];
-    assert.ok(fixture, `missing controlled traffic fixture for ${row.role}`);
-    assert.equal(fixture.visual.file, row.releaseFile, `${row.role} whole-ship file`);
-    runtimeSubjects.set(row.key, fixture.entityId);
+  if (!RELAY_ONLY) {
+    phase = 'traffic-owner-fixtures';
+    trafficFixtures = await createTrafficOwnerFixtures(page);
+    for (const row of ASSETS.filter((asset) => asset.role)) {
+      const fixture = trafficFixtures[row.role];
+      assert.ok(fixture, `missing controlled traffic fixture for ${row.role}`);
+      assert.equal(fixture.visual.file, row.releaseFile, `${row.role} whole-ship file`);
+      runtimeSubjects.set(row.key, fixture.entityId);
+    }
+    compressions.push({
+      kind: 'owner-fixture',
+      subject: 'corridor-traffic-bodies',
+      detail: 'the harness selected courier/hauler/miner roles deterministically; makeShipEntitySpec, traffic durable identity and cargo manifest, partsLibrary whole-ship selection, renderer composition, and authored admission stayed production-owned',
+      distributionClaim: false,
+    });
   }
-  compressions.push({
-    kind: 'owner-fixture',
-    subject: 'corridor-traffic-bodies',
-    detail: 'the harness selected courier/hauler/miner roles deterministically; makeShipEntitySpec, traffic durable identity and cargo manifest, partsLibrary whole-ship selection, renderer composition, and authored admission stayed production-owned',
-    distributionClaim: false,
-  });
 
   phase = 'helios-captures';
-  for (const shot of SHOT_PLAN.filter((row) => [
+  for (const shot of ACTIVE_SHOT_PLAN.filter((row) => [
     'relay-collar', 'station-trade-hub', 'station-military', 'gate-jump-ring',
     'station-billboard', 'traffic-lark', 'traffic-span', 'traffic-cradle',
   ].includes(row.key))) {
     captures.push(await captureSubject(page, shot, runtimeSubjects.get(shot.key)));
   }
 
-  phase = 'ceres-live-subjects';
-  await enterSector(page, 'sector_ceres_belt');
-  compressions.push({
-    kind: 'travel',
-    subject: 'corridor-station-identity',
-    detail: 'called the registered world.enterSector(sector_ceres_belt) owner instead of flying the route; this row is presentation evidence, not route-completion evidence',
-  });
-  runtimeSubjects.set('station-refinery', await locateSubject(page, {
-    type: 'station', stationId: 'station_ceres', archetypeGlb: 'place_station_refinery',
-  }));
-  runtimeSubjects.set('station-mining', await locateSubject(page, {
-    type: 'station', stationId: 'station_beltout', archetypeGlb: 'place_station_mining',
-  }));
-  for (const key of ['station-refinery', 'station-mining']) {
-    const shot = SHOT_PLAN.find((row) => row.key === key);
-    captures.push(await captureSubject(page, shot, runtimeSubjects.get(key)));
+  if (!RELAY_ONLY) {
+    phase = 'ceres-live-subjects';
+    await enterSector(page, 'sector_ceres_belt');
+    compressions.push({
+      kind: 'travel',
+      subject: 'corridor-station-identity',
+      detail: 'called the registered world.enterSector(sector_ceres_belt) owner instead of flying the route; this row is presentation evidence, not route-completion evidence',
+    });
+    runtimeSubjects.set('station-refinery', await locateSubject(page, {
+      type: 'station', stationId: 'station_ceres', archetypeGlb: 'place_station_refinery',
+    }));
+    runtimeSubjects.set('station-mining', await locateSubject(page, {
+      type: 'station', stationId: 'station_beltout', archetypeGlb: 'place_station_mining',
+    }));
+    for (const key of ['station-refinery', 'station-mining']) {
+      const shot = SHOT_PLAN.find((row) => row.key === key);
+      captures.push(await captureSubject(page, shot, runtimeSubjects.get(key)));
+    }
+
+    phase = 'tethys-live-subject';
+    await enterSector(page, 'sector_tethys_junction');
+    compressions.push({
+      kind: 'travel',
+      subject: 'corridor-lane-furniture',
+      detail: 'called the registered world.enterSector(sector_tethys_junction) owner instead of flying the route; the nav buoy remains the live poi_blackmkt place entity',
+    });
+    runtimeSubjects.set('nav-buoy', await locateSubject(page, {
+      type: 'fx', poiId: 'poi_blackmkt', placeId: 'place_nav_buoy',
+    }));
+    captures.push(await captureSubject(
+      page,
+      SHOT_PLAN.find((row) => row.key === 'nav-buoy'),
+      runtimeSubjects.get('nav-buoy'),
+    ));
   }
 
-  phase = 'tethys-live-subject';
-  await enterSector(page, 'sector_tethys_junction');
-  compressions.push({
-    kind: 'travel',
-    subject: 'corridor-lane-furniture',
-    detail: 'called the registered world.enterSector(sector_tethys_junction) owner instead of flying the route; the nav buoy remains the live poi_blackmkt place entity',
-  });
-  runtimeSubjects.set('nav-buoy', await locateSubject(page, {
-    type: 'fx', poiId: 'poi_blackmkt', placeId: 'place_nav_buoy',
-  }));
-  captures.push(await captureSubject(
-    page,
-    SHOT_PLAN.find((row) => row.key === 'nav-buoy'),
-    runtimeSubjects.get('nav-buoy'),
-  ));
-
   phase = 'receipt-validation';
-  const shotOrder = new Map(SHOT_PLAN.map((row, index) => [row.name, index]));
+  const shotOrder = new Map(ACTIVE_SHOT_PLAN.map((row, index) => [row.name, index]));
   captures.sort((a, b) => shotOrder.get(path.basename(a.file)) - shotOrder.get(path.basename(b.file)));
   const capturedKeys = new Set(captures.map((row) => row.subjectKey));
-  assert.deepEqual([...capturedKeys].sort(), ASSETS.map((row) => row.key).sort(),
-    'the one Browser cell must evidence all eleven exact identities');
-  assert.equal(captures.length, SHOT_PLAN.length, 'the row must write the declared thirteen stills');
+  assert.deepEqual([...capturedKeys].sort(), ACTIVE_ASSETS.map((row) => row.key).sort(),
+    RELAY_ONLY ? 'the relay-only cell must evidence exactly the relay identity'
+      : 'the one Browser cell must evidence all eleven exact identities');
+  assert.equal(captures.length, ACTIVE_SHOT_PLAN.length,
+    RELAY_ONLY ? 'the relay-only cell must write exactly three prescribed stills'
+      : 'the row must write the declared thirteen stills');
   const pageIssues = summarizeIssues(issueTracker.errorIssues());
   assert.deepEqual(pageIssues, [], 'the PQ-022 headed route must not emit Browser runtime errors');
 
   report = {
-    schema: 'spaceface.pq022-corridor-asset-leaves-h1.v1',
+    schema: RELAY_ONLY
+      ? 'spaceface.pq022-relay-reauthor-h1.v1'
+      : 'spaceface.pq022-corridor-asset-leaves-h1.v1',
     row: 7,
     disposition: 'PASS',
-    runtime: 'browser-chromium-headed',
+    runtime: ELECTRON_RUNTIME ? 'electron' : 'browser-chromium-headed',
     brokerManifestId: manifest.id,
+    broker: brokerEvidence(brokerGate),
+    selector: ONLY,
     fixedSeed: FIXED_SEED,
     recordedSeed,
     viewport: VIEWPORT,
     gpu,
-    routeContract: 'visible fixed-seed New Game -> production owners -> controlled game-camera stills',
+    routeContract: RELAY_ONLY
+      ? 'visible fixed-seed New Game -> asteroidSites relay owner -> close/default/far game-camera stills'
+      : 'visible fixed-seed New Game -> production owners -> controlled game-camera stills',
     compressions,
     relayPlacement,
     trafficFixtures,
@@ -313,6 +406,18 @@ try {
     noPerformanceEvidence: true,
     noPerformanceEvidenceNote: 'Matched performance remains Phase H3.',
   };
+  if (ELECTRON_RUNTIME) {
+    const normalizedBrowser = normalizePq022RelayReauthorReceipt(browserReport);
+    const normalizedElectron = normalizePq022RelayReauthorReceipt(report);
+    assert.deepEqual(normalizedElectron, normalizedBrowser,
+      'PQ-022 relay Electron identity/admission/placement must match the accepted Browser cell');
+    report.browserComparison = {
+      pass: true,
+      comparedAgainst: repoRel(path.resolve(ROOT, relayBrowserManifest.artifactRoot, 'report.json')),
+      normalizedBrowser,
+      normalizedElectron,
+    };
+  }
 } catch (error) {
   if (page && !page.isClosed()) {
     await page.screenshot({
@@ -322,15 +427,19 @@ try {
     }).catch(() => {});
   }
   report = {
-    schema: 'spaceface.pq022-corridor-asset-leaves-h1.v1',
+    schema: RELAY_ONLY
+      ? 'spaceface.pq022-relay-reauthor-h1.v1'
+      : 'spaceface.pq022-corridor-asset-leaves-h1.v1',
     row: 7,
     disposition: 'FAIL',
     failureClass: 'UNCLASSIFIED_BY_PROBE',
     phase,
     problems: [error?.message || String(error)],
     stack: error?.stack || null,
-    runtime: 'browser-chromium-headed',
+    runtime: ELECTRON_RUNTIME ? 'electron' : 'browser-chromium-headed',
     brokerManifestId: manifest.id,
+    broker: brokerEvidence(brokerGate),
+    selector: ONLY,
     fixedSeed: FIXED_SEED,
     recordedSeed,
     viewport: VIEWPORT,
@@ -349,24 +458,58 @@ try {
     noPerformanceEvidenceNote: 'Matched performance remains Phase H3.',
   };
 } finally {
-  await context?.close().catch(() => {});
-  await browser?.close().catch(() => {});
-  await server?.close().catch(() => {});
+  if (ELECTRON_RUNTIME) {
+    let cleanup = null;
+    try {
+      cleanup = await closeOwnedElectronRuntime({
+        page,
+        electronApp,
+        childProcess: electronChildProcess,
+        canonicalUrlTracker: electronUrlTracker,
+        processMonitor: electronProcessMonitor,
+        rootUrl,
+      });
+    } catch (error) {
+      cleanup = { pass: false, failures: [error?.message || String(error)] };
+    }
+    if (cleanup?.pass === true) {
+      report.ownedRuntimeClosed = true;
+      try { electronLaunch?.cleanup({ runtimeClosed: true }); }
+      catch (error) {
+        report.disposition = 'FAIL';
+        report.problems ||= [];
+        report.problems.push(`isolated profile cleanup failed: ${error?.message || String(error)}`);
+      }
+    } else {
+      report.disposition = 'FAIL';
+      report.ownedRuntimeClosed = false;
+      report.problems ||= [];
+      report.problems.push(`owned Electron cleanup failed: ${(cleanup?.failures || []).join('; ')}`);
+    }
+  } else {
+    await context?.close().catch(() => {});
+    await browser?.close().catch(() => {});
+    await server?.close().catch(() => {});
+  }
 }
 
 await writeFile(path.join(ARTIFACT_ROOT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
 if (report.disposition !== 'PASS') {
-  console.error(`[pq022-corridor-asset-leaves] FAIL in ${report.phase || 'route contract'}`);
+  console.error(`[${manifest.id}] FAIL in ${report.phase || 'route contract'}`);
   for (const problem of report.problems || []) console.error(`  - ${problem}`);
   process.exit(1);
 }
 
-console.log('[pq022-corridor-asset-leaves] PASS — eleven exact identities, thirteen headed stills');
+console.log(RELAY_ONLY
+  ? `[${manifest.id}] PASS — relay identity, admission, placement, and three prescribed stills`
+  : '[pq022-corridor-asset-leaves] PASS — eleven exact identities, thirteen headed stills');
 console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'report.json'))}`);
 
-async function bootSeededFlight(targetPage, rootUrl) {
-  await targetPage.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+async function bootSeededFlight(targetPage, rootUrl, { navigateInitialRoot = true } = {}) {
+  if (navigateInitialRoot) {
+    await targetPage.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  }
   const url = new URL(targetPage.url());
   assert.equal(url.search, '', 'PQ-022 route must use the canonical root with no query flags');
   assert.equal(url.hash, '', 'PQ-022 route must use the canonical root with no hash flags');
@@ -767,7 +910,7 @@ async function readManifestIdentity() {
   const release = JSON.parse(releaseRaw);
   const sourceById = new Map(parts.parts.map((row) => [row.id, row]));
   const releaseById = new Map(release.assets.map((row) => [row.id, row]));
-  return ASSETS.map((asset) => {
+  return ACTIVE_ASSETS.map((asset) => {
     const sourceRow = sourceById.get(asset.manifestId);
     const releaseRow = releaseById.get(asset.manifestId);
     assert(sourceRow, `source manifest row missing: ${asset.manifestId}`);
@@ -850,4 +993,27 @@ function findSystemBrowser() {
 
 function repoRel(file) {
   return path.relative(ROOT, file).replace(/\\/g, '/');
+}
+
+function brokerEvidence(gate) {
+  const claim = gate?.claim || null;
+  return {
+    reason: gate?.reason ?? null,
+    diagnostic: gate?.diagnostic === true,
+    primaryAcceptance: gate?.primaryAcceptance === true,
+    claimId: claim?.claimId ?? null,
+    mode: claim?.mode ?? null,
+    runtimeKind: claim?.runtimeKind ?? null,
+    candidateDigest: claim?.digests?.candidateDigest ?? claim?.receipt?.candidateDigest ?? null,
+    manifestDigest: claim?.digests?.manifestDigest ?? null,
+    inputDigest: claim?.digests?.inputDigest ?? null,
+  };
+}
+
+function readEncodedOption(name) {
+  const args = process.argv.slice(2);
+  assert(!args.includes(name), `${name} must use the encoded ${name}=value form`);
+  const matches = args.filter((arg) => arg.startsWith(`${name}=`));
+  assert(matches.length <= 1, `${name} may be supplied only once`);
+  return matches.length === 1 ? matches[0].slice(name.length + 1) : null;
 }
