@@ -1,0 +1,94 @@
+{
+  "schema": "spaceface.pq024-committed-transition-attempt-reconciliation.v1",
+  "unit": "PQ-024.committed-transition-h1",
+  "recordedAtHead": "91202dea27e961e73e4462bb5aba5ff7c2c6e597",
+  "lifecycle": "claimed",
+  "acceptance": "unproven",
+  "headedAttemptBoundary": {
+    "browserLaunches": 2,
+    "electronLaunches": 0,
+    "acceptedTargetScreenshotCount": 0,
+    "additionalHeadedLaunchAuthorizedInThisWorkWave": false
+  },
+  "attempts": [
+    {
+      "ordinal": 1,
+      "runtime": "browser",
+      "claimId": "24560-325ce94bf0826069565708bf",
+      "candidateDigest": "62847cb308f89d6c64ff9f503a3a1e268e2a4e4f7bf318b39795141f2b3f56f6",
+      "regressionDigest": "c804ef72a52c3a40e6e6a1c47b2b2c7262e600f699b9f54f8e9e9f7f7addd15d",
+      "result": "FAIL",
+      "phase": "dock-helios",
+      "failureFingerprint": "5dc26f4d47191792268e1b99e9fed8ee38fd558fbd7268c1c9d2cef928d444e6",
+      "failureClass": "HARNESS",
+      "characterization": "The 500 ms diagnostic polling cadence missed the transient public dock prompt after the actor reached the Helios berth corridor.",
+      "repairCommit": "355483ebbeb037146b1de2e11bd96022e5a0c896",
+      "repair": "Prompt visibility now races continuously against diagnostic sampling; the focused regression models the 17.50 WU transient dock window between samples.",
+      "acceptedTargetScreenshot": null
+    },
+    {
+      "ordinal": 2,
+      "runtime": "browser",
+      "claimId": "19420-51f231ef8afd8e503eda0aa0",
+      "candidateDigest": "7aec9491ed9e971eaff28cd80394a59c2a928f697c6bec78b2e70395a68ddc84",
+      "regressionDigest": "05dfc5c53dfeae07da75d933e9c83f6cb9bcc03e6d39b4a5eb118ef4636a53f7",
+      "acknowledgesFailureFingerprint": "5dc26f4d47191792268e1b99e9fed8ee38fd558fbd7268c1c9d2cef928d444e6",
+      "result": "FAIL",
+      "phase": "core-commit",
+      "failureFingerprint": "521f029819b840eacc63cd05835178e1eb15a7a2979f6c851fe4faae7fc2cdcf",
+      "failureClass": "HARNESS",
+      "characterization": "The actor reached Core commitment, but waitForCommittedPresentation issued Escape unconditionally while the public console was already in Drive; Escape from Drive exited Asteroid Ops and the committed presentation wait timed out.",
+      "repairCommit": "91202dea27e961e73e4462bb5aba5ff7c2c6e597",
+      "repair": "The actor now reads the public Console mode and presses Escape only for Build-to-Drive retraction; Drive is left untouched and any other mode fails closed.",
+      "acceptedTargetScreenshot": null
+    }
+  ],
+  "focusedEvidence": {
+    "candidateCommit": "91202dea27e961e73e4462bb5aba5ff7c2c6e597",
+    "command": "node --test test/pq024-asteroid-claim-manifest.test.mjs",
+    "result": "PASS",
+    "tests": 16,
+    "headedRuntimeLaunches": 0,
+    "note": "This 16/16 result was recorded with the mode-guard repair and was not rerun during program-control reconciliation."
+  },
+  "retainedLocalEvidence": {
+    "root": ".devshots/pq024-committed-transition/",
+    "consumedClaims": "broker-claims/consumed-claims.json",
+    "latestFailure": "latest-acceptance-failure.json",
+    "latestRun": "latest-run-result.json",
+    "latestRouteReceipt": "committed-transition-receipt.json",
+    "launchCounts": "launch-counts.json",
+    "failureImage": "failure.png",
+    "note": "Local evidence is historical input to this reconciliation and was not modified. The latest receipt and failure files describe attempt 2; the consumed claim ledger retains both Browser claims."
+  },
+  "outcome": {
+    "unitRemainsClaimed": true,
+    "h1Accepted": false,
+    "h1Complete": false,
+    "electronContinuationEligible": false,
+    "downstreamReviewEligible": false,
+    "residual": "A future explicitly authorized candidate may spend a new bounded Browser claim; source-Electron remains gated on an accepted Browser semantic receipt.",
+    "retainedAcceptedCells": [
+      "survey",
+      "production",
+      "exterior-relay",
+      "continue",
+      "same-site-reentry",
+      "h3-performance"
+    ]
+  },
+  "writeSetBoundary": {
+    "declaredPaths": [
+      "scripts/probe-pq024-asteroid-claim.mjs",
+      "scripts/validation-manifests/pq024-asteroid-claim.mjs",
+      "design/program/roadmap/evidence/h1/row9-pq024-survey-claim/committed-transition/"
+    ],
+    "excludedProgramControlPaths": [
+      "design/program/NOW.md",
+      "design/program/roadmap/active/PQ-024.md",
+      "design/program/roadmap/program-queue.json",
+      "design/program/roadmap/receipts/"
+    ],
+    "reconciliationAction": "Recorded inside the declared evidence path only. Global receipt, packet, queue, and NOW changes require an integrator-owned write-set update and were not widened here."
+  }
+}

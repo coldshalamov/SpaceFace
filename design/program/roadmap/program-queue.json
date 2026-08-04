@@ -4401,7 +4401,9 @@
       ],
       "paths": [
         "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/lib/pq024AsteroidClaimParity.mjs",
         "scripts/validation-manifests/pq024-asteroid-claim.mjs",
+        "test/pq024-asteroid-claim-manifest.test.mjs",
         "design/program/roadmap/evidence/h1/row9-pq024-survey-claim/committed-transition/"
       ],
       "checks": [
@@ -4409,7 +4411,7 @@
         "npm run check:pq024:survey-claim"
       ],
       "receiptRefs": [],
-      "brief": "Spend one bounded Browser claim and a gated source-Electron continuation for only the Core-committed presentation. Reuse the accepted actor and retain Survey, production, relay, Continue, re-entry, and H3 cells without recapture.",
+      "brief": "Claimed and unproven after the two-launch boundary: Browser attempt 1 missed the transient Helios dock prompt and was repaired at 355483eb; Browser attempt 2 reached Core but an unconditional Escape from Drive exited Asteroid Ops, repaired headlessly at 91202dea with 16/16 focused checks. Exactly two Browser launches, zero Electron launches, and no accepted target screenshot are retained. No third headed launch is authorized in this work wave; Survey, production, relay, Continue, re-entry, and H3 remain accepted without recapture.",
       "blocker": null
     },
     {
