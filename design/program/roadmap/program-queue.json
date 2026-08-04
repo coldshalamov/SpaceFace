@@ -2788,7 +2788,8 @@
       "priority": 30,
       "title": "Re-author the corridor billboard and navigation buoy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
@@ -2797,12 +2798,23 @@
         "asset-manifest"
       ],
       "paths": [
+        "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/",
+        "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/",
+        "assets/ships/m5_navigation_infrastructure/release_candidates/material_truth_v2/places/",
+        "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/",
         "assets/ships/parts/places/place_station_billboard.glb",
+        "assets/ships/parts/blender/place_station_billboard_authored.blend",
         "assets/ships/release/parts/places/place_station_billboard.glb",
         "assets/ships/parts/places/place_nav_buoy.glb",
+        "assets/ships/parts/blender/place_nav_buoy_authored.blend",
         "assets/ships/release/parts/places/place_nav_buoy.glb",
         "assets/ships/parts/parts_manifest.json",
-        "assets/ships/release/release_manifest.json"
+        "assets/ships/release/release_manifest.json",
+        "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
+        "scripts/check-pq022-navigation-infrastructure-candidate.mjs",
+        "scripts/promote-pq022-navigation-infrastructure.mjs",
+        "test/pq022-navigation-infrastructure-candidate.test.mjs",
+        "test/pq022-navigation-infrastructure-promotion.test.mjs"
       ],
       "checks": [
         "npm run check:pq022:corridor-assets",
