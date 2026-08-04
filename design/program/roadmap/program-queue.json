@@ -4292,7 +4292,8 @@
       "priority": 215,
       "title": "Survey-to-relay player-route and visual review",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-022.relay-reauthor-review"
