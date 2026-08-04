@@ -48,6 +48,12 @@ recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKP
 |---|---|---|---|
 | Shared station/Codex Ship's Ledger (`PQ-021` / `Depth-A2` / `R06`) | **`INTEGRATED` + `ROUTE_ACCEPTED` / CHECKED OFF** | One pure bounded projector and one host-safe panel expose five physically earned Wreck Cathedral evidence pages. Natural operation-API earning, forged-receipt refusal, cold Continue, two-host resource flatness, exact focus return, Browser broker acceptance, and distinct Electron parity are green. The solo integrator inspected all five original page images and retained host stills: every page is KEEP, copy/provenance is identical, panel text scales without clipping and passes applicable AA contrast, and standard button 3 (`Y / Triangle`) reaches the live Codex action through the shipped input owner. Final receipt: `roadmap/receipts/PQ-021-h2-legibility-controller-REPORT.md`. | No product residual. A physical-device test and matched Ledger-specific performance sample were not claimed; neither is required by this completed route/legibility outcome. The retained Browser list still caught transitional dimming and is not a stable visual baseline, but the settled evidence and route contract are unaffected. |
 
+## PQ-035 PERF-01 lifecycle closure (2026-08-04, `f3046007`)
+
+| Outcome | Current state | Current evidence | Remaining boundary |
+|---|---|---|---|
+| Foreground/background lifecycle correctness (`PQ-035` / `PERF-01`) | **`INTEGRATED` + `ROUTE_ACCEPTED` / CHECKED OFF** | Browser claim `10372-4aa9e5f78322240b4566e2bd` and source-Electron claim `12340-3eefb1bf37636736c1d67ead` share source digest `bbd92995…db10f01`, fixed seed `35035`, route/regression identity, and stable route signature. Both use real Intel ANGLE/D3D11, report zero runtime errors and zero hidden GPU submissions across four transitions, restore input/audio and one coherent presentation frame, retain foreground-equivalent cadence after five seconds of admitted baseline sampling, and clean every owned process/window/profile resource. Receipt: `roadmap/receipts/PQ-035-lifecycle-REPORT.md`. | No machine-actionable PQ-035 residual. Physical workstation suspend/lock and packaged-build startup were not synthesized; exact host/package acceptance remains assigned to `PQ-041.native-acceptance`. No optimization gain or absolute frame-budget waiver is claimed. |
+
 ## Sprint 2 — Corridor Contract Wave packet rows
 
 | Packet | Terminal state | Evidence at commit | Commit | Blocking lease |

@@ -25,6 +25,18 @@ on browser AND Electron at `b28d183b` with the repaired fail-closed continuity c
 rebase membrane clean, settled Continue, identity continuity across streaming/reload). This
 revalidates the M2 architecture claim; it does not by itself exit M2's broader milestone row.
 
+## PQ-035 PERF-01 native lifecycle closure (2026-08-04, `f3046007`)
+
+PQ-035 is checked off as `INTEGRATED` + `ROUTE_ACCEPTED`. Paired one-use Browser and source-Electron
+claims `10372-4aa9e5f78322240b4566e2bd` and `12340-3eefb1bf37636736c1d67ead` share source digest
+`bbd92995…db10f01`, fixed seed `35035`, route/regression identity, and a stable production-route
+signature. Both run on hardware Intel ANGLE/D3D11 with zero runtime errors, zero hidden GPU
+submissions, bounded repeated transitions, foreground-equivalent cadence, input/audio restoration,
+and clean owned teardown. The accepted harness requires five seconds of admitted baseline cadence,
+reacquires the exact native window, and records/excludes foreground-interrupted samples. It does not
+claim an optimization gain, physical workstation suspend/lock, or packaged-build startup; those exact
+host/package boundaries remain with PQ-041. Receipt: `roadmap/receipts/PQ-035-lifecycle-REPORT.md`.
+
 ## Program batch PQ-001..PQ-010 first wave (2026-07-20, `2bc3042f`..`b28d183b`)
 
 Queue outcomes PQ-001, PQ-002, PQ-003, PQ-008, and PQ-009 are `INTEGRATED` with lead-rerun proof:

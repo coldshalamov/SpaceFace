@@ -1,16 +1,20 @@
-# PQ-035 — PERF-01 lifecycle implementation receipt
+# PQ-035 — PERF-01 lifecycle implementation and native acceptance receipt
 
 ```yaml
 packet: PQ-035
-scope: deterministic Browser/Electron lifecycle implementation and focused integration
+scope: deterministic lifecycle implementation plus paired Browser/source-Electron native acceptance
 protectedCandidateBranch: codex/perf-01a-background-lifecycle
 protectedCandidateHead: 8610102d89a4c122e088205eb46739590c6a477e
 implementationBranch: claude/perf00-20260727
 implementationHead: 0a665b85
 synchronizedHead: 0b324999
 lifecycleClaim: integrated
-acceptanceClaim: deterministic_green_native_broker_pending
-disposition: PARTIAL
+acceptanceHead: f3046007b50e048ff4f1c49c2fb90a49964f126b
+acceptanceClaim: source_paired_browser_electron_route_accepted
+browserClaim: 10372-4aa9e5f78322240b4566e2bd
+electronClaim: 12340-3eefb1bf37636736c1d67ead
+sourceCandidateDigest: bbd92995aff4b7a66e64415bf068725010f486ff42d65ed105f4b7c85db10f01
+disposition: INTEGRATED
 qualityInvariant: preserved
 ```
 
@@ -28,10 +32,10 @@ callback. Restore presents one coherent zero-delta snapshot, excludes synchronou
 the next fixed-step delta, and then returns to the ordinary four-step catch-up cap and existing backlog
 shedding semantics.
 
-**Not claimed:** terminal PQ-035 acceptance, native Browser/Electron lifecycle parity, hidden GPU
-submission cessation, or an FPS/resource improvement. Those claims require broker-managed native
-cells on an uncontended evidence machine. The current machine was explicitly unsuitable for stable
-FPS/GPU evidence because several coding-agent workloads were running concurrently.
+The later terminal section closes the machine-actionable PQ-035 Browser/source-Electron matrix.
+Physical workstation suspend/lock and a packaged-build launch are still not claimed here: they were
+not synthesized, and exact-package acceptance remains owned by `PQ-041.native-acceptance`. No
+optimization gain or absolute frame-budget waiver is inferred from lifecycle equivalence.
 
 ## Integrated implementation commits
 
@@ -124,25 +128,46 @@ or default visual quality.
 | `node --check test/audio-lifecycle.test.mjs` | **exit 0** |
 | `npm run check:launch-policy` | **exit 0**; one player URL, shared Browser/Electron server module, stable save origin, canonical runtime backends, no production query fork |
 | `npm run check:baseline` | **10/10 green** in 48103 ms; 41897 ms headroom against the 90000 ms deterministic budget |
+| Recovery checkpoint exit `npm run check:baseline` | **10/10 green** in 46628 ms; 43372 ms headroom; run once on 2026-08-04 after the retained native claims and current headless recovery repairs |
 | `git diff --check` on the final audio unit | **no whitespace error**; Windows worktree emitted only the known LF-to-CRLF checkout warning |
 
 The deterministic baseline included `ui-screen-imports`, `pq020-ceres-topology`, `save-schema`,
 `flight-v3`, `m1-tether-mass`, `sim-v3-compare`, `sim-compare`, `sim-v3`, `sim`, and `massline`.
 No contested FPS, compositor, or GPU sample was used as acceptance evidence.
+The recovery checkpoint exit gate retained the same ten-link green set and was not repeated.
 
-## Residual acceptance gap
+## Terminal source-paired native acceptance
 
-PQ-035 remains active and `acceptance: unproven` until the broker owns the native
-`performance-lifecycle` matrix. Required remaining evidence includes:
+The final committed harness at `f3046007b50e048ff4f1c49c2fb90a49964f126b` closes exact unit
+`PQ-035.native-acceptance`. It requires eight accepted 650 ms baseline windows before admitting a
+three-window stable suffix, reacquires the exact owned native window before route actions and samples,
+and rejects rather than averages any sample interrupted by lost foreground ownership. Interrupted
+attempts consume the fixed 18-attempt budget and retain renderer plus native-window state in evidence.
 
-1. Browser visibility cells with actual submission/work attribution.
-2. Packaged Electron minimize, hide/show, focus/occlusion, suspend/resume, and lock/unlock cells.
-3. Audio restoration and first-visible-frame observation in both routes.
-4. Hidden CPU/GPU/submission cessation bound to lifecycle transitions.
-5. Matched foreground digest and resource evidence using one admitted source candidate on an
-   uncontended machine.
-6. Repeated-transition soak proving no duplicate native listeners, callbacks, or restore storm.
+The final one-use broker pair is:
 
-These native claims are deliberately deferred rather than inferred from source text or from unstable
-frame-rate samples. The deterministic implementation is complete enough to unblock PERF-02; this
-receipt does not promote PQ-035 to terminal acceptance.
+| Runtime | Claim / evidence | Foreground result | Native lifecycle result |
+|---|---|---|---|
+| Browser | `10372-4aa9e5f78322240b4566e2bd`; `.devshots/perf/lifecycle/browser/run-10372-4aa9e5f78322240b4566e2bd/evidence.json` | baseline/resumed `41/37`, ratio `0.902439`; eight accepted windows, no interruption | four real owned-Chrome visibility transitions, zero hidden GPU submissions, clean owned-tree teardown |
+| source Electron | `12340-3eefb1bf37636736c1d67ead`; `.devshots/perf/lifecycle/electron/run-12340-3eefb1bf37636736c1d67ead/evidence.json` | baseline/resumed `37/40`, ratio `1.081081`; eight accepted windows, no interruption | alternating minimize/hide plus native focus-transfer occlusion, exact one-frame restores, zero hidden GPU submissions, destroyed focus sink, clean process teardown |
+
+Both cells use fixed seed `35035`, hardware Intel ANGLE/D3D11, zero runtime errors, stable route
+signature `128fdb39…a2919a4`, source digest `bbd92995…db10f01`, route digest
+`52078abe…980d1e`, and regression digest `433aa888…961b28`. Their runtime candidate digests are
+intentionally distinct (`2f4c3016…c094b61` Browser and `35638329…50a15b` Electron), while the shared
+source/scenario identity and exact commit match.
+
+The retained spent pair at source digest `7b8f1c5a…b0b7dc4e` explains the final harness correction.
+Browser claim `13152-32d7185d80ca9cfdd3cc2a56` passed, but Electron claim
+`45236-2200a572b6c8cf99dd56cc6e` admitted an early `23,21,22` startup plateau and then failed when
+the resumed window reached `38` frames (`1.727273`, outside `0.5..1.5`). The repair lengthened
+baseline admission to five seconds, made the stable suffix mutually comparable, added exact-HWND
+bounded reacquisition, and records/excludes foreground-interrupted windows. Diagnostic
+`run-diagnostic-1785805110825` then passed with three explicitly retained interruptions before the
+clean final broker pair passed without interruptions.
+
+Focused contract/manifest tests pass **21/21**; loop, orchestration, Electron shell, audio, and input
+lifecycle tests pass **37/37**; launch policy and Electron platform contracts pass. No physical
+workstation suspend/lock event was synthesized. That exact host/packaged boundary remains assigned to
+`PQ-041.native-acceptance`; it does not reopen the completed Browser/source-Electron BrowserWindow
+matrix, and this receipt claims no optimization gain or absolute-budget waiver.

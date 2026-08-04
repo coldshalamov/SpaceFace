@@ -46,10 +46,10 @@ run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rath
 a parent implementation. PQ-022 and PQ-023 remain portfolio containers, but their current leaf units
 are explicit in the queue.
 
-PQ-034 is route-accepted and retired after selective candidate audit, source-paired Browser/Electron
-qualification, exact cleanup, and enabled-overhead proof. PQ-035 through PQ-041 have focused
-implementation on master and their native continuation units are now dispatchable in dependency
-order. PQ-042 remains dependency-gated on terminal PERF-01–07 acceptance. PQ-043 and PQ-044 remain
+PQ-034 and PQ-035 are route-accepted and retired after selective candidate audit, source-paired
+Browser/Electron qualification, exact cleanup, and bounded evidence proof. PQ-036 through PQ-041
+have focused implementation on master and their native continuation units are now dispatchable in
+dependency order. PQ-042 remains dependency-gated on terminal PERF-02–07 acceptance. PQ-043 and PQ-044 remain
 deferred and intentionally have no active packet until their evidence triggers are proved.
 
 ## Packet index
@@ -63,7 +63,7 @@ deferred and intentionally have no active packet until their evidence triggers a
 | [`PQ-023.md`](./PQ-023.md) | implement physics-readable presentation as separate cue-family leaves | current owner events and shared presentation lease |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
 | [`PQ-025.md`](./PQ-025.md) | observational held-out qualification, not a feature branch | PQ-019–024 exact integrated receipts and frozen owner evidence map |
-| [`PQ-035.md`](./PQ-035.md) | foreground/background lifecycle correctness | focused implementation on master; native acceptance is unblocked by terminal PERF-00 |
+| [`PQ-035.md`](../retired/PQ-035.md) | foreground/background lifecycle correctness | route-accepted, released, and retired at `f3046007`; physical host/package boundary assigned to PQ-041 |
 | [`PQ-036.md`](./PQ-036.md) | main-thread simulation/presentation ownership plus journals | focused implementation on master; native attribution acceptance remains |
 | [`PQ-037.md`](./PQ-037.md) | compile deterministic render packages outside gameplay | foundation on master; bounded production pilot and native acceptance remain |
 | [`PQ-038.md`](./PQ-038.md) | dense generation-safe PresentationWorld | focused implementation on master; native dense-route acceptance remains |
