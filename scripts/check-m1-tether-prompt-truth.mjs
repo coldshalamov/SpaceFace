@@ -79,6 +79,8 @@ function resolveActionLabel(state, action) {
   return codes.map(codeToBindingLabel).filter(Boolean).join('/');
 }
 
+const LINE_CONTROL_HINT = '↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP';
+
 /** Contract for the HUD tether control line (must match buildTetherControlPrompt). */
 function buildTetherControlPrompt(state, tether) {
   if (!tether || !tether.active) return '';
@@ -90,6 +92,7 @@ function buildTetherControlPrompt(state, tether) {
   if (reelInLabel) parts.push(`[${reelInLabel}] REEL IN`);
   else if (cutLabel) parts.push(`HOLD [${cutLabel}] REEL`);
   if (reelOutLabel) parts.push(`[${reelOutLabel}] PAY OUT`);
+  if (cutLabel && !reelInLabel) parts.push(LINE_CONTROL_HINT);
   if (cutLabel) parts.push(`TAP [${cutLabel}] CUT`);
   if (!parts.length) return 'TETHER UNBOUND';
   return parts.join(' · ');
@@ -281,6 +284,8 @@ check('hud.source.buildTetherControlPrompt_uses_action_ids', () => {
     'dedicated reel-in copy uses resolved reelInLabel');
   assert.match(hudSrc, /\[\$\{reelOutLabel\}\] PAY OUT/,
     'dedicated pay-out copy uses resolved reelOutLabel');
+  assert.match(hudSrc, /LINE_CONTROL_HINT|↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP/,
+    'hold-mode axes remain discoverable on the active tether path');
 });
 
 check('hud.source.reel_cut_only_while_tether_active', () => {
@@ -288,10 +293,13 @@ check('hud.source.reel_cut_only_while_tether_active', () => {
     'buildTetherControlPrompt returns empty when inactive');
   assert.match(hudSrc, /const active = !!\(tether && tether\.active\)/,
     'tether stat visibility gates on tether.active');
-  assert.match(hudSrc, /elTetherStat\.style\.display = active \? '' : 'none'/,
+  // Live path uses setStyle helper (same active gate; avoids direct .style assignment).
+  assert.match(hudSrc, /setStyle\(elTetherStat,\s*'display',\s*active \? '' : 'none'\)/,
     'tether stat element hidden when inactive');
   assert.match(hudSrc, /const controls = buildTetherControlPrompt\(tether\)/,
     'active path builds control prompt from live tether mirror');
+  assert.match(hudSrc, /paintTetherControlChips/,
+    'player-facing chips own presentation; status value stays short');
   // Guard: no alternate always-on hard-coded reel/cut chip in the HUD.
   assert.doesNotMatch(hudSrc, /HOLD \[F\] REEL/,
     'HUD must not hard-code HOLD [F] REEL outside the resolver');

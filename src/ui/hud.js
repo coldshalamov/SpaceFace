@@ -952,36 +952,13 @@ export function createHud(ctx, alerts) {
   //  first-person cockpit/windshield motif, which is wrong for this third-person chase-cam game.
   //  Shield now lives on the schematic ring; energy on the ENGY micro-bar.)
 
-  // ---- bottom-center: continuous command rail (binding → action) ----
-  // These are state readouts, not five fake square buttons. Plain action words scan faster than
-  // tiny bespoke symbols and stay honest when the binding or fitted equipment changes.
-  const ACTION_SLOTS = [
-    ['LMB', 'pulse-laser', 'FIRE', 'PRIMARY'],
-    ['RMB', 'mass-sample', 'SAMPLE', 'UTILITY'],
-    ['SHIFT', 'boost', 'BOOST', 'DRIVE'],
-    [BINDINGS.dock.label, 'dock', 'DOCK', 'SERVICE'],
-    [BINDINGS.drill.label, 'drill', 'DRILL', 'EXTRACT'],
-  ];
+  // ---- bottom-center: flight instrument deck (SPD / WPN / contextual chips) ----
+  // Permanent binding→action keycaps (FIRE / SAMPLE / BOOST / …) were retired: those are general
+  // flight keys learned from Settings → Controls / Help / onboarding, not a always-on hotbar.
+  // Contextual mode prompts (Massline while latched) still surface below the instrument row.
   const commandDeck = document.createElement('div');
   commandDeck.className = 'sf-command-deck';
-  const actionBar = document.createElement('div');
-  actionBar.id = 'action-bar';
-  const actionBoxes = {};
-  for (const [bind, action, label, family] of ACTION_SLOTS) {
-    const slot = document.createElement('div');
-    slot.className = 'action-slot';
-    slot.dataset.action = action;
-    slot.innerHTML =
-      `<span class="bind">${bind}</span>` +
-      `<span class="action-command"><strong>${label}</strong><small>${family}</small></span>`;
-    actionBar.appendChild(slot);
-    actionBoxes[action] = slot;
-  }
-  commandDeck.appendChild(actionBar);
   root.appendChild(commandDeck);
-  // Dock availability (physics emits dock:range as the player nears a station) → highlight the dock slot.
-  let dockInRange = false;
-  ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
 
   // Weak-point reveals (BP-02): a scan pulse exposes a large hostile's soft spot. We keep this UI-side
   // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
@@ -1041,7 +1018,14 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
+  // Massline line-control chips — only while latched. Separate from the status value so the
+  // instrument row never overflows with a tutorial paragraph of binds.
+  const tetherControls = document.createElement('div');
+  tetherControls.className = 'sf-tether-controls';
+  tetherControls.hidden = true;
+  tetherControls.setAttribute('aria-label', 'Massline controls');
   commandDeck.prepend(center);
+  commandDeck.appendChild(tetherControls);
 
   // ---- Travel Burn instrument (atlas D5 / W1-6 / W1-9) -----------------------------------------
   // A CONTEXTUAL instrument, not a new permanent panel. D9.9 forbids permanent panels because the
@@ -1664,19 +1648,86 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  // Line-control grammar while the Massline is held (discoverability + hold-mode axes).
+  // Kept as a named constant so Settings/Help/HUD stay one-voice about the axes.
+  const LINE_CONTROL_HINT = '↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP';
+
   function buildTetherControlPrompt(tether) {
     if (!tether || !tether.active) return '';
     const cutLabel = resolveActionLabel(state, 'tether');
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
     const parts = [];
-    if (cutLabel) parts.push(`HOLD [${cutLabel}] ↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP`);
+    // Default scheme: hold tether for line control, tap to cut. Dedicated reel binds replace HOLD REEL.
     if (reelInLabel) parts.push(`[${reelInLabel}] REEL IN`);
+    else if (cutLabel) parts.push(`HOLD [${cutLabel}] REEL`);
     if (reelOutLabel) parts.push(`[${reelOutLabel}] PAY OUT`);
+    if (cutLabel && !reelInLabel) parts.push(LINE_CONTROL_HINT);
     if (cutLabel) parts.push(`TAP [${cutLabel}] CUT`);
     // Intentionally unbound tether: omit HOLD/TAP key copy; say UNBOUND truthfully when nothing else.
     if (!parts.length) return 'TETHER UNBOUND';
     return parts.join(' · ');
+  }
+
+  // Rebuild chips only when bind labels / active state change (not every 10 Hz status tick).
+  let _tetherChipSig = '';
+
+  /** Paint compact keycap chips for the active Massline (never a single overflowing sentence). */
+  function paintTetherControlChips(tether) {
+    if (!tether || !tether.active) {
+      if (_tetherChipSig !== '') {
+        _tetherChipSig = '';
+        tetherControls.hidden = true;
+        tetherControls.textContent = '';
+      }
+      return;
+    }
+    const cutLabel = resolveActionLabel(state, 'tether');
+    const reelInLabel = resolveActionLabel(state, 'reelIn');
+    const reelOutLabel = resolveActionLabel(state, 'reelOut');
+    const sig = `${cutLabel}|${reelInLabel}|${reelOutLabel}`;
+    if (sig === _tetherChipSig) {
+      tetherControls.hidden = false;
+      return;
+    }
+    _tetherChipSig = sig;
+    const chips = [];
+    if (reelInLabel) {
+      chips.push({ bind: reelInLabel, verb: 'REEL IN' });
+    } else if (cutLabel) {
+      // Hold-mode axes sit under the keycap so the status line stays a short load/target readout.
+      chips.push({ bind: `HOLD ${cutLabel}`, hint: LINE_CONTROL_HINT });
+    }
+    if (reelOutLabel) chips.push({ bind: reelOutLabel, verb: 'PAY OUT' });
+    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: 'CUT' });
+    if (!chips.length) {
+      tetherControls.hidden = false;
+      tetherControls.textContent = 'TETHER UNBOUND';
+      return;
+    }
+    tetherControls.hidden = false;
+    tetherControls.replaceChildren();
+    for (const chip of chips) {
+      const el = document.createElement('span');
+      el.className = chip.hint ? 'sf-tchip sf-tchip--wide' : 'sf-tchip';
+      const kbd = document.createElement('kbd');
+      kbd.className = 'sf-tchip__bind';
+      kbd.textContent = chip.bind;
+      el.appendChild(kbd);
+      if (chip.verb) {
+        const verb = document.createElement('span');
+        verb.className = 'sf-tchip__verb';
+        verb.textContent = chip.verb;
+        el.appendChild(verb);
+      }
+      if (chip.hint) {
+        const hint = document.createElement('span');
+        hint.className = 'sf-tchip__hint';
+        hint.textContent = chip.hint;
+        el.appendChild(hint);
+      }
+      tetherControls.appendChild(el);
+    }
   }
 
   // ---- HUD meta-arc: the three phases of complicity (STABLE LOAD, tag flicker, manifest ghost) ----
@@ -3690,39 +3741,6 @@ export function createHud(ctx, alerts) {
         if (rowEls.fuel) setClass(rowEls.fuel, 'sf-fuel--low', fuelFrac < 0.25);
       }
 
-      // Action-bar highlights: light a slot while its ability is active.
-      const inp = state.input || {};
-      setClass(actionBoxes['pulse-laser'], 'sf-act-active', !!inp.fire && inp.fireGroup !== 2);
-      setClass(actionBoxes['mass-sample'], 'sf-act-active', inp.fireGroup === 2);
-      setClass(actionBoxes['boost'], 'sf-act-active', !!inp.boost);
-      setClass(actionBoxes['dock'], 'sf-act-active', dockInRange);
-
-      // Check if a drillable asteroid is targeted and close (surface distance <= 165 wu)
-      let drillInRange = false;
-      const tid = state.player.targetId;
-      if (tid != null) {
-        const t = state.entities.get(tid);
-        if (t && t.type === 'asteroid' && t.alive) {
-          const dx = t.pos.x - p.pos.x;
-          const dz = t.pos.z - p.pos.z;
-          const dist = Math.hypot(dx, dz);
-          if (dist - t.radius <= 165) drillInRange = true;
-        }
-      }
-      if (!drillInRange) {
-        const mining = ctx.registry && ctx.registry.get('mining');
-        if (mining && mining._lockTargetId) {
-          const t = state.entities.get(mining._lockTargetId);
-          if (t && t.type === 'asteroid' && t.alive) {
-            const dx = t.pos.x - p.pos.x;
-            const dz = t.pos.z - p.pos.z;
-            const dist = Math.hypot(dx, dz);
-            if (dist - t.radius <= 165) drillInRange = true;
-          }
-        }
-      }
-      setClass(actionBoxes['drill'], 'sf-act-active', drillInRange);
-
       // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
       // 2 wu/s so a stationary ship shows nothing (never animates at rest).
       {
@@ -3761,23 +3779,25 @@ export function createHud(ctx, alerts) {
     if (slow && p) {
       const sp = Math.hypot(p.vel.x, p.vel.z);
       setText(elSpeed, Math.round(sp) + '');
-      // Tether readout: persistent while latched (GDD §4.3 discoverability). Control labels come
-      // from the live binding map (rebinds honored); reel/cut only while attachment is active.
+      // Tether readout: status + target while latched. Control chips paint separately so the
+      // instrument value never becomes a rebind encyclopedia that overflows the deck.
       const tether = state.player && state.player.tether;
       if (elTetherStat) {
-        // Only show reel/cut while the gameplay mirror reports an active attachment.
         const active = !!(tether && tether.active);
         setStyle(elTetherStat, 'display', active ? '' : 'none');
         if (active) {
-          const strain = tether.strain || 0;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
           const tetherStatus = masslineTetherStatus(tether);
-          const controls = buildTetherControlPrompt(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
-          setText(elTether, `${tetherStatus.text}${nameBit}${controls ? ' · ' + controls : ''}`);
+          // Status only on the instrument value. Control chips + rebind-truth prompt string are
+          // separate so the deck never overflows with a keybind paragraph.
+          const controls = buildTetherControlPrompt(tether);
+          setText(elTether, `${tetherStatus.text}${nameBit}`);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
+          if (controls) tetherControls.setAttribute('aria-label', controls);
         }
+        paintTetherControlChips(active ? tether : null);
       }
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;

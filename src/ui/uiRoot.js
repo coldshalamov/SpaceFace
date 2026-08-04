@@ -1904,60 +1904,55 @@ function injectHudCss() {
   .sf-wpn-heat__bar { width:100%; height:2px; background:rgba(164,181,197,.13); overflow:hidden; }
   .sf-wpn-heat__fill { box-shadow:none; background:#c99563; }
 
+  /* Slim instrument deck: speed/weapons + contextual chips. Permanent binding→action
+     keycaps were removed — general keys live in Settings → Controls / Help. */
   .sf-command-deck {
-    position:absolute; left:50%; bottom:12px; transform:translateX(-50%); width:min(520px, calc(100vw - 640px));
-    min-width:430px; padding:7px 10px 8px;
+    position:absolute; left:50%; bottom:12px; transform:translateX(-50%); width:min(360px, calc(100vw - 640px));
+    min-width:220px; padding:6px 12px 7px;
     background:var(--hud-glass);
     border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:var(--hud-radius);
     box-shadow:var(--hud-shadow), var(--hud-inset) !important;
   }
-  /* Signal trace along the deck's top edge; the etched stamp cuts it at the right end. */
   .sf-command-deck::after {
     content:''; position:absolute; left:0; top:-1px; width:100%; height:1px;
     background:var(--hud-trace); pointer-events:none;
   }
-  .sf-command-deck::before {
-    content:'FLIGHT CONTROL'; position:absolute; right:10px; top:-7px; padding:0 5px;
-    background:#0b0f15; color:var(--hud-muted); font-family:var(--hud-data);
-    font-size:7px; font-weight:500; letter-spacing:.22em;
-  }
-  #action-bar { position:relative; left:auto; bottom:auto; transform:none; display:grid; grid-template-columns:repeat(5, 1fr); gap:0; }
-  .action-slot {
-    position:relative; min-width:0; min-height:34px; display:grid; grid-template-columns:auto 1fr; align-items:center; gap:7px;
-    padding:4px 9px; border-left:1px solid rgba(148,178,205,.12); color:var(--hud-copy);
-    transition:background .12s ease, color .12s ease;
-  }
-  .action-slot:first-child { border-left:0; }
-  /* Keycap bind chip — compact hairline key label. The planned number-key ability row
-     (WoW-style weapon slots) will reuse this same keycap visual and dock between
-     .sf-cluster and #action-bar inside this deck. */
-  .action-slot .bind {
-    min-width:22px; padding:2px 4px; text-align:center; font-family:var(--hud-data); font-size:7px; font-weight:600; letter-spacing:.04em;
-    color:var(--hud-copy); text-shadow:none;
-    background:rgba(148,178,205,.07); border:1px solid rgba(148,178,205,.26); border-bottom-color:rgba(148,178,205,.42); border-radius:2px;
-  }
-  .action-command { display:flex; min-width:0; flex-direction:column; gap:1px; }
-  .action-command strong {
-    font-family:var(--hud-display); font-size:11px; line-height:1; font-weight:700; letter-spacing:.06em; color:var(--hud-paper);
-  }
-  .action-command small {
-    font-family:var(--hud-display); font-size:6.5px; line-height:1.1; font-weight:600; letter-spacing:.12em; color:var(--hud-muted);
-  }
-  .action-slot.sf-act-active { background:linear-gradient(180deg, rgba(78,195,230,.13), rgba(78,195,230,.035)); }
-  .action-slot.sf-act-active::after {
-    content:''; position:absolute; left:8px; right:8px; bottom:0; height:2px; background:var(--hud-cyan);
-    box-shadow:0 0 7px rgba(78,195,230,.45);
-  }
-  .action-slot.sf-act-active .bind, .action-slot.sf-act-active .action-command small { color:var(--hud-cyan); }
   .sf-cluster {
-    position:relative; left:auto; bottom:auto; transform:none; max-width:none; min-height:22px;
-    display:flex; flex-wrap:nowrap; justify-content:center; align-items:baseline; gap:14px;
-    margin:0 6px 4px; padding:0 0 5px; border-bottom:1px solid rgba(148,178,205,.14);
+    position:relative; left:auto; bottom:auto; transform:none; max-width:none; min-height:20px;
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 14px;
+    margin:0; padding:0;
   }
   .sf-stat { font-family:var(--hud-data); gap:5px; }
   .sf-stat__k { font-family:var(--hud-display); font-size:8px; font-weight:700; color:var(--hud-muted); letter-spacing:.1em; text-shadow:none; }
   .sf-stat__v { font-size:12px; color:var(--hud-paper); font-variant-numeric:tabular-nums; text-shadow:0 1px 2px rgba(0,0,0,.55); white-space:nowrap; }
   .sf-stat--speed .sf-stat__v { font-family:var(--hud-display); font-size:17px; font-weight:700; }
+  /* Massline chips — only while latched; wrap instead of overflowing the deck. */
+  .sf-tether-controls {
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 10px;
+    margin:5px 0 0; padding:5px 2px 0; border-top:1px solid rgba(148,178,205,.14);
+    max-width:100%;
+  }
+  .sf-tether-controls[hidden] { display:none !important; }
+  .sf-tchip {
+    display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px 6px;
+    max-width:100%; color:var(--hud-copy);
+  }
+  .sf-tchip--wide { flex:1 1 100%; justify-content:center; }
+  .sf-tchip__bind {
+    min-width:22px; padding:2px 5px; text-align:center; font-family:var(--hud-data);
+    font-size:8px; font-weight:600; letter-spacing:.04em; color:var(--hud-paper);
+    background:rgba(148,178,205,.09); border:1px solid rgba(148,178,205,.28);
+    border-bottom-color:rgba(148,178,205,.44); border-radius:2px;
+  }
+  .sf-tchip__verb {
+    font-family:var(--hud-display); font-size:10px; font-weight:700; letter-spacing:.08em;
+    color:var(--hud-paper);
+  }
+  .sf-tchip__hint {
+    font-family:var(--hud-data); font-size:8px; font-weight:500;
+    letter-spacing:.04em; color:var(--hud-muted); line-height:1.3;
+    white-space:normal; text-align:center;
+  }
 
   .sf-mission-tracker, .sf-nav-readout, .sf-obj {
     width:100%; max-width:none; border:1px solid var(--hud-line); border-radius:var(--hud-radius);
@@ -2033,28 +2028,25 @@ function injectHudCss() {
   .sf-alert--dock { font-size:14px; padding:9px 24px; border-radius:2px; }
 
   @media (max-width:1180px) {
-    .sf-command-deck { width:min(460px, calc(100vw - 560px)); min-width:360px; }
-    .action-slot { padding-inline:7px; gap:5px; }
-    .action-command small { display:none; }
+    .sf-command-deck { width:min(320px, calc(100vw - 560px)); min-width:200px; }
   }
   @media (max-width:900px), (max-height:650px) {
-    .sf-leftstack { left:10px; bottom:88px; width:236px; }
+    .sf-leftstack { left:10px; bottom:72px; width:236px; }
     .sf-bars { width:236px; grid-template-columns:80px minmax(0, 1fr); padding:8px 9px 9px; }
     .sf-schematic { width:72px; height:72px; }
     .sf-schematic .sf-sch-ring { inset:0; width:72px; height:72px; }
     .sf-sch-ship-wrap { width:50px; height:60px; }
     .sf-sch-ship { width:50px; height:60px; }
     .sf-sch-ship--fill { width:50px; height:60px; }
-    .sf-rightdock { right:10px; bottom:88px; width:200px; }
+    .sf-rightdock { right:10px; bottom:72px; width:200px; }
     .sf-overview, .sf-target { width:200px; }
     .sf-overview-row__name { max-width:64px; }
-    .sf-command-deck { bottom:8px; width:min(460px, calc(100vw - 24px)); min-width:0; }
+    .sf-command-deck { bottom:8px; width:min(360px, calc(100vw - 24px)); min-width:0; }
     .sf-cluster { position:relative; left:auto; bottom:auto; width:auto; transform:none; }
   }
   @media (max-width:760px) {
-    .sf-command-deck { padding:7px 9px; }
-    .sf-command-deck::before { display:none; }
-    .sf-cluster { margin:0; padding:0; border-bottom:0; }
+    .sf-command-deck { padding:6px 9px; }
+    .sf-cluster { margin:0; padding:0; }
     .sf-mission-tracker { max-width:none; }
   }
   @media (prefers-reduced-motion:reduce) {
