@@ -2622,7 +2622,8 @@
       "priority": 25,
       "title": "Capture revised claim-relay Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-022.relay-reauthor"
       ],
