@@ -37,6 +37,30 @@ reacquires the exact native window, and records/excludes foreground-interrupted 
 claim an optimization gain, physical workstation suspend/lock, or packaged-build startup; those exact
 host/package boundaries remain with PQ-041. Receipt: `roadmap/receipts/PQ-035-lifecycle-REPORT.md`.
 
+## PQ-036 PERF-02 scheduler closure (2026-08-04, `391e8658`)
+
+PQ-036 is checked off as `INTEGRATED` + `ROUTE_ACCEPTED`. The retained PERF-00 Browser claim
+`22380-df81be7b607f4276302e6ac8` and source-Electron claim
+`32560-97a1a4a4e9dade4d4ce87d91` share source digest `8948e0ad…c9913e4` and contain owner-complete
+scheduler observations across 25/25 valid windows per runtime. Current lifecycle claims
+`10372-4aa9e5f78322240b4566e2bd` and `12340-3eefb1bf37636736c1d67ead` cover the only later
+PresentationRunner diagnostics change and retain coherent restore, zero hidden GPU submissions,
+ordinary cadence, and clean teardown. Current deterministic owner tests cover the deliberately
+injected UI and admission classifications. No duplicate headed run, optimization delta, physical
+host, or packaged-build claim was manufactured. Receipt:
+`roadmap/receipts/PQ-036-scheduler-seam-REPORT.md`.
+
+## PQ-039 PERF-05 deterministic hot-query closure (2026-08-04, `9b50f317`)
+
+PQ-039 is checked off as `INTEGRATED` + `FOCUSED_GREEN`. The production NPC-jobs query preserves
+full-scan selected-ID parity through stable lower-ID ties, empty and boundary cases, stale identity,
+destroy, and same-tick spawn churn with three shadow checks and zero mismatches. The exact scale
+fixture grows from 100 to 500 entities while the selected ID remains unchanged and nearby candidate
+visits remain `1→1`; request/result scratch and lifecycle state remain bounded. This is the packet's
+declared algorithmic acceptance boundary. It does not claim Browser/Electron timing, CPU magnitude,
+FPS, GPU, compositor, or resource improvement. Receipt:
+`roadmap/receipts/PQ-039-hot-query-REPORT.md`.
+
 ## Program batch PQ-001..PQ-010 first wave (2026-07-20, `2bc3042f`..`b28d183b`)
 
 Queue outcomes PQ-001, PQ-002, PQ-003, PQ-008, and PQ-009 are `INTEGRATED` with lead-rerun proof:

@@ -54,6 +54,18 @@ recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKP
 |---|---|---|---|
 | Foreground/background lifecycle correctness (`PQ-035` / `PERF-01`) | **`INTEGRATED` + `ROUTE_ACCEPTED` / CHECKED OFF** | Browser claim `10372-4aa9e5f78322240b4566e2bd` and source-Electron claim `12340-3eefb1bf37636736c1d67ead` share source digest `bbd92995…db10f01`, fixed seed `35035`, route/regression identity, and stable route signature. Both use real Intel ANGLE/D3D11, report zero runtime errors and zero hidden GPU submissions across four transitions, restore input/audio and one coherent presentation frame, retain foreground-equivalent cadence after five seconds of admitted baseline sampling, and clean every owned process/window/profile resource. Receipt: `roadmap/receipts/PQ-035-lifecycle-REPORT.md`. | No machine-actionable PQ-035 residual. Physical workstation suspend/lock and packaged-build startup were not synthesized; exact host/package acceptance remains assigned to `PQ-041.native-acceptance`. No optimization gain or absolute frame-budget waiver is claimed. |
 
+## PQ-036 PERF-02 scheduler closure (2026-08-04, `391e8658`)
+
+| Outcome | Current state | Current evidence | Remaining boundary |
+|---|---|---|---|
+| Simulation/presentation scheduler ownership (`PQ-036` / `PERF-02`) | **`INTEGRATED` + `ROUTE_ACCEPTED` / CHECKED OFF** | Retained PERF-00 Browser claim `22380-df81be7b607f4276302e6ac8` and source-Electron claim `32560-97a1a4a4e9dade4d4ce87d91` share source digest `8948e0ad…c9913e4`; each has 25/25 valid windows with owner-complete scheduler samples across current/5x fleet, map/UI, recovery, admission, and cleanup. Current lifecycle claims `10372-4aa9e5f78322240b4566e2bd` and `12340-3eefb1bf37636736c1d67ead` cover the only later scheduler-owner diagnostics change. Current deterministic owner tests cover UI/admission classifications without pretending they are player-visible stalls. Receipt: `roadmap/receipts/PQ-036-scheduler-seam-REPORT.md`. | No machine-actionable PQ-036 residual. No duplicate headed matrix, FPS/GPU optimization delta, physical host suspend/lock, or packaged-startup claim was made. |
+
+## PQ-039 PERF-05 hot-query closure (2026-08-04, `9b50f317`)
+
+| Outcome | Current state | Current evidence | Remaining boundary |
+|---|---|---|---|
+| Deterministic NPC-jobs hot-query service (`PQ-039` / `PERF-05`) | **`INTEGRATED` + `FOCUSED_GREEN` / CHECKED OFF** | Full-scan shadow parity holds in stable request order through ties, empty/boundary cases, stale identity, destroy, and same-tick spawn churn (`3` checks / `0` mismatches). The exact 100→500 entity fixture retains the same selected ID and candidate visits of `1→1`; the combined NPC/query suite is 67/67 and bounded scratch/lifecycle diagnostics are exposed. Receipt: `roadmap/receipts/PQ-039-hot-query-REPORT.md`. | No machine-actionable PQ-039 residual. Absolute CPU timing may be sampled once in a future comparative study, but no Browser/Electron, FPS, GPU, compositor, or resource magnitude is required or claimed for packet correctness. |
+
 ## Sprint 2 — Corridor Contract Wave packet rows
 
 | Packet | Terminal state | Evidence at commit | Commit | Blocking lease |

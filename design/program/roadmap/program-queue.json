@@ -1806,7 +1806,7 @@
       "id": "PQ-036",
       "priority": 36,
       "title": "PERF-02 Simulation/presentation scheduler seam",
-      "state": "implemented",
+      "state": "integrated",
       "canonical": [
         "PERF-02"
       ],
@@ -1834,7 +1834,10 @@
         "input",
         "lifecycle"
       ],
-      "brief": "Extract main-thread SimulationRunner and PresentationRunner ownership plus completed-tick journals while preserving fixed-tick, input, event-order, and interpolation semantics."
+      "brief": "One authoritative SimulationRunner and PresentationRunner preserve fixed-tick, input, event-order, interpolation, journal, and lifecycle semantics; retained source-paired native evidence closes scheduler attribution without another headed run.",
+      "integratedCommit": "391e8658eb0a32b3606213bba965710d76cf4de2",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-036-scheduler-seam-REPORT.md#terminal-native-acceptance-audit-2026-08-04",
+      "receipt": "design/program/roadmap/receipts/PQ-036-scheduler-seam-REPORT.md"
     },
     {
       "id": "PQ-037",
@@ -1911,7 +1914,7 @@
       "id": "PQ-039",
       "priority": 39,
       "title": "PERF-05 Deterministic hot-query service",
-      "state": "implemented",
+      "state": "integrated",
       "canonical": [
         "PERF-05"
       ],
@@ -1937,7 +1940,10 @@
         "npc-jobs",
         "performance"
       ],
-      "brief": "Replace the proven per-job hostile entity-list scan with one owner-facing batched spatial query that preserves distance and stable-ID tie order and reports candidate growth."
+      "brief": "One owner-facing batched hostile query preserves full-scan selected-ID parity through stable ordering and lifecycle churn while the exact 100-to-500 population curve holds nearby candidate visits at 1-to-1; no native timing result is manufactured.",
+      "integratedCommit": "9b50f317371586846dfdc17a72cf5537d8f07ba7",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-039-hot-query-REPORT.md#focused-deterministic-verification",
+      "receipt": "design/program/roadmap/receipts/PQ-039-hot-query-REPORT.md"
     },
     {
       "id": "PQ-040",
@@ -2577,7 +2583,8 @@
       "priority": 24,
       "title": "Re-author the claim relay's visible manufactured identity",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-022.relay-human-verdict"
       ],
@@ -2586,6 +2593,13 @@
         "asset-manifest"
       ],
       "paths": [
+        "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/front.png",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/front_three_quarter.png",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/rear.png",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/rear_three_quarter.png",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/side.png",
+        "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/top.png",
         "assets/ships/parts/places/place_claim_outpost_relay.glb",
         "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
         "assets/ships/parts/parts_manifest.json",
@@ -4433,7 +4447,7 @@
       "priority": 221,
       "title": "PERF-02 scheduler attribution acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-036.focused-implementation"
@@ -4444,8 +4458,10 @@
       ],
       "paths": [],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Close scheduler attribution and lifecycle parity against the accepted harness.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-036-scheduler-seam-REPORT.md"
+      ],
+      "brief": "Accepted at 391e8658 by composing retained PERF-00 Browser claim 22380-df81be7b607f4276302e6ac8 and Electron claim 32560-97a1a4a4e9dade4d4ce87d91 at source digest 8948e0ada5a785347f2b66fccd6c75a38be7aac56f54248fce3f252cbc9913e4 with current lifecycle claims 10372-4aa9e5f78322240b4566e2bd and 12340-3eefb1bf37636736c1d67ead; no duplicate headed run was spent.",
       "blocker": null
     },
     {
@@ -4498,7 +4514,7 @@
       "priority": 224,
       "title": "PERF-05 hot-query scale acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-039.focused-implementation"
@@ -4508,8 +4524,10 @@
       ],
       "paths": [],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Close candidate growth, stable order, NPC-jobs parity, and performance.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-039-hot-query-REPORT.md"
+      ],
+      "brief": "Accepted at 9b50f317 from deterministic full-scan shadow parity through stable order and spawn/destroy churn plus the exact 100-to-500 population candidate curve of 1-to-1; no Browser/Electron or absolute CPU timing claim is made.",
       "blocker": null
     },
     {

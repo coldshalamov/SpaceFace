@@ -27,12 +27,14 @@ Current recovery state and order is:
 | `PQ-020.ceres-h1-capture` | Done. The Electron cold-reload/aborted-request lifecycle policy has a seconds-scale regression and the source-paired Ceres H1 route is accepted. Do not recapture it as a ritual. |
 | `PQ-034.native-closure` | **ROUTE ACCEPTED / RETIRED** on clean source `4f602802`. Browser claim `22380-df81be7b607f4276302e6ac8` and Electron claim `32560-97a1a4a4e9dade4d4ce87d91` share source digest `8948e0ad…`, pass 25/25 validity rows per runtime, and clean up their owned process trees. Enabled instrumentation overhead is resolution-capable and accepted at `0.772627%`. No optimization gain or absolute-budget waiver is claimed. |
 | `PQ-035.native-acceptance` | **ROUTE ACCEPTED / RETIRED** on clean source `f3046007`. Browser claim `10372-4aa9e5f78322240b4566e2bd` and source-Electron claim `12340-3eefb1bf37636736c1d67ead` share source digest `bbd92995…`, prove zero hidden GPU submission, bounded restore/input/audio behavior, foreground-equivalent cadence, and clean teardown. Physical host suspend/lock and packaged startup remain explicitly unclaimed under PQ-041. |
-| PERF-02–PERF-07 native units | **NEXT NON-ASSET WORK.** `PQ-036.native-acceptance` is first; continue through PQ-041 in exact dependency/mutex order against the accepted PERF-00/PERF-01 authority. |
+| `PQ-036.native-acceptance` | **ROUTE ACCEPTED / RETIRED** at `391e8658`. The retained PERF-00 Browser/Electron pair shares source digest `8948e0ad…` and publishes owner-complete scheduler facts; the current PERF-01 lifecycle pair proves the only later scheduler-owner change. No duplicate headed claim was spent. |
+| `PQ-039.native-acceptance` | **DETERMINISTIC ACCEPTANCE / RETIRED** at `9b50f317`. Full-scan shadow parity, stable order, spawn/destroy churn, bounded scratch, and the exact 100→500 candidate curve (`1→1`) close PERF-05. No Browser/Electron, CPU-time, FPS, or GPU magnitude is claimed. |
+| PERF-03/PERF-04/PERF-06/PERF-07 native units | **NEXT NON-ASSET WORK.** Continue `PQ-037`, `PQ-038`, `PQ-040`, and `PQ-041` in exact dependency/mutex order against the accepted PERF-00/PERF-01 authority. |
 | H3 and H4 corridor units | Accepted evidence must not be rerun as a ritual. Remaining corridor binding/promotion work stays dependency-driven behind the exact visual repair leaves reported by `--ready`. |
 | PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 
 Run `--ready` after every coherent unit because the exact list changes as reviews, repairs, and
-promotions land. PQ-042 remains dependency-gated on the remaining terminal PERF-02–07 acceptances;
+promotions land. PQ-042 remains dependency-gated on the remaining terminal PERF-03/04/06/07 acceptances;
 PQ-043/PQ-044 remain deliberately deferred. The Alpha/Depth table below is the broader lifetime roadmap, not a
 claim that every row is part of this recovery wave. This section supersedes dated “immediate queue”
 prose below when the two disagree.
