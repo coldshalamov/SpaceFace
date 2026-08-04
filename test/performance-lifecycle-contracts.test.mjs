@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 import {
+  PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE,
   PERFORMANCE_LIFECYCLE_SCHEMA,
   foregroundWindowSequenceSettled,
   foregroundWindowsComparable,
@@ -12,6 +13,7 @@ import {
 } from '../scripts/lib/performanceLifecycleContracts.mjs';
 import {
   PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES,
+  acquireRuntimeForeground,
   createBrowserWindowLifecycleDriver,
   createElectronFocusSink,
   createElectronLifecycleLaunchOptions,
@@ -19,7 +21,6 @@ import {
   driveElectronWindow,
   extractLifecycleClaimIdentity,
   findPresentLifecycleBackgroundSwitches,
-  focusRuntimeForLifecycleSample,
   isHiddenLifecycleReady,
   measureSettledForegroundWindow,
   readElectronWindowState,
@@ -144,10 +145,19 @@ function passingEvidence(runtimeKind = 'browser') {
       sampleMs: 650,
       warmupMs: 5_000,
       settleWindows: [
-        { executedFrames: 35 },
-        { executedFrames: 35 },
-        { executedFrames: 36 },
+        { executedFrames: 35, attempt: 1 },
+        { executedFrames: 36, attempt: 2 },
+        { executedFrames: 35, attempt: 3 },
+        { executedFrames: 36, attempt: 4 },
+        { executedFrames: 35, attempt: 5 },
+        { executedFrames: 35, attempt: 6 },
+        { executedFrames: 35, attempt: 7 },
+        { executedFrames: 36, attempt: 8 },
       ],
+      settleAttemptCount: 8,
+      settleInterruptions: [],
+      resumedAttemptCount: 1,
+      resumedInterruptions: [],
     },
     occlusion: runtimeKind === 'electron' ? {
       trigger: 'native-focus-transfer',
@@ -276,6 +286,16 @@ test('foreground settling rejects a warmup window and accepts consecutive normal
     { executedFrames: 38 },
     { executedFrames: 39 },
     { executedFrames: 38 },
+  ]), false, 'three stable windows are still too short to exclude a startup plateau');
+  assert.equal(foregroundWindowSequenceSettled([
+    { executedFrames: 23 },
+    { executedFrames: 21 },
+    { executedFrames: 22 },
+    { executedFrames: 31 },
+    { executedFrames: 37 },
+    { executedFrames: 38 },
+    { executedFrames: 39 },
+    { executedFrames: 38 },
   ]), true);
 });
 
@@ -286,11 +306,12 @@ test('foreground settling reacquires native focus after the long warmup before s
   const result = await measureSettledForegroundWindow(runtime, {
     warmupMs: 5_000,
     settleAttempts: samples.length,
+    minimumObservedWindows: samples.length,
     waitForWarmup: async (milliseconds) => calls.push(['warmup', milliseconds]),
     focusAfterWarmup: async (value) => calls.push(['focus', value.runtimeKind]),
-    measureWindow: async (page) => {
+    measureWindow: async (sampleRuntime) => {
       const executedFrames = samples.shift();
-      calls.push(['measure', page.id, executedFrames]);
+      calls.push(['measure', sampleRuntime.page.id, executedFrames]);
       return { delta: { executedFrames } };
     },
   });
@@ -300,6 +321,8 @@ test('foreground settling reacquires native focus after the long warmup before s
   ]);
   assert.equal(result.delta.executedFrames, 38);
   assert.deepEqual(result.settleWindows.map((window) => window.executedFrames), [27, 25, 38, 39, 38]);
+  assert.equal(result.attemptCount, 5);
+  assert.deepEqual(result.interruptions, []);
 });
 
 test('hidden lifecycle readiness waits for synchronous input-owner neutralization', () => {
@@ -317,35 +340,68 @@ test('hidden lifecycle readiness waits for synchronous input-owner neutralizatio
   assert.equal(isHiddenLifecycleReady(hidden, 'electron'), true);
 });
 
-test('Electron cadence sampling restores native focus before observing foreground readiness', async () => {
+test('Electron cadence sampling uses bounded exact native foreground acquisition', async () => {
   const calls = [];
-  const runtime = {
-    runtimeKind: 'electron',
-    mainWindowId: 42,
-    page: { id: 'page' },
-    electronApp: {
-      async evaluate(_callback, payload) {
-        calls.push(['window', payload.requestedAction, payload.targetWindowId]);
-        return { action: payload.requestedAction, minimized: false, visible: true, focused: true };
-      },
-    },
-    windowActivator: {
-      async activate() { calls.push(['native-activate', 42]); },
-    },
+  const runtime = { runtimeKind: 'electron' };
+  const states = [
+    { documentHasFocus: false, documentVisibility: 'visible', lifecycleState: 'foreground-occluded', nativeWindow: { available: true, visible: true, hidden: false, focused: false } },
+    { documentHasFocus: true, documentVisibility: 'visible', lifecycleState: 'foreground-visible', nativeWindow: { available: true, visible: true, hidden: false, focused: true } },
+  ];
+  const result = await acquireRuntimeForeground(runtime, {
+    maxAttempts: 3,
+    retryMs: 25,
+    focus: async () => calls.push('focus'),
+    waitBetweenAttempts: async (milliseconds) => calls.push(`wait:${milliseconds}`),
+    readState: async () => states.shift(),
+    requireLifecycle: true,
+  });
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.state.nativeWindow.focused, true);
+  assert.deepEqual(calls, ['focus', 'wait:25', 'focus', 'wait:25']);
+
+  let boundedAttempts = 0;
+  await assert.rejects(acquireRuntimeForeground(runtime, {
+    maxAttempts: 2,
+    retryMs: 0,
+    focus: async () => { boundedAttempts += 1; },
+    waitBetweenAttempts: async () => {},
+    readState: async () => ({
+      documentHasFocus: false,
+      documentVisibility: 'visible',
+      lifecycleState: 'foreground-occluded',
+      nativeWindow: { available: true, visible: true, hidden: false, focused: false },
+    }),
+    requireLifecycle: true,
+  }), /failed after 2 bounded attempts/);
+  assert.equal(boundedAttempts, 2);
+});
+
+test('foreground settling records and excludes explicitly interrupted native samples', async () => {
+  const interrupted = new Error('foreground stolen');
+  interrupted.code = PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE;
+  interrupted.foregroundState = {
+    documentHasFocus: false,
+    documentVisibility: 'visible',
+    lifecycleState: 'foreground-occluded',
+    nativeWindow: { available: true, visible: true, hidden: false, focused: false },
   };
-  await focusRuntimeForLifecycleSample(runtime, {
-    waitForForeground: async (page, predicate, label) => {
-      calls.push(['wait', page.id, label]);
-      assert.equal(predicate({ lifecycleState: 'foreground-occluded' }), false);
-      assert.equal(predicate({ lifecycleState: 'foreground-visible' }), true);
-      return { lifecycleState: 'foreground-visible' };
+  const samples = ['interrupt', 35, 36, 35, 36, 35, 36, 35, 36];
+  const result = await measureSettledForegroundWindow({ runtimeKind: 'electron', page: {} }, {
+    warmupMs: 0,
+    settleAttempts: samples.length,
+    minimumObservedWindows: 8,
+    waitForWarmup: async () => {},
+    focusAfterWarmup: async () => {},
+    measureWindow: async () => {
+      const value = samples.shift();
+      if (value === 'interrupt') throw interrupted;
+      return { delta: { executedFrames: value } };
     },
   });
-  assert.deepEqual(calls, [
-    ['window', 'restore', 42],
-    ['native-activate', 42],
-    ['wait', 'page', 'electron foreground sample focus'],
-  ]);
+  assert.equal(result.attemptCount, 9);
+  assert.deepEqual(result.settleWindows.map((window) => window.attempt), [2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(result.interruptions.length, 1);
+  assert.equal(result.interruptions[0].attempt, 1);
 });
 
 test('Electron focus sink targets and cleans exact native window identities', async () => {
@@ -487,6 +543,22 @@ test('driver provenance, foreground equivalence, soak uniqueness, hardware, and 
     ['fabricated cadence', (e) => { e.foreground.cadenceRatio = 1; }, /does not match frame counters/],
     ['short foreground warmup', (e) => { e.foreground.warmupMs = 1_000; }, /at least 5000 ms/],
     ['short foreground sample', (e) => { e.foreground.sampleMs = 100; }, /sample is too short/],
+    ['missing foreground attempt', (e) => { e.foreground.settleWindows[3].attempt = 2; }, /do not account for every bounded sample/],
+    ['fabricated foreground interruption', (e) => {
+      e.foreground.settleAttemptCount = 9;
+      e.foreground.settleWindows = e.foreground.settleWindows.map((window) => ({ ...window, attempt: window.attempt + 1 }));
+      e.foreground.settleInterruptions = [{
+        attempt: 1,
+        code: PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE,
+        reason: 'claimed focus loss',
+        state: {
+          documentHasFocus: true,
+          documentVisibility: 'visible',
+          lifecycleState: 'foreground-visible',
+          nativeWindow: null,
+        },
+      }];
+    }, /does not prove lost foreground ownership/],
     ['cadence regression', (e) => { e.foreground.cadenceRatio = 0.2; }, /cadence ratio/],
     ['duplicate command', (e) => { e.soak.duplicateShellCommandDelta = 1; }, /duplicate shell commands/],
     ['software renderer', (e) => { e.gpu.software = true; }, /hardware GPU/],

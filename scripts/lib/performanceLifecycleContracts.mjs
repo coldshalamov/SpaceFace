@@ -3,7 +3,14 @@ export const PERFORMANCE_LIFECYCLE_FIXED_SEED = 35035;
 export const PERFORMANCE_LIFECYCLE_MAX_CATCHUP_STEPS = 4;
 export const PERFORMANCE_LIFECYCLE_LAUNCH_POLICY_SCHEMA = 'spaceface.performanceLifecycleLaunchPolicy.v1';
 export const PERFORMANCE_LIFECYCLE_MIN_FOREGROUND_FRAMES = 20;
+export const PERFORMANCE_LIFECYCLE_FOREGROUND_SAMPLE_MS = 650;
+export const PERFORMANCE_LIFECYCLE_MIN_SETTLE_SAMPLE_MS = 5_000;
 export const PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT = 3;
+export const PERFORMANCE_LIFECYCLE_MAX_SETTLE_ATTEMPTS = 18;
+export const PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE = 'PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTED';
+export const PERFORMANCE_LIFECYCLE_MIN_SETTLE_WINDOWS = Math.ceil(
+  PERFORMANCE_LIFECYCLE_MIN_SETTLE_SAMPLE_MS / PERFORMANCE_LIFECYCLE_FOREGROUND_SAMPLE_MS,
+);
 
 const PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES = Object.freeze([
   '--disable-background-timer-throttling',
@@ -54,11 +61,69 @@ export function foregroundWindowsComparable(previous, current, {
 
 export function foregroundWindowSequenceSettled(windows, {
   requiredWindows = PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT,
+  minimumObservedWindows = PERFORMANCE_LIFECYCLE_MIN_SETTLE_WINDOWS,
 } = {}) {
-  if (!Array.isArray(windows) || windows.length < requiredWindows) return false;
+  if (!Array.isArray(windows) || windows.length < requiredWindows
+    || windows.length < minimumObservedWindows) return false;
   const suffix = windows.slice(-requiredWindows);
   return suffix.every((window, index) => suffix.slice(index + 1)
     .every((otherWindow) => foregroundWindowsComparable(window, otherWindow)));
+}
+
+export function performanceLifecycleForegroundStateActive(state, runtimeKind) {
+  if (state?.documentHasFocus !== true || state?.documentVisibility !== 'visible'
+    || state?.lifecycleState !== 'foreground-visible') return false;
+  if (runtimeKind !== 'electron') return true;
+  return state.nativeWindow?.available === true
+    && state.nativeWindow?.hidden === false
+    && state.nativeWindow?.visible === true
+    && state.nativeWindow?.focused === true;
+}
+
+function validateForegroundAttemptAccounting(failures, {
+  attemptCount,
+  acceptedWindows,
+  interruptions,
+  runtimeKind,
+  label,
+  maxAttempts = PERFORMANCE_LIFECYCLE_MAX_SETTLE_ATTEMPTS,
+}) {
+  if (!Number.isSafeInteger(attemptCount) || attemptCount < 1 || attemptCount > maxAttempts) {
+    failures.push(`${label} attempt count is outside 1..${maxAttempts}`);
+    return;
+  }
+  const accepted = Array.isArray(acceptedWindows) ? acceptedWindows : [];
+  const interrupted = Array.isArray(interruptions) ? interruptions : [];
+  const attempts = [...accepted, ...interrupted]
+    .map((entry) => Number(entry?.attempt))
+    .sort((left, right) => left - right);
+  const expectedAttempts = Array.from({ length: attemptCount }, (_, index) => index + 1);
+  if (attempts.length !== attemptCount
+    || attempts.some((attempt, index) => attempt !== expectedAttempts[index])) {
+    failures.push(`${label} accepted and interrupted attempts do not account for every bounded sample`);
+  }
+  for (const interruption of interrupted) {
+    if (interruption?.code !== PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE
+      || typeof interruption?.reason !== 'string' || interruption.reason.length === 0
+      || typeof interruption?.state !== 'object' || interruption.state == null
+      || typeof interruption.state.documentHasFocus !== 'boolean'
+      || typeof interruption.state.documentVisibility !== 'string'
+      || typeof interruption.state.lifecycleState !== 'string'
+      || (runtimeKind === 'electron' && (
+        typeof interruption.state.nativeWindow !== 'object'
+        || interruption.state.nativeWindow == null
+        || interruption.state.nativeWindow.available !== true
+        || typeof interruption.state.nativeWindow.hidden !== 'boolean'
+        || typeof interruption.state.nativeWindow.visible !== 'boolean'
+        || typeof interruption.state.nativeWindow.focused !== 'boolean'
+      ))) {
+      failures.push(`${label} interruption provenance is incomplete`);
+      continue;
+    }
+    if (performanceLifecycleForegroundStateActive(interruption.state, runtimeKind)) {
+      failures.push(`${label} interruption does not prove lost foreground ownership`);
+    }
+  }
 }
 
 function requireDigest(failures, value, label) {
@@ -221,8 +286,32 @@ export function validatePerformanceLifecycleEvidence(evidence, {
   const settleWindows = Array.isArray(evidence.foreground?.settleWindows)
     ? evidence.foreground.settleWindows
     : [];
+  const settleInterruptions = Array.isArray(evidence.foreground?.settleInterruptions)
+    ? evidence.foreground.settleInterruptions
+    : [];
+  validateForegroundAttemptAccounting(failures, {
+    attemptCount: Number(evidence.foreground?.settleAttemptCount),
+    acceptedWindows: settleWindows,
+    interruptions: settleInterruptions,
+    runtimeKind,
+    label: 'baseline foreground',
+  });
+  const resumedInterruptions = Array.isArray(evidence.foreground?.resumedInterruptions)
+    ? evidence.foreground.resumedInterruptions
+    : [];
+  validateForegroundAttemptAccounting(failures, {
+    attemptCount: Number(evidence.foreground?.resumedAttemptCount),
+    acceptedWindows: [{ attempt: Number(evidence.foreground?.resumedAttemptCount) }],
+    interruptions: resumedInterruptions,
+    runtimeKind,
+    label: 'resumed foreground',
+  });
+  if (settleWindows.length * Number(evidence.foreground?.sampleMs)
+    < PERFORMANCE_LIFECYCLE_MIN_SETTLE_SAMPLE_MS) {
+    failures.push(`baseline foreground requires at least ${PERFORMANCE_LIFECYCLE_MIN_SETTLE_SAMPLE_MS} ms of observed cadence`);
+  }
   if (!foregroundWindowSequenceSettled(settleWindows)) {
-    failures.push(`baseline foreground did not reach ${PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT} comparable settled windows`);
+    failures.push(`baseline foreground did not sustain ${PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT} mutually comparable settled windows`);
   }
   if (Number(settleWindows.at(-1)?.executedFrames) !== Number(evidence.foreground?.baseline?.executedFrames)) {
     failures.push('baseline foreground is not the final settled window');

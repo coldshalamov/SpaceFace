@@ -35,8 +35,13 @@ import {
 } from './rawCdpLifecycleBrowser.mjs';
 import {
   PERFORMANCE_LIFECYCLE_FIXED_SEED,
+  PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE,
+  PERFORMANCE_LIFECYCLE_FOREGROUND_SAMPLE_MS,
+  PERFORMANCE_LIFECYCLE_MAX_SETTLE_ATTEMPTS,
+  PERFORMANCE_LIFECYCLE_MIN_SETTLE_WINDOWS,
   PERFORMANCE_LIFECYCLE_SCHEMA,
   foregroundWindowSequenceSettled,
+  performanceLifecycleForegroundStateActive,
   summarizeLifecycleDelta,
   validatePerformanceLifecycleEvidence,
 } from './performanceLifecycleContracts.mjs';
@@ -45,10 +50,10 @@ import { acquireVisualProbeServer } from './visualProbeServer.mjs';
 
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const HIDDEN_SAMPLE_MS = 750;
-const FOREGROUND_SAMPLE_MS = 650;
 const FOREGROUND_WARMUP_MS = 5_000;
-const FOREGROUND_SETTLE_ATTEMPTS = 18;
 const TRANSITION_CYCLES = 4;
+const FOREGROUND_FOCUS_ATTEMPTS = 40;
+const FOREGROUND_FOCUS_RETRY_MS = 100;
 const ELECTRON_LIFECYCLE_POLICY_PRELOAD = fileURLToPath(
   new URL('./performanceLifecycleLaunchPolicy.cjs', import.meta.url),
 );
@@ -164,7 +169,7 @@ export async function runPerformanceLifecycleProbe({
     }
     const soakEnd = await readRuntimeObservation(runtime.page);
     await focusRuntimeForLifecycleSample(runtime);
-    const foregroundResumed = await measureForegroundWindow(runtime.page);
+    const foregroundResumed = await measureForegroundWindowWithRetries(runtime);
     const routeAfter = await readRouteIdentity(runtime.page);
     const errors = runtimeKind === 'browser'
       ? runtime.issueTracker.errorIssues()
@@ -205,9 +210,13 @@ export async function runPerformanceLifecycleProbe({
         baseline: foregroundBaseline.delta,
         resumed: foregroundResumed.delta,
         cadenceRatio: ratio(foregroundResumed.delta.executedFrames, foregroundBaseline.delta.executedFrames),
-        sampleMs: FOREGROUND_SAMPLE_MS,
+        sampleMs: PERFORMANCE_LIFECYCLE_FOREGROUND_SAMPLE_MS,
         warmupMs: foregroundBaseline.warmupMs,
         settleWindows: foregroundBaseline.settleWindows,
+        settleAttemptCount: foregroundBaseline.attemptCount,
+        settleInterruptions: foregroundBaseline.interruptions,
+        resumedAttemptCount: foregroundResumed.attemptCount,
+        resumedInterruptions: foregroundResumed.interruptions,
       },
       occlusion,
       transitions,
@@ -785,11 +794,11 @@ async function removeOwnedRawBrowserProfile(userDataDir) {
 
 export async function enterPublicFlight(runtime, seed = PERFORMANCE_LIFECYCLE_FIXED_SEED) {
   const page = runtime.page;
-  await focusRuntimeWindow(runtime);
-  await page.waitForFunction(() => document.hasFocus() && document.visibilityState === 'visible', null, { timeout: 10_000 });
+  await acquireRuntimeForeground(runtime);
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.loop), null, { timeout: 30_000 });
   const splash = page.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) {
+    await acquireRuntimeForeground(runtime);
     if (page instanceof RawCdpLifecyclePage) {
       await page.evaluate(() => {
         const events = [];
@@ -852,23 +861,33 @@ export async function enterPublicFlight(runtime, seed = PERFORMANCE_LIFECYCLE_FI
       || visible(document.querySelector('[data-screen="newGame"]'));
   }, null, { timeout: 30_000 });
   if (await page.locator('[data-screen="mainMenu"]').isVisible().catch(() => false)) {
+    await acquireRuntimeForeground(runtime);
     await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
   }
   await page.locator('[data-screen="newGame"]').waitFor({ state: 'visible', timeout: 30_000 });
+  await acquireRuntimeForeground(runtime);
   const seedInput = page.locator('#sf-ng-seed');
   await seedInput.fill(String(seed));
+  await acquireRuntimeForeground(runtime);
   await page.getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const sf = window.SF;
-    const state = sf?.state;
-    const playerId = state?.player?.entityId;
-    const player = state?.entities?.get?.(playerId);
-    const readiness = typeof sf?.authoredVisualReadiness === 'function'
-      ? sf.authoredVisualReadiness()
-      : null;
-    return state?.mode === 'flight' && player?.alive !== false && !!document.getElementById('gl-canvas')
-      && readiness?.ready === true;
-  }, null, { timeout: 90_000 });
+  const flightDeadline = Date.now() + 90_000;
+  let flightReady = false;
+  while (!flightReady && Date.now() < flightDeadline) {
+    await acquireRuntimeForeground(runtime);
+    flightReady = await page.evaluate(() => {
+      const sf = window.SF;
+      const state = sf?.state;
+      const playerId = state?.player?.entityId;
+      const player = state?.entities?.get?.(playerId);
+      const readiness = typeof sf?.authoredVisualReadiness === 'function'
+        ? sf.authoredVisualReadiness()
+        : null;
+      return state?.mode === 'flight' && player?.alive !== false && !!document.getElementById('gl-canvas')
+        && readiness?.ready === true;
+    });
+    if (!flightReady) await delay(250);
+  }
+  assert.equal(flightReady, true, 'public flight route did not reach authored visual readiness within 90000 ms');
   await page.locator('#gl-canvas').waitFor({ state: 'visible', timeout: 30_000 });
   await delay(1_000);
 }
@@ -938,17 +957,58 @@ export async function unlockAudioWithKeyboard(page) {
   await page.keyboard.press('F13');
 }
 
-async function measureForegroundWindow(page) {
-  await waitForObservation(page, (value) => value.lifecycleState === 'foreground-visible'
-    && value.audio.contextState === 'running', 'foreground readiness');
+async function measureForegroundWindow(runtime) {
+  await acquireRuntimeForeground(runtime, { requireLifecycle: true });
+  const page = runtime.page;
   const before = await readRuntimeObservation(page);
-  await delay(FOREGROUND_SAMPLE_MS);
+  const foregroundBefore = await readRuntimeForegroundState(runtime);
+  if (!performanceLifecycleForegroundStateActive(foregroundBefore, runtime.runtimeKind)) {
+    throw createForegroundInterruption('foreground ownership changed before cadence sampling', foregroundBefore);
+  }
+  assert.equal(before.audio.contextState, 'running',
+    `foreground cadence sample requires running audio: ${JSON.stringify(before.audio)}`);
+  await delay(PERFORMANCE_LIFECYCLE_FOREGROUND_SAMPLE_MS);
   const after = await readRuntimeObservation(page);
-  assert.equal(after.lifecycleState, 'foreground-visible',
-    `foreground cadence sample lost native foreground ownership: ${JSON.stringify(after.loop)}`);
+  const foregroundAfter = await readRuntimeForegroundState(runtime);
+  if (!performanceLifecycleForegroundStateActive(foregroundAfter, runtime.runtimeKind)) {
+    throw createForegroundInterruption('foreground ownership changed during cadence sampling', foregroundAfter);
+  }
   assert.equal(after.audio.contextState, 'running',
     `foreground cadence sample lost running audio: ${JSON.stringify(after.audio)}`);
-  return { before, after, delta: summarizeLifecycleDelta(before, after) };
+  return { before, after, foregroundBefore, foregroundAfter, delta: summarizeLifecycleDelta(before, after) };
+}
+
+function createForegroundInterruption(reason, state) {
+  const error = new Error(`${PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE}: ${reason}`);
+  error.code = PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE;
+  error.foregroundState = state;
+  return error;
+}
+
+function serializeForegroundInterruption(error, attempt) {
+  return {
+    attempt,
+    code: error.code,
+    reason: error.message,
+    state: error.foregroundState || null,
+  };
+}
+
+async function measureForegroundWindowWithRetries(runtime, {
+  measureWindow = measureForegroundWindow,
+  maxAttempts = PERFORMANCE_LIFECYCLE_MAX_SETTLE_ATTEMPTS,
+} = {}) {
+  const interruptions = [];
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const measurement = await measureWindow(runtime);
+      return { ...measurement, attemptCount: attempt, interruptions };
+    } catch (error) {
+      if (error?.code !== PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE) throw error;
+      interruptions.push(serializeForegroundInterruption(error, attempt));
+    }
+  }
+  throw new Error(`foreground cadence was interrupted for ${maxAttempts} bounded attempts: ${JSON.stringify(interruptions)}`);
 }
 
 export async function measureSettledForegroundWindow(runtime, {
@@ -956,32 +1016,85 @@ export async function measureSettledForegroundWindow(runtime, {
   focusAfterWarmup = focusRuntimeForLifecycleSample,
   measureWindow = measureForegroundWindow,
   warmupMs = FOREGROUND_WARMUP_MS,
-  settleAttempts = FOREGROUND_SETTLE_ATTEMPTS,
+  settleAttempts = PERFORMANCE_LIFECYCLE_MAX_SETTLE_ATTEMPTS,
+  minimumObservedWindows = PERFORMANCE_LIFECYCLE_MIN_SETTLE_WINDOWS,
 } = {}) {
   await waitForWarmup(warmupMs);
   await focusAfterWarmup(runtime);
   const settleWindows = [];
-  for (let attempt = 0; attempt < settleAttempts; attempt += 1) {
-    const measurement = await measureWindow(runtime.page);
-    settleWindows.push(measurement.delta);
-    if (foregroundWindowSequenceSettled(settleWindows)) {
-      return { ...measurement, warmupMs, settleWindows };
+  const interruptions = [];
+  for (let attempt = 1; attempt <= settleAttempts; attempt += 1) {
+    let measurement;
+    try {
+      measurement = await measureWindow(runtime);
+    } catch (error) {
+      if (error?.code !== PERFORMANCE_LIFECYCLE_FOREGROUND_INTERRUPTION_CODE) throw error;
+      interruptions.push(serializeForegroundInterruption(error, attempt));
+      continue;
+    }
+    settleWindows.push({ ...measurement.delta, attempt });
+    if (foregroundWindowSequenceSettled(settleWindows, { minimumObservedWindows })) {
+      return { ...measurement, warmupMs, settleWindows, attemptCount: attempt, interruptions };
     }
   }
-  throw new Error(`foreground cadence did not settle: ${JSON.stringify(settleWindows)}`);
+  throw new Error(`foreground cadence did not settle in ${settleAttempts} bounded attempts: ${JSON.stringify({ settleWindows, interruptions })}`);
 }
 
 export async function focusRuntimeForLifecycleSample(runtime, {
-  waitForForeground = waitForObservation,
+  acquireForeground = acquireRuntimeForeground,
 } = {}) {
-  await focusRuntimeWindow(runtime);
-  return waitForForeground(runtime.page, (value) => value.lifecycleState === 'foreground-visible',
-    `${runtime.runtimeKind} foreground sample focus`);
+  return acquireForeground(runtime, { requireLifecycle: true });
 }
 
 export async function focusRuntimeWindow(runtime) {
   await restoreRuntime(runtime, 'window-minimize');
   if (runtime.runtimeKind === 'electron') await runtime.windowActivator.activate();
+}
+
+async function readRuntimeForegroundState(runtime) {
+  const renderer = await runtime.page.evaluate(() => ({
+    documentHasFocus: document.hasFocus(),
+    documentVisibility: document.visibilityState,
+    lifecycleState: window.SF?.loop?.getLifecycleState?.() || null,
+  }));
+  const nativeWindow = runtime.runtimeKind === 'electron'
+    ? await readElectronWindowState(runtime.electronApp, runtime.mainWindowId)
+    : null;
+  return { ...renderer, nativeWindow };
+}
+
+export async function acquireRuntimeForeground(runtime, {
+  focus = focusRuntimeWindow,
+  readState = readRuntimeForegroundState,
+  waitBetweenAttempts = delay,
+  maxAttempts = FOREGROUND_FOCUS_ATTEMPTS,
+  retryMs = FOREGROUND_FOCUS_RETRY_MS,
+  requireLifecycle = false,
+} = {}) {
+  let latestState = null;
+  let latestError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await focus(runtime);
+      await waitBetweenAttempts(retryMs);
+      latestState = await readState(runtime);
+      const active = requireLifecycle
+        ? performanceLifecycleForegroundStateActive(latestState, runtime.runtimeKind)
+        : latestState?.documentHasFocus === true && latestState?.documentVisibility === 'visible'
+          && (runtime.runtimeKind !== 'electron' || (
+            latestState.nativeWindow?.available === true
+            && latestState.nativeWindow?.hidden === false
+            && latestState.nativeWindow?.focused === true
+          ));
+      if (active) return { attemptCount: attempt, state: latestState };
+    } catch (error) {
+      latestError = error;
+    }
+  }
+  const error = new Error(`native foreground acquisition failed after ${maxAttempts} bounded attempts; latest=${JSON.stringify(latestState)} error=${latestError?.message || 'none'}`);
+  error.code = 'PERFORMANCE_LIFECYCLE_FOREGROUND_ACQUISITION_FAILED';
+  error.foregroundState = latestState;
+  throw error;
 }
 
 export function isHiddenLifecycleReady(value, runtimeKind) {
