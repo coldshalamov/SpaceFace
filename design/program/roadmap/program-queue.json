@@ -1322,7 +1322,7 @@
       "priority": 24,
       "title": "Corridor-minimal Asteroid Ops survey and claim consequence",
       "state": "blocked",
-      "partialIntegration": "2026-07-29 leaf PQ-024.survey-claim at focused_green (branch claude/pq024-survey, candidate 46c2aae3, receipt receipts/PQ-024-survey-claim-REPORT.md): the corridor chain probe -> commit -> produce -> relay is live on the default route. Deterministic same-material connected-interior formation selector (new pure src/systems/siteSurvey.js; rows>=3, band [3..48], vein>gas>basalt>matrix, stable cell key; probed 8 seeds) revealed progressively by effective drill:scanPulse only (bounded frontier, 2/pulse) as explicitly VOLATILE session state that never serializes. Core install atomically adopts the exact assayed target/reveal or reconstructs it byte-identically; a drilled-into formation refuses visibly as survey-stale (no reroll, no partial commit). Durable record rides the EXISTING anchored-site save path (state.sites.byId) — no new top-level key; check:save-schema byte-stable at v12/274. committed -> producing only via real positive-output mutation at the existing _tickSite arms (extractor/refinery/fabricator) behind one authoritative validated receipt; replays idempotent; forgery classes rejected. Exactly one place_claim_outpost_relay (PQ-022 identity, pinned) projects ONLY from producing (cold 0 / committed 0 / producing 1) and re-ensures once on re-entry; pre-PQ-024 anchored saves converge at first real output. UI: assay + claim chips, inspector survey sentences with explicit volatility warning, hover membership, one-voice announces in the existing asteroid screen (no new HUD, no CSS/renderer change, keyboard+pointer paths unchanged). Gates: check:pq024:survey-claim 21/21 (new standing gate), asteroid-sites 15/15, check:sim:compare hashEqual, check:save-schema v12/274, check:asset-reachability, check:npc-jobs, check:baseline 10/10 (70.154s/90s), pq017 world-site fast 109/109 (includes one user-directed stale-script-string repair from the pq019c authorize-probe rename — inherited red A/B-proven at c13ac17d and master 0f36f386). PQ-022.exterior-relay-collar dependency integrator-waived for implementation start (verbatim in receipt); final packet acceptance still waits the formal binding at route_accepted. Open rows behind the PQ-034 lease: headed Browser/Electron acceptance, independent visual verdict, matched performance. State stays blocked pending the dependency receipt blob.",
+      "partialIntegration": "2026-08-04 implementation, functional Browser/source-Electron H1, solo-integrator H2, and matched H3 are accepted. Candidate c10f8921 proves public Survey -> atomic Core -> real positive output -> exactly one relay -> cold Continue -> same-site re-entry at fixed seed 24024 with normalized host parity and zero page issues. H2 binds the current exact relay release 85b8d74e...67a8 to the producing consequence without relabeling the older gray-post H1 still. H3 candidate 2509a168 proves the matched floor/target cell. Final promotion waits only for the route_accepted PQ-022.exterior-relay-collar receipt blob produced by PQ-022.promote-relay; no new PQ-024 route, reviewer, or performance run is required.",
       "canonical": [
         "A03",
         "A04",
@@ -4292,8 +4292,7 @@
       "priority": 215,
       "title": "Survey-to-relay player-route and visual review",
       "kind": "acceptance_review",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-024.survey-h1-capture",
         "PQ-022.relay-reauthor-review"
@@ -4303,7 +4302,9 @@
       ],
       "paths": [],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-h2-survey-relay-review-REPORT.md"
+      ],
       "brief": "Judge comprehension, feedback, relay consequence, and save/re-entry after a valid headed route pair exists.",
       "blocker": null
     },
