@@ -1,0 +1,455 @@
+{
+  "schema": "spaceface.pq022-relay-reauthor-h1.v1",
+  "row": 7,
+  "disposition": "PASS",
+  "runtime": "electron",
+  "brokerManifestId": "pq022-relay-reauthor-electron",
+  "broker": {
+    "reason": "broker-claim-consumed",
+    "diagnostic": false,
+    "primaryAcceptance": true,
+    "claimId": "45252-4720537cb0b09b0fb0f6d1ff",
+    "mode": "acceptance",
+    "runtimeKind": "electron",
+    "candidateDigest": "402de724d86c59e401a6a3435dff19774e36c5e38430ce863c20247acefb2bd0",
+    "manifestDigest": "4c8043104a8289265359e6d13c362f83166eb4e4148322fee32ab1b681d3c9cf",
+    "inputDigest": "39a1c7a543ff620bab7930bbe241e40b8bbc4f173be14bc380492f86f067e2b1"
+  },
+  "selector": "relay-collar",
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "visible fixed-seed New Game -> asteroidSites relay owner -> close/default/far game-camera stills",
+  "compressions": [
+    {
+      "kind": "owner-fixture",
+      "subject": "relay-collar",
+      "detail": "asteroidSites._ensureBeacon placed the shipped relay on a live Helios asteroid; no fixture renderer or entity shape"
+    }
+  ],
+  "relayPlacement": {
+    "relayId": 319,
+    "rockId": 4,
+    "rockRadius": 11.910888727754354,
+    "sectorId": "sector_helios_prime",
+    "placeId": "place_claim_outpost_relay",
+    "placeScale": 0.16,
+    "worldDressing": true,
+    "collides": false,
+    "contactRingDistance": 18.910888727754326
+  },
+  "trafficFixtures": null,
+  "manifestIdentity": [
+    {
+      "key": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+      "sourceSha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+      "releaseSha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8",
+      "sourceBytes": 13424076,
+      "releaseBytes": 3338672,
+      "sourceManifestFile": "places/place_claim_outpost_relay.glb"
+    }
+  ],
+  "captures": [
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-relay-reauthor/electron/01-relay-close.png",
+      "bytes": 565734,
+      "sha256": "899597ff418d5357e5c3f062ef7038a3ea2a4379bae2184e94d97ee48b6bbe08",
+      "framing": "close",
+      "requestedLod": "lod0",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8_ClosedFrontPackedOrm",
+        "SF_Shared_canopy_none_native_ClosedFrontPackedOrm",
+        "SF_Shared_hull_textured_hull_808090_ClosedFrontPackedOrm",
+        "SF_Shared_mechanical_dark_206070_ClosedFrontPackedOrm"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        18.546126601804758,
+        15.336591720581055,
+        17.379277510317795
+      ],
+      "cameraDistance": 33.64741892032732,
+      "centerNdc": {
+        "x": 3.850253910406325e-15,
+        "y": 0,
+        "z": 0.9940702510285413
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-relay-reauthor/electron/02-relay-default.png",
+      "bytes": 544625,
+      "sha256": "8bed5cf44c6127ce4e23c104d506111376cf53fa48a4f3d1f5928a3b5b1fbaa2",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8_ClosedFrontPackedOrm",
+        "SF_Shared_canopy_none_native_ClosedFrontPackedOrm",
+        "SF_Shared_hull_textured_hull_808090_ClosedFrontPackedOrm",
+        "SF_Shared_mechanical_dark_206070_ClosedFrontPackedOrm"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        18.54588328020668,
+        15.336591720581055,
+        17.378976298671237
+      ],
+      "cameraDistance": 104.25051558625503,
+      "centerNdc": {
+        "x": 1.2426903171129294e-15,
+        "y": 0,
+        "z": 0.9980958163732083
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-relay-reauthor/electron/03-relay-far.png",
+      "bytes": 467135,
+      "sha256": "f8d8f863aa62f33af5e8f01ac60a4df5ab3b49eb8802c6535b200e24a8651980",
+      "framing": "far",
+      "requestedLod": "lod2",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8_ClosedFrontPackedOrm",
+        "SF_Shared_canopy_none_native_ClosedFrontPackedOrm",
+        "SF_Shared_hull_textured_hull_808090_ClosedFrontPackedOrm",
+        "SF_Shared_mechanical_dark_206070_ClosedFrontPackedOrm"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        18.54647051699817,
+        15.336591720581055,
+        17.379703117166592
+      ],
+      "cameraDistance": 336.47418920327306,
+      "centerNdc": {
+        "x": 0,
+        "y": 0,
+        "z": 0.9994198823375486
+      },
+      "centerOnScreen": true
+    }
+  ],
+  "uniqueAssetCount": 1,
+  "screenshotCount": 3,
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains identity, admission, visibility, and still-image facts only; no time-valued field is performance evidence.",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Matched performance remains Phase H3.",
+  "browserComparison": {
+    "pass": true,
+    "comparedAgainst": ".devshots/pq022-relay-reauthor/browser/report.json",
+    "normalizedBrowser": {
+      "schema": "spaceface.pq022-relay-reauthor-parity.v1",
+      "fixedSeed": 47,
+      "recordedSeed": 47,
+      "identity": {
+        "key": "relay-collar",
+        "assetId": "place_claim_outpost_relay",
+        "manifestId": "place_claim_outpost_relay",
+        "family": "relay-collar",
+        "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+        "sourceSha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+        "releaseSha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8",
+        "sourceBytes": 13424076,
+        "releaseBytes": 3338672,
+        "sourceManifestFile": "places/place_claim_outpost_relay.glb"
+      },
+      "placement": {
+        "sectorId": "sector_helios_prime",
+        "placeId": "place_claim_outpost_relay",
+        "placeScale": 0.16,
+        "worldDressing": true,
+        "collides": false,
+        "rockRadius": 11.910889,
+        "contactRingDistance": 18.910889
+      },
+      "admission": [
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "close",
+          "requestedLod": "lod0",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        },
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "default",
+          "requestedLod": "lod1",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        },
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "far",
+          "requestedLod": "lod2",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        }
+      ]
+    },
+    "normalizedElectron": {
+      "schema": "spaceface.pq022-relay-reauthor-parity.v1",
+      "fixedSeed": 47,
+      "recordedSeed": 47,
+      "identity": {
+        "key": "relay-collar",
+        "assetId": "place_claim_outpost_relay",
+        "manifestId": "place_claim_outpost_relay",
+        "family": "relay-collar",
+        "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+        "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+        "sourceSha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+        "releaseSha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8",
+        "sourceBytes": 13424076,
+        "releaseBytes": 3338672,
+        "sourceManifestFile": "places/place_claim_outpost_relay.glb"
+      },
+      "placement": {
+        "sectorId": "sector_helios_prime",
+        "placeId": "place_claim_outpost_relay",
+        "placeScale": 0.16,
+        "worldDressing": true,
+        "collides": false,
+        "rockRadius": 11.910889,
+        "contactRingDistance": 18.910889
+      },
+      "admission": [
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "close",
+          "requestedLod": "lod0",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        },
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "default",
+          "requestedLod": "lod1",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        },
+        {
+          "subjectKey": "relay-collar",
+          "assetId": "place_claim_outpost_relay",
+          "manifestId": "place_claim_outpost_relay",
+          "family": "relay-collar",
+          "framing": "far",
+          "requestedLod": "lod2",
+          "sectorId": "sector_helios_prime",
+          "runtimeIdentity": {
+            "placeId": "place_claim_outpost_relay"
+          },
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "ownedRuntimeClosed": true
+}
