@@ -4,22 +4,43 @@
   "family": "player_claim_growth_family",
   "assetId": "place_claim_outpost_relay",
   "claimSpecId": "spec_relay",
-  "title": "Trade Relay Claim",
+  "title": "Trade Relay Claim — material-truth V2",
   "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_relay.glb",
-  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay.blend",
-  "bytes": 13230948,
+  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+  "bytes": 13424076,
   "lod": {
     "lod0": {
-      "triangles": 59052,
-      "drawGroups": 5
+      "triangles": 62992,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
     },
     "lod1": {
-      "triangles": 21532,
-      "drawGroups": 5
+      "triangles": 27592,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
     },
     "lod2": {
-      "triangles": 5264,
-      "drawGroups": 5
+      "triangles": 8384,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
     }
   },
   "aabb": {
@@ -73,11 +94,11 @@
       "lod1",
       "lod2"
     ],
-    "triangleCount": 59052,
+    "triangleCount": 62992,
     "lodTriangles": {
-      "lod0": 59052,
-      "lod1": 21532,
-      "lod2": 5264
+      "lod0": 62992,
+      "lod1": 27592,
+      "lod2": 8384
     },
     "drawGroupsPerLod": {
       "lod0": 5,
@@ -90,10 +111,33 @@
       95.859
     ],
     "wiringStatus": "production_source",
-    "sourceGenerator": "tools/blender/build_claim_outpost_family.py",
-    "sourceBlenderVersion": "5.1"
+    "builder": "tools/blender/build_claim_outpost_relay_material_truth_v2.py",
+    "category": "places",
+    "priority": "P0",
+    "acceptedCandidateId": "material_truth_v2",
+    "acceptedCandidateSha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "sourceBlend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+    "sourceBlendSha256": "7B069F78A8FF289B32705FB0614E156E24E37FF4A0D432CC57CBC6D8040D810F",
+    "promoter": "tools/art/promote_claim_outpost_relay_material_truth_v2.mjs",
+    "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
+    "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2",
+    "visualVerdict": {
+      "G1": "KEEP",
+      "G2": "KEEP",
+      "G4": "KEEP",
+      "scope": "lineage_bound_authoring_review",
+      "reviewedSourceSha256": "242748956EC90AD328E6CABAA52823FEFF213C3C6FA17A9E1FD4920F022A76E3",
+      "exactFinalVisualBinding": false,
+      "nextGate": "PQ-022.relay-reauthor-h1 then PQ-022.relay-reauthor-review"
+    }
   },
-  "builtAt": "2026-07-12T08:57:16Z",
-  "sha256": "a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8",
-  "canonical": "assets/ships/parts/places/place_claim_outpost_relay.glb"
+  "builtAt": "2026-08-04T07:55:17Z",
+  "sha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+  "canonical": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+  "acceptedCandidate": {
+    "path": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "sha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
+    "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2"
+  }
 }

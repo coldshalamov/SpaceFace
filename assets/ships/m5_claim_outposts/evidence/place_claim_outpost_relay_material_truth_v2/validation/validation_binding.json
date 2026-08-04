@@ -1,0 +1,32 @@
+{
+  "schema": "spaceface.claimOutpostRelayValidationBinding.v1",
+  "assetId": "place_claim_outpost_relay",
+  "candidate": {
+    "path": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "sha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "bytes": 13416020
+  },
+  "validators": {
+    "foundry": {
+      "command": "node tools/foundry/validate_foundry_glb.mjs assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb --out assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/foundry --class scenery",
+      "report": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/foundry/place_claim_outpost_relay.glb.report.json",
+      "reportSha256": "32e6d7ec958a770f3cf21a9a4bb9687fcdc4494aff23b7294b7c5925fc5161b3",
+      "outcome": {
+        "pass": true,
+        "failures": 0,
+        "warnings": 0
+      }
+    },
+    "khronos": {
+      "command": "node tools/art/validate_gltf_assets.mjs --input assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb --out assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/khronos",
+      "report": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/khronos/place_claim_outpost_relay.glb.report.json",
+      "reportSha256": "d8b661bd2395564a6907008073a1b9ff5fb807a2fa89042cd89cccf9c2bb1b5c",
+      "outcome": {
+        "errors": 0,
+        "warnings": 0,
+        "infos": 0,
+        "hints": 0
+      }
+    }
+  }
+}

@@ -3934,8 +3934,8 @@
         }
       },
       "mount": "origin",
-      "tris": 59052,
-      "bytes": 13230948,
+      "tris": 62992,
+      "bytes": 13424076,
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core",
@@ -3963,7 +3963,7 @@
           95.859
         ]
       },
-      "note": "Trade Relay Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 59052 tris / 5 draw groups."
+      "note": "Trade Relay Claim material-truth V2; asteroid-gripping recovery/communications relay, PBR, explicit LOD0/1/2. LOD0 62992 tris / 5 draw groups."
     },
     {
       "id": "place_claim_outpost_bastion",

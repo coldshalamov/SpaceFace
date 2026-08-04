@@ -77,9 +77,9 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   }),
   place_claim_outpost_relay: binding({
     partId: 'place_claim_outpost_relay', assetId: 'SF_PLACE_CLAIM_OUTPOST_RELAY',
-    sourceSha256: 'a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8',
-    releaseSha256: 'dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2',
-    sourceBytes: 13230948, releaseBytes: 8303864,
+    sourceSha256: '57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9',
+    releaseSha256: '85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8',
+    sourceBytes: 13424076, releaseBytes: 3338672,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT', visualCenterXZ: { x: 3.3318, z: 0 }, emissiveZ: -24.472501754760742,
   }),
   place_landmark_wreck_cathedral: binding({

@@ -11,8 +11,8 @@
 // on the loaded GLB, and because every consumer of the row uses order-invariant quantities. The
 // assertions below hold that inertness in place so the mismatch cannot start mattering silently.
 //
-// Visual acceptance at the game camera, Browser/Electron route acceptance, and matched performance
-// are NOT claimed here — they are blocked on the PQ-034 lease.
+// Exact-final visual acceptance at the game camera, Browser/Electron route acceptance, and matched
+// performance are NOT claimed here. They remain the explicit revised H1/review/H3 dispatch chain.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -35,10 +35,14 @@ const RELEASE_PATH = `assets/ships/release/parts/${PART_FILE}`;
 // The reviewed source candidate is frozen at admission. Any change here invalidates the evidence
 // record at assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay.json and both
 // manifest rows, which pin these exact bytes.
-const SOURCE_SHA256 = 'a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8';
-const SOURCE_BYTES = 13230948;
-const RELEASE_SHA256 = 'dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2';
-const RELEASE_BYTES = 8303864;
+const SOURCE_SHA256 = '57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9';
+const SOURCE_BYTES = 13424076;
+const RELEASE_SHA256 = '85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8';
+const RELEASE_BYTES = 3338672;
+const TECHNICAL_CANDIDATE_PATH = 'assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb';
+const TECHNICAL_CANDIDATE_SHA256 = 'a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a';
+const TECHNICAL_CANDIDATE_BYTES = 13416020;
+const VALIDATION_BINDING_PATH = 'assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/validation_binding.json';
 
 // Every socket the PQ-017 world site and any later PQ-024 collar binding anchors against.
 const SOCKETS = Object.freeze([
@@ -53,7 +57,7 @@ const SOCKETS = Object.freeze([
 
 // Measured from both GLBs with node transforms applied. LOD0 is the authored envelope the runtime
 // scales against; the chain must stay strictly reducing.
-const LOD_TRIANGLES = Object.freeze({ LOD0: 59052, LOD1: 21532, LOD2: 5264 });
+const LOD_TRIANGLES = Object.freeze({ LOD0: 62992, LOD1: 27592, LOD2: 8384 });
 const AUTHORED_X_LENGTH_M = 104.3364;
 
 const JSON_CHUNK = 0x4e4f534a;
@@ -156,6 +160,27 @@ const evidence = JSON.parse(readFileSync(
   'assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay.json', 'utf8'));
 const manifestPart = (partsManifest.parts || []).find((entry) => entry.id === PART_ID);
 
+test('validator reports are cryptographically bound to the exact technical candidate', () => {
+  const candidateBytes = readFileSync(TECHNICAL_CANDIDATE_PATH);
+  const binding = JSON.parse(readFileSync(VALIDATION_BINDING_PATH, 'utf8'));
+  assert.equal(binding.schema, 'spaceface.claimOutpostRelayValidationBinding.v1');
+  assert.equal(binding.assetId, PART_ID);
+  assert.equal(binding.candidate.path, TECHNICAL_CANDIDATE_PATH);
+  assert.equal(binding.candidate.bytes, TECHNICAL_CANDIDATE_BYTES);
+  assert.equal(candidateBytes.length, TECHNICAL_CANDIDATE_BYTES);
+  assert.equal(createHash('sha256').update(candidateBytes).digest('hex'), TECHNICAL_CANDIDATE_SHA256);
+  assert.equal(binding.candidate.sha256, TECHNICAL_CANDIDATE_SHA256);
+  for (const validator of ['foundry', 'khronos']) {
+    const record = binding.validators[validator];
+    const reportBytes = readFileSync(record.report);
+    assert.equal(
+      createHash('sha256').update(reportBytes).digest('hex'),
+      record.reportSha256,
+      `${validator} report bytes stay bound to this candidate validation epoch`,
+    );
+  }
+});
+
 test('the reviewed source candidate is the exact asset being admitted', () => {
   assert.equal(source.sha256, SOURCE_SHA256, 'source GLB hash is frozen by this leaf');
   assert.equal(source.bytes.length, SOURCE_BYTES);
@@ -216,8 +241,8 @@ test('the release artifact is generated, compressed, and enumerated', () => {
   // PQ-018 recorded that the Cathedral's release artifact inherited the source's
   // textureCompression: "PNG-source" stamp. This asset does not: its release stamp is rewritten.
   assert.equal(source.json.asset?.extras?.spacefaceAsset?.textureCompression, 'PNG-source');
-  assert.equal(release.json.asset?.extras?.spacefaceAsset?.textureCompression, 'KTX2/BasisU',
-    'the release stamp records its own compression rather than inheriting the PNG-source value');
+  assert.equal(release.json.asset?.extras?.spacefaceAsset?.textureCompression, 'KTX2/BasisU+mips',
+    'the release stamp records its own mipmapped compression rather than inheriting PNG-source');
 });
 
 test('release optimization preserves the authored contract surface', () => {
