@@ -2622,8 +2622,7 @@
       "priority": 25,
       "title": "Capture revised claim-relay Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-022.relay-reauthor"
       ],
@@ -2639,8 +2638,12 @@
         "npm run check:pq022:relay-collar",
         "npm run check:assets:live"
       ],
-      "receiptRefs": [],
-      "brief": "Capture candidate-bound close/default/far game-camera evidence and Electron parity for the revised exact release identity; retain rather than rerun unrelated row-7 assets."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-relay-reauthor-h1-REPORT.md"
+      ],
+      "brief": "Capture candidate-bound close/default/far game-camera evidence and Electron parity for the revised exact release identity; retain rather than rerun unrelated row-7 assets.",
+      "partialIntegration": "2026-08-04 candidate 780b77b3 retains one accepted Browser and one accepted source-Electron launch at fixed seed 47, exact source/release identity, close/default/far LOD0/1/2 framing, authored-release admission, live asteroid-site placement, normalized semantic parity, zero page issues, consumed claim ledgers, and clean Electron teardown. Both headed mutexes are released; no performance or causal visual verdict is claimed.",
+      "blocker": null
     },
     {
       "id": "PQ-022.relay-reauthor-review",
