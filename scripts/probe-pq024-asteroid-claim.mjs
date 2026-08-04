@@ -40,6 +40,7 @@ import {
   formatPq024MasslineReleaseTimeout,
   projectPq024RouteSemantics,
 } from './lib/pq024AsteroidClaimParity.mjs';
+import { assessPq024CommittedPresentation } from './lib/pq024CommittedPresentation.mjs';
 import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
@@ -370,6 +371,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'core-commit';
     const corePlan = await planCorePlacement(page);
     const core = await placeSiteMachine(page, 'sm_massline_core', corePlan);
+    const committedPresentation = await waitForCommittedPresentation(page, core);
     await screenshot('03-core-committed.png');
 
     phase = 'extractor-install';
@@ -432,6 +434,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
         asteroid,
         surveyReveal,
         core,
+        committedPresentation,
         extractor,
         production,
         relay,
@@ -1845,6 +1848,59 @@ async function placeSiteMachine(page, defId, plan) {
     assert.equal(installed.lifecycle, 'committed', 'Core DOM placement must commit the survey');
   }
   return installed;
+}
+
+async function waitForCommittedPresentation(page, core) {
+  assert(core?.siteId, 'committed presentation requires the installed Core site id');
+
+  // Enter leaves the public actor in Build mode with the installed Core under the placement cursor.
+  // Escape is the shipped Build -> Drive control, which removes the placement ghost without exiting
+  // Asteroid Ops and lets the durable site overview own the screenshot.
+  await page.keyboard.press('Escape');
+  const handle = await page.waitForFunction((siteId) => {
+    const normalize = (value) => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    const screen = document.querySelector('[data-screen="drill"]');
+    const owner = window.SF?.registry?.get?.('asteroidSites');
+    const site = owner?.getSite?.(siteId);
+    const claimText = normalize(screen?.querySelector('.ao-top-id .ao-chip')?.textContent);
+    const assayText = normalize(screen?.querySelector('.ao-bay-command .ao-chip')?.textContent);
+    const inspector = screen?.querySelector('.ast-inspector');
+    const snapshot = {
+      owner: {
+        siteId: site?.id ?? null,
+        anchored: site?.anchored === true,
+        lifecycle: site?.survey?.lifecycle ?? null,
+        cells: Array.isArray(site?.survey?.cells) ? site.survey.cells.length : null,
+      },
+      claimText,
+      assayText,
+      inspector: {
+        kicker: normalize(inspector?.querySelector('.ast-insp-kicker')?.textContent),
+        title: normalize(inspector?.querySelector('.ast-insp-title')?.textContent),
+        text: normalize(inspector?.textContent),
+      },
+    };
+    const expectedAssay = Number.isInteger(snapshot.owner.cells) && snapshot.owner.cells > 0
+      ? `Assay ${snapshot.owner.cells} cells`
+      : null;
+    return snapshot.owner.siteId === siteId
+      && snapshot.owner.anchored
+      && snapshot.owner.lifecycle === 'committed'
+      && claimText === 'Anchored'
+      && assayText === expectedAssay
+      && snapshot.inspector.kicker === 'Site overview'
+      && snapshot.inspector.title === 'Anchored claim'
+      && /Survey record:/i.test(snapshot.inspector.text)
+      && /Awaiting first real output/i.test(snapshot.inspector.text)
+      && !/A machine already occupies this cell/i.test(snapshot.inspector.text)
+      ? snapshot
+      : null;
+  }, core.siteId, { timeout: 5_000 });
+  const snapshot = await handle.jsonValue();
+  const assessment = assessPq024CommittedPresentation(snapshot, { expectedSiteId: core.siteId });
+  assert.equal(assessment.pass, true,
+    `committed presentation did not settle: ${assessment.failures.join('; ')}`);
+  return { ...snapshot, assessment };
 }
 
 async function moveBuildCursor(page, from, to) {

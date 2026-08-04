@@ -65,6 +65,7 @@ export function createPq024AsteroidClaimManifest(overrides = {}) {
       'scripts/lib/electronTestIsolation.mjs',
       'scripts/lib/load-playwright.mjs',
       'scripts/lib/pq024AsteroidClaimParity.mjs',
+      'scripts/lib/pq024CommittedPresentation.mjs',
       'scripts/lib/validationBroker.mjs',
       'scripts/lib/visualProbeServer.mjs',
       'scripts/validation-broker-cli.mjs',

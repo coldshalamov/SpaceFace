@@ -13,6 +13,10 @@ import {
   formatPq024MasslineReleaseTimeout,
   projectPq024RouteSemantics,
 } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
+import {
+  assessPq024CommittedPresentation,
+  PQ024_COMMITTED_PRESENTATION_SCHEMA,
+} from '../scripts/lib/pq024CommittedPresentation.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
@@ -60,9 +64,50 @@ test('PQ-024 broker manifest binds one acceptance launch to the queue-listed hea
     'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
     'scripts/lib/electronTestIsolation.mjs',
     'scripts/lib/pq024AsteroidClaimParity.mjs',
+    'scripts/lib/pq024CommittedPresentation.mjs',
   ]) {
     assert.ok(fresh.harnessSourcePaths.includes(required), `missing harness dependency ${required}`);
   }
+});
+
+test('PQ-024 committed presentation rejects the captured stale frame and accepts settled UI', () => {
+  const owner = {
+    siteId: 'site_1',
+    anchored: true,
+    lifecycle: 'committed',
+    cells: 3,
+  };
+  const stale = assessPq024CommittedPresentation({
+    owner,
+    claimText: 'No claim',
+    assayText: 'Assay 2/3',
+    inspector: {
+      kicker: 'Placement preview',
+      title: 'Massline Core',
+      text: 'Massline Core A machine already occupies this cell.',
+    },
+  }, { expectedSiteId: 'site_1' });
+  assert.equal(stale.schema, PQ024_COMMITTED_PRESENTATION_SCHEMA);
+  assert.equal(stale.pass, false);
+  assert.ok(stale.failures.some((row) => row.includes('claim chip')));
+  assert.ok(stale.failures.some((row) => row.includes('assay chip')));
+  assert.ok(stale.failures.some((row) => row.includes('inspector kicker')));
+  assert.ok(stale.failures.some((row) => row.includes('occupied-placement error')));
+
+  const settled = assessPq024CommittedPresentation({
+    owner,
+    claimText: 'Anchored',
+    assayText: 'Assay 3 cells',
+    inspector: {
+      kicker: 'Site overview',
+      title: 'Anchored claim',
+      text: 'Survey record: Silver Ore vein cluster — 3 cells committed to the claim. '
+        + 'Awaiting first real output — the exterior relay comes online when the site produces.',
+    },
+  }, { expectedSiteId: 'site_1' });
+  assert.equal(settled.schema, PQ024_COMMITTED_PRESENTATION_SCHEMA);
+  assert.equal(settled.pass, true);
+  assert.deepEqual(settled.failures, []);
 });
 
 test('PQ-024 probe preserves the public route and observes owner-produced terminal truth', () => {
@@ -137,6 +182,37 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'the public route must pre-bore a deterministic dogleg before Survey/Core placement');
   assert.ok(source.indexOf('carveCoreBuildCorridor(page)') < source.indexOf('pulseSurveyReveal(page)'),
     'the route must not mutate the formation after recording the volatile survey');
+  const corePlacement = source.indexOf("const core = await placeSiteMachine(page, 'sm_massline_core'");
+  const committedSettle = source.indexOf('waitForCommittedPresentation(page, core)', corePlacement);
+  const committedScreenshot = source.indexOf("screenshot('03-core-committed.png')", committedSettle);
+  assert.ok(corePlacement >= 0 && committedSettle > corePlacement && committedScreenshot > committedSettle,
+    'the Core screenshot must follow the visible committed-presentation settle');
+
+  const committedStart = source.indexOf('async function waitForCommittedPresentation');
+  const committedEnd = source.indexOf('async function moveBuildCursor', committedStart);
+  const committedSource = source.slice(committedStart, committedEnd);
+  assert.match(committedSource, /page\.keyboard\.press\('Escape'\)/,
+    'the actor must visibly leave Build mode before proving the committed site overview');
+  assert.match(committedSource, /assessPq024CommittedPresentation/,
+    'the actor must apply the pure committed-presentation contract to the settled DOM snapshot');
+  for (const visibleTruth of [
+    '.ao-top-id .ao-chip',
+    '.ao-bay-command .ao-chip',
+    '.ast-insp-kicker',
+    '.ast-insp-title',
+    'Awaiting first real output',
+  ]) {
+    assert.ok(committedSource.includes(visibleTruth),
+      `the committed settle must bind visible truth ${visibleTruth}`);
+  }
+  for (const forbidden of [
+    /\bsiteSys\.installMachine\s*\(/,
+    /\bstate\.player\.cargo(?:\.items)?\s*=/,
+    /\b(?:producing|inventory|survey|exteriorRelay)\s*=\s*(?:true|false|\{|\[)/,
+  ]) {
+    assert.doesNotMatch(committedSource, forbidden,
+      `committed presentation wait contains forbidden owner mutation ${forbidden}`);
+  }
   const enterStart = source.indexOf('async function enterAsteroidOps');
   const enterEnd = source.indexOf('async function createPq024MasslineLatchError', enterStart);
   const enterSource = source.slice(enterStart, enterEnd);

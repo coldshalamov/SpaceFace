@@ -603,9 +603,18 @@ export const asteroidScreen = {
       inspElapsed = 10;
     }));
     unsubs.push(ctx.bus.on('site:surveyCommitted', (p) => {
-      if (!p || p.siteId !== currentSiteId) return;
+      if (!p) return;
+      // A Core can be the first machine on this rock. In that path the owner emits the committed
+      // survey before site:anchored, so currentSiteId has not been resolved by the screen yet.
+      // Resolve through the live owner just like the general site event path above rather than
+      // dropping the player-visible commitment receipt.
+      if (!currentSiteId || p.siteId !== currentSiteId) refreshProjection();
+      if (!currentSiteId || p.siteId !== currentSiteId) return;
       pushLedgerLine('good', `Survey committed — ${p.cellsTotal} formation cells recorded to the claim.`);
       projDirty = true;
+      // Preserve the existing frame-batched DOM owners while forcing both surfaces on the next
+      // screen frame instead of leaving the cold chips behind for their ordinary cadences.
+      hudElapsed = 10;
       inspElapsed = 10;
     }));
     unsubs.push(ctx.bus.on('site:producing', (p) => {

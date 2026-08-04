@@ -303,6 +303,11 @@ test('Core commitment adopts the exact assayed target/reveal atomically (cold ->
   assert.equal(status.revealed, wantRevealed.length);
   // One commitment receipt, and NO exterior relay yet (committed = 0).
   assert.equal(h.bus.events.filter((e) => e.name === 'site:surveyCommitted').length, 1);
+  const eventNames = h.bus.events.map((event) => event.name);
+  const committedAt = eventNames.indexOf('site:surveyCommitted');
+  const anchoredAt = eventNames.indexOf('site:anchored');
+  assert.ok(committedAt >= 0 && anchoredAt > committedAt,
+    'first-Core owner order is surveyCommitted before site:anchored');
   assert.ok(!h.spawned.some((e) => e.data && e.data.siteBeacon === site.id));
   // Materials were consumed exactly once (the re-validation is not a second charge).
   const cost = SITE_MACHINE_BY_ID.get('sm_massline_core').cost;
@@ -583,6 +588,15 @@ test('the asteroid screen wires the survey surfaces (chip, subscriptions, inspec
   assert.ok(src.includes('surveyStatusFor'), 'assay chip + inspector read the survey status');
   assert.ok(src.includes('surveyCellRole'), 'hover tiles read formation membership');
   assert.ok(src.includes('hudEls.assay'), 'the assay chip element exists');
+  const committedStart = src.indexOf("ctx.bus.on('site:surveyCommitted'");
+  const committedEnd = src.indexOf("ctx.bus.on('site:producing'", committedStart);
+  const committedHandler = src.slice(committedStart, committedEnd);
+  assert.match(committedHandler, /refreshProjection\(\)/,
+    'first-Core commitment lazily resolves the site before site:anchored arrives');
+  assert.match(committedHandler, /hudElapsed\s*=\s*10/,
+    'commitment forces the claim and assay chips on the next frame');
+  assert.match(committedHandler, /inspElapsed\s*=\s*10/,
+    'commitment forces the inspector on the next frame');
 });
 
 // ------------------------------------------------------------------ determinism
