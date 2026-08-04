@@ -1322,7 +1322,7 @@
       "priority": 24,
       "title": "Corridor-minimal Asteroid Ops survey and claim consequence",
       "state": "blocked",
-      "partialIntegration": "2026-08-04 implementation, functional Browser/source-Electron H1, solo-integrator H2, and matched H3 are accepted. Candidate c10f8921 proves public Survey -> atomic Core -> real positive output -> exactly one relay -> cold Continue -> same-site re-entry at fixed seed 24024 with normalized host parity and zero page issues. H2 binds the current exact relay release 85b8d74e...67a8 to the producing consequence without relabeling the older gray-post H1 still. H3 candidate 2509a168 proves the matched floor/target cell. Final promotion waits only for the route_accepted PQ-022.exterior-relay-collar receipt blob produced by PQ-022.promote-relay; no new PQ-024 route, reviewer, or performance run is required.",
+      "partialIntegration": "2026-08-04 implementation, functional Browser/source-Electron H1, H2 review, and matched H3 are complete. H2 keeps production consequence, exactly-one relay, save/Continue, same-site re-entry, and exact-final relay art, but revises the committed transition because both host frames retain NO CLAIM, red ASSAY 2/3, and a stale occupied placement-preview error beside the permanent-site receipt. The exact repair/H1/review chain owns only that frame and retains every downstream cell. Final promotion also waits for the route_accepted PQ-022.exterior-relay-collar receipt blob produced by PQ-022.promote-relay.",
       "canonical": [
         "A03",
         "A04",
@@ -4306,6 +4306,7 @@
         "design/program/roadmap/receipts/PQ-024-h2-survey-relay-review-REPORT.md"
       ],
       "brief": "Judge comprehension, feedback, relay consequence, and save/re-entry after a valid headed route pair exists.",
+      "partialIntegration": "2026-08-04 review is complete with a narrow REVISE: Browser and Electron both retain NO CLAIM, red ASSAY 2/3, and an occupied placement-preview error in the exact frame whose manifest says the Core made a permanent site. Production consequence, exactly-one relay, save/Continue, same-site re-entry, and exact-final relay visual acceptance remain KEEP and are not rerun. The committed-transition repair/H1/review chain owns only the contradictory frame.",
       "blocker": null
     },
     {
@@ -4351,6 +4352,84 @@
       "blocker": null
     },
     {
+      "id": "PQ-024.committed-transition-repair",
+      "parentId": "PQ-024",
+      "priority": 243,
+      "title": "Repair the Core-commit presentation seam",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-024.h2-verdict"
+      ],
+      "mutexes": [
+        "pq024-route-harness"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidScreen.js",
+        "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/lib/pq024CommittedPresentation.mjs",
+        "test/pq024-survey-claim.test.mjs",
+        "test/pq024-asteroid-claim-manifest.test.mjs",
+        "design/program/roadmap/active/PQ-024.md"
+      ],
+      "checks": [
+        "node --test test/pq024-asteroid-claim-manifest.test.mjs",
+        "npm run check:pq024:survey-claim"
+      ],
+      "receiptRefs": [],
+      "brief": "Repair the first-site surveyCommitted listener so it resolves the new site and publishes its live tape/HUD transition, then make the public actor leave Build mode and require ANCHORED, durable assay copy, and the committed/awaiting-first-output site overview before the screenshot. Retain all production, relay, Continue, re-entry, and H3 evidence.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-024.committed-transition-h1",
+      "parentId": "PQ-024",
+      "priority": 244,
+      "title": "Recapture only the corrected Core-commit transition",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-024.committed-transition-repair"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/probe-pq024-asteroid-claim.mjs",
+        "scripts/validation-manifests/pq024-asteroid-claim.mjs",
+        "design/program/roadmap/evidence/h1/row9-pq024-survey-claim/committed-transition/"
+      ],
+      "checks": [
+        "node --test test/pq024-asteroid-claim-manifest.test.mjs",
+        "npm run check:pq024:survey-claim"
+      ],
+      "receiptRefs": [],
+      "brief": "Spend one bounded Browser claim and a gated source-Electron continuation for only the Core-committed presentation. Reuse the accepted actor and retain Survey, production, relay, Continue, re-entry, and H3 cells without recapture.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-024.committed-transition-review",
+      "parentId": "PQ-024",
+      "priority": 245,
+      "title": "Review the corrected Core-commit presentation",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-024.committed-transition-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/h1/row9-pq024-survey-claim/committed-transition/",
+        "design/program/roadmap/active/PQ-024.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Judge only whether the corrected Browser/Electron committed frame shows one coherent permanent-claim state with durable assay copy and awaiting-first-output context. Retain every accepted downstream PQ-024 and relay verdict.",
+      "blocker": null
+    },
+    {
       "id": "PQ-024.promote",
       "parentId": "PQ-024",
       "priority": 217,
@@ -4360,7 +4439,8 @@
       "dependsOn": [
         "PQ-022.promote-relay",
         "PQ-024.h2-verdict",
-        "PQ-024.h3-performance"
+        "PQ-024.h3-performance",
+        "PQ-024.committed-transition-review"
       ],
       "mutexes": [
         "program-control"
