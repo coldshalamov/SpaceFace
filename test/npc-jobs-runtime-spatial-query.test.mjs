@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { SpatialHash } from '../src/core/spatialHash.js';
-import { createNearestEntityQueryService } from '../src/core/spatialQuery.js';
+import {
+  createNearestEntityQueryService,
+  findNearestEntityIdFullScan,
+} from '../src/core/spatialQuery.js';
 import { NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
 import npcJobsRuntime from '../src/systems/npcJobsRuntime.js';
 
@@ -48,11 +51,12 @@ function stateFor(entities, hashEntities = entities) {
   };
 }
 
-function createHostileService(state) {
+function createHostileService(state, options = {}) {
   return createNearestEntityQueryService(state, {
     entityType: 'ship',
     team: 1,
     fallbackIndex: 'ships',
+    ...options,
   });
 }
 
@@ -110,6 +114,113 @@ test('nearest hostile service covers unindexed hulls, same-tick spawns, and inac
   service.execute();
   assert.equal(fallback.resultId, spawned.id, 'inactive hashes use the indexed ship domain');
   assert.equal(service.getDiagnostics().fallbackBatches, 1);
+});
+
+test('batched hostile results match the full-scan oracle in stable request order across churn', () => {
+  const firstOwner = entity(100, 0, 0);
+  const secondOwner = entity(101, 100, 0);
+  const highTie = entity(9, 5, 0, { team: 1 });
+  const lowTie = entity(3, -5, 0, { team: 1 });
+  const wrongTeam = entity(4, 1, 0, { team: 2 });
+  const wrongType = entity(5, 2, 0, { type: 'asteroid', team: 1 });
+  const exactBoundary = entity(7, 120, 0, { team: 1 });
+  const stale = entity(8, 1, 0, { team: 1 });
+  const state = stateFor([
+    firstOwner,
+    secondOwner,
+    highTie,
+    lowTie,
+    wrongTeam,
+    wrongType,
+    exactBoundary,
+    stale,
+  ]);
+  state.entities.delete(stale.id);
+  stale.alive = false;
+
+  const service = createHostileService(state, { shadow: true });
+  service.begin();
+  const first = service.request('job:zeta', firstOwner.id, 0, 0, 6);
+  const second = service.request('job:alpha', secondOwner.id, 100, 0, 20);
+  assert.deepEqual(
+    service.getRequests().map((request) => request.requestId),
+    ['job:zeta', 'job:alpha'],
+    'batch output order follows stable owner request order rather than spatial bucket order',
+  );
+  service.execute();
+
+  assert.equal(first.resultId, findNearestEntityIdFullScan(state, first, {
+    entityType: 'ship',
+    team: 1,
+  }));
+  assert.equal(first.resultId, lowTie.id, 'equal-distance ties select the lower stable id');
+  assert.equal(second.resultId, null, 'empty and exact-radius cases remain empty');
+
+  lowTie.alive = false;
+  state.entities.delete(lowTie.id);
+  service.recordDestroy({ id: lowTie.id });
+  const spawned = entity(2, 2, 0, { team: 1 });
+  state.entityList.push(spawned);
+  state.entities.set(spawned.id, spawned);
+  state.entityIndex.ships.push(spawned);
+  service.recordSpawn({ id: spawned.id, entity: spawned });
+
+  service.begin();
+  const churned = service.request('job:zeta', firstOwner.id, 0, 0, 6);
+  service.execute();
+  assert.equal(churned.resultId, findNearestEntityIdFullScan(state, churned, {
+    entityType: 'ship',
+    team: 1,
+  }));
+  assert.equal(churned.resultId, spawned.id, 'same-tick spawn replaces a destroyed tie candidate');
+  assert.deepEqual(
+    {
+      checks: service.getDiagnostics().shadowChecks,
+      mismatches: service.getDiagnostics().shadowMismatches,
+    },
+    { checks: 3, mismatches: 0 },
+    'the full-scan shadow oracle observes every accepted request without a mismatch',
+  );
+});
+
+test('hostile-query candidate curve is flat when total population grows from 1x to 5x remotely', () => {
+  function sample(totalPopulation) {
+    const owner = entity(100, 0, 0);
+    const localHostile = entity(1, 10, 0, { team: 1 });
+    const remote = [];
+    for (let index = 0; index < totalPopulation - 2; index++) {
+      remote.push(entity(1000 + index, 10000 + index * 128, 10000, { team: 1 }));
+    }
+    const state = stateFor([owner, localHostile, ...remote]);
+    const service = createHostileService(state, { shadow: true });
+    service.begin();
+    const request = service.request('job:scale', owner.id, 0, 0, 32);
+    service.execute();
+    const diagnostics = service.getDiagnostics();
+    return {
+      population: state.entityList.length,
+      resultId: request.resultId,
+      requests: diagnostics.lastBatchRequests,
+      candidates: diagnostics.lastBatchCandidates,
+      scratchGrowth: diagnostics.queryScratchGrowth,
+      shadowMismatches: diagnostics.shadowMismatches,
+    };
+  }
+
+  const current = sample(100);
+  const fiveTimes = sample(500);
+  assert.equal(fiveTimes.population, current.population * 5);
+  assert.equal(fiveTimes.resultId, current.resultId);
+  assert.deepEqual(
+    { current: current.candidates, fiveTimes: fiveTimes.candidates },
+    { current: 1, fiveTimes: 1 },
+    'remote population does not increase the one nearby broadphase candidate visit',
+  );
+  assert.deepEqual(
+    { requests: fiveTimes.requests, scratchGrowth: fiveTimes.scratchGrowth },
+    { requests: 1, scratchGrowth: 1 },
+  );
+  assert.equal(current.shadowMismatches + fiveTimes.shadowMismatches, 0);
 });
 
 test('nearest hostile requests and SpatialHash batch scratch reuse their high-water storage', () => {
@@ -205,4 +316,15 @@ test('npcJobsRuntime batches eligible hostile queries and excludes controlled hu
   assert.equal(state.npcJobs.byId['job:second'].threatId, hostile.id);
   assert.equal(state.npcJobs.byId['job:controlled'].job.phase, NPC_JOB_PHASE.TRANSIT);
   assert.equal(state.npcJobs.byId['job:controlled'].threatId, null);
+
+  const ownerFacts = runtime.threatQueryDiagnostics();
+  assert.equal(ownerFacts.schema, 'spaceface.npcJobsThreatQueryDiagnostics.v1');
+  assert.equal(ownerFacts.available, true);
+  assert.equal(ownerFacts.queryBatches, 1);
+  assert.equal(ownerFacts.queryRequests, 2);
+  assert.equal(ownerFacts.queryResults, 2);
+  assert.equal(ownerFacts.lastBatchRequests, 2);
+  ownerFacts.queryBatches = 999;
+  assert.equal(runtime.threatQueryDiagnostics().queryBatches, 1,
+    'the owner publishes a detached snapshot rather than mutable retained counters');
 });

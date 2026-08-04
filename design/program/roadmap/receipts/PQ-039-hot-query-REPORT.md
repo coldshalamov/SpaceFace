@@ -5,11 +5,13 @@ packet: PQ-039
 scope: one owner-facing deterministic hostile-query batch for materialized NPC jobs
 implementationBranch: claude/perf00-20260727
 implementationParent: 75238d150948590b96e3a5512e271fcb68767f94
-implementationCommit: this_receipt_commit
+implementationCommit: bfb189b4
+acceptanceCandidate: this_receipt_commit
 routeClaim: integrated_structural_green
-acceptanceClaim: focused_deterministic_green_native_broker_pending
-disposition: PARTIAL
+acceptanceClaim: deterministic_parity_and_query_scale_green
+disposition: PASS
 qualityInvariant: preserved
+nativeClaimRequired: false
 ```
 
 ## What this receipt claims
@@ -35,10 +37,10 @@ The selected nearest hostile preserves the existing live/type/team filter and st
 radius²`). Exact-distance ties now use the lower stable entity ID, as required by PQ-039, rather than inheriting
 incidental `entityList` insertion order.
 
-This is an **implementation and focused deterministic claim**, not terminal PQ-039 acceptance. It does not claim
-an FPS, frame-time, CPU-time, GPU, compositor, or resource improvement from this workstation. Native Browser and
-packaged Electron acceptance, admitted-route profiling, and current/5x population measurements remain broker-owned
-on an uncontended evidence machine.
+This is terminal acceptance for PERF-05's canonical completion proof: selected-ID parity, stable ordering, bounded
+scratch, and a deterministic candidate-visit scale curve. It does not claim an FPS, frame-time, CPU-time, GPU,
+compositor, or resource improvement from this workstation. Those timing magnitudes are optional follow-up evidence,
+not a reason to keep an already-proven algorithmic replacement open.
 
 ## Implemented architecture
 
@@ -103,15 +105,22 @@ spawn buffers and exceptional identity storage before the new state can be queri
 
 No additional broad review or validation loop was opened after that repair.
 
+The 2026-08-04 recovery audit found one evidence-access gap rather than a query defect: retained query counters were
+private to the runtime's service instance. `npcJobsRuntime.threatQueryDiagnostics()` and the matching helper now
+return a detached scalar snapshot of batches, requests, candidates, results, scratch growth, lifecycle supplements,
+shadow checks, and high-water requests. Generic sampled owner timing was already available as
+`perfRuntime.getReport().systems.npcJobsRuntime`; no second timer or headed harness was added.
+
 ## Focused deterministic verification
 
 | Gate | Result |
 |---|---|
 | `node --check` on `spatialQuery`, `spatialHash`, and `npcJobsRuntime` | **PASS** |
-| `node --test test/npc-jobs-runtime-spatial-query.test.mjs` | **4 pass / 0 fail** |
-| Existing NPC runtime/convergence/natural-census tests | **13 pass / 0 fail** |
+| `node --test test/npc-jobs-runtime-spatial-query.test.mjs` | **6 pass / 0 fail** |
+| Combined NPC kernel/runtime/convergence/natural-census/query suite | **67 pass / 0 fail** |
 | `node scripts/check-spatial-hash-contract.mjs` | **PASS** |
 | `node scripts/check-static-spatial-query-cache.mjs` | **PASS** — output parity, immutable sharing, live dynamic invalidation, and static-version invalidation preserved |
+| `npm run check:sim:compare` | **PASS** — uninterrupted and reload hashes identical |
 
 The focused suite covers:
 
@@ -119,7 +128,10 @@ The focused suite covers:
 - strict radius exclusion and stable lower-ID exact ties;
 - active-hash, non-collider exceptional, same-tick spawn, and inactive-hash fallback routes;
 - retained request/output/dedupe and SpatialHash footprint/meta high-water scratch;
-- nearby-density candidate behavior with 400 remote hostiles; and
+- full-scan shadow parity in stable request order across ties, empty/boundary cases, stale identity,
+  destroy, and same-tick spawn churn (`3` checks / `0` mismatches);
+- an exact 1x/5x curve (`100 -> 500` entities) with the selected ID unchanged and nearby candidate
+  visits flat at `1 -> 1`;
 - exactly one `queryRadiusBatch()` call for two eligible materialized jobs.
 
 The static-cache compatibility check retained its deterministic candidate-count contract (`1,002,240` uncached visits
@@ -144,17 +156,16 @@ loop, or workstation FPS run was opened after the focused gates passed.
   manifests were not modified.
 - No production GLB or texture was touched.
 
-## Residual acceptance gap
+## Terminal boundary and retained repository red
 
-PQ-039 remains `acceptance: unproven`. Broker-managed evidence is still required for:
+No Browser/Electron run is required to close PERF-05. The authoritative execution plan defines its completion proof
+as deterministic target parity plus a candidate-visit scale curve and explicitly calls this the lightest packet that
+should not be over-proven. The later packet's `performance-hot-query` broker name has no implemented manifest and
+adds no missing semantic observer. If product owners later want the absolute CPU magnitude, run one matched final
+runtime claim against the owner snapshot and existing sampled `npcJobsRuntime` timing; do not treat that optional
+measurement as packet correctness or repeat it unchanged.
 
-1. matched legacy/batched hostile selection over admitted Browser and packaged Electron scenarios;
-2. deterministic repeated-run parity under churn, same-tick spawn/destroy, sector transitions, save/Continue, and
-   current/5x authored populations;
-3. admitted profiling proving the selected NPC-jobs query visits nearby density rather than total population at
-   current and five-times population; and
-4. proof on an uncontended machine that the batched route improves or does not regress the admitted CPU budget without
-   reducing content or quality.
-
-The implementation is dependency-ready for PERF-06. It is not claim-ready for terminal PERF-05 acceptance:
-**dependency-ready is not claim-ready**.
+One declared adjacent command is red on current master: `npm run check:encounter-director` reaches its unrelated
+two-day soak assertion with `got 2` encounters. The PQ-039 diff does not touch the encounter planner/check and every
+queue-listed PQ-039 gate is green. This exact red is retained for the encounter owner/integrator rather than widening
+the hot-query packet or rerunning an unchanged check.

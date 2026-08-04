@@ -75,6 +75,38 @@ function cleanClaimId(value) {
   return trimmed.length > 0 && trimmed.length <= 200 ? trimmed : null;
 }
 
+const THREAT_QUERY_DIAGNOSTIC_FIELDS = Object.freeze([
+  'queryBatches',
+  'spatialBatches',
+  'fallbackBatches',
+  'queryRequests',
+  'queryCandidates',
+  'queryResults',
+  'queryScratchGrowth',
+  'spawnSupplements',
+  'exceptionalCandidates',
+  'exceptionalEntities',
+  'shadowChecks',
+  'shadowMismatches',
+  'lastBatchRequests',
+  'lastBatchCandidates',
+  'highWaterRequests',
+]);
+
+function threatQueryDiagnosticsSnapshot(service) {
+  const source = service && typeof service.getDiagnostics === 'function'
+    ? service.getDiagnostics()
+    : null;
+  const snapshot = {
+    schema: 'spaceface.npcJobsThreatQueryDiagnostics.v1',
+    available: !!source,
+  };
+  for (const field of THREAT_QUERY_DIAGNOSTIC_FIELDS) {
+    snapshot[field] = Number.isFinite(source?.[field]) ? source[field] : 0;
+  }
+  return snapshot;
+}
+
 export const npcJobsRuntime = {
   name: 'npcJobsRuntime',
   // We serialize our own already-plain records; the save owner keeps its defensive clone off.
@@ -138,6 +170,9 @@ export const npcJobsRuntime = {
         releaseControl: (jobId, claimId) => this.releaseControl(jobId, claimId),
         controlClaim: (jobId) => this.controlClaim(jobId),
         activeControlClaimCount: () => this.activeControlClaimCount(),
+        // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
+        // callers cannot mutate the retained hot-path counters or request scratch.
+        threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
       };
     }
   },
@@ -312,6 +347,11 @@ export const npcJobsRuntime = {
     let count = 0;
     for (const jobId of Object.keys(byId)) if (byId[jobId] && byId[jobId].control) count++;
     return count;
+  },
+
+  /** Owner-facing scalar evidence for PERF-05; generic owner timing remains in perfRuntime. */
+  threatQueryDiagnostics() {
+    return threatQueryDiagnosticsSnapshot(this._threatQueries);
   },
 
   // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
