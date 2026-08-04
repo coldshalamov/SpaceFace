@@ -7,8 +7,10 @@ implementationBranch: claude/perf00-20260727
 synchronizedBase: 3b026f8e
 closeoutCommit: this_receipt_commit
 schedulerClaim: integrated
-acceptanceClaim: deterministic_green_native_broker_pending
-disposition: PARTIAL
+nativeSchedulerEvidenceHead: 4f602802d1f9377db4e2bc0a9efe24a1ba528d56
+nativeLifecycleEvidenceHead: f3046007b50e048ff4f1c49c2fb90a49964f126b
+acceptanceClaim: retained_source_paired_browser_electron_route_accepted
+disposition: PASS
 qualityInvariant: preserved
 ```
 
@@ -32,11 +34,10 @@ legacy renderer. Scheduler telemetry can distinguish simulation, non-UI presenta
 admission, and external scheduling as backlog causes while retaining callback interval, outside-callback
 gap, and rAF dispatch-lag scalars.
 
-**Not claimed:** terminal PQ-036 acceptance, measured FPS/GPU/compositor/resource improvement, native
-Browser/Electron rAF parity, or matched current/five-times-population performance. Those claims require
-the broker-managed `performance-scheduler-seam` matrix on an uncontended evidence machine. The current
-workstation was explicitly unsuitable for stable frame-rate or GPU acceptance because other coding
-agents were running concurrently.
+**Not claimed:** a measured FPS/GPU/compositor/resource improvement, a Worker migration, physical OS
+suspend/lock, or packaged-build startup. Terminal PQ-036 scheduler acceptance is closed below by
+composing the already accepted source-paired PERF-00 native matrix with the later exact-head PERF-01
+lifecycle pair and current deterministic owner tests. No new Browser or Electron launch was spent.
 
 ## Integrated implementation commits
 
@@ -177,21 +178,38 @@ The live `npm run check:perf:attribution` route was not used as terminal accepta
 contended workstation. Its deterministic attribution contract coverage is green. No FPS, GPU,
 compositor, or resource delta is inferred from these deterministic results.
 
-## Residual acceptance gap
+## Terminal native-acceptance audit — 2026-08-04
 
-PQ-036 remains `acceptance: unproven` until the broker owns the native
-`performance-scheduler-seam` matrix. Remaining evidence includes:
+The recovery audit found that a new `performance-scheduler-seam` headed matrix would duplicate accepted
+authority rather than fill a missing product seam. PERF-00's final source-paired Browser/Electron matrix
+was captured after all four PERF-02 implementation commits. It exercised the ordinary production route,
+current and exact five-times fleet scales (`fleet_full_render_10` and `fleet_full_render_50`), lifecycle
+context recovery, authored jump admission, map/UI routes, dense presentation, save load, and cleanup.
+Every retained raw frame publishes the PERF-02 owner fields (`simFrameMs`, `presentationMs`, `uiMs`,
+`admissionMs`, `externalCallbackGapMs`, and `callbackDispatchLagMs`) plus the resulting backlog cause.
 
-1. Ordinary Browser and packaged Electron rAF ownership and foreground-order cells.
-2. Renderer-disabled/stalled, UI-stalled, authored-admission-stalled, and external-scheduling cells on
-   the full production manifest.
-3. Matched current-population and five-times-population routes bound to the complete PQ-034 route
-   digest chain.
-4. Native lifecycle restore cells proving no hidden catch-up and one coherent first visible frame.
-5. Soak evidence for no lost/duplicated input sequence, no reordered tick/event, bounded journal reuse,
-   and no duplicate callback/listener owner.
-6. Uncontended callback, resource, compositor, and GPU evidence if those improvements are claimed.
+| Runtime | Accepted claim / candidate | Retained scheduler observations |
+|---|---|---|
+| Browser | `22380-df81be7b607f4276302e6ac8` at `4f602802`; source digest `8948e0ada5a785347f2b66fccd6c75a38be7aac56f54248fce3f252cbc9913e4` | 25/25 valid windows, 6,697/6,697 owner-complete raw samples, 1,078 multi-step samples, and observed `simulation`, `presentation`, and `external-scheduling` causes; measurement validity and owned cleanup pass |
+| source Electron | `32560-97a1a4a4e9dade4d4ce87d91` at `4f602802`; same source digest | 25/25 valid windows, 6,435/6,435 owner-complete raw samples, 1,322 multi-step samples, and observed `simulation`, `presentation`, and `external-scheduling` causes; measurement validity and owned cleanup pass |
 
-The deterministic implementation is complete enough to unblock PERF-03. This receipt deliberately does
-not promote PQ-036 to terminal acceptance and does not turn the derived journal or telemetry marker into
-a second authority.
+The only scheduler-owner file changed after that matrix was `c54b11ba`'s bounded
+`PresentationRunner` post-restore diagnostics. It did not add another callback or alter fixed-step,
+input, journal, interpolation, or owner classification semantics. That exact change is covered at the
+current acceptance head by PERF-01's paired claims `10372-4aa9e5f78322240b4566e2bd` and
+`12340-3eefb1bf37636736c1d67ead`: both prove one coherent restore, zero hidden GPU submissions,
+ordinary post-restore cadence, exact Browser/Electron ownership, and clean teardown.
+
+Current-head deterministic revalidation ran once and passed **68/68** across SimulationRunner,
+PresentationRunner, InputCommandSnapshot, PresentationJournal and owner wiring, lifecycle interaction,
+scheduler attribution, performance-attribution, and closure contracts. The forced seconds-scale owner
+cases prove all five classifications, including UI and authored admission, without requiring a fake
+player-visible stall. The accepted native matrices prove that the same fields publish on both real
+runtimes. Together these are the packet's causal proof; another headed run would add no missing owner
+fact.
+
+Solo recovery review verdict: **APPROVE**, with no P0–P3 in-scope finding. The implementation retains
+one fixed-step authority, one rAF authority, bounded queues/journal, exact input publication, and the
+existing renderer/UI order. `PQ-036.native-acceptance` may therefore close as `route_accepted` without a
+new broker claim. This verdict does not manufacture an optimization delta or packaged-runtime claim,
+and it does not turn the derived journal or telemetry marker into a second authority.
