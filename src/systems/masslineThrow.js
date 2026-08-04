@@ -4,8 +4,8 @@
 // arbitration; we read actions.throwArm). Reeling is the physically-honest spin-up (conservation
 // of angular momentum through the Rapier constraint); this system supplies ONLY the release
 // precision the player's hardware can't: a solution read each tick (mirrored for the HUD/VFX
-// indicator), an auto-cut on the solution frame while the throw is armed, and a bounded post-cut
-// exit correction for manual self-sling releases inside the snap window.
+// indicator) and an auto-cut on the solution frame while the throw is explicitly armed. Manual
+// self-sling cuts preserve their real exit direction and receive only the load-scaled flourish.
 //
 // Runs AFTER tetherGameplay/masslineTelemetry/masslineImpacts in UPDATE_ORDER so it reads settled
 // tether state. NOT in the sf-sim curated harness; every behavioral path is additionally gated on
@@ -20,8 +20,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // manual-release forgiveness half-window
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
-const SLING_BONUS_PER_DECADE = 55;  // wu/s of self-sling exit bonus per mass decade over the ship
-const SLING_BONUS_MAX_DECADES = 3;  // planets/stations cap out at 3 decades of bonus
+const SLING_RELEASE_SPEED_FRACTION = 0.15; // small game-feel flourish on top of a real taut swing
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
@@ -100,14 +99,11 @@ export const masslineThrow = {
 
     // Cache the live swing for the release consumers (see _onManualCut).
     const kin = tetherPairKinematics(player, payload);
-    const telemetry = state.player.masslineTelemetry;
     this._swing = {
-      tick: state.tick,
-      omega: kin.omega,
       anchorId: payload.id,
-      anchorMass: Math.max(0.1, finite(payload.mass, 1)),
       playerMass: Math.max(0.1, finite(player.mass, 1)),
-      tangentialSpeed: telemetry && telemetry.active ? finite(telemetry.tangentialSpeed, 0) : 0,
+      taut: String(tether.phase || 'slack') !== 'slack',
+      load: String(tether.phase || 'slack') === 'slack' ? 0 : clamp01(finite(tether.load, 0)),
     };
 
     const armed = !!(state.input && state.input.actions && state.input.actions.throwArm);
@@ -117,8 +113,8 @@ export const masslineThrow = {
     runtime.payloadId = payload.id;
 
     // Self-sling read (case B) is always live while latched: YOUR exit solution toward the
-    // selected target, consumed by the indicator and by the manual-cut snap assist.
-    runtime.selfSolution = this._selfSolution(state, player, payload, kin.omega);
+    // selected target, consumed by the indicator and release predictor.
+    runtime.selfSolution = this._selfSolution(state, player, kin.omega);
 
     if (!armed && !this._pendingSnap) {
       runtime.aimTargetId = null;
@@ -262,14 +258,14 @@ export const masslineThrow = {
   },
 
   // Self-sling solution (case B): the PLAYER is the payload; the aim is the selected target.
-  _selfSolution(state, player, payload, omega) {
+  _selfSolution(state, player, omega) {
     const aim = this._resolveSelfAim(state);
     if (!aim) return null;
     const baseSpeed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
     const anticipatedBonusDv = selfSlingBonusDv(
-      payload && payload.mass,
-      player.mass,
-      this._swing && this._swing.tangentialSpeed,
+      baseSpeed,
+      this._swing && this._swing.load,
+      this._swing && this._swing.taut,
     );
     const predictedSpeed = baseSpeed + anticipatedBonusDv;
     const speedScale = baseSpeed > 1 ? predictedSpeed / baseSpeed : 1;
@@ -478,14 +474,9 @@ export const masslineThrow = {
     this.bus.emit('massline:releaseValidated', receipt);
   },
 
-  // Manual F-cut released the PLAYER (case B). Two bounded assists, both flag-gated and both
-  // driven by last tick's cached swing:
-  //  1. Snap window: if the selected-target exit error is inside what the swing sweeps in
-  //     SNAP_WINDOW_MS, rotate the exit velocity onto the solution with an impulse (bounded by
-  //     construction: correction angle <= |omega| * window).
-  //  2. Anchor-mass slingshot bonus (§4.1 approved approximation): bigger anchor = mightier
-  //     fling, log-scaled in mass decades over the ship, applied along the (corrected) exit.
-  _onManualCut(payload) {
+  // Manual cut preserves the player's real exit direction. The only addition is a load-scaled
+  // percentage of actual exit speed, so a slack or stationary release adds exactly nothing.
+  _onManualCut() {
     const state = this.state;
     if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
     const swing = this._swing;
@@ -496,76 +487,34 @@ export const masslineThrow = {
     if (speed < SLING_MIN_EXIT_SPEED) return;
 
     const physics = this.helpers && this.helpers.combatPhysics;
-    const canImpulse = physics && typeof physics.applyImpulse === 'function';
-    let exitAngle = Math.atan2(player.vel.z, player.vel.x);
-    let corrected = false;
-    const impulses = [];
-
-    // 1) Snap the exit onto the selected-target solution when the release landed in the window.
+    if (!physics || typeof physics.applyImpulse !== 'function' || !swing.taut) return;
+    const exitAngle = Math.atan2(player.vel.z, player.vel.x);
     const runtime = ensureThrowSubtree(state);
     const self = runtime.selfSolution;
-    const assistMode = releaseAssistMode(state);
-    if (canImpulse && self && assistMode !== 'off' && Math.abs(swing.omega) > 1e-3) {
-      const windowRad = Math.abs(swing.omega) * (SNAP_WINDOW_MS / 1000);
-      const err = finite(self.errorRad, Math.PI);
-      if (Math.abs(err) <= Math.max(windowRad, self.tolRad || 0)) {
-        const target = Math.atan2(player.vel.z, player.vel.x) + err;
-        const vx = Math.cos(target) * speed - player.vel.x;
-        const vz = Math.sin(target) * speed - player.vel.z;
-        const impulse = { x: vx * swing.playerMass, z: vz * swing.playerMass };
-        const accepted = !!physics.applyImpulse({
-          entityId: player.id,
-          impulse,
-          point: null,
-          reason: 'massline_selfsling_snap',
-          tick: state.tick,
-        });
-        impulses.push({
-          entityId: player.id,
-          reason: 'massline_selfsling_snap',
-          accepted,
-          impulse,
-          angularCorrectionRad: err,
-          tick: state.tick,
-        });
-        if (accepted) { exitAngle = target; corrected = true; }
-      }
-    }
-
-    // 2) Anchor-mass release bonus — only from a genuine swing (tangential-dominant read cached
-    // from the live line), never from a parked tap-latch-tap.
-    let bonusDv = 0;
-    if (canImpulse && Math.abs(swing.tangentialSpeed) >= SLING_MIN_EXIT_SPEED) {
-      const proposedBonusDv = selfSlingBonusDv(
-        swing.anchorMass,
-        swing.playerMass,
-        swing.tangentialSpeed,
-      );
-      if (proposedBonusDv > 0) {
-        const impulse = {
-          x: Math.cos(exitAngle) * proposedBonusDv * swing.playerMass,
-          z: Math.sin(exitAngle) * proposedBonusDv * swing.playerMass,
-        };
-        const accepted = !!physics.applyImpulse({
-          entityId: player.id,
-          impulse,
-          point: null,
-          reason: 'massline_sling_bonus',
-          tick: state.tick,
-        });
-        impulses.push({
-          entityId: player.id,
-          reason: 'massline_sling_bonus',
-          accepted,
-          impulse,
-          deltaSpeed: proposedBonusDv,
-          tick: state.tick,
-        });
-        if (accepted) bonusDv = proposedBonusDv;
-      }
-    }
-
-    if (corrected || bonusDv > 0) {
+    const proposedBonusDv = selfSlingBonusDv(speed, swing.load, swing.taut);
+    if (!(proposedBonusDv > 0)) return;
+    const impulse = {
+      x: Math.cos(exitAngle) * proposedBonusDv * swing.playerMass,
+      z: Math.sin(exitAngle) * proposedBonusDv * swing.playerMass,
+    };
+    const accepted = !!physics.applyImpulse({
+      entityId: player.id,
+      impulse,
+      point: null,
+      reason: 'massline_sling_bonus',
+      tick: state.tick,
+    });
+    if (accepted) {
+      const bonusDv = proposedBonusDv;
+      const impulses = [{
+        entityId: player.id,
+        reason: 'massline_sling_bonus',
+        accepted: true,
+        impulse,
+        deltaSpeed: bonusDv,
+        load: swing.load,
+        tick: state.tick,
+      }];
       const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
       const prediction = predictionReceipt(self || {});
       const receipt = {
@@ -574,8 +523,9 @@ export const masslineThrow = {
         physicsEarned: bonusDv > 0,
         targetId: self ? self.targetId : null,
         anchorId: swing.anchorId,
-        corrected,
+        corrected: false,
         bonusDv,
+        load: swing.load,
         exitAngle,
         exitSpeed: speed + bonusDv,
         tick: state.tick,
@@ -665,12 +615,11 @@ function predictionReceipt(solution) {
   };
 }
 
-function selfSlingBonusDv(anchorMass, playerMass, tangentialSpeed) {
-  if (Math.abs(finite(tangentialSpeed)) < SLING_MIN_EXIT_SPEED) return 0;
-  const massRatio = Math.max(1, finite(anchorMass, 1) / Math.max(0.1, finite(playerMass, 1)));
-  const decades = Math.log10(massRatio);
-  const clamped = Math.min(SLING_BONUS_MAX_DECADES, Math.max(0, decades));
-  return clamped > 0.15 ? clamped * SLING_BONUS_PER_DECADE : 0;
+export function selfSlingBonusDv(exitSpeed, lineLoad, taut) {
+  const speed = Math.abs(finite(exitSpeed));
+  const load = taut ? clamp01(finite(lineLoad)) : 0;
+  if (speed < SLING_MIN_EXIT_SPEED || !(load > 0)) return 0;
+  return speed * SLING_RELEASE_SPEED_FRACTION * load;
 }
 
 function releaseTrajectoryReceipt(pending, actualVelocity) {
@@ -714,5 +663,6 @@ function writeIdle(runtime) {
 
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function positive(v, fb) { return Number.isFinite(v) && v > 0 ? v : fb; }
+function clamp01(v) { return Math.max(0, Math.min(1, finite(v))); }
 
 export { FALLBACK };

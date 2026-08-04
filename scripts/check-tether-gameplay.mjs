@@ -28,11 +28,11 @@ await assertPickupMasslinePull();
 await assertInitialLatchReleaseDoesNotCut();
 await assertShortTapCutsAfterDelay();
 await assertHeldGReelsInsteadOfCutting();
-await assertTetherHelmAuthority();
-await assertLoadedTetherFacesNoseInwardWhileThrusting();
+await assertOrbitChordUsesOrdinaryHelm();
+await assertLoadedTetherDoesNotSteerWithoutTurn();
 await assertSlowReverseIntoTetherLimitStaysStable();
 await assertReverseIntoDynamicPayloadMasslineStaysBounded();
-await assertTetherCutClampsReleaseSpin();
+await assertTetherCutPreservesReleaseSpin();
 assertNpmScript('check:sg02:tether');
 assertNpmScript('check:sg02:tether-resilience');
 
@@ -127,8 +127,8 @@ async function assertGameplaySlingshot() {
   const postSpeed = speed(postCut);
   const headingDeltaDeg = angleBetweenDeg(preLatch, postCut);
 
-  assert(postSpeed >= preSpeed * 1.25,
-    `post-cut speed should be >=1.25x pre-latch speed; ${postSpeed.toFixed(2)} vs ${preSpeed.toFixed(2)}`);
+  assert(postSpeed >= preSpeed * 0.9,
+    `the physical arc must preserve at least 90% of entry speed without a canned launch; ${postSpeed.toFixed(2)} vs ${preSpeed.toFixed(2)}`);
   assert(headingDeltaDeg >= 70,
     `post-cut heading should change by >=70 degrees; got ${headingDeltaDeg.toFixed(1)}`);
   assert.equal(events.released.length, 1, 'tetherCut should emit tether:released once');
@@ -528,7 +528,7 @@ async function assertShortTapCutsAfterDelay() {
   assert.equal(events.released[0].targetId, asteroid.id, 'short G tap release should identify the tether target');
 }
 
-async function assertTetherHelmAuthority() {
+async function assertOrbitChordUsesOrdinaryHelm() {
   const harness = createHarness();
   const { state, helpers, runtime, events } = harness;
 
@@ -568,7 +568,7 @@ async function assertTetherHelmAuthority() {
   assert.notEqual(state.player.tether.phase, 'slack', 'helm-authority fixture should load the tether before steering');
 
   const beforeRot = player.rot || 0;
-  let helmAuthoritySeen = false;
+  let assistSeen = false;
   for (let i = 0; i < 72; i++) {
     state.input.actions.reelDelta = 0;
     state.input.turnIntent = 1;
@@ -576,18 +576,19 @@ async function assertTetherHelmAuthority() {
     state.input.moveX = 0;
     state.input.boost = false;
     stepHarness(harness);
-    helmAuthoritySeen = helmAuthoritySeen || !!(player._flightFrame && player._flightFrame.tetherHelmAuthority > 1);
+    assistSeen = assistSeen || !!(player._flightFrame && player._flightFrame.orbitAssist?.active);
   }
 
   const yawDelta = positiveAngleDelta(player.rot || 0, beforeRot);
   assert.equal(events.broke.length, 0, 'tether helm steering should not break the standard tether');
-  assert(helmAuthoritySeen,
-    'Flight V3 should apply a tether-only helm authority multiplier while the line is loaded');
+  assert(assistSeen, 'forward plus turn should engage the yaw-only orbit helper');
+  assert.equal(Object.hasOwn(player._flightFrame || {}, 'tetherHelmAuthority'), false,
+    'tethering must not install a separate helm authority');
   assert(yawDelta > 0.32,
     `loaded tether should still allow meaningful pilot yaw; got ${yawDelta.toFixed(3)} rad`);
 }
 
-async function assertLoadedTetherFacesNoseInwardWhileThrusting() {
+async function assertLoadedTetherDoesNotSteerWithoutTurn() {
   const harness = createHarness();
   const { state, helpers, runtime, events } = harness;
 
@@ -627,9 +628,8 @@ async function assertLoadedTetherFacesNoseInwardWhileThrusting() {
   assert.notEqual(state.player.tether.phase, 'slack', 'nose-inward fixture should load the tether before steering');
 
   setBodyYaw(runtime, player, Math.PI, 0);
-  const beforeError = Math.abs(wrapAngle(Math.atan2(asteroid.pos.z - player.pos.z, asteroid.pos.x - player.pos.x) - player.rot));
-  let bestError = beforeError;
-  let assistSeen = false;
+  const beforeYaw = player.rot;
+  let maxYawChange = 0;
   for (let i = 0; i < 72; i++) {
     state.input.actions.reelDelta = 0;
     state.input.turnIntent = 0;
@@ -637,14 +637,12 @@ async function assertLoadedTetherFacesNoseInwardWhileThrusting() {
     state.input.moveX = 0;
     state.input.boost = false;
     stepHarness(harness);
-    const err = Math.abs(wrapAngle(Math.atan2(asteroid.pos.z - player.pos.z, asteroid.pos.x - player.pos.x) - player.rot));
-    bestError = Math.min(bestError, err);
-    assistSeen = assistSeen || !!(player._flightFrame && player._flightFrame.tetherNoseAssist);
+    maxYawChange = Math.max(maxYawChange, Math.abs(wrapAngle(player.rot - beforeYaw)));
   }
-  assert(assistSeen,
-    'Flight V3 should engage nose-inward tether assist when a loaded line is held without manual yaw');
-  assert(bestError < beforeError * 0.45,
-    `loaded tether thrust should turn the nose inward; best error ${beforeError.toFixed(3)} -> ${bestError.toFixed(3)} rad`);
+  assert(maxYawChange < 0.08,
+    `forward thrust without turn must not make the tether steer the ship; yaw moved ${maxYawChange.toFixed(3)} rad`);
+  assert.equal(player._flightFrame.orbitAssist.active, false,
+    'forward without turn does not engage the optional yaw helper');
 }
 
 async function assertSlowReverseIntoTetherLimitStaysStable() {
@@ -689,15 +687,12 @@ async function assertSlowReverseIntoTetherLimitStaysStable() {
     maxSpeed = Math.max(maxSpeed, speed(velocityVector(player)));
   }
 
-  const facingError = Math.abs(wrapAngle(Math.atan2(asteroid.pos.z - player.pos.z, asteroid.pos.x - player.pos.x) - player.rot));
   assert.equal(events.broke.length, 0, 'slow reverse into a taut tether should not break the standard tether');
   assert(state.player.tether && state.player.tether.active, 'slow reverse fixture should keep an active tether');
   assert(maxYawRate <= 5.35,
     `slow reverse into line limit should not top-spin; max yaw ${maxYawRate.toFixed(3)} rad/s`);
   assert(maxSpeed < 180,
     `slow reverse into line limit should not fling the ship into space; max speed ${maxSpeed.toFixed(1)} wu/s`);
-  assert(facingError < Math.PI * 0.72,
-    `loaded tether should not settle facing away from the anchor; error ${facingError.toFixed(3)} rad`);
 
   let reverseMaxYawRate = 0;
   let reverseMaxSpeed = 0;
@@ -784,7 +779,7 @@ async function assertReverseIntoDynamicPayloadMasslineStaysBounded() {
     `dynamic payload reverse-edge should not fling the payload; max payload speed ${maxPayloadSpeed.toFixed(1)} wu/s`);
 }
 
-async function assertTetherCutClampsReleaseSpin() {
+async function assertTetherCutPreservesReleaseSpin() {
   const harness = createHarness();
   const { state, helpers, runtime, events } = harness;
 
@@ -823,7 +818,7 @@ async function assertTetherCutClampsReleaseSpin() {
   assert(state.player.tether && state.player.tether.active, 'release-spin fixture should keep an active tether');
   assert.notEqual(state.player.tether.phase, 'slack', 'release-spin fixture should load the tether before cut');
 
-  setBodyYaw(runtime, player, player.rot || 0, 18);
+  setBodyYaw(runtime, player, player.rot || 0, 4.5);
   state.input.actions.reelDelta = 0;
   state.input.turnIntent = 0;
   state.input.moveZ = 0;
@@ -833,10 +828,10 @@ async function assertTetherCutClampsReleaseSpin() {
 
   const bodyYawRate = readBodyYawRate(runtime, player.id);
   assert.equal(events.released.length, 1, 'release-spin fixture should release exactly once');
-  assert(Math.abs(player.angVel || 0) <= 3.45,
-    `tether cut should clamp entity yaw instead of leaving top-spin; got ${Number(player.angVel || 0).toFixed(3)} rad/s`);
-  assert(Math.abs(bodyYawRate) <= 3.45,
-    `tether cut should clamp Rapier body yaw; got ${bodyYawRate.toFixed(3)} rad/s`);
+  assert(Math.abs(player.angVel || 0) > 3.45,
+    `cutting the line must not install a lower release yaw cap; got ${Number(player.angVel || 0).toFixed(3)} rad/s`);
+  assert(Math.abs(bodyYawRate) > 3.45,
+    `Rapier must preserve the same ordinary post-cut spin; got ${bodyYawRate.toFixed(3)} rad/s`);
 }
 
 function createHarness() {

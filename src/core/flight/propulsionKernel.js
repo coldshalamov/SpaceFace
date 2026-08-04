@@ -270,21 +270,6 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
 
   const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
   const baseCap = input.throttle * governedSpeed * boostMult;
-  // A live loaded Massline redirects velocity through Rapier. Applying the ordinary assisted
-  // overspeed governor here would issue reverse engine thrust into that constraint, destroying
-  // the player's swing. It is deliberately not an all-purpose free-speed flag: the input owner
-  // supplies it only for an active player Massline (including a brief slack beat), and an
-  // explicit brake still owns stopping.
-  if (input.masslineActive && !input.brake) {
-    return {
-      cap: baseCap,
-      baseCap,
-      engaged: false,
-      overspeed: false,
-      physicsEarned: true,
-      masslineActive: true,
-    };
-  }
   // The tag is supplied only for a real tether/self-sling exit. It cannot create overspeed:
   // from below the ordinary cap, baseCap remains the target. From above it, the moving target
   // decays exponentially, preserving the spectacle while still spending the earned velocity.
@@ -967,7 +952,6 @@ function normalizeInput(input = {}) {
     boostPressed: !!input.boostPressed,
     boostReleased: !!input.boostReleased,
     physicsEarnedMomentum: !!input.physicsEarnedMomentum,
-    masslineActive: !!input.masslineActive,
     earnedMomentumDecayTauS: positive(input.earnedMomentumDecayTauS, 6),
     earnedMomentumAssistScale: clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1),
     coastAssistScale: clamp(finite(input.coastAssistScale, 1), 0, 1),

@@ -283,7 +283,7 @@ section('throw solution opens once per revolution with size-honest tolerance', (
 
 // ── 5. Flag-on system behaviors ───────────────────────────────────────────────────────────────
 withFlags(true, () => {
-  section('context attachment keeps combat on the nose and towable bodies on both centers of mass', () => {
+  section('every tether leaves the player center of mass', () => {
     const state = makeState();
     const player = { id: 1, team: 0, pos: { x: 0, z: 0 } };
     const acquired = { x: 88, y: 0, z: 3 };
@@ -293,8 +293,11 @@ withFlags(true, () => {
     const tow = contextualAttachmentWorlds(player, neutral, acquired, state);
     assert.deepEqual(tow.sourceWorld, { x: 0, y: 0, z: 0 }, 'tow line must leave from player COM');
     assert.deepEqual(tow.targetWorld, { x: 100, y: 0, z: 20 }, 'dynamic tow target must attach at its COM');
-    assert.deepEqual(contextualAttachmentWorlds(player, hostile, acquired, state), { targetWorld: acquired },
-      'hostile combat tether must retain the aimed surface/nose endpoint');
+    const combat = contextualAttachmentWorlds(player, hostile, acquired, state);
+    assert.deepEqual(combat.sourceWorld, { x: 0, y: 0, z: 0 },
+      'hostile combat tether must not steer through a nose anchor');
+    assert.deepEqual(combat.targetWorld, { x: 100, y: 0, z: 20 },
+      'dynamic combat target uses its center of mass');
     assert.deepEqual(contextualAttachmentWorlds(player, asteroid, acquired, state).targetWorld, acquired,
       'immovable terrain keeps the readable surface endpoint');
   });

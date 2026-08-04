@@ -281,13 +281,9 @@ export const tetherGameplay = {
       return;
     }
 
-    // Context-aware attachment (Wave M2 §3.2, flag massline2.contextAttach — OFF headless): one
-    // tether key, intent read from the target. A HOSTILE ship keeps the authored nose anchor —
-    // facing him is the point (flee-chases keep your guns on him; orbits hold him at your focal
-    // point). Everything else is a TOW: the player-side anchor moves to the hull center so
-    // hauling a rock/wreck/neutral (hitchhiking, §5.1) pulls through the center of mass instead
-    // of torquing the nose around.
-    const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld, state);
+    // The line always leaves the player's center of mass. A physical constraint attached to a
+    // nose socket applies steering torque by itself, which makes latching silently take over yaw.
+    const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld);
     const result = attachments.create({
       defId: TETHER_DEF_ID,
       ownerId: player.id,
@@ -1106,14 +1102,10 @@ function masslineTargetLabel(target) {
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-/** Resolve context-aware world anchors once at latch time. Hostile ships retain the authored
- * nose-to-surface combat line. Towable dynamic bodies use COM-to-COM so neither endpoint gains
- * accidental steering torque; immovable asteroids/stations retain a readable surface endpoint. */
-export function contextualAttachmentWorlds(player, target, acquiredTargetWorld, state) {
-  const hostileCraft = (target && (target.type === 'ship' || target.type === 'drone'))
-    && isHostileToPlayer(target, player && player.team, state);
-  const towAttach = massline2Flag('contextAttach') && !hostileCraft;
-  if (!towAttach) return { targetWorld: acquiredTargetWorld };
+/** Resolve physical world anchors once at latch time. The player endpoint is always COM so the
+ * rope cannot become an attitude controller. Dynamic tow payloads also use COM; large static
+ * anchors retain the selected surface point so the cable meets the visible object. */
+export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
   const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type)
     ? { x: target.pos.x, y: 0, z: target.pos.z }
     : acquiredTargetWorld;

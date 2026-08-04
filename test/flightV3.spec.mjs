@@ -347,17 +347,14 @@ function simulate({ profile, b, input, ticks, runtime }) {
     input: {
       throttle: 1,
       assistMode: 'assisted',
-      physicsEarnedMomentum: true,
-      earnedMomentumAssistScale: 0,
       masslineActive: true,
     },
     profile, runtime: createPropulsionRuntime(profile),
   });
-  assert.equal(loadedStep.telemetry.governor.engaged, false,
-    'a loaded Massline must not engage the normal overspeed governor');
-  assert.equal(loadedStep.telemetry.governor.masslineActive, true);
-  assert.ok(loadedStep.force.x > 0,
-    'loaded Massline thrust must continue forward instead of applying reverse force into the line');
+  assert.equal(loadedStep.telemetry.governor.engaged, true,
+    'an obsolete tether tag must not create a second propulsion policy');
+  assert.ok(loadedStep.force.x < 0,
+    'the same overspeed input must produce the same assisted-flight response whether tethered or not');
 
   const ordinaryOblique = body({ vel: { x: 260, z: 300 } });
   const earnedOblique = body({ vel: { x: 260, z: 300 } });
@@ -455,10 +452,12 @@ function simulate({ profile, b, input, ticks, runtime }) {
       simTime: 10,
       player: { tether: { active: true, phase: 'loaded' } },
     });
-    assert.equal(loadedInput.masslineActive, true,
-      'only a live tether may bypass the ordinary assisted speed governor');
-    assert.equal(loadedInput.earnedMomentumAssistScale, 0,
-      'a loaded line must not lateral-kill the swing it is physically redirecting');
+    assert.equal(Object.hasOwn(loadedInput, 'masslineActive'), false,
+      'a live tether must not install a separate propulsion mode');
+    assert.equal(loadedInput.physicsEarnedMomentum, false,
+      'latching alone is not earned release momentum');
+    assert.equal(loadedInput.earnedMomentumAssistScale, 1,
+      'a live tether uses the same flight-assist policy as ordinary flight');
   } finally {
     MASSLINE2_FLAGS.enabled = previous.enabled;
     MASSLINE2_FLAGS.throw = previous.throw;

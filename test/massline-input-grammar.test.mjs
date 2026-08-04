@@ -12,6 +12,7 @@ const DT = 1 / 60;
 
 function makeState(settings = createGameState(47).settings) {
   const player = { id: 'p', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  const rock = { id: 'rock', alive: true, type: 'asteroid', pos: { x: 0, z: 100 }, vel: { x: 0, z: 0 } };
   return {
     mode: 'flight',
     playerId: 'p',
@@ -23,7 +24,7 @@ function makeState(settings = createGameState(47).settings) {
     player: {
       tether: { active: false, targetId: null, strain: 0, load: 0, restLength: 0, phase: 'slack' },
     },
-    entities: { get: (id) => (id === 'p' ? player : null) },
+    entities: new Map([['p', player], ['rock', rock]]),
     input: {
       actions: {},
       aimWorld: { x: 0, z: 0 },
@@ -173,7 +174,8 @@ test('PQ-003 200 ms history joins turn-before-press and press-before-turn into o
       order === 'turn-first' ? -1 : 1,
       `${order} retains the nearby ship-local orbit intent`,
     );
-    assert.equal(state.input.turnIntent, 0, 'line-control axes do not also fight manual flight');
+    assert.equal(state.input.turnIntent, 0,
+      'remembered line intent must not manufacture yaw after the physical key is released');
   }
 });
 
@@ -192,7 +194,25 @@ test('PQ-003 line-control publishes orbit intent without letting Helm Assist bec
 
   assert.equal(state.input.actions.massline.lineControl, true);
   assert.equal(state.input.actions.massline.orbitDirection, 1);
-  assert.equal(state.input.turnIntent, 0, 'SF-05 remains the only owner of future orbit steering');
+  assert.equal(state.input.turnIntent, 1,
+    'the orbit detector observes direct pilot yaw instead of suppressing it at input');
+});
+
+test('a loaded tether does not make Helm Assist face the anchor', () => {
+  const settings = createGameState(47).settings;
+  settings.gameplay.controlScheme = 'helm-assist';
+  const host = makeInput();
+  const state = makeState(settings);
+  state.player.tether = { active: true, targetId: 'rock', phase: 'loaded', load: 0.8 };
+  host._screen.active = true;
+  host._lastKbmTick = 0;
+  host._lastKbmSeq = 0;
+  host.helpers.raycastToPlane = () => ({ x: 100, z: 0 });
+
+  step(host, state);
+
+  assert.equal(state.input.turnIntent, 0,
+    'Helm Assist follows the cursor exactly as it does in open flight; the anchor owns no yaw');
 });
 
 test('PQ-003 line-control maps forward/reverse/turn/boost and clears on modal focus loss', () => {

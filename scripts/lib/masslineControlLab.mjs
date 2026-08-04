@@ -373,24 +373,22 @@ export async function runScenario(options = {}) {
   for (let tick = 0; tick < params.ticks; tick++) {
     const input = resolveInput(params, tick);
     state.input.moveX = finite(input.moveX, 0);
-    state.input.moveZ = params.productionOrbitAssist ? 0 : finite(input.moveZ, 0);
-    state.input.turnIntent = finite(input.turnIntent, 0);
+    state.input.moveZ = params.productionOrbitAssist ? 1 : finite(input.moveZ, 0);
+    state.input.turnIntent = params.productionOrbitAssist ? 1 : finite(input.turnIntent, 0);
     state.input.boost = !!input.boost;
     state.input.aimAngle = player.rot;
     state.input.actions.reelDelta = params.productionOrbitAssist ? 0 : finite(input.reelDelta, 0);
     if (params.productionOrbitAssist) {
-      // Match the public input grammar's brief forward-hold acquisition without spending the
-      // acceptance run reeling a 90 m line down to an unrelated overload case.
-      const acquiring = tick < 12;
+      // Exercise the one public assist chord: ordinary forward + turn while a physical line exists.
       state.input.actions.massline = {
-        phase: 'line-control',
+        phase: 'idle',
         latch: false,
         cut: false,
-        lineControl: true,
-        lineLength: acquiring ? -1 : 0,
-        reelIn: acquiring ? 1 : 0,
+        lineControl: false,
+        lineLength: 0,
+        reelIn: 0,
         payOut: 0,
-        orbitDirection: 1,
+        orbitDirection: 0,
         pump: false,
         buffered: false,
         source: 'lab-public-intent',
@@ -554,7 +552,6 @@ export function makeTraceSample(tick, obs, restLength, opts = {}) {
     cmdClamped: !!(cmd && cmd.clamped),
     orbitAssistActive: !!(opts.orbitAssist && opts.orbitAssist.active),
     orbitAssistReason: opts.orbitAssist && opts.orbitAssist.reason || null,
-    orbitRadialAcceleration: round6(finite(opts.orbitAssist && opts.orbitAssist.radialAcceleration, 0)),
     orbitSaturated: !!(opts.orbitAssist && opts.orbitAssist.saturated),
     attachmentActive: opts.attachmentActive !== false,
   };
@@ -912,9 +909,11 @@ function productionOrbitMetrics(trace, contactDistance) {
   let orbitAssistActiveTicks = 0;
   let oscillations = 0;
   let previousRadialSign = 0;
+  let maxTangentialSpeed = 0;
 
   for (let i = 0; i < trace.length; i++) {
     const sample = trace[i];
+    maxTangentialSpeed = Math.max(maxTangentialSpeed, Math.abs(sample.tangentialSpeed));
     minDistance = Math.min(minDistance, sample.distance);
     if (sample.orbitAssistActive) orbitAssistActiveTicks++;
     const sign = sample.radialSpeed > 0.5 ? 1 : sample.radialSpeed < -0.5 ? -1 : 0;
@@ -932,6 +931,10 @@ function productionOrbitMetrics(trace, contactDistance) {
   }
 
   const anchorContact = minDistance <= contactDistance;
+  const initialTangentialSpeed = trace.length ? Math.abs(trace[0].tangentialSpeed) : 0;
+  const finalTangentialSpeed = trace.length ? Math.abs(trace[trace.length - 1].tangentialSpeed) : 0;
+  const tangentialSpeedGain = finalTangentialSpeed - initialTangentialSpeed;
+  const accelerated = tangentialSpeedGain >= 100;
   const sustained = trace.length === 600
     && trace[trace.length - 1].attachmentActive
     && orbitAssistActiveTicks >= 540;
@@ -939,12 +942,18 @@ function productionOrbitMetrics(trace, contactDistance) {
     && tangentDominantTick <= 120
     && !anchorContact
     && sustained
+    && accelerated
     && oscillations <= 12;
   return {
     tangentDominantTick,
     minDistance: round6(minDistance),
     contactDistance: round6(contactDistance),
     anchorContact,
+    initialTangentialSpeed: round6(initialTangentialSpeed),
+    finalTangentialSpeed: round6(finalTangentialSpeed),
+    maxTangentialSpeed: round6(maxTangentialSpeed),
+    tangentialSpeedGain: round6(tangentialSpeedGain),
+    accelerated,
     orbitAssistActiveTicks,
     oscillations,
     sustained,

@@ -53,7 +53,6 @@ import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 const HELM_SOFT_ANGLE = 0.55;
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
-const TETHER_ORBIT_SOFT_ANGLE = 0.46;  // latched/coasting: favor guns-in orbit over drift-facing
 const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
                                // forward thrust — the ship banks and carves instead of crab-sliding
 const AUTO_TARGET_GESTURE_IDLE_MS = 110;
@@ -1185,31 +1184,18 @@ export const input = {
     acts.travelBurn = travelPressed;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
-    if (masslineCommand.lineControl) {
-      // Line-control axes are ship-local commands, not simultaneous flight commands. Releasing the
-      // Massline action restores manual flight on the next fixed tick; weapon aim/fire stay free.
-      inp.moveX = 0;
-      inp.moveZ = 0;
-      inp.turnIntent = 0;
-      inp.boost = false;
-      inp.brake = false;
-    }
+    // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same
+    // forward/turn chord remains ordinary thrust and yaw, which lets the orbit detector observe
+    // what the pilot is actually doing instead of manufacturing a second control mode.
     acts.brake = inp.brake;
-    // Run after Massline arbitration so line-control axes cannot also masquerade as manual braking.
+    // Travel reads the same ordinary flight intent after the Massline adds its independent verbs.
     stepTravelLatch(this, state, inp, dt);
 
     // --- Helm Assist steering (GDD §4.1): the nose chases the cursor unless direct yaw is held.
     // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
-    if (helm && p && kbmRecent && this._screen.active && !masslineCommand.lineControl) {
+    if (helm && p && kbmRecent && this._screen.active) {
       const manualYaw = Math.abs(inp.turnIntent) > 0.001;
-      // Tether trailing (GDD §4.3): while latched and loaded, hand most attitude authority to
-      // the line — the nose-anchored joint torques the hull, so the tail swings outboard and the
-      // ship orbits guns-in. Direct yaw input still wins so keyboard pilots can deliberately spin.
-      const tetherAngle = manualYaw ? null : tetherFacingAngle(p, state, state.player && state.player.tether);
-      if (tetherAngle != null) {
-        const tetherErr = wrapAngle(tetherAngle - p.rot);
-        inp.turnIntent = Math.max(-1, Math.min(1, tetherErr / TETHER_ORBIT_SOFT_ANGLE));
-      } else if (!manualYaw) {
+      if (!manualYaw) {
         const err = wrapAngle(inp.aimAngle - p.rot);
         inp.turnIntent = Math.abs(err) < HELM_DEADBAND
           ? 0
@@ -1262,15 +1248,6 @@ function isThrowArmPayload(state) {
   if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
   if (target.type === 'payload') return true;
   return false;
-}
-
-function tetherFacingAngle(player, state, tether) {
-  if (!player || !state || !tether || !tether.active || tether.targetId == null) return null;
-  const phase = String(tether.phase || 'slack');
-  if (phase === 'slack') return null;
-  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
-  if (!target || target.alive === false || !target.pos || !player.pos) return null;
-  return Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
 }
 
 /**

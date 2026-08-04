@@ -40,17 +40,6 @@ const REEL_BOOST_K_MULT = 1.15;
 // re-lengthens when stretch is right at the break edge, so a violently fleeing capital can still
 // snap the line (the intended escape) but a normal haul no longer pays out.
 const REEL_SLIP_RELENGTH_RATIO = 0.95;
-const MAX_TETHER_RELEASE_YAW_RATE = 3.4;
-const MAX_TETHER_LOADED_YAW_RATE = 5.2;
-const MAX_TETHER_OPENING_SPEED_PAD = 10;
-const MIN_TETHER_OPENING_SPEED_LIMIT = 160;
-const MAX_TETHER_OPENING_SPEED_LIMIT = 260;
-const MIN_TETHER_ABSOLUTE_SPEED_LIMIT = 260;
-const MAX_TETHER_ABSOLUTE_SPEED_LIMIT = 420;
-const TETHER_NOSE_BASE_RATE = 1.5;
-const TETHER_NOSE_SPEED_RATE = 4.8;
-const TETHER_NOSE_RATE_GAIN = 2.5;
-const TETHER_NOSE_SPEED_FOR_AUTHORITY = 120;
 const SPRING_TUNES = Object.freeze({
   tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
@@ -398,7 +387,6 @@ export class Sg02DynamicBodyOwner {
   cutAttachment(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
-    this._releaseSpringOnCut(attachment, input.reason);
     this._removeAttachmentJoints(attachment);
     this.attachments.delete(attachment.id);
     return true;
@@ -486,10 +474,8 @@ export class Sg02DynamicBodyOwner {
       this.world.step();
     }
     this.tick++;
-    // Give first (bounds solver contact spikes), tether clamp second (its speed limits stay
-    // authoritative — the give must never re-inflate a velocity the tether clamp reduced).
+    // Bound solver contact spikes before publishing the authoritative motion snapshot.
     for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
-    this._clampLoadedTetherBodies();
 
     for (const rec of this.dynamicRecords) {
       const kinematics = this._enforcePlane(rec);
@@ -1122,7 +1108,7 @@ export class Sg02DynamicBodyOwner {
       scratch.impulseB.x = -scratch.impulseA.x;
       scratch.impulseB.y = 0;
       scratch.impulseB.z = -scratch.impulseA.z;
-      applyAttachmentImpulse(attachment, scratch.impulseA, scratch.impulseB, source, target, relativeSpeed);
+      applyAttachmentImpulse(attachment, scratch.impulseA, scratch.impulseB, source, target);
       accumulateForce(attachment.owner, scratch.impulseA, this.fixedDt);
       accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
     }
@@ -1171,21 +1157,6 @@ export class Sg02DynamicBodyOwner {
     attachment.contactJoint = null;
   }
 
-  _clampLoadedTetherBodies() {
-    for (const attachment of this.attachments.values()) {
-      if (!isLoadedStandardTether(attachment)) continue;
-      clampTetherLoadedYaw(attachment.owner, MAX_TETHER_LOADED_YAW_RATE);
-      clampTetherLoadedSpeed(attachment.owner, tetherLoadedSpeedLimit(attachment, attachment.owner));
-      clampTetherLoadedSpeed(attachment.target, tetherLoadedSpeedLimit(attachment, attachment.target));
-    }
-  }
-
-  _releaseSpringOnCut(attachment, reason) {
-    if (String(reason || '') !== 'tether_cut') return;
-    if (attachment.defId !== 'tether_standard') return;
-    applyTetherLinearReleaseKick(attachment);
-    clampTetherReleaseYaw(attachment.owner, MAX_TETHER_RELEASE_YAW_RATE);
-  }
 }
 
 async function loadRapierCompat() {
@@ -1404,14 +1375,12 @@ function velocityAtPointInto(out, rec, point) {
   return out;
 }
 
-function applyAttachmentImpulse(attachment, impulseA, impulseB, source, target, relativeSpeed) {
+function applyAttachmentImpulse(attachment, impulseA, impulseB, source, target) {
   if (attachment && attachment.defId === 'tether_standard') {
+    // The standard Massline owns only the radial constraint. Steering, speed policy and release
+    // velocity remain with the ordinary flight controller and the player's actual momentum.
     applyCenterImpulse(attachment.owner, impulseA);
     applyCenterImpulse(attachment.target, impulseB);
-    applyTetherNoseTorqueImpulse(attachment, source, target, relativeSpeed);
-    clampTetherLoadedYaw(attachment.owner, MAX_TETHER_LOADED_YAW_RATE);
-    clampTetherLoadedSpeed(attachment.owner, tetherLoadedSpeedLimit(attachment, attachment.owner));
-    clampTetherLoadedSpeed(attachment.target, tetherLoadedSpeedLimit(attachment, attachment.target));
     return;
   }
   applyImpulseAtPoint(attachment.owner, impulseA, source);
@@ -1430,143 +1399,6 @@ function applyImpulseAtPoint(rec, impulse, point) {
     return;
   }
   rec.body.applyImpulse(impulse, true);
-}
-
-function applyTetherNoseTorqueImpulse(attachment, source, target, relativeSpeed) {
-  const rec = attachment && attachment.owner;
-  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
-  if (!source || !target) return;
-  const ownerPos = rec.body.translation();
-  const dx = finite(target.x) - finite(ownerPos.x);
-  const dz = finite(target.z) - finite(ownerPos.z);
-  const distance = Math.hypot(dx, dz);
-  if (!(distance > 1e-6)) return;
-
-  const desired = Math.atan2(dz, dx);
-  const yaw = yawFromQuat(rec.body.rotation());
-  const error = wrapAngle(desired - yaw);
-  if (Math.abs(error) <= 0.001) return;
-
-  const ownerV = rec.body.linvel();
-  const targetBody = attachment.target && attachment.target.body;
-  const targetV = targetBody && typeof targetBody.linvel === 'function'
-    ? targetBody.linvel()
-    : zero3();
-  const nx = dx / distance;
-  const nz = dz / distance;
-  const tangentSpeed = (finite(ownerV.x) - finite(targetV.x)) * -nz + (finite(ownerV.z) - finite(targetV.z)) * nx;
-  const authority = clamp(
-    (Math.abs(tangentSpeed) + Math.max(0, finite(relativeSpeed)) * 0.35) / TETHER_NOSE_SPEED_FOR_AUTHORITY,
-    0,
-    1,
-  );
-  const maxRate = TETHER_NOSE_BASE_RATE + TETHER_NOSE_SPEED_RATE * authority;
-  const targetRate = clamp(error * TETHER_NOSE_RATE_GAIN, -maxRate, maxRate);
-  const currentRate = yawRate(rec);
-  const maxDelta = 0.11 + authority * 0.30;
-  const deltaRate = clamp(targetRate - currentRate, -maxDelta, maxDelta);
-  if (Math.abs(deltaRate) <= 1e-5) return;
-  const inertia = positive(rec.spec && rec.spec.inertiaY, 1);
-  rec.body.applyTorqueImpulse({ x: 0, y: deltaRate * inertia, z: 0 }, true);
-}
-
-function clampTetherLoadedYaw(rec, limit) {
-  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
-  const current = yawRate(rec);
-  const next = clamp(current, -limit, limit);
-  if (Math.abs(next - current) > 1e-9 && typeof rec.body.setAngvel === 'function') {
-    rec.body.setAngvel({ x: 0, y: next, z: 0 }, true);
-  }
-  if (rec.entity) rec.entity.angVel = next;
-}
-
-function clampTetherLoadedSpeed(rec, limit) {
-  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
-  const v = rec.body.linvel();
-  const vx = finite(v && v.x);
-  const vz = finite(v && v.z);
-  const speed = Math.hypot(vx, vz);
-  if (!(speed > limit) || speed <= 1e-9) return;
-  const scale = limit / speed;
-  const next = { x: vx * scale, y: 0, z: vz * scale };
-  rec.body.setLinvel(next, true);
-  if (rec.entity && rec.entity.vel) {
-    rec.entity.vel.x = next.x;
-    rec.entity.vel.z = next.z;
-  }
-}
-
-function clampTetherReleaseYaw(rec, limit) {
-  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
-  const current = yawRate(rec);
-  const next = clamp(current, -limit, limit);
-  if (typeof rec.body.setAngvel === 'function' && Math.abs(next - current) > 1e-9) {
-    rec.body.setAngvel({ x: 0, y: next, z: 0 }, true);
-  }
-  if (rec.entity) rec.entity.angVel = next;
-}
-
-function isLoadedStandardTether(attachment) {
-  if (!attachment || attachment.defId !== 'tether_standard') return false;
-  const state = attachment.springState;
-  if (!state) return false;
-  if (state.lastStretch > STRETCH_EPSILON) return true;
-  const phase = String(state.phase || 'slack');
-  return phase !== 'slack';
-}
-
-function tetherLoadedSpeedLimit(attachment, rec) {
-  const base = positive(rec && rec.entity && rec.entity.maxSpeed, 170);
-  const opening = Math.max(0, finite(attachment && attachment.springState && attachment.springState.lastRelativeSpeed));
-  if (opening > 0.5) {
-    return clamp(base + MAX_TETHER_OPENING_SPEED_PAD, MIN_TETHER_OPENING_SPEED_LIMIT, MAX_TETHER_OPENING_SPEED_LIMIT);
-  }
-  return clamp(base * 1.75 + 40, MIN_TETHER_ABSOLUTE_SPEED_LIMIT, MAX_TETHER_ABSOLUTE_SPEED_LIMIT);
-}
-
-function yawRate(rec) {
-  const w = rec && rec.body && typeof rec.body.angvel === 'function' ? rec.body.angvel() : null;
-  return finite(w && w.y, finite(rec && rec.entity && rec.entity.angVel));
-}
-
-function applyTetherLinearReleaseKick(attachment) {
-  const rec = attachment && attachment.owner;
-  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
-  const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
-  const source = worldAnchorInto(scratch.source, rec, attachment.anchorA);
-  const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
-  const dx = target.x - source.x;
-  const dz = target.z - source.z;
-  const distance = Math.hypot(dx, dz);
-  const stretch = Math.max(0, distance - positive(attachment.restLength, distance));
-  if (!(stretch > STRETCH_EPSILON)) return;
-  const nx = distance > 1e-9 ? dx / distance : 1;
-  const nz = distance > 1e-9 ? dz / distance : 0;
-  velocityAtPointInto(scratch.velocityA, rec, source);
-  const radialSpeed = scratch.velocityA.x * nx + scratch.velocityA.z * nz;
-  let tx = scratch.velocityA.x - nx * radialSpeed;
-  let tz = scratch.velocityA.z - nz * radialSpeed;
-  const tangentSpeed = Math.hypot(tx, tz);
-  if (!(tangentSpeed > 1e-6)) {
-    tx = -nz;
-    tz = nx;
-  } else {
-    tx /= tangentSpeed;
-    tz /= tangentSpeed;
-  }
-  const mass = effectiveMass(rec);
-  if (!Number.isFinite(mass) || !(mass > 0)) return;
-  const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
-  const releaseSpeed = Math.min(55, Math.sqrt(Math.max(0, spring.K * stretch * stretch / mass)) * 0.45);
-  if (!(releaseSpeed > 0)) return;
-  scratch.impulseA.x = tx * releaseSpeed * mass;
-  scratch.impulseA.y = 0;
-  scratch.impulseA.z = tz * releaseSpeed * mass;
-  rec.body.applyImpulse(scratch.impulseA, true);
-  if (rec.entity && rec.entity.vel) {
-    rec.entity.vel.x += scratch.impulseA.x / mass;
-    rec.entity.vel.z += scratch.impulseA.z / mass;
-  }
 }
 
 function accumulateForce(rec, impulse, dt) {

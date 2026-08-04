@@ -103,8 +103,6 @@ export const flightV3 = {
     this._prevBoost = false;
     this._suppressBoostUntilRelease = false;
     this._masslineSlingUntil = 0;
-    this._orbitAssistRuntime = { direction: 0 };
-    this._orbitAssistGraceActive = false;
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
@@ -127,26 +125,15 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      // F1: do not zero _orbitAssistRuntime on load — tethered orbit continuity is gameplay-
-      // affecting and must match the uninterrupted trajectory. Sling/dash windows stay ephemeral.
-      // Boost is still cancelled (UX safety). Grace is not re-granted after load.
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
-        this._orbitAssistGraceActive = false;
         this._dashEarnedUntil = 0;
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._orbitAssistRuntime = { direction: 0 }; this._orbitAssistGraceActive = true; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
-      this.bus.on('tether:releaseRated', (payload = {}) => {
-        const configured = this.state && this.state.settings && this.state.settings.gameplay
-          && this.state.settings.gameplay.orbitAssistStrength || 'standard';
-        const successful = payload.classification === 'clean' || payload.classification === 'razor';
-        if (!this._orbitAssistGraceActive || configured !== 'standard' || !successful) return;
-        this._orbitAssistGraceActive = false;
-      });
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
         const now = finite(this.state && this.state.simTime, 0);
@@ -214,7 +201,6 @@ export const flightV3 = {
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const tether = isPlayer && state.player && state.player.tether;
-    const tetherPhase = tether && tether.active ? String(tether.phase || 'slack') : 'none';
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
       : baseProfile;
@@ -226,9 +212,6 @@ export const flightV3 = {
       autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
       if (autopilot && autopilot.input) {
         input = autopilot.input;
-      }
-      if (!(autopilot && autopilot.active)) {
-        input = applyTetherNoseAssist(entity, input, state);
       }
       this._syncPlayerFlightMode(state, autopilot);
     }
@@ -249,7 +232,6 @@ export const flightV3 = {
     const body = bodySnapshot(entity, profile);
     let orbitAssist = null;
     if (isPlayer) {
-      const actions = state.input && state.input.actions;
       const anchor = tether && tether.targetId != null && state.entities
         && typeof state.entities.get === 'function'
         ? state.entities.get(tether.targetId)
@@ -259,24 +241,16 @@ export const flightV3 = {
         host: body,
         anchor,
         tether,
-        intent: actions && actions.massline,
         flightIntent: {
           forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
           lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
         },
         input,
         profile,
-        runtime: this._orbitAssistRuntime,
-        strength: this._orbitAssistGraceActive
-          && (state.settings && state.settings.gameplay
-            && state.settings.gameplay.orbitAssistStrength || 'standard') === 'standard'
-          ? 'full'
-          : state.settings && state.settings.gameplay
-            && state.settings.gameplay.orbitAssistStrength,
-        throwArmed: !!(actions && actions.throwArm),
+        strength: state.settings && state.settings.gameplay
+          && state.settings.gameplay.orbitAssistStrength,
         controlsBlocked: !playerFlightControlsActive(state, entity),
       });
-      this._orbitAssistRuntime = orbitAssist.runtime;
       if (orbitAssist.active) input = orbitAssist.input;
     }
     const result = stepPropulsion({
@@ -287,22 +261,14 @@ export const flightV3 = {
       runtime,
       environment: resolveFlightEnvironment(entity, state),
     });
-    const tetherAssistTorque = isPlayer ? tetherNoseAssistTorque(body, input, profile) : 0;
-    const torque = tetherAssistTorque
-      ? { ...result.torque, y: finite(result.torque && result.torque.y) + tetherAssistTorque }
-      : result.torque;
-
     writePhysicsControl(entity, {
       source: isPlayer ? 'player-flight-v3' : 'npc-flight-v3',
       mode: input.assistMode,
       force: result.force,
-      torque,
+      torque: result.torque,
       maxSpeed: result.maxSpeed,
     });
     if (result.impulse) queuePhysicsImpulse(entity, result.impulse);
-    if (orbitAssist && orbitAssist.active && orbitAssist.impulse) {
-      queuePhysicsImpulse(entity, orbitAssist.impulse);
-    }
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
     entity.flags = entity.flags || {};
@@ -315,15 +281,8 @@ export const flightV3 = {
     updateBank(entity, dt, profile);
     if (isPlayer) {
       const frame = entity._flightFrame || (entity._flightFrame = {});
-      // A tether is a physical constraint, not a secret flight-mode swap. Preserve the player's
-      // established yaw response through every line phase; explicit orbit input owns its own
-      // geometry-derived heading request below without phase-tuned helm multipliers.
-      frame.tetherHelmAuthority = 1;
-      frame.tetherHelmPhase = tetherPhase;
       frame.autopursuit = null;
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
-      frame.tetherNoseAssist = !!input.tetherNoseAssist;
-      frame.tetherNoseAssistTorque = tetherAssistTorque;
       frame.orbitAssist = orbitAssist
         ? { active: orbitAssist.active, ...orbitAssist.telemetry }
         : { active: false, reason: 'unavailable' };
@@ -519,25 +478,15 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   const now = finite(state && state.simTime, 0);
   const tether = state && state.player && state.player.tether;
   const tetherTagged = !!(tether && (tether.slingshot || finite(tether.slingshotT, 0) > 0));
-  // A live line remains part of the swing even across a brief slack beat. Switching the governor
-  // back on for that beat applies reverse thrust at the exact moment the player needs to carry
-  // momentum back into tension, producing the visible slow-fast-slow "underwater" oscillation.
-  // The ordinary six-second decay remains the *exit* policy below.
-  const activeMassline = !!(massline2Flag('throw') && tether && tether.active);
   // Travel Burn requirement 5: a recent dash counts as earned momentum on the same terms as a
   // tether sling. Read the flag at CALL TIME — under node it is false, so this OR-term vanishes
   // and the expression is identical to its pre-Travel-Burn form, keeping the v3 golden still.
   const dashEarned = travelFlag('dashMomentum') && finite(dashEarnedUntil, 0) > now;
-  input.masslineActive = activeMassline;
-  input.physicsEarnedMomentum = activeMassline || (massline2Flag('throw')
+  input.physicsEarnedMomentum = (massline2Flag('throw')
     && (tetherTagged || finite(eventSlingUntil, 0) > now))
     || dashEarned;
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
-  // While the line remains active, do not vector-kill the swing either. On release the
-  // existing partial-assist grace takes over and spends the earned exit speed normally.
-  input.earnedMomentumAssistScale = activeMassline
-    ? 0
-    : input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
+  input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 
   const cloak = state && state.massline2 && state.massline2.cloak;
   const coasting = Math.abs(finite(input.throttle, 0)) <= 0.025
@@ -1010,32 +959,6 @@ function counterVelocityInput(entity) {
     throttle: clamp(nx * cf + nz * sf, -1, 1),
     strafe: clamp(nx * -sf + nz * cf, -1, 1),
   };
-}
-
-function applyTetherNoseAssist(entity, input, state) {
-  const tether = state && state.player && state.player.tether;
-  if (!tether || !tether.active || tether.targetId == null) return input;
-  const phase = String(tether.phase || 'slack');
-  if (phase === 'slack') return input;
-  if (!input || (!input.brake && Math.abs(finite(input.throttle, 0)) < 0.05 && Math.abs(finite(input.strafe, 0)) < 0.05)) return input;
-  if (Math.abs(finite(input && input.turn, 0)) > 0.05) return input;
-  const target = state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(tether.targetId)
-    : null;
-  if (!entity || !entity.pos || !target || target.alive === false || !target.pos) return input;
-  const desired = Math.atan2(finite(target.pos.z) - finite(entity.pos.z), finite(target.pos.x) - finite(entity.pos.x));
-  const turnErr = wrapAngle(desired - finite(entity.rot));
-  return {
-    ...input,
-    tetherNoseTurnError: turnErr,
-    tetherNoseAssist: true,
-  };
-}
-
-function tetherNoseAssistTorque(body, input, profile) {
-  // SG-02 owns loaded-line nose-in torque from the forward tether anchor. The flight layer only
-  // annotates telemetry; injecting a second yaw controller here makes reverse/thrust fight the line.
-  return 0;
 }
 
 function distance2(a, b) {

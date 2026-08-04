@@ -287,7 +287,7 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
       input: { actions: { throwArm: false } },
       player: {
         targetId: null,
-        tether: { active: true, targetId: 2, attachmentId: 'att-sling', phase: 'loaded' },
+        tether: { active: true, targetId: 2, attachmentId: 'att-sling', phase: 'loaded', load: 1 },
         masslineTelemetry: { active: true, tangentialSpeed: 100 },
       },
       nav: { waypoint: { pos: { x: 500, z: 0 }, arrivalRadius: 18 } },
@@ -313,7 +313,7 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
     assert.equal(sling.physicsEarned, true);
     assert.match(sling.releaseId, /^massline:self-sling:/);
     assert.equal(sling.prediction.sampleTick, 300);
-    assert.equal(sling.prediction.payloadSpeed, sling.exitSpeed,
+    assert.ok(Math.abs(sling.prediction.payloadSpeed - sling.exitSpeed) < 1e-9,
       'the shared self-sling predictor includes the earned-speed impulse');
     assert.equal(sling.impulses.length, 1);
     assert.equal(sling.impulses[0].reason, 'massline_sling_bonus');
