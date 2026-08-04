@@ -15,7 +15,10 @@ export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
   maxRadialAccelerationFraction: 0.2,
   anchorRadiusMargin: 1.15,
   minIntent: 0.05,
-  flightIntentHoldS: 1,
+  // Forward + turn while tethered is already an unambiguous orbit command. Delaying it by a
+  // second lets ordinary thrust spend most of that second against the line, then makes the
+  // eventual correction feel like a surprise mode change.
+  flightIntentHoldS: 0,
   reversalSlewPerS: 2,
   tangentAlignTimeS: 0.55,
   strainThrottleStart: 0.72,
@@ -47,19 +50,6 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
     runtime: { direction: 0, engaged: false, intentSource: null, flightIntentHoldS: 0 },
     telemetry: inactiveTelemetry(strength, reason),
   });
-  const suspended = (reason, direction, intentSource, flightIntentHoldS) => ({
-    active: false,
-    input,
-    impulse: null,
-    runtime: { direction, engaged: true, intentSource, flightIntentHoldS },
-    telemetry: {
-      ...inactiveTelemetry(strength, reason),
-      direction,
-      intentSource,
-      engagementHoldS: flightIntentHoldS,
-    },
-  });
-
   if (!(strengthScale > 0)) return inactive('assist-off');
   if (!(dt > 0) || !finiteBody(host) || !finiteBody(anchor) || anchor.alive === false) return inactive('invalid-body');
   if (!tether || tether.active !== true || tether.targetId == null) return inactive('not-tethered');
@@ -104,11 +94,6 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       },
     };
   }
-  if (String(tether.phase || 'slack') === 'slack') {
-    const heldDirection = clamp(finite(options.runtime && options.runtime.direction, selectedDirection), -1, 1);
-    return suspended('line-slack', heldDirection, intentSource, flightIntentHoldS);
-  }
-
   const hostMass = positive(host.mass, positive(host.physicsBody && host.physicsBody.mass, 0));
   if (!(hostMass > 0)) return inactive('invalid-host-mass');
 
@@ -131,6 +116,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const tangentialSpeed = relVx * tangentX + relVz * tangentZ;
   const restLength = positive(tether.restLength, radius);
   const lengthError = radius - restLength;
+  const lineSlack = String(tether.phase || 'slack') === 'slack';
 
   const profile = options.profile || {};
   const maxThrustAcceleration = positive(profile.mainAccel, positive(profile.maxAcceleration, 0));
@@ -139,7 +125,12 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
     * strengthScale;
   const rawRadialAcceleration = -ORBIT_ASSIST_TUNING_V1.radialKp * lengthError
     - ORBIT_ASSIST_TUNING_V1.radialKd * radialSpeed;
-  const radialAcceleration = clamp(rawRadialAcceleration, -maxRadialAcceleration, maxRadialAcceleration);
+  // Slack only removes the fictional radial pull; it must not turn the player-facing tangent
+  // controller off. Holding the orbit chord should keep the nose and thrust on the live tangent
+  // so natural momentum can take up the line again.
+  const radialAcceleration = lineSlack
+    ? 0
+    : clamp(rawRadialAcceleration, -maxRadialAcceleration, maxRadialAcceleration);
 
   const maxYawRate = positive(profile.maxYawRate, 1);
   const minRadius = Math.max(1, positive(anchor.radius, 0) * ORBIT_ASSIST_TUNING_V1.anchorRadiusMargin);
@@ -155,7 +146,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   );
   const turn = clamp(desiredYawRate / maxYawRate, -1, 1);
   const impulseScale = hostMass * dt * radialAcceleration;
-  const impulse = {
+  const impulse = lineSlack ? null : {
     x: canonicalZero(rHatX * impulseScale),
     y: 0,
     z: canonicalZero(rHatZ * impulseScale),
@@ -197,8 +188,8 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       strainLimited: throttle < 1,
       radialAcceleration,
       maxRadialAcceleration,
-      saturated: Math.abs(rawRadialAcceleration) > maxRadialAcceleration,
-      reason: 'engaged',
+      saturated: !lineSlack && Math.abs(rawRadialAcceleration) > maxRadialAcceleration,
+      reason: lineSlack ? 'line-slack' : 'engaged',
     },
   };
 }

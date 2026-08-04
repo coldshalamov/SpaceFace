@@ -52,15 +52,8 @@ const AUTOPILOT_MAX_LOOKAHEAD = 760;
 const AUTOPILOT_MIN_LOOKAHEAD = 180;
 const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
-const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
-const TETHER_HELM_STRAIN_MULT = 1.75;
 const AUTO_TARGET_HELM_MULT = 1.5;
 const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
-const TETHER_HELM_PHASE_MULT = Object.freeze({
-  capture: 4.2,
-  loaded: 6.0,
-  overload: 7.4,
-});
 
 // MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
 // governor that the current overspeed came from an external physics verb, so the governor may
@@ -220,11 +213,11 @@ export const flightV3 = {
     const baseProfile = resolvePropulsionProfile(entity, state);
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
-    const helm = tetherHelmAuthority(state, isPlayer);
-    const tetherProfile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
+    const tether = isPlayer && state.player && state.player.tether;
+    const tetherPhase = tether && tether.active ? String(tether.phase || 'slack') : 'none';
     let profile = isPlayer && state.input?.autoFire
-      ? applyAutoTargetHelmProfile(tetherProfile)
-      : tetherProfile;
+      ? applyAutoTargetHelmProfile(baseProfile)
+      : baseProfile;
     if (isPlayer && state.input?.autoFire && state.input.autoTargetPath?.active) {
       profile = applyAutoTargetPathProfile(profile);
     }
@@ -256,7 +249,6 @@ export const flightV3 = {
     const body = bodySnapshot(entity, profile);
     let orbitAssist = null;
     if (isPlayer) {
-      const tether = state.player && state.player.tether;
       const actions = state.input && state.input.actions;
       const anchor = tether && tether.targetId != null && state.entities
         && typeof state.entities.get === 'function'
@@ -323,8 +315,11 @@ export const flightV3 = {
     updateBank(entity, dt, profile);
     if (isPlayer) {
       const frame = entity._flightFrame || (entity._flightFrame = {});
-      frame.tetherHelmAuthority = helm.mult;
-      frame.tetherHelmPhase = helm.phase;
+      // A tether is a physical constraint, not a secret flight-mode swap. Preserve the player's
+      // established yaw response through every line phase; explicit orbit input owns its own
+      // geometry-derived heading request below without phase-tuned helm multipliers.
+      frame.tetherHelmAuthority = 1;
+      frame.tetherHelmPhase = tetherPhase;
       frame.autopursuit = null;
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.tetherNoseAssist = !!input.tetherNoseAssist;
@@ -524,15 +519,25 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   const now = finite(state && state.simTime, 0);
   const tether = state && state.player && state.player.tether;
   const tetherTagged = !!(tether && (tether.slingshot || finite(tether.slingshotT, 0) > 0));
+  // A live line remains part of the swing even across a brief slack beat. Switching the governor
+  // back on for that beat applies reverse thrust at the exact moment the player needs to carry
+  // momentum back into tension, producing the visible slow-fast-slow "underwater" oscillation.
+  // The ordinary six-second decay remains the *exit* policy below.
+  const activeMassline = !!(massline2Flag('throw') && tether && tether.active);
   // Travel Burn requirement 5: a recent dash counts as earned momentum on the same terms as a
   // tether sling. Read the flag at CALL TIME — under node it is false, so this OR-term vanishes
   // and the expression is identical to its pre-Travel-Burn form, keeping the v3 golden still.
   const dashEarned = travelFlag('dashMomentum') && finite(dashEarnedUntil, 0) > now;
-  input.physicsEarnedMomentum = (massline2Flag('throw')
+  input.masslineActive = activeMassline;
+  input.physicsEarnedMomentum = activeMassline || (massline2Flag('throw')
     && (tetherTagged || finite(eventSlingUntil, 0) > now))
     || dashEarned;
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
-  input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
+  // While the line remains active, do not vector-kill the swing either. On release the
+  // existing partial-assist grace takes over and spends the earned exit speed normally.
+  input.earnedMomentumAssistScale = activeMassline
+    ? 0
+    : input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 
   const cloak = state && state.massline2 && state.massline2.cloak;
   const coasting = Math.abs(finite(input.throttle, 0)) <= 0.025
@@ -1035,29 +1040,6 @@ function tetherNoseAssistTorque(body, input, profile) {
 
 function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
-}
-
-function tetherHelmAuthority(state, isPlayer) {
-  if (!isPlayer) return { mult: 1, phase: 'none' };
-  const tether = state && state.player && state.player.tether;
-  if (!tether || !tether.active) return { mult: 1, phase: 'none' };
-  const phase = String(tether.phase || 'slack');
-  const base = TETHER_HELM_PHASE_MULT[phase] || 1;
-  if (!(base > 1)) return { mult: 1, phase };
-  const strain = clamp(finite(tether.strain, 0), 0, 1.2);
-  return { mult: base + strain * TETHER_HELM_STRAIN_MULT, phase };
-}
-
-function applyTetherHelmProfile(profile, helm) {
-  const mult = positive(helm && helm.mult, 1);
-  return {
-    ...profile,
-    maxYawRate: Number.isFinite(profile.maxYawRate)
-      ? profile.maxYawRate * TETHER_HELM_MAX_YAW_RATE_MULT
-      : profile.maxYawRate,
-    yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * mult : profile.yawAccel,
-    yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * (mult + 0.65) : profile.yawBrake,
-  };
 }
 
 export function applyAutoTargetHelmProfile(profile) {

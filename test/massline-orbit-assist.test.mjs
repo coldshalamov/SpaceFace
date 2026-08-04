@@ -202,7 +202,7 @@ test('PQ-005 forward acquires orbit assist, lateral holds it, and lateral releas
   assert.equal(released.impulse, null);
 });
 
-test('PQ-005 a slack beat suspends correction without losing the acquired lateral orbit', () => {
+test('PQ-005 a slack beat preserves tangent control without inventing radial pull', () => {
   const shared = {
     dt: DT,
     host: { pos: { x: 120, z: 0 }, vel: { x: 0, z: 30 }, rot: Math.PI / 2, mass: 20, radius: 10 },
@@ -229,9 +229,11 @@ test('PQ-005 a slack beat suspends correction without losing the acquired latera
     runtime: slack.runtime,
   });
 
-  assert.equal(slack.active, false);
+  assert.equal(slack.active, true);
   assert.equal(slack.impulse, null);
-  assert.equal(slack.runtime.engaged, true, 'slack suspends rather than forgetting held orbit intent');
+  assert.equal(slack.input.throttle, 1, 'slack must keep the held tangent thrust rather than dropping into a new flight mode');
+  assert.equal(slack.telemetry.reason, 'line-slack');
+  assert.equal(slack.runtime.engaged, true, 'slack preserves the selected orbit intent');
   assert.equal(reloaded.active, true, 'the assist resumes when the same held line reloads');
 });
 
@@ -379,7 +381,7 @@ test('PQ-005 Flight V3 wires explicit Massline intent through the additive physi
   assert.equal(player._flightFrame.orbitAssist.reason, 'engaged');
 });
 
-test('ordinary forward plus turn engages against a ship without holding the Massline action', () => {
+test('ordinary forward plus turn engages Massline orbit immediately without holding the Massline action', () => {
   const { state, player, anchor, bus } = makeFlightHarness();
   anchor.type = 'ship';
   anchor.mass = player.mass;
@@ -392,21 +394,40 @@ test('ordinary forward plus turn engages against a ship without holding the Mass
   };
 
   flightV3Module.flightV3.init({ state, bus });
-  let command = null;
-  for (let tick = 0; tick < 60; tick++) {
-    flightV3Module.flightV3.update(DT, state);
-    command = consumePhysicsCommand(player);
-    if (tick < 59) {
-      assert.equal(player._flightFrame.orbitAssist.active, false,
-        'ordinary steering remains fully manual until the one-second deliberate hold completes');
-      assert.equal(player._flightFrame.orbitAssist.reason, 'engage-pending');
-    }
-  }
+  flightV3Module.flightV3.update(DT, state);
+  const command = consumePhysicsCommand(player);
 
   assert.equal(player._flightFrame.orbitAssist.active, true);
   assert.equal(player._flightFrame.orbitAssist.intentSource, 'flight');
   assert.equal(player._flightFrame.orbitAssist.selectedDirection, -1);
   assert.equal(command.impulses.length, 1);
+});
+
+test('a loaded Massline does not change manual yaw authority by phase', () => {
+  const baseline = makeFlightHarness();
+  const loaded = makeFlightHarness();
+  baseline.state.player.tether = null;
+  for (const harness of [baseline, loaded]) {
+    harness.state.input.moveZ = 0;
+    harness.state.input.turnIntent = 1;
+    harness.state.input.actions.massline = {
+      lineControl: false,
+      lineLength: 0,
+      orbitDirection: 0,
+    };
+  }
+  const step = (harness) => {
+    const system = Object.create(flightV3Module.flightV3);
+    system.init({ state: harness.state, bus: harness.bus });
+    system.update(DT, harness.state);
+    return consumePhysicsCommand(harness.player).control.torque.y;
+  };
+
+  const baselineTorque = step(baseline);
+  const loadedTorque = step(loaded);
+  assert.equal(loadedTorque, baselineTorque,
+    'tether phases must not multiply the player\'s established yaw response');
+  assert.equal(loaded.player._flightFrame.tetherHelmAuthority, 1);
 });
 
 test('PQ-005 first-session Full grace steps down silently on a clean release', () => {

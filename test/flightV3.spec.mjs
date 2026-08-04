@@ -341,6 +341,24 @@ function simulate({ profile, b, input, ticks, runtime }) {
   assert.ok(fromRest.vel.x < profile.combatSpeed * 1.05,
     'an earned tag must not let thrusters manufacture speed above the ordinary cap');
 
+  const loadedMassline = body({ vel: { x: 400, z: 0 } });
+  const loadedStep = stepPropulsion({
+    dt: DT, body: loadedMassline,
+    input: {
+      throttle: 1,
+      assistMode: 'assisted',
+      physicsEarnedMomentum: true,
+      earnedMomentumAssistScale: 0,
+      masslineActive: true,
+    },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(loadedStep.telemetry.governor.engaged, false,
+    'a loaded Massline must not engage the normal overspeed governor');
+  assert.equal(loadedStep.telemetry.governor.masslineActive, true);
+  assert.ok(loadedStep.force.x > 0,
+    'loaded Massline thrust must continue forward instead of applying reverse force into the line');
+
   const ordinaryOblique = body({ vel: { x: 260, z: 300 } });
   const earnedOblique = body({ vel: { x: 260, z: 300 } });
   simulate({
@@ -431,6 +449,16 @@ function simulate({ profile, b, input, ticks, runtime }) {
     }, 11);
     assert.equal(input.physicsEarnedMomentum, true, 'massline:selfSling event window should tag earned momentum');
     assert.equal(input.coastAssistScale, 1, 'thrust input should immediately restore normal assist authority');
+
+    const loadedInput = { throttle: 1, strafe: 0, boost: false, brake: false };
+    applyMasslineFlightModifiers(loadedInput, {
+      simTime: 10,
+      player: { tether: { active: true, phase: 'loaded' } },
+    });
+    assert.equal(loadedInput.masslineActive, true,
+      'only a live tether may bypass the ordinary assisted speed governor');
+    assert.equal(loadedInput.earnedMomentumAssistScale, 0,
+      'a loaded line must not lateral-kill the swing it is physically redirecting');
   } finally {
     MASSLINE2_FLAGS.enabled = previous.enabled;
     MASSLINE2_FLAGS.throw = previous.throw;
