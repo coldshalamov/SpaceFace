@@ -3237,6 +3237,30 @@
       "brief": "Flak identity, Cathedral damage/recovery semantics, reduced modes, accessibility text, and dense-scene arbitration are integrated."
     },
     {
+      "id": "PQ-023.station-side-event-vfx",
+      "parentId": "PQ-023",
+      "priority": 242,
+      "title": "Render seeded station-side operations",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/stationSideEventVfx.js",
+        "src/render/vfx.js",
+        "test/station-side-event-vfx.test.mjs"
+      ],
+      "checks": [
+        "node --test test/station-side-event-vfx.test.mjs",
+        "npm run check:station-side-events",
+        "npm run check:vfx-sleep"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-023-station-side-event-vfx-REPORT.md"
+      ],
+      "brief": "Integrated at 48e0bc74: one six-record pooled renderer consumes the four seeded station-operation events with distinct non-color silhouettes, real-patrol lifecycle binding, reduced-motion/flash policy, culling, dedupe, expiry, and boundary cleanup."
+    },
+    {
       "id": "PQ-024.headless-implementation",
       "parentId": "PQ-024",
       "priority": 110,
