@@ -2651,7 +2651,8 @@
       "priority": 26,
       "title": "Causally review the revised claim relay",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-022.relay-reauthor-h1"
       ],
@@ -2695,7 +2696,8 @@
       "priority": 27,
       "title": "Re-author the Ceres refinery's visible process identity",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
