@@ -38,6 +38,7 @@ import {
   formatPq024DockApproachTimeout,
   formatPq024MasslineLatchTimeout,
   formatPq024MasslineReleaseTimeout,
+  observePq024DockPrompt,
   projectPq024RouteSemantics,
 } from './lib/pq024AsteroidClaimParity.mjs';
 import {
@@ -1465,34 +1466,25 @@ async function dockAtHelios(page) {
 
 async function waitForPq024DockPrompt(page, { timeoutMs }) {
   const prompt = page.locator('.sf-alert--dock').first();
-  const deadline = Date.now() + timeoutMs;
-  let sampleCount = 0;
-  let bestBerthDistance = Infinity;
-  let bestCenterDistance = Infinity;
-  let last = null;
-  while (Date.now() < deadline) {
-    if (await prompt.isVisible().catch(() => false)) return prompt;
-    last = await readPq024DockApproachSnapshot(page);
-    sampleCount += 1;
-    if (Number.isFinite(last?.dockingCorridor?.distToBerth)) {
-      bestBerthDistance = Math.min(bestBerthDistance, last.dockingCorridor.distToBerth);
-    }
-    if (Number.isFinite(last?.dockingCorridor?.distCenter)) {
-      bestCenterDistance = Math.min(bestCenterDistance, last.dockingCorridor.distCenter);
-    }
-    assert.equal(last?.player?.alive, true,
-      `player died during the public Helios approach; evidence=${JSON.stringify(last)}`);
-    await page.waitForTimeout(Math.min(500, Math.max(1, deadline - Date.now())));
-  }
-  const error = new Error(formatPq024DockApproachTimeout({
+  const observation = await observePq024DockPrompt({
+    waitForVisible: async () => {
+      await prompt.waitFor({ state: 'visible', timeout: timeoutMs });
+      return prompt;
+    },
+    readSnapshot: async () => {
+      const snapshot = await readPq024DockApproachSnapshot(page);
+      assert.equal(snapshot?.player?.alive, true,
+        `player died during the public Helios approach; evidence=${JSON.stringify(snapshot)}`);
+      return snapshot;
+    },
+    waitForSample: (delayMs) => page.waitForTimeout(delayMs),
     timeoutMs,
-    sampleCount,
-    bestBerthDistance,
-    bestCenterDistance,
-    last,
-  }));
+  });
+  if (observation.prompt) return observation.prompt;
+  const error = new Error(formatPq024DockApproachTimeout(observation.evidence));
   error.code = 'PQ024_DOCK_PROMPT_TIMEOUT';
-  error.dockApproach = last;
+  error.dockApproach = observation.evidence.last;
+  if (observation.waitError) error.cause = observation.waitError;
   throw error;
 }
 

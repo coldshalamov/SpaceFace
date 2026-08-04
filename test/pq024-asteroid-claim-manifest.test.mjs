@@ -15,6 +15,7 @@ import {
   formatPq024DockApproachTimeout,
   formatPq024MasslineLatchTimeout,
   formatPq024MasslineReleaseTimeout,
+  observePq024DockPrompt,
   projectPq024RouteSemantics,
 } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
 import {
@@ -542,6 +543,50 @@ test('PQ-024 dock timeout reports the reproduced route stall as structured evide
   assert.equal(evidence.last.autopilot.status, 'braking');
   assert.equal(evidence.last.dockingCorridor.inCapture, false);
   assert.equal(evidence.last.physicsDockStationId, null);
+});
+
+test('PQ-024 dock actor catches the transient public prompt between diagnostic samples', async () => {
+  const publicPrompt = { text: '[ E ] DOCK AT STATION' };
+  let resolveVisible;
+  const visible = new Promise((resolve) => { resolveVisible = resolve; });
+  let waits = 0;
+  let snapshots = 0;
+  const arrivedHandoff = {
+    player: { alive: true, pos: { x: 1234, z: -451 }, speed: 0.25 },
+    autopilot: { active: false, status: 'arrived', distance: 38, arrivalRadius: 90 },
+    resolvedTarget: { dockingStage: 'berth', x: 1234, z: -489, arrivalRadius: 38 },
+    dockingCorridor: {
+      phase: 'capture',
+      distToBerth: 17.5,
+      distCenter: 77,
+      inCorridor: true,
+      inCapture: true,
+    },
+  };
+
+  const observation = await observePq024DockPrompt({
+    waitForVisible: () => visible,
+    readSnapshot: async () => {
+      snapshots += 1;
+      return arrivedHandoff;
+    },
+    waitForSample: async () => {
+      waits += 1;
+      if (waits === 1) return;
+      // Model the live failure's short dock:range window after the 38-WU autopilot handoff. The
+      // old actor checked visibility only after each 500-ms sleep and could miss this entire pulse.
+      resolveVisible(publicPrompt);
+      return new Promise(() => {});
+    },
+    timeoutMs: 120_000,
+    sampleIntervalMs: 500,
+  });
+
+  assert.equal(observation.prompt, publicPrompt);
+  assert.equal(observation.waitError, null);
+  assert.equal(snapshots, 1, 'the event-driven prompt must win before the next 500-ms snapshot');
+  assert.equal(observation.evidence.bestBerthDistance, 17.5);
+  assert.equal(observation.evidence.last.autopilot.status, 'arrived');
 });
 
 test('PQ-024 Massline cleanup reports the reproduced release stall as structured evidence', () => {

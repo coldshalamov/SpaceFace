@@ -53,6 +53,69 @@ export function projectPq024RouteSemantics(receipt) {
   };
 }
 
+/**
+ * Wait for the public dock prompt without making the diagnostic sampling cadence the actor's
+ * reaction cadence. `waitForVisible` is the Playwright locator wait in production; the injected
+ * seams keep the timing contract deterministic and Browser-free in the focused regression.
+ */
+export async function observePq024DockPrompt({
+  waitForVisible,
+  readSnapshot,
+  waitForSample,
+  timeoutMs,
+  sampleIntervalMs = 500,
+} = {}) {
+  if (typeof waitForVisible !== 'function') throw new TypeError('waitForVisible must be a function');
+  if (typeof readSnapshot !== 'function') throw new TypeError('readSnapshot must be a function');
+  if (typeof waitForSample !== 'function') throw new TypeError('waitForSample must be a function');
+
+  const budgetMs = Math.max(0, finiteOrZero(timeoutMs));
+  const cadenceMs = Math.max(1, finiteOrZero(sampleIntervalMs) || 500);
+  let visibilityOutcome = null;
+  const visible = Promise.resolve()
+    .then(() => waitForVisible())
+    .then(
+      (prompt) => (visibilityOutcome = { prompt, error: null }),
+      (error) => (visibilityOutcome = { prompt: null, error }),
+    );
+
+  let elapsedMs = 0;
+  let sampleCount = 0;
+  let bestBerthDistance = Infinity;
+  let bestCenterDistance = Infinity;
+  let last = null;
+  while (!visibilityOutcome && elapsedMs < budgetMs) {
+    const stepMs = Math.min(cadenceMs, budgetMs - elapsedMs);
+    const sampleDue = Promise.resolve()
+      .then(() => waitForSample(stepMs))
+      .then(() => null);
+    const outcome = await Promise.race([visible, sampleDue]);
+    if (outcome) break;
+    elapsedMs += stepMs;
+    last = await readSnapshot();
+    sampleCount += 1;
+    if (Number.isFinite(last?.dockingCorridor?.distToBerth)) {
+      bestBerthDistance = Math.min(bestBerthDistance, last.dockingCorridor.distToBerth);
+    }
+    if (Number.isFinite(last?.dockingCorridor?.distCenter)) {
+      bestCenterDistance = Math.min(bestCenterDistance, last.dockingCorridor.distCenter);
+    }
+  }
+
+  const outcome = visibilityOutcome || await visible;
+  return {
+    prompt: outcome.prompt,
+    waitError: outcome.error,
+    evidence: {
+      timeoutMs: budgetMs,
+      sampleCount,
+      bestBerthDistance,
+      bestCenterDistance,
+      last,
+    },
+  };
+}
+
 export function formatPq024DockApproachTimeout({
   timeoutMs,
   sampleCount,
@@ -104,4 +167,8 @@ function normalizeRelay(relay) {
 
 function finiteOrNull(value) {
   return Number.isFinite(value) ? Number(value) : null;
+}
+
+function finiteOrZero(value) {
+  return Number.isFinite(value) ? Number(value) : 0;
 }
