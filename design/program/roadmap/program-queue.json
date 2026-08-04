@@ -1321,7 +1321,7 @@
       "id": "PQ-024",
       "priority": 24,
       "title": "Corridor-minimal Asteroid Ops survey and claim consequence",
-      "state": "blocked",
+      "state": "focused_green",
       "partialIntegration": "2026-08-04 implementation, functional Browser/source-Electron H1, H2 review, and matched H3 are complete. H2 keeps production consequence, exactly-one relay, save/Continue, same-site re-entry, and exact-final relay art, but revises the committed transition because both host frames retain NO CLAIM, red ASSAY 2/3, and a stale occupied placement-preview error beside the permanent-site receipt. The exact repair/H1/review chain owns only that frame and retains every downstream cell. Final promotion also waits for the route_accepted PQ-022.exterior-relay-collar receipt blob produced by PQ-022.promote-relay.",
       "canonical": [
         "A03",
