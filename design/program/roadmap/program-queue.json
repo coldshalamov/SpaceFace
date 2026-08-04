@@ -2583,8 +2583,7 @@
       "priority": 24,
       "title": "Re-author the claim relay's visible manufactured identity",
       "kind": "implementation",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-022.relay-human-verdict"
       ],
@@ -2610,8 +2609,12 @@
         "npm run check:graphics:asset-receipts",
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
-      "brief": "Preserve identity, anchors, interaction envelope, placement scale, collision, cleanup, and release technique while replacing the cylinder-and-box read with a rock-gripping claim collar, powered relay core, serviceable structure, and ownership signal legible without HUD rings."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-relay-reauthor-REPORT.md"
+      ],
+      "brief": "Implemented at e69af0ef: the canonical claim relay now has a rock-gripping collar, stepped powered core, formed freight vessels, open transfer structure, recovery receiver, lattice communications mast, service hardware, and localized ownership signals while preserving the frozen identity, envelope, sockets, collision proxy, placement scale, and runtime role. This is focused-green source/release implementation; revised Browser/Electron H1 and exact-final causal review remain in the next two units.",
+      "partialIntegration": "2026-08-04 source/release checkpoint e69af0ef publishes the deterministic Blender 5.1 source, canonical 62,992/27,592/8,384-triangle LODs, 15-KTX2/65-Meshopt optimized release, exact source/release manifest hashes, and the existing world-site binding. Foundry and Khronos reports are clean and the frozen root, seven socket transforms, 104.3364 x 55.3196 x 95.859 metre envelope, and broadphase-only collision proxy remain unchanged. The retained offline G1/G2/G4 KEEP review is lineage-bound rather than exact-final; no Browser, Electron, route, performance, or promoted receipt claim is made here.",
+      "blocker": null
     },
     {
       "id": "PQ-022.relay-reauthor-h1",
