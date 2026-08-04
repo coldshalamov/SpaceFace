@@ -4357,8 +4357,7 @@
       "priority": 243,
       "title": "Repair the Core-commit presentation seam",
       "kind": "implementation",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-024.h2-verdict"
       ],
@@ -4369,16 +4368,20 @@
         "src/ui/asteroid/asteroidScreen.js",
         "scripts/probe-pq024-asteroid-claim.mjs",
         "scripts/lib/pq024CommittedPresentation.mjs",
+        "scripts/validation-manifests/pq024-asteroid-claim.mjs",
         "test/pq024-survey-claim.test.mjs",
         "test/pq024-asteroid-claim-manifest.test.mjs",
-        "design/program/roadmap/active/PQ-024.md"
+        "design/program/roadmap/active/PQ-024.md",
+        "design/program/roadmap/receipts/PQ-024-committed-transition-repair-REPORT.md"
       ],
       "checks": [
         "node --test test/pq024-asteroid-claim-manifest.test.mjs",
         "npm run check:pq024:survey-claim"
       ],
-      "receiptRefs": [],
-      "brief": "Repair the first-site surveyCommitted listener so it resolves the new site and publishes its live tape/HUD transition, then make the public actor leave Build mode and require ANCHORED, durable assay copy, and the committed/awaiting-first-output site overview before the screenshot. Retain all production, relay, Continue, re-entry, and H3 evidence.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-committed-transition-repair-REPORT.md"
+      ],
+      "brief": "Focused-green at implementation commit 7ad32c948f1b01780ae85dc530a0c02415e18de7. The first-site surveyCommitted listener now resolves the newly created site and forces the next-frame claim/assay/inspector refresh. The public actor visibly exits Build through Escape and fails closed until owner state plus Anchored, Assay N cells, Site overview, Anchored claim, durable Survey record, awaiting-first-output copy, and absence of the occupied-placement error agree. Combined focused regressions passed 30/30 in about 0.45 s; no Browser/Electron launch or retained downstream recapture was spent.",
       "blocker": null
     },
     {
