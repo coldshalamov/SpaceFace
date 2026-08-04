@@ -2812,6 +2812,7 @@
         "assets/ships/release/release_manifest.json",
         "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
         "scripts/check-pq022-navigation-infrastructure-candidate.mjs",
+        "scripts/lib/pq022NavigationInfrastructureCandidateValidation.mjs",
         "scripts/promote-pq022-navigation-infrastructure.mjs",
         "test/pq022-navigation-infrastructure-candidate.test.mjs",
         "test/pq022-navigation-infrastructure-promotion.test.mjs"
