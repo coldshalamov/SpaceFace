@@ -40,6 +40,7 @@ import {
   formatPq024MasslineReleaseTimeout,
   observePq024DockPrompt,
   projectPq024RouteSemantics,
+  retractPq024BuildMode,
 } from './lib/pq024AsteroidClaimParity.mjs';
 import {
   assessPq024CommittedElectronPrelaunch,
@@ -1991,10 +1992,25 @@ async function placeSiteMachine(page, defId, plan) {
 async function waitForCommittedPresentation(page, core) {
   assert(core?.siteId, 'committed presentation requires the installed Core site id');
 
-  // Enter leaves the public actor in Build mode with the installed Core under the placement cursor.
-  // Escape is the shipped Build -> Drive control, which removes the placement ghost without exiting
-  // Asteroid Ops and lets the durable site overview own the screenshot.
-  await page.keyboard.press('Escape');
+  // Escape is Build -> Drive only while Build is active; from Drive the same public control exits
+  // Asteroid Ops. Observe the visible console switch before pressing it so an already-settled Drive
+  // frame cannot turn this presentation wait into a flight-screen timeout.
+  const readPublicMode = async () => {
+    const modeSwitch = page.locator('[data-screen="drill"] .ao-switch[aria-label="Console mode"]');
+    await modeSwitch.waitFor({ state: 'visible' });
+    return modeSwitch.evaluate((root) => {
+      const active = [...root.querySelectorAll('button.active')];
+      if (active.length !== 1) return null;
+      const label = String(active[0].textContent || '').replace(/\s+/g, ' ').trim();
+      if (label === 'Drive') return 'drive';
+      if (/^Build\b/.test(label)) return 'build';
+      return null;
+    });
+  };
+  await retractPq024BuildMode({
+    readMode: readPublicMode,
+    pressEscape: () => page.keyboard.press('Escape'),
+  });
   const handle = await page.waitForFunction((siteId) => {
     const normalize = (value) => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
     const screen = document.querySelector('[data-screen="drill"]');

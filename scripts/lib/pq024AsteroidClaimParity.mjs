@@ -116,6 +116,32 @@ export async function observePq024DockPrompt({
   };
 }
 
+/**
+ * Retract the public Asteroid Ops build cursor without turning Escape into an unconditional
+ * screen-exit command. In the shipped controller Escape means Build -> Drive only while Build is
+ * active; the same key in Drive exits Asteroid Ops. The injected seams keep that mode-sensitive
+ * actor contract Browser-free in the focused regression.
+ */
+export async function retractPq024BuildMode({ readMode, pressEscape } = {}) {
+  if (typeof readMode !== 'function') throw new TypeError('readMode must be a function');
+  if (typeof pressEscape !== 'function') throw new TypeError('pressEscape must be a function');
+
+  const before = await readMode();
+  if (before === 'drive') {
+    return { before, after: before, escapePressed: false };
+  }
+  if (before !== 'build') {
+    throw new Error(`PQ-024 public console mode is neither Build nor Drive: ${String(before)}`);
+  }
+
+  await pressEscape();
+  const after = await readMode();
+  if (after !== 'drive') {
+    throw new Error(`PQ-024 Escape did not retract Build mode: observed ${String(after)}`);
+  }
+  return { before, after, escapePressed: true };
+}
+
 export function formatPq024DockApproachTimeout({
   timeoutMs,
   sampleCount,

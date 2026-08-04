@@ -17,6 +17,7 @@ import {
   formatPq024MasslineReleaseTimeout,
   observePq024DockPrompt,
   projectPq024RouteSemantics,
+  retractPq024BuildMode,
 } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
 import {
   assessPq024CommittedElectronPrelaunch,
@@ -452,8 +453,12 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   const committedStart = source.indexOf('async function waitForCommittedPresentation');
   const committedEnd = source.indexOf('async function moveBuildCursor', committedStart);
   const committedSource = source.slice(committedStart, committedEnd);
-  assert.match(committedSource, /page\.keyboard\.press\('Escape'\)/,
-    'the actor must visibly leave Build mode before proving the committed site overview');
+  assert.match(committedSource, /retractPq024BuildMode\(\{/,
+    'the actor must guard the mode-sensitive Build retraction before proving the site overview');
+  assert.match(committedSource, /pressEscape:\s*\(\)\s*=>\s*page\.keyboard\.press\('Escape'\)/,
+    'the guarded actor must retain the shipped Build-to-Drive keyboard control');
+  assert.doesNotMatch(committedSource, /^\s*await page\.keyboard\.press\('Escape'\);/m,
+    'the committed presentation actor must never issue an unconditional screen-exit Escape');
   assert.match(committedSource, /assessPq024CommittedPresentation/,
     'the actor must apply the pure committed-presentation contract to the settled DOM snapshot');
   for (const visibleTruth of [
@@ -587,6 +592,18 @@ test('PQ-024 dock actor catches the transient public prompt between diagnostic s
   assert.equal(snapshots, 1, 'the event-driven prompt must win before the next 500-ms snapshot');
   assert.equal(observation.evidence.bestBerthDistance, 17.5);
   assert.equal(observation.evidence.last.autopilot.status, 'arrived');
+});
+
+test('PQ-024 committed presentation never presses Escape when the public console is already Drive', async () => {
+  let escapePresses = 0;
+  const result = await retractPq024BuildMode({
+    readMode: async () => 'drive',
+    pressEscape: async () => { escapePresses += 1; },
+  });
+
+  assert.deepEqual(result, { before: 'drive', after: 'drive', escapePressed: false });
+  assert.equal(escapePresses, 0,
+    'Escape from Drive would exit Asteroid Ops instead of retracting a build cursor');
 });
 
 test('PQ-024 Massline cleanup reports the reproduced release stall as structured evidence', () => {
