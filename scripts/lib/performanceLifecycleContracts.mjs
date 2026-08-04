@@ -3,6 +3,7 @@ export const PERFORMANCE_LIFECYCLE_FIXED_SEED = 35035;
 export const PERFORMANCE_LIFECYCLE_MAX_CATCHUP_STEPS = 4;
 export const PERFORMANCE_LIFECYCLE_LAUNCH_POLICY_SCHEMA = 'spaceface.performanceLifecycleLaunchPolicy.v1';
 export const PERFORMANCE_LIFECYCLE_MIN_FOREGROUND_FRAMES = 20;
+export const PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT = 3;
 
 const PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES = Object.freeze([
   '--disable-background-timer-throttling',
@@ -49,6 +50,15 @@ export function foregroundWindowsComparable(previous, current, {
     || previousFrames < minFrames || currentFrames < minFrames) return false;
   const cadenceRatio = currentFrames / previousFrames;
   return cadenceRatio >= minRatio && cadenceRatio <= maxRatio;
+}
+
+export function foregroundWindowSequenceSettled(windows, {
+  requiredWindows = PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT,
+} = {}) {
+  if (!Array.isArray(windows) || windows.length < requiredWindows) return false;
+  const suffix = windows.slice(-requiredWindows);
+  return suffix.every((window, index) => suffix.slice(index + 1)
+    .every((otherWindow) => foregroundWindowsComparable(window, otherWindow)));
 }
 
 function requireDigest(failures, value, label) {
@@ -211,9 +221,8 @@ export function validatePerformanceLifecycleEvidence(evidence, {
   const settleWindows = Array.isArray(evidence.foreground?.settleWindows)
     ? evidence.foreground.settleWindows
     : [];
-  if (settleWindows.length < 2
-    || !foregroundWindowsComparable(settleWindows.at(-2), settleWindows.at(-1))) {
-    failures.push('baseline foreground did not reach two comparable settled windows');
+  if (!foregroundWindowSequenceSettled(settleWindows)) {
+    failures.push(`baseline foreground did not reach ${PERFORMANCE_LIFECYCLE_SETTLED_WINDOW_COUNT} comparable settled windows`);
   }
   if (Number(settleWindows.at(-1)?.executedFrames) !== Number(evidence.foreground?.baseline?.executedFrames)) {
     failures.push('baseline foreground is not the final settled window');
@@ -245,13 +254,30 @@ export function validatePerformanceLifecycleEvidence(evidence, {
 
   if (runtimeKind === 'electron') {
     const occlusion = evidence.occlusion;
-    if (occlusion?.trigger !== 'window-blur' || occlusion?.native !== true
+    const focusTransfer = occlusion?.focusTransfer;
+    if (occlusion?.trigger !== 'native-focus-transfer' || occlusion?.native !== true
       || occlusion?.state !== 'foreground-occluded'
       || occlusion?.restoredState !== 'foreground-visible'
       || occlusion?.nativeWindowDuring?.visible !== true
       || occlusion?.nativeWindowDuring?.focused !== false
       || occlusion?.nativeWindowDuring?.hidden !== false) {
-      failures.push('Electron blur/focus occlusion evidence is incomplete');
+      failures.push('Electron native focus-transfer occlusion evidence is incomplete');
+    }
+    if (focusTransfer?.driver !== 'harness-native-browser-window'
+      || focusTransfer?.synthetic !== false
+      || !Number.isSafeInteger(focusTransfer?.mainWindowId)
+      || !Number.isSafeInteger(focusTransfer?.sinkWindowId)
+      || focusTransfer.mainWindowId === focusTransfer.sinkWindowId
+      || occlusion?.nativeWindowDuring?.windowId !== focusTransfer.mainWindowId
+      || focusTransfer?.sinkNativeDuring?.windowId !== focusTransfer.sinkWindowId
+      || focusTransfer?.sinkNativeDuring?.visible !== true
+      || focusTransfer?.sinkNativeDuring?.focused !== true
+      || focusTransfer?.sinkNativeDuring?.hidden !== false
+      || focusTransfer?.cleanup?.mainWindowId !== focusTransfer.mainWindowId
+      || focusTransfer?.cleanup?.sinkWindowId !== focusTransfer.sinkWindowId
+      || focusTransfer?.cleanup?.existed !== true
+      || focusTransfer?.cleanup?.destroyed !== true) {
+      failures.push('Electron native focus-sink provenance or cleanup is incomplete');
     }
     for (const field of ['executedFrames', 'renderUpdates', 'simulationCompletedTicks']) {
       if (!(Number(occlusion?.[field]) > 0)) failures.push(`Electron occlusion ${field} must continue`);
@@ -302,7 +328,7 @@ export function validatePerformanceLifecycleEvidence(evidence, {
   const cleanup = evidence.cleanup || {};
   const cleanupFields = runtimeKind === 'browser'
     ? ['pass', 'pageClosed', 'contextClosed', 'runtimeClosed', 'serverClosed', 'profileRemoved', 'windowDriverClosed']
-    : ['pass', 'pageClosed', 'runtimeClosed', 'listenerClosed', 'profileRemoved'];
+    : ['pass', 'pageClosed', 'runtimeClosed', 'listenerClosed', 'profileRemoved', 'windowDriverClosed'];
   if (cleanupFields.some((field) => cleanup[field] !== true)) failures.push('owned runtime cleanup is incomplete');
 
   return { pass: failures.length === 0, failures: [...new Set(failures)] };

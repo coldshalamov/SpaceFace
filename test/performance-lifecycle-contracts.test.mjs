@@ -5,6 +5,7 @@ import { test } from 'node:test';
 
 import {
   PERFORMANCE_LIFECYCLE_SCHEMA,
+  foregroundWindowSequenceSettled,
   foregroundWindowsComparable,
   summarizeLifecycleDelta,
   validatePerformanceLifecycleEvidence,
@@ -12,11 +13,16 @@ import {
 import {
   PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES,
   createBrowserWindowLifecycleDriver,
+  createElectronFocusSink,
   createElectronLifecycleLaunchOptions,
+  destroyElectronFocusSink,
+  driveElectronWindow,
   extractLifecycleClaimIdentity,
   findPresentLifecycleBackgroundSwitches,
   focusRuntimeForLifecycleSample,
   isHiddenLifecycleReady,
+  measureSettledForegroundWindow,
+  readElectronWindowState,
   setBrowserWindowLifecycleState,
   unlockAudioWithKeyboard,
 } from '../scripts/lib/performanceLifecycleProbe.mjs';
@@ -139,11 +145,12 @@ function passingEvidence(runtimeKind = 'browser') {
       warmupMs: 5_000,
       settleWindows: [
         { executedFrames: 35 },
+        { executedFrames: 35 },
         { executedFrames: 36 },
       ],
     },
     occlusion: runtimeKind === 'electron' ? {
-      trigger: 'window-blur',
+      trigger: 'native-focus-transfer',
       native: true,
       state: 'foreground-occluded',
       restoredState: 'foreground-visible',
@@ -152,10 +159,31 @@ function passingEvidence(runtimeKind = 'browser') {
       simulationCompletedTicks: 20,
       nativeWindowDuring: {
         available: true,
+        windowId: 41,
         minimized: false,
         visible: true,
         focused: false,
         hidden: false,
+      },
+      focusTransfer: {
+        driver: 'harness-native-browser-window',
+        synthetic: false,
+        mainWindowId: 41,
+        sinkWindowId: 42,
+        sinkNativeDuring: {
+          available: true,
+          windowId: 42,
+          minimized: false,
+          visible: true,
+          focused: true,
+          hidden: false,
+        },
+        cleanup: {
+          mainWindowId: 41,
+          sinkWindowId: 42,
+          existed: true,
+          destroyed: true,
+        },
       },
     } : null,
     transitions: triggers.map((trigger, index) => transition(`${runtimeKind}-${index + 1}`, trigger)),
@@ -189,7 +217,14 @@ function passingEvidence(runtimeKind = 'browser') {
         profileRemoved: true,
         windowDriverClosed: true,
       }
-      : { pass: true, pageClosed: true, runtimeClosed: true, listenerClosed: true, profileRemoved: true },
+      : {
+        pass: true,
+        pageClosed: true,
+        runtimeClosed: true,
+        listenerClosed: true,
+        profileRemoved: true,
+        windowDriverClosed: true,
+      },
   };
 }
 
@@ -223,6 +258,48 @@ test('foreground settling rejects a warmup window and accepts consecutive normal
   assert.equal(foregroundWindowsComparable({ executedFrames: 6 }, { executedFrames: 32 }), false);
   assert.equal(foregroundWindowsComparable({ executedFrames: 30 }, { executedFrames: 21 }), false);
   assert.equal(foregroundWindowsComparable({ executedFrames: 31 }, { executedFrames: 32 }), true);
+  assert.equal(foregroundWindowSequenceSettled([
+    { executedFrames: 27 },
+    { executedFrames: 25 },
+  ]), false, 'the spent Electron claim two-window plateau is not settled');
+  assert.equal(foregroundWindowSequenceSettled([
+    { executedFrames: 27 },
+    { executedFrames: 25 },
+    { executedFrames: 38 },
+  ]), false, 'a later cadence step invalidates the prior plateau');
+  assert.equal(foregroundWindowSequenceSettled([
+    { executedFrames: 20 },
+    { executedFrames: 24 },
+    { executedFrames: 27 },
+  ]), false, 'pairwise drift cannot compound across the settled suffix');
+  assert.equal(foregroundWindowSequenceSettled([
+    { executedFrames: 38 },
+    { executedFrames: 39 },
+    { executedFrames: 38 },
+  ]), true);
+});
+
+test('foreground settling reacquires native focus after the long warmup before sampling', async () => {
+  const calls = [];
+  const samples = [27, 25, 38, 39, 38];
+  const runtime = { runtimeKind: 'electron', page: { id: 'page' } };
+  const result = await measureSettledForegroundWindow(runtime, {
+    warmupMs: 5_000,
+    settleAttempts: samples.length,
+    waitForWarmup: async (milliseconds) => calls.push(['warmup', milliseconds]),
+    focusAfterWarmup: async (value) => calls.push(['focus', value.runtimeKind]),
+    measureWindow: async (page) => {
+      const executedFrames = samples.shift();
+      calls.push(['measure', page.id, executedFrames]);
+      return { delta: { executedFrames } };
+    },
+  });
+  assert.deepEqual(calls.slice(0, 2), [
+    ['warmup', 5_000],
+    ['focus', 'electron'],
+  ]);
+  assert.equal(result.delta.executedFrames, 38);
+  assert.deepEqual(result.settleWindows.map((window) => window.executedFrames), [27, 25, 38, 39, 38]);
 });
 
 test('hidden lifecycle readiness waits for synchronous input-owner neutralization', () => {
@@ -244,12 +321,16 @@ test('Electron cadence sampling restores native focus before observing foregroun
   const calls = [];
   const runtime = {
     runtimeKind: 'electron',
+    mainWindowId: 42,
     page: { id: 'page' },
     electronApp: {
-      async evaluate(_callback, action) {
-        calls.push(['window', action]);
-        return { action, minimized: false, visible: true, focused: true };
+      async evaluate(_callback, payload) {
+        calls.push(['window', payload.requestedAction, payload.targetWindowId]);
+        return { action: payload.requestedAction, minimized: false, visible: true, focused: true };
       },
+    },
+    windowActivator: {
+      async activate() { calls.push(['native-activate', 42]); },
     },
   };
   await focusRuntimeForLifecycleSample(runtime, {
@@ -261,9 +342,84 @@ test('Electron cadence sampling restores native focus before observing foregroun
     },
   });
   assert.deepEqual(calls, [
-    ['window', 'restore'],
+    ['window', 'restore', 42],
+    ['native-activate', 42],
     ['wait', 'page', 'electron foreground sample focus'],
   ]);
+});
+
+test('Electron focus sink targets and cleans exact native window identities', async () => {
+  class FakeBrowserWindow {
+    static nextId = 1;
+    static windows = new Map();
+
+    static fromId(id) {
+      return this.windows.get(id) || null;
+    }
+
+    constructor(options = {}) {
+      this.id = FakeBrowserWindow.nextId++;
+      this.visible = options.show === true;
+      this.focused = false;
+      this.minimized = false;
+      this.destroyed = false;
+      FakeBrowserWindow.windows.set(this.id, this);
+    }
+
+    isDestroyed() { return this.destroyed; }
+    isMinimized() { return this.minimized; }
+    isVisible() { return this.visible; }
+    isFocused() { return this.focused; }
+    minimize() { this.minimized = true; this.visible = true; this.focused = false; }
+    restore() { this.minimized = false; }
+    hide() { this.visible = false; this.focused = false; }
+    show() { this.visible = true; }
+    moveTop() {}
+    setMenuBarVisibility() {}
+    focus() {
+      for (const window of FakeBrowserWindow.windows.values()) window.focused = false;
+      this.focused = true;
+    }
+    destroy() {
+      this.destroyed = true;
+      this.visible = false;
+      this.focused = false;
+      FakeBrowserWindow.windows.delete(this.id);
+    }
+  }
+
+  const electronApp = {
+    async evaluate(callback, payload) {
+      return callback({
+        BrowserWindow: FakeBrowserWindow,
+        screen: { getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }) },
+      }, payload);
+    },
+  };
+  const decoy = new FakeBrowserWindow({ show: true });
+  const main = new FakeBrowserWindow({ show: true });
+  main.focus();
+
+  await driveElectronWindow(electronApp, 'hide', main.id);
+  assert.equal(main.isVisible(), false);
+  assert.equal(decoy.isVisible(), true, 'unrelated window was not targeted');
+  await driveElectronWindow(electronApp, 'show', main.id);
+
+  const transfer = await createElectronFocusSink(electronApp, main.id);
+  assert.equal(transfer.mainWindowId, main.id);
+  assert.notEqual(transfer.sinkWindowId, main.id);
+  assert.equal(main.isFocused(), false);
+  assert.equal((await readElectronWindowState(electronApp, transfer.sinkWindowId)).focused, true);
+
+  const cleanup = await destroyElectronFocusSink(electronApp, main.id, transfer.sinkWindowId);
+  assert.deepEqual(cleanup, {
+    mainWindowId: main.id,
+    sinkWindowId: transfer.sinkWindowId,
+    existed: true,
+    destroyed: true,
+  });
+  assert.equal(FakeBrowserWindow.fromId(transfer.sinkWindowId), null);
+  assert.equal(FakeBrowserWindow.fromId(main.id), main);
 });
 
 test('broker claim identity is extracted from authoritative nested digests', () => {
@@ -307,7 +463,8 @@ test('hidden work, stale input, audio drift, and restore storms each invalidate 
     ['catch-up overflow', (e) => { e.transitions[0].postRestoreMaxStepsAfter = 5; }, /four-step cap/],
     ['missing catch-up observation', (e) => { delete e.transitions[0].postRestoreMaxStepsAfter; }, /four-step cap/],
     ['native window gap', (e) => { e.transitions[0].nativeWindowDuring.hidden = false; }, /BrowserWindow lifecycle state/],
-    ['blur focus not observed', (e) => { e.occlusion.nativeWindowDuring.focused = true; }, /occlusion evidence/],
+    ['focus transfer not observed', (e) => { e.occlusion.nativeWindowDuring.focused = true; }, /occlusion evidence/],
+    ['focus sink not destroyed', (e) => { e.occlusion.focusTransfer.cleanup.destroyed = false; }, /focus-sink/],
   ];
   for (const [name, mutate, expected] of mutations) {
     const evidence = passingEvidence('electron');
@@ -421,6 +578,7 @@ test('raw Browser keyboard emits text-bearing keyDown and a physical keyUp for p
   const page = new RawCdpLifecyclePage(new FakeSession(), { initialUrl: 'about:blank' });
   await page.bringToFront();
   await page.keyboard.press('Space');
+  await page.keyboard.press('F13');
   assert.deepEqual(calls, [
     ['Page.bringToFront', undefined],
     ['Input.dispatchKeyEvent', {
@@ -431,6 +589,14 @@ test('raw Browser keyboard emits text-bearing keyDown and a physical keyUp for p
     ['Input.dispatchKeyEvent', {
       type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32,
       nativeVirtualKeyCode: 32, modifiers: 0, autoRepeat: false, location: 0,
+    }],
+    ['Input.dispatchKeyEvent', {
+      type: 'rawKeyDown', key: 'F13', code: 'F13', windowsVirtualKeyCode: 124,
+      nativeVirtualKeyCode: 124, modifiers: 0, autoRepeat: false, location: 0,
+    }],
+    ['Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'F13', code: 'F13', windowsVirtualKeyCode: 124,
+      nativeVirtualKeyCode: 124, modifiers: 0, autoRepeat: false, location: 0,
     }],
   ]);
 });
@@ -462,7 +628,7 @@ test('audio unlock uses a focused keyboard gesture that HUD overlays cannot inte
   assert.deepEqual(calls, [
     ['locator', '#gl-canvas'],
     ['focus', '#gl-canvas'],
-    ['press', 'Shift'],
+    ['press', 'F13'],
   ]);
 });
 

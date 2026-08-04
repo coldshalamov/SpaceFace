@@ -36,7 +36,7 @@ import {
 import {
   PERFORMANCE_LIFECYCLE_FIXED_SEED,
   PERFORMANCE_LIFECYCLE_SCHEMA,
-  foregroundWindowsComparable,
+  foregroundWindowSequenceSettled,
   summarizeLifecycleDelta,
   validatePerformanceLifecycleEvidence,
 } from './performanceLifecycleContracts.mjs';
@@ -47,7 +47,7 @@ const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const HIDDEN_SAMPLE_MS = 750;
 const FOREGROUND_SAMPLE_MS = 650;
 const FOREGROUND_WARMUP_MS = 5_000;
-const FOREGROUND_SETTLE_ATTEMPTS = 8;
+const FOREGROUND_SETTLE_ATTEMPTS = 18;
 const TRANSITION_CYCLES = 4;
 const ELECTRON_LIFECYCLE_POLICY_PRELOAD = fileURLToPath(
   new URL('./performanceLifecycleLaunchPolicy.cjs', import.meta.url),
@@ -132,6 +132,7 @@ export async function runPerformanceLifecycleProbe({
   let body = null;
   let primaryError = null;
   let cleanupReport = null;
+  let failureDiagnostics = null;
   try {
     log(`[lifecycle] ${runtimeKind} canonical root ${runtime.rootUrl}`);
     const launchPolicy = await inspectNativeLifecycleLaunchPolicy(runtime);
@@ -144,9 +145,9 @@ export async function runPerformanceLifecycleProbe({
     assert.equal(gpu.hasContext, true, 'game renderer WebGL context is required');
     assert.equal(gpu.software, false, `software GPU is not acceptance evidence: ${gpu.renderer}`);
 
-    await ensureRunningAudio(runtime.page);
+    await ensureRunningAudio(runtime);
     await focusRuntimeForLifecycleSample(runtime);
-    const foregroundBaseline = await measureSettledForegroundWindow(runtime.page);
+    const foregroundBaseline = await measureSettledForegroundWindow(runtime);
     let occlusion = null;
     if (runtimeKind === 'electron') occlusion = await exerciseElectronOcclusion(runtime);
 
@@ -237,6 +238,18 @@ export async function runPerformanceLifecycleProbe({
     };
   } catch (error) {
     primaryError = error;
+    if (runtimeKind === 'electron') {
+      failureDiagnostics = {
+        nativeWindowAudit: await readElectronNativeWindowAudit(runtime.electronApp).catch((auditError) => ({
+          unavailable: true,
+          error: serializeError(auditError),
+        })),
+        nativeWindowState: await readElectronWindowState(runtime.electronApp, runtime.mainWindowId)
+          .catch((stateError) => ({ unavailable: true, error: serializeError(stateError) })),
+        processMonitor: runtime.processMonitor?.snapshot?.() || null,
+        applicationIssues: runtime.issueTracker?.all?.() || [],
+      };
+    }
   } finally {
     try {
       cleanupReport = runtimeKind === 'browser'
@@ -251,14 +264,7 @@ export async function runPerformanceLifecycleProbe({
             server: runtime.server,
             canonicalUrlTracker: runtime.canonicalUrlTracker,
           }))
-        : await closeOwnedElectronRuntime({
-          page: runtime.page,
-          electronApp: runtime.electronApp,
-          childProcess: runtime.childProcess,
-          canonicalUrlTracker: runtime.canonicalUrlTracker,
-          processMonitor: runtime.processMonitor,
-          rootUrl: runtime.rootUrl,
-        });
+        : await closeOwnedElectronLifecycleRuntime(runtime);
     } catch (error) {
       cleanupReport = error.cleanupReport || { pass: false, failures: [String(error?.message || error)] };
       if (!primaryError) primaryError = error;
@@ -282,6 +288,8 @@ export async function runPerformanceLifecycleProbe({
       candidateCommit,
       error: serializeError(primaryError),
       cleanup,
+      cleanupDetail: cleanupReport,
+      failureDiagnostics,
       partialEvidence: body,
     }, null, 2)}\n`, 'utf8');
     throw primaryError;
@@ -328,7 +336,7 @@ async function launchBrowser(root) {
       windowsHide: false,
     });
     const target = await waitForOwnedChromeTarget({ browserChildProcess, userDataDir });
-    windowActivator = await OwnedChromeWindowActivator.create(browserChildProcess);
+    windowActivator = await OwnedNativeWindowActivator.create(browserChildProcess, { label: 'Chrome' });
     rawSession = await RawCdpSession.connect(target.webSocketDebuggerUrl);
     page = await new RawCdpLifecyclePage(rawSession, {
       initialUrl: target.url,
@@ -376,6 +384,7 @@ async function launchElectron(root) {
   let childProcess = null;
   let processMonitor = null;
   let issueTracker = null;
+  let windowActivator = null;
   try {
     const launchOptions = createElectronLifecycleLaunchOptions(isolatedLaunch.options);
     electronApp = await electron.launch(launchOptions);
@@ -387,16 +396,38 @@ async function launchElectron(root) {
     await issueTracker.bindAndBackfillPage(page);
     const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, { allowAnyLoopbackPort: true });
     const rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
-    await electronApp.evaluate(({ BrowserWindow }, viewport) => {
+    const mainWindowIdentity = await electronApp.evaluate(({ BrowserWindow }, viewport) => {
       const win = BrowserWindow.getAllWindows()[0];
       if (!win) throw new Error('SpaceFace BrowserWindow is missing');
       win.setContentSize(viewport.width, viewport.height);
       win.show();
       win.focus();
+      const nativeHandle = win.getNativeWindowHandle();
+      let nativeWindowHandle = 0n;
+      for (let index = nativeHandle.length - 1; index >= 0; index -= 1) {
+        nativeWindowHandle = (nativeWindowHandle << 8n) + BigInt(nativeHandle[index]);
+      }
+      return { mainWindowId: win.id, nativeWindowHandle: nativeWindowHandle.toString() };
     }, VIEWPORT);
+    const { mainWindowId, nativeWindowHandle } = mainWindowIdentity || {};
+    if (!Number.isSafeInteger(mainWindowId)) {
+      throw new Error(`SpaceFace BrowserWindow identity is invalid: ${mainWindowId}`);
+    }
+    if (!/^[1-9]\d*$/.test(String(nativeWindowHandle || ''))) {
+      throw new Error(`SpaceFace native HWND identity is invalid: ${nativeWindowHandle}`);
+    }
+    await installElectronNativeWindowAudit(electronApp, mainWindowId);
+    windowActivator = await OwnedNativeWindowActivator.create(childProcess, {
+      label: 'Electron',
+      nativeWindowHandle,
+    });
+    await windowActivator.activate();
     return {
       runtimeKind: 'electron',
       electronApp,
+      mainWindowId,
+      nativeWindowHandle,
+      windowActivator,
       childProcess,
       processMonitor,
       issueTracker,
@@ -417,6 +448,7 @@ async function launchElectron(root) {
     };
   } catch (error) {
     issueTracker?.stop?.();
+    await windowActivator?.close?.().catch(() => {});
     let runtimeClosed = electronApp == null;
     if (electronApp) {
       await electronApp.close().catch(() => {});
@@ -509,22 +541,34 @@ async function waitForOwnedChromeTarget({ browserChildProcess, userDataDir, time
   throw new Error(`owned Chrome DevTools target did not appear: ${latestError?.message || 'no target'}`);
 }
 
-class OwnedChromeWindowActivator {
-  static async create(browserChildProcess) {
+class OwnedNativeWindowActivator {
+  static async create(browserChildProcess, { label = 'runtime', nativeWindowHandle = null } = {}) {
     const pid = Number(browserChildProcess?.pid);
     if (!Number.isSafeInteger(pid) || pid <= 0) {
-      throw new Error('owned Chrome PID is unavailable for native activation');
+      throw new Error(`owned ${label} PID is unavailable for native activation`);
+    }
+    const normalizedNativeWindowHandle = nativeWindowHandle == null ? null : String(nativeWindowHandle);
+    if (normalizedNativeWindowHandle != null && !/^[1-9]\d*$/.test(normalizedNativeWindowHandle)) {
+      throw new Error(`owned ${label} native window handle is invalid: ${normalizedNativeWindowHandle}`);
     }
     if (process.platform !== 'win32') {
-      return new OwnedChromeWindowActivator({ pid, child: null, lines: null, stderr: [] });
+      return new OwnedNativeWindowActivator({
+        pid,
+        child: null,
+        lines: null,
+        stderr: [],
+        label,
+        nativeWindowHandle: normalizedNativeWindowHandle,
+      });
     }
     const script = [
       "$ErrorActionPreference = 'Stop'",
       "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class SfLifecycleWindow { [DllImport(\"user32.dll\")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow); [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport(\"user32.dll\")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport(\"user32.dll\")] public static extern IntPtr SetActiveWindow(IntPtr hWnd); [DllImport(\"user32.dll\")] public static extern IntPtr SetFocus(IntPtr hWnd); [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId); [DllImport(\"kernel32.dll\")] public static extern uint GetCurrentThreadId(); [DllImport(\"user32.dll\")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach); public static bool Activate(IntPtr target) { IntPtr foreground = GetForegroundWindow(); uint ignored; uint foregroundThread = GetWindowThreadProcessId(foreground, out ignored); uint targetThread = GetWindowThreadProcessId(target, out ignored); uint currentThread = GetCurrentThreadId(); bool attachedForeground = foregroundThread != 0 && AttachThreadInput(currentThread, foregroundThread, true); bool attachedTarget = targetThread != 0 && targetThread != foregroundThread && AttachThreadInput(currentThread, targetThread, true); try { ShowWindowAsync(target, 9); BringWindowToTop(target); SetForegroundWindow(target); SetActiveWindow(target); SetFocus(target); uint foregroundPid; GetWindowThreadProcessId(GetForegroundWindow(), out foregroundPid); uint targetPid; GetWindowThreadProcessId(target, out targetPid); return foregroundPid == targetPid; } finally { if (attachedTarget) AttachThreadInput(currentThread, targetThread, false); if (attachedForeground) AttachThreadInput(currentThread, foregroundThread, false); } } }'",
       `$ownedPid = ${pid}`,
+      `$ownedHandleValue = '${normalizedNativeWindowHandle || ''}'`,
       "[Console]::Out.WriteLine('READY')",
       '[Console]::Out.Flush()',
-      'while (($driverCommand = [Console]::In.ReadLine()) -ne $null) { if ($driverCommand -eq \'exit\') { break }; if ($driverCommand -ne \'activate\') { continue }; try { $ownedProcess = Get-Process -Id $ownedPid -ErrorAction Stop; $ownedHandle = $ownedProcess.MainWindowHandle; if ($ownedHandle -eq 0) { throw \'owned Chrome MainWindowHandle is zero\' }; $activated = [SfLifecycleWindow]::Activate($ownedHandle); $foregroundHandle = [SfLifecycleWindow]::GetForegroundWindow(); $foregroundProcessId = [uint32]0; [void][SfLifecycleWindow]::GetWindowThreadProcessId($foregroundHandle, [ref]$foregroundProcessId); $foreground = $foregroundProcessId -eq [uint32]$ownedProcess.Id; $json = [pscustomobject]@{ pid = $ownedProcess.Id; handle = $ownedHandle.ToInt64(); activated = [bool]$activated; foreground = [bool]$foreground; foregroundProcessId = $foregroundProcessId; foregroundHandle = $foregroundHandle.ToInt64() } | ConvertTo-Json -Compress; [Console]::Out.WriteLine(\'RESULT \' + $json) } catch { [Console]::Out.WriteLine(\'ERROR \' + $_.Exception.Message) }; [Console]::Out.Flush() }',
+      'while (($driverCommand = [Console]::In.ReadLine()) -ne $null) { if ($driverCommand -eq \'exit\') { break }; if ($driverCommand -ne \'activate\') { continue }; try { $ownedProcess = Get-Process -Id $ownedPid -ErrorAction Stop; $ownedHandle = if ([string]::IsNullOrEmpty($ownedHandleValue)) { $ownedProcess.MainWindowHandle } else { [IntPtr]::new([int64]$ownedHandleValue) }; if ($ownedHandle -eq 0) { throw \'owned runtime MainWindowHandle is zero\' }; $activated = [SfLifecycleWindow]::Activate($ownedHandle); $foregroundHandle = [SfLifecycleWindow]::GetForegroundWindow(); $foregroundProcessId = [uint32]0; [void][SfLifecycleWindow]::GetWindowThreadProcessId($foregroundHandle, [ref]$foregroundProcessId); $targetProcessId = [uint32]0; [void][SfLifecycleWindow]::GetWindowThreadProcessId($ownedHandle, [ref]$targetProcessId); $foreground = $foregroundHandle -eq $ownedHandle; $json = [pscustomobject]@{ pid = $ownedProcess.Id; handle = $ownedHandle.ToInt64().ToString(); activated = [bool]$activated; foreground = [bool]$foreground; foregroundProcessId = $foregroundProcessId; targetProcessId = $targetProcessId; foregroundHandle = $foregroundHandle.ToInt64().ToString() } | ConvertTo-Json -Compress; [Console]::Out.WriteLine(\'RESULT \' + $json) } catch { [Console]::Out.WriteLine(\'ERROR \' + $_.Exception.Message) }; [Console]::Out.Flush() }',
     ].join('; ');
     const child = spawn('powershell.exe', [
       '-NoProfile',
@@ -541,16 +585,25 @@ class OwnedChromeWindowActivator {
     const stderr = [];
     child.stderr.setEncoding('utf8');
     child.stderr.on('data', (chunk) => stderr.push(String(chunk)));
-    const driver = new OwnedChromeWindowActivator({ pid, child, lines, stderr });
+    const driver = new OwnedNativeWindowActivator({
+      pid,
+      child,
+      lines,
+      stderr,
+      label,
+      nativeWindowHandle: normalizedNativeWindowHandle,
+    });
     await driver.waitForLine((line) => line === 'READY', 10_000, 'native window driver readiness');
     return driver;
   }
 
-  constructor({ pid, child, lines, stderr }) {
+  constructor({ pid, child, lines, stderr, label, nativeWindowHandle }) {
     this.pid = pid;
     this.child = child;
     this.lines = lines;
     this.stderr = stderr;
+    this.label = label;
+    this.nativeWindowHandle = nativeWindowHandle;
     this.closedCleanly = child == null;
   }
 
@@ -562,10 +615,12 @@ class OwnedChromeWindowActivator {
     this.child.stdin.write('activate\n');
     const line = await this.waitForLine((value) => value.startsWith('RESULT ') || value.startsWith('ERROR '),
       5_000, 'native window activation');
-    if (line.startsWith('ERROR ')) throw new Error(`owned Chrome native activation failed: ${line.slice(6)}`);
+    if (line.startsWith('ERROR ')) throw new Error(`owned ${this.label} native activation failed: ${line.slice(6)}`);
     const result = JSON.parse(line.slice(7));
-    if (result.pid !== this.pid || !(result.handle > 0) || result.foreground !== true) {
-      throw new Error(`owned Chrome native activation failed: ${JSON.stringify(result)}`);
+    if (result.pid !== this.pid || !/^[1-9]\d*$/.test(String(result.handle || ''))
+      || (this.nativeWindowHandle != null && result.handle !== this.nativeWindowHandle)
+      || result.foregroundHandle !== result.handle || result.foreground !== true) {
+      throw new Error(`owned ${this.label} native activation failed: ${JSON.stringify(result)}`);
     }
     return result;
   }
@@ -682,6 +737,24 @@ async function closeOwnedRawBrowserRuntime(runtime) {
     windowDriverClosed,
     failures,
   };
+}
+
+async function closeOwnedElectronLifecycleRuntime(runtime) {
+  const windowDriverClosed = await runtime.windowActivator?.close?.().catch(() => false);
+  const report = await closeOwnedElectronRuntime({
+    page: runtime.page,
+    electronApp: runtime.electronApp,
+    childProcess: runtime.childProcess,
+    canonicalUrlTracker: runtime.canonicalUrlTracker,
+    processMonitor: runtime.processMonitor,
+    rootUrl: runtime.rootUrl,
+  });
+  report.windowDriverClosed = windowDriverClosed === true;
+  if (!report.windowDriverClosed) {
+    report.failures = [...(report.failures || []), 'native Electron window driver did not close cleanly'];
+    report.pass = false;
+  }
+  return report;
 }
 
 async function waitForOwnedProcessClose(childProcess, timeoutMs) {
@@ -842,8 +915,10 @@ async function installGpuSubmissionObserver(page) {
   return report;
 }
 
-async function ensureRunningAudio(page) {
+export async function ensureRunningAudio(runtime) {
+  const page = runtime.page;
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    await focusRuntimeForLifecycleSample(runtime);
     const observation = await readRuntimeObservation(page);
     if (observation.audio.contextState === 'running') return observation.audio;
     await unlockAudioWithKeyboard(page);
@@ -857,9 +932,10 @@ async function ensureRunningAudio(page) {
 export async function unlockAudioWithKeyboard(page) {
   const canvas = page.locator('#gl-canvas');
   await canvas.focus();
-  // Shift is an ordinary press/release gesture. It can momentarily request boost in flight, but it
-  // cannot be intercepted by a HUD element and leaves no held input for the lifecycle sample.
-  await page.keyboard.press('Shift');
+  // F13 is an ordinary trusted key gesture with no SpaceFace binding and no Windows accessibility
+  // shortcut. Repeated Shift unlock attempts can summon Sticky Keys and steal/minimize the native
+  // foreground window, contaminating the lifecycle sample they are meant to prepare.
+  await page.keyboard.press('F13');
 }
 
 async function measureForegroundWindow(page) {
@@ -868,18 +944,28 @@ async function measureForegroundWindow(page) {
   const before = await readRuntimeObservation(page);
   await delay(FOREGROUND_SAMPLE_MS);
   const after = await readRuntimeObservation(page);
+  assert.equal(after.lifecycleState, 'foreground-visible',
+    `foreground cadence sample lost native foreground ownership: ${JSON.stringify(after.loop)}`);
+  assert.equal(after.audio.contextState, 'running',
+    `foreground cadence sample lost running audio: ${JSON.stringify(after.audio)}`);
   return { before, after, delta: summarizeLifecycleDelta(before, after) };
 }
 
-async function measureSettledForegroundWindow(page) {
-  await delay(FOREGROUND_WARMUP_MS);
+export async function measureSettledForegroundWindow(runtime, {
+  waitForWarmup = delay,
+  focusAfterWarmup = focusRuntimeForLifecycleSample,
+  measureWindow = measureForegroundWindow,
+  warmupMs = FOREGROUND_WARMUP_MS,
+  settleAttempts = FOREGROUND_SETTLE_ATTEMPTS,
+} = {}) {
+  await waitForWarmup(warmupMs);
+  await focusAfterWarmup(runtime);
   const settleWindows = [];
-  for (let attempt = 0; attempt < FOREGROUND_SETTLE_ATTEMPTS; attempt += 1) {
-    const measurement = await measureForegroundWindow(page);
+  for (let attempt = 0; attempt < settleAttempts; attempt += 1) {
+    const measurement = await measureWindow(runtime.page);
     settleWindows.push(measurement.delta);
-    if (settleWindows.length >= 2
-      && foregroundWindowsComparable(settleWindows.at(-2), settleWindows.at(-1))) {
-      return { ...measurement, warmupMs: FOREGROUND_WARMUP_MS, settleWindows };
+    if (foregroundWindowSequenceSettled(settleWindows)) {
+      return { ...measurement, warmupMs, settleWindows };
     }
   }
   throw new Error(`foreground cadence did not settle: ${JSON.stringify(settleWindows)}`);
@@ -895,6 +981,7 @@ export async function focusRuntimeForLifecycleSample(runtime, {
 
 export async function focusRuntimeWindow(runtime) {
   await restoreRuntime(runtime, 'window-minimize');
+  if (runtime.runtimeKind === 'electron') await runtime.windowActivator.activate();
 }
 
 export function isHiddenLifecycleReady(value, runtimeKind) {
@@ -907,26 +994,61 @@ export function isHiddenLifecycleReady(value, runtimeKind) {
 }
 
 async function exerciseElectronOcclusion(runtime) {
-  await driveElectronWindow(runtime.electronApp, 'focus');
+  await focusRuntimeWindow(runtime);
   await waitForObservation(runtime.page, (value) => value.lifecycleState === 'foreground-visible', 'Electron focus');
-  await driveElectronWindow(runtime.electronApp, 'blur');
-  await waitForObservation(runtime.page, (value) => value.lifecycleState === 'foreground-occluded', 'Electron blur');
-  const nativeWindowDuring = await readElectronWindowState(runtime.electronApp);
-  const before = await readRuntimeObservation(runtime.page);
-  await delay(500);
-  const after = await readRuntimeObservation(runtime.page);
-  const delta = summarizeLifecycleDelta(before, after);
-  await driveElectronWindow(runtime.electronApp, 'focus');
-  await waitForObservation(runtime.page, (value) => value.lifecycleState === 'foreground-visible', 'Electron refocus');
+  let focusTransfer = null;
+  let nativeWindowDuring = null;
+  let sinkNativeDuring = null;
+  let delta = null;
+  const errors = [];
+  try {
+    focusTransfer = await createElectronFocusSink(runtime.electronApp, runtime.mainWindowId);
+    await waitForObservation(runtime.page, (value) => value.lifecycleState === 'foreground-occluded',
+      'Electron native focus transfer');
+    nativeWindowDuring = await readElectronWindowState(runtime.electronApp, runtime.mainWindowId);
+    sinkNativeDuring = await readElectronWindowState(runtime.electronApp, focusTransfer.sinkWindowId);
+    const before = await readRuntimeObservation(runtime.page);
+    await delay(500);
+    const after = await readRuntimeObservation(runtime.page);
+    delta = summarizeLifecycleDelta(before, after);
+  } catch (error) {
+    errors.push(error);
+  } finally {
+    if (Number.isSafeInteger(focusTransfer?.sinkWindowId)) {
+      try {
+        focusTransfer.cleanup = await destroyElectronFocusSink(
+          runtime.electronApp,
+          runtime.mainWindowId,
+          focusTransfer.sinkWindowId,
+        );
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    try {
+      await focusRuntimeWindow(runtime);
+      await waitForObservation(runtime.page, (value) => value.lifecycleState === 'foreground-visible',
+        'Electron refocus after native focus transfer');
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, 'Electron native focus-transfer occlusion failed');
+  }
   return {
-    trigger: 'window-blur',
+    trigger: 'native-focus-transfer',
     native: true,
-    state: before.lifecycleState,
+    state: 'foreground-occluded',
     restoredState: 'foreground-visible',
     executedFrames: delta.executedFrames,
     renderUpdates: delta.renderUpdates,
     simulationCompletedTicks: delta.simulationCompletedTicks,
     nativeWindowDuring,
+    focusTransfer: {
+      ...focusTransfer,
+      sinkNativeDuring,
+    },
   };
 }
 
@@ -939,14 +1061,14 @@ async function exerciseHiddenTransition(runtime, { id, trigger }) {
   const before = await readRuntimeObservation(runtime.page);
 
   const nativeWindowBefore = runtime.runtimeKind === 'electron'
-    ? await readElectronWindowState(runtime.electronApp)
+    ? await readElectronWindowState(runtime.electronApp, runtime.mainWindowId)
     : null;
   await hideRuntime(runtime, trigger);
   await waitForObservation(runtime.page, (value) => isHiddenLifecycleReady(value, runtime.runtimeKind),
     `${id} hidden state`);
   const hiddenStart = await readRuntimeObservation(runtime.page);
   const nativeWindowDuring = runtime.runtimeKind === 'electron'
-    ? await readElectronWindowState(runtime.electronApp)
+    ? await readElectronWindowState(runtime.electronApp, runtime.mainWindowId)
     : null;
   await delay(HIDDEN_SAMPLE_MS);
   const hiddenEnd = await readRuntimeObservation(runtime.page);
@@ -960,7 +1082,7 @@ async function exerciseHiddenTransition(runtime, { id, trigger }) {
     && value.loop.postRestoreFrameCount > before.loop.postRestoreFrameCount, `${id} restored state`);
   const after = await readRuntimeObservation(runtime.page);
   const nativeWindowAfter = runtime.runtimeKind === 'electron'
-    ? await readElectronWindowState(runtime.electronApp)
+    ? await readElectronWindowState(runtime.electronApp, runtime.mainWindowId)
     : null;
 
   return {
@@ -1005,7 +1127,8 @@ async function hideRuntime(runtime, trigger) {
     await setBrowserWindowLifecycleState(runtime.browserWindowDriver, 'minimized');
     return;
   }
-  await driveElectronWindow(runtime.electronApp, trigger === 'window-minimize' ? 'minimize' : 'hide');
+  await driveElectronWindow(runtime.electronApp, trigger === 'window-minimize' ? 'minimize' : 'hide',
+    runtime.mainWindowId);
 }
 
 async function restoreRuntime(runtime, trigger) {
@@ -1014,7 +1137,8 @@ async function restoreRuntime(runtime, trigger) {
     await runtime.page.bringToFront();
     return;
   }
-  await driveElectronWindow(runtime.electronApp, trigger === 'window-minimize' ? 'restore' : 'show');
+  await driveElectronWindow(runtime.electronApp, trigger === 'window-minimize' ? 'restore' : 'show',
+    runtime.mainWindowId);
 }
 
 export async function createBrowserWindowLifecycleDriver(context, page) {
@@ -1052,9 +1176,10 @@ export async function setBrowserWindowLifecycleState(driver, windowState) {
   });
 }
 
-async function driveElectronWindow(electronApp, action) {
-  return electronApp.evaluate(({ BrowserWindow }, requestedAction) => {
-    const win = BrowserWindow.getAllWindows()[0];
+export async function driveElectronWindow(electronApp, action, windowId) {
+  if (!Number.isSafeInteger(windowId)) throw new Error(`invalid SpaceFace BrowserWindow id ${windowId}`);
+  return electronApp.evaluate(({ BrowserWindow }, { requestedAction, targetWindowId }) => {
+    const win = BrowserWindow.fromId(targetWindowId);
     if (!win || win.isDestroyed()) throw new Error('SpaceFace BrowserWindow is unavailable');
     if (requestedAction === 'minimize') win.minimize();
     else if (requestedAction === 'restore') {
@@ -1066,35 +1191,142 @@ async function driveElectronWindow(electronApp, action) {
       if (win.isMinimized()) win.restore();
       win.show();
       win.focus();
-    } else if (requestedAction === 'blur') win.blur();
-    else if (requestedAction === 'focus') {
+    } else if (requestedAction === 'focus') {
       if (win.isMinimized()) win.restore();
       win.show();
       win.focus();
     } else throw new Error(`unknown BrowserWindow lifecycle action ${requestedAction}`);
     return {
+      windowId: win.id,
       action: requestedAction,
       minimized: win.isMinimized(),
       visible: win.isVisible(),
       focused: win.isFocused(),
     };
-  }, action);
+  }, { requestedAction: action, targetWindowId: windowId });
 }
 
-async function readElectronWindowState(electronApp) {
-  return electronApp.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (!win || win.isDestroyed()) return { available: false, hidden: null };
+export async function readElectronWindowState(electronApp, windowId) {
+  if (!Number.isSafeInteger(windowId)) throw new Error(`invalid Electron BrowserWindow id ${windowId}`);
+  return electronApp.evaluate(({ BrowserWindow }, targetWindowId) => {
+    const win = BrowserWindow.fromId(targetWindowId);
+    if (!win || win.isDestroyed()) return { available: false, windowId: targetWindowId, hidden: null };
     const minimized = win.isMinimized();
     const visible = win.isVisible();
     return {
       available: true,
+      windowId: win.id,
       minimized,
       visible,
       focused: win.isFocused(),
       hidden: minimized || !visible,
     };
+  }, windowId);
+}
+
+export async function installElectronNativeWindowAudit(electronApp, mainWindowId) {
+  if (!Number.isSafeInteger(mainWindowId)) throw new Error(`invalid SpaceFace BrowserWindow id ${mainWindowId}`);
+  return electronApp.evaluate(({ BrowserWindow }, targetWindowId) => {
+    const win = BrowserWindow.fromId(targetWindowId);
+    if (!win || win.isDestroyed()) throw new Error('SpaceFace BrowserWindow is unavailable');
+    const events = [];
+    const record = (event) => {
+      const bounds = win.isDestroyed() ? null : win.getBounds();
+      events.push({
+        sequence: events.length + 1,
+        at: Date.now(),
+        event,
+        windowId: targetWindowId,
+        destroyed: win.isDestroyed(),
+        minimized: win.isDestroyed() ? null : win.isMinimized(),
+        visible: win.isDestroyed() ? null : win.isVisible(),
+        focused: win.isDestroyed() ? null : win.isFocused(),
+        bounds,
+      });
+      if (events.length > 128) events.splice(0, events.length - 128);
+    };
+    for (const event of ['show', 'hide', 'minimize', 'restore', 'focus', 'blur', 'close', 'closed']) {
+      win.on(event, () => record(event));
+    }
+    globalThis.__sfPerformanceLifecycleNativeWindowAudit = {
+      schema: 'spaceface.performanceLifecycleNativeWindowAudit.v1',
+      mainWindowId: targetWindowId,
+      events,
+      record,
+    };
+    record('audit-installed');
+    return { mainWindowId: targetWindowId, installed: true };
+  }, mainWindowId);
+}
+
+export async function readElectronNativeWindowAudit(electronApp) {
+  return electronApp.evaluate(() => {
+    const audit = globalThis.__sfPerformanceLifecycleNativeWindowAudit || null;
+    if (!audit) return { unavailable: true, reason: 'native window audit was not installed' };
+    audit.record('audit-read');
+    return {
+      schema: audit.schema,
+      mainWindowId: audit.mainWindowId,
+      events: audit.events.map((event) => ({ ...event, bounds: event.bounds ? { ...event.bounds } : null })),
+    };
   });
+}
+
+export async function createElectronFocusSink(electronApp, mainWindowId) {
+  if (!Number.isSafeInteger(mainWindowId)) throw new Error(`invalid SpaceFace BrowserWindow id ${mainWindowId}`);
+  return electronApp.evaluate(({ BrowserWindow, screen }, targetWindowId) => {
+    const mainWindow = BrowserWindow.fromId(targetWindowId);
+    if (!mainWindow || mainWindow.isDestroyed()) throw new Error('SpaceFace BrowserWindow is unavailable');
+    const workArea = screen.getPrimaryDisplay().workArea;
+    const sink = new BrowserWindow({
+      width: 2,
+      height: 2,
+      x: workArea.x + workArea.width - 2,
+      y: workArea.y + workArea.height - 2,
+      show: false,
+      frame: false,
+      focusable: true,
+      skipTaskbar: true,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      backgroundColor: '#000000',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
+    sink.setMenuBarVisibility(false);
+    sink.show();
+    sink.moveTop();
+    sink.focus();
+    return {
+      driver: 'harness-native-browser-window',
+      synthetic: false,
+      mainWindowId: mainWindow.id,
+      sinkWindowId: sink.id,
+    };
+  }, mainWindowId);
+}
+
+export async function destroyElectronFocusSink(electronApp, mainWindowId, sinkWindowId) {
+  if (!Number.isSafeInteger(mainWindowId) || !Number.isSafeInteger(sinkWindowId)
+    || mainWindowId === sinkWindowId) {
+    throw new Error(`invalid Electron focus-sink identity ${mainWindowId}/${sinkWindowId}`);
+  }
+  return electronApp.evaluate(({ BrowserWindow }, identities) => {
+    const sink = BrowserWindow.fromId(identities.sinkWindowId);
+    const existed = !!sink && !sink.isDestroyed();
+    if (existed) sink.destroy();
+    return {
+      mainWindowId: identities.mainWindowId,
+      sinkWindowId: identities.sinkWindowId,
+      existed,
+      destroyed: !BrowserWindow.fromId(identities.sinkWindowId),
+    };
+  }, { mainWindowId, sinkWindowId });
 }
 
 async function readRuntimeObservation(page) {
@@ -1259,6 +1491,7 @@ function normalizeCleanup(runtimeKind, report, runtime) {
     runtimeClosed: report?.processExited === true && report?.processCloseConfirmed === true,
     listenerClosed: report?.listenerReleased === true,
     profileRemoved: !existsSync(runtime.isolatedLaunch.userDataDir),
+    windowDriverClosed: report?.windowDriverClosed === true,
     failures: report?.failures || [],
   };
 }

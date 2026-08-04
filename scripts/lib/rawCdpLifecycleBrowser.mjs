@@ -5,6 +5,7 @@ const DEFAULT_COMMAND_TIMEOUT_MS = 15_000;
 const KEY_DEFINITIONS = Object.freeze({
   Space: Object.freeze({ key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' }),
   Shift: Object.freeze({ key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16, modifiers: 8 }),
+  F13: Object.freeze({ key: 'F13', code: 'F13', windowsVirtualKeyCode: 124 }),
   KeyW: Object.freeze({ key: 'w', code: 'KeyW', windowsVirtualKeyCode: 87, text: 'w' }),
 });
 
