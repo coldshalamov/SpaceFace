@@ -156,6 +156,45 @@ acceptance claim.
 Per the architecture-first execution direction, no broad baseline matrix, test-of-test expansion, repeated adversarial
 loop, or workstation FPS run was opened after the focused gates passed.
 
+## 2026-08-04 headless native-evidence readiness audit
+
+A bounded reread of the actual driver-counter boundary found one material evidence defect. Three.js 0.184.0 sends a
+dirty `BufferAttribute` range through WebGL2's five-argument
+`bufferSubData(target, destinationByteOffset, sourceArray, sourceComponentOffset, componentCount)` overload. The GL
+instrumentation wrapper ignored the final two arguments and charged the complete source array. The reproduced
+regression requested nine `Float32` components (36 bytes) from a 128-component array but reported 512 bytes. Any
+PQ-040 capture taken through that counter would therefore have made partial uploads look like full-capacity traffic.
+
+`src/render/glInstrumentation.js` now derives partial-upload bytes from the exact component count and the source
+view's bytes per element while preserving the complete-payload WebGL1/three-argument behavior. The regression also
+pins the exact native arguments and receiver-preserving wrapper path.
+
+The same audit added the missing dense CPU-side fanout proof. At both 18 and 90 trail instances, with all four sprite
+buckets active and a trail commit after every logical spawn, the first qualifying renderer publication produced
+exactly 23 Three.js range records: 20 sprite attributes plus three trail attributes. It allocated no public ranges
+before renderer publication, retained active count independently from the 96-instance capacity, and reported the
+exact packed-prefix requests:
+
+- 18 trail instances: 1,600 bytes;
+- 90 trail instances: 7,360 bytes; and
+- complete-capacity comparison: 23,040 bytes.
+
+One headless validation batch was run after the repair; it was not repeated:
+
+| Gate | Result |
+|---|---|
+| `node --test test/perf-counters.test.mjs test/dynamic-buffer-ranges.test.mjs test/vfx-instanced-sprite-pool.test.mjs test/trail-streak-instancing.test.mjs` | **49 pass / 0 fail** |
+| `node scripts/check-render-hotpath-contract.mjs` | **PASS** |
+| `node --check` on `glInstrumentation`, `dynamicBufferRanges`, `instancedSpritePool`, and `engineTrailSurfaces` | **PASS** |
+
+No Browser, Electron, headed, or hidden GPU process was launched in this audit. The repository still has no tracked
+`performance-dirty-ranges-browser` / `performance-dirty-ranges-electron` manifests or matched full-upload comparator,
+so native acceptance has not been synthesized from headless evidence. The remaining substantive work is one bounded
+source-paired Browser/Electron A/B claim set after that comparator is wired: it must confirm the corrected counter at
+the real GL boundary, visible dense-combat parity, bounded allocation/GC behavior, and a repeatable owner/driver gain.
+If that single matched claim shows no gain outside noise, the packet's keep/remove rule still requires removing the
+abstraction. Repeating the same runtime candidate would add no authority.
+
 ## Preserved boundaries
 
 - `GameState`, deterministic simulation, fixed-step order, 60 Hz behavior, four-step foreground catch-up cap,

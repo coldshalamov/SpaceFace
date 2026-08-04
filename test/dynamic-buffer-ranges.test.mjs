@@ -231,3 +231,81 @@ test('live sprite and trail owners publish only their packed prefixes after init
   ]) acknowledgeUpdate(attribute);
   coordinator.disarm(epoch);
 });
+
+test('dense one-times and five-times fanout stays at 23 ranges and charges packed bytes', () => {
+  const capacity = 96;
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const texture = new THREE.Texture();
+  const sprites = createInstancedSpriteBuckets(scene, capacity, texture, texture, texture, texture);
+  const trails = initTrailStreakPool(scene, capacity);
+  const buckets = [sprites.glow, sprites.ring, sprites.smoke, sprites.combustion];
+  const allAttributes = [
+    ...buckets.flatMap((bucket) => [
+      bucket.position,
+      bucket.scale,
+      bucket.roll,
+      bucket.color,
+      bucket.opacity,
+    ]),
+    trails.mesh.instanceMatrix,
+    trails.colorAttribute,
+    trails.opacityAttribute,
+  ];
+
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of allAttributes) acknowledgeInitial(attribute);
+  coordinator.disarm(epoch);
+
+  const requestedBytes = () => coordinator.getDiagnostics().owners.reduce(
+    (sum, owner) => sum + owner.requestedUploadBytes,
+    0,
+  );
+
+  for (const population of [18, 90]) {
+    const allocationsBefore = coordinator.getDiagnostics().updateRangeAllocations;
+    const requestedBefore = requestedBytes();
+    resetInstancedSpriteBuckets(sprites);
+    for (const kind of [false, true, 'smoke', 'combustion']) {
+      assert.equal(writeInstancedSpriteFields(
+        sprites, kind, 1, 2, 3, 4, 5, 1, 0, 1, 0.5, 0.25, 0.8,
+      ), true);
+    }
+    commitInstancedSpriteBuckets(sprites);
+
+    // The live VFX path commits after each spawn. Publication must remain one packed range per
+    // attribute regardless of this logical-commit fanout.
+    for (let index = 0; index < population; index++) {
+      updateTrailStreakInstance(trails, index, {
+        x: index, y: 0.4, z: index * 0.5, vx: 1, vz: 0,
+        width: 0.5, length: 4, opacity: 0.7,
+        color: { r: 1, g: 0.5, b: 0.2 },
+      });
+      commitTrailStreakInstances(trails, index + 1, { scroll: 0.2, time: 1.5 });
+    }
+    assert.equal(allAttributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+      'logical commits must not allocate public Three.js ranges before renderer publication');
+
+    epoch = coordinator.arm();
+    scene.onBeforeRender({}, scene, camera, null);
+    assert.equal(
+      coordinator.getDiagnostics().updateRangeAllocations - allocationsBefore,
+      23,
+      'four five-attribute sprite buckets plus one three-attribute trail pool publish once each',
+    );
+    assert.equal(allAttributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 23);
+
+    const expectedBytes = (4 * (3 + 2 + 1 + 3 + 1) + population * (16 + 3 + 1))
+      * Float32Array.BYTES_PER_ELEMENT;
+    assert.equal(requestedBytes() - requestedBefore, expectedBytes,
+      'requested upload bytes must follow the packed active prefix, not allocated capacity');
+    assert.ok(expectedBytes < capacity * (4 * 10 + 20) * Float32Array.BYTES_PER_ELEMENT,
+      'the fixture must distinguish dirty bytes from a complete-capacity upload');
+    assert.equal(trails.mesh.count, population, 'active draw count stays independent of capacity');
+
+    for (const attribute of allAttributes) acknowledgeUpdate(attribute);
+    coordinator.disarm(epoch);
+  }
+});

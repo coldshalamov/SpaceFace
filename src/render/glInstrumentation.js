@@ -51,6 +51,25 @@ function payloadBytes(value) {
 }
 
 /**
+ * Byte size of the exact WebGL2 bufferSubData source slice.
+ *
+ * Three r184 calls `bufferSubData(target, dstOffset, array, range.start, range.count)` for
+ * BufferAttribute update ranges. The last two arguments are component indexes, so charging the
+ * source view's complete byteLength turns every partial upload into a false full-capacity sample.
+ * WebGL1's three-argument overload still transfers the complete source view.
+ */
+function bufferSubDataPayloadBytes(value, srcOffset, length, argumentCount) {
+  const totalBytes = payloadBytes(value);
+  if (argumentCount < 5 || !Number.isInteger(srcOffset) || srcOffset < 0
+      || !Number.isInteger(length) || length < 0) return totalBytes;
+  const bytesPerElement = Number(value && value.BYTES_PER_ELEMENT) || 1;
+  const availableElements = Math.floor(totalBytes / bytesPerElement);
+  const boundedStart = Math.min(srcOffset, availableElements);
+  const boundedLength = Math.min(length, availableElements - boundedStart);
+  return boundedLength * bytesPerElement;
+}
+
+/**
  * Install counting wrappers on a live WebGL context.
  *
  * @param {WebGLRenderingContext|WebGL2RenderingContext} gl
@@ -127,8 +146,11 @@ export function installGlInstrumentation(gl, counters) {
     counters.countBufferUpload(true, payloadBytes(data));
     return original.apply(this, arguments);
   });
-  wrap('bufferSubData', (original) => function bufferSubData(target, offset, data) {
-    counters.countBufferUpload(false, payloadBytes(data));
+  wrap('bufferSubData', (original) => function bufferSubData(target, offset, data, srcOffset, length) {
+    counters.countBufferUpload(
+      false,
+      bufferSubDataPayloadBytes(data, srcOffset, length, arguments.length),
+    );
     return original.apply(this, arguments);
   });
 

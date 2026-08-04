@@ -514,6 +514,26 @@ test('bufferData counts the size-only overload as bytes', () => {
   assert.equal(counters.snapshot().totals.bufferUploadBytes, 8192);
 });
 
+test('bufferSubData counts only the WebGL2 source range requested by Three.js', () => {
+  const { gl, calls } = createFakeGl();
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+  installGlInstrumentation(gl, counters);
+  const source = new Float32Array(128);
+
+  counters.beginFrame();
+  // Three r184 uses this five-argument overload for BufferAttribute.updateRanges:
+  // srcOffset/count are component indexes, not byte offsets.
+  gl.bufferSubData('target', 44, source, 11, 9);
+  counters.endFrame();
+
+  assert.equal(counters.snapshot().totals.bufferUploadBytes, 9 * Float32Array.BYTES_PER_ELEMENT,
+    'dirty-range telemetry must not charge the complete allocated source array');
+  const upload = calls.find((call) => call.name === 'bufferSubData');
+  assert.deepEqual(upload.args, ['target', 44, source, 11, 9],
+    'instrumentation must preserve the exact native partial-upload call');
+});
+
 test('useProgram and bindTexture count switches, not calls', () => {
   const { gl } = createFakeGl();
   const counters = createPerfCounters();
