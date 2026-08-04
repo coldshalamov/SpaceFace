@@ -4357,7 +4357,8 @@
       "priority": 243,
       "title": "Repair the Core-commit presentation seam",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
+      "owner": "codex-primary",
       "dependsOn": [
         "PQ-024.h2-verdict"
       ],
