@@ -3128,14 +3128,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
-      "tris": 141740,
-      "bytes": 23431088,
-      "textureSize": 1024,
+      "tris": 138840,
+      "bytes": 23088680,
+      "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "Refinery Crown — industrial_refinery; authored station family, PBR, explicit LOD0/1/2. LOD0 141740 tris / 5 draw groups.",
+      "note": "Refinery Process Crown material-truth V2 integration candidate — admitted candidate 49d6a50f24fd, promoted source 9faf59a697a9; connected feed, crusher/transfer, differentiated separation, thermal/recovery, storage and dock/control construction; LOD0/1/2 138840/31684/568 tris across 5 semantic PBR groups. Browser/Electron route and performance remain separate gates.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",

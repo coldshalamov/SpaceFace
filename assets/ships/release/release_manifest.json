@@ -791,14 +791,19 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_refinery.glb",
       "release": "assets/ships/release/parts/places/place_station_refinery.glb",
-      "sourceSha256": "93fce6a0401a3375cad4269cc59dbf1ad5ba3eafb822a4a6f6d464410d9093a9",
-      "releaseSha256": "52653b6b9fd0859c076bbd5912feb827a099c1f3220bfea99c4881281a5d5f57",
-      "sourceBytes": 23431088,
-      "releaseBytes": 9885532,
+      "sourceSha256": "9faf59a697a9faafbf18f3c74c6abc27b7fc38e0ec3ffe3ea803396f46365d88",
+      "releaseSha256": "3b673f761f8e47c32ffa0563b933ad099380d2df75629dca927481cec4c8b7c0",
+      "sourceBytes": 23088680,
+      "releaseBytes": 5725268,
       "textures": 15,
       "ktx2Textures": 15,
       "meshoptBufferViews": 66,
-      "contractNodeCount": 18
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_station_blackmarket",

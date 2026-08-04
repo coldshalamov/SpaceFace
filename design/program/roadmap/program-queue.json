@@ -2699,8 +2699,7 @@
       "priority": 27,
       "title": "Re-author the Ceres refinery's visible process identity",
       "kind": "implementation",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
@@ -2709,18 +2708,33 @@
         "asset-manifest"
       ],
       "paths": [
+        "assets/ships/m5_station_refinery/blender/source/material_truth_v2/place_station_refinery.blend",
+        "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+        "assets/ships/m5_station_refinery/release_candidates/material_truth_v2/places/place_station_refinery.glb",
+        "assets/ships/m5_station_refinery/reports/material_truth_v2/",
         "assets/ships/parts/places/place_station_refinery.glb",
+        "assets/ships/parts/blender/place_station_refinery_authored.blend",
         "assets/ships/release/parts/places/place_station_refinery.glb",
         "assets/ships/parts/parts_manifest.json",
-        "assets/ships/release/release_manifest.json"
+        "assets/ships/release/release_manifest.json",
+        "tools/blender/build_station_refinery_material_truth_v2.py",
+        "scripts/check-pq022-refinery-candidate.mjs",
+        "scripts/lib/pq022RefineryCandidateValidation.mjs",
+        "scripts/promote-pq022-refinery.mjs",
+        "test/pq022-refinery-candidate-validation.test.mjs",
+        "test/pq022-refinery-promotion.test.mjs"
       ],
       "checks": [
         "npm run check:pq022:corridor-assets",
         "npm run check:graphics:asset-receipts",
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
-      "brief": "Preserve the exact refinery identity, routing, scale, anchors, collision, LOD and release contracts while replacing the flat drum-and-wall row with a connected feed, processing, thermal and service construction legible at ordinary framing."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-refinery-reauthor-REPORT.md"
+      ],
+      "brief": "Implemented from admitted candidate 49d6a50f at candidate checkpoint 228f28d7: the canonical refinery now has a fabricated feed/crusher/transfer chain, differentiated separation, thermal/recovery, split storage, and supported dock/control construction with exact-source G1/G2/G4/emissive KEEP. Frozen identity, root, sockets, collision, envelope, runtime scale, five PBR groups, and strict LOD reduction remain intact. Browser/Electron route and representative performance remain separate exact units.",
+      "partialIntegration": "The guarded five-file promotion published source 9faf59a6, authored Blend 5af14fcf, 138,840/31,684/568-triangle LODs, and KTX2/Meshopt release 3b673f76 (15/15 textures, 66 compressed buffer views). Foundry, Khronos, Blender export, admission, disposable-root release, corridor-assets, asset-receipts, and reachability gates are green. Zero Browser and zero Electron launches were used.",
+      "blocker": null
     },
     {
       "id": "PQ-022.refinery-reauthor-h1",
