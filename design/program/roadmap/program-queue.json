@@ -2831,7 +2831,7 @@
         "npm run check:atlas-integrity"
       ],
       "receiptRefs": [],
-      "brief": "Live-use audit proved the billboard is repeated beside four core-sector stations as well as the Helios memorial. Preserve and re-author the shared billboard as neutral framed information infrastructure, split poi_memorial onto a new exact place_memorial_array identity with its canonical 24-light Candle Fleet construction, and preserve the shared buoy as neutral role-legible navigation infrastructure. Publish all three source/release/Blend identities and all three rows in both manifests atomically, then register only poi_memorial to the new asset without a special renderer path."
+      "brief": "Live-use audit proved the billboard is repeated beside six core-sector stations as well as the Helios memorial. Preserve and re-author the shared billboard as neutral framed information infrastructure, split poi_memorial onto a new exact place_memorial_array identity with its canonical 24-light Candle Fleet construction, and preserve the shared buoy as neutral role-legible navigation infrastructure with a zero-g inertial stabilization/load path. Publish all three source/release/Blend identities and all three rows in both manifests atomically, then register only poi_memorial to the new asset without a special renderer path."
     },
     {
       "id": "PQ-022.billboard-buoy-reauthor-h1",
