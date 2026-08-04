@@ -58,6 +58,15 @@ generic cylinder-and-box assembly whose HUD rings carry more meaning than its ma
 The review is complete; exact re-authoring, recapture, and causal re-review units are now in the
 queue. Receipt: [relay H2 verdict](receipts/PQ-022-relay-h2-verdict-REPORT.md).
 
+**Targeted exact-final causal re-review, candidate `780b77b3`: PASS / KEEP G1, G2, and G4.** The
+revised close/default Browser and source-Electron views replace the gray post with a visibly
+asteroid-gripping collar, formed vessels, open transfer trusses, recovery receiver, service frame,
+and dish/mast. Cool vessel metal, dark mechanics, warm load/service members, and localized cyan
+diagnostics remain separated in both hosts. LOD2 necessarily loses meso detail at `336.47 m`, but
+retains the irregular, top-heavy manufactured silhouette. Exact release
+`85b8d74e...67a8` is bound to route visual acceptance; performance and final promotion remain
+separate. Receipt: [revised relay causal review](receipts/PQ-022-relay-reauthor-review-REPORT.md).
+
 ---
 
 ## Decision 2 — PQ-019 facility/capsule art and heist-route status

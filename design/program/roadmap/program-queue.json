@@ -2651,8 +2651,7 @@
       "priority": 26,
       "title": "Causally review the revised claim relay",
       "kind": "acceptance_review",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-022.relay-reauthor-h1"
       ],
@@ -2664,8 +2663,12 @@
         "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Review only whether the revised candidate closes the recorded silhouette, construction, material-zone, and ownership-signal defects at close/default/far framing."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-relay-reauthor-review-REPORT.md"
+      ],
+      "brief": "Review only whether the revised candidate closes the recorded silhouette, construction, material-zone, and ownership-signal defects at close/default/far framing.",
+      "partialIntegration": "2026-08-04 retained candidate 780b77b3 receives PASS / KEEP for G1 manufactured form, G2 material response, and G4 role coherence, binding exact final release 85b8d74e...67a8 to route visual acceptance. The old gray-post defect is causally closed at close/default/far framing in Browser and source Electron; far meso-detail loss at 336.47 m is an intentional screen-space boundary. No performance, physical-hardware, corridor-wide, or promotion claim is made.",
+      "blocker": null
     },
     {
       "id": "PQ-022.corridor-assets-human-disposition",
