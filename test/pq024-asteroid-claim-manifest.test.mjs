@@ -7,6 +7,10 @@ import manifest, {
   createPq024AsteroidClaimManifest,
   PQ024_ASTEROID_CLAIM_FIXED_SEED,
 } from '../scripts/validation-manifests/pq024-asteroid-claim.mjs';
+import committedManifest, {
+  createPq024CommittedTransitionManifest,
+  PQ024_COMMITTED_TRANSITION_FIXED_SEED,
+} from '../scripts/validation-manifests/pq024-committed-transition.mjs';
 import {
   formatPq024DockApproachTimeout,
   formatPq024MasslineLatchTimeout,
@@ -14,13 +18,22 @@ import {
   projectPq024RouteSemantics,
 } from '../scripts/lib/pq024AsteroidClaimParity.mjs';
 import {
+  assessPq024CommittedElectronPrelaunch,
   assessPq024CommittedPresentation,
+  assessPq024CommittedTransitionReceipt,
   PQ024_COMMITTED_PRESENTATION_SCHEMA,
+  PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA,
+  PQ024_COMMITTED_TRANSITION_SEMANTICS_SCHEMA,
 } from '../scripts/lib/pq024CommittedPresentation.mjs';
+import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
 const ELECTRON_URL = new URL('../scripts/check-pq024-asteroid-claim-electron.mjs', import.meta.url);
+const COMMITTED_ELECTRON_URL = new URL(
+  '../scripts/check-pq024-committed-transition-electron.mjs',
+  import.meta.url,
+);
 
 test('PQ-024 broker manifest binds one acceptance launch to the queue-listed headless gates', () => {
   const fresh = createPq024AsteroidClaimManifest();
@@ -108,6 +121,253 @@ test('PQ-024 committed presentation rejects the captured stale frame and accepts
   assert.equal(settled.schema, PQ024_COMMITTED_PRESENTATION_SCHEMA);
   assert.equal(settled.pass, true);
   assert.deepEqual(settled.failures, []);
+});
+
+test('PQ-024 committed-transition manifest is a distinct one-shot broker candidate', async () => {
+  const fresh = createPq024CommittedTransitionManifest();
+  assert.equal(committedManifest.id, 'pq024-committed-transition');
+  assert.equal(fresh.id, committedManifest.id);
+  assert.equal(fresh.runtimeKind, 'browser');
+  assert.equal(fresh.mode, 'acceptance');
+  assert.deepEqual(fresh.commandArgs, [
+    'scripts/probe-pq024-asteroid-claim.mjs',
+    '--committed-transition',
+  ]);
+  assert.equal(fresh.fixedSeed, PQ024_COMMITTED_TRANSITION_FIXED_SEED);
+  assert.equal(fresh.fixedSeed, PQ024_ASTEROID_CLAIM_FIXED_SEED);
+  assert.equal(fresh.maxLaunchesPerCandidate, 1);
+  assert.equal(fresh.requireBrokerClaim, true);
+  assert.match(String(fresh.artifactRoot), /pq024-committed-transition/);
+  for (const required of [
+    'scripts/probe-pq024-asteroid-claim.mjs',
+    'scripts/check-pq024-committed-transition-electron.mjs',
+    'scripts/lib/pq024CommittedPresentation.mjs',
+    'scripts/validation-manifests/pq024-committed-transition.mjs',
+  ]) {
+    assert.ok(fresh.harnessSourcePaths.includes(required),
+      `committed-transition digest misses ${required}`);
+  }
+
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const [boundedDigests, fullDigests] = await Promise.all([
+    computeGateDigestsFromManifest({ root, manifest: fresh }),
+    computeGateDigestsFromManifest({ root, manifest: createPq024AsteroidClaimManifest() }),
+  ]);
+  assert.match(boundedDigests.manifestDigest, /^[0-9a-f]{64}$/);
+  assert.match(boundedDigests.candidateDigest, /^[0-9a-f]{64}$/);
+  assert.notEqual(boundedDigests.manifestDigest, fullDigests.manifestDigest,
+    'the bounded manifest has an independent policy digest');
+  assert.notEqual(boundedDigests.candidateDigest, fullDigests.candidateDigest,
+    'the bounded launch has an independent candidate identity');
+});
+
+test('PQ-024 committed-transition actor retains one screenshot and returns before downstream work', () => {
+  const source = readFileSync(PROBE_URL, 'utf8');
+  assert.match(source,
+    /COMMITTED_TRANSITION_SCREENSHOTS\s*=\s*Object\.freeze\(\['03-core-committed\.png'\]\)/,
+    'the bounded actor may retain only the committed Core screenshot');
+  assert.match(source, /if \(!options\.stopAfterCore\) await screenshot\('01-market-materials\.png'\)/);
+  assert.match(source, /if \(!options\.stopAfterCore\) await screenshot\('02-survey-reveal\.png'\)/);
+
+  const corePlacement = source.indexOf("const core = await placeSiteMachine(page, 'sm_massline_core'");
+  const presentation = source.indexOf('waitForCommittedPresentation(page, core)', corePlacement);
+  const screenshot = source.indexOf("screenshot('03-core-committed.png')", presentation);
+  const stop = source.indexOf('if (options.stopAfterCore) {', screenshot);
+  const extractorPhase = source.indexOf("phase = 'extractor-install'", stop);
+  assert.ok(corePlacement >= 0 && presentation > corePlacement && screenshot > presentation
+    && stop > screenshot && extractorPhase > stop,
+  'bounded actor must settle, capture, and return before the extractor phase');
+  const stopBranch = source.slice(stop, extractorPhase);
+  const actorPrefix = source.slice(source.indexOf('async function runDefaultRoute'), stop);
+  assert.match(actorPrefix, /readGpuContract\(page\)/);
+  assert.match(actorPrefix, /gpu\.available, true/);
+  assert.match(actorPrefix, /SwiftShader\|llvmpipe\|software/i,
+    'bounded acceptance keeps the real-GPU contract used by the full actor');
+  assert.match(stopBranch, /return \{/);
+  assert.match(stopBranch, /PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA/);
+  assert.match(stopBranch, /committedPresentation/);
+  assert.match(source, /asteroidId:\s*site\.asteroidId\s*\?\?\s*state\?\.drill\?\.asteroidId/,
+    'installed Core evidence must retain its owner asteroid for within-receipt route binding');
+  assert.doesNotMatch(stopBranch,
+    /placeSiteMachine\(page, 'sm_extractor'|waitForPositiveProduction\(|assertExactlyOneExteriorRelay\(|quickSave\(|coldContinue\(|reenterAsteroidOps\(/,
+    'bounded branch must not spend any downstream route phase');
+  for (const forbidden of [
+    /\bsiteSys\.installMachine\s*\(/,
+    /\bstate\.player\.cargo(?:\.items)?\s*=/,
+    /\b(?:producing|inventory|survey|exteriorRelay)\s*=\s*(?:true|false|\{|\[)/,
+  ]) {
+    assert.doesNotMatch(stopBranch, forbidden,
+      `bounded branch contains forbidden owner mutation ${forbidden}`);
+  }
+});
+
+test('PQ-024 committed-transition Electron wrapper is exact-Browser gated before launch', () => {
+  const source = readFileSync(PROBE_URL, 'utf8');
+  const wrapper = readFileSync(COMMITTED_ELECTRON_URL, 'utf8');
+  assert.match(wrapper, /process\.argv\.push\(['"]--committed-transition['"]\)/);
+  assert.match(wrapper, /process\.argv\.push\(['"]--electron-parity['"]\)/);
+  assert.match(wrapper, /import\(['"]\.\/probe-pq024-asteroid-claim\.mjs['"]\)/);
+  const prelaunchCall = source.indexOf(
+    'browserCommittedPrelaunch = assessPq024CommittedElectronPrelaunch(browserReceipt',
+  );
+  const prelaunchPass = source.indexOf(
+    'assert.equal(browserCommittedPrelaunch.pass, true',
+    prelaunchCall,
+  );
+  const playwrightLoad = source.indexOf('await loadPlaywright()', prelaunchPass);
+  const electronLaunch = source.indexOf('electron.launch(electronLaunch.options)', playwrightLoad);
+  assert.ok(prelaunchCall >= 0 && prelaunchPass > prelaunchCall
+    && playwrightLoad > prelaunchPass && electronLaunch > playwrightLoad,
+  'complete Browser receipt PASS assertion must precede Playwright load and Electron launch');
+});
+
+test('PQ-024 committed-transition projection is fail-closed and runtime-id neutral', () => {
+  const receipt = {
+    schema: PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA,
+    runtime: 'browser-chromium-headed',
+    disposition: 'PASS',
+    fixedSeed: 24024,
+    recordedSeed: 24024,
+    brokerManifestId: 'pq024-committed-transition',
+    screenshots: [{
+      path: '.devshots/pq024-committed-transition/03-core-committed.png',
+      bytes: 4096,
+      sha256: 'a'.repeat(64),
+    }],
+    observations: {
+      cargo: [{
+        commodityId: 'cmdty_regocrete', qty: 7,
+        before: { owned: 2 }, after: { owned: 9 },
+      }],
+      asteroid: { targetEntityId: 91, siteId: null },
+      surveyReveal: { revealed: 3, cells: 3 },
+      core: {
+        siteId: 'site_claim_1', asteroidId: 91,
+        anchored: true, lifecycle: 'committed', machineId: 101,
+        cell: { col: 4, row: 6 },
+      },
+      committedPresentation: {
+        owner: { siteId: 'site_claim_1', anchored: true, lifecycle: 'committed', cells: 3 },
+        claimText: ' Anchored ',
+        assayText: 'Assay 3 cells',
+        inspector: {
+          kicker: 'Site overview',
+          title: 'Anchored claim',
+          text: 'Survey record: basalt formation — 3 cells committed to the claim. '
+            + 'Awaiting first real output — the exterior relay comes online when the site produces.',
+        },
+      },
+    },
+  };
+  const browser = assessPq024CommittedTransitionReceipt(receipt, {
+    expectedFixedSeed: 24024,
+    expectedRuntime: 'browser-chromium-headed',
+  });
+  assert.equal(browser.pass, true, browser.failures.join('; '));
+  assert.equal(browser.projection.schema, PQ024_COMMITTED_TRANSITION_SEMANTICS_SCHEMA);
+
+  const electronReceipt = structuredClone(receipt);
+  electronReceipt.runtime = 'electron';
+  electronReceipt.observations.asteroid.targetEntityId = 9001;
+  electronReceipt.observations.core.asteroidId = 9001;
+  electronReceipt.observations.core.machineId = 9002;
+  electronReceipt.screenshots[0].bytes = 8192;
+  electronReceipt.screenshots[0].sha256 = 'b'.repeat(64);
+  const electron = assessPq024CommittedTransitionReceipt(electronReceipt, {
+    expectedFixedSeed: 24024,
+    expectedRuntime: 'electron',
+  });
+  assert.equal(electron.pass, true, electron.failures.join('; '));
+  assert.deepEqual(electron.projection, browser.projection,
+    'runtime ids and image bytes do not alter committed presentation semantics');
+
+  const wrongOwnerReceipt = structuredClone(electronReceipt);
+  wrongOwnerReceipt.observations.core.asteroidId = 9002;
+  const wrongOwner = assessPq024CommittedTransitionReceipt(wrongOwnerReceipt, {
+    expectedFixedSeed: 24024,
+    expectedRuntime: 'electron',
+  });
+  assert.equal(wrongOwner.pass, false);
+  assert.equal(wrongOwner.projection.sameAsteroid, false);
+  assert.ok(wrongOwner.failures.some((row) => row.includes('asteroid identity mismatch')),
+    'the selected public target must be the asteroid that owns the installed Core');
+
+  const stale = structuredClone(receipt);
+  stale.observations.committedPresentation.claimText = 'No claim';
+  stale.observations.extractor = { siteId: 'site_claim_1' };
+  const rejected = assessPq024CommittedTransitionReceipt(stale, {
+    expectedFixedSeed: 24024,
+    expectedRuntime: 'browser-chromium-headed',
+  });
+  assert.equal(rejected.pass, false);
+  assert.ok(rejected.failures.some((row) => row.includes('claim chip')));
+  assert.ok(rejected.failures.some((row) => row.includes('downstream observation')));
+
+  const missingNumbers = structuredClone(receipt);
+  missingNumbers.fixedSeed = null;
+  missingNumbers.recordedSeed = '   ';
+  missingNumbers.observations.asteroid.targetEntityId = undefined;
+  missingNumbers.observations.core.asteroidId = null;
+  missingNumbers.observations.core.cell.col = null;
+  missingNumbers.screenshots[0].bytes = null;
+  const numericRejection = assessPq024CommittedTransitionReceipt(missingNumbers, {
+    expectedFixedSeed: 24024,
+    expectedRuntime: 'browser-chromium-headed',
+  });
+  assert.equal(numericRejection.pass, false);
+  assert.equal(numericRejection.projection.fixedSeed, null);
+  assert.equal(numericRejection.projection.recordedSeed, null);
+  assert.equal(numericRejection.projection.sameAsteroid, false);
+  assert.equal(numericRejection.projection.core.cell.col, null);
+  assert.ok(numericRejection.failures.some((row) => row.includes('asteroid identity mismatch')));
+  assert.ok(numericRejection.failures.some((row) => row.includes('screenshot metadata')));
+
+  const identityDigests = {
+    candidateDigest: '1'.repeat(64),
+    sourceCandidateDigest: '2'.repeat(64),
+    routeDigest: '3'.repeat(64),
+    regressionDigest: '4'.repeat(64),
+    profileDigest: '5'.repeat(64),
+    manifestDigest: '6'.repeat(64),
+  };
+  const acceptedBrowser = structuredClone(receipt);
+  acceptedBrowser.broker = {
+    manifestId: 'pq024-committed-transition',
+    primaryAcceptance: true,
+    digests: identityDigests,
+  };
+  const prelaunch = assessPq024CommittedElectronPrelaunch(acceptedBrowser, {
+    expectedFixedSeed: 24024,
+    currentDigests: identityDigests,
+  });
+  assert.equal(prelaunch.pass, true, prelaunch.failures.join('; '));
+  assert.deepEqual(prelaunch.projection, browser.projection);
+
+  const invalidSemantics = structuredClone(acceptedBrowser);
+  invalidSemantics.observations.committedPresentation.claimText = 'No claim';
+  const invalidSemanticGate = assessPq024CommittedElectronPrelaunch(invalidSemantics, {
+    expectedFixedSeed: 24024,
+    currentDigests: identityDigests,
+  });
+  assert.equal(invalidSemanticGate.pass, false);
+  assert.ok(invalidSemanticGate.failures.some((row) => row.includes('claim chip')));
+
+  const invalidRuntime = structuredClone(acceptedBrowser);
+  invalidRuntime.runtime = 'electron';
+  const invalidRuntimeGate = assessPq024CommittedElectronPrelaunch(invalidRuntime, {
+    expectedFixedSeed: 24024,
+    currentDigests: identityDigests,
+  });
+  assert.equal(invalidRuntimeGate.pass, false);
+  assert.ok(invalidRuntimeGate.failures.some((row) => row.includes('runtime is')));
+
+  const staleDigests = { ...identityDigests, candidateDigest: 'f'.repeat(64) };
+  const staleDigestGate = assessPq024CommittedElectronPrelaunch(acceptedBrowser, {
+    expectedFixedSeed: 24024,
+    currentDigests: staleDigests,
+  });
+  assert.equal(staleDigestGate.pass, false);
+  assert.ok(staleDigestGate.failures.some((row) => row.includes('stale for candidateDigest')));
 });
 
 test('PQ-024 probe preserves the public route and observes owner-produced terminal truth', () => {
@@ -408,4 +668,13 @@ test('the tracked registry resolves the PQ-024 manifest default export', async (
   });
   assert.equal(registered.id, manifest.id);
   assert.match(registered.__trackedManifest.relativePath, /pq024-asteroid-claim\.mjs$/);
+});
+
+test('the tracked registry resolves the bounded PQ-024 committed-transition manifest', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(new URL('../', import.meta.url)),
+    id: 'pq024-committed-transition',
+  });
+  assert.equal(registered.id, committedManifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq024-committed-transition\.mjs$/);
 });

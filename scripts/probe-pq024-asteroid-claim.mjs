@@ -40,9 +40,18 @@ import {
   formatPq024MasslineReleaseTimeout,
   projectPq024RouteSemantics,
 } from './lib/pq024AsteroidClaimParity.mjs';
-import { assessPq024CommittedPresentation } from './lib/pq024CommittedPresentation.mjs';
+import {
+  assessPq024CommittedElectronPrelaunch,
+  assessPq024CommittedPresentation,
+  assessPq024CommittedTransitionReceipt,
+  PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA,
+  projectPq024CommittedIdentityDigests,
+} from './lib/pq024CommittedPresentation.mjs';
 import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
-import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
+import {
+  computeGateDigestsFromManifest,
+  requireBrokerClaimOrDiagnostic,
+} from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import manifest, {
   createPq024AsteroidClaimManifest,
@@ -56,17 +65,35 @@ import h3Manifest, {
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ELECTRON_PARITY = process.argv.includes('--electron-parity');
 const H3_PERFORMANCE = process.argv.includes('--h3-performance');
+const COMMITTED_TRANSITION = process.argv.includes('--committed-transition');
 assert(!(ELECTRON_PARITY && H3_PERFORMANCE), 'PQ-024 H3 is Browser-only and cannot run as Electron parity');
+assert(!(COMMITTED_TRANSITION && H3_PERFORMANCE),
+  'PQ-024 committed transition and H3 performance are distinct broker cells');
+const committedManifestModule = COMMITTED_TRANSITION
+  ? await import('./validation-manifests/pq024-committed-transition.mjs')
+  : null;
+const committedManifest = committedManifestModule?.default || null;
 const BASE_ARTIFACT_ROOT = path.join(ROOT, '.devshots', 'pq024-asteroid-claim');
+const COMMITTED_ARTIFACT_ROOT = COMMITTED_TRANSITION
+  ? path.resolve(ROOT, committedManifest.artifactRoot)
+  : null;
+const ACTIVE_ROUTE_ARTIFACT_ROOT = COMMITTED_ARTIFACT_ROOT || BASE_ARTIFACT_ROOT;
 const ARTIFACT_ROOT = H3_PERFORMANCE
   ? path.resolve(ROOT, h3Manifest.artifactRoot)
   : ELECTRON_PARITY
-    ? path.join(BASE_ARTIFACT_ROOT, 'electron')
-    : BASE_ARTIFACT_ROOT;
-const BROWSER_RECEIPT_PATH = path.join(BASE_ARTIFACT_ROOT, 'route-receipt.json');
+    ? path.join(ACTIVE_ROUTE_ARTIFACT_ROOT, 'electron')
+    : ACTIVE_ROUTE_ARTIFACT_ROOT;
+const BROWSER_RECEIPT_PATH = path.join(
+  ACTIVE_ROUTE_ARTIFACT_ROOT,
+  COMMITTED_TRANSITION ? 'committed-transition-receipt.json' : 'route-receipt.json',
+);
 const RECEIPT_PATH = path.join(
   ARTIFACT_ROOT,
-  H3_PERFORMANCE ? 'performance-receipt.json' : 'route-receipt.json',
+  H3_PERFORMANCE
+    ? 'performance-receipt.json'
+    : COMMITTED_TRANSITION
+      ? 'committed-transition-receipt.json'
+      : 'route-receipt.json',
 );
 const VIEWPORT = H3_PERFORMANCE
   ? PQ024_H3_VIEWPORT
@@ -74,20 +101,28 @@ const VIEWPORT = H3_PERFORMANCE
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
-  : PQ024_ASTEROID_CLAIM_FIXED_SEED;
-const SCREENSHOTS = Object.freeze([
+  : COMMITTED_TRANSITION
+    ? Number(committedManifest.fixedSeed)
+    : PQ024_ASTEROID_CLAIM_FIXED_SEED;
+const ROUTE_SCREENSHOTS = Object.freeze([
   '01-market-materials.png',
   '02-survey-reveal.png',
   '03-core-committed.png',
   '04-producing-relay.png',
   '05-continue-reentered.png',
 ]);
+const COMMITTED_TRANSITION_SCREENSHOTS = Object.freeze(['03-core-committed.png']);
+const SCREENSHOTS = COMMITTED_TRANSITION
+  ? COMMITTED_TRANSITION_SCREENSHOTS
+  : ROUTE_SCREENSHOTS;
 
 const brokerGate = ELECTRON_PARITY ? { ok: true } : await requireBrokerClaimOrDiagnostic({
   outputRoot: ARTIFACT_ROOT,
   manifest: H3_PERFORMANCE
     ? createPq024H3PerformanceManifest()
-    : createPq024AsteroidClaimManifest(),
+    : COMMITTED_TRANSITION
+      ? committedManifestModule.createPq024CommittedTransitionManifest()
+      : createPq024AsteroidClaimManifest(),
   tokenOrPath: process.env.SF_BROKER_CLAIM ?? null,
   diagnostic: DIAGNOSTIC,
   explicitDiagnostic: DIAGNOSTIC,
@@ -95,7 +130,11 @@ const brokerGate = ELECTRON_PARITY ? { ok: true } : await requireBrokerClaimOrDi
 });
 
 if (!brokerGate.ok) {
-  const id = H3_PERFORMANCE ? 'pq024-h3-performance' : 'pq024-asteroid-claim';
+  const id = H3_PERFORMANCE
+    ? 'pq024-h3-performance'
+    : COMMITTED_TRANSITION
+      ? 'pq024-committed-transition'
+      : 'pq024-asteroid-claim';
   console.error(`[${id}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
   console.error(`[${id}] invoke via: node scripts/validation-broker-cli.mjs --manifest ${id}`);
   console.error(`[${id}] or pass --diagnostic for non-promoting inspection`);
@@ -115,6 +154,7 @@ let page = null;
 let issueTracker = null;
 let receipt = null;
 let browserReceipt = null;
+let browserCommittedPrelaunch = null;
 let rootUrl = null;
 let browserClosed = false;
 let serverClosed = false;
@@ -126,10 +166,27 @@ const screenshots = [];
 try {
   if (ELECTRON_PARITY) {
     browserReceipt = JSON.parse(await readFile(BROWSER_RECEIPT_PATH, 'utf8'));
-    assert.equal(browserReceipt.disposition, 'PASS',
-      'PQ-024 Electron parity requires a passing Browser route receipt');
+    if (COMMITTED_TRANSITION) {
+      const currentDigests = await computeGateDigestsFromManifest({
+        root: ROOT,
+        manifest: committedManifestModule.createPq024CommittedTransitionManifest(),
+      });
+      browserCommittedPrelaunch = assessPq024CommittedElectronPrelaunch(browserReceipt, {
+        expectedFixedSeed: committedManifest.fixedSeed,
+        expectedManifestId: committedManifest.id,
+        currentDigests,
+      });
+      assert.equal(browserCommittedPrelaunch.pass, true,
+        `committed-transition Electron prelaunch refused Browser evidence: ${browserCommittedPrelaunch.failures.join('; ')}`);
+    } else {
+      assert.equal(browserReceipt.disposition, 'PASS',
+        'PQ-024 Electron parity requires a passing Browser route receipt');
+    }
     const { _electron: electron } = await loadPlaywright();
-    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq024-asteroid-claim' });
+    electronLaunch = createIsolatedElectronLaunch({
+      root: ROOT,
+      taskId: COMMITTED_TRANSITION ? 'pq024-committed-transition' : 'pq024-asteroid-claim',
+    });
     electronApp = await electron.launch(electronLaunch.options);
     electronChildProcess = electronApp.process();
     electronProcessMonitor = createElectronProcessMonitor({
@@ -208,21 +265,59 @@ try {
       runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
       navigateInitialRoot: !ELECTRON_PARITY,
       pageIssueTracker: issueTracker,
+      stopAfterCore: COMMITTED_TRANSITION,
+      brokerManifestId: COMMITTED_TRANSITION ? committedManifest.id : manifest.id,
     });
     receipt.screenshots = screenshots;
     receipt.pageIssues = summarizeIssues(issueTracker.errorIssues());
     assert.equal(receipt.pageIssues.length, 0, `page issues: ${JSON.stringify(receipt.pageIssues)}`);
-    receipt.semanticProjection = projectPq024RouteSemantics(receipt);
-    if (ELECTRON_PARITY) {
-      assert.deepEqual(
-        receipt.semanticProjection,
-        projectPq024RouteSemantics(browserReceipt),
-        'PQ-024 Electron route semantics must match the accepted Browser route',
-      );
-      receipt.crossRuntimeParity = {
-        pass: true,
-        comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
+    if (COMMITTED_TRANSITION) {
+      const validation = assessPq024CommittedTransitionReceipt(receipt, {
+        expectedFixedSeed: committedManifest.fixedSeed,
+        expectedManifestId: committedManifest.id,
+        expectedRuntime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
+      });
+      receipt.validation = {
+        schema: validation.schema,
+        pass: validation.pass,
+        failures: validation.failures,
       };
+      assert.equal(validation.pass, true,
+        `PQ-024 committed transition failed closed: ${validation.failures.join('; ')}`);
+      receipt.semanticProjection = validation.projection;
+      if (ELECTRON_PARITY) {
+        assert.deepEqual(
+          receipt.semanticProjection,
+          browserCommittedPrelaunch.projection,
+          'PQ-024 Electron committed presentation must match the accepted Browser semantics',
+        );
+        receipt.crossRuntimeParity = {
+          pass: true,
+          comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
+        };
+      } else {
+        receipt.broker = {
+          manifestId: committedManifest.id,
+          reason: brokerGate.reason,
+          diagnostic: !!brokerGate.diagnostic,
+          primaryAcceptance: !!brokerGate.primaryAcceptance,
+          claimId: brokerGate.claim?.claimId || null,
+          digests: projectPq024CommittedIdentityDigests(brokerGate.claim?.digests),
+        };
+      }
+    } else {
+      receipt.semanticProjection = projectPq024RouteSemantics(receipt);
+      if (ELECTRON_PARITY) {
+        assert.deepEqual(
+          receipt.semanticProjection,
+          projectPq024RouteSemantics(browserReceipt),
+          'PQ-024 Electron route semantics must match the accepted Browser route',
+        );
+        receipt.crossRuntimeParity = {
+          pass: true,
+          comparedAgainst: repoRel(BROWSER_RECEIPT_PATH),
+        };
+      }
     }
   }
 } catch (error) {
@@ -236,14 +331,20 @@ try {
   receipt = {
     schema: H3_PERFORMANCE
       ? PQ024_H3_RECEIPT_SCHEMA
-      : 'spaceface.pq024-asteroid-claim-route.v1',
+      : COMMITTED_TRANSITION
+        ? PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA
+        : 'spaceface.pq024-asteroid-claim-route.v1',
     runtime: ELECTRON_PARITY ? 'electron' : 'browser-chromium-headed',
     disposition: 'FAIL',
     phase: error?.routePhase || activePhase || null,
     problems: [error?.message || String(error)],
     stack: error?.stack || null,
     fixedSeed: FIXED_SEED,
-    brokerManifestId: H3_PERFORMANCE ? h3Manifest.id : manifest.id,
+    brokerManifestId: H3_PERFORMANCE
+      ? h3Manifest.id
+      : COMMITTED_TRANSITION
+        ? committedManifest.id
+        : manifest.id,
     screenshots,
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
     noPerformanceEvidence: !H3_PERFORMANCE,
@@ -272,7 +373,9 @@ try {
       cleanup = { pass: false, failures: [error?.message || String(error)] };
     }
     receipt ||= {
-      schema: 'spaceface.pq024-asteroid-claim-route.v1',
+      schema: COMMITTED_TRANSITION
+        ? PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA
+        : 'spaceface.pq024-asteroid-claim-route.v1',
       runtime: 'electron',
       disposition: 'FAIL',
       problems: [],
@@ -322,7 +425,12 @@ await writeFile(
 );
 
 if (receipt.disposition !== 'PASS') {
-  console.error(`[${H3_PERFORMANCE ? 'pq024-h3-performance' : 'pq024-asteroid-claim'}] FAIL in ${receipt.phase || 'route contract'}`);
+  const id = H3_PERFORMANCE
+    ? 'pq024-h3-performance'
+    : COMMITTED_TRANSITION
+      ? 'pq024-committed-transition'
+      : 'pq024-asteroid-claim';
+  console.error(`[${id}] FAIL in ${receipt.phase || 'route contract'}`);
   for (const problem of receipt.problems || []) console.error(`  - ${problem}`);
   process.exit(1);
 }
@@ -332,6 +440,8 @@ if (H3_PERFORMANCE) {
   if (receipt.validation?.absoluteBudget?.pass !== true) {
     console.log('[pq024-h3-performance] ABSOLUTE TARGET OPEN — matched feature result passes without a target waiver');
   }
+} else if (COMMITTED_TRANSITION) {
+  console.log(`[pq024-committed-transition/${ELECTRON_PARITY ? 'electron' : 'browser'}] PASS — Core presentation settled before downstream production`);
 } else {
   console.log(`[pq024-asteroid-claim/${ELECTRON_PARITY ? 'electron' : 'browser'}] PASS — public claim route survived save/Continue/re-entry`);
 }
@@ -355,7 +465,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'market-materials';
     await openStationMarket(page);
     const cargo = await buyConstructionCargo(page);
-    await screenshot('01-market-materials.png');
+    if (!options.stopAfterCore) await screenshot('01-market-materials.png');
     await publicUndock(page);
 
     phase = 'asteroid-course';
@@ -366,13 +476,48 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'survey-reveal';
     await carveCoreBuildCorridor(page);
     const surveyReveal = await pulseSurveyReveal(page);
-    await screenshot('02-survey-reveal.png');
+    if (!options.stopAfterCore) await screenshot('02-survey-reveal.png');
 
     phase = 'core-commit';
     const corePlan = await planCorePlacement(page);
     const core = await placeSiteMachine(page, 'sm_massline_core', corePlan);
     const committedPresentation = await waitForCommittedPresentation(page, core);
     await screenshot('03-core-committed.png');
+
+    if (options.stopAfterCore) {
+      return {
+        schema: PQ024_COMMITTED_TRANSITION_ROUTE_SCHEMA,
+        runtime,
+        disposition: 'PASS',
+        problems: [],
+        fixedSeed: FIXED_SEED,
+        recordedSeed: boot.recordedSeed,
+        brokerManifestId: options.brokerManifestId,
+        gpu,
+        routeContract:
+          'New Game -> Helios public market -> public local-map asteroid course -> Massline '
+          + '-> Asteroid Ops -> survey reveal -> Core -> settled committed presentation',
+        noPerformanceEvidence: true,
+        noPerformanceEvidenceNote:
+          'Bounded functional transition receipt only: public controls, owner state, visible DOM, '
+          + 'and one screenshot. No downstream production or performance claim is recorded.',
+        actorControls: [
+          'New Game and Launch buttons',
+          'N galaxy map search and Set Waypoint',
+          'held E dock and canonical Undock',
+          'Market search, commodity tabs, quantity input, and Confirm Purchase',
+          'M local-map asteroid dot and production autopilot',
+          'Space Massline, B Asteroid Ops, Pulse survey, command-card Core, arrows, Enter, Escape',
+        ],
+        observations: {
+          cargo,
+          asteroid,
+          surveyReveal,
+          core,
+          committedPresentation,
+        },
+      };
+    }
 
     phase = 'extractor-install';
     const extractorPlan = await planExtractorPlacement(page, core);
@@ -1836,6 +1981,7 @@ async function placeSiteMachine(page, defId, plan) {
     const machine = site?.machines?.find((row) => row.defId === id);
     return site && site.machines.length > count && machine ? {
       siteId: site.id,
+      asteroidId: site.asteroidId ?? state?.drill?.asteroidId ?? null,
       anchored: site.anchored === true,
       lifecycle: site.survey?.lifecycle || null,
       machineId: machine.id,
