@@ -124,6 +124,21 @@
       "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json"
     },
     {
+      "key": "jump-ring",
+      "assetId": "sf.render.jump-ring",
+      "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_gate_jump_ring",
+      "sourceUrl": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "releaseSha256": "01ccf2695678cb42c5b086308b7bea6dc366b029b4efc9e12393a10e8b209ead",
+      "releaseBytes": 7776184,
+      "rootNode": "SF_PLACE_GATE_JUMP_RING_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/jump-ring",
+      "metadataUrl": "assets/ships/release/render-packages/jump-ring/render-package.json"
+    },
+    {
       "key": "debris-chunk",
       "assetId": "sf.render.debris-chunk",
       "runtimeAssetId": "place_debris_chunk",
