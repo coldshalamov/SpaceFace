@@ -132,6 +132,7 @@ async function precompileNow(
       addWeaponProjectileWarmup(globalWarmup, vf, index);
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
+      addAuthoredOpaquePipelineWarmup(canopyPipelineWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
       const commonRockWarmup = addCommonRockPipelineWarmup(canopyPipelineWarmup, vf);
       const vfxWarmup = createVfxPrecompileSalvo();
@@ -623,6 +624,49 @@ function addAuthoredCanopyPipelineWarmup(staging) {
   }
   staging.add(root);
   return root;
+}
+
+function addAuthoredOpaquePipelineWarmup(root) {
+  // Common authored traffic uses one full base/normal/ORM layout, but its calibrated response
+  // policy produces three physical program keys: ordinary metal, clear-coated metal, and coated
+  // transmissive glass. The first Helios Span can spawn after flight begins, so retain one tiny
+  // owner for each exact layout rather than linking those programs during exposed flight.
+  const baseColor = warmupTexture([190, 205, 220, 255], THREE.SRGBColorSpace);
+  const normal = warmupTexture([128, 128, 255, 255]);
+  const surface = warmupTexture([255, 164, 96, 255]);
+  const variants = [
+    { id: 'standard', clearcoat: 0, transmission: 0 },
+    { id: 'clearcoat', clearcoat: 0.7, transmission: 0 },
+    { id: 'clearcoat-transmission', clearcoat: 0.7, transmission: 0.45 },
+  ];
+
+  for (let index = 0; index < variants.length; index++) {
+    const variant = variants[index];
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    geometry.computeTangents();
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      metalness: 0.35,
+      roughness: 0.55,
+      map: baseColor,
+      normalMap: normal,
+      aoMap: surface,
+      roughnessMap: surface,
+      metalnessMap: surface,
+      clearcoat: variant.clearcoat,
+      transmission: variant.transmission,
+      transparent: false,
+      side: THREE.FrontSide,
+      dithering: true,
+    });
+    material.name = `SF_Precompile_AuthoredOpaque_${variant.id}`;
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = material.name;
+    mesh.frustumCulled = false;
+    mesh.userData.precompileRetainedPipeline = `authored-opaque-${variant.id}`;
+    mesh.position.set(index * 3, 32, 0);
+    root.add(mesh);
+  }
 }
 
 function addLateWorldPipelineWarmup(root) {

@@ -61,6 +61,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   let lateWorldOwners = [];
   let retainedPipelineOwners = [];
   let retainedRockPipelines = [];
+  let retainedAuthoredOpaquePipelines = [];
   let retainedVfxMaterialCount = 0;
   let disposedRetainedVfxMaterials = 0;
   const renderer = {
@@ -82,6 +83,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       lateWorldOwners = [];
       retainedPipelineOwners = [];
       retainedRockPipelines = [];
+      retainedAuthoredOpaquePipelines = [];
       retainedVfxMaterialCount = 0;
       disposedRetainedVfxMaterials = 0;
       subject.traverse((object) => {
@@ -97,6 +99,21 @@ test('synthetic shader precompile creates zero authored asset residency demand',
               map: !!object.material?.map,
               normalMap: !!object.material?.normalMap,
               geologyPbr: !!object.geometry?.getAttribute?.('sfGeologyPbr'),
+            });
+          }
+          if (object.userData.precompileRetainedPipeline.startsWith('authored-opaque-')) {
+            retainedAuthoredOpaquePipelines.push({
+              id: object.userData.precompileRetainedPipeline,
+              map: !!object.material?.map,
+              normalMap: !!object.material?.normalMap,
+              aoMap: !!object.material?.aoMap,
+              roughnessMap: !!object.material?.roughnessMap,
+              metalnessMap: !!object.material?.metalnessMap,
+              clearcoat: Number(object.material?.clearcoat) > 0,
+              transmission: Number(object.material?.transmission) > 0,
+              transparent: object.material?.transparent === true,
+              dithering: object.material?.dithering === true,
+              tangents: !!object.geometry?.getAttribute?.('tangent'),
             });
           }
         }
@@ -139,7 +156,26 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     'the production precompile teardown must not dispose retained VFX program owners');
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
   assert.deepEqual(retainedPipelineOwners.sort(), [
-    'common-rock-instanced-pbr', 'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo',
+    'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
+    'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+    'ship-shield-bubble', 'vfx-salvo',
+  ]);
+  assert.deepEqual(retainedAuthoredOpaquePipelines.sort((a, b) => a.id.localeCompare(b.id)), [
+    {
+      id: 'authored-opaque-clearcoat', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true, clearcoat: true, transmission: false,
+      transparent: false, dithering: true, tangents: true,
+    },
+    {
+      id: 'authored-opaque-clearcoat-transmission', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true, clearcoat: true, transmission: true,
+      transparent: false, dithering: true, tangents: true,
+    },
+    {
+      id: 'authored-opaque-standard', map: true, normalMap: true, aoMap: true,
+      roughnessMap: true, metalnessMap: true, clearcoat: false, transmission: false,
+      transparent: false, dithering: true, tangents: true,
+    },
   ]);
   assert.deepEqual(retainedRockPipelines, [{
     id: 'common-rock-instanced-pbr',
@@ -151,7 +187,11 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   }]);
   assert.deepEqual(
     getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
-    ['common-rock-instanced-pbr', 'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo'],
+    [
+      'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
+      'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+      'ship-shield-bubble', 'vfx-salvo',
+    ],
   );
   assert.deepEqual(canopyVariants, [
     {
