@@ -1,3 +1,11 @@
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  unregisterDynamicBufferOwner,
+} from '../dynamicBufferRanges.js';
+
 const DEFAULT_MAX_BEAMS = 16;
 const DEFAULT_TIMEOUT_S = 0.14;
 
@@ -133,6 +141,24 @@ export class PersistentCombatBeamPool {
     this.group.userData.spacefacePersistentCombatBeams = true;
     this.group.add(this.halo, this.core);
     this.group.visible = false;
+
+    const scene = options.scene;
+    this._coreBatch.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+      id: 'persistent-combat-beam-core',
+      mesh: this.core,
+      attributes: [
+        { name: 'position', attribute: this._coreBatch.position },
+        { name: 'color', attribute: this._coreBatch.color },
+      ],
+    });
+    this._haloBatch.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+      id: 'persistent-combat-beam-sheath',
+      mesh: this.halo,
+      attributes: [
+        { name: 'position', attribute: this._haloBatch.position },
+        { name: 'color', attribute: this._haloBatch.color },
+      ],
+    });
   }
 
   upsert(payload, timeS, profile = null) {
@@ -164,6 +190,8 @@ export class PersistentCombatBeamPool {
     entry.haloG = this._color.g;
     entry.haloB = this._color.b;
     this._writeSlotColor(this._haloBatch, entry.slot, entry.haloR, entry.haloG, entry.haloB);
+    this._commitBatch(this._coreBatch);
+    this._commitBatch(this._haloBatch);
     this.group.visible = true;
     return true;
   }
@@ -224,8 +252,8 @@ export class PersistentCombatBeamPool {
       matricesChanged = true;
     }
     if (matricesChanged) {
-      this._coreBatch.position.needsUpdate = true;
-      this._haloBatch.position.needsUpdate = true;
+      if (!this._commitBatch(this._coreBatch)) this._coreBatch.position.needsUpdate = true;
+      if (!this._commitBatch(this._haloBatch)) this._haloBatch.position.needsUpdate = true;
     }
     this.group.visible = this.activeCount > 0;
     return this.activeCount;
@@ -240,6 +268,8 @@ export class PersistentCombatBeamPool {
   dispose() {
     this.clear();
     if (this.group.parent) this.group.parent.remove(this.group);
+    unregisterDynamicBufferOwner(this._coreBatch.dynamicBufferOwner);
+    unregisterDynamicBufferOwner(this._haloBatch.dynamicBufferOwner);
     this._coreBatch.geometry.dispose();
     this._haloBatch.geometry.dispose();
     this.coreMaterial.dispose();
@@ -279,10 +309,13 @@ export class PersistentCombatBeamPool {
     this.activeCount = Math.max(0, this.activeCount - 1);
     this._clearSlot(this._coreBatch, entry.slot);
     this._clearSlot(this._haloBatch, entry.slot);
+    this._commitBatch(this._coreBatch);
+    this._commitBatch(this._haloBatch);
     this.group.visible = this.activeCount > 0;
   }
 
   _writeSlotColor(batch, slot, r, g, b) {
+    const tracked = this._markSlot(batch, 1, slot);
     const start = slot * 12;
     for (let vertex = 0; vertex < 4; vertex++) {
       const offset = start + vertex * 3;
@@ -290,10 +323,11 @@ export class PersistentCombatBeamPool {
       batch.colors[offset + 1] = g;
       batch.colors[offset + 2] = b;
     }
-    batch.color.needsUpdate = true;
+    if (!tracked) batch.color.needsUpdate = true;
   }
 
   _writeSlotQuad(batch, slot, ax, az, bx, bz, y, width, length) {
+    this._markSlot(batch, 0, slot);
     const nx = -(bz - az) / length;
     const nz = (bx - ax) / length;
     const hx = nx * width * 0.5;
@@ -307,8 +341,27 @@ export class PersistentCombatBeamPool {
   }
 
   _clearSlot(batch, slot) {
+    const tracked = this._markSlot(batch, 0, slot);
     const start = slot * 12;
     batch.positions.fill(0, start, start + 12);
-    batch.position.needsUpdate = true;
+    if (!tracked) batch.position.needsUpdate = true;
+  }
+
+  _markSlot(batch, bindingIndex, slot) {
+    const owner = batch.dynamicBufferOwner;
+    if (!owner) return false;
+    assertDynamicBufferOwnerWritable(owner);
+    markDynamicBufferItems(owner, bindingIndex, slot * 4, 4);
+    return true;
+  }
+
+  _commitBatch(batch) {
+    const owner = batch.dynamicBufferOwner;
+    if (!owner) return false;
+    // The indexed geometry always addresses every preallocated slot. Mesh.count is only the
+    // coordinator's item-domain bound here; ordinary Mesh rendering continues to use the exact
+    // same fixed index and degenerate inactive quads as before.
+    commitDynamicBufferOwner(owner, batch.position.count);
+    return true;
   }
 }

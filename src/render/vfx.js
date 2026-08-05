@@ -1612,7 +1612,11 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _initCombatBeams() {
     if (!this._scene || this._combatBeams) return;
-    this._combatBeams = new PersistentCombatBeamPool(THREE, { maxBeams: 16, timeoutS: 0.14 });
+    this._combatBeams = new PersistentCombatBeamPool(THREE, {
+      maxBeams: 16,
+      timeoutS: 0.14,
+      scene: this._scene,
+    });
     this._scene.add(this._combatBeams.group);
   },
 

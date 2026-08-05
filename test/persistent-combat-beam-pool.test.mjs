@@ -3,12 +3,21 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 const identityLocal = (x, z, out) => {
   out.x = x;
   out.z = z;
   return out;
 };
+
+function acknowledgePublished(attributes) {
+  for (const attribute of attributes) {
+    if (attribute.updateRanges.length === 0) continue;
+    attribute.clearUpdateRanges();
+    attribute.onUploadCallback();
+  }
+}
 
 test('persistent combat beams update in place with a bounded two-draw pool', () => {
   const pool = new PersistentCombatBeamPool(THREE, { maxBeams: 4, timeoutS: 0.2 });
@@ -68,5 +77,77 @@ test('persistent beam pool rejects ownerless updates instead of aliasing them un
   assert.equal(pool.upsert({ from: { x: 0, z: 0 }, to: { x: 5, z: 5 } }, 1), false);
   assert.equal(pool.activeCount, 0);
   assert.equal(pool._byKey.size, 0);
+  pool.dispose();
+});
+
+test('persistent beam uploads retain sparse slots and publish only the changed quads', () => {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const pool = new PersistentCombatBeamPool(THREE, {
+    maxBeams: 16,
+    timeoutS: 1,
+    scene,
+  });
+  scene.add(pool.group);
+  const attributes = [
+    pool._coreBatch.position,
+    pool._coreBatch.color,
+    pool._haloBatch.position,
+    pool._haloBatch.color,
+  ];
+
+  for (let slot = 0; slot < 16; slot++) {
+    pool.upsert({
+      beamKey: `ship:${slot}`,
+      ownerId: 'ship',
+      weaponId: `beam-${slot}`,
+      from: { x: slot, z: 0 },
+      to: { x: slot + 8, z: 2 },
+    }, 1, { coreColor: '#ffffff', accentColor: '#55ccff' });
+  }
+  pool.update(1, identityLocal);
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.ok(attributes.every((attribute) => attribute.updateRanges[0]?.count === attribute.array.length),
+    'initial residency must still upload each complete bounded buffer');
+  acknowledgePublished(attributes);
+  coordinator.disarm(epoch);
+
+  for (let slot = 0; slot < 15; slot++) pool.stop({ beamKey: `ship:${slot}` });
+  pool.update(1.01, identityLocal);
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  acknowledgePublished(attributes);
+  coordinator.disarm(epoch);
+  assert.equal(pool.activeCount, 1, 'the highest sparse slot remains the sole live beam');
+
+  const requestedBefore = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  pool.upsert({
+    beamKey: 'ship:15',
+    ownerId: 'ship',
+    weaponId: 'beam-15',
+    from: { x: 16, z: 1 },
+    to: { x: 28, z: 3 },
+  }, 1.02, { coreColor: '#ffffff', accentColor: '#55ccff' });
+  pool.update(1.02, identityLocal);
+  assert.ok(attributes.every((attribute) => attribute.updateRanges.length === 0),
+    'logical writes must remain private until the renderer-owned publication point');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of attributes) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 15 * 12, count: 12 }],
+      'one sparse beam rewrite must upload one four-vertex quad, not the full pool');
+  }
+  const requestedAfter = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  const fullUploadBytes = attributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0);
+  assert.equal(requestedAfter - requestedBefore, 4 * 12 * Float32Array.BYTES_PER_ELEMENT);
+  assert.equal((requestedAfter - requestedBefore) / fullUploadBytes, 1 / 16,
+    'the production-sized one-beam update must request 93.75% fewer bytes');
+  acknowledgePublished(attributes);
+  coordinator.disarm(epoch);
   pool.dispose();
 });
