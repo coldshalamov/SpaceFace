@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -66,7 +66,10 @@ import {
   validateScenarioRestoration,
 } from './performanceScenarioDriver.mjs';
 import { PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA } from './performanceFinalAcceptance.mjs';
-import { requireBrokerClaimOrDiagnostic } from './validationBroker.mjs';
+import {
+  readConsumedClaimLedgerEntry,
+  requireBrokerClaimOrDiagnostic,
+} from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
@@ -143,6 +146,8 @@ export async function runReleaseSoakProbe({
   root,
   runtime = 'browser',
   mode = 'browser',
+  manifest = null,
+  brokerClaimToken = process.env.SF_BROKER_CLAIM ?? null,
   cycles = DEFAULT_CYCLES[mode] ?? DEFAULT_CYCLES[runtime] ?? 2,
   viewport = DEFAULT_VIEWPORT,
   outputRoot = path.join(root, '.devshots', 'spec2'),
@@ -154,6 +159,14 @@ export async function runReleaseSoakProbe({
 } = {}) {
   assert(['browser', 'electron'].includes(runtime), 'runtime must be browser or electron');
   assert(Number.isInteger(cycles) && cycles > 0, 'cycles must be a positive integer');
+  const authority = await authorizeReleaseSoak({
+    root,
+    runtime,
+    outputRoot,
+    manifest,
+    brokerClaimToken,
+  });
+  const routeSeed = Number(authority.fixedSeed);
   const outputDir = await allocateOutputDir(outputRoot, taskId);
   const logLines = [];
   const doLog = (message) => {
@@ -176,10 +189,26 @@ export async function runReleaseSoakProbe({
   let rootUrl = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
+  let packagedStartup = null;
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
+
+    if (runtime === 'electron' && authority.primaryAcceptance) {
+      assert.equal(
+        manifest?.id,
+        'performance-electron-modernization-electron',
+        'promoting Electron release soak requires the packaged-modernization manifest',
+      );
+      packagedStartup = await runPackagedStartupSubroute({
+        root,
+        outputDir,
+        authority,
+        log: doLog,
+      });
+      doLog(`packaged startup ${packagedStartup.report.path} sha256=${packagedStartup.report.sha256}`);
+    }
 
     if (runtime === 'browser') {
       ownedServer = await acquireVisualProbeServer({ root });
@@ -214,7 +243,15 @@ export async function runReleaseSoakProbe({
     await page.bringToFront();
     doLog(`${runtime} canonical root ${rootUrl}`);
 
-    const routeResult = await runBrowserPublicRoute({ page, outputDir, expectedRootUrl: rootUrl, log: doLog, flightTimeoutMs, dockTimeoutMs });
+    const routeResult = await runBrowserPublicRoute({
+      page,
+      outputDir,
+      expectedRootUrl: rootUrl,
+      log: doLog,
+      flightTimeoutMs,
+      dockTimeoutMs,
+      seed: Number.isSafeInteger(routeSeed) && routeSeed > 0 ? routeSeed : null,
+    });
     const baselineSettings = await readSettingsTruth(page);
     assert.equal(await isDocked(page), true, 'public route must finish docked for comparable retained-heap baseline');
     await ensureMarketOpen(page);
@@ -316,11 +353,21 @@ export async function runReleaseSoakProbe({
       { name: 'heap and renderer resources stable', status: validateMemoryEvidence(memory).pass ? 'pass' : 'fail' },
       { name: 'owned runtime cleanup', status: cleanupValidation.pass ? 'pass' : 'fail' },
       { name: 'worktree stable', status: worktreeStable ? 'pass' : 'fail' },
+      { name: authority.primaryAcceptance ? 'broker claim consumed' : 'diagnostic evidence is non-promoting', status: 'pass' },
     ];
+    if (runtime === 'electron' && authority.primaryAcceptance) {
+      checks.push({ name: 'exact packaged startup subroute', status: packagedStartup?.pass === true ? 'pass' : 'fail' });
+    }
 
     const telemetry = { performance, memory, errors, contextLoss };
     await writeTelemetry(outputDir, telemetry, `${logLines.join('\n')}\n`);
-    const artifactDescriptors = buildArtifactDescriptors(root, outputDir, routeResult, cycleResults);
+    const artifactDescriptors = buildArtifactDescriptors(
+      root,
+      outputDir,
+      routeResult,
+      cycleResults,
+      packagedStartup,
+    );
     const artifactValidation = await validateArtifactFiles(root, artifactDescriptors);
     checks.push({ name: 'artifact content integrity', status: artifactValidation.pass ? 'pass' : 'fail' });
 
@@ -333,7 +380,15 @@ export async function runReleaseSoakProbe({
       runtimeKind: runtime,
       mode,
       cycles: { count: cycles, results: cycleResults.map((cycle) => cycle.summary) },
-      primaryAcceptance: true,
+      pass: false,
+      primaryAcceptance: authority.primaryAcceptance,
+      manifestId: authority.manifestId,
+      claimId: authority.claimId,
+      sourceCandidateDigest: authority.digests?.sourceCandidateDigest ?? null,
+      candidateDigest: authority.digests?.candidateDigest ?? null,
+      digests: authority.digests,
+      consumedClaim: authority.consumedClaim,
+      fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
       injectedState: false,
       checks,
@@ -345,15 +400,26 @@ export async function runReleaseSoakProbe({
       errors,
       contextLoss,
       cleanup,
+      packagedStartup,
       fingerprints: { start: startFingerprint, end: endFingerprint },
     };
     const validation = validateReleaseSoakEvidence(evidence);
     if (!artifactValidation.pass) validation.failures.push(...artifactValidation.failures);
     validation.pass = validation.failures.length === 0;
     evidence.validation = { pass: validation.pass, failures: [...new Set(validation.failures)] };
-    await writeFile(path.join(outputDir, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
-
-    return { pass: evidence.validation.pass, outputDir, evidence, routeResult, cleanupReport, startFingerprint };
+    evidence.pass = evidence.validation.pass;
+    const evidencePath = path.join(outputDir, 'evidence.json');
+    await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+    return {
+      pass: evidence.validation.pass,
+      outputDir,
+      evidencePath,
+      acceptedEvidencePath: null,
+      evidence,
+      routeResult,
+      cleanupReport,
+      startFingerprint,
+    };
   } catch (error) {
     if (page && !page.isClosed()) {
       await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
@@ -2463,7 +2529,7 @@ async function writeTelemetry(outputDir, { performance, memory, errors, contextL
   ]);
 }
 
-function buildArtifactDescriptors(root, outputDir, routeResult, cycleResults) {
+function buildArtifactDescriptors(root, outputDir, routeResult, cycleResults, packagedStartup = null) {
   const entries = [
     ['telemetry', 'performance-telemetry.json'],
     ['telemetry', 'performance-attribution.json'],
@@ -2472,6 +2538,7 @@ function buildArtifactDescriptors(root, outputDir, routeResult, cycleResults) {
     ['telemetry', 'context-loss-telemetry.json'],
     ['log', 'run.log'],
     ['screenshot', 'context-restored.png'],
+    ...(packagedStartup ? [['packaged-startup', path.basename(packagedStartup.report.path)]] : []),
     ...(routeResult?.screenshots || []).map((name) => ['screenshot', name]),
     ...cycleResults.map((cycle) => ['screenshot', cycle.screenshot]),
   ];
@@ -2528,6 +2595,116 @@ async function inspectPerformanceActivity(root, {
     contaminatingProcesses: processes,
     active,
   };
+}
+
+async function authorizeReleaseSoak({
+  root,
+  runtime,
+  outputRoot,
+  manifest,
+  brokerClaimToken,
+}) {
+  if (!manifest) {
+    return Object.freeze({
+      mode: 'diagnostic',
+      primaryAcceptance: false,
+      manifestId: null,
+      claimId: null,
+      digests: null,
+      consumedClaim: null,
+      fixedSeed: null,
+    });
+  }
+  assert.equal(manifest.runtimeKind, runtime, 'release-soak manifest runtime must match its locked wrapper');
+  assert.equal(manifest.mode, 'acceptance', 'release-soak manifest must request acceptance mode');
+  const gate = await requireBrokerClaimOrDiagnostic({
+    outputRoot,
+    manifest,
+    tokenOrPath: brokerClaimToken,
+    diagnostic: false,
+    explicitDiagnostic: false,
+    root,
+    requiredMode: 'acceptance',
+    requiredRuntimeKind: runtime,
+    consume: true,
+  });
+  if (!gate.ok || gate.primaryAcceptance !== true) {
+    const error = new Error(`RELEASE_SOAK_AUTHORITY_REJECTED: ${gate.reason}`);
+    error.code = 'RELEASE_SOAK_AUTHORITY_REJECTED';
+    error.reason = gate.reason;
+    throw error;
+  }
+  const claimId = gate.claim?.claimId;
+  const ledgerEntry = await readConsumedClaimLedgerEntry(outputRoot, claimId);
+  assert(ledgerEntry, 'consumed broker claim ledger entry is required before runtime launch');
+  assert.equal(ledgerEntry.claimId, claimId, 'consumed ledger claim id must match broker authority');
+  assert.equal(ledgerEntry.runtimeKind, runtime, 'consumed ledger runtime must match the locked wrapper');
+  assert.equal(ledgerEntry.mode, 'acceptance', 'consumed ledger mode must be acceptance');
+  const ledgerPath = path.join(
+    outputRoot,
+    'broker-claims',
+    '.consumed',
+    `${String(claimId).replace(/[^a-zA-Z0-9._-]/g, '')}.json`,
+  );
+  const ledgerBytes = await readFile(ledgerPath);
+  const digests = gate.claim?.digests ?? null;
+  assert(digests?.sourceCandidateDigest, 'release-soak claim requires sourceCandidateDigest');
+  assert(digests?.candidateDigest, 'release-soak claim requires candidateDigest');
+  assert.equal(ledgerEntry.candidateDigest, digests.candidateDigest,
+    'consumed ledger candidate digest must match broker authority');
+  return Object.freeze({
+    mode: 'acceptance',
+    primaryAcceptance: true,
+    manifestId: manifest.id,
+    claimId,
+    digests,
+    consumedClaim: Object.freeze({
+      claimId,
+      path: relativeTo(root, ledgerPath),
+      bytes: ledgerBytes.length,
+      sha256: createHash('sha256').update(ledgerBytes).digest('hex'),
+    }),
+    fixedSeed: Number(manifest.fixedSeed ?? process.env.SF_PROBE_SEED ?? 47),
+  });
+}
+
+async function runPackagedStartupSubroute({ root, outputDir, authority, log = () => {} }) {
+  const reportPath = path.join(outputDir, 'packaged-startup-report.json');
+  const stdout = await captureProcessOutput(
+    process.execPath,
+    [path.join(root, 'scripts', 'check-electron-packaged-startup.mjs')],
+    4 * 1024 * 1024,
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        SF_PACKAGED_STARTUP_REPORT_PATH: reportPath,
+      },
+    },
+  );
+  log(`[packaged-startup] ${stdout.trim().split(/\r?\n/).at(-1) || 'completed'}`);
+  const reportBytes = await readFile(reportPath);
+  const report = JSON.parse(reportBytes.toString('utf8'));
+  assert.equal(report.pass, true, `packaged startup failed: ${report.failure?.message || 'unknown failure'}`);
+  assert.equal(report.mainIdentity?.packaged, true, 'packaged startup must prove app.isPackaged');
+  assert.equal(report.cleanup?.pass, true, 'packaged startup must prove owned cleanup');
+  assert(/^[a-f0-9]{64}$/i.test(report.artifactIdentity?.executable?.sha256 || ''),
+    'packaged startup executable digest is required');
+  assert(/^[a-f0-9]{64}$/i.test(report.artifactIdentity?.appArchive?.sha256 || ''),
+    'packaged startup app archive digest is required');
+  return Object.freeze({
+    schema: 'spaceface.electronPackagedStartupSubreceipt.v1',
+    pass: true,
+    claimId: authority.claimId,
+    report: Object.freeze({
+      path: relativeTo(root, reportPath),
+      bytes: reportBytes.length,
+      sha256: createHash('sha256').update(reportBytes).digest('hex'),
+    }),
+    packageIdentity: report.artifactIdentity,
+    runtimeIdentity: report.mainIdentity,
+    cleanup: report.cleanup,
+  });
 }
 
 async function inspectActivityPath(activityPath, metadataPath) {
@@ -2839,9 +3016,14 @@ export function classifyPerformanceProcessActivity({
   };
 }
 
-function captureProcessOutput(command, args, maxBytes = 4 * 1024 * 1024) {
+function captureProcessOutput(command, args, maxBytes = 4 * 1024 * 1024, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     const chunks = [];
     let bytes = 0;
     let stderr = '';

@@ -10,6 +10,21 @@ const FAILURE_RECEIPTS = new Set([
   'startup-failed',
 ]);
 
+export function resolvePackagedStartupReportPath({ root, requested = null } = {}) {
+  const repoRoot = path.resolve(String(root || '.'));
+  const reportPath = requested
+    ? path.resolve(repoRoot, String(requested))
+    : path.join(repoRoot, '.devshots', 'electron-packaged-startup', 'report.json');
+  const relative = path.relative(repoRoot, reportPath);
+  if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('packaged-startup report path must stay inside the repository');
+  }
+  if (path.extname(reportPath).toLowerCase() !== '.json') {
+    throw new Error('packaged-startup report path must end in .json');
+  }
+  return reportPath;
+}
+
 export function resolvePackagedElectronLayout({
   root,
   platform = process.platform,

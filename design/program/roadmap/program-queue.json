@@ -4728,7 +4728,7 @@
     {
       "id": "PQ-040.native-acceptance",
       "parentId": "PQ-040",
-      "priority": 225,
+      "priority": 246,
       "title": "PERF-06 dirty-range Browser/Electron acceptance",
       "kind": "acceptance_capture",
       "state": "blocked",
@@ -4748,15 +4748,51 @@
       "blocker": "The tracked tree has no performance-dirty-ranges-browser/electron manifests or existing causal full-upload comparator, and this goal forbids creating or expanding those acceptance surfaces merely to close the packet."
     },
     {
+      "id": "PQ-041.acceptance-surfaces",
+      "parentId": "PQ-041",
+      "priority": 225,
+      "title": "PERF-07 broker and packaged-startup acceptance surfaces",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-034.native-closure",
+        "PQ-041.focused-implementation"
+      ],
+      "mutexes": [
+        "electron-shell",
+        "validation-broker"
+      ],
+      "paths": [
+        "scripts/check-electron-packaged-startup.mjs",
+        "scripts/check-performance-electron-modernization.mjs",
+        "scripts/lib/electronPackagedStartup.mjs",
+        "scripts/lib/performanceElectronModernizationAcceptance.mjs",
+        "scripts/lib/releaseSoakCli.mjs",
+        "scripts/lib/releaseSoakProbe.mjs",
+        "scripts/validation-manifests/performance-electron-modernization-browser.mjs",
+        "scripts/validation-manifests/performance-electron-modernization-electron.mjs"
+      ],
+      "checks": [
+        "node --test test/performance-electron-modernization-manifests.test.mjs test/electron-packaged-startup-contract.test.mjs test/electron-packaged-startup.test.mjs",
+        "node --test test/release-soak-contract.test.mjs test/release-soak-evidence-contract.test.mjs test/release-soak-checker.test.mjs test/m6-platform-matrix.test.mjs"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-041-acceptance-surfaces-REPORT.md"
+      ],
+      "brief": "The paired tracked manifests now route the established Browser/Electron release soak through one-use broker claims. Electron binds the exact generated package startup report under the same consumed claim; the comparator resolves both disk ledgers, preserves default quality, and reports matched performance without requiring a speedup.",
+      "blocker": null
+    },
+    {
       "id": "PQ-041.native-acceptance",
       "parentId": "PQ-041",
       "priority": 226,
       "title": "PERF-07 exact-package and native Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
-        "PQ-041.electron-smoke-h1-capture"
+        "PQ-041.electron-smoke-h1-capture",
+        "PQ-041.acceptance-surfaces"
       ],
       "mutexes": [
         "package",
@@ -4764,14 +4800,22 @@
         "browser-gpu",
         "validation-broker"
       ],
-      "paths": [],
+      "paths": [
+        ".devshots/perf/electron-modernization/",
+        "design/program/roadmap/active/PQ-041.md",
+        "design/program/roadmap/receipts/PQ-041-electron-modernization-REPORT.md"
+      ],
       "checks": [
         "npm run check:m6:packaging",
-        "node scripts/check-electron-platform-contracts.mjs"
+        "node scripts/check-electron-platform-contracts.mjs",
+        "node scripts/validation-broker-cli.mjs --manifest performance-electron-modernization-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-electron-modernization-electron",
+        "node scripts/check-performance-electron-modernization.mjs",
+        "npm run check:m6:platform"
       ],
       "receiptRefs": [],
-      "brief": "The exact declared Electron 43.2.0 unpacked package now builds successfully after one local tool-cache correction that preserved package configuration. Native acceptance remains unproven because the packet-required packaged-startup checker and paired performance-electron-modernization Browser/Electron manifests are not tracked; existing source-Electron diagnostics cannot substitute for app.isPackaged, bundled asset/save, consumed-claim, or matched-performance proof.",
-      "blocker": "Exact package generation is green, but scripts/check-electron-packaged-startup.mjs and both performance-electron-modernization manifests are absent; this goal forbids creating the missing acceptance surfaces or promoting an ad hoc/source-checkout launch."
+      "brief": "The exact Electron 43.2.0 package build and all repo-owned acceptance surfaces are ready. One clean candidate must now run the paired broker manifests in order; Electron includes the exact generated-package startup subroute and the comparator requires both consumed ledgers, one shared source digest, distinct runtime candidates, preserved defaults, and matched performance reporting.",
+      "blocker": null
     },
     {
       "id": "PQ-042.branch-selection",

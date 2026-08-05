@@ -30,6 +30,7 @@ export async function runBrowserPublicRoute({
   flightTimeoutMs = 150_000,
   dockTimeoutMs = 90_000,
   skipStationHubAcceptance = false,
+  seed = null,
 } = {}) {
   assert(page, 'public-route runner requires a Playwright page');
   assert(outputDir, 'public-route runner requires a guarded output directory');
@@ -96,8 +97,14 @@ export async function runBrowserPublicRoute({
     const newGameButton = page.getByRole('button', { name: 'New Game', exact: true });
     await newGameButton.click({ timeout: 30_000 });
     await waitForVisible(page, '[data-screen="newGame"]', 30_000, 'New Game');
+    if (seed != null) {
+      assert(Number.isSafeInteger(Number(seed)) && Number(seed) > 0, 'public-route seed must be a positive safe integer');
+      const seedInput = page.locator('#sf-ng-seed');
+      await seedInput.fill(String(seed));
+      assert.equal(await seedInput.inputValue(), String(seed), 'public route must enter the broker-fixed universe seed');
+    }
     await screenshot(page, outputDir, SCREENSHOTS.newGame);
-    mark('new-game-visible');
+    mark('new-game-visible', seed == null ? {} : { seed: Number(seed) });
     recordCanonicalUrl('new-game');
 
     phase = 'launch';

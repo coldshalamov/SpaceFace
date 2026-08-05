@@ -26,14 +26,18 @@ import launchProtocol from './lib/electronLaunchProtocol.cjs';
 import {
   inspectPackagedStartup,
   resolvePackagedElectronLayout,
+  resolvePackagedStartupReportPath,
 } from './lib/electronPackagedStartup.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const { parseLaunchReceipts } = launchProtocol;
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const REPORT_DIR = path.join(ROOT, '.devshots', 'electron-packaged-startup');
-const REPORT_PATH = path.join(REPORT_DIR, 'report.json');
+const REPORT_PATH = resolvePackagedStartupReportPath({
+  root: ROOT,
+  requested: process.env.SF_PACKAGED_STARTUP_REPORT_PATH || null,
+});
+const REPORT_DIR = path.dirname(REPORT_PATH);
 const STARTUP_TIMEOUT_MS = Number(process.env.SF_PACKAGED_STARTUP_TIMEOUT_MS) || 90_000;
 assert(Number.isInteger(STARTUP_TIMEOUT_MS) && STARTUP_TIMEOUT_MS >= 5_000,
   'SF_PACKAGED_STARTUP_TIMEOUT_MS must be an integer of at least 5000ms');

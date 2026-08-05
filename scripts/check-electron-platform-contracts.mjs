@@ -81,8 +81,15 @@ assert.match(electronMain, /object-src\s+'none'/i,
   'the Electron CSP must disable plugin/object content');
 assert.match(electronMain, /connect-src[^;]*\bblob:/i,
   'the Electron CSP must preserve GLTF embedded-texture blob fetches');
-assert.doesNotMatch(electronMain, /script-src[^;]*'unsafe-eval'/i,
-  'the Electron CSP must never grant string evaluation');
+const pageCsp = electronMain.match(/const ELECTRON_CONTENT_SECURITY_POLICY = "([^"]+)"/)?.[1] || '';
+const workerCsp = electronMain.match(/const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "([^"]+)"/)?.[1] || '';
+assert.doesNotMatch(pageCsp, /script-src[^;]*'unsafe-eval'/i,
+  'the Electron page CSP must never grant string evaluation');
+assert.match(workerCsp, /script-src[^;]*'unsafe-eval'/i,
+  'only the external KTX2 transcoder worker may receive its required string-evaluation permission');
+assert.match(electronMain,
+  /staticHeadersByPath:[\s\S]*KTX2_TRANSCODER_WORKER_PATH[\s\S]*ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY/,
+  'the KTX2 worker CSP must be scoped to its exact external worker response');
 assert.match(electronMain, /staticHeaders:\s*\{\s*'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY\s*\}/,
   'the Electron-owned server must attach the policy to the canonical route response');
 

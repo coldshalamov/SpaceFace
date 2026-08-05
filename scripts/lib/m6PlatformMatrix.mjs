@@ -1,10 +1,13 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { checkHeadedReleaseSoakEvidence } from './releaseSoakEvidenceChecker.mjs';
-import { runReleaseSoakCli } from './releaseSoakCli.mjs';
+import { checkElectronModernizationEvidence } from './performanceElectronModernizationAcceptance.mjs';
 import { strictWorktreeFingerprint } from './releaseSoakContracts.mjs';
+import { createValidationBroker } from './validationBroker.mjs';
+import { loadValidationManifestById } from './validationManifestRegistry.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -232,7 +235,11 @@ export function validateM6PlatformMatrix(result) {
   return { pass: failures.length === 0, failures };
 }
 
-export async function captureHeadedReleaseSoaks({ root, log = () => {}, soakRunner = runReleaseSoakCli } = {}) {
+export async function captureHeadedReleaseSoaks({
+  root,
+  log = () => {},
+  soakRunner = runElectronModernizationCapture,
+} = {}) {
   const runtimes = [];
   for (const runtime of ['browser', 'electron']) {
     log(`[m6-platform] capturing ${runtime} public route`);
@@ -294,7 +301,38 @@ export async function runNodeCommand({ root, spec, log = () => {}, timeoutMs = 9
 }
 
 async function defaultHeadedEvidenceChecker({ root }) {
-  return checkHeadedReleaseSoakEvidence({ root, runtimes: ['browser', 'electron'] });
+  return checkElectronModernizationEvidence({ root });
+}
+
+async function runElectronModernizationCapture({ runtime, root, log = () => {} }) {
+  const manifestId = `performance-electron-modernization-${runtime}`;
+  const manifest = await loadValidationManifestById({ root, id: manifestId });
+  const outputRoot = path.resolve(root, manifest.artifactRoot);
+  const broker = createValidationBroker(manifest, { root, outputRoot });
+  const result = await broker.authorizeAndMaybeRun({
+    mode: 'acceptance',
+    explicitAcceptance: true,
+    spawnProbe: true,
+  });
+  if (result.status !== 'pass' || result.launched !== true || result.exitCode !== 0) {
+    return {
+      pass: false,
+      failures: [
+        `${manifestId}: ${result.reason || result.status || 'broker run failed'}`,
+        result.stderr || null,
+      ].filter(Boolean),
+      receipt: null,
+    };
+  }
+  const evidencePath = path.join(outputRoot, runtime, 'evidence.json');
+  const evidenceBytes = await readFile(evidencePath);
+  const evidenceSha256 = createHash('sha256').update(evidenceBytes).digest('hex');
+  log(`[m6-platform] ${runtime} broker evidence ${evidencePath}`);
+  return {
+    pass: true,
+    failures: [],
+    receipt: { evidencePath, evidenceSha256 },
+  };
 }
 
 function command(id, script, args = []) {

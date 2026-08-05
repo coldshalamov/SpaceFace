@@ -713,10 +713,13 @@ function recordStateIntegrity(state, receipt, phase) {
 function findNonFiniteNumbers(root, maxNodes = 75_000) {
   const findings = [];
   const seen = new WeakSet();
-  const stack = [{ value: root, path: 'state' }];
+  const queue = [{ value: root, path: 'state' }];
+  let cursor = 0;
   let visited = 0;
-  while (stack.length && visited < maxNodes && findings.length < 32) {
-    const { value, path: valuePath } = stack.pop();
+  // Breadth-first traversal guarantees shallow authoritative state (player, mode, clocks) is
+  // checked before dense entity subtrees can spend the bounded node budget.
+  while (cursor < queue.length && visited < maxNodes && findings.length < 32) {
+    const { value, path: valuePath } = queue[cursor++];
     visited += 1;
     if (typeof value === 'number') {
       // ttl=Infinity is the core's explicit immortal-entity sentinel, not broken arithmetic.
@@ -729,23 +732,23 @@ function findNonFiniteNumbers(root, maxNodes = 75_000) {
     seen.add(value);
     if (value instanceof Map) {
       for (const [key, child] of value.entries()) {
-        stack.push({ value: child, path: `${valuePath}.<${String(key)}>` });
+        queue.push({ value: child, path: `${valuePath}.<${String(key)}>` });
       }
       continue;
     }
     if (value instanceof Set) {
       let index = 0;
-      for (const child of value.values()) stack.push({ value: child, path: `${valuePath}.<set:${index++}>` });
+      for (const child of value.values()) queue.push({ value: child, path: `${valuePath}.<set:${index++}>` });
       continue;
     }
     if (Array.isArray(value)) {
-      for (let index = value.length - 1; index >= 0; index -= 1) {
-        stack.push({ value: value[index], path: `${valuePath}[${index}]` });
+      for (let index = 0; index < value.length; index += 1) {
+        queue.push({ value: value[index], path: `${valuePath}[${index}]` });
       }
       continue;
     }
-    const keys = Object.keys(value).sort().reverse();
-    for (const key of keys) stack.push({ value: value[key], path: `${valuePath}.${key}` });
+    const keys = Object.keys(value).sort();
+    for (const key of keys) queue.push({ value: value[key], path: `${valuePath}.${key}` });
   }
   return findings;
 }
