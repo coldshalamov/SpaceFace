@@ -191,20 +191,21 @@ export const v2FlavorRuntime = {
       if (roaming && this._presentRoaming(roaming, 'scan', {
         entityId: entity.id,
         eventId: roaming.encounterId,
-      })) continue;
+      })) return;
 
       const data = entity.data || {};
       if (data.flavorSourceId === HUSH_SOURCE_REF
           && currentSectorId(this.state) === HUSH_SECTOR_ID) {
-        this._presentHush(entity, signal);
+        if (this._presentHush(entity, signal)) return;
         continue;
       }
       if (data.flavorTargetRef === QUIESSENCE_TARGET_REF
           && currentSectorId(this.state) === QUIESSENCE_SECTOR_ID) {
-        this._presentQuiessence(entity);
+        if (this._presentQuiessence(entity)) return;
         continue;
       }
-      if (data.flavorTargetRef) this._presentLandmarkEntity(entity, data.flavorTargetRef);
+      if (data.flavorTargetRef
+          && this._presentLandmarkEntity(entity, data.flavorTargetRef)) return;
     }
   },
 

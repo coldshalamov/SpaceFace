@@ -175,6 +175,18 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage' },
       { id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true },
+      {
+        id: 'poi_quiessence',
+        type: 'anomaly',
+        name: 'The Quiessence',
+        landmark: true,
+        visualRadius: 24,
+        scanRange: 900,
+        flavorTargetRef: 'landmark_c14_quiessence',
+        bandProximityRadius: 1600,
+        bandLandmarkFleet: 17,
+        dressingExclusionRadius: 700,
+      },
     ],
   },
   {

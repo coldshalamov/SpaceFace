@@ -12,6 +12,7 @@ const tests = [
   'test/depth-program-a1-signal-context.test.mjs',
   'test/depth-program-a1-bearing-sync.test.mjs',
   'test/depth-program-a1-live-integration.test.mjs',
+  'test/depth-program-a1-physical-actors.test.mjs',
 ];
 
 const result = spawnSync(process.execPath, ['--test', ...tests], {
@@ -22,4 +23,4 @@ const result = spawnSync(process.execPath, ['--test', ...tests], {
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
 
-console.log('depth-program-a1 PASS: deterministic tuner, arbiter yield, listening tour, live presence signal, landmark RF behavior, procedural beds, HUD intent, synchronous canonical bearing receipt');
+console.log('depth-program-a1 PASS: deterministic tuner, arbiter yield, listening tour, physical landmark RF/scan carriers, procedural beds, HUD intent, synchronous canonical bearing receipt');

@@ -134,6 +134,12 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_pwreck', pos: { x: 1420, z: 760 }, landmarkGlb: 'place_dead_hulk' },
       { id: 'poi_hcache', pos: { x: -1560, z: -280 }, landmarkGlb: 'place_debris_chunk' },
+      {
+        id: 'poi_quiessence',
+        pos: { x: -1900, z: -1700 },
+        landmarkGlb: 'place_nav_buoy',
+        landmark: true,
+      },
     ],
   },
   sector_io_reach: {

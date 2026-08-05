@@ -1277,6 +1277,14 @@ export const world = {
           visualRadius,
           placeRadius: visualRadius,
           homeSectorId: sector.id,
+          ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
+          ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
+          ...(finitePositive(poi.bandProximityRadius)
+            ? { bandProximityRadius: Number(poi.bandProximityRadius) }
+            : {}),
+          ...(finitePositive(poi.dressingExclusionRadius)
+            ? { dressingExclusionRadius: Number(poi.dressingExclusionRadius) }
+            : {}),
         },
       });
       this._stampHomeSector(ent, sector.id);
@@ -1284,6 +1292,57 @@ export const world = {
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden: !!poi.hidden, claimable: !!poi.claimable,
       });
+
+      // A1/V2 physical Quiessence carriers. H1c still owns the eventual dark-freighter art;
+      // these sector-owned, non-colliding actors give the existing scanner and Band routes real
+      // identities today without introducing combatants, physics bodies, or a parallel signal path.
+      const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
+      if (fleetCount > 0 && poi.flavorTargetRef) {
+        for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
+          const angle = (shipIndex / fleetCount) * Math.PI * 2;
+          const ring = 120 + (shipIndex % 5) * 28;
+          const hull = this.helpers.spawnEntity({
+            type: 'fx',
+            factionId: poi.factionId || null,
+            pos: {
+              x: pos.x + Math.cos(angle) * ring,
+              z: pos.z + Math.sin(angle) * ring,
+            },
+            radius: 14,
+            mass: 0,
+            collides: false,
+            physicsBody: false,
+            ttl: Infinity,
+            flags: { noInterp: true },
+            data: {
+              poi: true,
+              poiId: `${poi.id}_hull_${shipIndex}`,
+              poiType: 'anomaly',
+              hidden: true,
+              name: `Quiessence Hull ${shipIndex}`,
+              sectorId: sector.id,
+              homeSectorId: sector.id,
+              flavorTargetRef: String(poi.flavorTargetRef),
+              quiessenceShipIndex: shipIndex,
+              bandProximityRadius: finitePositive(poi.bandProximityRadius)
+                ? Number(poi.bandProximityRadius)
+                : 1600,
+              memorialHull: true,
+              scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
+              visualRadius: 14,
+            },
+          });
+          this._stampHomeSector(hull, sector.id);
+          active.pois.push({
+            id: hull.id,
+            poiId: `${poi.id}_hull_${shipIndex}`,
+            type: 'anomaly',
+            pos: { x: hull.pos.x, z: hull.pos.z },
+            hidden: true,
+            claimable: false,
+          });
+        }
+      }
     }
   },
 
@@ -1426,6 +1485,12 @@ export const world = {
 
   _spawnPlaceProp(active, sector, placeId, pos, options = {}) {
     if (!placeId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    for (const poi of active.pois || []) {
+      const carrier = this.state.entities && this.state.entities.get(poi && poi.id);
+      const exclusionRadius = Number(carrier && carrier.data && carrier.data.dressingExclusionRadius);
+      if (Number.isFinite(exclusionRadius) && exclusionRadius > 0 && carrier.pos
+          && dist2(pos, carrier.pos) < exclusionRadius * exclusionRadius) return null;
+    }
     const paletteClass = options.paletteClass || paletteClassForSector(sector);
     const radius = DRESSING_RADIUS[placeId] || 12;
     const ent = this.helpers.spawnEntity({
