@@ -218,3 +218,32 @@ test('PresentationQueries return deterministic visible handles and exact transit
     [20],
   );
 });
+
+test('PresentationWorld drops stale maximum radius after large-root churn', () => {
+  const world = createPresentationWorld({ capacity: 16, cellSize: 64 });
+  const near = entity(1, { x: 0, radius: 4 });
+  const far = entity(2, { x: 500, radius: 4 });
+  const transientLarge = entity(3, { x: 0, radius: 1000 });
+  for (const value of [near, far, transientLarge]) {
+    world.allocateEntity(value, 1);
+    bind(world, value);
+  }
+
+  assert.equal(world.maxRadius, 1000);
+  transientLarge.radius = 8;
+  world.refreshVisibleEntity(world.getSlotForEntityId(transientLarge.id), transientLarge, transientLarge.radius);
+  assert.equal(world.maxRadius, 8);
+  transientLarge.radius = 1000;
+  world.refreshVisibleEntity(world.getSlotForEntityId(transientLarge.id), transientLarge, transientLarge.radius);
+  assert.equal(world.maxRadius, 1000);
+  assert.equal(world.retire(transientLarge.id, 1), true);
+  assert.equal(world.maxRadius, 4);
+
+  const result = createPresentationQueries(world).query({
+    bounds: { x: 0, z: 0, halfX: 20, halfZ: 20 },
+    origin: { x: 0, z: 0 },
+    playerId: null,
+  });
+  assert.equal(result.candidateCount, 1);
+  assert.deepEqual(result.visibleSlots.map((slot) => world.entityIds[slot]), [near.id]);
+});

@@ -119,6 +119,7 @@ export function createPresentationWorld(options = {}) {
     duplicateIdRejects: 0,
     spatialMoves: 0,
     chainGuardTrips: 0,
+    maxRadiusRecomputes: 0,
     maxRadius: 0,
     cellSize,
   };
@@ -253,6 +254,16 @@ export function createPresentationWorld(options = {}) {
     world.activePositions[slot] = INVALID_INDEX;
     activeCount = lastPosition;
     diagnostics.active = activeCount;
+  }
+
+  function recomputeMaxRadius() {
+    let nextMaxRadius = 0;
+    for (let index = 0; index < activeCount; index++) {
+      nextMaxRadius = Math.max(nextMaxRadius, world.radii[world.activeSlots[index]]);
+    }
+    maxRadius = nextMaxRadius;
+    diagnostics.maxRadius = maxRadius;
+    diagnostics.maxRadiusRecomputes++;
   }
 
   function isSpecial(flags) {
@@ -436,10 +447,15 @@ export function createPresentationWorld(options = {}) {
       ? visualRadius
       : Number(entity.radius);
     const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
-    if (world.radii[slot] !== nextRadius) {
+    const previousRadius = world.radii[slot];
+    if (previousRadius !== nextRadius) {
       world.radii[slot] = nextRadius;
-      maxRadius = Math.max(maxRadius, nextRadius);
-      diagnostics.maxRadius = maxRadius;
+      if (nextRadius >= maxRadius) {
+        maxRadius = nextRadius;
+        diagnostics.maxRadius = maxRadius;
+      } else if (previousRadius === maxRadius) {
+        recomputeMaxRadius();
+      }
       changed = true;
     }
     if (changed) world.dirtyMasks[slot] |= PRESENTATION_DIRTY.VISUAL;
@@ -545,9 +561,11 @@ export function createPresentationWorld(options = {}) {
   function retireSlot(slot) {
     const entityId = world.entityIds[slot];
     const wasAsteroid = typeNames[world.typeCodes[slot]] === 'asteroid';
+    const retiredRadius = world.radii[slot];
     removeFromGrid(slot);
     setSpecialMembership(slot, false);
     removeActive(slot);
+    if (maxRadius > 0 && retiredRadius === maxRadius) recomputeMaxRadius();
     if (world.meshRefs[slot]) boundCount = Math.max(0, boundCount - 1);
     world.alive[slot] = 0;
     world.visible[slot] = 0;
@@ -650,6 +668,7 @@ export function createPresentationWorld(options = {}) {
 
   function clear() {
     ensureAlive();
+    maxRadius = 0;
     while (activeCount > 0) retireSlot(world.activeSlots[activeCount - 1]);
     gridColumns.clear();
     specialCount = 0;
