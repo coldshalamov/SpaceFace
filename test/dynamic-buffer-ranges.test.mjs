@@ -148,6 +148,42 @@ test('component spans retain one bounded union in component indexes', () => {
   assert.throws(() => markDynamicComponentRange(span, 31, 2), /exceeds capacity/);
 });
 
+test('owner registration leaves every attribute untouched when a later attribute is rejected', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const geometry = new THREE.BufferGeometry();
+  const accepted = new THREE.BufferAttribute(new Float32Array(12), 3);
+  const rejected = new THREE.BufferAttribute(new Float32Array(12), 3);
+  rejected.onUpload(() => {});
+  geometry.setAttribute('accepted', accepted);
+  geometry.setAttribute('rejected', rejected);
+  const mesh = new THREE.Points(geometry, new THREE.PointsMaterial());
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+
+  assert.throws(
+    () => registerDynamicBufferOwner(scene, {
+      id: 'partial-owner',
+      mesh,
+      attributes: [
+        { name: 'accepted', attribute: accepted },
+        { name: 'rejected', attribute: rejected },
+      ],
+    }),
+    /rejected already owns an upload callback/,
+  );
+
+  assert.equal(Object.hasOwn(accepted, 'onUploadCallback'), false,
+    'a failed owner must not leave its earlier callback installed');
+  assert.equal(coordinator.getDiagnostics().registeredOwners, 0);
+  assert.equal(coordinator.getDiagnostics().updateRangeAllocations, 0);
+  assert.doesNotThrow(() => registerDynamicBufferOwner(scene, {
+    id: 'recovered-owner',
+    mesh,
+    attributes: [{ name: 'accepted', attribute: accepted }],
+  }), 'the untouched attribute remains admissible after the rejected transaction');
+});
+
 test('scene-owned publication forces the initial buffer and restores the prior hook', () => {
   const fixture = makeOwnerFixture();
   const prior = function priorSceneHook(renderer, scene, camera, target) {

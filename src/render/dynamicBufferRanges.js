@@ -517,6 +517,8 @@ export function registerDynamicBufferOwner(scene, spec) {
     },
   };
 
+  const plannedBindings = [];
+  const plannedAttributes = new Set();
   for (let index = 0; index < attributes.length; index++) {
     const source = attributes[index];
     const attribute = source && source.attribute;
@@ -525,6 +527,9 @@ export function registerDynamicBufferOwner(scene, spec) {
       throw new TypeError(`${id}:${name} is not a BufferAttribute`);
     }
     requireDefaultUploadCallback(attribute, id, name);
+    if (plannedAttributes.has(attribute)) {
+      throw new Error(`${id}:${name} repeats an attribute in the same owner`);
+    }
     const priorOwner = coordinator.attributeOwners.get(attribute);
     if (priorOwner) throw new Error(`${id}:${name} shares an attribute with ${priorOwner.id}`);
     const itemSize = Math.max(1, Math.floor(Number(attribute.itemSize) || 1));
@@ -559,9 +564,16 @@ export function registerDynamicBufferOwner(scene, spec) {
         epoch: 0,
       },
     };
+    plannedAttributes.add(attribute);
+    plannedBindings.push(binding);
+    owner.capacity = Math.min(owner.capacity, itemCapacity);
+  }
+
+  for (let index = 0; index < plannedBindings.length; index++) {
+    const binding = plannedBindings[index];
     installUploadCallback(binding);
     owner.bindings.push(binding);
-    owner.capacity = Math.min(owner.capacity, itemCapacity);
+    const { attribute } = binding;
     coordinator.attributeOwners.set(attribute, owner);
   }
 
