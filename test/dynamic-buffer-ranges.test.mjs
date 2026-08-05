@@ -177,6 +177,7 @@ test('scene-owned publication forces the initial buffer and restores the prior h
 test('ordinary dirty spans survive skipped draws and publish once on eligibility', () => {
   const fixture = makeOwnerFixture();
   let epoch = beginSceneRender(fixture);
+  const retainedRangeRecord = fixture.attribute.updateRanges[0];
   acknowledgeInitial(fixture.attribute);
   fixture.coordinator.disarm(epoch);
 
@@ -194,12 +195,17 @@ test('ordinary dirty spans survive skipped draws and publish once on eligibility
   fixture.material.visible = true;
   epoch = beginSceneRender(fixture);
   assert.deepEqual(fixture.attribute.updateRanges, [{ start: 3, count: 9 }]);
+  assert.equal(fixture.attribute.updateRanges[0], retainedRangeRecord,
+    'renderer generations reuse one owner-held update-range record');
   assert.equal(fixture.attribute.version, versionBeforeSkip + 1);
   acknowledgeUpdate(fixture.attribute);
   fixture.coordinator.disarm(epoch);
 
   assert.equal(fixture.owner.diagnostics.partialUploads, 1);
   assert.equal(fixture.owner.diagnostics.drawEligibilitySkips, 1);
+  assert.equal(fixture.coordinator.getDiagnostics().updateRangeAllocations, 1,
+    'one registration-time record replaces per-upload range allocations');
+  assert.equal(fixture.coordinator.getDiagnostics().updateRangeRecordReuses, 1);
 });
 
 test('context loss supersedes an unacknowledged generation and restore forces a full replacement', () => {
@@ -346,6 +352,7 @@ test('dense one-times and five-times fanout stays at 23 ranges and charges packe
 
   for (const population of [18, 90]) {
     const allocationsBefore = coordinator.getDiagnostics().updateRangeAllocations;
+    const publicationsBefore = coordinator.getDiagnostics().updateRangePublications;
     const requestedBefore = requestedBytes();
     resetInstancedSpriteBuckets(sprites);
     for (const kind of [false, true, 'smoke', 'combustion']) {
@@ -372,8 +379,13 @@ test('dense one-times and five-times fanout stays at 23 ranges and charges packe
     scene.onBeforeRender({}, scene, camera, null);
     assert.equal(
       coordinator.getDiagnostics().updateRangeAllocations - allocationsBefore,
+      0,
+      'renderer publication reuses registration-time range records without allocating',
+    );
+    assert.equal(
+      coordinator.getDiagnostics().updateRangePublications - publicationsBefore,
       23,
-      'four five-attribute sprite buckets plus one three-attribute trail pool publish once each',
+      'four five-attribute sprite buckets plus one three-attribute trail pool still publish once each',
     );
     assert.equal(allAttributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 23);
 

@@ -171,8 +171,12 @@ function publishBinding(binding, epoch, forceFull) {
     : binding.pending.end - binding.pending.start;
   if (count <= 0) return false;
 
-  attribute.addUpdateRange(start, count);
-  const record = attribute.updateRanges[attribute.updateRanges.length - 1];
+  // Three r184 reads `updateRanges` in place and clears the array before the upload callback.
+  // Keep one owner-held record per attribute so a steady partial upload does not allocate here.
+  const record = binding.rangeRecord;
+  record.start = start;
+  record.count = count;
+  attribute.updateRanges.push(record);
   const snapshot = binding.snapshot;
   const generation = binding.publishedGeneration + 1;
   snapshot.active = true;
@@ -212,7 +216,10 @@ function publishBinding(binding, epoch, forceFull) {
   diagnostics.publishedGeneration = Math.max(diagnostics.publishedGeneration, generation);
   if (forceFull) diagnostics.forceFullUploads++;
   else diagnostics.partialUploads++;
-  binding.owner.coordinator.diagnostics.updateRangeAllocations++;
+  const coordinatorDiagnostics = binding.owner.coordinator.diagnostics;
+  coordinatorDiagnostics.updateRangePublications++;
+  if (binding.rangeRecordUses > 0) coordinatorDiagnostics.updateRangeRecordReuses++;
+  binding.rangeRecordUses++;
   resetBindingPending(binding);
   return true;
 }
@@ -337,6 +344,8 @@ export function createDynamicBufferCoordinator(scene) {
     registeredOwners: 0,
     publishedOwners: 0,
     updateRangeAllocations: 0,
+    updateRangePublications: 0,
+    updateRangeRecordReuses: 0,
     acknowledgedUploads: 0,
     supersededUploads: 0,
     processingEligibilitySkips: 0,
@@ -527,6 +536,8 @@ export function registerDynamicBufferOwner(scene, spec) {
       attribute,
       itemSize,
       itemCapacity,
+      rangeRecord: { start: 0, count: 0 },
+      rangeRecordUses: 0,
       pending: createDynamicComponentSpan(attribute.array.length),
       touchedSinceCommit: false,
       forceFull: true,
@@ -554,6 +565,7 @@ export function registerDynamicBufferOwner(scene, spec) {
     coordinator.attributeOwners.set(attribute, owner);
   }
 
+  coordinator.diagnostics.updateRangeAllocations += owner.bindings.length;
   owner.diagnostics.capacity = Number.isFinite(owner.capacity) ? owner.capacity : 0;
   coordinator.owners.push(owner);
   diagnosticsAddOwner(coordinator, owner);
