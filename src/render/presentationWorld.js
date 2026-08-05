@@ -729,10 +729,10 @@ export function createPresentationWorld(options = {}) {
 
   function collectSpatialBounds(minX, maxX, minZ, maxZ, target) {
     if (!Array.isArray(target)) throw new TypeError('PresentationWorld candidate target must be an array');
-    const minCellX = Math.floor(finite(minX) / cellSize);
-    const maxCellX = Math.floor(finite(maxX) / cellSize);
-    const minCellZ = Math.floor(finite(minZ) / cellSize);
-    const maxCellZ = Math.floor(finite(maxZ) / cellSize);
+    const minCellX = clampCellIndex(Math.floor(finite(minX) / cellSize));
+    const maxCellX = clampCellIndex(Math.floor(finite(maxX) / cellSize));
+    const minCellZ = clampCellIndex(Math.floor(finite(minZ) / cellSize));
+    const maxCellZ = clampCellIndex(Math.floor(finite(maxZ) / cellSize));
     const span = maxCellX - minCellX + 1;
     if (span > gridColumns.size * 2) {
       for (const [cx, column] of gridColumns) {

@@ -150,12 +150,23 @@ test('absurd finite coordinates cannot corrupt the grid (clamped cell indices)',
   const far = entity(5, 2 ** 40, -(2 ** 40)); // cell index would overflow Int32
   world.allocateEntity(far);
   const slot = world.getSlotForEntityId(5);
+  assert.deepEqual(
+    world.collectSpatialBounds(far.pos.x, far.pos.x, far.pos.z, far.pos.z, []),
+    [slot],
+    'query cell normalization must match the clamped storage key',
+  );
   // Round-trip through the origin and back out; no cycles, retire cleanly.
   moveTo(world, far, -100, 100);
   assertNoChainCycles(world, 'far entity at origin');
   moveTo(world, far, 2 ** 40, -(2 ** 40));
   assertNoChainCycles(world, 'far entity back out');
   assert.notEqual(world.cellNext[slot], slot, 'no self-cycle for far entity');
+  moveTo(world, far, Number.MAX_VALUE, -Number.MAX_VALUE);
+  assert.deepEqual(
+    world.collectSpatialBounds(far.pos.x, far.pos.x, far.pos.z, far.pos.z, []),
+    [slot],
+    'maximum finite coordinates use one bounded boundary-cell lookup',
+  );
   assert.equal(world.retire(5), true);
   assert.deepEqual(
     world.collectSpatialBounds(-1024, 1024, -1024, 1024, []),
