@@ -60,3 +60,34 @@ test('game server streams a large runtime asset without whole-file readFile stag
   assert.equal(response.headers.get('content-length'), String(payload.length));
   assert.deepEqual(received, payload);
 });
+
+test('game server can isolate a worker CSP without widening the game document', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-game-server-csp-'));
+  await writeFile(join(root, 'index.html'), '<!doctype html><title>SpaceFace</title>');
+  await writeFile(join(root, 'basis.worker.js'), 'self.onmessage = () => {};');
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const pageCsp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self';";
+  const workerCsp = "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval';";
+  const server = createGameServer({
+    root,
+    async: true,
+    devDiagnostics: false,
+    staticHeaders: { 'Content-Security-Policy': pageCsp },
+    staticHeadersByPath: {
+      'basis.worker.js': { 'Content-Security-Policy': workerCsp },
+    },
+  });
+  await new Promise((resolveListen, rejectListen) => {
+    server.once('error', rejectListen);
+    server.listen(0, '127.0.0.1', resolveListen);
+  });
+  t.after(() => new Promise((resolveClose) => server.close(resolveClose)));
+  const address = server.address();
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const [page, worker] = await Promise.all([fetch(`${baseUrl}/`), fetch(`${baseUrl}/basis.worker.js`)]);
+  assert.equal(page.headers.get('content-security-policy'), pageCsp);
+  assert.equal(worker.headers.get('content-security-policy'), workerCsp);
+  assert.doesNotMatch(page.headers.get('content-security-policy'), /'unsafe-eval'/);
+});

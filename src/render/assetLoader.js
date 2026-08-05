@@ -73,6 +73,7 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
   dracoLoader: 'vendor/addons/loaders/DRACOLoader.js',
   meshoptDecoder: 'vendor/addons/libs/meshopt_decoder.module.js',
   ktx2TranscoderPath: 'vendor/addons/libs/basis/',
+  ktx2WorkerPath: 'vendor/addons/libs/basis/basis_transcoder.worker.js',
   dracoDecoderPath: 'vendor/addons/libs/draco/gltf/',
   compressedTextureExtension: 'KHR_texture_basisu',
   meshCompressionExtensions: Object.freeze([
@@ -288,7 +289,81 @@ async function createDefaultKtx2Loader() {
   const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
   const ktx2 = new KTX2Loader();
   ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
+  return configureCspSafeKtx2Loader(ktx2);
+}
+
+/**
+ * Three's stock KTX2Loader builds its Basis worker with a blob at runtime. The Basis embind glue
+ * requires Function construction, so a strict packaged-page CSP terminates every worker while
+ * Three's WorkerPool leaves the corresponding texture promises pending forever. Use a deterministic
+ * prebuilt same-origin worker instead; Electron grants unsafe-eval only on that worker response.
+ */
+export function configureCspSafeKtx2Loader(ktx2, options = {}) {
+  if (!ktx2 || !ktx2.workerPool || typeof ktx2.workerPool.setWorkerCreator !== 'function') {
+    throw new TypeError('CSP-safe KTX2 setup requires a KTX2Loader worker pool.');
+  }
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const WorkerImpl = options.WorkerImpl || globalThis.Worker;
+  const MessageEventImpl = options.MessageEventImpl || globalThis.MessageEvent;
+  const workerUrl = options.workerUrl || ASSET_RUNTIME_DECODER_CONTRACT.ktx2WorkerPath;
+  const transcoderPath = options.transcoderPath || ktx2.transcoderPath
+    || ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath;
+  const wasmUrl = options.wasmUrl || `${transcoderPath}basis_transcoder.wasm`;
+  let disposed = false;
+
+  ktx2.workerSourceURL = workerUrl;
+  ktx2.transcoderBinary = null;
+  ktx2.transcoderPending = null;
+  ktx2.init = function initCspSafeKtx2Transcoder() {
+    if (disposed) return Promise.reject(new Error('KTX2 loader has been disposed.'));
+    if (!this.transcoderPending) {
+      this.transcoderPending = Promise.resolve().then(async () => {
+        if (typeof fetchImpl !== 'function') throw new Error('KTX2 transcoder requires fetch.');
+        const response = await fetchImpl(wasmUrl, { cache: 'force-cache' });
+        if (!response || response.ok !== true) {
+          throw new Error(`KTX2 transcoder fetch failed: HTTP ${response && response.status || 0} ${wasmUrl}`);
+        }
+        const binary = await response.arrayBuffer();
+        if (disposed) throw new Error('KTX2 loader was disposed during transcoder initialization.');
+        this.transcoderBinary = binary;
+        this.workerPool.setWorkerCreator(() => {
+          if (typeof WorkerImpl !== 'function') throw new Error('KTX2 transcoder requires Web Workers.');
+          const worker = new WorkerImpl(workerUrl);
+          const transcoderBinary = this.transcoderBinary.slice(0);
+          installWorkerFailureDrain(worker, MessageEventImpl);
+          worker.postMessage({ type: 'init', config: this.workerConfig, transcoderBinary }, [transcoderBinary]);
+          return worker;
+        });
+      });
+    }
+    return this.transcoderPending;
+  };
+  ktx2.dispose = function disposeCspSafeKtx2Transcoder() {
+    if (disposed) return;
+    disposed = true;
+    this.workerPool.dispose();
+    this.transcoderBinary = null;
+    this.transcoderPending = null;
+    this.workerSourceURL = '';
+  };
   return ktx2;
+}
+
+function installWorkerFailureDrain(worker, MessageEventImpl) {
+  if (!worker || typeof worker.addEventListener !== 'function'
+    || typeof worker.dispatchEvent !== 'function' || typeof MessageEventImpl !== 'function') return;
+  worker.addEventListener('error', (event) => {
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+    const error = event && event.message ? String(event.message) : 'KTX2 worker failed';
+    const rejectTask = () => worker.dispatchEvent(new MessageEventImpl('message', {
+      data: { type: 'error', error, data: {} },
+    }));
+    try { worker.terminate(); } catch (_) {}
+    // WorkerPool has no error channel. Replace posting before resolving the current task so each
+    // queued texture receives the same rejection instead of being transferred to a dead worker.
+    worker.postMessage = () => queueMicrotask(rejectTask);
+    rejectTask();
+  });
 }
 
 /** Module-lifetime shared KTX2 owner used by every authored-asset runtime in this process. */

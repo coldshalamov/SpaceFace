@@ -110,6 +110,8 @@ function createGameServer(opts) {
   const useAsync = opts.async !== false;
   const extraRoutes = opts.extraRoutes || [];
   const staticHeaders = Object.freeze({ ...(opts.staticHeaders || {}) });
+  const staticHeadersByPath = Object.fromEntries(Object.entries(opts.staticHeadersByPath || {})
+    .map(([key, headers]) => [String(key).replace(/\\/g, '/').replace(/^\//, ''), Object.freeze({ ...headers })]));
   const devDiagnostics = opts.devDiagnostics !== false;
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
 
@@ -160,8 +162,10 @@ function createGameServer(opts) {
       }
       if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
 
+      const relativePath = path.relative(root, file).split(path.sep).join('/');
       res.writeHead(200, {
         ...staticHeaders,
+        ...(staticHeadersByPath[relativePath] || {}),
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
         'Content-Length': stats.size,
         'Cache-Control': 'no-cache',

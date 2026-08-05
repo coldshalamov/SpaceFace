@@ -31,6 +31,10 @@ const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 const PORT = 41788;
 const ISOLATED_PORT_RETRY_LIMIT = 3;
 const ELECTRON_CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: ws: wss:; worker-src 'self' blob:; media-src 'self' data: blob:";
+const KTX2_TRANSCODER_WORKER_PATH = 'vendor/addons/libs/basis/basis_transcoder.worker.js';
+// Basis embind uses Function construction. Keep that permission out of the game document and grant
+// it only to the deterministic external worker response that owns no DOM or Electron capabilities.
+const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval';";
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
 // Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
@@ -98,6 +102,11 @@ function listenGameServer(root, requestedPort) {
       async: true,
       devDiagnostics: !app.isPackaged,
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
+      staticHeadersByPath: {
+        [KTX2_TRANSCODER_WORKER_PATH]: {
+          'Content-Security-Policy': ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY,
+        },
+      },
     });
     // Keep the fixed origin authoritative. An ephemeral fallback hides the actual port owner and
     // makes existing localStorage saves disappear for the run, so classify contention instead.

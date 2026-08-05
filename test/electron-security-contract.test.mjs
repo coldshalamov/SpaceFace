@@ -25,7 +25,11 @@ test('Electron shell keeps an explicit secure renderer boundary', () => {
   assert.match(main, /webContents !== win\.webContents/);
   assert.match(main, /ELECTRON_CONTENT_SECURITY_POLICY/);
   assert.match(main, /staticHeaders:\s*\{\s*'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY\s*\}/);
-  assert.doesNotMatch(main, /script-src[^;]*'unsafe-eval'/i);
+  const pageCsp = main.match(/const ELECTRON_CONTENT_SECURITY_POLICY = "([^"]+)"/)?.[1] || '';
+  const workerCsp = main.match(/const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "([^"]+)"/)?.[1] || '';
+  assert.doesNotMatch(pageCsp, /script-src[^;]*'unsafe-eval'/i);
+  assert.match(workerCsp, /script-src[^;]*'unsafe-eval'/i);
+  assert.match(main, /staticHeadersByPath:[\s\S]*KTX2_TRANSCODER_WORKER_PATH[\s\S]*ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY/);
 });
 
 test('packaged Electron includes only production shell entry points', () => {
