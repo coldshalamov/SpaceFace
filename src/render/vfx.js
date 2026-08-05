@@ -808,6 +808,8 @@ export const vfx = {
     this._size1 = new Float32Array(cap);
     this._cr0 = new Float32Array(cap); this._cg0 = new Float32Array(cap); this._cb0 = new Float32Array(cap);
     this._cr1 = new Float32Array(cap); this._cg1 = new Float32Array(cap); this._cb1 = new Float32Array(cap);
+    this._particleTrailAxis = new Float32Array(cap);
+    this._particleTrailStretch = new Float32Array(cap);
     this._alive = new Uint8Array(cap);
     this._head = 0;        // round-robin allocation cursor
     this._liveCount = 0;
@@ -815,6 +817,10 @@ export const vfx = {
     this._activeParticles = new Int32Array(cap);
     this._activeParticlePos = new Int32Array(cap);
     this._activeParticlePos.fill(-1);
+    // GPU point records are packed in active-list order. Keep the last packed source-slot identity
+    // so immutable trail shape channels move only when a slot is added, recycled, or swapped.
+    this._pPackedParticleSlots = new Int32Array(cap);
+    this._pPackedParticleSlots.fill(-1);
     this._freeParticles = new Int32Array(cap);
     for (let i = 0; i < cap; i++) this._freeParticles[i] = cap - 1 - i;
     this._freeParticleCount = cap;
@@ -917,13 +923,15 @@ export const vfx = {
     const scalarFields = [
       '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
       '_size0', '_size1', '_cr0', '_cg0', '_cb0', '_cr1', '_cg1', '_cb1',
-      '_pTrailAxis', '_pTrailStretch',
+      '_particleTrailAxis', '_particleTrailStretch',
     ];
     for (const field of scalarFields) old[field] = this[field];
     old._pPos = this._pPos;
     old._pCol = this._pCol;
     old._pSize = this._pSize;
     old._pAlpha = this._pAlpha;
+    old._pTrailAxis = this._pTrailAxis;
+    old._pTrailStretch = this._pTrailStretch;
 
     const geo = new THREE.BufferGeometry();
     this._pPos = new Float32Array(nextCap * 3);
@@ -947,6 +955,8 @@ export const vfx = {
     this._activeParticles = new Int32Array(nextCap);
     this._activeParticlePos = new Int32Array(nextCap);
     this._activeParticlePos.fill(-1);
+    this._pPackedParticleSlots = new Int32Array(nextCap);
+    this._pPackedParticleSlots.fill(-1);
     this._freeParticles = new Int32Array(nextCap);
 
     const keep = Math.min(oldLiveCount, nextCap);
@@ -954,7 +964,9 @@ export const vfx = {
       const src = oldActive[dst];
       if (!(src >= 0 && src < oldCap)) continue;
       for (const field of scalarFields) this[field][dst] = old[field][src];
-      const src3 = src * 3;
+      // The old GPU attributes are already packed in active-list order, independently of the
+      // stable CPU slot. Preserve the exact last-presented record during the capacity swap.
+      const src3 = dst * 3;
       const dst3 = dst * 3;
       this._pPos[dst3] = old._pPos[src3];
       this._pPos[dst3 + 1] = old._pPos[src3 + 1];
@@ -962,11 +974,14 @@ export const vfx = {
       this._pCol[dst3] = old._pCol[src3];
       this._pCol[dst3 + 1] = old._pCol[src3 + 1];
       this._pCol[dst3 + 2] = old._pCol[src3 + 2];
-      this._pSize[dst] = old._pSize[src];
-      this._pAlpha[dst] = old._pAlpha[src];
+      this._pSize[dst] = old._pSize[dst];
+      this._pAlpha[dst] = old._pAlpha[dst];
+      this._pTrailAxis[dst] = old._pTrailAxis[dst];
+      this._pTrailStretch[dst] = old._pTrailStretch[dst];
       this._alive[dst] = 1;
       this._activeParticles[dst] = dst;
       this._activeParticlePos[dst] = dst;
+      this._pPackedParticleSlots[dst] = dst;
     }
 
     this._cap = nextCap;
@@ -1184,10 +1199,12 @@ export const vfx = {
     this._size0[i] = size0; this._size1[i] = size1;
     this._cr0[i] = c0.r; this._cg0[i] = c0.g; this._cb0[i] = c0.b;
     this._cr1[i] = c1.r; this._cg1[i] = c1.g; this._cb1[i] = c1.b;
-    this._pTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis : 0;
-    this._pTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch : 0;
-    markDynamicBufferItems(this._particleDynamicBufferOwner, PARTICLE_TRAIL_AXIS, i);
-    markDynamicBufferItems(this._particleDynamicBufferOwner, PARTICLE_TRAIL_STRETCH, i);
+    this._particleTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis : 0;
+    this._particleTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch : 0;
+    const packedIndex = this._activeParticlePos[i];
+    if (packedIndex >= 0 && this._pPackedParticleSlots) {
+      this._pPackedParticleSlots[packedIndex] = -1;
+    }
     this._alive[i] = 1;
   },
 
@@ -1364,7 +1381,6 @@ export const vfx = {
   _retireParticle(i) {
     if (!this._alive[i]) return;
     this._alive[i] = 0;
-    this._pAlpha[i] = 0;
     const pos = this._activeParticlePos[i];
     if (pos >= 0) {
       const lastPos = --this._liveCount;
@@ -1372,8 +1388,10 @@ export const vfx = {
       if (pos !== lastPos) {
         this._activeParticles[pos] = moved;
         this._activeParticlePos[moved] = pos;
+        if (this._pPackedParticleSlots) this._pPackedParticleSlots[pos] = -1;
       }
       this._activeParticlePos[i] = -1;
+      if (this._pPackedParticleSlots) this._pPackedParticleSlots[lastPos] = -1;
     }
     this._freeParticles[this._freeParticleCount++] = i;
   },
@@ -7365,14 +7383,10 @@ export const vfx = {
     }
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
-    let writeMax = 0;
-    let dirtyMin = this._cap;
-    let dirtyMax = -1;
+    const packedSlots = this._pPackedParticleSlots;
     let cursor = 0;
     while (cursor < this._liveCount) {
       const i = active[cursor];
-      if (i < dirtyMin) dirtyMin = i;
-      if (i > dirtyMax) dirtyMax = i;
       let age = this._age[i] + dt;
       const life = this._life[i];
       if (age >= life) {
@@ -7389,29 +7403,38 @@ export const vfx = {
       this._py[i] += this._vy[i] * dt;
       this._pz[i] += this._vz[i] * dt;
 
-      const i3 = i * 3;
+      // CPU particle slots remain stable for lifetime/recycling semantics. GPU records instead
+      // follow the already-dense active list so a high recycled slot cannot turn two particles
+      // into a capacity-wide upload and hole-filled draw.
+      const i3 = cursor * 3;
       pos[i3] = this._px[i]; pos[i3 + 1] = this._py[i]; pos[i3 + 2] = this._pz[i];
       col[i3] = this._cr0[i] + (this._cr1[i] - this._cr0[i]) * t;
       col[i3 + 1] = this._cg0[i] + (this._cg1[i] - this._cg0[i]) * t;
       col[i3 + 2] = this._cb0[i] + (this._cb1[i] - this._cb0[i]) * t;
-      size[i] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
-      alpha[i] = 1 - t;
-      if (i + 1 > writeMax) writeMax = i + 1;
+      size[cursor] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
+      alpha[cursor] = 1 - t;
+      if (!packedSlots || packedSlots[cursor] !== i) {
+        this._pTrailAxis[cursor] = this._particleTrailAxis[i];
+        this._pTrailStretch[cursor] = this._particleTrailStretch[i];
+        if (dynamicOwner) {
+          markDynamicBufferItems(dynamicOwner, PARTICLE_TRAIL_AXIS, cursor);
+          markDynamicBufferItems(dynamicOwner, PARTICLE_TRAIL_STRETCH, cursor);
+        }
+        if (packedSlots) packedSlots[cursor] = i;
+      }
       cursor++;
     }
-    this._pDrawMax = writeMax;
-    this._pGeo.setDrawRange(0, writeMax);
+    this._pDrawMax = this._liveCount;
+    this._pGeo.setDrawRange(0, this._liveCount);
     if (dynamicOwner) {
-      const dirtyEnd = Math.min(writeMax, dirtyMax + 1);
-      if (dirtyMin < dirtyEnd) {
-        const dirtyCount = dirtyEnd - dirtyMin;
-        markDynamicBufferItems(dynamicOwner, PARTICLE_POSITION, dirtyMin, dirtyCount);
-        markDynamicBufferItems(dynamicOwner, PARTICLE_COLOR, dirtyMin, dirtyCount);
-        markDynamicBufferItems(dynamicOwner, PARTICLE_SIZE, dirtyMin, dirtyCount);
-        markDynamicBufferItems(dynamicOwner, PARTICLE_ALPHA, dirtyMin, dirtyCount);
+      if (this._liveCount > 0) {
+        markDynamicBufferItems(dynamicOwner, PARTICLE_POSITION, 0, this._liveCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_COLOR, 0, this._liveCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_SIZE, 0, this._liveCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_ALPHA, 0, this._liveCount);
       }
-      commitDynamicBufferOwner(dynamicOwner, writeMax);
-    } else if (writeMax > 0) {
+      commitDynamicBufferOwner(dynamicOwner, this._liveCount);
+    } else if (this._liveCount > 0) {
       this._pGeo.attributes.position.needsUpdate = true;
       this._pGeo.attributes.aColor.needsUpdate = true;
       this._pGeo.attributes.aSize.needsUpdate = true;

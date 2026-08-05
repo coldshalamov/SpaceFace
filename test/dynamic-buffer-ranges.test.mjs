@@ -106,6 +106,10 @@ function makeParticleVfxFixture(capacity = 3000) {
   fixture._pAlpha = attributes.aAlpha.array;
   fixture._pTrailAxis = attributes.aTrailAxis.array;
   fixture._pTrailStretch = attributes.aTrailStretch.array;
+  fixture._particleTrailAxis = new Float32Array(capacity);
+  fixture._particleTrailStretch = new Float32Array(capacity);
+  fixture._pPackedParticleSlots = new Int32Array(capacity);
+  fixture._pPackedParticleSlots.fill(-1);
   for (const field of [
     '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
     '_size0', '_size1', '_cr0', '_cg0', '_cb0', '_cr1', '_cg1', '_cb1',
@@ -135,6 +139,8 @@ function makeParticleVfxFixture(capacity = 3000) {
     fixture._cb1[index] = 1;
     fixture._pTrailAxis[index] = index * 0.25;
     fixture._pTrailStretch[index] = 2 + index;
+    fixture._particleTrailAxis[index] = index * 0.25;
+    fixture._particleTrailStretch[index] = 2 + index;
   }
   fixture._bindParticleDynamicBuffers();
   return { fixture, scene, coordinator, camera, material, points };
@@ -705,6 +711,94 @@ test('ordinary-flight point particles publish only their live prefix and survive
     acknowledgeInitial(attribute);
   }
   coordinator.disarm(epoch);
+  material.dispose();
+  fixture._pGeo.dispose();
+});
+
+test('point particles pack fragmented CPU slots into the live GPU prefix', () => {
+  const capacity = 3000;
+  const { fixture, scene, coordinator, camera, material } = makeParticleVfxFixture(capacity);
+  const attributes = [
+    fixture._pGeo.attributes.position,
+    fixture._pGeo.attributes.aColor,
+    fixture._pGeo.attributes.aSize,
+    fixture._pGeo.attributes.aAlpha,
+    fixture._pGeo.attributes.aTrailAxis,
+    fixture._pGeo.attributes.aTrailStretch,
+  ];
+
+  fixture._integrateParticles(1 / 60);
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of attributes) acknowledgeInitial(attribute);
+  coordinator.disarm(epoch);
+
+  const highSlot = capacity - 1;
+  fixture._alive[1] = 0;
+  fixture._activeParticlePos[1] = -1;
+  fixture._alive[highSlot] = 1;
+  fixture._activeParticles[1] = highSlot;
+  fixture._activeParticlePos[highSlot] = 1;
+  fixture._life[highSlot] = 4;
+  fixture._px[highSlot] = 91;
+  fixture._py[highSlot] = 7;
+  fixture._pz[highSlot] = -43;
+  fixture._size0[highSlot] = 5;
+  fixture._size1[highSlot] = 3;
+  fixture._cr0[highSlot] = 0.1;
+  fixture._cg0[highSlot] = 0.2;
+  fixture._cb0[highSlot] = 0.3;
+  fixture._cr1[highSlot] = 0.5;
+  fixture._cg1[highSlot] = 0.6;
+  fixture._cb1[highSlot] = 0.7;
+  fixture._particleTrailAxis[highSlot] = 0.75;
+  fixture._particleTrailStretch[highSlot] = 4.5;
+  fixture._pPackedParticleSlots[1] = -1;
+
+  const requestedBefore = fixture._particleDynamicBufferOwner.diagnostics.requestedUploadBytes;
+  fixture._integrateParticles(1 / 60);
+  assert.equal(fixture._pGeo.drawRange.count, 2,
+    'fragmented CPU storage must not leave invisible holes in the GPU draw range');
+  assert.deepEqual(Array.from(fixture._pPos.slice(3, 6)), [91, 7, -43]);
+  assert.equal(fixture._pTrailAxis[1], 0.75);
+  assert.equal(fixture._pTrailStretch[1], 4.5);
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  const expectedRanges = [
+    { start: 0, count: 6 },
+    { start: 0, count: 6 },
+    { start: 0, count: 2 },
+    { start: 0, count: 2 },
+    { start: 1, count: 1 },
+    { start: 1, count: 1 },
+  ];
+  for (let index = 0; index < attributes.length; index++) {
+    assert.deepEqual(attributes[index].updateRanges, [expectedRanges[index]]);
+    acknowledgeUpdate(attributes[index]);
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBytes = fixture._particleDynamicBufferOwner.diagnostics.requestedUploadBytes
+    - requestedBefore;
+  assert.equal(requestedBytes, 72,
+    'two live particles request 72 bytes regardless of how far apart their CPU slots are');
+  assert.equal(requestedBytes / 96000, 0.00075,
+    'packing avoids 99.925% of the four moving-attribute bytes forced by the medium-pool span');
+
+  fixture._activeParticles[0] = highSlot;
+  fixture._activeParticlePos[highSlot] = 0;
+  fixture._activeParticles[1] = 0;
+  fixture._activeParticlePos[0] = 1;
+  fixture._pPackedParticleSlots[0] = -1;
+  fixture._pPackedParticleSlots[1] = -1;
+  fixture._age[0] = fixture._life[0];
+  fixture._integrateParticles(1 / 60);
+  assert.equal(fixture._liveCount, 1);
+  assert.equal(fixture._pGeo.drawRange.count, 1);
+  assert.ok(fixture._pAlpha[0] > 0,
+    'retiring a later CPU slot must not erase the already-packed live GPU record at that index');
+  assert.deepEqual(Array.from(fixture._pPos.slice(0, 3)), [91, 7, -43]);
   material.dispose();
   fixture._pGeo.dispose();
 });
