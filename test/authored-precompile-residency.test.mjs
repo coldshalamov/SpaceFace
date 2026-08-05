@@ -11,6 +11,7 @@ import {
 } from '../src/render/precompile.js';
 import { getAuthoredUpgradeQueueStats } from '../src/render/partsLibrary.js';
 import { createShipAuxPool } from '../src/render/renderer.js';
+import { preloadRockSurfaceLibrary } from '../src/render/rockSurfaceLibrary.js';
 
 test('deferred sector shader precompile admits one archetype per browser yield', async () => {
   const preparedSubjects = [];
@@ -50,12 +51,16 @@ test('deferred sector shader precompile admits one archetype per browser yield',
 test('synthetic shader precompile creates zero authored asset residency demand', async () => {
   const source = readFileSync(new URL('../src/render/precompile.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /preloadAuthoredPartLibrary/);
+  await preloadRockSurfaceLibrary(null, {
+    loadTexture: async () => new THREE.Texture(),
+  });
 
   let legacyCompileCalls = 0;
   let exactTargetPrepareCalls = 0;
   let canopyVariants = [];
   let lateWorldOwners = [];
   let retainedPipelineOwners = [];
+  let retainedRockPipelines = [];
   let retainedVfxMaterialCount = 0;
   let disposedRetainedVfxMaterials = 0;
   const renderer = {
@@ -76,6 +81,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       canopyVariants = [];
       lateWorldOwners = [];
       retainedPipelineOwners = [];
+      retainedRockPipelines = [];
       retainedVfxMaterialCount = 0;
       disposedRetainedVfxMaterials = 0;
       subject.traverse((object) => {
@@ -83,6 +89,16 @@ test('synthetic shader precompile creates zero authored asset residency demand',
           || object.name === 'Spindle_Locked_Core_Glow') lateWorldOwners.push(object.name);
         if (object.userData?.precompileRetainedPipeline) {
           retainedPipelineOwners.push(object.userData.precompileRetainedPipeline);
+          if (object.userData.precompileRetainedPipeline.startsWith('common-rock')) {
+            retainedRockPipelines.push({
+              id: object.userData.precompileRetainedPipeline,
+              instanced: object.isInstancedMesh === true,
+              materialType: object.material?.type || null,
+              map: !!object.material?.map,
+              normalMap: !!object.material?.normalMap,
+              geologyPbr: !!object.geometry?.getAttribute?.('sfGeologyPbr'),
+            });
+          }
         }
         let owner = object;
         while (owner && owner !== subject
@@ -123,11 +139,19 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     'the production precompile teardown must not dispose retained VFX program owners');
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
   assert.deepEqual(retainedPipelineOwners.sort(), [
-    'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo',
+    'common-rock-instanced-pbr', 'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo',
   ]);
+  assert.deepEqual(retainedRockPipelines, [{
+    id: 'common-rock-instanced-pbr',
+    instanced: true,
+    materialType: 'MeshStandardMaterial',
+    map: true,
+    normalMap: true,
+    geologyPbr: true,
+  }]);
   assert.deepEqual(
     getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
-    ['hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo'],
+    ['common-rock-instanced-pbr', 'hitch-main-plume', 'ship-shield-bubble', 'vfx-salvo'],
   );
   assert.deepEqual(canopyVariants, [
     {
@@ -173,6 +197,12 @@ test('global precompile retains the directional-shadow program family without ch
         subject,
         shadowMapEnabled: renderer.shadowMap.enabled,
         keyCastsShadow: key.castShadow,
+        retainedPipelines: [],
+      });
+      const call = calls.at(-1);
+      subject.traverse((object) => {
+        const id = object.userData?.precompileRetainedPipeline;
+        if (id) call.retainedPipelines.push(id);
       });
     },
     yieldToMain: async () => {},
@@ -187,8 +217,53 @@ test('global precompile retains the directional-shadow program family without ch
     { shadowMapEnabled: false, keyCastsShadow: false },
     { shadowMapEnabled: true, keyCastsShadow: true },
   ]);
+  assert.deepEqual(
+    calls[0].retainedPipelines.filter((id) => id.startsWith('shadow-depth')),
+    [],
+    'depth-only variants should not add unused no-shadow program keys',
+  );
+  assert.deepEqual(
+    calls[1].retainedPipelines.filter((id) => id.startsWith('shadow-depth')).sort(),
+    ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
+    'the shadow admission pass must retain every exact depth layout observed after boot',
+  );
   assert.equal(renderer.shadowMap.enabled, false, 'restore the player renderer setting');
   assert.equal(key.castShadow, false, 'restore the live key-light state');
+  invalidatePrecompileState(renderer);
+});
+
+test('global precompile admits late depth owners when directional shadows are already active', async () => {
+  const calls = [];
+  const renderer = {
+    compileAsync: async () => {},
+    info: { programs: [] },
+    shadowMap: { enabled: true, type: THREE.PCFShadowMap },
+  };
+  const scene = new THREE.Scene();
+  const key = new THREE.DirectionalLight(0xffffff, 1);
+  key.castShadow = true;
+  scene.add(key);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);
+
+  await precompileGlobalPipelines(renderer, scene, camera, {
+    incremental: true,
+    preparePipelines: async (subject) => {
+      const depthOwners = [];
+      subject.traverse((object) => {
+        const id = object.userData?.precompileRetainedPipeline;
+        if (id?.startsWith('shadow-depth')) depthOwners.push(id);
+      });
+      calls.push(depthOwners.sort());
+    },
+    yieldToMain: async () => {},
+  });
+
+  assert.deepEqual(calls, [
+    [],
+    ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
+  ], 'new depth owners require one exact-target compile even when the shadow state needs no toggle');
+  assert.equal(renderer.shadowMap.enabled, true);
+  assert.equal(key.castShadow, true);
   invalidatePrecompileState(renderer);
 });
 

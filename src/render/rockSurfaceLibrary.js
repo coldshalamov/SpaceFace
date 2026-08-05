@@ -60,6 +60,16 @@ export function getReadyRockSurfaceTextures() {
   return readyTextures;
 }
 
+/**
+ * Join the preload already started by the renderer without creating a second loader. Global shader
+ * admission uses this boundary so its common-rock probe receives the same final texture-slot layout
+ * that streamed asteroids publish. Tests and hosts that have not started the library remain a no-op.
+ */
+export function waitForRockSurfaceLibraryReady() {
+  if (readyTextures) return Promise.resolve(readyTextures);
+  return readyPromise || Promise.resolve(null);
+}
+
 function configureSurfaceTexture(texture, { color = false, role = 'surface-data' } = {}) {
   if (!texture) return;
   texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace;

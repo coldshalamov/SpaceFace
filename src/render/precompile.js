@@ -13,6 +13,7 @@ import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, eventLightPoolSizeFor } from './vfx.js';
+import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -63,6 +64,7 @@ export async function precompilePipelines(renderer, scene, camera, options = {})
 async function precompileNow(
   renderer, scene, camera, shipSpecs, includeGlobalPipelines, compiledShipKeys, generation, options = {},
 ) {
+  if (includeGlobalPipelines) await waitForRockSurfaceLibraryReady();
   const staging = new THREE.Group();
   staging.name = 'SF_Precompile_Staging';
   staging.userData.precompileStaging = true;
@@ -131,6 +133,7 @@ async function precompileNow(
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
+      const commonRockWarmup = addCommonRockPipelineWarmup(canopyPipelineWarmup, vf);
       const vfxWarmup = createVfxPrecompileSalvo();
       globalWarmup.add(vfxWarmup);
       retainVfxPipelineWarmups(vfxWarmup, canopyPipelineWarmup);
@@ -139,7 +142,11 @@ async function precompileNow(
         globalWarmup.updateMatrixWorld(true);
         await options.preparePipelines(globalWarmup);
         await prepareDirectionalShadowPipelineVariant(
-          renderer, scene, globalWarmup, options.preparePipelines,
+          renderer,
+          scene,
+          globalWarmup,
+          options.preparePipelines,
+          () => addCommonRockShadowDepthWarmups(canopyPipelineWarmup, commonRockWarmup),
         );
         await yieldToMain();
       }
@@ -496,7 +503,9 @@ function rememberGlobalPrecompile(renderer, run) {
   return tracked;
 }
 
-async function prepareDirectionalShadowPipelineVariant(renderer, scene, subject, preparePipelines) {
+async function prepareDirectionalShadowPipelineVariant(
+  renderer, scene, subject, preparePipelines, beforePrepare = null,
+) {
   const shadowMap = renderer && renderer.shadowMap;
   if (!shadowMap || typeof preparePipelines !== 'function' || !scene || !subject) {
     return { skipped: true, reason: 'directional shadow compiler unavailable' };
@@ -509,8 +518,14 @@ async function prepareDirectionalShadowPipelineVariant(renderer, scene, subject,
 
   const previousEnabled = shadowMap.enabled;
   const previousCastShadow = keyLight.castShadow;
+  const addedPipelineOwners = typeof beforePrepare === 'function' && beforePrepare() === true;
   if (previousEnabled && previousCastShadow) {
-    return { skipped: true, reason: 'directional shadow variant already active' };
+    if (!addedPipelineOwners) {
+      return { skipped: true, reason: 'directional shadow variant already active' };
+    }
+    subject.updateMatrixWorld(true);
+    await preparePipelines(subject);
+    return { skipped: false, reason: 'new pipeline owners admitted under active directional shadows' };
   }
   try {
     shadowMap.enabled = true;
@@ -602,6 +617,66 @@ function retainVfxPipelineWarmups(vfxWarmup, retainedRoot) {
   retainedRoot.add(vfxWarmup);
 }
 
+function addCommonRockPipelineWarmup(root, vf) {
+  if (!root || !vf || typeof vf.build !== 'function') return null;
+  const asteroid = vf.build({
+    id: 47,
+    type: 'asteroid',
+    radius: 12,
+    data: { typeId: 'ast_common_rock' },
+  });
+  const source = asteroid?.userData?.asteroidInstanceBody;
+  if (!source?.geometry || !source?.material?.map || !source.material.normalMap) return null;
+
+  source.removeFromParent();
+  const mesh = new THREE.InstancedMesh(source.geometry, source.material, 1);
+  mesh.name = 'SF_Precompile_CommonRock_InstancedPbr';
+  mesh.count = 1;
+  mesh.frustumCulled = false;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.setMatrixAt(0, new THREE.Matrix4().makeScale(12, 12, 12));
+  mesh.userData.precompileRetainedPipeline = 'common-rock-instanced-pbr';
+  // The visual factory owns these globally cached resources. Retaining the exact material pins its
+  // custom geology program, but precompile invalidation must never dispose the shared maps.
+  mesh.userData.precompileBorrowedResources = true;
+  root.add(mesh);
+  return mesh;
+}
+
+function addCommonRockShadowDepthWarmups(root, commonRockWarmup) {
+  if (!root || !commonRockWarmup || root.userData.commonRockShadowDepthWarm) return false;
+  root.userData.commonRockShadowDepthWarm = true;
+  const layouts = [
+    { id: 'shadow-depth-map-instanced', mapped: true, instanced: true },
+    { id: 'shadow-depth-map-mesh', mapped: true, instanced: false },
+    { id: 'shadow-depth-solid-mesh', mapped: false, instanced: false },
+  ];
+  for (let index = 0; index < layouts.length; index++) {
+    const layout = layouts[index];
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const material = new THREE.MeshDepthMaterial({
+      map: layout.mapped ? warmupTexture([128, 128, 128, 255]) : null,
+      // WebGLShadowMap flips ordinary FrontSide casters to BackSide for PCF shadow rendering.
+      side: THREE.BackSide,
+    });
+    material.name = `SF_Precompile_${layout.id}`;
+    const mesh = layout.instanced
+      ? new THREE.InstancedMesh(geometry, material, 1)
+      : new THREE.Mesh(geometry, material);
+    mesh.name = `SF_Precompile_${layout.id}`;
+    mesh.frustumCulled = false;
+    mesh.userData.precompileRetainedPipeline = layout.id;
+    mesh.position.set(index * 3, 36, 0);
+    if (layout.instanced) {
+      mesh.count = 1;
+      mesh.setMatrixAt(0, new THREE.Matrix4());
+    }
+    root.add(mesh);
+  }
+  return true;
+}
+
 function addShipAuxPipelineWarmup(scene, retainedRoot) {
   let source = null;
   scene.traverse((object) => {
@@ -653,6 +728,7 @@ function retainPipelineWarmup(renderer, root) {
 
 function disposeObject(root) {
   root.traverse((object) => {
+    if (object.userData?.precompileBorrowedResources) return;
     if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
     for (const material of materials) {
