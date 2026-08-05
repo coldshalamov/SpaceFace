@@ -4698,7 +4698,7 @@
       "priority": 225,
       "title": "PERF-06 dirty-range Browser/Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-040.focused-implementation"
@@ -4711,8 +4711,8 @@
       "paths": [],
       "checks": [],
       "receiptRefs": [],
-      "brief": "Close upload bytes, buffer lifecycle, dense-combat parity, and matched performance.",
-      "blocker": null
+      "brief": "Integrated dirty-range production and focused real-WebGL correctness remain focused-green. The one declared broker invocation launched no runtime because performance-dirty-ranges-browser is not tracked; the paired Electron manifest and causal full-upload comparator are also absent. Under the no-probe/no-manifest-expansion boundary, upload-byte, dense-combat parity, and matched-performance acceptance remain unproven.",
+      "blocker": "The tracked tree has no performance-dirty-ranges-browser/electron manifests or existing causal full-upload comparator, and this goal forbids creating or expanding those acceptance surfaces merely to close the packet."
     },
     {
       "id": "PQ-041.native-acceptance",
@@ -4720,7 +4720,7 @@
       "priority": 226,
       "title": "PERF-07 exact-package and native Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-041.electron-smoke-h1-capture"
@@ -4737,8 +4737,8 @@
         "node scripts/check-electron-platform-contracts.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Close packaged startup, hardware GPU, Browser parity, controller/audio/display, lifecycle, and matched performance.",
-      "blocker": null
+      "brief": "The exact declared Electron 43.2.0 unpacked package now builds successfully after one local tool-cache correction that preserved package configuration. Native acceptance remains unproven because the packet-required packaged-startup checker and paired performance-electron-modernization Browser/Electron manifests are not tracked; existing source-Electron diagnostics cannot substitute for app.isPackaged, bundled asset/save, consumed-claim, or matched-performance proof.",
+      "blocker": "Exact package generation is green, but scripts/check-electron-packaged-startup.mjs and both performance-electron-modernization manifests are absent; this goal forbids creating the missing acceptance surfaces or promoting an ad hoc/source-checkout launch."
     },
     {
       "id": "PQ-042.branch-selection",
