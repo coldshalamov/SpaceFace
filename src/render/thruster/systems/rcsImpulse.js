@@ -24,8 +24,17 @@ import {
   segmentedIndexCount,
 } from '../geometry/segmentedPlumeGeometry.js';
 import { EventLightPool } from './eventLight.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  replaceDynamicBufferAttribute,
+  unregisterDynamicBufferOwner,
+} from '../../dynamicBufferRanges.js';
 
 const RCS_QUALITY_TIERS = ['high', 'medium', 'low'];
+const RCS_DYNAMIC_ATTRIBUTE_KEYS = ['instOffset', 'instAxis', 'instParams', 'instDynamics', 'instColor'];
 
 function hexToRgb(hex, out) {
   if (typeof hex === 'string' && hex.length >= 7) {
@@ -329,7 +338,10 @@ export class RcsImpulseSystem {
     this._textures = opts.textures || {};
     this._disposed = false;
     this._qualityTier = 'high';
-    if (THREE) this._initThree(THREE, opts);
+    if (THREE) {
+      this._initThree(THREE, opts);
+      if (opts.scene) this.bindDynamicBuffers(opts.scene);
+    }
   }
 
   getActiveGeometryStats() {
@@ -358,6 +370,17 @@ export class RcsImpulseSystem {
       const batch = this.layerBatches[i];
       const tb = batch.tierBuffers && batch.tierBuffers[t];
       if (!tb) continue;
+      if (batch.dynamicBufferOwner) {
+        for (let bindingIndex = 0; bindingIndex < RCS_DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
+          const key = RCS_DYNAMIC_ATTRIBUTE_KEYS[bindingIndex];
+          replaceDynamicBufferAttribute(
+            batch.dynamicBufferOwner,
+            bindingIndex,
+            tb.attrs[key],
+            `rcs-quality-tier:${t}`,
+          );
+        }
+      }
       batch.mesh.geometry = tb.geo;
       batch.offset = tb.offset;
       batch.axisScale = tb.axisScale;
@@ -365,7 +388,8 @@ export class RcsImpulseSystem {
       batch.dynamics = tb.dynamics;
       batch.color = tb.color;
       batch.attrs = tb.attrs;
-      batch.mesh.count = 0;
+      if (batch.dynamicBufferOwner) commitDynamicBufferOwner(batch.dynamicBufferOwner, 0);
+      else batch.mesh.count = 0;
       batch.writeCount = 0;
     }
     return this._qualityTier;
@@ -472,9 +496,32 @@ export class RcsImpulseSystem {
         tierBuffers,
         capacity,
         writeCount: 0,
+        dynamicBufferOwner: null,
         uScratch,
       });
     }
+  }
+
+  bindDynamicBuffers(scene) {
+    if (!scene || !this.layerBatches) return 0;
+    let bound = 0;
+    for (let batchIndex = 0; batchIndex < this.layerBatches.length; batchIndex++) {
+      const batch = this.layerBatches[batchIndex];
+      if (batch.dynamicBufferOwner) {
+        bound++;
+        continue;
+      }
+      batch.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+        id: `rcs-impulse:${this.recipe.id}:${batch.role}`,
+        mesh: batch.mesh,
+        attributes: RCS_DYNAMIC_ATTRIBUTE_KEYS.map((key) => ({
+          name: key,
+          attribute: batch.attrs[key],
+        })),
+      });
+      if (batch.dynamicBufferOwner) bound++;
+    }
+    return bound;
   }
 
   assertLayerBindings() {
@@ -524,7 +571,11 @@ export class RcsImpulseSystem {
       const motionScale = this.recipe.accessibility?.reducedMotion?.flowSpeedScale ?? 0.08;
       const baseFlow = this.recipe.identity.flowCharacter.baseFlow
         * (flags.reducedMotion ? motionScale : 1);
-      for (let b = 0; b < this.layerBatches.length; b++) this.layerBatches[b].writeCount = 0;
+      for (let b = 0; b < this.layerBatches.length; b++) {
+        const batch = this.layerBatches[b];
+        assertDynamicBufferOwnerWritable(batch.dynamicBufferOwner);
+        batch.writeCount = 0;
+      }
       for (let i = 0; i < result.activeSlotCount; i++) {
         const s = this.pool.slots[i];
         const batch = this.layerBatches[s.layerIndex];
@@ -553,17 +604,24 @@ export class RcsImpulseSystem {
         batch.color[o] = s.color[0];
         batch.color[o + 1] = s.color[1];
         batch.color[o + 2] = s.color[2];
+        for (let bindingIndex = 0; bindingIndex < RCS_DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
+          markDynamicBufferItems(batch.dynamicBufferOwner, bindingIndex, w);
+        }
         batch.writeCount = w + 1;
       }
       const intensityScale = result.presentation.intensityScale;
       for (let b = 0; b < this.layerBatches.length; b++) {
         const batch = this.layerBatches[b];
-        batch.attrs.instOffset.needsUpdate = true;
-        batch.attrs.instAxis.needsUpdate = true;
-        batch.attrs.instParams.needsUpdate = true;
-        if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
-        batch.attrs.instColor.needsUpdate = true;
-        batch.mesh.count = batch.writeCount;
+        if (batch.dynamicBufferOwner) {
+          commitDynamicBufferOwner(batch.dynamicBufferOwner, batch.writeCount);
+        } else {
+          batch.attrs.instOffset.needsUpdate = true;
+          batch.attrs.instAxis.needsUpdate = true;
+          batch.attrs.instParams.needsUpdate = true;
+          if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
+          batch.attrs.instColor.needsUpdate = true;
+          batch.mesh.count = batch.writeCount;
+        }
         batch.mesh.visible = batch.writeCount > 0;
         const u = batch.uScratch;
         u.time = this._time;
@@ -603,7 +661,8 @@ export class RcsImpulseSystem {
         const batch = this.layerBatches[b];
         batch.writeCount = 0;
         if (batch.mesh) {
-          batch.mesh.count = 0;
+          if (batch.dynamicBufferOwner) commitDynamicBufferOwner(batch.dynamicBufferOwner, 0);
+          else batch.mesh.count = 0;
           batch.mesh.visible = false;
         }
       }
@@ -622,6 +681,8 @@ export class RcsImpulseSystem {
     if (this.layerBatches) {
       for (let i = 0; i < this.layerBatches.length; i++) {
         const b = this.layerBatches[i];
+        unregisterDynamicBufferOwner(b.dynamicBufferOwner);
+        b.dynamicBufferOwner = null;
         if (b.tierBuffers) {
           for (let ti = 0; ti < RCS_QUALITY_TIERS.length; ti++) {
             const tb = b.tierBuffers[RCS_QUALITY_TIERS[ti]];

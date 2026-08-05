@@ -266,6 +266,7 @@ export class FamilyProductionFleet {
       if (f.plume.group && !f.plume.group.parent) scene.add(f.plume.group);
       if (f.plume.bindDynamicBuffers) f.plume.bindDynamicBuffers(scene);
       if (f.rcs && f.rcs.group && !f.rcs.group.parent) scene.add(f.rcs.group);
+      if (f.rcs?.bindDynamicBuffers) f.rcs.bindDynamicBuffers(scene);
     }
   }
 

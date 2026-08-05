@@ -28,8 +28,12 @@ import {
   registerAsteroidBaseLeaf,
   syncAsteroidInstancePool,
 } from '../src/render/asteroidInstancePool.js';
-import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
+import {
+  KESTREL_MAIN_PLUME_RECIPE,
+  KESTREL_RCS_RECIPE,
+} from '../src/render/thruster/recipes/kestrelRecipes.js';
 import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
+import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
 
 function acknowledgeInitial(attribute) {
   attribute.onUploadCallback();
@@ -438,4 +442,66 @@ test('ordinary-flight plume layers publish their written socket prefixes', () =>
     'two ordinary-flight sockets request 90% fewer bytes than the allocated family buffers');
   coordinator.disarm(epoch);
   plume.dispose();
+});
+
+test('signed RCS layers publish only the live impulse prefix', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const rcs = new RcsImpulseSystem(THREE, KESTREL_RCS_RECIPE, {
+    maxImpulses: 12,
+    scene,
+  });
+  scene.add(rcs.group);
+  const attributesFor = (batch) => [
+    batch.attrs.instOffset,
+    batch.attrs.instAxis,
+    batch.attrs.instParams,
+    batch.attrs.instDynamics,
+    batch.attrs.instColor,
+  ];
+
+  assert.equal(rcs.fire([0, 0, 0], [0, 0, 1], 1), 0);
+  rcs.update(1 / 60, {});
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  const activeBatches = rcs.layerBatches.filter((batch) => batch.writeCount > 0 && batch.mesh.visible);
+  assert.ok(activeBatches.length >= 2, 'one signed pulse retains layered RCS feedback');
+  for (const batch of activeBatches) {
+    for (const attribute of attributesFor(batch)) {
+      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+      acknowledgeUpdate(attribute);
+    }
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBefore = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  rcs.update(1 / 60, {});
+  assert.equal(activeBatches.flatMap(attributesFor)
+    .reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+  'RCS writes stay private until the renderer publication point');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  let expectedBytes = 0;
+  let fullBytes = 0;
+  for (const batch of activeBatches) {
+    for (const attribute of attributesFor(batch)) {
+      assert.deepEqual(attribute.updateRanges, [{
+        start: 0,
+        count: batch.writeCount * attribute.itemSize,
+      }]);
+      expectedBytes += batch.writeCount * attribute.itemSize * Float32Array.BYTES_PER_ELEMENT;
+      fullBytes += attribute.array.byteLength;
+      acknowledgeUpdate(attribute);
+    }
+  }
+  const requestedAfter = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  assert.equal(requestedAfter - requestedBefore, expectedBytes);
+  assert.equal(expectedBytes / fullBytes, 1 / 12,
+    'one signed pulse requests 91.67% fewer bytes than the allocated RCS buffers');
+  coordinator.disarm(epoch);
+  rcs.dispose();
 });
