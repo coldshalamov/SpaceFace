@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-04",
+  "updatedAt": "2026-08-05",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2788,8 +2788,7 @@
       "priority": 30,
       "title": "Re-author the corridor billboard and navigation buoy, and split the Helios memorial identity",
       "kind": "implementation",
-      "state": "claimed",
-      "owner": "codex-primary",
+      "state": "done",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
@@ -2830,8 +2829,12 @@
         "npm run check:assets:live",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
-      "brief": "Live-use audit proved the billboard is repeated beside six core-sector stations as well as the Helios memorial. Preserve and re-author the shared billboard as neutral framed information infrastructure, split poi_memorial onto a new exact place_memorial_array identity with its canonical 24-light Candle Fleet construction, and preserve the shared buoy as neutral role-legible navigation infrastructure with a zero-g inertial stabilization/load path. Publish all three source/release/Blend identities and all three rows in both manifests atomically, then register only poi_memorial to the new asset without a special renderer path."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-REPORT.md"
+      ],
+      "brief": "Integrated at dab9199a: ordinary core stations retain the shared neutral information display, poi_memorial alone selects the new 24-light place_memorial_array, and the broadly reused navigation buoy retains one faction-neutral navigation identity. Canonical source, authored Blend, optimized release, both manifest rows, ordinary place registration, deterministic producer/tooling, and exact-source review are committed. Browser/Electron route presentation, causal route review, and representative performance remain separate units.",
+      "partialIntegration": "The three live source GLBs preserve byte-identical BIN payloads from the KEEP-reviewed candidates while adding only guarded lifecycle metadata; their exact canonical releases and manifest hashes are bound at dab9199a. Reconciliation at current master passed the three-case runtime identity split and the 280-node atlas-integrity gate. No Browser/Electron launch or performance measurement was used or claimed.",
+      "blocker": null
     },
     {
       "id": "PQ-022.billboard-buoy-reauthor-h1",
