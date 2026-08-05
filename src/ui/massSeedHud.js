@@ -11,6 +11,7 @@
 // Writes only: its own DOM subtree. No sim state. Fully guarded headless.
 
 const MASS_SEED_HUD_CSS = `
+.sf-mseed-root { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
 .sf-mseed-pill {
   position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%);
   display: none; align-items: center; gap: 8px; padding: 4px 12px;
@@ -21,7 +22,9 @@ const MASS_SEED_HUD_CSS = `
 .sf-mseed-pill .mseed-tag { font-weight: 700; }
 .sf-mseed-pill.mseed-warning { color: #ffd9a0; border-color: rgba(240, 170, 70, 0.65); }
 .sf-mseed-pill.mseed-cooldown { color: #9fb4c8; border-color: rgba(120, 140, 160, 0.35); }
-.sf-mseed-mark { position: absolute; display: none; pointer-events: none; }
+.sf-mseed-mark { position: absolute; display: none; pointer-events: none; will-change: transform; }
+.sf-mseed-mark.mseed-offscreen { filter: drop-shadow(0 0 7px rgba(2, 6, 11, 0.92)); }
+.sf-mseed-mark.mseed-offscreen .mseed-diamond { border-style: dashed; }
 .sf-mseed-mark .mseed-diamond {
   width: 12px; height: 12px; margin: -6px 0 0 -6px;
   border: 2px solid rgba(140, 215, 250, 0.9); transform: rotate(45deg);
@@ -44,6 +47,80 @@ function clampRange(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+function projectedDirection(dx, dy) {
+  const ax = Math.abs(dx);
+  const ay = Math.abs(dy);
+  if (ay < ax * 0.4) return dx < 0 ? 'left' : 'right';
+  if (ax < ay * 0.4) return dy < 0 ? 'top' : 'bottom';
+  return `${dy < 0 ? 'upper' : 'lower'} ${dx < 0 ? 'left' : 'right'}`;
+}
+
+function resolveWorldBearingEdge(width, height, playerPos, targetPos, margin) {
+  if (!playerPos || !targetPos) return null;
+  const worldDx = Number(targetPos.x) - Number(playerPos.x);
+  const worldDz = Number(targetPos.z) - Number(playerPos.z);
+  const length = Math.hypot(worldDx, worldDz);
+  if (!Number.isFinite(worldDx) || !Number.isFinite(worldDz) || length < 0.001) return null;
+
+  // The chase camera keeps a fixed world orientation. Match the radar/objective contract: +X is
+  // left and +Z is up. A perspective projection of a behind-camera point is mirrored, so its raw
+  // screen coordinate must never choose the edge direction when world positions are available.
+  const dx = -worldDx / length;
+  const dy = -worldDz / length;
+  const mx = Math.max(24, width / 2 - margin);
+  const my = Math.max(24, height / 2 - margin);
+  const tx = Math.abs(dx) > 0.001 ? mx / Math.abs(dx) : Infinity;
+  const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
+  const edgeT = Math.min(tx, ty);
+  const x = width / 2 + dx * edgeT;
+  const y = height / 2 + dy * edgeT;
+  const direction = x > width * 0.72
+    ? 'right'
+    : (x < width * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
+  return { x, y, direction };
+}
+
+export function resolveMassSeedLockCue(projection, options = {}) {
+  const rawX = projection && Number(projection.x);
+  const rawY = projection && Number(projection.y);
+  if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) return { visible: false };
+
+  const viewportWidth = Math.max(320, Number(options.viewportWidth) || 1440);
+  const viewportHeight = Math.max(240, Number(options.viewportHeight) || 900);
+  const margin = Math.max(24, Number(options.margin) || 24);
+  const offscreen = projection.onScreen === false
+    || rawX < 0 || rawX > viewportWidth || rawY < 0 || rawY > viewportHeight;
+  if (!offscreen) {
+    return {
+      visible: true,
+      x: rawX,
+      y: rawY,
+      offscreen: false,
+      direction: 'onscreen',
+      ariaLabel: 'Mass Seed lock point onscreen',
+    };
+  }
+
+  const worldEdge = resolveWorldBearingEdge(
+    viewportWidth,
+    viewportHeight,
+    options.playerPos,
+    options.targetPos,
+    margin,
+  );
+  const direction = worldEdge
+    ? worldEdge.direction
+    : projectedDirection(rawX - viewportWidth / 2, rawY - viewportHeight / 2);
+  return {
+    visible: true,
+    x: worldEdge ? worldEdge.x : clampRange(rawX, margin, viewportWidth - margin),
+    y: worldEdge ? worldEdge.y : clampRange(rawY, margin, viewportHeight - margin),
+    offscreen: true,
+    direction,
+    ariaLabel: `Mass Seed lock point offscreen ${direction}`,
+  };
+}
+
 export const massSeedHud = {
   id: 'massSeedHud',
   name: 'massSeedHud',
@@ -55,6 +132,10 @@ export const massSeedHud = {
     this._lastPillText = '';
     this._lastPillClass = '';
     this._markVisible = false;
+    this._markOffscreen = null;
+    this._lastMarkDirection = '';
+    this._lastMarkTransform = '';
+    this._lastMarkAria = '';
   },
 
   destroy() {
@@ -138,13 +219,40 @@ export const massSeedHud = {
     }
     const vw = viewportExtent('innerWidth', 'clientWidth', 1440);
     const vh = viewportExtent('innerHeight', 'clientHeight', 900);
-    const x = clampRange(proj.x, 24, vw - 24);
-    const y = clampRange(proj.y, 24, vh - 24);
-    dom.mark.style.display = 'block';
-    dom.mark.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const cue = resolveMassSeedLockCue(proj, {
+      viewportWidth: vw,
+      viewportHeight: vh,
+      playerPos: player && player.pos,
+      targetPos: ms.lockPos,
+    });
+    if (!cue.visible) {
+      if (this._markVisible) { dom.mark.style.display = 'none'; this._markVisible = false; }
+      return;
+    }
+    if (!this._markVisible) dom.mark.style.display = 'block';
+    const transform = `translate3d(${Math.round(cue.x)}px, ${Math.round(cue.y)}px, 0)`;
+    if (transform !== this._lastMarkTransform) {
+      this._lastMarkTransform = transform;
+      dom.mark.style.transform = transform;
+    }
+    if (cue.offscreen !== this._markOffscreen) {
+      this._markOffscreen = cue.offscreen;
+      dom.mark.classList.toggle('mseed-offscreen', cue.offscreen);
+    }
+    if (cue.direction !== this._lastMarkDirection) {
+      this._lastMarkDirection = cue.direction;
+      dom.mark.setAttribute('data-direction', cue.direction);
+    }
     const remaining = Math.max(0, ms.lockAt - (Number.isFinite(state.simTime) ? state.simTime : 0));
-    const label = ms.phase === 'locking' ? 'LOCKING' : `LOCK ${remaining.toFixed(1)}s`;
+    const phaseLabel = ms.phase === 'locking' ? 'LOCKING' : `LOCK ${remaining.toFixed(1)}s`;
+    const label = cue.offscreen ? `${phaseLabel} · ${cue.direction.toUpperCase()}` : phaseLabel;
     if (dom.markLabel.textContent !== label) dom.markLabel.textContent = label;
+    const aria = `${cue.ariaLabel}; ${ms.phase === 'locking' ? 'locking' : `lock in ${remaining.toFixed(1)} seconds`}`;
+    if (aria !== this._lastMarkAria) {
+      this._lastMarkAria = aria;
+      dom.mark.setAttribute('aria-label', aria);
+    }
     this._markVisible = true;
   },
 

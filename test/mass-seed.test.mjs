@@ -42,7 +42,7 @@ import { combat } from '../src/systems/combat.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { physics } from '../src/core/physics.js';
 import { save } from '../src/save/saveSystem.js';
-import { massSeedHud } from '../src/ui/massSeedHud.js';
+import { massSeedHud, resolveMassSeedLockCue } from '../src/ui/massSeedHud.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 
 const DT = SIM_DT;
@@ -846,6 +846,34 @@ test('manual override: cursor paint beats the seed — and can deliberately pick
 });
 
 // ── 17. reduced settings / presentation ───────────────────────────────────────────────────
+test('presentation: an offscreen lock cue follows world bearing instead of mirrored projection', () => {
+  const viewport = { viewportWidth: 1440, viewportHeight: 900 };
+  const playerPos = { x: 0, z: 0 };
+
+  // Perspective projection mirrors points behind the fixed chase camera. The projected X says
+  // right, while the authoritative world/radar bearing for +X is left.
+  const behind = resolveMassSeedLockCue({ x: 1520, y: 450, onScreen: false }, {
+    ...viewport,
+    playerPos,
+    targetPos: { x: 416, z: 0 },
+  });
+  assert.equal(behind.visible, true);
+  assert.equal(behind.offscreen, true);
+  assert.equal(behind.direction, 'left');
+  assert.equal(behind.x, 24);
+  assert.match(behind.ariaLabel, /offscreen left/);
+
+  const onscreen = resolveMassSeedLockCue({ x: 640, y: 360, onScreen: true }, {
+    ...viewport,
+    playerPos,
+    targetPos: { x: 0, z: 100 },
+  });
+  assert.deepEqual(
+    { visible: onscreen.visible, offscreen: onscreen.offscreen, direction: onscreen.direction, x: onscreen.x, y: onscreen.y },
+    { visible: true, offscreen: false, direction: 'onscreen', x: 640, y: 360 },
+  );
+});
+
 // Minimal DOM stand-in: just enough surface for the DOM-guarded HUD to run headless.
 function makeFakeDom() {
   const byId = new Map();
@@ -906,6 +934,16 @@ test('presentation: HUD seconds are the primary timing channel; state never colo
     assert.equal(dom.pill.attrs['aria-label'], dom.pillText.textContent, 'aria channel mirrors the text');
     assert.equal(dom.mark.style.display, 'block', 'lock marker visible during travel');
     assert(/^LOCK \d+\.\ds$/.test(dom.markLabel.textContent), `marker label has seconds: "${dom.markLabel.textContent}"`);
+
+    // A behind-camera projection can point to the wrong screen edge. The live marker uses the
+    // seed/player world bearing instead, and carries the direction in text plus the ARIA channel.
+    hud.helpers.worldToScreen = () => ({ x: 1520, y: 450, onScreen: false });
+    hud.update(DT, t.state);
+    assert.equal(dom.mark.attrs['data-direction'], 'left');
+    assert.equal(dom.mark.classList.contains('mseed-offscreen'), true);
+    assert.match(dom.markLabel.textContent, /· LEFT$/);
+    assert.match(dom.mark.attrs['aria-label'], /offscreen left/);
+    assert.match(dom.mark.style.transform, /^translate3d\(24px,/);
 
     // Locking: state readout stays textual.
     assert(runUntil(t, () => t.state.massSeed.phase === 'locking', TICKS.travel + 4));
