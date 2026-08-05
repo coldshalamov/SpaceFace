@@ -1,7 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # Execution protocol: bounded implementation and convergent proof
 
-This protocol applies to every autonomous implementation handoff. Its purpose is to produce a useful feature and a trustworthy terminal receipt without allowing planning, review, or live-probe activity to expand forever.
+This protocol is a toolbox for admitted roadmap and acceptance work, not mandatory ceremony for every
+product fix. Use only the proof layers needed for the claim being made. An ordinary bounded fix does
+not need a broker campaign, new harness, formal receipt, or full baseline unless its selected packet
+explicitly depends on one. The purpose is a better game with trustworthy evidence, not completion of
+the validation machinery itself.
 
 ## 1. Terminal outcomes
 
@@ -36,7 +40,9 @@ A feature agent may report `implemented/focused_green`; only the integrator prom
 
 ## 3. Packet entry gate
 
-Do not implement until the selected active packet answers all of these with current evidence:
+For a roadmap packet, answer the material questions below with current evidence before implementation.
+A small product fix can satisfy this gate with a one-sentence player contract, its explicit non-effects,
+the live owner, and one proportionate way to observe the change.
 
 - What player-visible outcome is being built?
 - What ordinary route reaches it?
@@ -54,10 +60,10 @@ If any answer is unknown and material, classify the packet `BLOCKED` or perform 
 ## 4. Phase A — preflight and characterization
 
 1. Record exact branch, HEAD, dirty paths, worktrees, and active leases.
-2. **Record the entry baseline.** Run the packet's declared L0–L2 commands plus the repository fast
-   baseline gate at the candidate base, before any edit, and persist the pass/fail result alongside
-   the fast-gate receipt. This is what makes a red check attributable at exit; without it, every red
-   is unattributable and §7's `INHERITED_RED` disposition cannot be claimed honestly.
+2. **Record a proportionate entry baseline.** For route/milestone acceptance, shared-core changes, or
+   evidence dependencies, run the packet's declared L0–L2 commands plus the fast baseline and retain
+   the result. For a bounded product fix, reproduce the behavior and record the relevant focused check;
+   do not manufacture a receipt or broad baseline solely to satisfy process.
 3. Read the packet, the cited architecture/GDD sections, the queue row, and only the owner modules/checks it names.
 4. Confirm the live public route and current behavior. Old handoffs are hypotheses, not facts.
 5. Add or identify a seconds-scale characterization test at the owning seam.
@@ -70,6 +76,12 @@ Characterization must observe public owner behavior. Source-string assertions ar
 
 Implement the smallest coherent slice that satisfies the packet outcome.
 
+Start from the simplest player contract that explains the request. Treat conveniences as narrow
+conveniences: they may not silently become modes that take over adjacent controls, movement, timing,
+economy, or presentation. Any extra behavior must be required by the higher-level outcome, not merely
+suggested by an old plan, telemetry field, or validator. Prefer deleting an invented mechanism over
+tuning it when the mechanism itself violates player intent.
+
 - Keep mutation in the existing owner or add one narrow owner-side seam.
 - Keep pure arbitration, normalization, or projection logic separate from side effects.
 - Use stable IDs, simulation ticks/time, deterministic ordering, and idempotent receipts.
@@ -79,11 +91,20 @@ Implement the smallest coherent slice that satisfies the packet outcome.
 - Add accessibility semantics at the same time as the visible cue.
 - Keep the packet's non-goals out of the diff.
 
+Plans, checks, and harnesses are fallible descriptions of the product. If one demands behavior that
+conflicts with current user direction, architecture, GDD intent, or observed player control, correct or
+remove that stale demand; never distort production behavior to keep an obsolete validator green.
+
 When an unforeseen shared edit is necessary, stop. Return a shared-change request containing the owner, required contract, why existing seams are insufficient, and the smallest proposed change.
 
 ## 6. Phase C — validation ladder
 
 Run gates in ascending cost. A higher layer never substitutes for a lower one.
+
+L3/L4 are used only when the task is actually making the corresponding route, visual, performance, or
+release claim. A harness failure does not automatically turn product work into a harness project. Repair
+the harness only when it blocks an in-scope claim and the product behavior cannot be established more
+directly; otherwise record the limited unproven claim and finish the product slice.
 
 | Layer | Purpose | Examples | Rerun rule |
 |---|---|---|---|

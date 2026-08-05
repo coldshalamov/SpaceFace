@@ -75,7 +75,7 @@ checks).
 | Scout (m16) | Mid asteroid (m50+) | Ship swings a smooth arc; asteroid barely moves (< 8% of ship's speed change) |
 | Scout | Light drone (m6) | Drone is YANKED along; ship path deflects < 15° |
 | Hauler (m60) | Scout-class ship (m16) | Target whipped through > 90° of arc in < 1.5 s at 120 wu/s |
-| Any | Station anchor (static) | Pure pendulum; full boost for 2 s snaps the line (existing contract) |
+| Any | Station anchor (static) | Pure pendulum; ordinary boost and a botched swing do not auto-break the standard line |
 
 ## 6. Acceptance assertions (`scripts/check-massline-feel.mjs`, sim harness, deterministic)
 Scenario: player at 150 wu/s passes a static-ish mid asteroid, perpendicular miss distance = 0.8 ×
@@ -87,8 +87,10 @@ restLength; latch at closest approach; coast (no thrust) 2.0 s; cut at the tange
 3. **Smoothness:** per-tick speed delta during capture ≤ **9 wu/s per tick** (no impulsive spike;
    old rope produced 40+).
 4. **Arc monotonic:** heading change accumulates monotonically (same sign) from taut to cut.
-5. **Slingshot contract intact:** `scripts/check-tether-gameplay.mjs` still passes (exit ≥ 1.25×,
-   holds mid-asteroid, snaps overload) — retune `break.maxTension` if needed, never the assertions.
+5. **Slingshot contract intact:** release preserves real momentum and adds only
+   `15% × actual exit speed × live line load` along the real exit vector. Slack, unloaded, and
+   near-stationary releases add zero. Any old fixed `exit ≥ 1.25×` assertion is stale; do not restore
+   a flat launch or change rope physics to satisfy it.
 6. All of: `check:sg02:tether`, `check:sg02:tether-break`, `check:sim:compare` (hashEqual:true).
 
 ## 7. Explicitly out of scope here

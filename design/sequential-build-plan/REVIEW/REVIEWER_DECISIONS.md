@@ -97,19 +97,15 @@ impulses, pursuit HUD/toasts, and any automatic combat maneuver controller are p
 receipts prove only that the rejected experiment once existed; they cannot re-authorize it. Do not
 prototype, A/B, rename, or re-admit it.
 
-### Q6 — Orbit assist default? → **Default `Standard`, with a first-session `Full` grace that steps down on first successful release.**
+### Q6 — USER OVERRIDE 2026-08-05 → **No tether flight mode; assist only the explicit forward+turn chord.**
 
-The user's phrasing (L423: "what else could I possibly be trying to do") wants it to
-feel automatic, not toggled — so the assist is **on by default and invisible**, with
-strength as the only setting. `Standard` (bounded radial correction ~15–25% of
-available acceleration, capped, strain live) is the right steady-state because it
-preserves earned-speed gameplay: the player still pumps and releases, the computer
-only stops the fight against the tether. `Full` for the first session (or until the
-first successful green-window release, whichever comes first) protects the onboarding
-moment — the first tether experience must not be "I ricocheted off an asteroid and
-died." The step-down is announced by one flight fragment, not a modal. `Light`/`Off`
-exist in settings for purists. Never a per-maneuver toggle: a mode switch mid-swing
-on a trackpad is exactly the chord-tax Law 3 forbids.
+The prior decision inferred a broad invisible controller from a narrow convenience
+request. That inference was wrong. A latch creates a rope and changes no ordinary
+flight control. While the player explicitly holds forward plus a turn direction, a
+helper may replace only that turn input with the yaw rate implied by current relative
+motion and line radius. It may not add radial correction, choose an orbit, change
+thrust/strafe/brake/boost, clamp speed or yaw, steer toward the anchor, or introduce a
+first-session grace mode. Releasing the chord returns raw steering immediately.
 
 ### Q7 — Massline key? → **Space is the canonical massline action; F remains as a legacy alias; both rebindable; migration via the T16 lead lease with default-change only for new input profiles.**
 

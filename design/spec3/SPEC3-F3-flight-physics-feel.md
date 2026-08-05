@@ -150,10 +150,11 @@ spec*: inputs, targeting, feedback, save, and the balance numbers. This is it.
   cooldown, quiet fizzle (no punishment scream).
 - **Winch:** scroll = reel in/out (`reel()`); reeling against load costs energy/s scaled by tension.
 - **Cut:** G again or X. Auto-break at tension threshold with a 0.25 s fray warning first.
-- **Slingshot:** tether a massive body, burn tangentially, cut at the tangent — Rapier does it free.
-  The *game's* job is the release: at cut, if |v| > 1.4× your max thrust speed, grant a 1.0 s
-  "slingshot state" (tiny drag, streak VFX, whipcrack) so the payoff reads. Skill: cutting within
-  ±20° of the optimal tangent yields the full velocity; the tangent is *never drawn* — feel, not UI.
+- **Slingshot (user-corrected 2026-08-05):** tether a massive body, burn tangentially, and cut at
+  the tangent. The rope owns only its physical constraint; ordinary flight remains unchanged. A
+  taut release may add a game-feel flourish of `15% × actual exit speed × live line load` along the
+  real exit vector. Slack or near-stationary release adds zero; no fixed threshold or flat kick may
+  manufacture a launch.
 - **Combat verbs:** yank ships with mass ratio <0.6 out of formation (stagger 1.2 s); anchor to a
   capital hull to orbit-strafe it; tether a mine cluster and sling it (inherits momentum — Highfleet
   rule: *all* released/launched objects inherit carrier velocity, see SPEC3-20).
@@ -211,7 +212,8 @@ dependencies remain allowed under repository policy when their material benefit 
 1. `tetherSystem.js` skeleton + fire/cut on static asteroid + `scripts/check-tether-verbs.mjs`
    (attach, reel, cut; assert joint lifecycle + events).
 2. Tension telemetry → filament color + hum hook; fray-grace; break.
-3. Slingshot state + check (scripted tangent burn: assert exit speed ≥1.4× and slingT granted).
+3. Slingshot check: preserve real tangent momentum; assert the load-scaled 15% ceiling and zero
+   bonus for slack/unloaded/near-stationary release.
 4. Yank/anchor combat rules + mass-ratio data; extend 47a counterplay scripts to live game.
 5. Chunk-hauling + refinery payout (pairs with SPEC3-14); tow-wreck contract template.
 6. Impulse charges as a weapon-slot item (SPEC3-20 owns weapon plumbing; this spec owns the impulse).

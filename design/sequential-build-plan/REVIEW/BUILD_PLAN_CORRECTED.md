@@ -334,48 +334,41 @@ in tests.
 
 ---
 
-### STEP 4 (SF-05 → T05) — Anchor-relative orbit assist (the user's #1 ask)
+### STEP 4 (SF-05 → T05) — Explicit orbit-rate steering convenience (user-corrected 2026-08-05)
 
 **Problem.** Tethered steering turns too fast or too slow for line length and speed:
 the player ricochets against the constraint, spirals into the anchor, or stalls the
 swing (L421, SF-05 problem statement verbatim).
 **Consequence.** The slingshot fantasy — the game's signature moment — is
 inaccessible in practice, and "hold thrust + turn to orbit" feels broken.
-**Why it's bad.** This is the most-confirmed user intent in the entire corpus
-(L421/L423/L1661). It is also invisible-assist design at its purest: detect the
-obvious intent, supply the precision, never choose the maneuver.
-**Proposed solution.** A bounded PD orbit assist in the anchor-relative frame,
-engaged only by explicit intent, tuned by the Q21 procedure in the lab.
+**Why it's bad.** The player wants help holding the useful turn rate, not a new
+tethered-flight mode.
+**Player contract.** Latching creates only the physical rope. It does not change
+thrust, boost, strafe, braking, speed limits, yaw capability, heading, or release
+direction. Only while the player explicitly holds forward plus one turn direction,
+the helper substitutes the turn input needed to track the live swing rate. Releasing
+that chord restores raw steering immediately.
+**Proposed solution.** One anchor-relative yaw-rate calculation, with no radial
+controller and no synthetic flight force.
 **Direction of how.** Frame: `r = pShip − pAnchor; rHat = r/|r|; tHat = ±perp(rHat)`
 (sign = player-chosen orbit direction). Decompose relative velocity into `vRadial`
 and `vTangential`. Desired yaw rate `ω* = clamp(vT / max(R, Rmin), −ωmax, +ωmax)`
-routed through `turnIntent` — **never write `rot`/`angVel` directly**. Radial
-correction `aRadial = clamp(−Kr·lengthError − Kd·vRadial, −aRadialMax, +aRadialMax)`
-with `aRadialMax = 0.20 × maxThrustAccel`. Engagement requires: tethered, anchor
-mass ≥ `anchorMassRatioMin` (= 50× player mass), line taut, forward held, exactly one
-lateral held, no brake, no armed throw, no modal UI. Disengagement: release lateral
-or any override → assist fades within one tick; reversal is allowed, costly, and
-settles (no instant sign flip). Tuning per Q21: seed `Ts = 2.0 s`, `ωn = 4/Ts`,
-`ζ = 1.0`, `Kd = 2ζωn`, `Kr = ωn²` in normalized authority units; grid-search
-[0.5×, 2×] in the lab; lock as `orbitAssist.tuning.v1`. Strengths: Full/Standard/
-Light/Off — **Standard default, first-session Full grace stepping down at first
-successful release** (Q6). Light towables are not anchors: shared-motion mode or no
-engagement.
+routed through `turnIntent` — **never write `rot`/`angVel` directly**. Engagement
+requires a live tether, forward held, exactly one lateral held, and no explicit
+override. The helper changes only turn input; rope physics owns radial motion.
 **What it looks like.** Hold thrust+left tethered to a big asteroid: the ship
 settles into a taut, quickening swing within two seconds, the camera eases out, the
 line stays loaded; reel in and the spin whips faster; let go of left and you're
 simply flying again. Ten-second orbits at three line lengths, zero anchor contact.
-**Forbidden shortcuts.** (1) Positioning the ship on a circle per tick. (2) Direct
-velocity/angular-velocity writes. (3) Erasing strain/radial motion entirely (it's an
-assist, not a rail — overstrain must still threaten). (4) Gains tuned for one
-radius/mass. (5) Engagement without explicit intent, or assist that can't be
-overridden instantly. (6) Invisible engagement — the assist state cue (minimal HUD
-tick) is required. (7) Free energy: any launch bonus must be explicit, bounded,
-provenance-tagged (gravity 06 Phase-3 invariant).
-**Acceptance evidence.** Lab acceptance matrix green (3 lengths × 3 speeds × 3
-anchor masses: no anchor contact, tangent-dominant within 2 s, 10 s sustained, no
-oscillation); `check:massline:telemetry`; live-route capture of the SF-05 checkpoint;
-`check:sim:compare` ok; saturation/override telemetry in receipt.
+**Forbidden shortcuts.** No speed/yaw clamp, nose-to-anchor torque, radial impulse,
+throttle taper, input suppression, automatic orbit, flat launch kick, or hidden
+onboarding grace. A release flourish may add at most 15% of actual exit speed scaled
+by real line load, along the real exit vector; slack or near-stationary release adds
+zero.
+**Acceptance evidence.** Focused behavior proves ordinary controls are unchanged,
+the explicit chord requests the geometry-derived turn rate across representative
+lengths/speeds, and release scaling is proportional. Use one bounded player check if
+needed; do not rebuild a lab or tune production to satisfy a stale matrix.
 **Authority/lease.** Physics authority for all corrections; Flight V3 command path;
 T01 telemetry consumed, not modified.
 **Model routing.** OPTIONAL vision (backend implementation; semantic telemetry is

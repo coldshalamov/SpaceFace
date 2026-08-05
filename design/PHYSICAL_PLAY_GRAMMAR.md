@@ -406,16 +406,11 @@ service into the Rapier constraint (`tetherGameplay.js:511` → `src/core/sg02Dy
 so angular speed-up is emergent, and heavy anchors resist the winch via a tension stall term
 (`src/core/constraints/masslineController.js:113-115`).
 
-**Correction — the release boost is not tautness-scaled.** It is a binary threshold: at
-`speed >= maxSpeed * 1.4` (`tetherGameplay.js:38, :667`) the ship gets a 1-second exemption from the
-speed governor (`src/systems/flightV3.js:515-528`), which lets the constraint's real whip survive
-instead of being bled off. `rateRelease` (`tetherGameplay.js:1064-1113`) *does* compute strain and
-label the release razor/clean/good/messy — but it grants nothing. So "more taut means more boost" is
-currently narrated, not simulated.
-
-**Decision:** make the strain term that `rateRelease` already computes actually scale the governor
-exemption, rather than only naming it. That converts an existing readout into the mechanic players
-already believe is there, and it is the correct home for the §10 tangent-attach alternative.
+**User correction 2026-08-05 — the release flourish is proportional.**
+`selfSlingBonusDv` in `src/systems/masslineThrow.js` adds `actual exit speed × 0.15 × live line load`
+along the ship's real exit vector. It requires a genuinely taut, loaded line and at least 25 wu/s of
+real motion. Slack, unloaded, near-stationary, and accidental latch/cut cases receive zero; the helper
+never chooses a direction or manufactures a flat launch.
 
 ### 7.5 Rig slots
 
@@ -1079,7 +1074,7 @@ approach is set aside; do not remove entries.
 | **Object-to-object tether** — tie two external bodies to each other (queue row PQ-031, "Twin Bridle") | Requires the player to select two separate targets and a relationship between them. Under Helm Assist the cursor is already steering the nose, so there is no spare cursor input during flight for a second selection. The idea describes well and has no workable input model. | The Snarl and Capstan webs (§5) produce the same fantasy — many bodies coupled together — from one keypress and no second selection. |
 | **A dedicated brake-to-stop key on Space** — specified in `GDD_2_0.md` §4.1 with feel targets, and repeated as an open checklist item in `design/revamp/BP-07_FLIGHT_TRAVERSAL.md:12, :29` | Releasing thrust already decelerates the ship, and S/Down is reverse-plus-brake, so a dedicated brake key duplicates what the absence of input does. The design was never implemented as written: Space is the Massline (`src/systems/input.js:222`) and brake is `Digit0` (`:269`). | Correct `GDD_2_0.md` §4.1 and `BP-07` to match live code. No code change is required — the docs are stale, not the game. |
 | **Splitting the Massline across two keys** — one mass-gated for heavy anchors, one cursor-gated for light grabs | One tool with different rules per key is hard to hold in mind while flying, and there is no clean situation in which only one of the two behaviors is wanted. It also leaves the underlying problem in place: the selection stays invisible until the key is pressed. | The continuous candidate highlight in §7.1. |
-| **Choosing an off-centre attach point** on a body so the line produces an arc rather than a radial stop | Detecting the correct release moment becomes an expensive and fragile physics problem, and the resulting motion is not distinguishable to the player from the simpler treatment. | Grant a release boost scaled by line tautness (§7.4). Already implemented, and it delivers the intended experience. |
+| **Choosing an off-centre attach point** on a body so the line produces an arc rather than a radial stop | Detecting the correct release moment becomes an expensive and fragile physics problem, and the resulting motion is not distinguishable to the player from the simpler treatment. | Retain the physical center constraint and the bounded load-scaled release flourish (§7.4); neither may take over ordinary flight. |
 | **Tether-based traversal** — firing a line ahead to swing past obstacles and cover distance | A line fired ahead of the velocity vector goes taut radially and arrests the ship instead of swinging it. A real swing requires attaching roughly perpendicular to velocity, which the player cannot reliably arrange at speed. Even when it lands it is unlikely to beat boost-and-dash for covering ground. | Spin-then-release-boost (§7.4), which exists and delivers the payoff without depending on the traversal claim. |
 | **Screen-wide bloom** as the neon treatment | A gaussian wash over bright pixels raises the black level across the whole frame and flattens contrast, which reads as fog rather than as energy. | The HDR core, saturated falloff, dark rim, and anisotropic streak treatment described in §9.2. |
 
