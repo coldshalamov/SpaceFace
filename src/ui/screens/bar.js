@@ -642,16 +642,19 @@ function bestTradeRoute(state, currentStationId) {
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
-  const canonical = contact && contact.canonicalKey
-    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
-    : null;
-  if (canonical) return canonical;
-
   const state = ctx.state || {};
+  // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
+  // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
+  // and the contact's normal canonical dialogue resumes.
   const wreckRumor = role === 'barkeep'
     ? uniqueWreckBarRumor(state, stationId, choiceId)
     : null;
   if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
 
   switch (role) {
     /* ── BARKEEP ───────────────────────────────────────── */
