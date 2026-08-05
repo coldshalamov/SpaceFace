@@ -97,6 +97,26 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
   assert.ok(result.metrics.driverUploadByteReductionFraction > 0.9);
   assert.deepEqual(result.failures, []);
 
+  const differentFrameVolume = {
+    windows: [
+      windowFixture('baseline', {
+        logicalBytes: 3_637_604,
+        requestedBytes: 3_711_372,
+        driverBytes: 21_560_044,
+      }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+        logicalBytes: 4_418_200,
+        requestedBytes: 39_682_528,
+        driverBytes: 65_656_176,
+      }),
+    ],
+  };
+  const normalized = evaluateDirtyRangeComparison(differentFrameVolume, { runtimeKind: 'browser' });
+  assert.equal(normalized.pass, true,
+    'fixed-duration windows compare upload amplification per logical byte, not unequal frame totals');
+  assert.ok(normalized.metrics.logicalByteDriftFraction > 0.1,
+    'raw logical drift remains visible as a diagnostic rather than an invalid equality gate');
+
   const noDriverGain = {
     ...document,
     windows: [document.windows[0], windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {

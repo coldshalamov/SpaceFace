@@ -3,7 +3,6 @@ import { DYNAMIC_BUFFER_FULL_SPAN_VARIANT } from './releaseSoakProbe.mjs';
 export const PERFORMANCE_DIRTY_RANGE_ACCEPTANCE_SCHEMA =
   'spaceface.performanceDirtyRangeAcceptance.v1';
 export const MIN_DIRTY_RANGE_BYTE_REDUCTION_FRACTION = 0.25;
-export const MAX_LOGICAL_BYTE_DRIFT_FRACTION = 0.10;
 
 function finite(value) {
   return Number.isFinite(Number(value)) ? Number(value) : null;
@@ -12,6 +11,12 @@ function finite(value) {
 function fractionReduced(smaller, larger) {
   return Number.isFinite(smaller) && Number.isFinite(larger) && larger > 0
     ? 1 - (smaller / larger)
+    : null;
+}
+
+function perLogicalByte(uploadBytes, logicalBytes) {
+  return Number.isFinite(uploadBytes) && Number.isFinite(logicalBytes) && logicalBytes > 0
+    ? uploadBytes / logicalBytes
     : null;
 }
 
@@ -42,8 +47,18 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
   const fullRequested = finite(fullSpan?.dynamicBuffers?.delta?.requestedUploadBytes);
   const rangedDriver = finite(ranged?.tier1?.postBoot?.bufferUploadBytes);
   const fullDriver = finite(fullSpan?.tier1?.postBoot?.bufferUploadBytes);
-  const ownerRequestedByteReductionFraction = fractionReduced(rangedRequested, fullRequested);
-  const driverUploadByteReductionFraction = fractionReduced(rangedDriver, fullDriver);
+  const rangedRequestedBytesPerLogicalByte = perLogicalByte(rangedRequested, rangedLogical);
+  const fullSpanRequestedBytesPerLogicalByte = perLogicalByte(fullRequested, fullLogical);
+  const rangedDriverBytesPerLogicalByte = perLogicalByte(rangedDriver, rangedLogical);
+  const fullSpanDriverBytesPerLogicalByte = perLogicalByte(fullDriver, fullLogical);
+  const ownerRequestedByteReductionFraction = fractionReduced(
+    rangedRequestedBytesPerLogicalByte,
+    fullSpanRequestedBytesPerLogicalByte,
+  );
+  const driverUploadByteReductionFraction = fractionReduced(
+    rangedDriverBytesPerLogicalByte,
+    fullSpanDriverBytesPerLogicalByte,
+  );
   const logicalByteDriftFraction = Number.isFinite(rangedLogical) && Number.isFinite(fullLogical)
     ? Math.abs(rangedLogical - fullLogical) / Math.max(1, rangedLogical, fullLogical)
     : null;
@@ -78,9 +93,8 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
   if (ranged && fullSpan && stableJson(ranged.settings?.start) !== stableJson(fullSpan.settings?.start)) {
     failures.push('ranged and full-span windows do not share identical quality settings');
   }
-  if (!Number.isFinite(logicalByteDriftFraction)
-      || logicalByteDriftFraction > MAX_LOGICAL_BYTE_DRIFT_FRACTION) {
-    failures.push(`logical write volume drift exceeded ${MAX_LOGICAL_BYTE_DRIFT_FRACTION * 100}%`);
+  if (!(rangedLogical > 0) || !(fullLogical > 0)) {
+    failures.push('both windows must contain positive logical dynamic-buffer writes');
   }
   if (!Number.isFinite(ownerRequestedByteReductionFraction)
       || ownerRequestedByteReductionFraction < MIN_DIRTY_RANGE_BYTE_REDUCTION_FRACTION) {
@@ -103,7 +117,6 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
     },
     thresholds: {
       minByteReductionFraction: MIN_DIRTY_RANGE_BYTE_REDUCTION_FRACTION,
-      maxLogicalByteDriftFraction: MAX_LOGICAL_BYTE_DRIFT_FRACTION,
     },
     metrics: {
       rangedLogicalBytes: rangedLogical,
@@ -111,9 +124,13 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
       logicalByteDriftFraction,
       rangedRequestedUploadBytes: rangedRequested,
       fullSpanRequestedUploadBytes: fullRequested,
+      rangedRequestedBytesPerLogicalByte,
+      fullSpanRequestedBytesPerLogicalByte,
       ownerRequestedByteReductionFraction,
       rangedDriverUploadBytes: rangedDriver,
       fullSpanDriverUploadBytes: fullDriver,
+      rangedDriverBytesPerLogicalByte,
+      fullSpanDriverBytesPerLogicalByte,
       driverUploadByteReductionFraction,
       rangedFrameP95,
       fullSpanFrameP95: fullFrameP95,
