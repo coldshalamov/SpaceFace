@@ -33,6 +33,8 @@ import {
 import { trafficRoleMixForSector } from '../src/systems/traffic.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import { createBus } from '../src/core/eventBus.js';
+import { FRESH_RUN_SYSTEMS } from '../src/core/runReset.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -205,10 +207,20 @@ for (const rel of [
   assert.doesNotMatch(source, /Date\.now\s*\(|performance\.now\s*\(/, `${rel} cannot use wall time`);
 }
 
-// Registry wiring still present (ecology before encounter director in newGame order).
-const registrySource = readFileSync(join(ROOT, 'src/core/registry.js'), 'utf8');
-assert.match(registrySource, /regionalEcology/);
-assert.ok(registrySource.indexOf('world, regionalEcology, encounterDirector') >= 0);
+// Authoritative runtime/reset owners keep ecology between world materialization and its consumers.
+// Assert the exported orders rather than stale source formatting in registry.js or main.js.
+const worldUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
+const ecologyUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');
+const encounterUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('encounterDirector');
+assert.ok(worldUpdateIndex >= 0 && worldUpdateIndex < ecologyUpdateIndex
+  && ecologyUpdateIndex < encounterUpdateIndex,
+  'production update order must run world before regional ecology before encounter planning');
+const worldResetIndex = FRESH_RUN_SYSTEMS.indexOf('world');
+const ecologyResetIndex = FRESH_RUN_SYSTEMS.indexOf('regionalEcology');
+const factionsResetIndex = FRESH_RUN_SYSTEMS.indexOf('factions');
+assert.ok(worldResetIndex >= 0 && worldResetIndex < ecologyResetIndex
+  && ecologyResetIndex < factionsResetIndex,
+  'fresh-run reset must clear world before regional ecology before factions');
 
 // Focused unit suite.
 const child = spawnSync(process.execPath, ['--test', 'test/m4-regional-ecology.test.mjs'], {

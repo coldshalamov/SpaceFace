@@ -4,8 +4,10 @@ import { readFileSync } from 'node:fs';
 
 import { createBus } from '../src/core/eventBus.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
+import { FRESH_RUN_SYSTEMS } from '../src/core/runReset.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import {
   REGIONAL_ECOLOGY_PROFILES,
   REGIONAL_ECOLOGY_FAMILY_IDS,
@@ -292,15 +294,20 @@ test('law and encounter planners consume ecology without authorizing ambient agg
 });
 
 test('registry and save pipeline wire ecology before sector materialization', () => {
-  const registrySource = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   const saveSource = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
-  const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-  assert.match(registrySource, /import \{ regionalEcology \} from '\.\.\/systems\/regionalEcology\.js'/);
-  assert.ok(registrySource.indexOf('world, regionalEcology, encounterDirector') >= 0);
+  const worldUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
+  const ecologyUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');
+  const encounterUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('encounterDirector');
+  assert.ok(worldUpdateIndex >= 0 && worldUpdateIndex < ecologyUpdateIndex
+    && ecologyUpdateIndex < encounterUpdateIndex);
+  const worldResetIndex = FRESH_RUN_SYSTEMS.indexOf('world');
+  const ecologyResetIndex = FRESH_RUN_SYSTEMS.indexOf('regionalEcology');
+  const factionsResetIndex = FRESH_RUN_SYSTEMS.indexOf('factions');
+  assert.ok(worldResetIndex >= 0 && worldResetIndex < ecologyResetIndex
+    && ecologyResetIndex < factionsResetIndex);
   assert.match(saveSource, /data\.regionalEcology = this\._callSerialize\('regionalEcology'\)/);
   const restoreEcology = saveSource.indexOf("this._callDeserialize('regionalEcology'");
   const enterSectorCall = /worldSys\.enterSector\(sectorId\s*,\s*(?:options|\{[\s\S]*?\})\s*\)/.exec(saveSource);
   const enterSector = enterSectorCall ? enterSectorCall.index : -1;
   assert.ok(restoreEcology >= 0 && enterSector > restoreEcology);
-  assert.match(mainSource, /\['world', 'regionalEcology', 'factions'/);
 });
