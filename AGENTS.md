@@ -42,6 +42,11 @@ wall time. Browser and Electron launch the same game route. See `ARCHITECTURE.md
 The working tree may contain valuable concurrent work that is newer than `HEAD`.
 
 - Inspect `git status --short` and `git diff -- <owner-file>` before diagnosing or editing.
+- Treat ownership as **exact and current**. A path is protected when it is dirty/untracked foreign
+  work, or when a current-date `NOW.md` row names that exact path and a demonstrably live writer.
+  A lane label, mutex name, old branch, worktree, or pre-today claim alone is not a blocker.
+- If only part of a packet overlaps protected paths, split or reroute that part and continue the
+  disjoint work. Do not turn one exact-path collision into ownership of a subsystem, packet, or plan.
 - Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash` operations.
 - Preserve unrelated edits. Do not roll back a file merely because its diff is large.
 - Add new files to Git intent immediately with `git add -N <file>`.
@@ -61,6 +66,16 @@ When sources disagree: user direction → `ARCHITECTURE.md` → `design/GDD_2_0.
 Live code, current checks, and player-route evidence determine whether descriptive claims are true.
 Read `docs/POLICY_MANIFEST.md` before treating prompts, archives, transcripts, tool memories, or
 campaign material as policy.
+
+For a user-authorized multi-plan or long-running campaign, packet disposition and campaign
+completion are different. A blocked unit is recorded and skipped while other safe work continues;
+an empty `program-dispatch --ready` result is not completion. The integrator may refresh a stale
+packet, implement an authorized missing in-repo seam, or admit the next existing plan item whose real
+dependencies are satisfied. Missing local code, manifests, checks, or packet files are work—not
+external blockers—when they are within the campaign's authority. Finish only the user's declared
+milestone, or when every remaining route has a concrete external dependency or exact live-path
+collision. Status, receipt, harness, and validation-only work do not count as production outcomes
+unless the user asked for those artifacts.
 
 ## 5. Live runtime selection
 
@@ -139,6 +154,10 @@ escalate only when it justifies the cost; don't loop on verification rituals.
   relevant rather than carrying them every turn.
 - Visual, accessibility, and performance claims need current player-facing evidence, but decide
   proportionately in the moment how much. Don't run headed acceptance as a ritual.
+- Never rerun the same command against the same candidate/harness/environment after the same failure
+  fingerprint without a relevant change. That is a validation loop: retain the evidence, reduce it
+  to an owner-level regression or switch to another safe production unit. A long build or soak is
+  fine when named once; repeated unchanged attempts are not progress.
 
 For the full validation ladder and broker-managed route evidence, see
 [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).

@@ -24,6 +24,24 @@ Don't camp in "still verifying." If you're looping on the same check without new
 either reduce it to a focused regression, classify the failure, or defer. Repetition is not
 investigation.
 
+These dispositions apply to the selected dispatch unit, not automatically to a multi-packet
+campaign. In a user-authorized long-running campaign, `BLOCKED` means record this unit and continue
+another safe unit. An empty ready list means the integrator rechecks stale state, admits an existing
+planned slice whose dependencies are real, or implements an authorized missing in-repo seam; it does
+not mean the campaign passed. The campaign ends only at its declared product milestone or when every
+remaining route has an evidenced external dependency or exact live-path collision.
+
+### Blocker evidence
+
+- A path or mutex collision is real only when a current-date `NOW.md` entry names the exact bounded
+  paths and a live writer, or the foreign work is currently dirty/untracked. Historical claims,
+  branch names, broad lane labels, and mutex names without a live owner are not blockers.
+- An absent local checker, manifest, packet, adapter, or owner seam is implementation work when the
+  current goal authorizes that surface. It is a blocker only when creating it would exceed the
+  worker's granted authority or violate a real dependency.
+- If one part of a unit collides, split or reroute that part. Do not mark the parent packet, module
+  family, or whole campaign blocked unless the outcome is genuinely indivisible.
+
 ## 2. Two state axes
 
 Lifecycle and acceptance are independent.
@@ -171,6 +189,12 @@ After an expensive probe fails, classify it first. For `PRODUCT`, `HARNESS`, or 
 Environment replacement, stale-baseline correction, out-of-scope follow-up, and unknown attribution
 follow their class-specific dispositions below. An unchanged cell and failure fingerprint still block
 an identical rerun. Repetition is not investigation.
+
+For campaign health, the tuple `(command, candidate digest, harness digest, environment identity,
+failure fingerprint)` is the no-progress fingerprint. Do not execute the same tuple twice. Each
+checkpoint reports the last production/source/asset commit and whether work since then was
+production or support-only. Support-only work may unlock a product slice, but cannot satisfy a
+production milestone by itself.
 
 ### Failure classes
 
