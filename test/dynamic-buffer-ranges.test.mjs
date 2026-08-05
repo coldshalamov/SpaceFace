@@ -35,6 +35,7 @@ import {
 import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
 import { vfx } from '../src/render/vfx.js';
+import * as partsLibrary from '../src/render/partsLibrary.js';
 
 function acknowledgeInitial(attribute) {
   attribute.onUploadCallback();
@@ -642,4 +643,22 @@ test('ordinary-flight point particles publish only their live prefix and survive
   coordinator.disarm(epoch);
   material.dispose();
   fixture._pGeo.dispose();
+});
+
+test('authored instance chunks publish only moved, hidden, released, and reused matrix slots', () => {
+  assert.equal(typeof partsLibrary.runAuthoredInstanceRangeContractProbe, 'function',
+    'parts library exposes its real private allocator through a bounded range contract probe');
+  const result = partsLibrary.runAuthoredInstanceRangeContractProbe();
+
+  assert.deepEqual(result.initialRange, { start: 0, count: 64 * 16 },
+    'the first processing-eligible traversal retains one complete residency upload');
+  assert.deepEqual(result.movedRange, { start: 16, count: 16 });
+  assert.deepEqual(result.hiddenRange, { start: 0, count: 16 });
+  assert.deepEqual(result.reusedRange, { start: 0, count: 16 });
+  assert.equal(result.movedRequestedBytes, 16 * Float32Array.BYTES_PER_ELEMENT);
+  assert.equal(result.movedRequestedBytes / result.allocatedBytes, 1 / 64,
+    'one moved authored slot requests 98.4375% fewer bytes than its 64-matrix chunk');
+  assert.equal(result.visibleAfterHide, 1);
+  assert.equal(result.visibleAfterReuse, 2);
+  assert.equal(result.invalid, false);
 });

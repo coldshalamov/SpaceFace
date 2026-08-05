@@ -25,6 +25,13 @@ import {
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  createDynamicBufferCoordinator,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+} from './dynamicBufferRanges.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -42,6 +49,7 @@ const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
 ]);
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
+const AUTHORED_INSTANCE_MATRIX = 0;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -4493,8 +4501,8 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
   ownerState.slots.add(slot);
   slot.ownerState = ownerState;
   chunk.mesh.count = Math.max(chunk.mesh.count, index + 1);
-  chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
-  chunk.mesh.instanceMatrix.needsUpdate = true;
+  writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
+  commitInstanceChunkMatrix(chunk);
 
   const release = () => {
     if (slot.released) return;
@@ -4511,10 +4519,10 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
       state.activeFrameOwners.delete(owner);
     }
     chunk.free.push(index);
-    chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
+    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
     chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
     chunk.mesh.visible = chunk.mesh.count > 0;
-    chunk.mesh.instanceMatrix.needsUpdate = true;
+    commitInstanceChunkMatrix(chunk);
   };
   registerOwnerRelease(owner, release);
   return release;
@@ -4531,9 +4539,36 @@ function createInstanceChunk(scene, pool, ordinal) {
   mesh.userData.spacefaceInstancePool = true;
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
-  const chunk = { mesh, pool, slots: new Map(), visibleIndices: new Set(), free: [], next: 0 };
+  const dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+    id: `authored-instance-${mesh.id}`,
+    mesh,
+    attributes: [{ name: 'matrix', attribute: mesh.instanceMatrix }],
+  });
+  const chunk = {
+    mesh,
+    pool,
+    slots: new Map(),
+    visibleIndices: new Set(),
+    free: [],
+    next: 0,
+    dynamicBufferOwner,
+  };
   scene.add(mesh);
   return chunk;
+}
+
+function writeInstanceChunkMatrix(chunk, index, matrix) {
+  assertDynamicBufferOwnerWritable(chunk.dynamicBufferOwner);
+  chunk.mesh.setMatrixAt(index, matrix);
+  markDynamicBufferItems(chunk.dynamicBufferOwner, AUTHORED_INSTANCE_MATRIX, index);
+}
+
+function commitInstanceChunkMatrix(chunk) {
+  if (chunk.dynamicBufferOwner) {
+    commitDynamicBufferOwner(chunk.dynamicBufferOwner, chunk.mesh.count);
+  } else {
+    chunk.mesh.instanceMatrix.needsUpdate = true;
+  }
 }
 
 function syncSceneState(state, opts = {}) {
@@ -4619,7 +4654,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record);
   if (!visible) {
     if (!slot.lastSubmitted) return false;
-    chunk.mesh.setMatrixAt(index, ZERO_MATRIX);
+    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
     chunk.visibleIndices.delete(index);
     slot.ownerState.submittedCount = Math.max(0, slot.ownerState.submittedCount - 1);
     slot.matrixInitialized = false;
@@ -4627,7 +4662,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
     return true;
   }
 
-  let dirty = setInstanceMatrixIfChanged(chunk.mesh, index, slot, slot.proxy.matrixWorld);
+  let dirty = setInstanceMatrixIfChanged(chunk, index, slot, slot.proxy.matrixWorld);
   if (dirty) stats.matrixUploads++;
   else stats.matrixReuses++;
   if (!slot.lastSubmitted) {
@@ -4648,7 +4683,7 @@ function finalizeInstanceChunk(chunk, dirty, stats) {
   chunk.mesh.visible = nextCount > 0;
   if (dirty) {
     stats.dirtyChunks++;
-    chunk.mesh.instanceMatrix.needsUpdate = true;
+    commitInstanceChunkMatrix(chunk);
   }
 }
 
@@ -4692,7 +4727,7 @@ function syncOwnerForInstanceFrame(owner, context, record = null) {
   return cached;
 }
 
-function setInstanceMatrixIfChanged(mesh, index, slot, matrix) {
+function setInstanceMatrixIfChanged(chunk, index, slot, matrix) {
   const elements = matrix && matrix.elements;
   if (!elements) return false;
   let changed = !slot.matrixInitialized;
@@ -4707,7 +4742,7 @@ function setInstanceMatrixIfChanged(mesh, index, slot, matrix) {
   if (!changed) return false;
   for (let i = 0; i < 16; i++) slot.matrixElements[i] = elements[i];
   slot.matrixInitialized = true;
-  mesh.setMatrixAt(index, matrix);
+  writeInstanceChunkMatrix(chunk, index, matrix);
   return true;
 }
 
@@ -5017,6 +5052,100 @@ export function runAuthoredInstanceFrameContractProbe() {
     stableVersion,
     replacedVersion,
   };
+}
+
+/**
+ * Real coordinator probe for one authored-instance chunk. It drives the private allocator through
+ * move, omission/hide, owner release, and immediate slot reuse while retaining production count and
+ * visibility logic. Returned ranges are component indexes, matching Three.js BufferAttribute.
+ */
+export function runAuthoredInstanceRangeContractProbe() {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  const ownerA = new THREE.Group();
+  const ownerB = new THREE.Group();
+  const proxyA = new THREE.Object3D();
+  const proxyB = new THREE.Object3D();
+  ownerA.position.set(-3, 0, 0);
+  ownerB.position.set(3, 0, 0);
+  ownerA.add(proxyA);
+  ownerB.add(proxyB);
+  scene.add(ownerA, ownerB);
+  allocateInstance(scene, ownerA, proxyA, geometry, material, 'RangeContractProbe');
+  allocateInstance(scene, ownerB, proxyB, geometry, material, 'RangeContractProbe');
+  const poolState = sceneStates.get(scene);
+  const chunk = [...poolState.pools.values()][0].chunks[0];
+  const attribute = chunk.mesh.instanceMatrix;
+
+  const frame = (frameId, owners) => ({
+    frameId,
+    authored: owners.map((mesh) => ({
+      mesh,
+      visible: true,
+      viewCulled: false,
+      renderDirty: true,
+    })),
+  });
+  const sync = (entry) => syncAuthoredInstancePools(scene, {
+    entityFrame: entry,
+    authoredRecords: entry.authored,
+  });
+  const publish = (initial) => {
+    const epoch = coordinator.arm();
+    scene.onBeforeRender({}, scene, camera, null);
+    const record = attribute.updateRanges[0];
+    const range = record ? { start: record.start, count: record.count } : null;
+    if (record) {
+      if (!initial) attribute.clearUpdateRanges();
+      attribute.onUploadCallback();
+    }
+    coordinator.disarm(epoch);
+    return range;
+  };
+
+  sync(frame(1, [ownerA, ownerB]));
+  const initialRange = publish(true);
+  const requestedBeforeMove = chunk.dynamicBufferOwner.diagnostics.requestedUploadBytes;
+
+  ownerB.position.x += 1.25;
+  sync(frame(2, [ownerA, ownerB]));
+  const movedRange = publish(false);
+  const movedRequestedBytes = chunk.dynamicBufferOwner.diagnostics.requestedUploadBytes
+    - requestedBeforeMove;
+
+  sync(frame(3, [ownerB]));
+  const hiddenRange = publish(false);
+  const visibleAfterHide = chunk.visibleIndices.size;
+
+  scene.remove(ownerA);
+  const ownerC = new THREE.Group();
+  const proxyC = new THREE.Object3D();
+  ownerC.position.set(-5, 0, 0);
+  ownerC.add(proxyC);
+  scene.add(ownerC);
+  allocateInstance(scene, ownerC, proxyC, geometry, material, 'RangeContractProbe');
+  sync(frame(4, [ownerB, ownerC]));
+  const reusedRange = publish(false);
+  const visibleAfterReuse = chunk.visibleIndices.size;
+
+  const result = {
+    initialRange,
+    movedRange,
+    hiddenRange,
+    reusedRange,
+    movedRequestedBytes,
+    allocatedBytes: attribute.array.byteLength,
+    visibleAfterHide,
+    visibleAfterReuse,
+    invalid: coordinator.getDiagnostics().invalid,
+  };
+  scene.remove(ownerB, ownerC);
+  geometry.dispose();
+  material.dispose();
+  return result;
 }
 
 // -------------------------------------------------------------------------------------------------
