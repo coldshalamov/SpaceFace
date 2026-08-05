@@ -628,6 +628,9 @@ export const sectorSim = {
     }
     // Consume pending so a second save:loaded cannot double-apply.
     ss.meta.pendingOfflineElapsedSec = null;
+    // A plain save load supplies no elapsed time. Preserve the serialized bookkeeping exactly so
+    // loading cannot manufacture a sector-state mutation (or a false save-equivalence failure).
+    if (elapsed <= 0) return;
     // Bookkeeping only — never used to derive elapsed.
     ss.meta.lastCatchupSimT = this.state.simTime || 0;
     if (elapsed < DAY_SECONDS) return;
