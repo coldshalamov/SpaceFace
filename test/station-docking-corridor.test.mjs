@@ -119,7 +119,7 @@ test('capture volume: the lane and the berth hug classify capture', () => {
   assert.equal(hot.berthed, false);
 });
 
-test('default station autopilot hands a manifest station into berth capture, not the legacy center ring', () => {
+test('default station autopilot finishes inside the manifest berth gate, not the legacy center ring', () => {
   const station = heliosStation();
   const player = { id: 'player', radius: 14 };
   const state = {
@@ -145,11 +145,15 @@ test('default station autopilot hands a manifest station into berth capture, not
   assert.equal(target.dockingProxyId, HELIOS.id);
 
   const arrivalRadius = resolveAutopilotArrivalRadius(player, autopilot, target);
-  assert.equal(arrivalRadius, 38, 'the flight floor remains intact while the legacy 90-WU radius is rejected');
+  assert.equal(
+    arrivalRadius,
+    HELIOS.docking.berth.dockRadius,
+    'the station terminal leg must use the same radius that owns the physical dock prompt',
+  );
   const terminalStop = { x: berth.x + arrivalRadius, z: berth.z };
   const terminal = corridorStateFor(HELIOS, station, terminalStop, { x: 0, z: 0 });
-  assert.equal(terminal.inCapture, true, 'arrival must hand the stopped ship to bounded berth assist');
-  assert.equal(terminal.phase, 'capture');
+  assert.equal(terminal.berthed, true, 'arrival must itself satisfy the physical berth gate');
+  assert.equal(terminal.phase, 'berthed');
 });
 
 test('default station autopilot stages an outside-gap approach through the authored corridor mouth', () => {

@@ -758,9 +758,9 @@ export function resolveAutopilotTarget(state, autopilot) {
   if (entity && entity.alive !== false && entity.pos) {
     // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
     // legacy center-radius ring. A station waypoint still identifies the live entity, but default
-    // flight resolves its terminal point into the manifest-owned corridor. The stopped ship then
-    // lands inside dockingCorridor's bounded capture assist instead of declaring arrival where a
-    // physical dock prompt can never exist.
+    // flight resolves its terminal point into the manifest-owned corridor. Its terminal radius is
+    // the same berth gate that owns the physical dock prompt, rather than a wider capture volume
+    // where autopilot could declare arrival without exposing that prompt.
     const manifest = entity.type === 'station' ? resolveCollisionProxyManifest(entity) : null;
     if (manifest && manifest.docking) {
       const berth = resolveBerthWorld(entity, manifest);
@@ -776,10 +776,7 @@ export function resolveAutopilotTarget(state, autopilot) {
         manifest.docking.capture && manifest.docking.capture.halfWidth,
         0,
       ) * positive(scale, 1);
-      const dockingArrivalRadius = Math.max(
-        12,
-        Math.min(berthDockRadius * 2, captureHalfWidth || berthDockRadius * 2),
-      );
+      const dockingArrivalRadius = berthDockRadius;
       const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId)
         : null;
@@ -788,8 +785,8 @@ export function resolveAutopilotTarget(state, autopilot) {
         : null;
       // Targeting the berth directly from an arbitrary bearing can drive the ship into the compound
       // station silhouette outside its authored gap. First converge on the corridor mouth. Switch
-      // to the berth slightly BEFORE the global 38-WU arrival floor could stop/deactivate the
-      // staging course, or immediately when the ship is already geometrically inside the lane.
+      // to the berth well before the terminal dock gate could stop/deactivate the staging course,
+      // or immediately when the ship is already geometrically inside the lane.
       const approachDistance = player && player.pos
         ? Math.hypot(finite(player.pos.x) - approach.x, finite(player.pos.z) - approach.z)
         : 0;
@@ -828,6 +825,7 @@ export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
   const requested = Number.isFinite(target && target.arrivalRadius)
     ? target.arrivalRadius
     : finite(autopilot && autopilot.arrivalRadius, 0);
+  if (target && target.dockingProxyId && requested > 0) return requested;
   return Math.max(
     AUTOPILOT_ARRIVAL_RADIUS,
     requested,
