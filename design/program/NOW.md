@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-05
-baseCommit: e0b807bfa4354d5a87b63c9f5b364c6f65ec3ef2
+baseCommit: b5e4f2feef9d35602281e377d8509c5744c028b0
 expiresAfterCommits: 25
 expiresAfterDays: 7
 ```
@@ -65,6 +65,7 @@ Refresh this board before mutation. It records live collision risk, not history 
 | `PQ-024.h2-verdict` | exact review from survey candidate `c10f8921` plus relay evidence `780b77b3`; released 2026-08-04 | No path or mutex held | **REVIEW COMPLETE / REVISE COMMITTED TRANSITION; KEEP ALL DOWNSTREAM CELLS.** Both hosts show `NO CLAIM`, red `ASSAY 2/3`, and a stale occupied placement preview beside the permanent-site receipt. Production consequence, one relay, save/re-entry, final relay art, and H3 remain KEEP. `evidence-review` is released; no human-review blocker remains. |
 | `PQ-024.committed-transition-repair` | implementation commit `7ad32c94`; exact unit released 2026-08-04 | No path or mutex held | **FOCUSED GREEN + RELEASED.** The first-site survey-commit listener now resolves the new site and forces the existing next-frame HUD/inspector owners. The public actor exits Build through shipped `Escape` and fails closed until committed owner state, `ANCHORED`, durable assay copy, the site overview, awaiting-first-output consequence, and no occupied-placement error agree. Focused regressions passed 30/30 in about 0.45 s; no Browser/Electron launch was spent. Receipt: `PQ-024-committed-transition-repair-REPORT.md`. |
 | `PQ-024.committed-transition-h1` | unclaimed; focused harness corrections `355483eb` and `91202dea`; released 2026-08-05 | No path or mutex held; retained two-attempt reconciliation remains evidence | **READY / UNPROVEN / RELEASED.** Two Browser attempts exposed and then focused-green repaired two harness-only control errors; zero Electron launches and no accepted target screenshot exist. The production transition repair remains focused-green, and accepted Survey, production, relay, Continue, re-entry, and H3 cells remain valid. A future exact capture may be freshly claimed if it is still worth doing; this stale row does not reserve `browser-gpu` or `validation-broker`. |
+| Regional ecology arrival identity | Codex; claimed and released 2026-08-05 from base `b5e4f2fe` | No path or mutex held; `src/ui/sectorPostcard.js`, `scripts/check-sector-postcard.mjs`, and the M4 status row are integrated in the outcome commit | **FOCUSED-GREEN / INTEGRATED / RELEASED.** The existing transient arrival postcard consumes the applied ecology family and reports active consequences in its existing place-identity line. It adds no HUD surface, controls, simulation writer, timing change, or voice; sector-postcard, M4 ecology, labels, and one-voice checks pass. Claude's graphics lane remains untouched. |
 | Retained worktree census | 25 registered worktrees at refresh | Worktree metadata only; no cleanup lease | **PRESERVE.** Twenty-three have zero tracked changes. `sf-perf-modernization-20260726` has 19 tracked changes and `sf-perf01a` has 9; both are protected foreign candidates and were not inspected beyond status counts. Most clean worktrees are fully merged or old/superseded checkpoints; four clean refs retain unique commits, including the ten-commit PERF candidate. This recovery does not remove worktrees or branches. |
 
 ## Current program facts needed for dispatch

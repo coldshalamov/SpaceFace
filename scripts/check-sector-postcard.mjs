@@ -1,8 +1,9 @@
 // BP-11 packet A1 acceptance check: Sector Postcard on arrival.
 //
 // Contract (src/ui/sectorPostcard.js — see design/revamp/detail/A_sector_station.md):
-//   - buildPostcard(state, sectorId) is PURE + deterministic and returns the documented fields
-//     {name, faction, securityTier, hazards[], primaryCommodity, dominantZone, rumor}.
+//   - buildPostcard(state, sectorId, ecologyReadout?) is PURE + deterministic and returns the
+//     documented fields {name, faction, securityTier, hazards[], primaryCommodity, ecology,
+//     dominantZone, rumor}.
 //   - sector_helios_prime reads "Helios Prime" / Solar Concord / 'secure' (security 0.98 →
 //     dangerTier 0) / no hazards / a primary commodity from the flagship station / a dominant zone.
 //   - Degrade: an unknown sector returns a bare name card without throwing.
@@ -12,6 +13,7 @@
 // Headless: no DOM, no Three.js — the DOM mount is `typeof document`-guarded and must no-op here.
 import assert from 'node:assert/strict';
 
+import { regionalEcology } from '../src/systems/regionalEcology.js';
 import { buildPostcard, sectorPostcard, SECURITY_TIER_LABELS } from '../src/ui/sectorPostcard.js';
 
 assertHeliosCardFields();
@@ -20,6 +22,7 @@ assertDegradeToBareCard();
 assertRumorReadsLiveHeadline();
 assertVoiceRoutesRumorExactlyOnce();
 assertNoRumorMeansNoVoice();
+assertAppliedEcologySurfacesOnArrival();
 
 console.log('Sector postcard checks OK');
 
@@ -131,4 +134,35 @@ function assertNoRumorMeansNoVoice() {
   assert.ok(rec && rec.sectorId === 'sector_ceres_belt' && rec.card, 'card state still published');
   assert.ok(rec.card.hazards.length >= 1, 'Ceres Belt has an authored hazard — glyph row must carry it');
   sectorPostcard.destroy();
+}
+
+function assertAppliedEcologySurfacesOnArrival() {
+  const bus = makeBus();
+  const state = {
+    ...makeState([]),
+    meta: { seed: 47 },
+    player: {},
+    world: { currentSectorId: 'sector_ceres_belt' },
+  };
+  const ctx = { bus, state, helpers: {} };
+
+  regionalEcology.init(ctx);
+  regionalEcology.newGame();
+  sectorPostcard.init(ctx);
+  bus.emit('aftermath:causeRecorded', {
+    fingerprint: 'postcard_ceres_pressure',
+    sectorId: 'sector_ceres_belt',
+    status: 'open',
+    motiveId: 'predation',
+    consequenceKind: 'security',
+  });
+  bus.emit('sector:enter', { sectorId: 'sector_ceres_belt', firstVisit: true });
+
+  assert.deepEqual(state.ui.sectorPostcard.card.ecology, {
+    familyId: 'industrial_belt',
+    familyLabel: 'Industrial Belt',
+    unresolvedCauses: 1,
+  }, 'arrival card must consume the applied regional ecology without another HUD surface');
+  sectorPostcard.destroy();
+  regionalEcology.destroy();
 }

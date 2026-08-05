@@ -1,8 +1,8 @@
 // sectorPostcard.js — BP-11 packet A1 "Sector Postcard" (SURFACE — see design/revamp/detail/A_sector_station.md).
 //
 // On `sector:enter`, show a one-glance identity card: sector name + dominant faction + security
-// tier + hazard glyph row + primary commodity + dominant zone + one rumor line. Every field is
-// READ from shipped data (sectors.js, sectorZones.js, factions.js, the live marketNews log) —
+// tier + hazard glyph row + primary commodity + regional ecology/dominant zone + one rumor line.
+// Every field is READ from shipped data or the regionalEcology applied readout —
 // this module surfaces, it never simulates. Doctrine filter: the player can SEE the sector's
 // identity the moment they arrive.
 //
@@ -55,14 +55,14 @@ function prettySectorName(sectorId) {
 }
 
 /**
- * buildPostcard(state, sectorId) -> {name, faction, securityTier, hazards[], primaryCommodity,
- * dominantZone, rumor}
+ * buildPostcard(state, sectorId, ecologyReadout?) -> {name, faction, securityTier, hazards[],
+ * primaryCommodity, ecology, dominantZone, rumor}
  *
  * PURE + deterministic over shipped data. `state` is read only for the live rumor line
  * (state.ui.marketNews.log — the marketNews rolling headline log). Unknown sector → bare name
  * card (all other fields null/empty), never throws.
  */
-export function buildPostcard(state, sectorId) {
+export function buildPostcard(state, sectorId, ecologyReadout = null) {
   const sector = SECTORS.find((s) => s && s.id === sectorId) || null;
 
   // Rumor line: the freshest live marketNews headline, if any (shipped state, read-only).
@@ -74,7 +74,7 @@ export function buildPostcard(state, sectorId) {
     // Degrade: bare name card — a sector we know nothing about still gets a name, silently.
     return {
       name: prettySectorName(sectorId), faction: null, securityTier: null,
-      hazards: [], primaryCommodity: null, dominantZone: null, rumor: null,
+      hazards: [], primaryCommodity: null, ecology: null, dominantZone: null, rumor: null,
     };
   }
 
@@ -110,12 +110,24 @@ export function buildPostcard(state, sectorId) {
   }
   const dominantZone = dominant ? { id: dominant.id, name: dominant.name, type: dominant.type } : null;
 
+  const ecology = ecologyReadout && ecologyReadout.sectorId === sectorId
+    && typeof ecologyReadout.familyLabel === 'string' && ecologyReadout.familyLabel.trim()
+    ? {
+      familyId: ecologyReadout.familyId || null,
+      familyLabel: ecologyReadout.familyLabel.trim(),
+      unresolvedCauses: Math.max(0, Math.floor(Number(
+        ecologyReadout.encounters && ecologyReadout.encounters.unresolvedCauses,
+      ) || 0)),
+    }
+    : null;
+
   return {
     name: sector.name || prettySectorName(sectorId),
     faction: meta ? meta.name : null,
     securityTier,
     hazards,
     primaryCommodity,
+    ecology,
     dominantZone,
     rumor,
   };
@@ -134,6 +146,15 @@ export const sectorPostcard = {
     this._state = ctx && ctx.state;
     this._onEnter = (p) => this._handleEnter(p);
     if (this._bus && this._bus.on) this._bus.on('sector:enter', this._onEnter);
+    this._latestEcology = null;
+    this._onEcology = (payload) => {
+      const readout = payload && payload.readout || payload;
+      if (readout && readout.sectorId) this._latestEcology = readout;
+    };
+    if (this._bus && this._bus.on) {
+      this._bus.on('regionalEcology:applied', this._onEcology);
+      this._bus.on('regionalEcology:changed', this._onEcology);
+    }
     this._cardEl = null;
     this._dismiss = null;
     this._hideTimer = null;
@@ -142,7 +163,9 @@ export const sectorPostcard = {
   _handleEnter(p) {
     const state = this._state;
     if (!state || !p || !p.sectorId) return;
-    const card = buildPostcard(state, p.sectorId);
+    const ecology = this._latestEcology && this._latestEcology.sectorId === p.sectorId
+      ? this._latestEcology : null;
+    const card = buildPostcard(state, p.sectorId, ecology);
 
     // Additive UI state — readable by HUD/tests; NOT part of the sim snapshot hash (state.ui).
     if (!state.ui || typeof state.ui !== 'object') state.ui = {};
@@ -195,7 +218,14 @@ export const sectorPostcard = {
       line(card.hazards.map((h) => `${h.glyph} ${h.label}`).join('   '), 'opacity:0.9');
     }
     line(card.primaryCommodity && `trades: ${card.primaryCommodity}`, 'opacity:0.85');
-    line(card.dominantZone && card.dominantZone.name, 'opacity:0.85');
+    const placeIdentity = [
+      card.ecology && card.ecology.familyLabel,
+      card.dominantZone && card.dominantZone.name,
+      card.ecology && card.ecology.unresolvedCauses > 0
+        ? `${card.ecology.unresolvedCauses} active consequence${card.ecology.unresolvedCauses === 1 ? '' : 's'}`
+        : null,
+    ].filter(Boolean).join(' · ');
+    line(placeIdentity, 'opacity:0.85');
     line(card.rumor && `“${card.rumor}”`, 'opacity:0.75;font-style:italic');
 
     host.appendChild(el);
@@ -222,8 +252,16 @@ export const sectorPostcard = {
   },
 
   destroy() {
-    if (this._bus && this._bus.off && this._onEnter) this._bus.off('sector:enter', this._onEnter);
+    if (this._bus && this._bus.off) {
+      if (this._onEnter) this._bus.off('sector:enter', this._onEnter);
+      if (this._onEcology) {
+        this._bus.off('regionalEcology:applied', this._onEcology);
+        this._bus.off('regionalEcology:changed', this._onEcology);
+      }
+    }
     this._onEnter = null;
+    this._onEcology = null;
+    this._latestEcology = null;
     this._hide();
   },
 };
