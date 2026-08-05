@@ -1248,11 +1248,27 @@ export const render = {
         if (batch.length > 1) subject.clear();
       });
     };
+    const recordAuthoredAdmissionBlockingSlice = (slice) => {
+      const durationMs = Number(slice && slice.durationMs);
+      if (!(durationMs > 0) || !Number.isFinite(durationMs)) return;
+      const perf = state.perfRuntime;
+      if (perf && typeof perf.recordAdmissionWork === 'function') {
+        perf.recordAdmissionWork(durationMs);
+      }
+      if (perf && perf.renderWorkEnabled === true
+        && typeof perf.recordRenderWork === 'function') {
+        perf.recordRenderWork(slice.kind, durationMs);
+      }
+    };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
       deferAutoFlush: () => state.mode === 'loading',
+      onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
     });
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject) => (
-      prepareStartupGpuResidency(renderer, subject, { yieldToMain: yieldToBrowser })
+      prepareStartupGpuResidency(renderer, subject, {
+        yieldToMain: yieldToBrowser,
+        onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+      })
     ));
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
     state.render.prepareAuthoredGpuResidency = (subject) => gpuResidencyAdmissions.prepare(subject);
@@ -1275,6 +1291,7 @@ export const render = {
       const vfxTextures = collectStartupTextures(vfxRoots);
       const result = await prepareStartupGpuResidency(renderer, [...roots, ...vfxRoots], {
         yieldToMain: yieldToBrowser,
+        onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       });
       result.openingCompositionRoots = roots.length;
       result.vfxRoots = vfxRoots.length;

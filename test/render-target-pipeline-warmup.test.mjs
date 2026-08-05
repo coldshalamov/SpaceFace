@@ -363,6 +363,129 @@ test('renderer wires current-scene compilation to the installed scene, not a wai
     /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.waitForPending\(\)/);
 });
 
+test('pipeline admission tracker reports only synchronous compileBatch duration for queued and current paths', async () => {
+  const slices = [];
+  let clock = 1000;
+  const tracker = createPipelineAdmissionTracker((subjects) => {
+    clock += 7;
+    return new Promise((resolve) => {
+      queueMicrotask(() => {
+        clock += 1000; // async settle must not be attributed as blocking CPU
+        resolve({ subjects: subjects.slice() });
+      });
+    });
+  }, {
+    deferAutoFlush: () => true,
+    now: () => clock,
+    onBlockingSlice: (slice) => { slices.push({ ...slice }); },
+  });
+
+  const first = tracker.compile('ship-a');
+  const second = tracker.compile('ship-b');
+  await tracker.waitForPending();
+  assert.deepEqual(await Promise.all([first, second]), [
+    { subjects: ['ship-a', 'ship-b'] },
+    { subjects: ['ship-a', 'ship-b'] },
+  ]);
+  assert.equal(slices.length, 1, 'queued batch notifies once for the shared compileBatch invocation');
+  assert.equal(slices[0].kind, 'pipelineAdmissionSync');
+  assert.equal(slices[0].durationMs, 7);
+  assert.equal(slices[0].path, 'queued');
+  assert.equal(slices[0].subjectCount, 2);
+
+  clock = 5000;
+  const current = await tracker.compileCurrent('installed-scene');
+  assert.deepEqual(current, { subjects: ['installed-scene'] });
+  assert.equal(slices.length, 2, 'compileCurrent notifies once for its serial compileBatch invocation');
+  assert.equal(slices[1].kind, 'pipelineAdmissionSync');
+  assert.equal(slices[1].durationMs, 7);
+  assert.equal(slices[1].path, 'current');
+  assert.equal(slices[1].subjectCount, 1);
+});
+
+test('pipeline admission tracker observes a synchronous compileBatch throw once and still rejects', async () => {
+  const slices = [];
+  let clock = 10;
+  const tracker = createPipelineAdmissionTracker(() => {
+    clock += 5;
+    throw new Error('sync compile boom');
+  }, {
+    deferAutoFlush: () => true,
+    now: () => clock,
+    onBlockingSlice: (slice) => { slices.push({ ...slice }); },
+  });
+
+  const pending = tracker.compile('broken-root');
+  const readiness = tracker.waitForPending();
+  await assert.rejects(pending, /sync compile boom/);
+  await assert.rejects(readiness, /sync compile boom/);
+  assert.equal(slices.length, 1, 'a sync throw still notifies exactly once');
+  assert.equal(slices[0].kind, 'pipelineAdmissionSync');
+  assert.equal(slices[0].durationMs, 5);
+  assert.equal(slices[0].path, 'queued');
+  assert.equal(slices[0].subjectCount, 1);
+});
+
+test('pipeline admission tracker ignores invalid observer/clock options without changing results', async () => {
+  const tracker = createPipelineAdmissionTracker(async (subjects) => ({ subjects }), {
+    deferAutoFlush: () => true,
+    onBlockingSlice: 'not-a-function',
+    now: () => { throw new Error('clock must stay inert without a valid observer'); },
+  });
+  const pending = tracker.compile('safe');
+  await tracker.waitForPending();
+  assert.deepEqual(await pending, { subjects: ['safe'] });
+});
+
+test('pipeline admission tracker observer throw does not change compile success or failure', async () => {
+  const okTracker = createPipelineAdmissionTracker(async (subjects) => ({ subjects }), {
+    deferAutoFlush: () => true,
+    onBlockingSlice: () => { throw new Error('observer boom'); },
+  });
+  const okPending = okTracker.compile('ok-root');
+  await okTracker.waitForPending();
+  assert.deepEqual(await okPending, { subjects: ['ok-root'] });
+
+  const failTracker = createPipelineAdmissionTracker(() => {
+    throw new Error('sync compile boom');
+  }, {
+    deferAutoFlush: () => true,
+    onBlockingSlice: () => { throw new Error('observer boom'); },
+  });
+  const failPending = failTracker.compile('broken-root');
+  const failReadiness = failTracker.waitForPending();
+  await assert.rejects(failPending, /sync compile boom/);
+  await assert.rejects(failReadiness, /sync compile boom/);
+});
+
+test('renderer routes authored pipeline/GPU residency blocking slices into perf admission work', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source,
+    /recordAuthoredAdmissionBlockingSlice/,
+    'renderer must own one shared blocking-slice observer for authored admission paths');
+  const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
+  assert.equal(
+    observerWires?.length,
+    3,
+    'pipeline tracker, authored residency tracker, and opening residency call must share the observer',
+  );
+  assert.match(source,
+    /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'pipeline admission must publish synchronous compileBatch slices');
+  assert.match(source,
+    /createGpuResidencyAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'authored GPU residency tracker must publish initTexture slices');
+  assert.match(source,
+    /prepareStartupGpuResidency\(renderer,\s*\[\.\.\.roots,\s*\.\.\.vfxRoots\][\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'opening GPU residency must publish initTexture slices');
+  assert.match(source,
+    /recordAdmissionWork\(\s*durationMs\s*\)/,
+    'positive finite slices must feed backlog admission attribution');
+  assert.match(source,
+    /renderWorkEnabled[\s\S]*?recordRenderWork\(\s*(?:slice\.)?kind\s*,\s*durationMs\s*\)/,
+    'render-work attribution must stay behind the existing default-off contract');
+});
+
 function deferred() {
   let resolve;
   let reject;
