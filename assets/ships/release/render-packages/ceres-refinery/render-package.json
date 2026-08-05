@@ -1,7 +1,53 @@
 {
   "anchors": [
     {
-      "id": "sf.render.jump-ring.anchor.socket-emissive",
+      "id": "sf.render.ceres-refinery.anchor.socket-dock-approach",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        42.47999954223633,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.ceres-refinery.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        42.47999954223633,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.anchor.socket-emissive",
       "kind": "socket",
       "localTransform": [
         1,
@@ -18,61 +64,15 @@
         0,
         0,
         0,
-        -27.55063819885254,
+        -31.954999923706055,
         1
       ],
       "nodeName": "SOCKET_Emissive",
       "nodePath": [
         0,
-        16
-      ],
-      "parentNodeId": "sf.render.jump-ring.root",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        -27.55063819885254,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.jump-ring.anchor.socket-gate-aperture",
-      "kind": "socket",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "nodeName": "SOCKET_Gate_Aperture",
-      "nodePath": [
-        0,
         17
       ],
-      "parentNodeId": "sf.render.jump-ring.root",
+      "parentNodeId": "sf.render.ceres-refinery.root",
       "worldTransform": [
         1,
         0,
@@ -88,12 +88,12 @@
         0,
         0,
         0,
-        0,
+        -31.954999923706055,
         1
       ]
     },
     {
-      "id": "sf.render.jump-ring.anchor.socket-structure-core",
+      "id": "sf.render.ceres-refinery.anchor.socket-structure-core",
       "kind": "socket",
       "localTransform": [
         1,
@@ -118,7 +118,7 @@
         0,
         18
       ],
-      "parentNodeId": "sf.render.jump-ring.root",
+      "parentNodeId": "sf.render.ceres-refinery.root",
       "worldTransform": [
         1,
         0,
@@ -139,11 +139,11 @@
       ]
     }
   ],
-  "assetId": "sf.render.jump-ring",
+  "assetId": "sf.render.ceres-refinery",
   "collisions": [
     {
-      "id": "sf.render.jump-ring.collision",
-      "nodeId": "sf.render.jump-ring.mesh.collision-hull",
+      "id": "sf.render.ceres-refinery.collision",
+      "nodeId": "sf.render.ceres-refinery.mesh.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -151,408 +151,408 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "42973d138278c42f7c014d087d687fcce0ff7e5ccffbe5112a88ccb2055f8b6c",
+  "contentHash": "74abae3de971e354b1714e5103575e4041a588992226296b371a77330ab3e225",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          8.997187614440918,
-          48.014793395996094,
-          46.88941192626953
+          44.099998474121094,
+          24.976585388183594,
+          28.73424530029297
         ],
         "min": [
-          -8.997187614440918,
-          -48.014793395996094,
-          -46.88941192626953
+          -44.099998474121094,
+          -24.976585388183594,
+          -28.73424530029297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c740fc265dbdf8eae5e7231e931b1080c028e300f00c265c73eb741901eaa2bd",
-      "id": "sf.render.jump-ring.mesh.collision-hull.primitive.0",
+      "geometryHash": "0f8dc7ef08b758561c2e3ba576511da0dbd44fcb3a7062e127a3b5cce8396cc5",
+      "id": "sf.render.ceres-refinery.mesh.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
       "materialPipelineKey": "non-render",
-      "meshName": "Cube.103",
-      "nodeId": "sf.render.jump-ring.mesh.collision-hull",
+      "meshName": "COLLISION_HULL_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.7489374279975891,
-          38.700008392333984,
-          38.70000076293945
+          52.999183654785156,
+          12.271461486816406,
+          4.659999847412109
         ],
         "min": [
-          -4.598941326141357,
-          -38.70000457763672,
-          -38.70000076293945
+          14.773317337036133,
+          -12.803699493408203,
+          -40.184329986572266
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7898d43b16c357d9d335108f7c3b1024f7f28571fb02218d8a5a8a4d8ce6ab02",
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-accent.primitive.0",
-      "indexCount": 68832,
+      "geometryHash": "7347bb341d49b9968aea9e3e769414b0cd82fd1a31b76b3c9260af9d1f0e46a4",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-accent.primitive.0",
+      "indexCount": 24540,
       "indexed": true,
-      "materialHash": "3c82b17ae2e857b0a0c9bd00face6db1afacd4d30fc7847c19bbf60fc15399d1",
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.002",
-      "nodeId": "sf.render.jump-ring.mesh.lod0-station-material-accent",
+      "meshName": "LOD0_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
       "primitiveIndex": 0,
-      "vertexCount": 43776
+      "vertexCount": 16926
     },
     {
       "bounds": {
         "max": [
-          9.339628219604492,
-          6.649999618530273,
-          35.549583435058594
+          56.75,
+          10.250689506530762,
+          5.100069046020508
         ],
         "min": [
-          9.060371398925781,
-          -6.650000095367432,
-          34.450416564941406
+          -32.79999923706055,
+          -4.900689125061035,
+          -23.50006866455078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f805b4856f3efea70139303d78123b1abdf9f69075de3e1ae3d907941f5cb062",
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-glass.primitive.0",
-      "indexCount": 3948,
+      "geometryHash": "221abad47a638510a5ae13fcf62e668c605a0b8ad3a7202a2d0b159611497de5",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-glass.primitive.0",
+      "indexCount": 4344,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
       "materialPipelineKey": "blend",
-      "meshName": "Cube.037",
-      "nodeId": "sf.render.jump-ring.mesh.lod0-station-material-glass",
+      "meshName": "LOD0_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
       "primitiveIndex": 0,
-      "vertexCount": 2688
+      "vertexCount": 3626
     },
     {
       "bounds": {
         "max": [
-          9.000473022460938,
-          40.19855499267578,
-          41
+          59,
+          30.4989070892334,
+          5.751940727233887
         ],
         "min": [
-          -9.000472068786621,
-          -40.19855499267578,
-          -40.20000076293945
+          -39,
+          -18.723907470703125,
+          -58.1019401550293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59e61ee727e0c27cb2cdccf186d86a6493624b4553abf0c688122929d291c0e8",
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-hull.primitive.0",
-      "indexCount": 29340,
+      "geometryHash": "0c51b04e063f1d408e14f2d08c5101eb1ac14b4982fc3e81428a359309d1e211",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-hull.primitive.0",
+      "indexCount": 77688,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus",
-      "nodeId": "sf.render.jump-ring.mesh.lod0-station-material-hull",
+      "meshName": "LOD0_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 19584
+      "vertexCount": 59770
     },
     {
       "bounds": {
         "max": [
-          9.996888160705566,
-          39.77130126953125,
-          39.77105712890625
+          56.75,
+          26.5880069732666,
+          5.367321491241455
         ],
         "min": [
-          -9.996888160705566,
-          -39.770111083984375,
-          -39.7724494934082
+          -38.459999084472656,
+          -24.99920654296875,
+          -57.44739532470703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01d280d175d9d1f39f8cf00c380fff7eb1080c39b8c33aba06bf1fc74f1d46fa",
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-mechanical.primitive.0",
-      "indexCount": 11280,
+      "geometryHash": "b3e1796eca2d9117e35d255f930a9d4c626463683e18cf9b1a0e0239c88797b8",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical.primitive.0",
+      "indexCount": 183432,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.jump-ring.mesh.lod0-station-material-mechanical",
+      "meshName": "LOD0_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 7680
+      "vertexCount": 126106
     },
     {
       "bounds": {
         "max": [
-          7.399372100830078,
-          40.900001525878906,
-          40.900001525878906
+          49.51955032348633,
+          29.99833869934082,
+          4.493262767791748
         ],
         "min": [
-          -7.399372100830078,
-          -40.900001525878906,
-          -40.900001525878906
+          -38.295440673828125,
+          -23.971155166625977,
+          -55.91890335083008
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5487665528fb87c39eea41dbbdac80f1183e06402843f1ad1947d8596054c4dc",
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-warm.primitive.0",
-      "indexCount": 9024,
+      "geometryHash": "c413a04f9b320ca37ebacab27a06d7ad78113524b9d696f715c2ca4b73056c28",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-warm.primitive.0",
+      "indexCount": 126516,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.jump-ring.mesh.lod0-station-material-warm",
+      "meshName": "LOD0_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
       "primitiveIndex": 0,
-      "vertexCount": 6144
+      "vertexCount": 82918
     },
     {
       "bounds": {
         "max": [
-          0.7300869226455688,
-          37.745704650878906,
-          38.70000076293945
+          50.00071334838867,
+          12.270009994506836,
+          4.659999847412109
         ],
         "min": [
-          -4.5988945960998535,
-          -37.745704650878906,
-          -38.70000076293945
+          14.7717866897583,
+          -12.794857025146484,
+          -40.146358489990234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "431db639f1ee2c3143b7b1f8e79b31503ad735ad5a6b297c012f5ec87b7433ae",
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-accent.primitive.0",
-      "indexCount": 18648,
+      "geometryHash": "7b453e75eb75a440d732d1d8ce89e0e57bf64d70a0bf625a8791e50460a797bb",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-accent.primitive.0",
+      "indexCount": 7368,
       "indexed": true,
-      "materialHash": "3c82b17ae2e857b0a0c9bd00face6db1afacd4d30fc7847c19bbf60fc15399d1",
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.005",
-      "nodeId": "sf.render.jump-ring.mesh.lod1-station-material-accent",
+      "meshName": "LOD1_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
       "primitiveIndex": 0,
-      "vertexCount": 11540
+      "vertexCount": 4776
     },
     {
       "bounds": {
         "max": [
-          9.339628219604492,
-          6.649999618530273,
-          35.549583435058594
+          56.713294982910156,
+          10.247584342956543,
+          5.099671363830566
         ],
         "min": [
-          9.060371398925781,
-          -6.650000095367432,
-          34.450416564941406
+          -32.79999923706055,
+          -4.897583961486816,
+          -23.499671936035156
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee6ff89f7ca09f1cde77cf44b328b1778a795e7c753c865e138705e1c8f8acb2",
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-glass.primitive.0",
-      "indexCount": 2268,
+      "geometryHash": "7f1da64bf00a1ef4bea6360781d2b5d21501ef06a7f6ac0bb83f10676e1fff45",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-glass.primitive.0",
+      "indexCount": 900,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
       "materialPipelineKey": "blend",
-      "meshName": "Cube.073",
-      "nodeId": "sf.render.jump-ring.mesh.lod1-station-material-glass",
+      "meshName": "LOD1_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
       "primitiveIndex": 0,
-      "vertexCount": 1512
+      "vertexCount": 744
     },
     {
       "bounds": {
         "max": [
-          9.000473022460938,
-          40.19855499267578,
-          41
+          56.5,
+          23.20058822631836,
+          5.493842124938965
         ],
         "min": [
-          -9.000472068786621,
-          -40.19855499267578,
-          -40.20000076293945
+          -38.5,
+          -18.725587844848633,
+          -55.29201126098633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6305fadde017ca5ae59af26f76d24c33514d2987d81d7d3204316b8fb0d6d8ce",
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-hull.primitive.0",
-      "indexCount": 10380,
+      "geometryHash": "36e31e0e6510f8685682bd01189405a81d169d04a693e5e8dac9c0de8acfd201",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-hull.primitive.0",
+      "indexCount": 17904,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.003",
-      "nodeId": "sf.render.jump-ring.mesh.lod1-station-material-hull",
+      "meshName": "LOD1_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6744
+      "vertexCount": 12994
     },
     {
       "bounds": {
         "max": [
-          9.998641967773438,
-          40.11912536621094,
-          40.901004791259766
+          56.75,
+          26.58740234375,
+          5.379758834838867
         ],
         "min": [
-          -9.998641967773438,
-          -40.11935043334961,
-          -37.3399658203125
+          -38.380001068115234,
+          -17.950984954833984,
+          -57.45185470581055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08071e7b3ffff66fbbe07f4c97fd115479f2b6466a6422196935682458dcb868",
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-mechanical.primitive.0",
-      "indexCount": 4212,
+      "geometryHash": "eaeadd9de61eb264f579ca46600306ac3e259407cd46eb7fc43f4d577ec093c0",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical.primitive.0",
+      "indexCount": 40692,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.047",
-      "nodeId": "sf.render.jump-ring.mesh.lod1-station-material-mechanical",
+      "meshName": "LOD1_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2808
+      "vertexCount": 26810
     },
     {
       "bounds": {
         "max": [
-          7.397026062011719,
-          40.12047576904297,
-          37.33704376220703
+          49.50822830200195,
+          30.00249481201172,
+          4.445797443389893
         ],
         "min": [
-          -7.397026062011719,
-          -37.40026092529297,
-          -40.900001525878906
+          -38.2457160949707,
+          -15.530895233154297,
+          -42.95156478881836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47c0d47caff7c722c5e057bac399feb12fd1c2ba875b87475968b965c4959c12",
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-warm.primitive.0",
-      "indexCount": 4212,
+      "geometryHash": "938a8a905573b9ca0bec6639cc0a367e5a4124f35f25a2badcdd383b117e5e09",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-warm.primitive.0",
+      "indexCount": 28188,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.046",
-      "nodeId": "sf.render.jump-ring.mesh.lod1-station-material-warm",
+      "meshName": "LOD1_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
       "primitiveIndex": 0,
-      "vertexCount": 2808
+      "vertexCount": 17816
     },
     {
       "bounds": {
         "max": [
-          0.7507477402687073,
-          34.55000305175781,
-          34.54999923706055
+          42.700340270996094,
+          -0.6995852589607239,
+          -22.799999237060547
         ],
         "min": [
-          -0.7507477402687073,
-          -34.55000305175781,
-          -34.54999923706055
+          35.299659729003906,
+          -12.800414085388184,
+          -39.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b1a2cfd69ca3c6c620462aae79e8d0c2a3552c3b8010d0306c8b1cd792a576d",
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-accent.primitive.0",
-      "indexCount": 1344,
+      "geometryHash": "c14e0c30662293d065ed418229848298f908baf365a6f3f5ada8e4072c6cf327",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-accent.primitive.0",
+      "indexCount": 144,
       "indexed": true,
-      "materialHash": "3c82b17ae2e857b0a0c9bd00face6db1afacd4d30fc7847c19bbf60fc15399d1",
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.008",
-      "nodeId": "sf.render.jump-ring.mesh.lod2-station-material-accent",
+      "meshName": "LOD2_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
       "primitiveIndex": 0,
-      "vertexCount": 896
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          9.339908599853516,
-          3.6500000953674316,
-          35.549835205078125
+          55.20000076293945,
+          6.699936389923096,
+          -4.95016622543335
         ],
         "min": [
-          9.060091018676758,
-          -3.6500000953674316,
-          34.450164794921875
+          48.39999771118164,
+          4.900063991546631,
+          -5.249833583831787
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0500fe2c7979fc98a3a20af9e5251be2db3d0a98c5260782e294bf4af8e265b1",
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-glass.primitive.0",
-      "indexCount": 264,
+      "geometryHash": "63a6ac2cee7db12eb92f11aa3a14e22ea658ff6f87c1320460213be04f492d40",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-glass.primitive.0",
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
       "materialPipelineKey": "blend",
-      "meshName": "Cube.099",
-      "nodeId": "sf.render.jump-ring.mesh.lod2-station-material-glass",
+      "meshName": "LOD2_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          9.000473022460938,
-          40.19855499267578,
-          41
+          56.5,
+          27.49712371826172,
+          5.299539566040039
         ],
         "min": [
-          -9.000472068786621,
-          -40.19855499267578,
-          -40.20000076293945
+          -38.20000076293945,
+          -18.597124099731445,
+          -55.99953842163086
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dbf150975bb7b144a78fff47f181bb9c678c9a2b969af6f93d65c838e8757c6",
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-hull.primitive.0",
-      "indexCount": 3084,
+      "geometryHash": "30ef2a8674ff0263890979d822b8eb97f93f40ea45afd7c5963da96e551236ee",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-hull.primitive.0",
+      "indexCount": 720,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
       "materialPipelineKey": "opaque",
-      "meshName": "Torus.006",
-      "nodeId": "sf.render.jump-ring.mesh.lod2-station-material-hull",
+      "meshName": "LOD2_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2080
+      "vertexCount": 456
     },
     {
       "bounds": {
         "max": [
-          9.999425888061523,
-          40.901363372802734,
-          40.899845123291016
+          43.79999923706055,
+          22.500619888305664,
+          -1.0993828773498535
         ],
         "min": [
-          -9.999425888061523,
-          -39.49929428100586,
-          -29.752540588378906
+          -23,
+          -12.600621223449707,
+          -57.200618743896484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53fbd3385d90e748712734b745a639626e158c528f1d653dc0ea2e63c18eba27",
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-mechanical.primitive.0",
-      "indexCount": 1188,
+      "geometryHash": "3eebf1bf98fcf0c06e42c64afa1cb2dbcf0354a1bcc0a20afa07ead31807b4f7",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical.primitive.0",
+      "indexCount": 588,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.083",
-      "nodeId": "sf.render.jump-ring.mesh.lod2-station-material-mechanical",
+      "meshName": "LOD2_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 864
+      "vertexCount": 336
     },
     {
       "bounds": {
         "max": [
-          7.398199558258057,
-          37.400001525878906,
-          29.752046585083008
+          34.70000076293945,
+          6.199904441833496,
+          -0.3486824035644531
         ],
         "min": [
-          -7.398199558258057,
-          -40.900001525878906,
-          -40.90123748779297
+          -22.399999618530273,
+          -10.049903869628906,
+          -38.50131607055664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24bc36ed6e8ae395bcdbd0f0c253cd111cb0bbbf10c4029ecd0b0cfd0e089dc8",
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-warm.primitive.0",
-      "indexCount": 924,
+      "geometryHash": "c58e483ec0b91bf8aff9b1893db5a45d774ac3ac29e8773474ab62e7931e2ab6",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-warm.primitive.0",
+      "indexCount": 216,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.082",
-      "nodeId": "sf.render.jump-ring.mesh.lod2-station-material-warm",
+      "meshName": "LOD2_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 132
     }
   ],
   "hlods": [],
@@ -560,160 +560,160 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
-      "id": "material:0c11502fea9d740108140ae7",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "mechanical_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
-      "id": "material:14f398d34f8381a8c902dea8",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3c82b17ae2e857b0a0c9bd00face6db1afacd4d30fc7847c19bbf60fc15399d1",
-      "id": "material:3c82b17ae2e857b0a0c9bd00",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "accent_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "accent_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "accent_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "accent_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
-      "id": "material:50bfb0bc15f570bd617f4a1b",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
-      "id": "material:ecd2c66c154b2ddeed6f95a9",
+      "hash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
+      "id": "material:064a6a0c4247de7da27178fa",
       "name": "Material_Warm",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "warm_basecolor",
+          "name": "refinery_thermal_oxide_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "refinery_thermal_oxide_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_normal",
+          "name": "refinery_thermal_oxide_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "warm_orm",
+          "name": "refinery_thermal_oxide_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
+      "id": "material:38fb64f11f09f67b1a0448bb",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_control_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
+      "id": "material:411f496a72ade89496dabb76",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_chalk_ceramic_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
+      "id": "material:55ed9d21851ee78e265c1deb",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_structural_coat_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "id": "material:a4e57b8fd5970dba7433bc60",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_process_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -722,7 +722,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.jump-ring.mesh.collision-hull",
+      "id": "sf.render.ceres-refinery.mesh.collision-hull",
       "localTransform": [
         1,
         0,
@@ -748,9 +748,9 @@
         0,
         0
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -771,7 +771,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-accent",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -797,9 +797,9 @@
         0,
         1
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -820,7 +820,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-glass",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -846,9 +846,9 @@
         0,
         2
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -869,7 +869,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-hull",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -895,9 +895,9 @@
         0,
         3
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -918,7 +918,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-mechanical",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -944,9 +944,9 @@
         0,
         4
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -967,7 +967,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod0-station-material-warm",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -993,9 +993,9 @@
         0,
         5
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1016,7 +1016,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-accent",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1042,9 +1042,9 @@
         0,
         6
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1065,7 +1065,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-glass",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -1091,9 +1091,9 @@
         0,
         7
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1114,7 +1114,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-hull",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -1140,9 +1140,9 @@
         0,
         8
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1163,7 +1163,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-mechanical",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1189,9 +1189,9 @@
         0,
         9
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1212,7 +1212,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod1-station-material-warm",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -1238,9 +1238,9 @@
         0,
         10
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1261,7 +1261,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-accent",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1287,9 +1287,9 @@
         0,
         11
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1310,7 +1310,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-glass",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -1336,9 +1336,9 @@
         0,
         12
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1359,7 +1359,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-hull",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -1385,9 +1385,9 @@
         0,
         13
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1408,7 +1408,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-mechanical",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1434,9 +1434,9 @@
         0,
         14
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1457,7 +1457,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.mesh.lod2-station-material-warm",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -1483,9 +1483,9 @@
         0,
         15
       ],
-      "parentId": "sf.render.jump-ring.root",
+      "parentId": "sf.render.ceres-refinery.root",
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1506,7 +1506,7 @@
       ]
     },
     {
-      "id": "sf.render.jump-ring.root",
+      "id": "sf.render.ceres-refinery.root",
       "localTransform": [
         1,
         0,
@@ -1527,13 +1527,13 @@
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "asset-root",
-      "nodeName": "SF_PLACE_GATE_JUMP_RING_ROOT",
+      "nodeName": "SF_PLACE_STATION_REFINERY_ROOT",
       "nodePath": [
         0
       ],
       "parentId": null,
       "role": "immutable",
-      "spatialClusterId": "sf.render.jump-ring.body",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
       "worldTransform": [
         1,
         0,
@@ -1556,12 +1556,12 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "93562a3ec5911f7111fdf02e69728fd9f1fcb8f2593574f968346a042c72d725"
+      "sha256": "ffec512fb04ef81d52ff061fc1b4dc69ea6db5c129891d4d37e963348cfeb3d3"
     },
     "sourceGlb": {
-      "bytes": 7776184,
-      "sha256": "01ccf2695678cb42c5b086308b7bea6dc366b029b4efc9e12393a10e8b209ead",
-      "uri": "place_gate_jump_ring.glb"
+      "bytes": 5725268,
+      "sha256": "3b673f761f8e47c32ffa0563b933ad099380d2df75629dca927481cec4c8b7c0",
+      "uri": "place_station_refinery.glb"
     },
     "sourceManifest": {
       "bytes": 9635,
@@ -1570,8 +1570,8 @@
     }
   },
   "render": {
-    "bytes": 8988140,
-    "sha256": "19d82629283cb012e3d741f1d1c1e1c08af095a2691ee251accb32fbc6830b8c",
+    "bytes": 8843880,
+    "sha256": "9a54acfb35325ece8ab7b6ab2f3fdbc7bc1e93e932f26c87e4989af96b47df68",
     "uri": "render.glb"
   },
   "schema": "spaceface.renderPackage.v1",
@@ -1579,35 +1579,35 @@
     {
       "bounds": {
         "max": [
-          9.999425888061523,
-          48.014793395996094,
-          46.88941192626953
+          59,
+          30.4989070892334,
+          28.73424530029297
         ],
         "min": [
-          -9.999425888061523,
-          -48.014793395996094,
-          -46.88941192626953
+          -44.099998474121094,
+          -24.99920654296875,
+          -58.1019401550293
         ]
       },
-      "id": "sf.render.jump-ring.body",
+      "id": "sf.render.ceres-refinery.body",
       "nodeIds": [
-        "sf.render.jump-ring.mesh.collision-hull",
-        "sf.render.jump-ring.mesh.lod0-station-material-accent",
-        "sf.render.jump-ring.mesh.lod0-station-material-glass",
-        "sf.render.jump-ring.mesh.lod0-station-material-hull",
-        "sf.render.jump-ring.mesh.lod0-station-material-mechanical",
-        "sf.render.jump-ring.mesh.lod0-station-material-warm",
-        "sf.render.jump-ring.mesh.lod1-station-material-accent",
-        "sf.render.jump-ring.mesh.lod1-station-material-glass",
-        "sf.render.jump-ring.mesh.lod1-station-material-hull",
-        "sf.render.jump-ring.mesh.lod1-station-material-mechanical",
-        "sf.render.jump-ring.mesh.lod1-station-material-warm",
-        "sf.render.jump-ring.mesh.lod2-station-material-accent",
-        "sf.render.jump-ring.mesh.lod2-station-material-glass",
-        "sf.render.jump-ring.mesh.lod2-station-material-hull",
-        "sf.render.jump-ring.mesh.lod2-station-material-mechanical",
-        "sf.render.jump-ring.mesh.lod2-station-material-warm",
-        "sf.render.jump-ring.root"
+        "sf.render.ceres-refinery.mesh.collision-hull",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
+        "sf.render.ceres-refinery.root"
       ]
     }
   ]

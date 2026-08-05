@@ -40,6 +40,7 @@ test('production manifest packages every live whole-ship family and admitted aut
     'helios-cradle',
     'helios-span',
     'helios-trade-hub',
+    'ceres-refinery',
     'jump-ring',
     'debris-chunk',
     'dead-hulk',
@@ -55,6 +56,10 @@ test('production manifest packages every live whole-ship family and admitted aut
     'assets/ships/release/parts/places/place_station_trade_hub.glb',
   );
   assert.equal(tradeHub?.runtimeAssetId, 'SF_PLACE_STATION_TRADE_HUB');
+  const refinery = renderPackagePilotForSourceUrl(
+    'assets/ships/release/parts/places/place_station_refinery.glb',
+  );
+  assert.equal(refinery?.runtimeAssetId, 'SF_PLACE_STATION_REFINERY');
   const jumpRing = renderPackagePilotForSourceUrl(
     'assets/ships/release/parts/places/place_gate_jump_ring.glb',
   );

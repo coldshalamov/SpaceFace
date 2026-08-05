@@ -58,7 +58,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3d1cf0e0a50ece87889bb2281663934ccee7fc34115d1a7e34a1eaa4e5a7e1e6",
+  "contentHash": "aebd617d4de9385036ff86117b790df95385085c18ecfb9554e15f9f2d60b5be",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4873,8 +4873,8 @@
       "uri": "place_station_trade_hub.glb"
     },
     "sourceManifest": {
-      "bytes": 8938,
-      "sha256": "14771849bdc98d47ee6d71d440d1762987ed80034c20aa429571d4d7a05d8f44",
+      "bytes": 9635,
+      "sha256": "9a38c22cbd9c251144c97729f9dcb38683514f2d2e266388da090093fff8bd92",
       "uri": "pilots.json"
     }
   },

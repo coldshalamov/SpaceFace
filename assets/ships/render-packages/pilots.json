@@ -124,6 +124,21 @@
       "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json"
     },
     {
+      "key": "ceres-refinery",
+      "assetId": "sf.render.ceres-refinery",
+      "runtimeAssetId": "SF_PLACE_STATION_REFINERY",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_station_refinery",
+      "sourceUrl": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "releaseSha256": "3b673f761f8e47c32ffa0563b933ad099380d2df75629dca927481cec4c8b7c0",
+      "releaseBytes": 5725268,
+      "rootNode": "SF_PLACE_STATION_REFINERY_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ceres-refinery",
+      "metadataUrl": "assets/ships/release/render-packages/ceres-refinery/render-package.json"
+    },
+    {
       "key": "jump-ring",
       "assetId": "sf.render.jump-ring",
       "runtimeAssetId": "SF_PLACE_GATE_JUMP_RING",
