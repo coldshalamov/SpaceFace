@@ -15,9 +15,12 @@ import {
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
 
-test('production manifest retains the pilots and packages every live Helios traffic role', async () => {
+test('production manifest packages every live default-route whole-ship family', async () => {
   assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
     'kestrel',
+    'ashline-dart',
+    'ashline-lode',
+    'ashline-rig',
     'helios-lark',
     'helios-cradle',
     'helios-span',
@@ -47,7 +50,7 @@ test('production manifest retains the pilots and packages every live Helios traf
       `${binding.key} preserves indexed production geometry`);
   }
 
-  assert.equal(renderPackagePilotForSourceUrl('assets/ships/release/parts/wholeships/ashline_dart.glb'), null);
+  assert.equal(renderPackagePilotForSourceUrl('assets/ships/release/parts/wholeships/pelican.glb'), null);
   assert.equal(renderPackagePilotForAssetId('sf.render.unclaimed'), null);
 });
 
