@@ -119,6 +119,45 @@ function getManager(ctx) {
   return null;
 }
 
+function asScreenStack(ctx) {
+  const stack = ctx && ctx.state && ctx.state.ui && ctx.state.ui.screenStack;
+  return Array.isArray(stack) ? stack : null;
+}
+
+/**
+ * Successful recovery must dismiss Game Over even when another modal (for example, Load save)
+ * is stacked above it. Pop ancestors until gameOver leaves the stack; fall back to a single
+ * top-only pop when the shared stack is unavailable.
+ */
+function popAncestorsUntilGameOverResolves(ctx, manager) {
+  if (!manager) return { popped: 0, dismissed: false };
+  const stack = asScreenStack(ctx);
+  if (Array.isArray(stack)) {
+    if (!stack.includes('gameOver')) return { popped: 0, dismissed: false };
+    let popped = 0;
+    // Bound by the initial length so a broken/no-op manager cannot spin forever.
+    const guard = stack.length;
+    for (let i = 0; i < guard && stack.length; i++) {
+      const top = stack[stack.length - 1];
+      if (typeof manager.popScreen !== 'function') break;
+      const beforeLength = stack.length;
+      manager.popScreen();
+      // Keep lightweight harness managers honest when they do not mutate the shared stack.
+      if (stack.length === beforeLength) stack.pop();
+      popped += 1;
+      if (top === 'gameOver') return { popped, dismissed: true };
+    }
+    return { popped, dismissed: !stack.includes('gameOver') };
+  }
+
+  const isGameOverTop = typeof manager.top === 'function' && manager.top() === 'gameOver';
+  if (!isGameOverTop || typeof manager.popScreen !== 'function') {
+    return { popped: 0, dismissed: false };
+  }
+  manager.popScreen();
+  return { popped: 1, dismissed: true };
+}
+
 export const gameOverScreen = {
   id: 'gameOver',
   data: { locked: true },
@@ -247,9 +286,9 @@ export const gameOverScreen = {
     // rejected/duplicate intent; close only on the canonical successful respawn receipt.
     ctx.bus.on('player:respawn', () => {
       const mgr = getManager(ctx);
-      if (!mgr || typeof mgr.top !== 'function' || mgr.top() !== 'gameOver') return;
+      const close = popAncestorsUntilGameOverResolves(ctx, mgr);
+      if (!close.dismissed) return;
       ctx.bus.emit('game:over:dismissed', {});
-      if (mgr.popScreen) mgr.popScreen();
     });
     // Failed recovery stays on this modal. Refresh copy so Load/New paths appear if the receipt
     // was cleared, and keep the primary button available when combat re-armed from the receipt.
