@@ -3795,7 +3795,7 @@ export function createHud(ctx, alerts) {
           const controls = buildTetherControlPrompt(tether);
           setText(elTether, `${tetherStatus.text}${nameBit}`);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
-          if (controls) tetherControls.setAttribute('aria-label', controls);
+          if (controls) setAttr(tetherControls, 'aria-label', controls);
         }
         paintTetherControlChips(active ? tether : null);
       }

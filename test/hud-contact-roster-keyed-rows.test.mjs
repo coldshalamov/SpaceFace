@@ -71,6 +71,38 @@ test('roster DOM writes stay frame-rate independent at 5 Hz', () => {
     `roster DOM work must not scale with frame rate (60/144/240 wrote ${counts.join('/')})`);
 });
 
+test('stable active Massline controls do not rewrite their accessible label at HUD cadence', () => {
+  const fx = mountHudFixture();
+  try {
+    fx.state.player.tether = {
+      active: true,
+      targetId: 'selected',
+      phase: 'hold',
+      tension: 0.4,
+      maxTension: 1,
+    };
+    fx.step(12); // settle the initial 10 Hz numeric/HUD sample
+
+    const controls = fx.document.querySelector('.sf-tether-controls');
+    assert.ok(controls, 'the active Massline mounts its control-chip accessibility owner');
+    assert.match(controls.getAttribute('aria-label') || '', /REEL|CUT|UNBOUND/,
+      'the settled label still exposes the live Massline controls');
+
+    let ariaLabelWrites = 0;
+    const setAttribute = controls.setAttribute.bind(controls);
+    controls.setAttribute = (name, value) => {
+      if (name === 'aria-label') ariaLabelWrites++;
+      return setAttribute(name, value);
+    };
+    fx.step(60);
+
+    assert.equal(ariaLabelWrites, 0,
+      'an unchanged active Massline must not rewrite the same aria-label ten times per second');
+  } finally {
+    fx.restore();
+  }
+});
+
 test('a contact leaving removes only its row; the row that replaces it is the only new node', () => {
   const fx = mountHudFixture();
   try {
@@ -450,6 +482,11 @@ class HudElement {
   appendChild(child) {
     if (child.parentNode) child.parentNode.removeChild(child);
     child.parentNode = this; this.children.push(child); return child;
+  }
+  replaceChildren(...children) {
+    for (const child of this.children) child.parentNode = null;
+    this.children.length = 0;
+    children.forEach((child) => this.appendChild(child));
   }
   append(...children) { children.forEach((child) => this.appendChild(child)); }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
