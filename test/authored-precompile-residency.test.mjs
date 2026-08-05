@@ -179,10 +179,25 @@ test('synthetic shader precompile creates zero authored asset residency demand',
 
 test('global precompile retains the directional-shadow program family without changing live state', async () => {
   const calls = [];
+  let warmRenderState = null;
   const renderer = {
     compileAsync: async () => {},
     info: { programs: [] },
     shadowMap: { enabled: false, type: THREE.PCFShadowMap },
+    render(renderScene) {
+      const depthOwners = [];
+      renderScene.traverse((object) => {
+        const id = object.userData?.precompileRetainedPipeline;
+        if (object.castShadow && id?.startsWith('shadow-depth')) depthOwners.push(id);
+      });
+      warmRenderState = {
+        shadowMapEnabled: renderer.shadowMap.enabled,
+        keyCastsShadow: key.castShadow,
+        depthOwners: depthOwners.sort(),
+        canopyAttached: !!renderScene.getObjectByName('SF_Precompile_Canopy_KeepAlive'),
+        shadowRootAttached: !!renderScene.getObjectByName('SF_Precompile_ShadowDepth_KeepAlive'),
+      };
+    },
   };
   const scene = new THREE.Scene();
   const key = new THREE.DirectionalLight(0xffffff, 1);
@@ -227,6 +242,13 @@ test('global precompile retains the directional-shadow program family without ch
     ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
     'the shadow admission pass must retain every exact depth layout observed after boot',
   );
+  assert.deepEqual(warmRenderState, {
+    shadowMapEnabled: true,
+    keyCastsShadow: true,
+    depthOwners: ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
+    canopyAttached: false,
+    shadowRootAttached: true,
+  }, 'the resident warm must isolate the exact casters under temporary production shadow state');
   assert.equal(renderer.shadowMap.enabled, false, 'restore the player renderer setting');
   assert.equal(key.castShadow, false, 'restore the live key-light state');
   invalidatePrecompileState(renderer);
@@ -234,10 +256,19 @@ test('global precompile retains the directional-shadow program family without ch
 
 test('global precompile admits late depth owners when directional shadows are already active', async () => {
   const calls = [];
+  let warmRenderDepthOwners = [];
   const renderer = {
     compileAsync: async () => {},
     info: { programs: [] },
     shadowMap: { enabled: true, type: THREE.PCFShadowMap },
+    render(renderScene) {
+      warmRenderDepthOwners = [];
+      renderScene.traverse((object) => {
+        const id = object.userData?.precompileRetainedPipeline;
+        if (object.castShadow && id?.startsWith('shadow-depth')) warmRenderDepthOwners.push(id);
+      });
+      warmRenderDepthOwners.sort();
+    },
   };
   const scene = new THREE.Scene();
   const key = new THREE.DirectionalLight(0xffffff, 1);
@@ -262,6 +293,11 @@ test('global precompile admits late depth owners when directional shadows are al
     [],
     ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
   ], 'new depth owners require one exact-target compile even when the shadow state needs no toggle');
+  assert.deepEqual(warmRenderDepthOwners,
+    ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
+    'the hidden resident warm must exercise Three.js own shadow-depth material path');
+  assert.equal(scene.getObjectByName('SF_Precompile_Canopy_KeepAlive'), undefined,
+    'retained program owners must leave the live scene immediately after the hidden warm');
   assert.equal(renderer.shadowMap.enabled, true);
   assert.equal(key.castShadow, true);
   invalidatePrecompileState(renderer);

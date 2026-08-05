@@ -179,8 +179,8 @@ async function precompileNow(
     // loading shell still covers the canvas. Prefer the host warmPostProcess hook (bloom /
     // render-graph / dynamic-buffer arming); fall back to one straight render.
     if (stillCurrent && includeGlobalPipelines) {
-      residentBufferWarm = await warmResidentSceneGpuBuffers(
-        renderer, scene, camera, options, yieldToMain,
+      residentBufferWarm = await warmResidentSceneWithShadowPipelines(
+        renderer, scene, camera, canopyPipelineWarmup, options, yieldToMain,
       );
     }
 
@@ -503,6 +503,50 @@ function rememberGlobalPrecompile(renderer, run) {
   return tracked;
 }
 
+async function warmResidentSceneWithShadowPipelines(
+  renderer, scene, camera, retainedRoot, options = {}, yieldToMain = yieldToBrowser,
+) {
+  const shadowRoot = retainedRoot?.getObjectByName('SF_Precompile_ShadowDepth_KeepAlive') || null;
+  const retainedParent = shadowRoot?.parent || null;
+  const restoreShadowState = beginDirectionalShadowWarm(renderer, scene);
+  if (shadowRoot) {
+    shadowRoot.removeFromParent();
+    scene.add(shadowRoot);
+  }
+  try {
+    // compileAsync cannot exercise WebGLShadowMap's renderer-owned depth materials. The existing
+    // hidden resident render receives only the four exact retained casters, under the production
+    // directional-shadow state, so Three itself owns their final depth programs. No broad synthetic
+    // VFX/canopy root is drawn and no probe survives into a player-visible frame.
+    return await warmResidentSceneGpuBuffers(renderer, scene, camera, options, yieldToMain);
+  } finally {
+    restoreShadowState();
+    if (shadowRoot) {
+      shadowRoot.removeFromParent();
+      if (retainedParent) retainedParent.add(shadowRoot);
+    }
+  }
+}
+
+function beginDirectionalShadowWarm(renderer, scene) {
+  const shadowMap = renderer?.shadowMap;
+  let keyLight = null;
+  if (shadowMap && scene) {
+    scene.traverseVisible((object) => {
+      if (!keyLight && object.isDirectionalLight) keyLight = object;
+    });
+  }
+  if (!shadowMap || !keyLight) return () => {};
+  const previousEnabled = shadowMap.enabled;
+  const previousCastShadow = keyLight.castShadow;
+  shadowMap.enabled = true;
+  keyLight.castShadow = true;
+  return () => {
+    shadowMap.enabled = previousEnabled;
+    keyLight.castShadow = previousCastShadow;
+  };
+}
+
 async function prepareDirectionalShadowPipelineVariant(
   renderer, scene, subject, preparePipelines, beforePrepare = null,
 ) {
@@ -640,13 +684,14 @@ function addCommonRockPipelineWarmup(root, vf) {
   // The visual factory owns these globally cached resources. Retaining the exact material pins its
   // custom geology program, but precompile invalidation must never dispose the shared maps.
   mesh.userData.precompileBorrowedResources = true;
-  root.add(mesh);
+  getCommonRockShadowDepthRoot(root).add(mesh);
   return mesh;
 }
 
 function addCommonRockShadowDepthWarmups(root, commonRockWarmup) {
   if (!root || !commonRockWarmup || root.userData.commonRockShadowDepthWarm) return false;
   root.userData.commonRockShadowDepthWarm = true;
+  const shadowRoot = getCommonRockShadowDepthRoot(root);
   const layouts = [
     { id: 'shadow-depth-map-instanced', mapped: true, instanced: true },
     { id: 'shadow-depth-map-mesh', mapped: true, instanced: false },
@@ -666,15 +711,25 @@ function addCommonRockShadowDepthWarmups(root, commonRockWarmup) {
       : new THREE.Mesh(geometry, material);
     mesh.name = `SF_Precompile_${layout.id}`;
     mesh.frustumCulled = false;
+    mesh.castShadow = true;
     mesh.userData.precompileRetainedPipeline = layout.id;
     mesh.position.set(index * 3, 36, 0);
     if (layout.instanced) {
       mesh.count = 1;
       mesh.setMatrixAt(0, new THREE.Matrix4());
     }
-    root.add(mesh);
+    shadowRoot.add(mesh);
   }
   return true;
+}
+
+function getCommonRockShadowDepthRoot(root) {
+  let shadowRoot = root.getObjectByName('SF_Precompile_ShadowDepth_KeepAlive');
+  if (shadowRoot) return shadowRoot;
+  shadowRoot = new THREE.Group();
+  shadowRoot.name = 'SF_Precompile_ShadowDepth_KeepAlive';
+  root.add(shadowRoot);
+  return shadowRoot;
 }
 
 function addShipAuxPipelineWarmup(scene, retainedRoot) {
