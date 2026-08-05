@@ -362,6 +362,11 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');
 
+    const writes = trackDomWriteCalls([preview, mark, line.parentNode]);
+    hud.update(1 / 60, state);
+    assert.equal(writes.count(), 0,
+      'an unchanged acquisition receipt must not rewrite stable HUD styles, classes, or attributes');
+
     assert.equal(root.classList.contains('ml2-reduced-motion'), true);
     hud.destroy();
   } finally {
@@ -645,6 +650,30 @@ function createRuntimeHarness(options = {}) {
     registry: { get: (name) => name === 'actions' || name === 'combat' ? { kernel } : null },
   });
   return { state, system, anchor, decoy, created, latched, denied, bus };
+}
+
+function trackDomWriteCalls(nodes) {
+  let calls = 0;
+  for (const node of nodes) {
+    node.style = new Proxy(node.style, {
+      set(target, name, value) {
+        calls += 1;
+        target[name] = value;
+        return true;
+      },
+    });
+    const setAttribute = node.setAttribute.bind(node);
+    node.setAttribute = (...args) => {
+      calls += 1;
+      return setAttribute(...args);
+    };
+    const toggle = node.classList.toggle.bind(node.classList);
+    node.classList.toggle = (...args) => {
+      calls += 1;
+      return toggle(...args);
+    };
+  }
+  return { count: () => calls };
 }
 
 function fakeDocument() {

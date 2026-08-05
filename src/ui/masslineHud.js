@@ -172,10 +172,10 @@ export const masslineHud = {
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');
-    dom.root.classList.toggle('ml2-reduced-motion', reducedMotion);
+    setClass(dom.root, 'ml2-reduced-motion', reducedMotion);
     const reducedFlash = !!(state.settings && state.settings.accessibility
       && state.settings.accessibility.flashReduce);
-    dom.root.classList.toggle('ml2-reduced-flash', reducedFlash);
+    setClass(dom.root, 'ml2-reduced-flash', reducedFlash);
     this._updateAcquisitionPreview(dom, state, player, w2s);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
@@ -222,35 +222,35 @@ export const masslineHud = {
     const labelX = clampRange(preferLeft ? cueX - 20 - captionWidth : cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
     const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
 
-    dom.previewMark.style.display = 'block';
-    dom.previewMark.style.transform = `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`;
-    dom.previewMark.classList.toggle('ml2-offscreen', offscreen);
-    dom.previewMark.classList.toggle('ml2-mark-protected', selected.status === 'protected');
-    dom.previewMark.classList.toggle('ml2-mark-unavailable', !ready && selected.status !== 'protected');
+    setStyle(dom.previewMark, 'display', 'block');
+    setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+    setClass(dom.previewMark, 'ml2-offscreen', offscreen);
+    setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
+    setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
 
-    dom.previewEl.style.display = 'block';
-    dom.previewEl.style.transform = `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`;
+    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    dom.previewEl.setAttribute('aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
-    dom.previewEl.setAttribute('data-receipt-id', String(receipt.id || ''));
-    dom.previewEl.setAttribute('data-target-id', String(selected.targetId));
-    dom.previewEl.classList.toggle('ml2-preview-offscreen', offscreen);
+    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
+    setAttr(dom.previewEl, 'data-target-id', String(selected.targetId));
+    setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
-      dom.previewEl.classList.toggle(`ml2-preview-${name}`, selected.status === name);
+      setClass(dom.previewEl, `ml2-preview-${name}`, selected.status === name);
     }
   },
 
   _hideAcquisitionPreview(dom) {
-    dom.previewEl.style.display = 'none';
-    dom.previewMark.style.display = 'none';
-    dom.previewSvg.style.display = 'none';
+    setStyle(dom.previewEl, 'display', 'none');
+    setStyle(dom.previewMark, 'display', 'none');
+    setStyle(dom.previewSvg, 'display', 'none');
   },
 
   _updateThrowMark(dom, throwState, state, w2s) {
     const solution = throwState && throwState.armed ? throwState.solution : null;
-    if (!solution || !solution.valid) { dom.throwEl.style.display = 'none'; return; }
+    if (!solution || !solution.valid) { setStyle(dom.throwEl, 'display', 'none'); return; }
     const payload = state.entities.get(throwState.payloadId);
-    if (!payload || !payload.pos) { dom.throwEl.style.display = 'none'; return; }
+    if (!payload || !payload.pos) { setStyle(dom.throwEl, 'display', 'none'); return; }
     // Place the diamond on the intercept ray at either the aim entity or a fixed reach — the
     // POSITION names the consequence ("the rock goes THERE"), the COLOR names the timing.
     const aim = throwState.aimTargetId != null ? state.entities.get(throwState.aimTargetId) : null;
@@ -268,22 +268,22 @@ export const masslineHud = {
       onSolution: solution.onSolution,
       targetKind: aim ? 'entity' : 'point',
     });
-    if (!cue.visible) { dom.throwEl.style.display = 'none'; return; }
-    dom.throwEl.style.display = 'block';
-    dom.throwEl.style.transform = `translate3d(${cue.x}px, ${cue.y}px, 0)`;
+    if (!cue.visible) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    setStyle(dom.throwEl, 'display', 'block');
+    setStyle(dom.throwEl, 'transform', `translate3d(${cue.x}px, ${cue.y}px, 0)`);
     const hot = !!solution.onSolution;
-    dom.throwEl.classList.toggle('ml2-hot', hot);
-    dom.throwEl.classList.toggle('ml2-offscreen', cue.offscreen);
-    dom.throwEl.style.setProperty('--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
+    setClass(dom.throwEl, 'ml2-hot', hot);
+    setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
+    setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
   },
 
   _updateSelfMark(dom, throwState, state, w2s) {
     const self = throwState && !throwState.armed ? throwState.selfSolution : null;
-    if (!self) { dom.selfEl.style.display = 'none'; return; }
+    if (!self) { setStyle(dom.selfEl, 'display', 'none'); return; }
     const target = self.targetId != null ? state.entities.get(self.targetId) : null;
     const targetPos = target && target.pos ? target.pos : self.targetPos;
-    if (!targetPos) { dom.selfEl.style.display = 'none'; return; }
+    if (!targetPos) { setStyle(dom.selfEl, 'display', 'none'); return; }
     const proj = w2s({ x: targetPos.x, y: 0, z: targetPos.z });
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
@@ -292,58 +292,58 @@ export const masslineHud = {
       onSolution: self.onSolution,
       targetKind: self.targetKind,
     });
-    if (!cue.visible) { dom.selfEl.style.display = 'none'; return; }
-    dom.selfEl.style.display = 'block';
-    dom.selfEl.style.transform = `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`;
-    dom.selfEl.classList.toggle('ml2-hot', !!self.onSolution);
-    dom.selfEl.classList.toggle('ml2-offscreen', cue.offscreen);
-    dom.selfEl.style.setProperty('--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
+    if (!cue.visible) { setStyle(dom.selfEl, 'display', 'none'); return; }
+    setStyle(dom.selfEl, 'display', 'block');
+    setStyle(dom.selfEl, 'transform', `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`);
+    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution);
+    setClass(dom.selfEl, 'ml2-offscreen', cue.offscreen);
+    setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
     applyCueState(dom.selfEl, dom.selfLabel, cue);
   },
 
   _updateCloakRing(dom, cloakState, player, w2s) {
     if (!cloakState || !cloakState.active || !(cloakState.radius > 0)) {
-      dom.ringSvg.style.display = 'none';
+      setStyle(dom.ringSvg, 'display', 'none');
       return;
     }
     const center = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
     const edge = w2s({ x: player.pos.x + cloakState.radius, y: 0, z: player.pos.z });
     if (!center || !Number.isFinite(center.x) || !edge || !Number.isFinite(edge.x)) {
-      dom.ringSvg.style.display = 'none';
+      setStyle(dom.ringSvg, 'display', 'none');
       return;
     }
     const r = Math.max(6, Math.abs(edge.x - center.x));
-    dom.ringSvg.style.display = 'block';
-    dom.ringSvg.style.transform = `translate3d(${center.x}px, ${center.y}px, 0)`;
-    dom.ringCircle.setAttribute('r', String(r));
+    setStyle(dom.ringSvg, 'display', 'block');
+    setStyle(dom.ringSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
+    setAttr(dom.ringCircle, 'r', String(r));
   },
 
   _updateMeters(dom, ml2) {
     const bt = ml2.bulletTime;
     const showBt = massline2Flag('bulletTime') && bt && (bt.active || bt.energy < 0.999);
-    dom.btPill.style.display = showBt ? 'flex' : 'none';
+    setStyle(dom.btPill, 'display', showBt ? 'flex' : 'none');
     if (showBt) {
-      dom.btFill.style.transform = `scaleX(${clamp01(bt.energy)})`;
-      dom.btPill.classList.toggle('ml2-on', !!bt.active);
+      setStyle(dom.btFill, 'transform', `scaleX(${clamp01(bt.energy)})`);
+      setClass(dom.btPill, 'ml2-on', !!bt.active);
     }
     const ck = ml2.cloak;
     const showCk = massline2Flag('cloak') && ck && ck.available;
-    dom.ckPill.style.display = showCk ? 'flex' : 'none';
+    setStyle(dom.ckPill, 'display', showCk ? 'flex' : 'none');
     if (showCk) {
-      dom.ckFill.style.transform = `scaleX(${clamp01(ck.energy)})`;
-      dom.ckPill.classList.toggle('ml2-on', !!ck.active);
+      setStyle(dom.ckFill, 'transform', `scaleX(${clamp01(ck.energy)})`);
+      setClass(dom.ckPill, 'ml2-on', !!ck.active);
     }
   },
 
   _hideAll() {
     const dom = this._dom;
     if (!dom) return;
-    dom.throwEl.style.display = 'none';
-    dom.selfEl.style.display = 'none';
-    dom.ringSvg.style.display = 'none';
+    setStyle(dom.throwEl, 'display', 'none');
+    setStyle(dom.selfEl, 'display', 'none');
+    setStyle(dom.ringSvg, 'display', 'none');
     this._hideAcquisitionPreview(dom);
-    dom.btPill.style.display = 'none';
-    dom.ckPill.style.display = 'none';
+    setStyle(dom.btPill, 'display', 'none');
+    setStyle(dom.ckPill, 'display', 'none');
   },
 
   _ensureDom() {
@@ -514,9 +514,42 @@ function offscreenDirection(dx, dy) {
 
 function applyCueState(element, label, cue) {
   if (label && label.textContent !== cue.label) label.textContent = cue.label;
-  if (element.getAttribute('aria-label') !== cue.ariaLabel) element.setAttribute('aria-label', cue.ariaLabel);
-  element.setAttribute('data-window-state', cue.state);
-  element.setAttribute('data-direction', cue.direction);
+  setAttr(element, 'aria-label', cue.ariaLabel);
+  setAttr(element, 'data-window-state', cue.state);
+  setAttr(element, 'data-direction', cue.direction);
+}
+
+function setStyle(element, property, value) {
+  if (!element) return;
+  const cache = element._sfStyle || (element._sfStyle = Object.create(null));
+  if (cache[property] === value) return;
+  cache[property] = value;
+  element.style[property] = value;
+}
+
+function setCssVar(element, property, value) {
+  if (!element) return;
+  const cache = element._sfCssVar || (element._sfCssVar = Object.create(null));
+  if (cache[property] === value) return;
+  cache[property] = value;
+  element.style.setProperty(property, value);
+}
+
+function setAttr(element, name, value) {
+  if (!element) return;
+  const cache = element._sfAttr || (element._sfAttr = Object.create(null));
+  if (cache[name] === value) return;
+  cache[name] = value;
+  element.setAttribute(name, value);
+}
+
+function setClass(element, name, enabled) {
+  if (!element) return;
+  const cache = element._sfClass || (element._sfClass = Object.create(null));
+  const value = !!enabled;
+  if (cache[name] === value) return;
+  cache[name] = value;
+  element.classList.toggle(name, value);
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
