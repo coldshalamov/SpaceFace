@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fc3ccb97a4d050ea4b1164f72fa689f084266d4ad1bc2c926116fac1f02ca44d",
+  "contentHash": "bca49856fdff657acc17408e47b656ada07924e5a4ac4c0b2337df4fcc932899",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-core.dynamic",
@@ -2759,8 +2759,8 @@
       "uri": "helios_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 8266,
-      "sha256": "2e755b83e105548bda30408e10ad8a41bd6497ff6ac0e6fde27b954cd560fbde",
+      "bytes": 8269,
+      "sha256": "a10dd0081badcbae7477974ed1d2f92a5629279c795e288a3e446520a8604056",
       "uri": "pilots.json"
     }
   },

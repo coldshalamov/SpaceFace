@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "79f8d16b98170e1878c262b350282b821f3eee1cd7548bf4aa9d7fce8feba15d",
+  "contentHash": "2475e70657eb5689d5c743849889ad5956398cd23acd2bb753d37c7b2fe85135",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-lode.mesh.lod0-hook-drive-core.dynamic",
@@ -2389,8 +2389,8 @@
       "uri": "ashline_lode.glb"
     },
     "sourceManifest": {
-      "bytes": 8266,
-      "sha256": "2e755b83e105548bda30408e10ad8a41bd6497ff6ac0e6fde27b954cd560fbde",
+      "bytes": 8269,
+      "sha256": "a10dd0081badcbae7477974ed1d2f92a5629279c795e288a3e446520a8604056",
       "uri": "pilots.json"
     }
   },

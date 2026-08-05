@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 
 import * as THREE from 'three';
 
+import { derivePilotSemanticManifest } from '../scripts/build-render-package-pilots.mjs';
 import {
   buildAuthoredPlaceProp,
   upgradeAuthoredPlaceBoundaryForProbe,
@@ -14,6 +15,20 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
+
+test('production package build rejects runtime asset identity drift', async () => {
+  await assert.rejects(
+    derivePilotSemanticManifest({
+      key: 'identity-drift',
+      assetId: 'sf.render.identity-drift',
+      runtimeAssetId: 'wrong-runtime-id',
+      kind: 'place',
+      rootNode: 'place_debris_chunk',
+      dynamicNameIncludes: [],
+    }, 'assets/ships/release/parts/places/place_debris_chunk.glb'),
+    /runtime assetId wrong-runtime-id does not match source place_debris_chunk/,
+  );
+});
 
 test('production manifest packages every live whole-ship family and admitted authored place', async () => {
   assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
@@ -38,7 +53,7 @@ test('production manifest packages every live whole-ship family and admitted aut
   const tradeHub = renderPackagePilotForSourceUrl(
     'assets/ships/release/parts/places/place_station_trade_hub.glb',
   );
-  assert.equal(tradeHub?.runtimeAssetId, 'place_station_trade_hub');
+  assert.equal(tradeHub?.runtimeAssetId, 'SF_PLACE_STATION_TRADE_HUB');
 
   for (const binding of RENDER_PACKAGE_PILOTS) {
     assert.strictEqual(renderPackagePilotForSourceUrl(binding.sourceUrl), binding);

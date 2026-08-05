@@ -111,7 +111,7 @@
     {
       "key": "helios-trade-hub",
       "assetId": "sf.render.helios-trade-hub",
-      "runtimeAssetId": "place_station_trade_hub",
+      "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB",
       "kind": "place",
       "slot": "place",
       "releaseAssetId": "place_station_trade_hub",

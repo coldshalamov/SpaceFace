@@ -94,6 +94,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
   const documentRoot = document.getRoot();
   const scene = documentRoot.getDefaultScene() || documentRoot.listScenes()[0];
   if (!scene) throw new Error(`${pilot.key}: package source contains no scene.`);
+  assertRuntimeAssetIdentity(pilot, documentRoot, scene);
   const nodes = documentRoot.listNodes();
   const names = new Map();
   for (const node of nodes) {
@@ -179,6 +180,27 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       reference: 'COLLISION_HULL',
     }] : [],
   };
+}
+
+function assertRuntimeAssetIdentity(pilot, documentRoot, scene) {
+  const sceneExtras = scene.getExtras() || {};
+  const assetExtras = documentRoot.getAsset()?.extras || {};
+  const metadata = [
+    sceneExtras.spacefaceAsset,
+    sceneExtras.spaceface,
+    assetExtras.spacefaceAsset,
+    assetExtras.spaceface,
+    assetExtras,
+  ].find((value) => value && typeof value === 'object');
+  const declaredAssetId = metadata?.assetId;
+  if (typeof declaredAssetId !== 'string' || !declaredAssetId) {
+    throw new Error(`${pilot.key}: package source declares no runtime assetId.`);
+  }
+  if (declaredAssetId !== pilot.runtimeAssetId) {
+    throw new Error(
+      `${pilot.key}: runtime assetId ${pilot.runtimeAssetId} does not match source ${declaredAssetId}.`,
+    );
+  }
 }
 
 function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
