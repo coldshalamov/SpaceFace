@@ -34,6 +34,7 @@ import {
 } from '../src/render/thruster/recipes/kestrelRecipes.js';
 import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
+import { vfx } from '../src/render/vfx.js';
 
 function acknowledgeInitial(attribute) {
   attribute.onUploadCallback();
@@ -69,6 +70,72 @@ function beginSceneRender(fixture) {
   const epoch = fixture.coordinator.arm();
   fixture.scene.onBeforeRender({}, fixture.scene, fixture.camera, null);
   return epoch;
+}
+
+function makeParticleVfxFixture(capacity = 3000) {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const geometry = new THREE.BufferGeometry();
+  const attributes = {
+    position: new THREE.BufferAttribute(new Float32Array(capacity * 3), 3),
+    aColor: new THREE.BufferAttribute(new Float32Array(capacity * 3), 3),
+    aSize: new THREE.BufferAttribute(new Float32Array(capacity), 1),
+    aAlpha: new THREE.BufferAttribute(new Float32Array(capacity), 1),
+    aTrailAxis: new THREE.BufferAttribute(new Float32Array(capacity), 1),
+    aTrailStretch: new THREE.BufferAttribute(new Float32Array(capacity), 1),
+  };
+  for (const [name, attribute] of Object.entries(attributes)) geometry.setAttribute(name, attribute);
+  geometry.setDrawRange(0, 2);
+  const material = new THREE.PointsMaterial();
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;
+  scene.add(points);
+
+  const fixture = Object.create(vfx);
+  fixture.state = { settings: { video: { particleQuality: 'medium' } } };
+  fixture._scene = scene;
+  fixture._points = points;
+  fixture._pGeo = geometry;
+  fixture._cap = capacity;
+  fixture._pPos = attributes.position.array;
+  fixture._pCol = attributes.aColor.array;
+  fixture._pSize = attributes.aSize.array;
+  fixture._pAlpha = attributes.aAlpha.array;
+  fixture._pTrailAxis = attributes.aTrailAxis.array;
+  fixture._pTrailStretch = attributes.aTrailStretch.array;
+  for (const field of [
+    '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
+    '_size0', '_size1', '_cr0', '_cg0', '_cb0', '_cr1', '_cg1', '_cb1',
+  ]) fixture[field] = new Float32Array(capacity);
+  fixture._alive = new Uint8Array(capacity);
+  fixture._activeParticles = new Int32Array(capacity);
+  fixture._activeParticlePos = new Int32Array(capacity);
+  fixture._activeParticlePos.fill(-1);
+  fixture._freeParticles = new Int32Array(capacity);
+  for (let index = 0; index < capacity - 2; index++) fixture._freeParticles[index] = capacity - 1 - index;
+  fixture._freeParticleCount = capacity - 2;
+  fixture._liveCount = 2;
+  fixture._pDrawMax = 2;
+  fixture._head = 2;
+  for (let index = 0; index < 2; index++) {
+    fixture._alive[index] = 1;
+    fixture._activeParticles[index] = index;
+    fixture._activeParticlePos[index] = index;
+    fixture._life[index] = 2;
+    fixture._size0[index] = 1;
+    fixture._size1[index] = 0.25;
+    fixture._cr0[index] = 1;
+    fixture._cg0[index] = 0.5;
+    fixture._cb0[index] = 0.2;
+    fixture._cr1[index] = 0.2;
+    fixture._cg1[index] = 0.5;
+    fixture._cb1[index] = 1;
+    fixture._pTrailAxis[index] = index * 0.25;
+    fixture._pTrailStretch[index] = 2 + index;
+  }
+  fixture._bindParticleDynamicBuffers();
+  return { fixture, scene, coordinator, camera, material, points };
 }
 
 test('component spans retain one bounded union in component indexes', () => {
@@ -504,4 +571,75 @@ test('signed RCS layers publish only the live impulse prefix', () => {
     'one signed pulse requests 91.67% fewer bytes than the allocated RCS buffers');
   coordinator.disarm(epoch);
   rcs.dispose();
+});
+
+test('ordinary-flight point particles publish only their live prefix and survive quality migration', () => {
+  const { fixture, scene, coordinator, camera, material, points } = makeParticleVfxFixture();
+  const attributes = () => [
+    fixture._pGeo.attributes.position,
+    fixture._pGeo.attributes.aColor,
+    fixture._pGeo.attributes.aSize,
+    fixture._pGeo.attributes.aAlpha,
+    fixture._pGeo.attributes.aTrailAxis,
+    fixture._pGeo.attributes.aTrailStretch,
+  ];
+
+  fixture._integrateParticles(1 / 60);
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of attributes()) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+    acknowledgeInitial(attribute);
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBefore = fixture._particleDynamicBufferOwner.diagnostics.requestedUploadBytes;
+  fixture._integrateParticles(1 / 60);
+  assert.equal(attributes().reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+    'particle integration must stay private until the renderer publication point');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  const expectedCounts = [6, 6, 2, 2, 0, 0];
+  for (const [index, attribute] of attributes().entries()) {
+    if (expectedCounts[index] > 0) {
+      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: expectedCounts[index] }]);
+      acknowledgeUpdate(attribute);
+    } else {
+      assert.deepEqual(attribute.updateRanges, [],
+        'unchanged trail-shape channels remain resident between particle spawns');
+    }
+  }
+  coordinator.disarm(epoch);
+
+  const requestedAfter = fixture._particleDynamicBufferOwner.diagnostics.requestedUploadBytes;
+  const expectedBytes = expectedCounts.reduce((sum, count) => sum + count, 0)
+    * Float32Array.BYTES_PER_ELEMENT;
+  const fullBytes = attributes().reduce((sum, attribute) => sum + attribute.array.byteLength, 0);
+  assert.equal(requestedAfter - requestedBefore, expectedBytes);
+  assert.equal(expectedBytes, 64);
+  assert.equal(expectedBytes / fullBytes, 64 / 120000,
+    'two ordinary-flight particles request 99.95% fewer bytes than the medium pool capacity');
+
+  const oldAttributes = attributes();
+  fixture.state.settings.video.particleQuality = 'low';
+  assert.equal(fixture._syncParticleQuality(), true);
+  assert.equal(fixture._particleDynamicBufferOwner.diagnostics.capacity, 1500);
+  assert.equal(points.geometry, fixture._pGeo);
+  assert.equal(points.count, 2);
+  for (const attribute of oldAttributes) {
+    assert.equal(Object.hasOwn(attribute, 'onUploadCallback'), false,
+      'quality migration releases callbacks from disposed attributes');
+  }
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of attributes()) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }],
+      'replacement buffers receive one complete residency upload');
+    acknowledgeInitial(attribute);
+  }
+  coordinator.disarm(epoch);
+  material.dispose();
+  fixture._pGeo.dispose();
 });

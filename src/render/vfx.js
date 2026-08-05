@@ -84,6 +84,13 @@ import {
   writeInstancedSprite,
   writeInstancedSpriteFields,
 } from './combat/instancedSpritePool.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  replaceDynamicBufferAttribute,
+} from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 
@@ -183,6 +190,20 @@ function loadKestrelThrusterTextures() {
 
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
 const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
+const PARTICLE_POSITION = 0;
+const PARTICLE_COLOR = 1;
+const PARTICLE_SIZE = 2;
+const PARTICLE_ALPHA = 3;
+const PARTICLE_TRAIL_AXIS = 4;
+const PARTICLE_TRAIL_STRETCH = 5;
+const PARTICLE_BUFFER_BINDINGS = Object.freeze([
+  Object.freeze({ name: 'position', key: 'position' }),
+  Object.freeze({ name: 'color', key: 'aColor' }),
+  Object.freeze({ name: 'size', key: 'aSize' }),
+  Object.freeze({ name: 'alpha', key: 'aAlpha' }),
+  Object.freeze({ name: 'trail-axis', key: 'aTrailAxis' }),
+  Object.freeze({ name: 'trail-stretch', key: 'aTrailStretch' }),
+]);
 const SPRITE_CAP = 256;
 // Dedicated procedural streak-mesh pool (ShaderMaterial planes) — not the additive sprite pool.
 const TRAIL_STREAK_CAP = 96;
@@ -795,6 +816,7 @@ export const vfx = {
     this._freeParticles = new Int32Array(cap);
     for (let i = 0; i < cap; i++) this._freeParticles[i] = cap - 1 - i;
     this._freeParticleCount = cap;
+    this._bindParticleDynamicBuffers();
 
     // ---- discrete sprite pool (flash / ring / smoke / fresnel) ----
     // Smoke owns an irregular alpha field and ordinary blending; it must not reuse the additive
@@ -852,6 +874,27 @@ export const vfx = {
     // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
     // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
     this._flameMaterial = null;
+  },
+
+  _bindParticleDynamicBuffers() {
+    if (!this._scene || !this._points || !this._pGeo) {
+      this._particleDynamicBufferOwner = null;
+      return null;
+    }
+    const attributes = PARTICLE_BUFFER_BINDINGS.map(({ name, key }) => {
+      const attribute = this._pGeo.getAttribute(key);
+      attribute.setUsage(THREE.DynamicDrawUsage);
+      return { name, attribute };
+    });
+    // Points draw through BufferGeometry.drawRange; this count is the coordinator's matching
+    // eligibility signal and does not alter Three.js point-cloud draw semantics.
+    this._points.count = this._pDrawMax || 0;
+    this._particleDynamicBufferOwner = registerDynamicBufferOwner(this._scene, {
+      id: 'vfx-particle-cloud',
+      mesh: this._points,
+      attributes,
+    });
+    return this._particleDynamicBufferOwner;
   },
 
   // Reconcile the one GPU point cloud with the live particle-quality setting. The Points object,
@@ -931,9 +974,28 @@ export const vfx = {
     this._freeParticleCount = nextCap - keep;
     for (let i = 0; i < this._freeParticleCount; i++) this._freeParticles[i] = nextCap - 1 - i;
     geo.setDrawRange(0, keep);
-    for (const attr of Object.values(geo.attributes)) attr.needsUpdate = true;
     this._pGeo = geo;
     this._points.geometry = geo;
+    if (this._particleDynamicBufferOwner) {
+      for (let index = 0; index < PARTICLE_BUFFER_BINDINGS.length; index++) {
+        const { key } = PARTICLE_BUFFER_BINDINGS[index];
+        const attribute = geo.getAttribute(key);
+        attribute.setUsage(THREE.DynamicDrawUsage);
+        replaceDynamicBufferAttribute(
+          this._particleDynamicBufferOwner,
+          index,
+          attribute,
+          'particle-quality',
+        );
+      }
+      commitDynamicBufferOwner(this._particleDynamicBufferOwner, keep);
+    } else {
+      for (const attr of Object.values(geo.attributes)) {
+        attr.setUsage(THREE.DynamicDrawUsage);
+        attr.needsUpdate = true;
+      }
+      this._points.count = keep;
+    }
     if (oldGeo && oldGeo !== geo && typeof oldGeo.dispose === 'function') oldGeo.dispose();
     return true;
   },
@@ -1103,6 +1165,7 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch) {
     if (!this._scene) return;
+    assertDynamicBufferOwnerWritable(this._particleDynamicBufferOwner);
     const cap = this._cap;
     // Prefer an O(1) free stack. Only when every slot is live do we recycle at the cursor.
     let i;
@@ -1121,6 +1184,8 @@ export const vfx = {
     this._cr1[i] = c1.r; this._cg1[i] = c1.g; this._cb1[i] = c1.b;
     this._pTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis : 0;
     this._pTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch : 0;
+    markDynamicBufferItems(this._particleDynamicBufferOwner, PARTICLE_TRAIL_AXIS, i);
+    markDynamicBufferItems(this._particleDynamicBufferOwner, PARTICLE_TRAIL_STRETCH, i);
     this._alive[i] = 1;
   },
 
@@ -7291,17 +7356,24 @@ export const vfx = {
 
 
   _integrateParticles(dt) {
+    const dynamicOwner = this._particleDynamicBufferOwner;
+    assertDynamicBufferOwnerWritable(dynamicOwner);
     if (this._liveCount <= 0) {
       this._pGeo.setDrawRange(0, 0);
       this._pDrawMax = 0;
+      commitDynamicBufferOwner(dynamicOwner, 0);
       return;
     }
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
     let writeMax = 0;
+    let dirtyMin = this._cap;
+    let dirtyMax = -1;
     let cursor = 0;
     while (cursor < this._liveCount) {
       const i = active[cursor];
+      if (i < dirtyMin) dirtyMin = i;
+      if (i > dirtyMax) dirtyMax = i;
       let age = this._age[i] + dt;
       const life = this._life[i];
       if (age >= life) {
@@ -7330,7 +7402,17 @@ export const vfx = {
     }
     this._pDrawMax = writeMax;
     this._pGeo.setDrawRange(0, writeMax);
-    if (writeMax > 0) {
+    if (dynamicOwner) {
+      const dirtyEnd = Math.min(writeMax, dirtyMax + 1);
+      if (dirtyMin < dirtyEnd) {
+        const dirtyCount = dirtyEnd - dirtyMin;
+        markDynamicBufferItems(dynamicOwner, PARTICLE_POSITION, dirtyMin, dirtyCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_COLOR, dirtyMin, dirtyCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_SIZE, dirtyMin, dirtyCount);
+        markDynamicBufferItems(dynamicOwner, PARTICLE_ALPHA, dirtyMin, dirtyCount);
+      }
+      commitDynamicBufferOwner(dynamicOwner, writeMax);
+    } else if (writeMax > 0) {
       this._pGeo.attributes.position.needsUpdate = true;
       this._pGeo.attributes.aColor.needsUpdate = true;
       this._pGeo.attributes.aSize.needsUpdate = true;
