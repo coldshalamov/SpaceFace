@@ -196,6 +196,8 @@ const PARTICLE_SIZE = 2;
 const PARTICLE_ALPHA = 3;
 const PARTICLE_TRAIL_AXIS = 4;
 const PARTICLE_TRAIL_STRETCH = 5;
+const SEAM_MARKER_MATRIX = 0;
+const SEAM_MARKER_COLOR = 1;
 const PARTICLE_BUFFER_BINDINGS = Object.freeze([
   Object.freeze({ name: 'position', key: 'position' }),
   Object.freeze({ name: 'color', key: 'aColor' }),
@@ -4012,8 +4014,16 @@ export const vfx = {
   _initSeamMarkers() {
     if (!this._scene) return;
     const { mesh, capacity: CAP } = createSeamMarkerPipelineMesh();
+    const dynamicBufferOwner = registerDynamicBufferOwner(this._scene, {
+      id: 'vfx-seam-markers',
+      mesh,
+      attributes: [
+        { name: 'matrix', attribute: mesh.instanceMatrix },
+        { name: 'color', attribute: mesh.instanceColor },
+      ],
+    });
     this._scene.add(mesh);
-    this._seamMarkers = { mesh, CAP };
+    this._seamMarkers = { mesh, CAP, dynamicBufferOwner };
     this._seamMat4 = new THREE.Matrix4();
     this._seamDim = new THREE.Color('#ffb35c');     // amber — visible but quiet
     this._seamHot = new THREE.Color('#d7e6ff');     // scanner-lit — aim here
@@ -4027,7 +4037,11 @@ export const vfx = {
     if (!sm) return;
     const state = this.state;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
-    if (!player) { if (sm.mesh.count) { sm.mesh.count = 0; } return; }
+    if (!player) {
+      if (!commitDynamicBufferOwner(sm.dynamicBufferOwner, 0) && sm.mesh.count) sm.mesh.count = 0;
+      return;
+    }
+    assertDynamicBufferOwnerWritable(sm.dynamicBufferOwner);
     const simTime = state.simTime || 0;
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     let n = 0;
@@ -4058,7 +4072,13 @@ export const vfx = {
         n++;
       }
     }
-    if (sm.mesh.count !== n || n > 0) {
+    if (sm.dynamicBufferOwner) {
+      if (n > 0) {
+        markDynamicBufferItems(sm.dynamicBufferOwner, SEAM_MARKER_MATRIX, 0, n);
+        markDynamicBufferItems(sm.dynamicBufferOwner, SEAM_MARKER_COLOR, 0, n);
+      }
+      commitDynamicBufferOwner(sm.dynamicBufferOwner, n);
+    } else if (sm.mesh.count !== n || n > 0) {
       sm.mesh.count = n;
       sm.mesh.instanceMatrix.needsUpdate = true;
       if (sm.mesh.instanceColor) sm.mesh.instanceColor.needsUpdate = true;
@@ -5994,7 +6014,8 @@ export const vfx = {
 
   _sleepSeamMarkers() {
     const sm = this._seamMarkers;
-    if (sm && sm.mesh && sm.mesh.count) sm.mesh.count = 0;
+    if (!sm || !sm.mesh) return;
+    if (!commitDynamicBufferOwner(sm.dynamicBufferOwner, 0) && sm.mesh.count) sm.mesh.count = 0;
   },
 
   _energyMaterialsEnabled() {

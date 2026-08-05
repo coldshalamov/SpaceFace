@@ -645,6 +645,71 @@ test('ordinary-flight point particles publish only their live prefix and survive
   fixture._pGeo.dispose();
 });
 
+test('nearby asteroid seam markers publish only their live matrix and color prefix', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
+  const asteroid = {
+    id: 2,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 40, z: -25 },
+    rot: 0.2,
+    radius: 12,
+    data: {
+      seams: [
+        { localOffset: { x: 2, z: -1 } },
+        { localOffset: { x: -3, z: 4 } },
+      ],
+    },
+  };
+  const fixture = Object.create(vfx);
+  fixture._scene = scene;
+  fixture.state = { playerId: player.id, simTime: 1, entityList: [asteroid] };
+  fixture.helpers = { player: () => player };
+  fixture._spawnLocalXZ = { x: 0, z: 0 };
+  fixture._toLocalXZ = (x, z, out) => { out.x = x; out.z = z; return out; };
+  fixture._ctmp = new THREE.Color();
+  fixture._t = 1;
+  fixture._initSeamMarkers();
+  fixture._updateSeamMarkers(1 / 15);
+
+  const pool = fixture._seamMarkers;
+  const attributes = [pool.mesh.instanceMatrix, pool.mesh.instanceColor];
+  assert.ok(pool.dynamicBufferOwner, 'the production seam-marker pool must register for ranged publication');
+  assert.equal(pool.mesh.count, 2);
+
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of attributes) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+    acknowledgeInitial(attribute);
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBefore = pool.dynamicBufferOwner.diagnostics.requestedUploadBytes;
+  fixture._t += 1 / 15;
+  fixture._updateSeamMarkers(1 / 15);
+  assert.equal(attributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+    'seam-marker writes must stay private until renderer publication');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.deepEqual(pool.mesh.instanceMatrix.updateRanges, [{ start: 0, count: 2 * 16 }]);
+  assert.deepEqual(pool.mesh.instanceColor.updateRanges, [{ start: 0, count: 2 * 3 }]);
+  for (const attribute of attributes) acknowledgeUpdate(attribute);
+  coordinator.disarm(epoch);
+
+  const requestedBytes = pool.dynamicBufferOwner.diagnostics.requestedUploadBytes - requestedBefore;
+  const fullBytes = attributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0);
+  assert.equal(requestedBytes, 2 * (16 + 3) * Float32Array.BYTES_PER_ELEMENT);
+  assert.equal(requestedBytes / fullBytes, 2 / 96,
+    'two nearby seams request 97.92% fewer bytes than the allocated marker buffers');
+  pool.mesh.geometry.dispose();
+  pool.mesh.material.dispose();
+});
+
 test('authored instance chunks publish only moved, hidden, released, and reused matrix slots', () => {
   assert.equal(typeof partsLibrary.runAuthoredInstanceRangeContractProbe, 'function',
     'parts library exposes its real private allocator through a bounded range contract probe');
