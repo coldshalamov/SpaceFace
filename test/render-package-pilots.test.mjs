@@ -15,9 +15,11 @@ import {
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
 
-test('production manifest retains the three-asset pilot and packages the live Wasp route', async () => {
+test('production manifest retains the pilots and packages every live Helios traffic role', async () => {
   assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
     'kestrel',
+    'helios-lark',
+    'helios-cradle',
     'helios-span',
     'debris-chunk',
     'wasp',
@@ -45,7 +47,7 @@ test('production manifest retains the three-asset pilot and packages the live Wa
       `${binding.key} preserves indexed production geometry`);
   }
 
-  assert.equal(renderPackagePilotForSourceUrl('assets/ships/release/parts/wholeships/helios_lark.glb'), null);
+  assert.equal(renderPackagePilotForSourceUrl('assets/ships/release/parts/wholeships/ashline_dart.glb'), null);
   assert.equal(renderPackagePilotForAssetId('sf.render.unclaimed'), null);
 });
 

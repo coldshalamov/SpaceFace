@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ea7cf607a18dff95c23a76d60a6dacf83e7a9e8715ec7a98d7bd182d13a531d",
+  "contentHash": "e77af00f571bbafe4ed13fc5fa0d9de6a693574c30515eb7d3fb7c1196a1d99d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2236,8 +2236,8 @@
       "uri": "kestrel.glb"
     },
     "sourceManifest": {
-      "bytes": 2840,
-      "sha256": "d54798db3f07b4940e0dd639eb96f6d6a50e465434ec1c662b78050e5bd6defa",
+      "bytes": 4214,
+      "sha256": "cee077c179031929984ee5415eabf36df4e905b697267731a8af216f3353efb1",
       "uri": "pilots.json"
     }
   },

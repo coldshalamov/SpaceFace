@@ -19,6 +19,36 @@
       "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json"
     },
     {
+      "key": "helios-lark",
+      "assetId": "sf.render.helios-lark",
+      "runtimeAssetId": "SF_WHOLESHIP_HELIOS_LARK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_helios_lark",
+      "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb",
+      "releaseSha256": "5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473",
+      "releaseBytes": 14087972,
+      "rootNode": "SF_M4_HELIOS_LARK_ROOT",
+      "dynamicNameIncludes": ["HOOK_DRIVE"],
+      "outputDir": "assets/ships/release/render-packages/helios-lark",
+      "metadataUrl": "assets/ships/release/render-packages/helios-lark/render-package.json"
+    },
+    {
+      "key": "helios-cradle",
+      "assetId": "sf.render.helios-cradle",
+      "runtimeAssetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_helios_cradle",
+      "sourceUrl": "assets/ships/release/parts/wholeships/helios_cradle.glb",
+      "releaseSha256": "6f400dfd7caf7e18df1b0cb951e77ec2c8773a4cd8321243e4c259c840c778de",
+      "releaseBytes": 14123188,
+      "rootNode": "SF_M4_HELIOS_CRADLE_ROOT",
+      "dynamicNameIncludes": ["HOOK_DRIVE"],
+      "outputDir": "assets/ships/release/render-packages/helios-cradle",
+      "metadataUrl": "assets/ships/release/render-packages/helios-cradle/render-package.json"
+    },
+    {
       "key": "helios-span",
       "assetId": "sf.render.helios-span",
       "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN",
