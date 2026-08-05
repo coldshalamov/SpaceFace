@@ -32,9 +32,18 @@ import {
   segmentedIndexCount,
 } from '../geometry/segmentedPlumeGeometry.js';
 import { EventLightPool } from './eventLight.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  replaceDynamicBufferAttribute,
+  unregisterDynamicBufferOwner,
+} from '../../dynamicBufferRanges.js';
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
 const QUALITY_TIERS = ['high', 'medium', 'low'];
+const DYNAMIC_ATTRIBUTE_KEYS = ['instOffset', 'instAxis', 'instParams', 'instDynamics', 'instColor'];
 
 /**
  * Parse #RRGGBB into preallocated rgb array.
@@ -458,6 +467,7 @@ export class ContinuousPlumeSystem {
 
     if (THREE) {
       this._initThree(THREE, opts);
+      if (opts.scene) this.bindDynamicBuffers(opts.scene);
     }
   }
 
@@ -494,6 +504,17 @@ export class ContinuousPlumeSystem {
       const batch = this.layerBatches[i];
       const tb = batch.tierBuffers[t];
       if (!tb) continue;
+      if (batch.dynamicBufferOwner) {
+        for (let bindingIndex = 0; bindingIndex < DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
+          const key = DYNAMIC_ATTRIBUTE_KEYS[bindingIndex];
+          replaceDynamicBufferAttribute(
+            batch.dynamicBufferOwner,
+            bindingIndex,
+            tb.attrs[key],
+            `plume-quality-tier:${t}`,
+          );
+        }
+      }
       batch.mesh.geometry = tb.geo;
       batch.offset = tb.offset;
       batch.axisScale = tb.axisScale;
@@ -501,7 +522,8 @@ export class ContinuousPlumeSystem {
       batch.dynamics = tb.dynamics;
       batch.color = tb.color;
       batch.attrs = tb.attrs;
-      batch.mesh.count = 0;
+      if (batch.dynamicBufferOwner) commitDynamicBufferOwner(batch.dynamicBufferOwner, 0);
+      else batch.mesh.count = 0;
       batch.writeCount = 0;
     }
     return this._qualityTier;
@@ -658,11 +680,34 @@ export class ContinuousPlumeSystem {
         tierBuffers,
         capacity,
         writeCount: 0,
+        dynamicBufferOwner: null,
         uScratch,
       });
     }
 
     this._initGpu = true;
+  }
+
+  bindDynamicBuffers(scene) {
+    if (!scene || !this.layerBatches) return 0;
+    let bound = 0;
+    for (let batchIndex = 0; batchIndex < this.layerBatches.length; batchIndex++) {
+      const batch = this.layerBatches[batchIndex];
+      if (batch.dynamicBufferOwner) {
+        bound++;
+        continue;
+      }
+      batch.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
+        id: `continuous-plume:${this.recipe.id}:${batch.role}`,
+        mesh: batch.mesh,
+        attributes: DYNAMIC_ATTRIBUTE_KEYS.map((key) => ({
+          name: key,
+          attribute: batch.attrs[key],
+        })),
+      });
+      if (batch.dynamicBufferOwner) bound++;
+    }
+    return bound;
   }
 
   /**
@@ -785,7 +830,11 @@ export class ContinuousPlumeSystem {
     this.eventLights.finalize();
 
     if (this._initGpu && this.layerBatches && !this._disposed) {
-      for (let b = 0; b < this.layerBatches.length; b++) this.layerBatches[b].writeCount = 0;
+      for (let b = 0; b < this.layerBatches.length; b++) {
+        const batch = this.layerBatches[b];
+        assertDynamicBufferOwnerWritable(batch.dynamicBufferOwner);
+        batch.writeCount = 0;
+      }
 
       const n = result.activeCount;
       for (let i = 0; i < n; i++) {
@@ -816,6 +865,9 @@ export class ContinuousPlumeSystem {
         batch.color[oi] = s.color[0];
         batch.color[oi + 1] = s.color[1];
         batch.color[oi + 2] = s.color[2];
+        for (let bindingIndex = 0; bindingIndex < DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
+          markDynamicBufferItems(batch.dynamicBufferOwner, bindingIndex, w);
+        }
         batch.writeCount = w + 1;
       }
 
@@ -825,13 +877,16 @@ export class ContinuousPlumeSystem {
       const softBoost = result.presentation.softEdgeBoost;
       for (let b = 0; b < this.layerBatches.length; b++) {
         const batch = this.layerBatches[b];
-        batch.attrs.instOffset.needsUpdate = true;
-        batch.attrs.instAxis.needsUpdate = true;
-        batch.attrs.instParams.needsUpdate = true;
-        if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
-        batch.attrs.instColor.needsUpdate = true;
-        if (batch.mesh.isInstancedMesh) batch.mesh.count = batch.writeCount;
-        else batch.mesh.count = batch.writeCount;
+        if (batch.dynamicBufferOwner) {
+          commitDynamicBufferOwner(batch.dynamicBufferOwner, batch.writeCount);
+        } else {
+          batch.attrs.instOffset.needsUpdate = true;
+          batch.attrs.instAxis.needsUpdate = true;
+          batch.attrs.instParams.needsUpdate = true;
+          if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
+          batch.attrs.instColor.needsUpdate = true;
+          batch.mesh.count = batch.writeCount;
+        }
         batch.mesh.visible = batch.writeCount > 0 && this.pool._layerEnabled[batch.layerIndex] === 1;
 
         const li = batch.layerIndex;
@@ -884,7 +939,8 @@ export class ContinuousPlumeSystem {
         const batch = this.layerBatches[b];
         batch.writeCount = 0;
         if (batch.mesh) {
-          batch.mesh.count = 0;
+          if (batch.dynamicBufferOwner) commitDynamicBufferOwner(batch.dynamicBufferOwner, 0);
+          else batch.mesh.count = 0;
           batch.mesh.visible = false;
         }
       }
@@ -907,6 +963,8 @@ export class ContinuousPlumeSystem {
     if (this.layerBatches) {
       for (let i = 0; i < this.layerBatches.length; i++) {
         const b = this.layerBatches[i];
+        unregisterDynamicBufferOwner(b.dynamicBufferOwner);
+        b.dynamicBufferOwner = null;
         if (b.tierBuffers) {
           for (let ti = 0; ti < QUALITY_TIERS.length; ti++) {
             const tb = b.tierBuffers[QUALITY_TIERS[ti]];

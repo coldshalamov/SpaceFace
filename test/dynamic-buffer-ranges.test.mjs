@@ -28,6 +28,8 @@ import {
   registerAsteroidBaseLeaf,
   syncAsteroidInstancePool,
 } from '../src/render/asteroidInstancePool.js';
+import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
+import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
 
 function acknowledgeInitial(attribute) {
   attribute.onUploadCallback();
@@ -370,4 +372,70 @@ test('common-rock matrices publish only the changed compacted slot after residen
   disposeAsteroidInstancePool(pool);
   geometry.dispose();
   material.dispose();
+});
+
+test('ordinary-flight plume layers publish their written socket prefixes', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const plume = new ContinuousPlumeSystem(THREE, KESTREL_MAIN_PLUME_RECIPE, {
+    distortionEnabled: false,
+    maxSockets: 20,
+    scene,
+  });
+  scene.add(plume.group);
+  const sockets = [
+    { x: -1, y: 0, z: -0.5, ax: -1, ay: 0, az: 0 },
+    { x: -1, y: 0, z: 0.5, ax: -1, ay: 0, az: 0 },
+  ];
+  const attributesFor = (batch) => [
+    batch.attrs.instOffset,
+    batch.attrs.instAxis,
+    batch.attrs.instParams,
+    batch.attrs.instDynamics,
+    batch.attrs.instColor,
+  ];
+
+  plume.update(1 / 60, 0.72, sockets, { a11y: {} });
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  const activeBatches = plume.layerBatches.filter((batch) => batch.writeCount > 0 && batch.mesh.visible);
+  assert.ok(activeBatches.length >= 2, 'accepted Kestrel feedback keeps multiple authored layers');
+  for (const batch of activeBatches) {
+    for (const attribute of attributesFor(batch)) {
+      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+      acknowledgeUpdate(attribute);
+    }
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBefore = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  plume.update(1 / 60, 0.72, sockets, { a11y: {} });
+  assert.equal(activeBatches.flatMap(attributesFor)
+    .reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+  'plume writes stay private until the renderer publication point');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  let expectedBytes = 0;
+  let fullBytes = 0;
+  for (const batch of activeBatches) {
+    for (const attribute of attributesFor(batch)) {
+      assert.deepEqual(attribute.updateRanges, [{
+        start: 0,
+        count: batch.writeCount * attribute.itemSize,
+      }]);
+      expectedBytes += batch.writeCount * attribute.itemSize * Float32Array.BYTES_PER_ELEMENT;
+      fullBytes += attribute.array.byteLength;
+      acknowledgeUpdate(attribute);
+    }
+  }
+  const requestedAfter = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  assert.equal(requestedAfter - requestedBefore, expectedBytes);
+  assert.equal(expectedBytes / fullBytes, sockets.length / 20,
+    'two ordinary-flight sockets request 90% fewer bytes than the allocated family buffers');
+  coordinator.disarm(epoch);
+  plume.dispose();
 });

@@ -233,6 +233,7 @@ export class FamilyProductionFleet {
     if (replacement.group) replacement.group.visible = wasVisible;
     const host = parent || this._scene;
     if (host && replacement.group) host.add(replacement.group);
+    if (this._scene && replacement.bindDynamicBuffers) replacement.bindDynamicBuffers(this._scene);
     if (parent && old.group) parent.remove(old.group);
     old.dispose();
     entry.plume = replacement;
@@ -263,6 +264,7 @@ export class FamilyProductionFleet {
     for (let i = 0; i < this.families.length; i++) {
       const f = this.families[i];
       if (f.plume.group && !f.plume.group.parent) scene.add(f.plume.group);
+      if (f.plume.bindDynamicBuffers) f.plume.bindDynamicBuffers(scene);
       if (f.rcs && f.rcs.group && !f.rcs.group.parent) scene.add(f.rcs.group);
     }
   }
