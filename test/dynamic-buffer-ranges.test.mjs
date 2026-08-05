@@ -10,6 +10,7 @@ import {
   markDynamicBufferItems,
   markDynamicComponentRange,
   registerDynamicBufferOwner,
+  unregisterDynamicBufferOwner,
 } from '../src/render/dynamicBufferRanges.js';
 import {
   commitInstancedSpriteBuckets,
@@ -290,6 +291,21 @@ test('context restoration accepts Three driver re-upload without weakening unsol
     /received an unsolicited upload callback/,
     'only the one explicitly armed restored-context upload is accepted',
   );
+});
+
+test('an invalid owner can still release its callback and coordinator ownership', () => {
+  const fixture = makeOwnerFixture();
+  assert.throws(
+    () => fixture.attribute.onUploadCallback(),
+    /received an unsolicited upload callback/,
+  );
+  assert.equal(fixture.owner.invalid, true);
+
+  assert.equal(unregisterDynamicBufferOwner(fixture.owner), true);
+  assert.equal(Object.hasOwn(fixture.attribute, 'onUploadCallback'), false);
+  assert.equal(fixture.coordinator.getDiagnostics().registeredOwners, 0);
+  assert.equal(fixture.coordinator.getDiagnostics().owners.length, 0);
+  assert.equal(unregisterDynamicBufferOwner(fixture.owner), false);
 });
 
 test('live sprite and trail owners publish only their packed prefixes after initial residency', () => {

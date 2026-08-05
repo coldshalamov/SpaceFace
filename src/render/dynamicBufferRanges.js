@@ -591,7 +591,7 @@ function diagnosticsAddOwner(coordinator, owner) {
 
 export function unregisterDynamicBufferOwner(owner) {
   if (!owner || !owner.coordinator) return false;
-  assertDynamicBufferOwnerWritable(owner);
+  assertDynamicBufferOwnerLifecycleSafe(owner);
   const coordinator = owner.coordinator;
   const ownerIndex = coordinator.owners.indexOf(owner);
   if (ownerIndex >= 0) coordinator.owners.splice(ownerIndex, 1);
@@ -608,9 +608,7 @@ export function unregisterDynamicBufferOwner(owner) {
   return true;
 }
 
-export function assertDynamicBufferOwnerWritable(owner) {
-  if (!owner) return;
-  if (owner.invalid) throw new Error(owner.diagnostics.lastError || `${owner.id} is invalid`);
+function assertDynamicBufferOwnerLifecycleSafe(owner) {
   const coordinator = owner.coordinator;
   if (uploadCallbackBinding) {
     coordinator.diagnostics.writeViolations++;
@@ -620,6 +618,12 @@ export function assertDynamicBufferOwnerWritable(owner) {
     coordinator.diagnostics.writeViolations++;
     throw new Error(`${owner.id} cannot write after publication in renderer epoch ${coordinator.epoch}`);
   }
+}
+
+export function assertDynamicBufferOwnerWritable(owner) {
+  if (!owner) return;
+  if (owner.invalid) throw new Error(owner.diagnostics.lastError || `${owner.id} is invalid`);
+  assertDynamicBufferOwnerLifecycleSafe(owner);
 }
 
 export function markDynamicBufferItems(owner, bindingIndex, itemStart, itemCount = 1) {
