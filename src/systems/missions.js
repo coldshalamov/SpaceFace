@@ -1977,11 +1977,11 @@ export const missions = {
     }
     if (state.ui) state.ui.trackedMissionId = null;
     // G05: pre-first-dock corridor idle owns one clear Dock-at-Helios command with marker machinery.
-    // NEVER overwrite an existing trade/story/onboarding waypoint — install corridor only when
-    // state.nav.waypoint is absent (and buildCorridorOpeningWaypoint still gates first-dock /
-    // tracked mission). Hierarchy: existing nav wins over idle corridor.
+    // NEVER overwrite an existing trade/story/onboarding waypoint or an explicit story refresh —
+    // install corridor only when state.nav.waypoint is absent and story has not claimed precedence
+    // (buildCorridorOpeningWaypoint still gates first-dock / tracked mission).
     const existingWp = state.nav && state.nav.waypoint;
-    if (!existingWp) {
+    if (!existingWp && !(options.forceStory || options.force)) {
       const corridorWp = buildCorridorOpeningWaypoint(state);
       if (corridorWp) {
         this._setNavWaypoint(corridorWp);
