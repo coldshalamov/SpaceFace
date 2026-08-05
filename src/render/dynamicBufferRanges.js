@@ -162,7 +162,7 @@ function validateBindingForPublication(binding) {
   }
 }
 
-function publishBinding(binding, epoch, forceFull) {
+function publishBinding(binding, epoch, forceFull, probeForced = false) {
   validateBindingForPublication(binding);
   const attribute = binding.attribute;
   const start = forceFull ? 0 : binding.pending.start;
@@ -216,6 +216,7 @@ function publishBinding(binding, epoch, forceFull) {
   diagnostics.publishedGeneration = Math.max(diagnostics.publishedGeneration, generation);
   if (forceFull) diagnostics.forceFullUploads++;
   else diagnostics.partialUploads++;
+  if (probeForced) diagnostics.probeFullUploads++;
   const coordinatorDiagnostics = binding.owner.coordinator.diagnostics;
   coordinatorDiagnostics.updateRangePublications++;
   if (binding.rangeRecordUses > 0) coordinatorDiagnostics.updateRangeRecordReuses++;
@@ -275,12 +276,13 @@ function publishOwner(owner, scene, camera, epoch) {
   }
 
   let published = false;
+  const probeForceFull = owner.coordinator.diagnostics.probeForceFullUploads === true;
   for (let index = 0; index < owner.bindings.length; index++) {
     const binding = owner.bindings[index];
     if (binding.forceFull) {
       published = publishBinding(binding, epoch, true) || published;
     } else if (eligibility >= 2 && binding.pending.end > binding.pending.start) {
-      published = publishBinding(binding, epoch, false) || published;
+      published = publishBinding(binding, epoch, probeForceFull, probeForceFull) || published;
     }
   }
   if (published) {
@@ -357,6 +359,7 @@ export function createDynamicBufferCoordinator(scene) {
     contextLosses: 0,
     contextRestores: 0,
     contextRestoreAcknowledgements: 0,
+    probeForceFullUploads: false,
     invalid: false,
     lastError: null,
     owners: [],
@@ -404,6 +407,20 @@ export function createDynamicBufferCoordinator(scene) {
     }
   };
   coordinator.wrapper = wrapper;
+
+  coordinator.setProbeForceFullUploads = (on) => {
+    if (coordinator.active) {
+      throw new Error('dynamic buffer probe mode cannot change while a renderer epoch is active');
+    }
+    diagnostics.probeForceFullUploads = !!on;
+    return diagnostics.probeForceFullUploads;
+  };
+  Object.defineProperty(diagnostics, 'setProbeForceFullUploads', {
+    value: coordinator.setProbeForceFullUploads,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
 
   coordinator.arm = () => {
     if (diagnostics.invalid) throw new Error(diagnostics.lastError || 'dynamic buffer coordinator is invalid');
@@ -504,6 +521,7 @@ export function registerDynamicBufferOwner(scene, spec) {
       uploadRangeCount: 0,
       forceFullUploads: 0,
       partialUploads: 0,
+      probeFullUploads: 0,
       acknowledgements: 0,
       contextRestoreAcknowledgements: 0,
       pendingGeneration: 0,

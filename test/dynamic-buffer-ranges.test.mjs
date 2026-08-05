@@ -251,6 +251,52 @@ test('ordinary dirty spans survive skipped draws and publish once on eligibility
   assert.equal(fixture.coordinator.getDiagnostics().updateRangeRecordReuses, 1);
 });
 
+test('probe-only full-span control changes requested bytes without changing logical writes', () => {
+  const ranged = makeOwnerFixture(8);
+  let epoch = beginSceneRender(ranged);
+  acknowledgeInitial(ranged.attribute);
+  ranged.coordinator.disarm(epoch);
+
+  markDynamicBufferItems(ranged.owner, 0, 2);
+  commitDynamicBufferOwner(ranged.owner, 8);
+  epoch = beginSceneRender(ranged);
+  assert.deepEqual(ranged.attribute.updateRanges, [{ start: 6, count: 3 }]);
+  acknowledgeUpdate(ranged.attribute);
+  ranged.coordinator.disarm(epoch);
+
+  const diagnostics = ranged.coordinator.getDiagnostics();
+  assert.equal(typeof diagnostics.setProbeForceFullUploads, 'function');
+  assert.equal(diagnostics.probeForceFullUploads, false);
+  assert.equal(diagnostics.setProbeForceFullUploads(true), true);
+
+  markDynamicBufferItems(ranged.owner, 0, 2);
+  commitDynamicBufferOwner(ranged.owner, 8);
+  epoch = beginSceneRender(ranged);
+  assert.deepEqual(ranged.attribute.updateRanges, [{ start: 0, count: 24 }]);
+  acknowledgeUpdate(ranged.attribute);
+  ranged.coordinator.disarm(epoch);
+
+  assert.equal(ranged.owner.diagnostics.logicalBytesChanged, 24,
+    'both windows report the same three changed float components');
+  assert.equal(ranged.owner.diagnostics.requestedUploadBytes, 204,
+    'initial residency (96 bytes), one ranged write (12), and one probe full-span write (96) are explicit');
+  assert.equal(ranged.owner.diagnostics.probeFullUploads, 1);
+  assert.equal(diagnostics.setProbeForceFullUploads(false), false);
+  assert.equal(diagnostics.probeForceFullUploads, false);
+});
+
+test('probe-only full-span control cannot change during an armed renderer epoch', () => {
+  const fixture = makeOwnerFixture();
+  const diagnostics = fixture.coordinator.getDiagnostics();
+  const epoch = fixture.coordinator.arm();
+  assert.throws(
+    () => diagnostics.setProbeForceFullUploads(true),
+    /renderer epoch is active/,
+  );
+  fixture.coordinator.disarm(epoch);
+  assert.equal(diagnostics.probeForceFullUploads, false);
+});
+
 test('context loss supersedes an unacknowledged generation and restore forces a full replacement', () => {
   const fixture = makeOwnerFixture();
   let epoch = beginSceneRender(fixture);

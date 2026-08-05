@@ -70,6 +70,7 @@ import { requireBrokerClaimOrDiagnostic } from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 // Get-Process CPU time advances in scheduler-sized quanta on Windows, so a near-zero threshold
 // mistakes ordinary dormant desktop roots for foreground work. Sample long enough to average those
 // ticks and reject sustained work (or churn); the route's no-op control and GPU validity checks remain
@@ -374,7 +375,7 @@ export async function runReleaseSoakProbe({
   }
 }
 
-async function launchBrowser(viewport) {
+async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
   const executablePath = findSystemBrowser();
   assert(executablePath, 'headed Chrome or Edge is required for browser release-soak evidence');
   const { chromium } = await loadPlaywright();
@@ -393,6 +394,16 @@ async function launchBrowser(viewport) {
     assert(browserChildProcess, 'browser launch server must expose its owned child process');
     browser = await chromium.connect(browserServer.wsEndpoint());
     const context = await browser.newContext({ viewport, screen: viewport, deviceScaleFactor: 1, locale: 'en-US', colorScheme: 'dark' });
+    if (enableTier1Counters) {
+      await context.addInitScript(() => {
+        Object.defineProperty(window, '__SPACEFACE_PERF_COUNTERS__', {
+          value: true,
+          configurable: false,
+          enumerable: false,
+          writable: false,
+        });
+      });
+    }
     const page = await context.newPage();
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
@@ -402,7 +413,12 @@ async function launchBrowser(viewport) {
   }
 }
 
-async function launchElectron(root, onOwnership = () => {}, taskId = 'release-soak-electron') {
+async function launchElectron(
+  root,
+  onOwnership = () => {},
+  taskId = 'release-soak-electron',
+  { enableTier1Counters = false } = {},
+) {
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
@@ -422,6 +438,20 @@ async function launchElectron(root, onOwnership = () => {}, taskId = 'release-so
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
   installCspSafePlaywrightPolling(page);
+  if (enableTier1Counters) {
+    // Electron creates its first page as part of app startup, before Playwright can install an init
+    // script. Reload the same canonical route once inside the same owned runtime after arming the
+    // install-on-boot counter flag. This does not spend another runtime launch or change its URL.
+    await page.addInitScript(() => {
+      Object.defineProperty(window, '__SPACEFACE_PERF_COUNTERS__', {
+        value: true,
+        configurable: false,
+        enumerable: false,
+        writable: false,
+      });
+    });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  }
   return {
     electronApp,
     processMonitor,
@@ -926,6 +956,46 @@ async function sampleRafWindow(page, {
       } : null;
     }
 
+    function readDynamicBufferSlice() {
+      const source = state?.render?.dynamicBufferRanges;
+      const owners = Array.isArray(source?.owners) ? source.owners.map((owner) => ({
+        id: owner.id || null,
+        activeCount: Number(owner.activeCount) || 0,
+        capacity: Number(owner.capacity) || 0,
+        logicalBytesChanged: Number(owner.logicalBytesChanged) || 0,
+        requestedUploadBytes: Number(owner.requestedUploadBytes) || 0,
+        uploadRangeCount: Number(owner.uploadRangeCount) || 0,
+        forceFullUploads: Number(owner.forceFullUploads) || 0,
+        partialUploads: Number(owner.partialUploads) || 0,
+        probeFullUploads: Number(owner.probeFullUploads) || 0,
+      })) : [];
+      const totals = owners.reduce((sum, owner) => {
+        for (const field of [
+          'logicalBytesChanged',
+          'requestedUploadBytes',
+          'uploadRangeCount',
+          'forceFullUploads',
+          'partialUploads',
+          'probeFullUploads',
+        ]) sum[field] += owner[field];
+        return sum;
+      }, {
+        logicalBytesChanged: 0,
+        requestedUploadBytes: 0,
+        uploadRangeCount: 0,
+        forceFullUploads: 0,
+        partialUploads: 0,
+        probeFullUploads: 0,
+      });
+      return {
+        available: !!source,
+        probeForceFullUploads: source?.probeForceFullUploads === true,
+        registeredOwners: Number(source?.registeredOwners) || owners.length,
+        totals,
+        owners,
+      };
+    }
+
     function readRouteProof() {
       const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
         ? window.__SPACEFACE_PERF__.getReport()
@@ -994,6 +1064,12 @@ async function sampleRafWindow(page, {
 
     function resetProbes() {
       try { if (window.__SPACEFACE_PERF__?.reset) window.__SPACEFACE_PERF__.reset(); } catch (_) { /* ignore */ }
+      try {
+        if (window.__SPACEFACE_PERF__?.tier1?.reset) {
+          window.__SPACEFACE_PERF__.tier1.reset();
+          window.__SPACEFACE_PERF__.tier1.markBootBoundary();
+        }
+      } catch (_) { /* ignore */ }
       try { if (window.__THREE_GAME_DIAGNOSTICS__?.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) { /* ignore */ }
       try { if (state?.render?.resetPostTelemetrySample) state.render.resetPostTelemetrySample(); } catch (_) { /* ignore */ }
       if (state?.render?.gpuTimers && typeof state.render.gpuTimers.reset === 'function') {
@@ -1022,9 +1098,15 @@ async function sampleRafWindow(page, {
       actionReceipt,
       transitionBreakdown,
       gpuDrain,
+      dynamicBufferStart,
+      dynamicBufferEnd,
     }) {
-      const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
-        ? window.__SPACEFACE_PERF__.getReport()
+      const perfApi = window.__SPACEFACE_PERF__ || state?.perfRuntime || null;
+      const perf = perfApi && typeof perfApi.getReport === 'function'
+        ? perfApi.getReport()
+        : null;
+      const tier1 = perfApi && typeof perfApi.getCounterSnapshot === 'function'
+        ? perfApi.getCounterSnapshot()
         : null;
       const diag = window.__THREE_GAME_DIAGNOSTICS__ && typeof window.__THREE_GAME_DIAGNOSTICS__.getReport === 'function'
         ? window.__THREE_GAME_DIAGNOSTICS__.getReport()
@@ -1160,6 +1242,14 @@ async function sampleRafWindow(page, {
           terminals: gpu?.terminals || null,
           passes: gpu?.passes || null,
         },
+        dynamicBuffers: {
+          available: dynamicBufferStart?.available === true && dynamicBufferEnd?.available === true,
+          probeForceFullUploads: dynamicBufferEnd?.probeForceFullUploads === true,
+          start: dynamicBufferStart || null,
+          end: dynamicBufferEnd || null,
+          delta: metricDelta(dynamicBufferStart?.totals, dynamicBufferEnd?.totals),
+        },
+        tier1,
         capturedAt: new Date().toISOString(),
       };
 
@@ -1305,6 +1395,7 @@ async function sampleRafWindow(page, {
     let actionReceipt = null;
     try {
       resetProbes();
+      const dynamicBufferStart = readDynamicBufferSlice();
 
       try {
         longTaskObserver = new PerformanceObserver((list) => {
@@ -1433,6 +1524,7 @@ async function sampleRafWindow(page, {
       });
       const programInventoryEnd = collectPerformanceProgramInventory({ state });
       const heapEnd = readHeapSlice();
+      const dynamicBufferEnd = readDynamicBufferSlice();
 
       // Local percentile summary matching summarizeSamples contract keys.
       const values = samples.map((sample) => sample.frameMs).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
@@ -1486,6 +1578,8 @@ async function sampleRafWindow(page, {
         actionReceipt,
         transitionBreakdown,
         gpuDrain,
+        dynamicBufferStart,
+        dynamicBufferEnd,
       });
       return { samples, attribution };
     } finally {
@@ -1536,12 +1630,18 @@ function snapshotDiagnosticSettings(state) {
     entityIsolationActive: state?.render?.perfEntityIsolation?.inspect?.().active === true,
     vfxIsolationActive: state?.render?.perfVfxIsolation?.inspect?.().active === true,
     materialIsolationActive: state?.render?.perfMaterialIsolation?.inspect?.().active === true,
+    dynamicBufferProbeForceFullUploads:
+      state?.render?.dynamicBufferRanges?.probeForceFullUploads === true,
     label: 'DIAGNOSTIC-ONLY — not a shippable fix',
   };
 }
 
 function applyDiagnosticVariantToState(state, snap, variantId) {
-  assert(ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId), `unknown diagnostic variant: ${variantId}`);
+  assert(
+    ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId)
+      || variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
+    `unknown diagnostic variant: ${variantId}`,
+  );
   if (!state) throw new Error('state unavailable for diagnostic variant');
   const label = 'DIAGNOSTIC-ONLY — not a shippable fix';
   if (variantId === 'baseline') {
@@ -1551,7 +1651,24 @@ function applyDiagnosticVariantToState(state, snap, variantId) {
     state.render?.perfEntityIsolation?.restore?.();
     state.render?.perfVfxIsolation?.restore?.();
     state.render?.perfMaterialIsolation?.restore?.();
+    state.render?.dynamicBufferRanges?.setProbeForceFullUploads?.(
+      snap.dynamicBufferProbeForceFullUploads === true,
+    );
     return { id: variantId, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
+  }
+  if (variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT) {
+    const control = state.render?.dynamicBufferRanges;
+    if (typeof control?.setProbeForceFullUploads !== 'function') {
+      throw new Error('dynamic buffer full-span probe control unavailable');
+    }
+    control.setProbeForceFullUploads(true);
+    return {
+      id: variantId,
+      diagnostic: true,
+      label,
+      applied: control.probeForceFullUploads === true,
+      dynamicBufferProbeForceFullUploads: control.probeForceFullUploads === true,
+    };
   }
   if (variantId === 'sim_paused') {
     state.timeScale = 0;
@@ -1603,13 +1720,18 @@ function restoreDiagnosticVariantToState(state, snap) {
   state.render?.perfEntityIsolation?.restore?.();
   state.render?.perfVfxIsolation?.restore?.();
   state.render?.perfMaterialIsolation?.restore?.();
+  state.render?.dynamicBufferRanges?.setProbeForceFullUploads?.(
+    snap.dynamicBufferProbeForceFullUploads === true,
+  );
   const videoBloom = state.settings?.video?.bloom;
   const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
   const ok = state.timeScale === snap.timeScale && videoBloom === snap.bloom
     && spaceBgVisible === snap.spaceBgVisible
     && state.render?.perfEntityIsolation?.inspect?.().active !== true
     && state.render?.perfVfxIsolation?.inspect?.().active !== true
-    && state.render?.perfMaterialIsolation?.inspect?.().active !== true;
+    && state.render?.perfMaterialIsolation?.inspect?.().active !== true
+    && (state.render?.dynamicBufferRanges?.probeForceFullUploads === true)
+      === (snap.dynamicBufferProbeForceFullUploads === true);
   return {
     restored: ok === true,
     diagnostic: true,
@@ -1625,7 +1747,11 @@ function restoreDiagnosticVariantToState(state, snap) {
  * These are NOT shippable fixes.
  */
 async function applyDiagnosticVariant(page, variantId) {
-  assert(ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId), `unknown diagnostic variant: ${variantId}`);
+  assert(
+    ATTRIBUTION_DIAGNOSTIC_VARIANTS.includes(variantId)
+      || variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
+    `unknown diagnostic variant: ${variantId}`,
+  );
   const applied = await page.evaluate((id) => {
     const state = window.SF?.state;
     if (!state) throw new Error('SF.state unavailable for diagnostic variant');
@@ -1638,6 +1764,8 @@ async function applyDiagnosticVariant(page, variantId) {
         entityIsolationActive: state.render?.perfEntityIsolation?.inspect?.().active === true,
         vfxIsolationActive: state.render?.perfVfxIsolation?.inspect?.().active === true,
         materialIsolationActive: state.render?.perfMaterialIsolation?.inspect?.().active === true,
+        dynamicBufferProbeForceFullUploads:
+          state.render?.dynamicBufferRanges?.probeForceFullUploads === true,
         label,
       };
     }
@@ -1649,8 +1777,25 @@ async function applyDiagnosticVariant(page, variantId) {
       state.render?.perfEntityIsolation?.restore?.();
       state.render?.perfVfxIsolation?.restore?.();
       state.render?.perfMaterialIsolation?.restore?.();
+      state.render?.dynamicBufferRanges?.setProbeForceFullUploads?.(
+        snap.dynamicBufferProbeForceFullUploads === true,
+      );
       try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
       return { id, diagnostic: false, label: 'baseline (restored defaults)', applied: true };
+    }
+    if (id === 'dynamic_buffer_full_span') {
+      const control = state.render?.dynamicBufferRanges;
+      if (typeof control?.setProbeForceFullUploads !== 'function') {
+        throw new Error('dynamic buffer full-span probe control unavailable');
+      }
+      control.setProbeForceFullUploads(true);
+      return {
+        id,
+        diagnostic: true,
+        label,
+        applied: control.probeForceFullUploads === true,
+        dynamicBufferProbeForceFullUploads: control.probeForceFullUploads === true,
+      };
     }
     if (id === 'sim_paused') {
       state.timeScale = 0;
@@ -1715,6 +1860,9 @@ async function restoreDiagnosticVariant(page) {
     state.render?.perfEntityIsolation?.restore?.();
     state.render?.perfVfxIsolation?.restore?.();
     state.render?.perfMaterialIsolation?.restore?.();
+    state.render?.dynamicBufferRanges?.setProbeForceFullUploads?.(
+      snap.dynamicBufferProbeForceFullUploads === true,
+    );
     try { window.SF?.bus?.emit('settings:changed', { section: 'video', key: 'bloom' }); } catch (_) { /* ignore */ }
     const videoBloom = state.settings?.video?.bloom;
     const spaceBgVisible = state.render?.spaceBg?.group?.visible !== false;
@@ -1722,7 +1870,9 @@ async function restoreDiagnosticVariant(page) {
       && spaceBgVisible === snap.spaceBgVisible
       && state.render?.perfEntityIsolation?.inspect?.().active !== true
       && state.render?.perfVfxIsolation?.inspect?.().active !== true
-      && state.render?.perfMaterialIsolation?.inspect?.().active !== true;
+      && state.render?.perfMaterialIsolation?.inspect?.().active !== true
+      && (state.render?.dynamicBufferRanges?.probeForceFullUploads === true)
+        === (snap.dynamicBufferProbeForceFullUploads === true);
     delete window.__SF_PERF_ATTRIBUTION_RESTORE__;
     return {
       restored: ok === true,
@@ -1784,6 +1934,9 @@ async function disableMeasurementGates(page) {
       const timers = window.SF?.state?.render?.gpuTimers;
       if (timers && typeof timers.setEnabled === 'function') timers.setEnabled(false);
     } catch (_) { /* ignore */ }
+    try {
+      window.SF?.state?.render?.dynamicBufferRanges?.setProbeForceFullUploads?.(false);
+    } catch (_) { /* ignore */ }
     const timers = window.SF?.state?.render?.gpuTimers;
     const gpuReport = timers && typeof timers.getReport === 'function' ? timers.getReport() : null;
     return {
@@ -1792,6 +1945,8 @@ async function disableMeasurementGates(page) {
       backgroundJobTrackingEnabled: perf?.backgroundJobTrackingEnabled === true
         || perf?.isBackgroundJobTrackingEnabled?.() === true,
       gpuTimersEnabled: gpuReport?.enabled === true,
+      dynamicBufferProbeForceFullUploads:
+        window.SF?.state?.render?.dynamicBufferRanges?.probeForceFullUploads === true,
       restoreJournalPresent: window.__SF_PERF_ATTRIBUTION_RESTORE__ != null,
     };
   }).catch(() => ({
@@ -1799,6 +1954,7 @@ async function disableMeasurementGates(page) {
     systemTimingEnabled: false,
     backgroundJobTrackingEnabled: false,
     gpuTimersEnabled: false,
+    dynamicBufferProbeForceFullUploads: false,
     restoreJournalPresent: false,
   }));
 }
@@ -2960,6 +3116,7 @@ async function finalizePerformanceAttributionRun({
     && measurementState.systemTimingEnabled !== true
     && measurementState.backgroundJobTrackingEnabled !== true
     && measurementState.gpuTimersEnabled !== true
+    && measurementState.dynamicBufferProbeForceFullUploads !== true
     && measurementState.restoreJournalPresent !== true;
   const environment = await readAttributionEnvironment(
     page,
@@ -3156,6 +3313,7 @@ async function runPerformanceAttributionProbe({
   sampleMs = 5_000,
   flightTimeoutMs = 150_000,
   dockTimeoutMs = 90_000,
+  enableTier1Counters = false,
   activityInspector = inspectPerformanceActivity,
   log = () => {},
 } = {}) {
@@ -3254,7 +3412,9 @@ async function runPerformanceAttributionProbe({
       ownedServer = await acquireVisualProbeServer({ root });
       assert.equal(ownedServer.ownsServer, true, 'attribution probe must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
-      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
+      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport, {
+        enableTier1Counters,
+      }));
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -3264,7 +3424,7 @@ async function runPerformanceAttributionProbe({
         childProcess = owned.childProcess;
         processMonitor = owned.processMonitor;
         pageIssueTracker = owned.pageIssueTracker;
-      }, taskId);
+      }, taskId, { enableTier1Counters });
       ({
         page,
         electronApp,
@@ -3428,6 +3588,7 @@ async function runPerformanceAttributionProbe({
       && measurementState.renderWorkEnabled !== true
       && measurementState.systemTimingEnabled !== true
       && measurementState.gpuTimersEnabled !== true
+      && measurementState.dynamicBufferProbeForceFullUploads !== true
       && measurementState.restoreJournalPresent !== true;
     cleanupReport = await closeAttributionResources({
       runtimeKind,
