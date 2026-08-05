@@ -3446,10 +3446,20 @@ export const vfx = {
     geo.setIndex(idx);
     const along = new Float32Array((SEG + 1) * 2);
     const side = new Float32Array((SEG + 1) * 2);
+    const glowAlong = new Float32Array((SEG + 1) * 2);
+    const glowSide = new Float32Array((SEG + 1) * 2);
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG;
+      const ai = i * 2;
+      along[ai] = t; along[ai + 1] = t;
+      side[ai] = -1; side[ai + 1] = 1;
+      glowAlong[ai] = t; glowAlong[ai + 1] = t;
+      glowSide[ai] = -1; glowSide[ai + 1] = 1;
+    }
     const alongAttr = new THREE.BufferAttribute(along, 1);
     const sideAttr = new THREE.BufferAttribute(side, 1);
-    alongAttr.usage = THREE.DynamicDrawUsage;
-    sideAttr.usage = THREE.DynamicDrawUsage;
+    alongAttr.usage = THREE.StaticDrawUsage;
+    sideAttr.usage = THREE.StaticDrawUsage;
     geo.setAttribute('aAlong', alongAttr);
     geo.setAttribute('aSide', sideAttr);
 
@@ -3471,10 +3481,12 @@ export const vfx = {
     this._scene.add(mesh);
 
     const glowGeo = geo.clone();
-    const glowAlong = new Float32Array((SEG + 1) * 2);
-    const glowSide = new Float32Array((SEG + 1) * 2);
-    glowGeo.setAttribute('aAlong', new THREE.BufferAttribute(glowAlong, 1));
-    glowGeo.setAttribute('aSide', new THREE.BufferAttribute(glowSide, 1));
+    const glowAlongAttr = new THREE.BufferAttribute(glowAlong, 1);
+    const glowSideAttr = new THREE.BufferAttribute(glowSide, 1);
+    glowAlongAttr.usage = THREE.StaticDrawUsage;
+    glowSideAttr.usage = THREE.StaticDrawUsage;
+    glowGeo.setAttribute('aAlong', glowAlongAttr);
+    glowGeo.setAttribute('aSide', glowSideAttr);
     // Halo draw: the wide saturated sheath around the core. `sheath: 1` keeps the tension colour
     // instead of washing to white, so the cable reads as a coloured volume with a white centre
     // rather than as one flat tinted stripe.
@@ -3876,10 +3888,6 @@ export const vfx = {
     const SEG = cable.SEG;
     const corePos = cable.mesh.geometry.attributes.position.array;
     const glowPos = cable.glow.geometry.attributes.position.array;
-    const along = cable.along;
-    const side = cable.side;
-    const glowAlong = cable.glowAlong;
-    const glowSide = cable.glowSide;
     // Visible strain, in geometry rather than in colour: a loaded line shivers. The amplitude is
     // quadratic in LOAD (see the strain note above — physical strain is ~1e-4 in real play, so the
     // old s*s term was a hard zero and this whole effect never ran). Quadratic keeps the intent: a
@@ -3901,22 +3909,13 @@ export const vfx = {
       const cx = ax + dx * t + px * off;
       const cz = az + dz * t + pz * off;
       const o = i * 6;
-      const ai = i * 2;
       corePos[o] = cx + px * w; corePos[o + 1] = 1.5; corePos[o + 2] = cz + pz * w;
       corePos[o + 3] = cx - px * w; corePos[o + 4] = 1.5; corePos[o + 5] = cz - pz * w;
       glowPos[o] = cx + px * gw; glowPos[o + 1] = 1.4; glowPos[o + 2] = cz + pz * gw;
       glowPos[o + 3] = cx - px * gw; glowPos[o + 4] = 1.4; glowPos[o + 5] = cz - pz * gw;
-      along[ai] = t; along[ai + 1] = t;
-      side[ai] = -1; side[ai + 1] = 1;
-      glowAlong[ai] = t; glowAlong[ai + 1] = t;
-      glowSide[ai] = -1; glowSide[ai + 1] = 1;
     }
     cable.mesh.geometry.attributes.position.needsUpdate = true;
     cable.glow.geometry.attributes.position.needsUpdate = true;
-    cable.mesh.geometry.attributes.aAlong.needsUpdate = true;
-    cable.mesh.geometry.attributes.aSide.needsUpdate = true;
-    cable.glow.geometry.attributes.aAlong.needsUpdate = true;
-    cable.glow.geometry.attributes.aSide.needsUpdate = true;
     const bandPos = cable.band.geometry.attributes.position.array;
     const ux = dx / chord;
     const uz = dz / chord;

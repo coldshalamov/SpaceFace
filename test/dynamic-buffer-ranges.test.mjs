@@ -795,6 +795,79 @@ test('active field-device geometry publishes each visible instance prefix', () =
   }
 });
 
+test('tether topology coordinates stay resident while the rope positions move', () => {
+  const scene = new THREE.Scene();
+  const fixture = Object.create(vfx);
+  fixture._scene = scene;
+  fixture._initTetherCable();
+
+  const cable = fixture._tetherCable;
+  const topologyAttributes = [
+    cable.mesh.geometry.attributes.aAlong,
+    cable.mesh.geometry.attributes.aSide,
+    cable.glow.geometry.attributes.aAlong,
+    cable.glow.geometry.attributes.aSide,
+  ];
+  const expectedAlong = [];
+  const expectedSide = [];
+  for (let index = 0; index <= cable.SEG; index++) {
+    expectedAlong.push(Math.fround(index / cable.SEG), Math.fround(index / cable.SEG));
+    expectedSide.push(-1, 1);
+  }
+  assert.deepEqual(Array.from(topologyAttributes[0].array), expectedAlong);
+  assert.deepEqual(Array.from(topologyAttributes[1].array), expectedSide);
+  assert.deepEqual(Array.from(topologyAttributes[2].array), expectedAlong);
+  assert.deepEqual(Array.from(topologyAttributes[3].array), expectedSide);
+  for (const attribute of topologyAttributes) assert.equal(attribute.usage, THREE.StaticDrawUsage);
+
+  const player = {
+    id: 1, alive: true, radius: 6, rot: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+  };
+  const target = {
+    id: 2, type: 'asteroid', alive: true, radius: 8,
+    pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, data: {},
+  };
+  fixture.state = {
+    playerId: player.id,
+    player: {
+      tether: {
+        active: true, targetId: target.id, restLength: 44,
+        strain: 0, load: 0, phase: 'slack',
+      },
+    },
+    settings: { video: { bloom: true, bloomStrength: 1 } },
+    simTime: 1,
+  };
+  fixture.helpers = { player: () => player };
+  fixture._ent = (id) => (id === target.id ? target : null);
+  fixture._spawnLocalXZ = { x: 0, z: 0 };
+  fixture._entityLocalXZ = { x: 0, z: 0 };
+  fixture._toLocalXZ = (x, z, out) => { out.x = x; out.z = z; return out; };
+  fixture._ctmp = new THREE.Color();
+  fixture._c0 = new THREE.Color();
+  fixture._c1 = new THREE.Color();
+  fixture._spawnParticle = () => {};
+  fixture._t = 1;
+
+  const topologyVersions = topologyAttributes.map((attribute) => attribute.version);
+  const positionVersion = cable.mesh.geometry.attributes.position.version;
+  fixture._updateTetherCable(1 / 60);
+  assert.equal(cable.mesh.geometry.attributes.position.version, positionVersion + 1,
+    'the moving rope position buffer must still publish each active frame');
+  assert.deepEqual(topologyAttributes.map((attribute) => attribute.version), topologyVersions,
+    'fixed tether coordinates must not republish during a rope update');
+  assert.equal(topologyAttributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0), 800,
+    'one active tether frame avoids four full uploads totaling 800 bytes');
+
+  cable.mesh.geometry.dispose();
+  cable.glow.geometry.dispose();
+  cable.band.geometry.dispose();
+  cable.mesh.material.dispose();
+  cable.glow.material.dispose();
+  cable.band.material.dispose();
+});
+
 test('authored instance chunks publish only moved, hidden, released, and reused matrix slots', () => {
   assert.equal(typeof partsLibrary.runAuthoredInstanceRangeContractProbe, 'function',
     'parts library exposes its real private allocator through a bounded range contract probe');
