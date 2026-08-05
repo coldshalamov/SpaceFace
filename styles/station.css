@@ -275,7 +275,12 @@
 .sx-tag--bad { color:var(--loss); border-color:color-mix(in srgb,var(--loss) 32%,transparent); }
 
 /* =========================== MARKET INSTRUMENT =========================== */
-.sx-mkt { height:100%; display:grid; grid-template-columns:268px minmax(380px,1fr) 300px; gap:20px; min-height:0; }
+.sx-mkt { height:100%; display:grid; grid-template-columns:268px minmax(380px,1fr) 300px; grid-template-rows:auto minmax(0,1fr); gap:20px; min-height:0; }
+.sx-adboard { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px; padding:10px 14px; border:1px solid var(--line-1); border-radius:var(--r-md); background:linear-gradient(90deg,color-mix(in srgb,var(--surface-2) 88%,transparent),var(--surface-1)); font-family:var(--sx-ui); }
+.sx-adboard[hidden] { display:none; }
+.sx-adboard__k { flex:none; font-family:var(--sx-display); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); }
+.sx-adboard__sponsor { flex:none; font-size:12px; font-weight:600; color:var(--ink-1); }
+.sx-adboard__text { flex:1 1 220px; margin:0; font-family:var(--sx-mono); font-size:12.5px; letter-spacing:.02em; line-height:1.35; color:var(--ink-0); }
 .sx-mkt__list { display:flex; flex-direction:column; gap:1px; overflow-y:auto; min-height:0; padding-right:4px; }
 .sx-mkt-cat { font-family:var(--sx-display); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); padding:13px 8px 5px; }
 .sx-mkt-row { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:10px; padding:8px 10px; border:1px solid transparent; border-radius:8px; background:transparent; cursor:pointer; font-family:var(--sx-ui); text-align:left; transition:background .14s var(--ease); }

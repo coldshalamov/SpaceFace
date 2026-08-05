@@ -6,6 +6,7 @@ import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
@@ -132,12 +133,14 @@ export function createMarketScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-mkt';
   el.innerHTML =
+    `<aside class="sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
     `<nav class="sx-mkt__list" aria-label="Commodities"></nav>` +
     `<section class="sx-mkt__stage"></section>` +
     `<aside class="sx-mkt__console">` +
       `<div class="sx-mkt__trade"></div>` +
       `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
     `</aside>`;
+  const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
   const stageEl = el.querySelector('.sx-mkt__stage');
   const consoleEl = el.querySelector('.sx-mkt__console');
@@ -526,6 +529,7 @@ export function createMarketScreen(ctx) {
   }
 
   function renderAll(state) {
+    renderAdBoardNotice(adBoardEl, state);
     renderList(state); renderStage(state); renderConsole(state); renderRoutes(state);
   }
 
