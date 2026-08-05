@@ -93,7 +93,9 @@ function listenGameServer(root, requestedPort) {
   return new Promise((resolve, reject) => {
     const server = createGameServer({
       root,
-      async: false,
+      // Packaged GLBs and embedded KTX2 payloads can be tens of megabytes. Keep filesystem
+      // admission off Electron's main thread so shell lifecycle and the fixed save origin stay live.
+      async: true,
       devDiagnostics: !app.isPackaged,
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
     });

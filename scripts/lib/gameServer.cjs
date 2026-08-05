@@ -100,7 +100,7 @@ function isInsideRoot(file, resolvedRoot) {
  *
  * @param {object} opts
  * @param {string} opts.root            Absolute filesystem root to serve.
- * @param {boolean} [opts.async=true]   Use async fs (browser server) vs sync fs (Electron main).
+ * @param {boolean} [opts.async=true]   Use async filesystem metadata reads (required by Electron).
  * @param {Array}  [opts.extraRoutes]   Extra route handlers: [{ test(req), handle(req, res, ctx) }].
  *                                      Used by the browser server for /__shot, etc.
  * @returns {http.Server}               An http.Server (not yet listening).
@@ -153,16 +153,24 @@ function createGameServer(opts) {
       try { stats = useAsync ? await fsp.stat(file) : fs.statSync(file); }
       catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found: ' + safe); return; }
 
-      if (stats.isDirectory()) file = path.join(file, 'index.html');
+      if (stats.isDirectory()) {
+        file = path.join(file, 'index.html');
+        try { stats = useAsync ? await fsp.stat(file) : fs.statSync(file); }
+        catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found: ' + safe); return; }
+      }
       if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
 
-      const body = useAsync ? await fsp.readFile(file) : fs.readFileSync(file);
       res.writeHead(200, {
         ...staticHeaders,
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Content-Length': stats.size,
         'Cache-Control': 'no-cache',
       });
-      res.end(body);
+      // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
+      // second copy in the server heap and, in packaged Electron, synchronously blocks the main
+      // process while ASAR materializes it. Stream the identical bytes so transport can overlap
+      // decode and neither launcher creates an avoidable admission/GC spike.
+      fs.createReadStream(file).on('error', (error) => res.destroy(error)).pipe(res);
     } catch (err) {
       try { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('500 ' + (err && err.message ? err.message : err)); }
       catch { /* response already sent */ }

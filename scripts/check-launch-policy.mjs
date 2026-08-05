@@ -27,7 +27,7 @@ assert.match(shared, /'\.gltf':\s*'model\/gltf\+json; charset=utf-8'/, 'Shared M
 assert.match(shared, /'\.ktx2':\s*'image\/ktx2'/, 'Shared MIME table must serve KTX2 textures');
 assert.match(shared, /'Cache-Control':\s*'no-cache'/, 'Shared static server must keep no-cache semantics');
 assert.match(shared, /function isInsideRoot/, 'Shared static server must resolve filesystem containment before serving files');
-assert.match(shared, /isDirectory\(\)\) file = path\.join\(file, 'index\.html'\)/, 'Shared static server must support directory index fallback');
+assert.match(shared, /if \(stats\.isDirectory\(\)\)\s*\{[\s\S]*?file = path\.join\(file, 'index\.html'\)/, 'Shared static server must support directory index fallback');
 assert.match(shared, /const DEV_FRESHNESS_ROOTS = Object\.freeze\(\['index\.html', 'src', 'styles'\]\)/, 'Dev freshness should watch source/UI roots without scanning large asset/build directories');
 assert.match(shared, /module\.exports\s*=\s*{[\s\S]*MIME[\s\S]*createGameServer/, 'Shared module must export MIME + createGameServer');
 assert.match(shared, /__spaceface_health/, 'Shared server must expose the minimal shell liveness probe on both routes');
@@ -47,7 +47,7 @@ assert.match(
 assert.match(electronMain, /const \{ createGameServer \}/, 'Electron main must destructure createGameServer from the shared module');
 assert.match(
   electronMain,
-  /createGameServer\(\s*\{\s*root,\s*async:\s*false,\s*devDiagnostics:\s*!app\.isPackaged,[\s\S]*?staticHeaders:[\s\S]*?ELECTRON_CONTENT_SECURITY_POLICY[\s\S]*?\}\s*\)/,
+  /createGameServer\(\s*\{\s*root,[\s\S]*?async:\s*true,\s*devDiagnostics:\s*!app\.isPackaged,[\s\S]*?staticHeaders:[\s\S]*?ELECTRON_CONTENT_SECURITY_POLICY[\s\S]*?\}\s*\)/,
   'Electron main must build its server via createGameServer (not inline its own HTTP server)'
 );
 assert.match(electronMain, /const PORT = 41788;/, 'Electron must use the fixed packaged-app port so localStorage saves survive relaunches');
