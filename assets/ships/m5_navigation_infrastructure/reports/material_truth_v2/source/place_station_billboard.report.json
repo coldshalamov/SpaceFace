@@ -1,0 +1,815 @@
+{
+  "schema": "spaceface.navigationInfrastructureExactSourceReport.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.billboard-buoy-reauthor",
+  "assetId": "place_station_billboard",
+  "spacefaceAssetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+  "candidateId": "pq022-station-billboard-material-truth-v2",
+  "partId": "place_station_billboard",
+  "state": "candidate_only",
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false
+  },
+  "baseline": {
+    "source": {
+      "path": "assets/ships/parts/places/place_station_billboard.glb",
+      "sha256": "557d5065d0435e3dc8128b4623135addf0b372d282ecb9f331e6a289b0d9ff7a",
+      "bytes": 4486260
+    },
+    "release": {
+      "path": "assets/ships/release/parts/places/place_station_billboard.glb",
+      "sha256": "598b130176e2e1b4b0bf89ec57cec7993e411ca548b28ac858dd04473f2c3098",
+      "bytes": 6658368
+    }
+  },
+  "candidate": {
+    "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_station_billboard.glb",
+    "sha256": "d86365e3129b638c1c985c482fe3c5834d9769d8cb9211dee2e68bc06ee529ad",
+    "bytes": 444256
+  },
+  "spacefaceCandidate": {
+    "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_station_billboard.glb",
+    "sha256": "d86365e3129b638c1c985c482fe3c5834d9769d8cb9211dee2e68bc06ee529ad",
+    "bytes": 444256
+  },
+  "releaseMirror": {
+    "path": "assets/ships/m5_navigation_infrastructure/release_candidates/material_truth_v2/places/place_station_billboard.glb",
+    "sha256": "d86365e3129b638c1c985c482fe3c5834d9769d8cb9211dee2e68bc06ee529ad",
+    "bytes": 444256
+  },
+  "blender": {
+    "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/place_station_billboard.blend",
+    "sha256": "dc8fa2c9a6233345adb4c2d6269f240adde1f8f17bc59f23f5c042207c09e7e9",
+    "bytes": 207381
+  },
+  "generator": {
+    "path": "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
+    "sha256": "bba5e4b07a93858b63cd533978f2ce64a05096cb0f30106db7758cf86f6df03d",
+    "bytes": 100495
+  },
+  "export": {
+    "nodeCount": 18,
+    "meshCount": 15,
+    "materialCount": 5,
+    "imageCount": 15,
+    "textureCount": 15,
+    "visibleGroupCount": 15,
+    "visibleGeometrySha256": "bb28342a8d7c894603b9a4cb79e9be883171787c0adc4d467104647d6f89be81",
+    "geometryGroups": [
+      {
+        "node": "LOD0_Display_Frame_Coat",
+        "material": "Display_Frame_Coat",
+        "triangles": 648,
+        "geometrySha256": "177e9ee7c58341e4c038ef044e58457c41a83714ee1e81a2c935676e2b6018e4"
+      },
+      {
+        "node": "LOD0_Display_Screen_Glass",
+        "material": "Display_Screen_Glass",
+        "triangles": 216,
+        "geometrySha256": "9671fff6af88e070ef418dd770b0168e44ead44da50973bb26f649035f02e3d4"
+      },
+      {
+        "node": "LOD0_Display_Service_Alloy",
+        "material": "Display_Service_Alloy",
+        "triangles": 980,
+        "geometrySha256": "17a6de543d286e7084994e094daa479a56436a86ebaecf53e9fb52f3750e38dc"
+      },
+      {
+        "node": "LOD0_Display_Backplate",
+        "material": "Display_Backplate",
+        "triangles": 108,
+        "geometrySha256": "66fa29dd6ed33410d4095eb9f68f89852c2a60f316a36ab1ebbb1f76ef11d04a"
+      },
+      {
+        "node": "LOD0_Display_Safety_Marking",
+        "material": "Display_Safety_Marking",
+        "triangles": 216,
+        "geometrySha256": "9f52a8cf69d554fe50d800cfd445b874189f99868daf9d626e37f351a590f88b"
+      },
+      {
+        "node": "LOD1_Display_Frame_Coat",
+        "material": "Display_Frame_Coat",
+        "triangles": 264,
+        "geometrySha256": "cac46678f00f2f812946934a801d1e64d48c47ed988cdf976084cb128a004207"
+      },
+      {
+        "node": "LOD1_Display_Screen_Glass",
+        "material": "Display_Screen_Glass",
+        "triangles": 88,
+        "geometrySha256": "ba9d0ab81146bd08851fd686de414255dc08a4d505c71cf1e8370fb3f4b70b88"
+      },
+      {
+        "node": "LOD1_Display_Service_Alloy",
+        "material": "Display_Service_Alloy",
+        "triangles": 312,
+        "geometrySha256": "8374eecfd525c3c7668d67fc7255962a2af2e5a72243b88acd4f1b07156a0fc3"
+      },
+      {
+        "node": "LOD1_Display_Backplate",
+        "material": "Display_Backplate",
+        "triangles": 44,
+        "geometrySha256": "6776181d7dbdc38739cffc8552177fe59f83ef23ecdb95e311bbb18389a90507"
+      },
+      {
+        "node": "LOD1_Display_Safety_Marking",
+        "material": "Display_Safety_Marking",
+        "triangles": 80,
+        "geometrySha256": "dae460ed1096ec2d4b9167ebb105f7762323629f8108a80b094eb633e61cc1cf"
+      },
+      {
+        "node": "LOD2_Display_Frame_Coat",
+        "material": "Display_Frame_Coat",
+        "triangles": 72,
+        "geometrySha256": "cbf8163da4b04b5b14b25a55191de2e5963f3c26aa2dcf77da4c5a07be07278c"
+      },
+      {
+        "node": "LOD2_Display_Screen_Glass",
+        "material": "Display_Screen_Glass",
+        "triangles": 24,
+        "geometrySha256": "ad229cd1e5da78b7a45d3265cf7076104d4c0929dc390a1140f2224d2be47048"
+      },
+      {
+        "node": "LOD2_Display_Service_Alloy",
+        "material": "Display_Service_Alloy",
+        "triangles": 24,
+        "geometrySha256": "812ada49da3054edbcc16a6d35d466c103a35c5f1bab6349de1149ec133b3603"
+      },
+      {
+        "node": "LOD2_Display_Backplate",
+        "material": "Display_Backplate",
+        "triangles": 12,
+        "geometrySha256": "b0b77406b84b0f7ef093046db9bc7a2e99173610a95f55537a495638355d5211"
+      },
+      {
+        "node": "LOD2_Display_Safety_Marking",
+        "material": "Display_Safety_Marking",
+        "triangles": 4,
+        "geometrySha256": "b4d485e830b139be37fb1985d0a7b1c5df708b9c89b2a0259c4905231f3a2e0e"
+      }
+    ],
+    "lodTriangles": {
+      "lod0": 2168,
+      "lod1": 788,
+      "lod2": 136
+    },
+    "collision": {
+      "node": "COLLISION_HULL",
+      "representation": "non_mesh_helper",
+      "triangles": 0,
+      "geometrySha256": null,
+      "translation": [
+        5.900000095367432,
+        0.32499998807907104,
+        0.0
+      ],
+      "nodeBounds": {
+        "min": [
+          -0.9079999923706055,
+          -1.3799999952316284,
+          -1.0780000686645508
+        ],
+        "max": [
+          12.708000183105469,
+          1.3799999952316284,
+          1.7280001640319824
+        ],
+        "size": [
+          13.616000175476074,
+          2.759999990463257,
+          2.806000232696533
+        ]
+      },
+      "runtimeBounds": {
+        "min": [
+          -6.808000087738037,
+          -1.4030001163482666,
+          -1.3799999952316284
+        ],
+        "max": [
+          6.808000087738037,
+          1.4030001163482666,
+          1.3799999952316284
+        ],
+        "size": [
+          13.616000175476074,
+          2.806000232696533,
+          2.759999990463257
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "coverageRatio": {
+        "perAxis": [
+          0.92,
+          0.9200000547190169,
+          0.9199999968210856
+        ],
+        "min": 0.9199999968210856,
+        "mean": 0.9200000171800342
+      }
+    },
+    "gltfEnvelope": {
+      "min": [
+        -1.5,
+        -1.2000000476837158,
+        -1.5
+      ],
+      "max": [
+        13.300000190734863,
+        1.850000023841858,
+        1.5
+      ],
+      "size": [
+        14.800000190734863,
+        3.0500000715255737,
+        3.0
+      ]
+    },
+    "diagnostics": []
+  },
+  "exactSourceReimport": true,
+  "pass": true,
+  "failures": [],
+  "warnings": [],
+  "facts": {
+    "lodTriangles": {
+      "LOD0": 2168,
+      "LOD1": 788,
+      "LOD2": 136
+    },
+    "materials": [
+      "Display_Frame_Coat",
+      "Display_Screen_Glass",
+      "Display_Service_Alloy",
+      "Display_Backplate",
+      "Display_Safety_Marking"
+    ],
+    "textureSize": 256,
+    "collisionTriangleCount": 0,
+    "collisionContractDigestSha256": "f9602e2004fd84494e4ab55890a3b9f9eaed88982172311b393f4fe3c70d9dd2",
+    "envelope": {
+      "min": [
+        -1.5,
+        -1.2000000476837158,
+        -1.5
+      ],
+      "max": [
+        13.300000190734863,
+        1.850000023841858,
+        1.5
+      ],
+      "size": [
+        14.800000190734863,
+        3.0500000715255737,
+        3.0
+      ]
+    }
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 2168,
+      "ceiling": 3000,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    },
+    "lod1": {
+      "triangles": 788,
+      "ceiling": 1000,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    },
+    "lod2": {
+      "triangles": 136,
+      "ceiling": 300,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    }
+  },
+  "topology": {
+    "LOD0_Display_Frame_Coat": {
+      "vertices": 336,
+      "edges": 972,
+      "triangles": 648,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Screen_Glass": {
+      "vertices": 112,
+      "edges": 324,
+      "triangles": 216,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Service_Alloy": {
+      "vertices": 504,
+      "edges": 1470,
+      "triangles": 980,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Backplate": {
+      "vertices": 56,
+      "edges": 162,
+      "triangles": 108,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Safety_Marking": {
+      "vertices": 120,
+      "edges": 324,
+      "triangles": 216,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Frame_Coat": {
+      "vertices": 144,
+      "edges": 396,
+      "triangles": 264,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Screen_Glass": {
+      "vertices": 48,
+      "edges": 132,
+      "triangles": 88,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Service_Alloy": {
+      "vertices": 168,
+      "edges": 468,
+      "triangles": 312,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Backplate": {
+      "vertices": 24,
+      "edges": 66,
+      "triangles": 44,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Safety_Marking": {
+      "vertices": 48,
+      "edges": 120,
+      "triangles": 80,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Frame_Coat": {
+      "vertices": 48,
+      "edges": 108,
+      "triangles": 72,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Screen_Glass": {
+      "vertices": 16,
+      "edges": 36,
+      "triangles": 24,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Service_Alloy": {
+      "vertices": 16,
+      "edges": 36,
+      "triangles": 24,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Backplate": {
+      "vertices": 8,
+      "edges": 18,
+      "triangles": 12,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Safety_Marking": {
+      "vertices": 8,
+      "edges": 10,
+      "triangles": 4,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 8,
+      "invalidNonManifoldEdges": 0
+    }
+  },
+  "materials": [
+    "Display_Frame_Coat",
+    "Display_Screen_Glass",
+    "Display_Service_Alloy",
+    "Display_Backplate",
+    "Display_Safety_Marking"
+  ],
+  "materialRoles": {
+    "Display_Frame_Coat": "formed_neutral_frame_coat",
+    "Display_Screen_Glass": "smoked_information_glass",
+    "Display_Service_Alloy": "machined_service_alloy",
+    "Display_Backplate": "folded_dark_backplate",
+    "Display_Safety_Marking": "finite_amber_status_marking"
+  },
+  "textures": [
+    {
+      "material": "Display_Frame_Coat",
+      "role": "formed_neutral_frame_coat",
+      "map": "basecolor",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/formed_neutral_frame_coat_basecolor.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "717fc043cf0b8b533746952457f998310c796d63370644f61d84511541598461",
+      "bytes": 3932
+    },
+    {
+      "material": "Display_Frame_Coat",
+      "role": "formed_neutral_frame_coat",
+      "map": "orm",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/formed_neutral_frame_coat_orm.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "2c206ebf1b1bbeb9e10831317e46f1b81739e8a49fa8beea57069183ae692b6b",
+      "bytes": 2389
+    },
+    {
+      "material": "Display_Frame_Coat",
+      "role": "formed_neutral_frame_coat",
+      "map": "normal",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/formed_neutral_frame_coat_normal.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "07d7e88b25bea590c08f9b0785592fc0a7e70087b61bb38565022834dba51986",
+      "bytes": 1725
+    },
+    {
+      "material": "Display_Screen_Glass",
+      "role": "smoked_information_glass",
+      "map": "basecolor",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/smoked_information_glass_basecolor.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "fcccc1bdd511c8e183580d4afd56df1abd34eb3baac2b24e29c5d5a1ae801b05",
+      "bytes": 666
+    },
+    {
+      "material": "Display_Screen_Glass",
+      "role": "smoked_information_glass",
+      "map": "orm",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/smoked_information_glass_orm.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "b8768630775dc8ae27622c18f451b9f5e41030f1fafcae16b64048c0bceeac47",
+      "bytes": 2392
+    },
+    {
+      "material": "Display_Screen_Glass",
+      "role": "smoked_information_glass",
+      "map": "normal",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/smoked_information_glass_normal.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "3a178f739ed3841560b6c743e7606da64ecc3f3c0b7552728dc2a99dad844ab1",
+      "bytes": 663
+    },
+    {
+      "material": "Display_Service_Alloy",
+      "role": "machined_service_alloy",
+      "map": "basecolor",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/machined_service_alloy_basecolor.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "259f042b5ac17c45e179d1a4eb17a3bf755ff94ce3e9d6202a092dcd25014de5",
+      "bytes": 5084
+    },
+    {
+      "material": "Display_Service_Alloy",
+      "role": "machined_service_alloy",
+      "map": "orm",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/machined_service_alloy_orm.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "6526cc6a3d128095968ab592e53f60a745b368a45c42b06d1b16ea9031b33ce9",
+      "bytes": 1978
+    },
+    {
+      "material": "Display_Service_Alloy",
+      "role": "machined_service_alloy",
+      "map": "normal",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/machined_service_alloy_normal.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "fe3725c92c4e9d713a18464d9b6acbe44a07b3d68084995996c396e4d66e16aa",
+      "bytes": 3251
+    },
+    {
+      "material": "Display_Backplate",
+      "role": "folded_dark_backplate",
+      "map": "basecolor",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/folded_dark_backplate_basecolor.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "26829febf37ac4a605acdcf8e28e5d4918ab53448cf5541edd214b37a1fd1652",
+      "bytes": 1539
+    },
+    {
+      "material": "Display_Backplate",
+      "role": "folded_dark_backplate",
+      "map": "orm",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/folded_dark_backplate_orm.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "4210584b06e8f83aaf8447f1b21cbd1dd5d941c099b6f76f773a5a7b16ff312b",
+      "bytes": 2363
+    },
+    {
+      "material": "Display_Backplate",
+      "role": "folded_dark_backplate",
+      "map": "normal",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/folded_dark_backplate_normal.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "41f0ac86d3f31f17a09277dbbfa373ab2eb14cd8b84b0e5226ee8d427d61d4a0",
+      "bytes": 2090
+    },
+    {
+      "material": "Display_Safety_Marking",
+      "role": "finite_amber_status_marking",
+      "map": "basecolor",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/finite_amber_status_marking_basecolor.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "e787d338cb8001a65971be38b88e8256227afef03078bfc852cb5c9a7796c5a3",
+      "bytes": 4601
+    },
+    {
+      "material": "Display_Safety_Marking",
+      "role": "finite_amber_status_marking",
+      "map": "orm",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/finite_amber_status_marking_orm.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "a2cde4fece8e534689114f3c4586311c51901fb822b29316da085076c374bbdc",
+      "bytes": 2395
+    },
+    {
+      "material": "Display_Safety_Marking",
+      "role": "finite_amber_status_marking",
+      "map": "normal",
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/textures/place_station_billboard/finite_amber_status_marking_normal.png",
+      "resolution": [
+        256,
+        256
+      ],
+      "sha256": "85554b3368de97d02c3c140e18c13a8b27f27f28e193e1682aa0371f8d1202fa",
+      "bytes": 1316
+    }
+  ],
+  "renders": {
+    "manifest": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/render_manifest.json",
+    "exactSourceReimport": true,
+    "images": [
+      {
+        "name": "front_three_quarter",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter.png",
+        "sha256": "79d517ee1558f118722ff66440057351dacce58aa0941e38a239657aef8f9857",
+        "bytes": 1313374,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "dominant information face and load frame",
+        "cameraPosition": [
+          18.13926,
+          -22.2532,
+          7.89109
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "rear_three_quarter",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/rear_three_quarter.png",
+        "sha256": "8d440bb8c019e5b8a82a689118fdcece72cf4296d1f7e86fb8f8593ec802e103",
+        "bytes": 1288278,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "rear service trunks, backplate, and load path",
+        "cameraPosition": [
+          -4.94844,
+          22.60092,
+          8.91335
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "front_three_quarter_emissive_off",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter_emissive_off.png",
+        "sha256": "2802a252560691df9f2086f573d02144b616e805e92f069c4ea0f272bc8eef45",
+        "bytes": 1314416,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "matched diagnostic with only authored emission strength disabled",
+        "cameraPosition": [
+          18.13926,
+          -22.2532,
+          7.89109
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "material_id",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/material_id.png",
+        "sha256": "22fc5ca34a53359558289bfed4bbb67585687db261a677cebb5c8479c9159633",
+        "bytes": 1303855,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "diagnostic five-zone material assignment override",
+        "cameraPosition": [
+          18.13926,
+          -22.2532,
+          7.89109
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "grazing_light",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/grazing_light.png",
+        "sha256": "0859a1acbacae57443fdc76b4160d3372808e4158f7066dc147b4541c8465ed4",
+        "bytes": 1155383,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "single hard grazing-light surface and edge diagnostic",
+        "cameraPosition": [
+          18.13926,
+          -22.2532,
+          7.89109
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "lod1_26_5m",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod1_26_5m.png",
+        "sha256": "2d508f52b9d42a0e91d310fb847982b0e5909b86e454821c1447e9a5e486abe2",
+        "bytes": 1307188,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod1",
+        "purpose": "LOD1 readability at exact 26.5 metre camera distance",
+        "cameraPosition": [
+          18.13926,
+          -22.2532,
+          7.89109
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 26.5,
+        "lensMm": 50.0
+      },
+      {
+        "name": "lod2_far",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod2_far.png",
+        "sha256": "7c444effa59415d6ac4bba768976ce186077157694c70b8b7664381359f2e313",
+        "bytes": 1182465,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod2",
+        "purpose": "far-range LOD2 silhouette and anchor diagnostic",
+        "cameraPosition": [
+          28.06923,
+          -40.30768,
+          14.02961
+        ],
+        "cameraTarget": [
+          5.9,
+          0.0,
+          0.325
+        ],
+        "cameraDistanceM": 48.0,
+        "lensMm": 50.0
+      }
+    ]
+  },
+  "gateBoundary": {
+    "candidateSideG0": true,
+    "candidateSideG1G2G4Evidence": true,
+    "g3DeterministicMaterialSources": true,
+    "g5StructuralCostOnly": true,
+    "g6RouteOrBrowserEvidence": false,
+    "g7IndependentAcceptance": false,
+    "promotionAuthorized": false
+  },
+  "builtAt": "2026-08-04T16:27:03Z",
+  "elapsedSeconds": 49.6
+}

@@ -1,0 +1,274 @@
+{
+  "schema": "spaceface.pq022NavigationInfrastructurePromotionReview.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.billboard-buoy-reauthor",
+  "candidateSetId": "pq022-navigation-infrastructure-material-truth-v2",
+  "decision": "KEEP",
+  "reviewer": {
+    "kind": "solo_integrator",
+    "id": "codex-primary",
+    "evidenceBound": true
+  },
+  "renderManifest": {
+    "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/render_manifest.json",
+    "sha256": "5e76b01aba531d31077ffac4b17c924b30e550e0087b7cf982122f54b23f7df5",
+    "bytes": 33235
+  },
+  "buildReport": {
+    "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/build_report.json",
+    "sha256": "1799e9a8ff8856593ae0788db31825f7e4ecf7d94608c1ec3275d6b79db05c9e",
+    "bytes": 102298
+  },
+  "claims": {
+    "routeEvidence": false,
+    "performanceEvidence": false
+  },
+  "assets": [
+    {
+      "partId": "place_station_billboard",
+      "candidateId": "pq022-station-billboard-material-truth-v2",
+      "candidate": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_station_billboard.glb",
+        "sha256": "d86365e3129b638c1c985c482fe3c5834d9769d8cb9211dee2e68bc06ee529ad",
+        "bytes": 444256
+      },
+      "blender": {
+        "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/place_station_billboard.blend",
+        "sha256": "dc8fa2c9a6233345adb4c2d6269f240adde1f8f17bc59f23f5c042207c09e7e9",
+        "bytes": 207381
+      },
+      "validatorReport": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/source/place_station_billboard.report.json",
+        "sha256": "b6b5a90bcbac6504071c83323aafd51e07f81cb082b3da998a5d1105b61cc1f4",
+        "bytes": 25409
+      },
+      "views": [
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter.png",
+          "sha256": "79d517ee1558f118722ff66440057351dacce58aa0941e38a239657aef8f9857",
+          "bytes": 1313374,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/rear_three_quarter.png",
+          "sha256": "8d440bb8c019e5b8a82a689118fdcece72cf4296d1f7e86fb8f8593ec802e103",
+          "bytes": 1288278,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter_emissive_off.png",
+          "sha256": "2802a252560691df9f2086f573d02144b616e805e92f069c4ea0f272bc8eef45",
+          "bytes": 1314416,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/material_id.png",
+          "sha256": "22fc5ca34a53359558289bfed4bbb67585687db261a677cebb5c8479c9159633",
+          "bytes": 1303855,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/grazing_light.png",
+          "sha256": "0859a1acbacae57443fdc76b4160d3372808e4158f7066dc147b4541c8465ed4",
+          "bytes": 1155383,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod1_26_5m.png",
+          "sha256": "2d508f52b9d42a0e91d310fb847982b0e5909b86e454821c1447e9a5e486abe2",
+          "bytes": 1307188,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod2_far.png",
+          "sha256": "7c444effa59415d6ac4bba768976ce186077157694c70b8b7664381359f2e313",
+          "bytes": 1182465,
+          "decision": "KEEP"
+        }
+      ],
+      "gates": {
+        "G1": "KEEP",
+        "G2": "KEEP",
+        "G4": "KEEP",
+        "emissive": "KEEP"
+      },
+      "decision": "KEEP"
+    },
+    {
+      "partId": "place_memorial_array",
+      "candidateId": "pq022-memorial-array-material-truth-v2",
+      "candidate": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_memorial_array.glb",
+        "sha256": "fd18cf6619f9847d2afa898929f73bdbb682b5a1d61e507eaf0866b6471b43b9",
+        "bytes": 526208
+      },
+      "blender": {
+        "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/place_memorial_array.blend",
+        "sha256": "fcaa6e9b4fa5af64a278b8ec10dd76398949521455e9ebd8500816adaab2305f",
+        "bytes": 255037
+      },
+      "validatorReport": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/source/place_memorial_array.report.json",
+        "sha256": "0866d666df5ae42fee011a3991e58e0a9b5675b82b3c3dc3abbfaf36097e576f",
+        "bytes": 27513
+      },
+      "views": [
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/face_count.png",
+          "sha256": "5c79cff585a76409ae350307df4ecbe1a9c531056308534c4b506374445c99aa",
+          "bytes": 1250992,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter.png",
+          "sha256": "ffaa39a21098b81cfb94f7d63687aeac05513d581b71a6e247f7a5bb83578626",
+          "bytes": 1339677,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/rear_service_three_quarter.png",
+          "sha256": "7e0d027566bf42b7c56a94c2f649349bcda49eec5a7c463f9d27bfc1fb097a3e",
+          "bytes": 1324344,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/end_load_path.png",
+          "sha256": "7139d870e8e62593d617fcd0c04ced78060854d1b70086265ad8e836c4682f45",
+          "bytes": 1460396,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/top.png",
+          "sha256": "37dae9edfdd23f92d869c0e684553042b1113f1c462eecf766a8df828bd7502a",
+          "bytes": 1248855,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter_emissive_off.png",
+          "sha256": "b43157717213775317857da6c316f75e842bd42927eb8d90a2779fd0b53d8ce6",
+          "bytes": 1337313,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/material_id.png",
+          "sha256": "699e631a198d2ef16ccf414d0c09db059c9a4e3e2526d9062dbebbe09dab33d6",
+          "bytes": 1312824,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/grazing_light.png",
+          "sha256": "b3b2f8fc537927a4cc7c4dd824c3752df9d40b77ec0c28c6a44158b148d52c60",
+          "bytes": 1197130,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod1_26_5m.png",
+          "sha256": "a7ce820824803ec150601d8823659f9468e186c9abc719c4457edbd50fa88d60",
+          "bytes": 1319068,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod2_far.png",
+          "sha256": "a64bdf9ad5a58b3cc20189d0ca5cfee7e691a146a61d510aa92bdb71e89927c7",
+          "bytes": 1176470,
+          "decision": "KEEP"
+        }
+      ],
+      "gates": {
+        "G1": "KEEP",
+        "G2": "KEEP",
+        "G4": "KEEP",
+        "emissive": "KEEP"
+      },
+      "decision": "KEEP"
+    },
+    {
+      "partId": "place_nav_buoy",
+      "candidateId": "pq022-nav-buoy-material-truth-v2",
+      "candidate": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_nav_buoy.glb",
+        "sha256": "c5dbebc188329dd35c15613aef864d20293e54c24537f356b3c78e8e5d1e3ac4",
+        "bytes": 409376
+      },
+      "blender": {
+        "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/place_nav_buoy.blend",
+        "sha256": "dd102ac9601950106f3f61646dd738bae450f1d333fe99ffe74a72fc1996a2f8",
+        "bytes": 236824
+      },
+      "validatorReport": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/source/place_nav_buoy.report.json",
+        "sha256": "aaf37b562a902ed3f1b0965ada68f5d36fd01e90f7bc7218a1ec810e9e22065c",
+        "bytes": 30570
+      },
+      "views": [
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/full_three_quarter.png",
+          "sha256": "36a9858e49d95c841dfbf73c593dd93aec406a6261d64aa15b2df7f03f33b744",
+          "bytes": 1239214,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/service_side.png",
+          "sha256": "e12e148d1d496fcc5fb8a2a744fca6abf405f32635b3b07a5e56351004af00f9",
+          "bytes": 1236222,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/top_head.png",
+          "sha256": "66dc98561419f50625478d17932218e14f320f8dd9eafc4c50d33852a9601adc",
+          "bytes": 1337782,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/head_azimuth_contact_sheet.png",
+          "sha256": "01a7f2034f3a65979aff1acad192d4e933f618d11d48603fecebc87d1618cafe",
+          "bytes": 1372333,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/stabilization_close.png",
+          "sha256": "6965e9c44dc7e9c2725f28842d3842d23e1efc38c7938fdbb44cfbab51214a1c",
+          "bytes": 1272249,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/full_three_quarter_emissive_off.png",
+          "sha256": "34bb761df6138563b990c849f9c3e4abcda8062bef2a249d4924a518945c5b9b",
+          "bytes": 1239272,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/material_id.png",
+          "sha256": "027526483cf5aa2777c0a2f617ca83171d77f132ccc37e7340818a71729c050d",
+          "bytes": 1258041,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/grazing_light.png",
+          "sha256": "ea0307a1d8a60f163083a0a971afde7297e2420a666f4a9aefde2b2ea690f436",
+          "bytes": 1218568,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/lod1_27_2m.png",
+          "sha256": "03b6c83697812445773dd38595dab26c520b60bed5ae8dfdf9345221f425a7c1",
+          "bytes": 1231376,
+          "decision": "KEEP"
+        },
+        {
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/lod2_far.png",
+          "sha256": "a17c9ced5cbacba88f77ac23a646aa65c9db8b40b42b59d3c9d3b0583d9e9521",
+          "bytes": 1198138,
+          "decision": "KEEP"
+        }
+      ],
+      "gates": {
+        "G1": "KEEP",
+        "G2": "KEEP",
+        "G4": "KEEP",
+        "emissive": "KEEP"
+      },
+      "decision": "KEEP"
+    }
+  ]
+}

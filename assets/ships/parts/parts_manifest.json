@@ -2517,54 +2517,30 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
-      "tris": 1296,
-      "bytes": 3777968,
-      "textureSize": 1024,
-      "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris. | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=96CEF62D0E89 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote",
-      "factionAccentVariants": {
-        "core": {
-          "accent": "#39d0ff",
-          "thruster": "#88aaff"
-        },
-        "belt": {
-          "accent": "#ffb35c",
-          "thruster": "#ff8844"
-        },
-        "fringe": {
-          "accent": "#ff5c5c",
-          "thruster": "#ff4466"
-        },
-        "anomaly": {
-          "accent": "#8d66ff",
-          "thruster": "#4ddc92"
-        }
-      },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "tris": 1640,
+      "bytes": 409808,
+      "textureSize": 256,
+      "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate c5dbebc18832, promoted source eb4a57b61b1c; LOD0/1/2 1640/952/292 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
+      "hooks": [],
       "sockets": [
-        "SOCKET_Buoy_Top"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.1,
-          0.05,
-          -1.1
+          -1.399999976158142,
+          -5,
+          -1.399999976158142
         ],
         "max": [
-          2,
-          5.43,
-          1.1
+          1.5749999284744263,
+          10.300000190734863,
+          1.399999976158142
         ],
         "dimensionsM": [
-          3.1,
-          5.38,
-          2.2
+          2.9749999046325684,
+          15.300000190734863,
+          2.799999952316284
         ]
       }
     },
@@ -2659,54 +2635,62 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 988,
-      "bytes": 4488768,
-      "textureSize": 1024,
-      "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris. | M4-HELIOS-HUB-ENV M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 promote 2026-07-11 sha=7A371C0A3209 | M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001 2026-07-11 K0-quality continuous massline promote",
-      "factionAccentVariants": {
-        "core": {
-          "accent": "#39d0ff",
-          "thruster": "#88aaff"
-        },
-        "belt": {
-          "accent": "#ffb35c",
-          "thruster": "#ff8844"
-        },
-        "fringe": {
-          "accent": "#ff5c5c",
-          "thruster": "#ff4466"
-        },
-        "anomaly": {
-          "accent": "#8d66ff",
-          "thruster": "#4ddc92"
-        }
-      },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "tris": 2168,
+      "bytes": 444680,
+      "textureSize": 256,
+      "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate d86365e3129b, promoted source ccdd548c3d2c; LOD0/1/2 2168/788/136 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
+      "hooks": [],
       "sockets": [
-        "SOCKET_Camera_Focus"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.95,
-          0,
-          -9
+          -1.5,
+          -1.2000000476837158,
+          -1.5
         ],
         "max": [
-          9.05,
-          12.0525,
-          9
+          13.300000190734863,
+          1.850000023841858,
+          1.5
         ],
         "dimensionsM": [
-          18,
-          12.0525,
-          18
+          14.800000190734863,
+          3.0500000715255737,
+          3
+        ]
+      }
+    },
+    {
+      "id": "place_memorial_array",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_memorial_array.glb",
+      "tris": 2816,
+      "bytes": 526636,
+      "textureSize": 256,
+      "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate fd18cf6619f9, promoted source 9cb774d83ea0; LOD0/1/2 2816/932/180 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.5,
+          -1.2000000476837158,
+          -1.5
+        ],
+        "max": [
+          13.300000190734863,
+          1.850000023841858,
+          1.5
+        ],
+        "dimensionsM": [
+          14.800000190734863,
+          3.0500000715255737,
+          3
         ]
       }
     },
@@ -4371,6 +4355,7 @@
       "places/place_asteroid_seamed.glb",
       "places/place_debris_chunk.glb",
       "places/place_station_billboard.glb",
+      "places/place_memorial_array.glb",
       "places/place_dead_hulk.glb",
       "places/place_conveyor_barge.glb",
       "places/place_mining_drone.glb",
