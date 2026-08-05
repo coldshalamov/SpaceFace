@@ -153,6 +153,45 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.equal(scene.getObjectByName('SF_Precompile_Staging'), undefined);
 });
 
+test('global precompile retains the directional-shadow program family without changing live state', async () => {
+  const calls = [];
+  const renderer = {
+    compileAsync: async () => {},
+    info: { programs: [] },
+    shadowMap: { enabled: false, type: THREE.PCFShadowMap },
+  };
+  const scene = new THREE.Scene();
+  const key = new THREE.DirectionalLight(0xffffff, 1);
+  key.castShadow = false;
+  scene.add(key);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);
+
+  await precompileGlobalPipelines(renderer, scene, camera, {
+    incremental: true,
+    preparePipelines: async (subject) => {
+      calls.push({
+        subject,
+        shadowMapEnabled: renderer.shadowMap.enabled,
+        keyCastsShadow: key.castShadow,
+      });
+    },
+    yieldToMain: async () => {},
+  });
+
+  assert.equal(calls.length, 2, 'compile both ordinary and directional-shadow program keys');
+  assert.equal(calls[0].subject, calls[1].subject);
+  assert.deepEqual(calls.map(({ shadowMapEnabled, keyCastsShadow }) => ({
+    shadowMapEnabled,
+    keyCastsShadow,
+  })), [
+    { shadowMapEnabled: false, keyCastsShadow: false },
+    { shadowMapEnabled: true, keyCastsShadow: true },
+  ]);
+  assert.equal(renderer.shadowMap.enabled, false, 'restore the player renderer setting');
+  assert.equal(key.castShadow, false, 'restore the live key-light state');
+  invalidatePrecompileState(renderer);
+});
+
 test('precompile receipts are renderer-scoped and invalidated for context restoration', async () => {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000);

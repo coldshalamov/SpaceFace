@@ -138,6 +138,9 @@ async function precompileNow(
       if (incremental) {
         globalWarmup.updateMatrixWorld(true);
         await options.preparePipelines(globalWarmup);
+        await prepareDirectionalShadowPipelineVariant(
+          renderer, scene, globalWarmup, options.preparePipelines,
+        );
         await yieldToMain();
       }
     }
@@ -491,6 +494,34 @@ function rememberGlobalPrecompile(renderer, run) {
   });
   globalPrecompilePromiseByRenderer.set(renderer, tracked);
   return tracked;
+}
+
+async function prepareDirectionalShadowPipelineVariant(renderer, scene, subject, preparePipelines) {
+  const shadowMap = renderer && renderer.shadowMap;
+  if (!shadowMap || typeof preparePipelines !== 'function' || !scene || !subject) {
+    return { skipped: true, reason: 'directional shadow compiler unavailable' };
+  }
+  let keyLight = null;
+  scene.traverseVisible((object) => {
+    if (!keyLight && object.isDirectionalLight) keyLight = object;
+  });
+  if (!keyLight) return { skipped: true, reason: 'no directional light' };
+
+  const previousEnabled = shadowMap.enabled;
+  const previousCastShadow = keyLight.castShadow;
+  if (previousEnabled && previousCastShadow) {
+    return { skipped: true, reason: 'directional shadow variant already active' };
+  }
+  try {
+    shadowMap.enabled = true;
+    keyLight.castShadow = true;
+    subject.updateMatrixWorld(true);
+    await preparePipelines(subject);
+    return { skipped: false };
+  } finally {
+    shadowMap.enabled = previousEnabled;
+    keyLight.castShadow = previousCastShadow;
+  }
 }
 
 function addAuthoredCanopyPipelineWarmup(staging) {
