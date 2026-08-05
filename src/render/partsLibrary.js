@@ -12,10 +12,12 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
+import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
+import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
@@ -2589,6 +2591,11 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   if (typeof preparePipelines !== 'function' && typeof prepareResidency !== 'function') {
     return { skipped: true, reason: 'GPU preparation unavailable' };
   }
+  // Admission must compile the exact material state used by the first visible draw. These same
+  // idempotent policies also run at the presentation boundary, but applying them only after this
+  // detached-root compile changes the program key and leaves the first draw to link synchronously.
+  configureRealtimeCanopyMaterials(root);
+  configureTransparentSinglePassSurfaces(root);
   const pipelines = typeof preparePipelines === 'function'
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };

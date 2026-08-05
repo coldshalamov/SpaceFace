@@ -146,6 +146,36 @@ test('authored visual admission awaits exact pipelines and hidden-LOD GPU reside
   );
 });
 
+test('authored visual admission compiles the exact post-policy canopy program before publication', async () => {
+  const root = new THREE.Group();
+  const material = new THREE.MeshPhysicalMaterial({
+    transmission: 0.6,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const canopy = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  canopy.userData.spacefaceTags = { canopy: true };
+  root.add(canopy);
+
+  await partsLibrary.prepareAuthoredVisualPipelines(root, {
+    prepareAuthoredPipelines: async (subject) => {
+      assert.equal(subject, root);
+      assert.equal(material.transmission, 0,
+        'pipeline admission must see the realtime alpha-glass program key');
+      assert.equal(material.transparent, true);
+      assert.equal(material.depthWrite, false);
+      assert.equal(material.forceSinglePass, true,
+        'pipeline admission must see the same transparent pass count as first draw');
+      return { skipped: false };
+    },
+  });
+
+  canopy.geometry.dispose();
+  material.dispose();
+});
+
 test('startup readiness gates the authored opening runway without waiting on distant NPCs', () => {
   assert.equal(typeof partsLibrary.authoredCriticalVisualReadiness, 'function');
   const player = { id: 1, type: 'ship', alive: true, mesh: { userData: { authoredAssetState: 'authored' } } };
