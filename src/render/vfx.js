@@ -196,8 +196,8 @@ const PARTICLE_SIZE = 2;
 const PARTICLE_ALPHA = 3;
 const PARTICLE_TRAIL_AXIS = 4;
 const PARTICLE_TRAIL_STRETCH = 5;
-const SEAM_MARKER_MATRIX = 0;
-const SEAM_MARKER_COLOR = 1;
+const INSTANCED_MATRIX_BUFFER = 0;
+const INSTANCED_COLOR_BUFFER = 1;
 const PARTICLE_BUFFER_BINDINGS = Object.freeze([
   Object.freeze({ name: 'position', key: 'position' }),
   Object.freeze({ name: 'color', key: 'aColor' }),
@@ -4074,8 +4074,8 @@ export const vfx = {
     }
     if (sm.dynamicBufferOwner) {
       if (n > 0) {
-        markDynamicBufferItems(sm.dynamicBufferOwner, SEAM_MARKER_MATRIX, 0, n);
-        markDynamicBufferItems(sm.dynamicBufferOwner, SEAM_MARKER_COLOR, 0, n);
+        markDynamicBufferItems(sm.dynamicBufferOwner, INSTANCED_MATRIX_BUFFER, 0, n);
+        markDynamicBufferItems(sm.dynamicBufferOwner, INSTANCED_COLOR_BUFFER, 0, n);
       }
       commitDynamicBufferOwner(sm.dynamicBufferOwner, n);
     } else if (sm.mesh.count !== n || n > 0) {
@@ -5245,6 +5245,16 @@ export const vfx = {
       bankMesh,
       coreVols,
       deployStart: new Map(),
+      dynamicBufferOwners: {
+        vane: registerFieldGeometryBufferOwner(this._scene, 'vane', vaneMesh),
+        pip: registerFieldGeometryBufferOwner(this._scene, 'pip', pipMesh),
+        knot: registerFieldGeometryBufferOwner(this._scene, 'knot', knotMesh),
+        dome: registerFieldGeometryBufferOwner(this._scene, 'dome', domeMesh),
+        rib: registerFieldGeometryBufferOwner(this._scene, 'rib', ribMesh),
+        berm: registerFieldGeometryBufferOwner(this._scene, 'berm', bermMesh),
+        chevron: registerFieldGeometryBufferOwner(this._scene, 'chevron', chevronMesh),
+        bank: registerFieldGeometryBufferOwner(this._scene, 'bank', bankMesh),
+      },
     };
 
     this._fieldMat4 = new THREE.Matrix4();
@@ -5271,20 +5281,22 @@ export const vfx = {
     if (activeList.length === 0) {
       if (fg.deployStart.size > 0) fg.deployStart.clear();
 
-      fg.vaneMesh.count = 0;
-      fg.pipMesh.count = 0;
-      fg.knotMesh.count = 0;
-      fg.domeMesh.count = 0;
-      fg.ribMesh.count = 0;
-      fg.bermMesh.count = 0;
-      fg.chevronMesh.count = 0;
-      fg.bankMesh.count = 0;
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.vane, fg.vaneMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.pip, fg.pipMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.knot, fg.knotMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.dome, fg.domeMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.rib, fg.ribMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.berm, fg.bermMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.chevron, fg.chevronMesh, 0);
+      commitFieldGeometryBuffer(fg.dynamicBufferOwners.bank, fg.bankMesh, 0);
 
       for (let i = 0; i < fg.coreVols.length; i++) {
         if (fg.coreVols[i].visible) fg.coreVols[i].visible = false;
       }
       return;
     }
+
+    assertFieldGeometryBuffersWritable(fg.dynamicBufferOwners);
 
     const settings = this.state && this.state.settings;
     const v = settings && settings.video;
@@ -5593,47 +5605,14 @@ export const vfx = {
       fg.coreVols[i].visible = false;
     }
 
-    fg.vaneMesh.count = vaneCount;
-    if (vaneCount > 0) {
-      fg.vaneMesh.instanceMatrix.needsUpdate = true;
-      if (fg.vaneMesh.instanceColor) fg.vaneMesh.instanceColor.needsUpdate = true;
-    }
-
-    fg.pipMesh.count = pipCount;
-    if (pipCount > 0) {
-      fg.pipMesh.instanceMatrix.needsUpdate = true;
-      if (fg.pipMesh.instanceColor) fg.pipMesh.instanceColor.needsUpdate = true;
-    }
-
-    fg.knotMesh.count = knotCount;
-    if (knotCount > 0) fg.knotMesh.instanceMatrix.needsUpdate = true;
-
-    fg.domeMesh.count = domeCount;
-    if (domeCount > 0) fg.domeMesh.instanceMatrix.needsUpdate = true;
-
-    fg.ribMesh.count = ribCount;
-    if (ribCount > 0) {
-      fg.ribMesh.instanceMatrix.needsUpdate = true;
-      if (fg.ribMesh.instanceColor) fg.ribMesh.instanceColor.needsUpdate = true;
-    }
-
-    fg.bermMesh.count = bermCount;
-    if (bermCount > 0) {
-      fg.bermMesh.instanceMatrix.needsUpdate = true;
-      if (fg.bermMesh.instanceColor) fg.bermMesh.instanceColor.needsUpdate = true;
-    }
-
-    fg.chevronMesh.count = chevronCount;
-    if (chevronCount > 0) {
-      fg.chevronMesh.instanceMatrix.needsUpdate = true;
-      if (fg.chevronMesh.instanceColor) fg.chevronMesh.instanceColor.needsUpdate = true;
-    }
-
-    fg.bankMesh.count = bankCount;
-    if (bankCount > 0) {
-      fg.bankMesh.instanceMatrix.needsUpdate = true;
-      if (fg.bankMesh.instanceColor) fg.bankMesh.instanceColor.needsUpdate = true;
-    }
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.vane, fg.vaneMesh, vaneCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.pip, fg.pipMesh, pipCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.knot, fg.knotMesh, knotCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.dome, fg.domeMesh, domeCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.rib, fg.ribMesh, ribCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.berm, fg.bermMesh, bermCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.chevron, fg.chevronMesh, chevronCount);
+    commitFieldGeometryBuffer(fg.dynamicBufferOwners.bank, fg.bankMesh, bankCount);
   },
 
   _fieldFlowRelevant() {
@@ -7880,6 +7859,43 @@ export function createVfxPrecompileSalvo() {
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program
   // would then miss the cache in real gameplay and recompile mid-combat.
   return group;
+}
+
+function registerFieldGeometryBufferOwner(scene, name, mesh) {
+  const attributes = [{ name: 'matrix', attribute: mesh.instanceMatrix }];
+  if (mesh.instanceColor) attributes.push({ name: 'color', attribute: mesh.instanceColor });
+  return registerDynamicBufferOwner(scene, {
+    id: `vfx-field-${name}`,
+    mesh,
+    attributes,
+  });
+}
+
+function assertFieldGeometryBuffersWritable(owners) {
+  assertDynamicBufferOwnerWritable(owners.vane);
+  assertDynamicBufferOwnerWritable(owners.pip);
+  assertDynamicBufferOwnerWritable(owners.knot);
+  assertDynamicBufferOwnerWritable(owners.dome);
+  assertDynamicBufferOwnerWritable(owners.rib);
+  assertDynamicBufferOwnerWritable(owners.berm);
+  assertDynamicBufferOwnerWritable(owners.chevron);
+  assertDynamicBufferOwnerWritable(owners.bank);
+}
+
+function commitFieldGeometryBuffer(owner, mesh, count) {
+  if (owner) {
+    if (count > 0) {
+      markDynamicBufferItems(owner, INSTANCED_MATRIX_BUFFER, 0, count);
+      if (mesh.instanceColor) markDynamicBufferItems(owner, INSTANCED_COLOR_BUFFER, 0, count);
+    }
+    commitDynamicBufferOwner(owner, count);
+    return;
+  }
+  mesh.count = count;
+  if (count > 0) {
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
 }
 
 export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {

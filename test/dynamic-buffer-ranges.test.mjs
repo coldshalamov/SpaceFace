@@ -710,6 +710,91 @@ test('nearby asteroid seam markers publish only their live matrix and color pref
   pool.mesh.material.dispose();
 });
 
+test('active field-device geometry publishes each visible instance prefix', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const fixture = Object.create(vfx);
+  fixture._scene = scene;
+  fixture._t = 2;
+  fixture.state = {
+    simTime: 2,
+    settings: { video: {}, accessibility: {} },
+    fields: {
+      active: [
+        { id: 'well', kind: 'well', center: { x: 0, z: 0 }, radius: 24, engaged: true },
+        { id: 'repulsor', kind: 'repulsor', center: { x: 80, z: 0 }, radius: 28, engaged: true },
+        {
+          id: 'cone', kind: 'cone', center: { x: -80, z: 0 }, radius: 36, engaged: true,
+          dir: { x: 1, z: 0 }, halfAngleRad: 0.5,
+        },
+      ],
+    },
+  };
+  fixture._initFieldGeometry();
+
+  const fg = fixture._fieldGeom;
+  const expected = [
+    ['vane', fg.vaneMesh, 6],
+    ['pip', fg.pipMesh, 12],
+    ['knot', fg.knotMesh, 1],
+    ['dome', fg.domeMesh, 1],
+    ['rib', fg.ribMesh, 8],
+    ['berm', fg.bermMesh, 14],
+    ['chevron', fg.chevronMesh, 20],
+    ['bank', fg.bankMesh, 10],
+  ];
+  for (const [name] of expected) {
+    assert.ok(fg.dynamicBufferOwners?.[name], `${name} field geometry must register for ranged publication`);
+  }
+
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const [, mesh] of expected) {
+    const attributes = [mesh.instanceMatrix, mesh.instanceColor].filter(Boolean);
+    for (const attribute of attributes) {
+      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+      acknowledgeInitial(attribute);
+    }
+  }
+  coordinator.disarm(epoch);
+
+  const requestedBefore = expected.reduce((sum, [name]) => (
+    sum + fg.dynamicBufferOwners[name].diagnostics.requestedUploadBytes
+  ), 0);
+  fixture._updateFieldGeometry(1 / 60);
+  for (const [, mesh, count] of expected) assert.equal(mesh.count, count);
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  let expectedBytes = 0;
+  let fullBytes = 0;
+  for (const [, mesh, count] of expected) {
+    const attributes = [mesh.instanceMatrix, mesh.instanceColor].filter(Boolean);
+    for (const attribute of attributes) {
+      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: count * attribute.itemSize }]);
+      expectedBytes += count * attribute.itemSize * Float32Array.BYTES_PER_ELEMENT;
+      fullBytes += attribute.array.byteLength;
+      acknowledgeUpdate(attribute);
+    }
+  }
+  coordinator.disarm(epoch);
+
+  const requestedAfter = expected.reduce((sum, [name]) => (
+    sum + fg.dynamicBufferOwners[name].diagnostics.requestedUploadBytes
+  ), 0);
+  assert.equal(requestedAfter - requestedBefore, expectedBytes);
+  assert.equal(expectedBytes, 5_448);
+  assert.equal(fullBytes, 33_760);
+  assert.ok(expectedBytes / fullBytes < 0.162,
+    'one active field of each kind requests more than 83.8% fewer geometry bytes');
+
+  for (const [, mesh] of expected) {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+});
+
 test('authored instance chunks publish only moved, hidden, released, and reused matrix slots', () => {
   assert.equal(typeof partsLibrary.runAuthoredInstanceRangeContractProbe, 'function',
     'parts library exposes its real private allocator through a bounded range contract probe');
