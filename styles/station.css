@@ -395,6 +395,7 @@
 .sx-dossier__crest { display:grid; place-items:center; width:48px; height:48px; border-radius:var(--r-md); color:var(--tint); background:color-mix(in srgb,var(--tint) 16%,transparent); border:1px solid color-mix(in srgb,var(--tint) 34%,transparent); }
 .sx-dossier__client { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); }
 .sx-dossier__id h2 { font-family:var(--sx-display); font-weight:700; font-size:23px; letter-spacing:.02em; color:var(--ink-0); margin:3px 0 0; }
+.sx-dossier__summary { max-width:62ch; margin:0; font-size:13.5px; line-height:1.45; color:var(--ink-2); }
 .sx-dossier__topline { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .sx-dossier__reward, .sx-dossier__risk { border:1px solid var(--line-1); border-radius:var(--r-md); padding:12px 14px; background:var(--void-2); }
 .sx-dossier__reward > span, .sx-dossier__risk > span { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); display:block; margin-bottom:6px; }

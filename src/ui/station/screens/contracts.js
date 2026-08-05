@@ -69,6 +69,11 @@ function sortFocusFirst(list, focusId) {
   });
 }
 
+/** Authored mission copy shown in the dossier; missing copy leaves the existing preflight intact. */
+export function missionDossierSummary(mission) {
+  return typeof (mission && mission.summary) === 'string' ? mission.summary.trim() : '';
+}
+
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-ct';
@@ -166,6 +171,7 @@ export function createContractsScreen(ctx) {
         : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
     const focusAccept = attention && attention.kind === 'accept'
       && String(attention.focusMissionId) === String(mid(m));
+    const authoredSummary = missionDossierSummary(m);
 
     dossierEl.innerHTML =
       `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
@@ -176,6 +182,9 @@ export function createContractsScreen(ctx) {
             `<h2>${escapeHtml(m.title || typeLabel(m.type))}</h2>` +
           `</div>` +
         `</header>` +
+        (authoredSummary
+          ? `<p class="sx-dossier__summary">${escapeHtml(authoredSummary)}</p>`
+          : '') +
 
         `<div class="sx-dossier__topline">` +
           `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +

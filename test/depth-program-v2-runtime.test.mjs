@@ -6,6 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { FLAVOR_PACKS } from '../src/data/flavor/index.generated.js';
 import { save } from '../src/save/saveSystem.js';
+import { missionDossierSummary } from '../src/ui/station/screens/contracts.js';
 
 let runtimeModule = null;
 try {
@@ -306,4 +307,17 @@ test('canonical save capture includes the same V2 flavor semantic payload', () =
   });
   assert.deepEqual(saveRuntime.serializeData().v2Flavor, expected);
   assert.equal(saveRuntime._saveCapturePlan().some(([key]) => key === 'v2Flavor'), true);
+});
+
+test('Contracts dossier exposes authored set-piece instructions without inventing fallback copy', () => {
+  const instruction = FLAVOR_PACKS.set_piece_missions.entries.find((entry) => (
+    entry.sourceRef === 'mission.sp1.long_read.rumor_survey.instruction'
+  ));
+  assert.ok(instruction && instruction.text);
+  assert.equal(missionDossierSummary({ summary: instruction.text }), instruction.text,
+    'the compiled offer summary must reach the live dossier unchanged');
+  assert.equal(missionDossierSummary({ description: 'generic fallback' }), '',
+    'offers without an authored summary retain the existing mechanical dossier');
+  assert.equal(missionDossierSummary({ summary: '  filed copy  ' }), 'filed copy',
+    'presentation trims transport whitespace only');
 });
