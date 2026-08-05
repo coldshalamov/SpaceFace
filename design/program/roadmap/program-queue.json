@@ -4731,7 +4731,7 @@
       "priority": 246,
       "title": "PERF-06 dirty-range Browser/Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-040.focused-implementation"
@@ -4741,11 +4741,18 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [],
+      "paths": [
+        ".devshots/perf/dirty-ranges/",
+        "design/program/roadmap/active/PQ-040.md",
+        "design/program/roadmap/receipts/PQ-040-dirty-range-uploads-REPORT.md"
+      ],
+      "checks": [
+        "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron"
+      ],
       "receiptRefs": [],
-      "brief": "Integrated dirty-range production and focused real-WebGL correctness remain focused-green. The one declared broker invocation launched no runtime because performance-dirty-ranges-browser is not tracked; the paired Electron manifest and causal full-upload comparator are also absent. Under the no-probe/no-manifest-expansion boundary, upload-byte, dense-combat parity, and matched-performance acceptance remain unproven.",
-      "blocker": "The tracked tree has no performance-dirty-ranges-browser/electron manifests or existing causal full-upload comparator, and this goal forbids creating or expanding those acceptance surfaces merely to close the packet."
+      "brief": "Integrated dirty-range production and focused real-WebGL correctness remain focused-green. Commits 4eafbf1a and e982b593 added the tracked paired broker manifests plus the causal dirty-range-versus-full-span comparator, so one clean candidate may now run Browser then Electron acceptance. Upload-byte, dense-combat parity, allocation/GC, and matched-performance acceptance remain unproven until those one-use claims pass.",
+      "blocker": null
     },
     {
       "id": "PQ-041.acceptance-surfaces",

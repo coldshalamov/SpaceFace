@@ -212,6 +212,11 @@ abstraction. Repeating the same runtime candidate would add no authority.
 
 ## Residual acceptance gap
 
+Update 2026-08-05: the missing-surface statement in the historical readiness audit above was later
+resolved by tracked commits `4eafbf1a` and `e982b593`. The paired Browser/Electron manifests and
+causal full-span comparator now exist, so this is an unrun native acceptance gap rather than a
+repository-plumbing blocker.
+
 PQ-040 remains `acceptance: unproven`. Broker-managed evidence is still required for:
 
 1. matched full-upload versus dirty-range Browser and packaged Electron routes bound to the same source candidate;
