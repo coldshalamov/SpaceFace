@@ -351,6 +351,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   const pts = new Float32Array(nSeg * 3);
   let head = 0;
   let count = 0;
+  let lastUvCount = -1;
 
   return {
     // Samples are frame-local XZ (callers project global→local before push).
@@ -375,6 +376,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       if (opacity != null) mat.uniforms.uOpacity.value = opacity;
       if (scroll != null) mat.uniforms.uTrailScroll.value = scroll;
       if (time != null) mat.uniforms.uTrailTime.value = time;
+      const updateUvs = count !== lastUvCount;
       for (let i = 0; i < nSeg; i++) {
         const t = i / Math.max(1, count - 1);
         const slot = ((head - 1 - i) % nSeg + nSeg) % nSeg;
@@ -391,13 +393,18 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
         pos[(vi + 1) * 3] = px - ox;
         pos[(vi + 1) * 3 + 1] = 0.4;
         pos[(vi + 1) * 3 + 2] = pz - oz;
-        uvs[vi * 2] = t;
-        uvs[vi * 2 + 1] = 0.0;
-        uvs[(vi + 1) * 2] = t;
-        uvs[(vi + 1) * 2 + 1] = 1.0;
+        if (updateUvs) {
+          uvs[vi * 2] = t;
+          uvs[vi * 2 + 1] = 0.0;
+          uvs[(vi + 1) * 2] = t;
+          uvs[(vi + 1) * 2 + 1] = 1.0;
+        }
       }
-      geo.attributes.position.needsUpdate = true;
-      geo.attributes.aTrailUv.needsUpdate = true;
+      posAttr.needsUpdate = true;
+      if (updateUvs) {
+        uvAttr.needsUpdate = true;
+        lastUvCount = count;
+      }
     },
     getMaterial() { return mat; },
     /** Owner-root accessor for measurement isolation (do not mutate topology). */

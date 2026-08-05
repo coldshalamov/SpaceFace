@@ -59,6 +59,29 @@ const liveRibbonScene = new THREE.Scene();
 const liveRibbon = surfaces.createRibbonTrail(liveRibbonScene, '#7fe0ff', 30, 5).getMesh();
 assert.deepEqual(Object.keys(precompileRibbon.geometry.attributes), Object.keys(liveRibbon.geometry.attributes),
   'precompile ribbon must carry the exact live position/aTrailUv geometry contract');
+
+const uploadRibbonScene = new THREE.Scene();
+const uploadRibbon = surfaces.createRibbonTrail(uploadRibbonScene, '#7fe0ff', 4, 2);
+uploadRibbon.push(0, 0, 0);
+uploadRibbon.push(3, -2, Math.PI * 0.25);
+uploadRibbon.rebuild(0.8, 0.1, 1);
+const uploadRibbonMesh = uploadRibbon.getMesh();
+const positionVersionAtTwoSamples = uploadRibbonMesh.geometry.attributes.position.version;
+const uvVersionAtTwoSamples = uploadRibbonMesh.geometry.attributes.aTrailUv.version;
+const uvAtTwoSamples = Array.from(uploadRibbonMesh.geometry.attributes.aTrailUv.array);
+uploadRibbon.rebuild(0.7, 0.2, 2);
+assert.equal(uploadRibbonMesh.geometry.attributes.position.version, positionVersionAtTwoSamples + 1,
+  'a live ribbon rebuild must continue publishing its moving positions');
+assert.equal(uploadRibbonMesh.geometry.attributes.aTrailUv.version, uvVersionAtTwoSamples,
+  'a stable ribbon sample count must not republish identical UV coordinates');
+assert.deepEqual(Array.from(uploadRibbonMesh.geometry.attributes.aTrailUv.array), uvAtTwoSamples,
+  'skipping the redundant UV upload must preserve the exact ribbon coordinates');
+uploadRibbon.push(7, 1, Math.PI * 0.5);
+uploadRibbon.rebuild(0.6, 0.3, 3);
+assert.equal(uploadRibbonMesh.geometry.attributes.aTrailUv.version, uvVersionAtTwoSamples + 1,
+  'a changed ribbon sample count must republish its new taper coordinates');
+uploadRibbon.dispose();
+
 const precompileStreak = precompileSalvo.getObjectByName('SF_Precompile_TrailStreak');
 assert(precompileStreak instanceof THREE.InstancedMesh,
   'precompile must stage the live instanced streak program, not the obsolete single-mesh material');
