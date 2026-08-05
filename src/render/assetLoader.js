@@ -11,6 +11,11 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
+import { createRenderPackageLoader } from './renderPackageLoader.js';
+import {
+  renderPackagePilotForAssetId,
+  renderPackagePilotForSourceUrl,
+} from './renderPackageManifest.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 2,
@@ -183,6 +188,7 @@ export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
 }
 
 function disposeRuntimeDecoders(runtime) {
+  try { runtime.renderPackages?.dispose('authored-runtime-retired'); } catch (_) {}
   const decoders = runtime.disposableDecoders || [];
   runtime.disposableDecoders = [];
   for (const decoder of decoders) {
@@ -348,6 +354,11 @@ export async function loadAuthoredPart(url, options = {}) {
 
   if (runtime.retiring) return null;
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
+
+  const renderPackagePilot = renderPackagePilotForSourceUrl(url);
+  if (renderPackagePilot) {
+    return loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options);
+  }
 
   const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
@@ -518,8 +529,28 @@ async function createRuntime(renderer) {
     await attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders);
   }
 
+  const residency = getAssetResidency(renderer);
+  const renderPackages = createRenderPackageLoader({
+    residency,
+    configureGltfLoader: async (loader) => {
+      await attachRuntimeDecoders(loader, renderer, decoders, disposableDecoders);
+    },
+    prepareDecoded(decoded, packageMetadata) {
+      const pilot = renderPackagePilotForAssetId(packageMetadata.assetId);
+      if (!pilot) throw new Error(`Unknown production render package ${packageMetadata.assetId}.`);
+      const blueprint = compileBlueprint(pilot.sourceUrl, decoded, pilot.slot);
+      if (blueprint.assetId !== pilot.runtimeAssetId) {
+        throw new Error(
+          `Render package ${pilot.assetId} decoded runtime asset ${blueprint.assetId} instead of ${pilot.runtimeAssetId}.`,
+        );
+      }
+      return blueprint;
+    },
+  });
+
   return {
     gltf,
+    renderPackages,
     assets: new Map(),
     pendingAssetTasks: new Set(),
     failures: new Map(),
@@ -531,6 +562,63 @@ async function createRuntime(renderer) {
     retirementPromise: null,
     defaultResidencyOwner: Object.freeze({ type: 'authored-runtime-cache' }),
   };
+}
+
+async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
+  const slot = options.slot || null;
+  const optional = options.optional === true;
+  const cacheKey = `${url}::${slot || '*'}`;
+  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+    runtime.renderPackages.load(pilot.metadataUrl, {
+      expectedContentHash: pilot.expectedContentHash,
+    }).then((renderPackage) => {
+      const blueprint = renderPackage.prepared;
+      if (!blueprint || blueprint.url !== url) {
+        throw new Error(`Render package ${pilot.assetId} has no prepared blueprint for ${url}.`);
+      }
+      const residency = {};
+      Object.defineProperties(residency, {
+        key: { value: renderPackage.residencyKey, enumerable: true },
+        generation: { value: renderPackage.contentHash, enumerable: true },
+        state: {
+          enumerable: true,
+          get() { return renderPackage.evicted ? 'evicted' : 'resident'; },
+        },
+      });
+      return Object.freeze({
+        ...blueprint,
+        renderPackage,
+        residency: Object.freeze(residency),
+        report: Object.freeze({
+          ...blueprint.report,
+          renderPackage: Object.freeze({
+            route: 'render-package',
+            assetId: renderPackage.assetId,
+            contentHash: renderPackage.contentHash,
+          }),
+        }),
+      });
+    }).catch((error) => {
+      if (!runtime.retiring) {
+        runtime.failures.set(cacheKey, error);
+        if (!optional) warnOnce(cacheKey, `[assetLoader] production render package failed for ${url}`, error);
+      }
+      return null;
+    })
+  ));
+  if (!task) return null;
+
+  const record = await task;
+  if (!record) return null;
+  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
+  const owner = options.residencyOwner || runtime.defaultResidencyOwner;
+  if (owner) {
+    record.renderPackage.retain(owner, {
+      role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+      sectorId: options.sectorId || null,
+    });
+  }
+  return record;
 }
 
 async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
@@ -647,19 +735,34 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
       const material = canopy ? makeCanopyMaterial(node.material) : node.material;
       if (canopy) node.material = material;
       validatePrimitive(node, material, canopy, gltf, metadata, errors, warnings);
+      const primitiveTags = buildPrimitiveTags(tags, metadata, canopy);
+      node.userData = {
+        ...(node.userData || {}),
+        spacefacePartUrl: url,
+        spacefaceTags: primitiveTags,
+      };
       primitives.push(Object.freeze({
         key: `${url}#${node.uuid}`,
         name: node.name || `Primitive_${primitives.length}`,
         geometry: node.geometry,
         material,
         matrix: _relative.clone(),
-        tags: buildPrimitiveTags(tags, metadata, canopy),
+        tags: primitiveTags,
       }));
     } else if (isContractMarker(node, tags)) {
+      const markerTags = Object.freeze({
+        ...cleanRuntimeTags(tags),
+        lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined),
+      });
+      node.userData = {
+        ...(node.userData || {}),
+        spacefacePartUrl: url,
+        spacefaceTags: markerTags,
+      };
       markers.push(Object.freeze({
         name: node.name || `Marker_${markers.length}`,
         matrix: _relative.clone(),
-        tags: Object.freeze({ ...cleanRuntimeTags(tags), lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined) }),
+        tags: markerTags,
         userData: Object.freeze({ ...node.userData }),
       }));
     }

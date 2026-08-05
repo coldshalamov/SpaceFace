@@ -4115,6 +4115,12 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
 }
 
 function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
+  if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
+    return instantiateRenderPackagePart(
+      record, parent, placement, palette, owner, bindings, mutableMaterials,
+    );
+  }
+
   const partRoot = new THREE.Group();
   partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
   applyPlacementTransform(partRoot, placement);
@@ -4192,6 +4198,82 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
     partRoot.add(object);
     registerBinding(object, marker.tags, bindings);
   }
+  return partRoot;
+}
+
+function instantiateRenderPackagePart(record, parent, placement, palette, owner, bindings, mutableMaterials) {
+  const partRoot = new THREE.Group();
+  partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
+  applyPlacementTransform(partRoot, placement);
+  const sourceLength = Math.max(record.bounds.size[0], 1e-6);
+  const scale = placement.targetLength / sourceLength;
+  partRoot.scale.multiplyScalar(scale);
+  partRoot.updateMatrix();
+  parent.add(partRoot);
+
+  const instance = record.renderPackage.createInstance({
+    name: `RenderPackage_${placement.label}_${record.assetId}`,
+    residencyOwner: owner,
+    residencyRole: 'live-boundary',
+  });
+  const packageRoot = instance?.root;
+  if (!packageRoot?.isObject3D) {
+    throw new Error(`Render package ${record.renderPackage.assetId || record.assetId} returned no Object3D root.`);
+  }
+  packageRoot.userData = {
+    ...(packageRoot.userData || {}),
+    spacefaceRenderPackageDirect: true,
+    spacefacePartUrl: record.url,
+  };
+  partRoot.userData.renderPackageInstance = instance;
+  partRoot.add(packageRoot);
+
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+
+  packageRoot.traverse((object) => {
+    if (object === packageRoot) return;
+    const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
+    object.userData = {
+      ...(object.userData || {}),
+      spacefacePartUrl: record.url,
+      spacefaceTags: tags,
+      spacefaceRenderPackageDirect: true,
+      spacefacePartNormalization: scale,
+    };
+
+    if (object.isMesh) {
+      if (object.visible === false) return;
+      const primitive = { material: object.material, tags };
+      object.material = requiresPerShipMesh(primitive)
+        ? dedicatedMaterialFor(
+            object.material, tags, palette, mutableMaterials,
+            `${record.url}|${placement.label}|${object.name}`,
+          )
+        : sharedMaterialFor(object.material, tags, palette);
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      object.castShadow = materials.some((material) => material && !material.transparent && material.depthWrite !== false);
+      object.receiveShadow = materials.some((material) => material && !material.transparent);
+      object.visible = !tags.lod || tags.lod === 'lod0';
+      registerBinding(object, tags, bindings);
+      return;
+    }
+
+    if (tags.socket) {
+      if (bindings.socketNames.has(object.name)) {
+        object.visible = false;
+        return;
+      }
+      bindings.socketNames.add(object.name);
+      object.userData.spacefaceSocket = true;
+      object.userData.role = tags.socketRole || object.userData.role || 'attachment';
+      object.userData.forward = tags.socketForward || object.userData.forward || [1, 0, 0];
+    }
+    object.visible = !tags.lod || tags.lod === 'lod0';
+    registerBinding(object, tags, bindings);
+  });
   return partRoot;
 }
 

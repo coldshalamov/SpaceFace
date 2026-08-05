@@ -164,11 +164,18 @@ function createTrianglePrimitive(document, buffer, options = {}) {
   if (options.tangent) {
     primitive.setAttribute('TANGENT', document.createAccessor(`${prefix}-tangents`)
       .setType('VEC4')
-      .setArray(new Float32Array([
-        1, 0, 0, 1,
-        1, 0, 0, 1,
-        1, 0, 0, 1,
-      ]))
+      .setArray(options.normalizedTangent
+        ? new Int8Array([
+            127, 0, 0, 127,
+            127, 0, 0, 127,
+            127, 0, 0, 127,
+          ])
+        : new Float32Array([
+            1, 0, 0, 1,
+            1, 0, 0, 1,
+            1, 0, 0, 1,
+          ]))
+      .setNormalized(options.normalizedTangent === true)
       .setBuffer(buffer));
   }
   if (options.morphTarget) {
@@ -264,6 +271,7 @@ async function createUnsupportedBakeFixture(path, options = {}) {
     prefix: 'unsupported',
     normalizedNormal: options.normalizedNormal,
     tangent: options.tangent,
+    normalizedTangent: options.normalizedTangent,
     morphTarget: options.morphTarget,
     positionExtras: options.positionExtras,
   });
@@ -688,12 +696,44 @@ test('compiler keeps strip primitives separate so merge groups cannot bridge top
   }, { primitiveMode: 5 });
 });
 
+test('compiler promotes quantized normal and tangent streams before baking production transforms', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-render-package-quantized-'));
+  try {
+    const sourcePath = join(root, 'quantized.glb');
+    const outputDir = join(root, 'output');
+    await createUnsupportedBakeFixture(sourcePath, {
+      normalizedNormal: true,
+      tangent: true,
+      normalizedTangent: true,
+    });
+
+    await compileRenderPackage({
+      assetId: 'fixture.ship',
+      sourceGlbPath: sourcePath,
+      semanticManifest: singleNodeManifest(),
+      outputDir,
+    });
+
+    const compiled = await new NodeIO().read(join(outputDir, 'render.glb'));
+    const primitive = compiled.getRoot().listMeshes()[0].listPrimitives()[0];
+    const normal = primitive.getAttribute('NORMAL');
+    const tangent = primitive.getAttribute('TANGENT');
+    assert.equal(normal.getComponentType(), 5126);
+    assert.equal(normal.getNormalized(), false);
+    assert.equal(tangent.getComponentType(), 5126);
+    assert.equal(tangent.getNormalized(), false);
+    assert.deepEqual(Array.from(normal.getArray()), [0, 0, 1, 0, 0, 1, 0, 0, 1]);
+    assert.deepEqual(Array.from(tangent.getArray()), [1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1]);
+    assert.ok(primitive.getIndices(), 'offline promotion must preserve indexed geometry');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('compiler fails closed on unsafe immutable streams, joint ownership, and reserved metadata', async () => {
   const root = await mkdtemp(join(tmpdir(), 'spaceface-render-package-reject-'));
   try {
     const cases = [
-      [{ normalizedNormal: true }, /normalized NORMAL streams/i],
-      [{ tangent: true }, /TANGENT streams/i],
       [{ morphTarget: true }, /morph target streams/i],
       [{ negativeScale: true }, /negative-determinant transform/i],
       [{ skinJoint: true }, /skin joint/i],

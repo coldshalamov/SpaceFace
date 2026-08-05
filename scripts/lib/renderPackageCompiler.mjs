@@ -212,6 +212,7 @@ async function prepareRenderDocument(document, semanticManifest, resolved) {
 
     if (!isIdentityMatrix(localMatrix)) {
       for (const primitive of isolatedMesh.listPrimitives()) {
+        promoteDirectionalBakeStreams(primitive);
         transformPrimitive(primitive, localMatrix);
       }
       if (originalChildren.length > 0) {
@@ -353,15 +354,36 @@ function assertBakeStreamsSupported(entry, mesh, localMatrix) {
       throw new Error(`Immutable semantic node ${entry.id} cannot bake this POSITION component type.`);
     }
     const normal = primitive.getAttribute('NORMAL');
-    if (normal?.getNormalized()) {
-      throw new Error(`Immutable semantic node ${entry.id} cannot bake normalized NORMAL streams.`);
+    if (normal && normal.getType() !== Accessor.Type.VEC3) {
+      throw new Error(`Immutable semantic node ${entry.id} cannot bake non-VEC3 NORMAL streams.`);
     }
-    if (normal && normal.getComponentType() !== Accessor.ComponentType.FLOAT) {
+    if (normal && normal.getComponentType() !== Accessor.ComponentType.FLOAT && !normal.getNormalized()) {
       throw new Error(`Immutable semantic node ${entry.id} cannot bake non-FLOAT NORMAL streams.`);
     }
-    if (primitive.getAttribute('TANGENT')) {
-      throw new Error(`Immutable semantic node ${entry.id} cannot bake TANGENT streams.`);
+    const tangent = primitive.getAttribute('TANGENT');
+    if (tangent && tangent.getType() !== Accessor.Type.VEC4) {
+      throw new Error(`Immutable semantic node ${entry.id} cannot bake non-VEC4 TANGENT streams.`);
     }
+    if (tangent && tangent.getComponentType() !== Accessor.ComponentType.FLOAT && !tangent.getNormalized()) {
+      throw new Error(`Immutable semantic node ${entry.id} cannot bake non-FLOAT TANGENT streams.`);
+    }
+  }
+}
+
+function promoteDirectionalBakeStreams(primitive) {
+  for (const semantic of ['NORMAL', 'TANGENT']) {
+    const accessor = primitive.getAttribute(semantic);
+    if (!accessor || accessor.getComponentType() === Accessor.ComponentType.FLOAT) continue;
+
+    const element = [];
+    const values = new Float32Array(accessor.getCount() * accessor.getElementSize());
+    for (let index = 0; index < accessor.getCount(); index++) {
+      accessor.getElement(index, element);
+      values.set(element, index * accessor.getElementSize());
+    }
+    primitive.setAttribute(semantic, accessor.clone()
+      .setArray(values)
+      .setNormalized(false));
   }
 }
 

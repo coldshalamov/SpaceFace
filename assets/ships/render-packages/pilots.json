@@ -1,0 +1,52 @@
+{
+  "schema": "spaceface.renderPackagePilots.v1",
+  "releaseManifest": "assets/ships/release/release_manifest.json",
+  "runtimeManifest": "src/render/renderPackageManifest.js",
+  "pilots": [
+    {
+      "key": "kestrel",
+      "assetId": "sf.render.kestrel",
+      "runtimeAssetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_kestrel",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kestrel.glb",
+      "releaseSha256": "dc4b841191e76e175f9e3aac93f30a9b4a1578b2f4da4127b83146468185c1a2",
+      "releaseBytes": 31799928,
+      "rootNode": "KESTREL_V4_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/kestrel",
+      "metadataUrl": "assets/ships/release/render-packages/kestrel/render-package.json"
+    },
+    {
+      "key": "helios-span",
+      "assetId": "sf.render.helios-span",
+      "runtimeAssetId": "SF_WHOLESHIP_HELIOS_SPAN",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_helios_span",
+      "sourceUrl": "assets/ships/release/parts/wholeships/helios_span.glb",
+      "releaseSha256": "5fb2a62c79d3bc07777c5bf5ff9d2e26554e2bf3bfca051ba470d28adb6ed1b5",
+      "releaseBytes": 14153500,
+      "rootNode": "SF_M4_HELIOS_SPAN_ROOT",
+      "dynamicNameIncludes": ["HOOK_DRIVE"],
+      "outputDir": "assets/ships/release/render-packages/helios-span",
+      "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json"
+    },
+    {
+      "key": "debris-chunk",
+      "assetId": "sf.render.debris-chunk",
+      "runtimeAssetId": "place_debris_chunk",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_debris_chunk",
+      "sourceUrl": "assets/ships/release/parts/places/place_debris_chunk.glb",
+      "releaseSha256": "016e7a103a40b7ba3183d56fcef1362aea0c3723274b49d4ab2439ae51151a26",
+      "releaseBytes": 1527596,
+      "rootNode": "place_debris_chunk",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/debris-chunk",
+      "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json"
+    }
+  ]
+}

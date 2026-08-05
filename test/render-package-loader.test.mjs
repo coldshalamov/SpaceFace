@@ -168,6 +168,44 @@ test('loader decodes once per content hash and creates lightweight instances sha
   }
 });
 
+test('loader exposes one prepared blueprint and lets a render boundary own instance residency', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry();
+  const prepared = Object.freeze({ route: 'prepared-blueprint' });
+  let prepareCount = 0;
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+    prepareDecoded(value, metadata, renderUrl) {
+      prepareCount++;
+      assert.strictEqual(value.scene, decoded.scene);
+      assert.equal(metadata.assetId, 'fixture.ship');
+      assert.equal(renderUrl, 'render.glb');
+      return prepared;
+    },
+  });
+
+  const loaded = await loader.load(packageMetadata());
+  assert.equal(prepareCount, 1);
+  assert.strictEqual(loaded.prepared, prepared);
+  assert.match(loaded.residencyKey, /^render-package:/);
+
+  const boundary = new THREE.Group();
+  assert.equal(loaded.retain(boundary, { role: 'live-boundary' }), true);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2);
+  const instance = loaded.createInstance({
+    residencyOwner: boundary,
+    residencyRole: 'live-boundary',
+  });
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'an already-retained external owner is shared instead of creating an untracked instance owner');
+  assert.equal(instance.dispose(), true);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 2,
+    'disposing one hierarchy cannot release the boundary-wide asset hold');
+  assert.equal(residency.releaseOwner(boundary, 'fixture-boundary-removed'), 1);
+  assert.equal(residency.canonicalDiagnostics().assets[0].refCount, 1);
+});
+
 test('loader validates metadata and declared content identity before decoding', async () => {
   let decodeCount = 0;
   const decoded = decodedFixture();

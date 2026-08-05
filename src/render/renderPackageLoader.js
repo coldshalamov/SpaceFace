@@ -37,6 +37,9 @@ export function createRenderPackageLoader(options = {}) {
   const contentDigest = typeof options.contentDigest === 'function'
     ? options.contentDigest
     : null;
+  const prepareDecoded = typeof options.prepareDecoded === 'function'
+    ? options.prepareDecoded
+    : null;
   const cache = new Map();
   let ownerSequence = 0;
   let disposed = false;
@@ -113,13 +116,22 @@ export function createRenderPackageLoader(options = {}) {
     });
     entry.promise = Promise.resolve()
       .then(() => decodeGlb(renderUrl, metadata))
-      .then((decoded) => {
+      .then(async (decoded) => {
+        let prepared = null;
+        try {
+          prepared = prepareDecoded
+            ? await prepareDecoded(decoded, metadata, renderUrl)
+            : null;
+        } catch (error) {
+          disposeDecodedResources(decoded);
+          throw error;
+        }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
           residency,
           entry,
           createOwner,
           releasePackageOwner,
-        });
+        }, prepared);
         entry.loaded = loaded;
         try {
           residency.registerAsset(entry.key, loaded.resources, {
@@ -234,7 +246,7 @@ export function createRenderPackageLoader(options = {}) {
   });
 }
 
-function createLoadedPackage(metadata, decoded, renderUrl, lifecycle) {
+function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared = null) {
   const template = decoded?.scene || decoded;
   if (
     !template
@@ -253,6 +265,7 @@ function createLoadedPackage(metadata, decoded, renderUrl, lifecycle) {
       renderUrl,
       resources,
       lifecycle,
+      prepared,
     );
   } catch (error) {
     disposeUnregisteredResources(resources);
@@ -264,13 +277,15 @@ class LoadedRenderPackage {
   #template;
   #lifecycle;
 
-  constructor(metadata, template, renderUrl, resources, lifecycle) {
+  constructor(metadata, template, renderUrl, resources, lifecycle, prepared) {
     Object.defineProperties(this, {
       assetId: { value: metadata.assetId, enumerable: true },
       contentHash: { value: metadata.contentHash, enumerable: true },
       metadata: { value: metadata, enumerable: true },
       renderUrl: { value: renderUrl, enumerable: true },
+      residencyKey: { value: lifecycle.entry.key, enumerable: true },
       resources: { value: Object.freeze([...resources]), enumerable: true },
+      prepared: { value: prepared, enumerable: true },
     });
     this.#template = template;
     this.#lifecycle = lifecycle;
@@ -299,14 +314,22 @@ class LoadedRenderPackage {
     return this.release(reason);
   }
 
+  retain(owner, metadata = {}) {
+    if (this.released || this.evicted || !this.#lifecycle.entry.packageOwner) return false;
+    return this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, metadata);
+  }
+
   createInstance(instanceOptions = {}) {
     if (this.released || this.evicted || !this.#lifecycle.entry.packageOwner) {
       throw new Error(`Render package ${this.assetId} must be retained before creating an instance.`);
     }
-    const owner = this.#lifecycle.createOwner('render-instance', this.contentHash);
-    if (!this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
-      role: 'render-package-instance',
-    })) {
+    const externalOwner = instanceOptions.residencyOwner || null;
+    const owner = externalOwner || this.#lifecycle.createOwner('render-instance', this.contentHash);
+    const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
+      role: instanceOptions.residencyRole || 'render-package-instance',
+      sectorId: instanceOptions.sectorId || null,
+    });
+    if (!retained && !externalOwner) {
       throw new Error(`Render package ${this.assetId} could not retain instance residency.`);
     }
 
@@ -352,12 +375,12 @@ class LoadedRenderPackage {
         dispose: (reason = 'render-package-instance-disposed') => {
           if (disposed) return false;
           disposed = true;
-          this.#lifecycle.residency.releaseOwner(owner, reason);
+          if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
           return true;
         },
       });
     } catch (error) {
-      this.#lifecycle.residency.releaseOwner(owner, 'render-package-instance-create-failed');
+      if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, 'render-package-instance-create-failed');
       throw error;
     }
   }
@@ -516,6 +539,12 @@ function disposeUnregisteredResources(resources) {
       try { resource.dispose(); } catch (_) {}
     }
   }
+}
+
+function disposeDecodedResources(decoded) {
+  const template = decoded?.scene || decoded;
+  if (!template || typeof template.traverse !== 'function') return;
+  disposeUnregisteredResources(collectImmutableResources(template));
 }
 
 function resolveRenderUrl(uri, baseUrl) {
