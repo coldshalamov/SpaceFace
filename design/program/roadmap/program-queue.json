@@ -1843,7 +1843,7 @@
       "id": "PQ-037",
       "priority": 37,
       "title": "PERF-03 Offline semantic render compiler",
-      "state": "implemented",
+      "state": "integrated",
       "canonical": [
         "PERF-03"
       ],
@@ -1872,7 +1872,10 @@
         "visual-review",
         "performance"
       ],
-      "brief": "Create deterministic versioned render packages and a bounded loader so clone, transform, merge, normalization, and de-index work leave gameplay, while current Blender/place/release-manifest writers remain protected."
+      "brief": "The deterministic compiler and default package route now ship rebuildable Kestrel, Helios Span, and place_debris_chunk pilots. Their immutable geometry/material preparation occurs offline; ordinary runtime instances preserve authored semantics without clone/apply/merge/normalization/de-index compilation.",
+      "integratedCommit": "81134ecfc6028c97d4e84186e8e18fee3c2139bf",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md#production-pilot-closure-2026-08-05",
+      "receipt": "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
     },
     {
       "id": "PQ-038",
@@ -4631,8 +4634,11 @@
       "parentId": "PQ-037",
       "priority": 222,
       "title": "PERF-03 production render-package pilot",
-      "kind": "acceptance_capture",
-      "state": "ready",
+      "kind": "implementation",
+      "state": "done",
+      "owner": "released",
+      "claimBase": "6bc8cf88f614a9dc69d22e7fa38b7b41da6c54c2",
+      "integratedCommit": "81134ecfc6028c97d4e84186e8e18fee3c2139bf",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-037.focused-implementation"
@@ -4642,10 +4648,37 @@
         "renderer",
         "validation-broker"
       ],
-      "paths": [],
-      "checks": [],
-      "receiptRefs": [],
-      "brief": "Run one bounded production pilot and prove semantic, admission, visual, and performance equivalence.",
+      "paths": [
+        "assets/ships/render-packages/",
+        "assets/ships/release/render-packages/",
+        "scripts/compile-render-packages.mjs",
+        "scripts/lib/renderPackageCompiler.mjs",
+        "scripts/build-render-package-pilots.mjs",
+        "scripts/check-render-package-pilots.mjs",
+        "src/contracts/renderPackage.js",
+        "src/render/renderPackageLoader.js",
+        "src/render/renderPackageManifest.js",
+        "src/render/assetLoader.js",
+        "src/render/partsLibrary.js",
+        "test/render-package-compiler.test.mjs",
+        "test/render-package-loader.test.mjs",
+        "test/render-package-pilots.test.mjs",
+        "package.json",
+        "design/program/roadmap/active/PQ-037.md",
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node --test test/render-package-compiler.test.mjs test/render-package-loader.test.mjs test/render-package-pilots.test.mjs",
+        "npm run check:render-package-pilots",
+        "npm run check:asset-pipeline-contract",
+        "npm run check:runtime-assets",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
+      ],
+      "brief": "Default-route production packages are integrated for exact release Kestrel dc4b8411, common Helios Span 5fb2a62c, and frequent place_debris_chunk 016e7a10. A clean rebuild reproduces all package bytes and hashes; the ordinary New Game route loaded Kestrel and Span and the same live renderer loaded debris with indexed shared geometry and no runtime geometry clone/apply/merge/normalization/de-index path.",
       "blocker": null
     },
     {
