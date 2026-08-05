@@ -124,6 +124,36 @@
       "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json"
     },
     {
+      "key": "dead-hulk",
+      "assetId": "sf.render.dead-hulk",
+      "runtimeAssetId": "place_dead_hulk",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_dead_hulk",
+      "sourceUrl": "assets/ships/release/parts/places/place_dead_hulk.glb",
+      "releaseSha256": "c2c421c6ff4b87cb92566560e080190f77ac14336b0fc43045bd2be9d02ba185",
+      "releaseBytes": 1919816,
+      "rootNode": "place_dead_hulk",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/dead-hulk",
+      "metadataUrl": "assets/ships/release/render-packages/dead-hulk/render-package.json"
+    },
+    {
+      "key": "dock-interior",
+      "assetId": "sf.render.dock-interior",
+      "runtimeAssetId": "place_dock_interior",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_dock_interior",
+      "sourceUrl": "assets/ships/release/parts/places/place_dock_interior.glb",
+      "releaseSha256": "926cb7784e61f8adcc533945c4c254f8d7e0af14efeff465bfd8b2caa6f0a6de",
+      "releaseBytes": 8749356,
+      "rootNode": "place_dock_interior",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/dock-interior",
+      "metadataUrl": "assets/ships/release/render-packages/dock-interior/render-package.json"
+    },
+    {
       "key": "wasp",
       "assetId": "sf.render.wasp",
       "runtimeAssetId": "SF_WASP_PRODUCTION_V1",

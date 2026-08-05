@@ -15,7 +15,7 @@ import {
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
 
-test('production manifest packages every live default-route whole-ship family', async () => {
+test('production manifest packages every live whole-ship family and admitted authored place', async () => {
   assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
     'kestrel',
     'ashline-dart',
@@ -25,6 +25,8 @@ test('production manifest packages every live default-route whole-ship family', 
     'helios-cradle',
     'helios-span',
     'debris-chunk',
+    'dead-hulk',
+    'dock-interior',
     'wasp',
   ]);
 
