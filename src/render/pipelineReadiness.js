@@ -25,6 +25,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const deferAutoFlush = typeof options.deferAutoFlush === 'function'
     ? options.deferAutoFlush
     : () => false;
+  const onBlockingSlice = typeof options.onBlockingSlice === 'function'
+    ? options.onBlockingSlice
+    : null;
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
   const pending = new Set();
   let queued = [];
   let quietTimer = null;
@@ -45,13 +53,42 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     if (maxTimer == null) maxTimer = setTimeout(() => { void flushQueued(); }, maxWaitMs);
   }
 
+  /** Time only the synchronous compileBatch call (until it returns a value/promise). */
+  function invokeCompileBatch(subjects, path) {
+    // Optional observer is inert: no clock reads or metadata when nothing is listening.
+    if (!onBlockingSlice) return compileBatch(subjects);
+    const started = now();
+    try {
+      const result = compileBatch(subjects);
+      reportSlice(path, subjects.length, now() - started);
+      return result;
+    } catch (error) {
+      reportSlice(path, subjects.length, now() - started);
+      throw error;
+    }
+  }
+
+  function reportSlice(path, subjectCount, durationMs) {
+    if (!onBlockingSlice) return;
+    try {
+      onBlockingSlice({
+        kind: 'pipelineAdmissionSync',
+        durationMs,
+        path,
+        subjectCount,
+      });
+    } catch {
+      // Observer errors must not change admission semantics.
+    }
+  }
+
   function flushQueued() {
     if (queued.length === 0) return compileTail;
     clearTimers();
     const batch = queued;
     queued = [];
     const subjects = batch.map((entry) => entry.subject);
-    const run = compileTail.then(() => compileBatch(subjects));
+    const run = compileTail.then(() => invokeCompileBatch(subjects, 'queued'));
     // Render-target selection is global renderer state. Keep batches serialized even if a second
     // runway fills while the first one is still waiting on the graphics driver.
     compileTail = run.catch(() => null);
@@ -90,7 +127,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       // queued authored roots. Put that pass directly on the same serial driver runway; any roots
       // admitted while it runs append behind it, and the returned promise waits for those too.
       flushQueued();
-      const run = compileTail.then(() => compileBatch([subject]));
+      const run = compileTail.then(() => invokeCompileBatch([subject], 'current'));
       compileTail = run.catch(() => null);
       return run.finally(() => waitForPending());
     },

@@ -33,18 +33,44 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const yieldToMain = typeof options.yieldToMain === 'function'
     ? options.yieldToMain
     : yieldToBrowser;
+  const onBlockingSlice = typeof options.onBlockingSlice === 'function'
+    ? options.onBlockingSlice
+    : null;
+  const now = typeof options.now === 'function' ? options.now : clockNow;
   const textures = collectStartupTextures(subjects);
   const uploads = [];
-  for (const texture of textures) {
+  const count = textures.length;
+  for (let index = 0; index < count; index++) {
+    const texture = textures[index];
     await yieldToMain();
-    const started = clockNow();
-    renderer.initTexture(texture);
-    uploads.push({
-      name: texture.name || texture.source?.data?.name || 'unnamed',
-      width: Number(texture.image?.width) || Number(texture.source?.data?.width) || 0,
-      height: Number(texture.image?.height) || Number(texture.source?.data?.height) || 0,
-      durationMs: clockNow() - started,
-    });
+    const started = now();
+    let success = false;
+    try {
+      renderer.initTexture(texture);
+      success = true;
+    } finally {
+      const durationMs = now() - started;
+      const name = texture.name || texture.source?.data?.name || 'unnamed';
+      const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
+      const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;
+      if (success) uploads.push({ name, width, height, durationMs });
+      if (onBlockingSlice) {
+        try {
+          onBlockingSlice({
+            kind: 'gpuResidencyUpload',
+            durationMs,
+            name,
+            width,
+            height,
+            index,
+            count,
+            success,
+          });
+        } catch {
+          // Observer errors must not change upload semantics.
+        }
+      }
+    }
   }
   await yieldToMain();
   return { skipped: false, textures: textures.length, uploads };
