@@ -131,6 +131,7 @@ export const massSeedHud = {
     this._dom = null;
     this._lastPillText = '';
     this._lastPillClass = '';
+    this._pillVisible = false;
     this._markVisible = false;
     this._markOffscreen = null;
     this._lastMarkDirection = '';
@@ -143,6 +144,7 @@ export const massSeedHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
+    this._pillVisible = false;
   },
 
   update(dt, state) {
@@ -187,7 +189,12 @@ export const massSeedHud = {
         cls = 'mseed-cooldown';
       }
     }
-    if (!text) { dom.pill.style.display = 'none'; this._lastPillText = ''; return; }
+    if (!text) {
+      if (this._pillVisible) dom.pill.style.display = 'none';
+      this._pillVisible = false;
+      this._lastPillText = '';
+      return;
+    }
     if (text !== this._lastPillText) {
       this._lastPillText = text;
       dom.pillText.textContent = text;
@@ -198,7 +205,10 @@ export const massSeedHud = {
       dom.pill.classList.toggle('mseed-warning', cls === 'mseed-warning');
       dom.pill.classList.toggle('mseed-cooldown', cls === 'mseed-cooldown');
     }
-    dom.pill.style.display = 'flex';
+    if (!this._pillVisible) {
+      dom.pill.style.display = 'flex';
+      this._pillVisible = true;
+    }
   },
 
   _updateLockMarker(dom, state, ms) {
@@ -259,8 +269,9 @@ export const massSeedHud = {
   _hideAll() {
     const dom = this._dom;
     if (!dom) return;
-    dom.pill.style.display = 'none';
-    dom.mark.style.display = 'none';
+    if (this._pillVisible) dom.pill.style.display = 'none';
+    if (this._markVisible) dom.mark.style.display = 'none';
+    this._pillVisible = false;
     this._lastPillText = '';
     this._markVisible = false;
   },
@@ -301,6 +312,14 @@ export const massSeedHud = {
 
     host.appendChild(root);
     this._dom = { root, pill, pillText, mark, markLabel, reducedMotion: false };
+    this._lastPillText = '';
+    this._lastPillClass = '';
+    this._pillVisible = false;
+    this._markVisible = false;
+    this._markOffscreen = null;
+    this._lastMarkDirection = '';
+    this._lastMarkTransform = '';
+    this._lastMarkAria = '';
     return this._dom;
   },
 };

@@ -44,6 +44,7 @@ export const planetHud = {
     this._dom = null;
     this._lastText = '';
     this._lastClass = '';
+    this._visible = false;
   },
 
   destroy() {
@@ -51,6 +52,7 @@ export const planetHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
+    this._visible = false;
   },
 
   update(dt, state) {
@@ -91,13 +93,17 @@ export const planetHud = {
       dom.pill.classList.toggle('planet-storm', cls === 'planet-storm');
       dom.pill.classList.toggle('planet-reentry', cls === 'planet-reentry');
     }
-    dom.pill.style.display = 'flex';
+    if (!this._visible) {
+      dom.pill.style.display = 'flex';
+      this._visible = true;
+    }
   },
 
   _hide() {
     const dom = this._dom;
     if (!dom) return;
-    dom.pill.style.display = 'none';
+    if (this._visible) dom.pill.style.display = 'none';
+    this._visible = false;
     this._lastText = '';
   },
 
@@ -127,6 +133,9 @@ export const planetHud = {
     root.appendChild(pill);
     host.appendChild(root);
     this._dom = { root, pill, pillText, pillHeat };
+    this._lastText = '';
+    this._lastClass = '';
+    this._visible = false;
     return this._dom;
   },
 };

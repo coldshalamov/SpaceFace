@@ -35,11 +35,13 @@ export const fieldHud = {
     this._dom = null;
     this._lastText = '';
     this._lastClass = '';
+    this._visible = false;
   },
 
   destroy() {
     if (this._dom && this._dom.root && this._dom.root.parentNode) this._dom.root.parentNode.removeChild(this._dom.root);
     this._dom = null;
+    this._visible = false;
   },
 
   update(dt, state) {
@@ -109,11 +111,15 @@ export const fieldHud = {
       dom.pill.classList.toggle('field-denied', cls === 'field-denied');
       dom.pill.classList.toggle('field-cooldown', cls === 'field-cooldown');
     }
-    dom.pill.style.display = 'flex';
+    if (!this._visible) {
+      dom.pill.style.display = 'flex';
+      this._visible = true;
+    }
   },
 
   _hide(dom) {
-    if (dom) dom.pill.style.display = 'none';
+    if (dom && this._visible) dom.pill.style.display = 'none';
+    this._visible = false;
     this._lastText = '';
   },
 
@@ -140,6 +146,9 @@ export const fieldHud = {
     root.appendChild(pill);
     host.appendChild(root);
     this._dom = { root, pill, pillText };
+    this._lastText = '';
+    this._lastClass = '';
+    this._visible = false;
     return this._dom;
   },
 };
