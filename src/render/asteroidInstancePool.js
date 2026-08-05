@@ -5,6 +5,13 @@
 // opaque base-body submissions for untinted common rocks with five compact InstancedMesh draws.
 // Renderer view culling is applied before compaction, avoiding sector-wide always-visible batches.
 import * as THREE from 'three';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  unregisterDynamicBufferOwner,
+} from './dynamicBufferRanges.js';
 
 export const ASTEROID_INSTANCE_TYPE_ID = 'ast_common_rock';
 export const ASTEROID_INSTANCE_VARIANT_COUNT = 5;
@@ -28,6 +35,7 @@ export function createAsteroidInstancePool(scene) {
       geometry: null,
       material: null,
       mesh: null,
+      dynamicBufferOwner: null,
       capacity: 0,
       records: [],
       entityIds: [],
@@ -146,8 +154,10 @@ export function syncAsteroidInstancePool(pool, options = {}) {
     if (!bucket.mesh) continue;
 
     let submitted = 0;
-    let dirty = false;
+    let matrixDirty = false;
     const matrixArray = bucket.mesh.instanceMatrix.array;
+    const dynamicBufferOwner = bucket.dynamicBufferOwner;
+    assertDynamicBufferOwnerWritable(dynamicBufferOwner);
     for (let index = 0; index < bucket.records.length; index++) {
       const record = bucket.records[index];
       const root = record.ownerRoot;
@@ -171,24 +181,29 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       const elements = leaf.matrixWorld.elements;
       stats.matrixEvaluations++;
       const offset = submitted * 16;
+      let slotDirty = false;
       for (let component = 0; component < 16; component++) {
         const value = Math.fround(elements[component]);
         if (matrixArray[offset + component] !== value) {
+          if (!slotDirty) {
+            markDynamicBufferItems(dynamicBufferOwner, 0, submitted);
+            slotDirty = true;
+            matrixDirty = true;
+          }
           matrixArray[offset + component] = value;
-          dirty = true;
         }
       }
       bucket.entityIds[submitted] = record.entityId;
       submitted++;
     }
 
-    if (bucket.mesh.count !== submitted) {
-      bucket.mesh.count = submitted;
-      dirty = true;
-    }
+    const countChanged = bucket.mesh.count !== submitted;
+    if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
+    else bucket.mesh.count = submitted;
     bucket.mesh.visible = submitted > 0;
-    if (dirty) {
-      bucket.mesh.instanceMatrix.needsUpdate = true;
+    const uploadDirty = matrixDirty || (!dynamicBufferOwner && countChanged);
+    if (uploadDirty) {
+      if (!dynamicBufferOwner) bucket.mesh.instanceMatrix.needsUpdate = true;
       stats.matrixUploads++;
       variantStats.uploads++;
     } else if (submitted > 0) {
@@ -251,7 +266,8 @@ export function clearAsteroidInstancePool(pool) {
     bucket.records.length = 0;
     bucket.entityIds.length = 0;
     if (bucket.mesh) {
-      bucket.mesh.count = 0;
+      if (bucket.dynamicBufferOwner) commitDynamicBufferOwner(bucket.dynamicBufferOwner, 0);
+      else bucket.mesh.count = 0;
       bucket.mesh.visible = false;
     }
   }
@@ -266,6 +282,8 @@ export function disposeAsteroidInstancePool(pool) {
     const mesh = bucket.mesh;
     if (!mesh) continue;
     if (mesh.parent) mesh.parent.remove(mesh);
+    unregisterDynamicBufferOwner(bucket.dynamicBufferOwner);
+    bucket.dynamicBufferOwner = null;
     mesh.geometry = null;
     mesh.material = null;
     if (typeof mesh.dispose === 'function') mesh.dispose();
@@ -282,6 +300,7 @@ function ensureCapacity(pool, bucket, required) {
   if (bucket.mesh && bucket.capacity >= required) return;
   const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(required));
   const previous = bucket.mesh;
+  const previousOwner = bucket.dynamicBufferOwner;
   const mesh = new THREE.InstancedMesh(bucket.geometry, bucket.material, capacity);
   mesh.name = `SF_CommonRockInstances_v${bucket.variant}`;
   mesh.count = 0;
@@ -294,6 +313,7 @@ function ensureCapacity(pool, bucket, required) {
   mesh.userData.asteroidInstanceVariant = bucket.variant;
   mesh.userData.borrowedGeometryMaterial = true;
   if (previous) {
+    unregisterDynamicBufferOwner(previousOwner);
     if (previous.parent) previous.parent.remove(previous);
     previous.geometry = null;
     previous.material = null;
@@ -303,6 +323,11 @@ function ensureCapacity(pool, bucket, required) {
   bucket.capacity = capacity;
   pool.dirty = true;
   if (pool.scene) pool.scene.add(mesh);
+  bucket.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
+    id: `common-rock-instances-v${bucket.variant}`,
+    mesh,
+    attributes: [{ name: 'instanceMatrix', attribute: mesh.instanceMatrix }],
+  });
 }
 
 function nextPowerOfTwo(value) {

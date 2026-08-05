@@ -22,6 +22,12 @@ import {
   initTrailStreakPool,
   updateTrailStreakInstance,
 } from '../src/render/engineTrailSurfaces.js';
+import {
+  createAsteroidInstancePool,
+  disposeAsteroidInstancePool,
+  registerAsteroidBaseLeaf,
+  syncAsteroidInstancePool,
+} from '../src/render/asteroidInstancePool.js';
 
 function acknowledgeInitial(attribute) {
   attribute.onUploadCallback();
@@ -308,4 +314,60 @@ test('dense one-times and five-times fanout stays at 23 ranges and charges packe
     for (const attribute of allAttributes) acknowledgeUpdate(attribute);
     coordinator.disarm(epoch);
   }
+});
+
+test('common-rock matrices publish only the changed compacted slot after residency', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+  const geometry = new THREE.IcosahedronGeometry(1, 1);
+  const material = new THREE.MeshStandardMaterial();
+  const pool = createAsteroidInstancePool(scene);
+  const roots = [];
+
+  for (let index = 0; index < 10; index++) {
+    const root = new THREE.Group();
+    root.position.set(index * 4, 0, -index * 3);
+    const leaf = new THREE.Mesh(geometry, material);
+    leaf.userData.asteroidInstanceTypeId = 'ast_common_rock';
+    leaf.userData.asteroidInstanceVariant = 0;
+    root.userData.asteroidInstanceBody = leaf;
+    root.add(leaf);
+    scene.add(root);
+    roots.push(root);
+    assert.equal(registerAsteroidBaseLeaf(pool, { id: index + 1, type: 'asteroid' }, root), true);
+  }
+
+  syncAsteroidInstancePool(pool);
+  const bucket = pool.variants[0];
+  const attribute = bucket.mesh.instanceMatrix;
+  let epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }],
+    'the first renderer-owned admission retains the complete bounded upload');
+  acknowledgeUpdate(attribute);
+  coordinator.disarm(epoch);
+
+  const requestedBefore = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  roots[9].position.x += 1.25;
+  const moved = syncAsteroidInstancePool(pool);
+  assert.equal(moved.matrixUploads, 1);
+  assert.equal(attribute.updateRanges.length, 0,
+    'matrix writes stay private until the renderer publication point');
+
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.deepEqual(attribute.updateRanges, [{ start: 9 * 16, count: 16 }]);
+  const requestedAfter = coordinator.getDiagnostics().owners
+    .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
+  assert.equal(requestedAfter - requestedBefore, 16 * Float32Array.BYTES_PER_ELEMENT);
+  assert.equal((requestedAfter - requestedBefore) / attribute.array.byteLength, 1 / 64,
+    'one transform in the default 64-slot bucket requests 98.4375% fewer bytes');
+  acknowledgeUpdate(attribute);
+  coordinator.disarm(epoch);
+
+  disposeAsteroidInstancePool(pool);
+  geometry.dispose();
+  material.dispose();
 });
