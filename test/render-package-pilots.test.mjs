@@ -15,12 +15,18 @@ import {
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
 
-test('production pilot manifest binds three accepted source hashes to checked package identities', async () => {
+test('production manifest retains the three-asset pilot and packages the live Wasp route', async () => {
   assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
     'kestrel',
     'helios-span',
     'debris-chunk',
+    'wasp',
   ]);
+
+  const wasp = renderPackagePilotForSourceUrl(
+    'assets/ships/release/parts/wholeships/wasp_production_v1.glb',
+  );
+  assert.equal(wasp?.runtimeAssetId, 'SF_WASP_PRODUCTION_V1');
 
   for (const binding of RENDER_PACKAGE_PILOTS) {
     assert.strictEqual(renderPackagePilotForSourceUrl(binding.sourceUrl), binding);

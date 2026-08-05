@@ -47,6 +47,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/debris-chunk",
       "metadataUrl": "assets/ships/release/render-packages/debris-chunk/render-package.json"
+    },
+    {
+      "key": "wasp",
+      "assetId": "sf.render.wasp",
+      "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_wasp_production_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+      "releaseSha256": "a23354195d95d57bdc2d2e8e32d5cd4fcc1f6c05d570033a7c1849ac87408dde",
+      "releaseBytes": 13468440,
+      "rootNode": "WASP_PRODUCTION_V1_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/wasp",
+      "metadataUrl": "assets/ships/release/render-packages/wasp/render-package.json"
     }
   ]
 }

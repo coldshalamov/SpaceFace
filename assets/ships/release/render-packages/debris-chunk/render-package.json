@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e22c1baf1823a7dbaac0450ccc6cd1f58946ba7a4210e6157f6cd4ada4f95999",
+  "contentHash": "850e62431e38087080bdb9c7ef35351f594f3d48828c0d4cc85da70535429043",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1752,8 +1752,8 @@
       "uri": "place_debris_chunk.glb"
     },
     "sourceManifest": {
-      "bytes": 2184,
-      "sha256": "60434824479226366171bbc665392b7e0d03bca124d1b2ea2ad371852b18fb28",
+      "bytes": 2840,
+      "sha256": "d54798db3f07b4940e0dd639eb96f6d6a50e465434ec1c662b78050e5bd6defa",
       "uri": "pilots.json"
     }
   },

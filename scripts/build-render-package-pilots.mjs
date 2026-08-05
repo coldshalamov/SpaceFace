@@ -17,6 +17,7 @@ import { compileRenderPackage } from './lib/renderPackageCompiler.mjs';
 const REPO_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const DEFAULT_MANIFEST = 'assets/ships/render-packages/pilots.json';
 const PACKAGE_FILES = Object.freeze(['render.glb', 'render-package.json']);
+const REQUIRED_PILOT_KEYS = Object.freeze(['kestrel', 'helios-span', 'debris-chunk']);
 let ioPromise = null;
 
 export async function buildRenderPackagePilots(options = {}) {
@@ -181,7 +182,9 @@ function assertPilotManifest(manifest) {
   if (!manifest.releaseManifest || !manifest.runtimeManifest || !Array.isArray(manifest.pilots)) {
     throw new Error('Render-package pilot manifest is incomplete.');
   }
-  if (manifest.pilots.length !== 3) throw new Error('Production pilot must bind exactly three assets.');
+  if (manifest.pilots.length < REQUIRED_PILOT_KEYS.length) {
+    throw new Error('Production manifest must retain the original three-asset pilot.');
+  }
   const keys = new Set();
   const sourceUrls = new Set();
   for (const pilot of manifest.pilots) {
@@ -189,6 +192,9 @@ function assertPilotManifest(manifest) {
     if (!pilot.sourceUrl || sourceUrls.has(pilot.sourceUrl)) throw new Error(`${pilot.key}: duplicate or missing source URL.`);
     keys.add(pilot.key);
     sourceUrls.add(pilot.sourceUrl);
+  }
+  for (const key of REQUIRED_PILOT_KEYS) {
+    if (!keys.has(key)) throw new Error(`Production manifest is missing required pilot ${key}.`);
   }
 }
 
