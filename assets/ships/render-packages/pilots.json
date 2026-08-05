@@ -109,6 +109,21 @@
       "metadataUrl": "assets/ships/release/render-packages/helios-span/render-package.json"
     },
     {
+      "key": "helios-trade-hub",
+      "assetId": "sf.render.helios-trade-hub",
+      "runtimeAssetId": "place_station_trade_hub",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_station_trade_hub",
+      "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "releaseSha256": "9540c8fa263359ff3b78302a9d48080af17cb903f47d43361814ba3666f0754a",
+      "releaseBytes": 79051580,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/helios-trade-hub",
+      "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json"
+    },
+    {
       "key": "debris-chunk",
       "assetId": "sf.render.debris-chunk",
       "runtimeAssetId": "place_debris_chunk",

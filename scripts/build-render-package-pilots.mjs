@@ -91,13 +91,19 @@ export async function buildRenderPackagePilots(options = {}) {
 export async function derivePilotSemanticManifest(pilot, sourcePath) {
   const io = await renderPackageIo();
   const document = await io.read(sourcePath);
-  const nodes = document.getRoot().listNodes();
+  const documentRoot = document.getRoot();
+  const scene = documentRoot.getDefaultScene() || documentRoot.listScenes()[0];
+  if (!scene) throw new Error(`${pilot.key}: package source contains no scene.`);
+  const nodes = documentRoot.listNodes();
   const names = new Map();
   for (const node of nodes) {
     const name = String(node.getName() || '');
     if (!name) continue;
     if (!names.has(name)) names.set(name, []);
     names.get(name).push(node);
+  }
+  if (pilot.sceneRoot === true) {
+    return deriveSceneRootSemanticManifest(pilot, scene, nodes, names);
   }
   const rootMatches = names.get(pilot.rootNode) || [];
   if (rootMatches.length !== 1) throw new Error(`${pilot.key}: expected one root node ${pilot.rootNode}.`);
@@ -175,6 +181,81 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
   };
 }
 
+function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
+  const roots = scene.listChildren();
+  if (roots.length === 0) throw new Error(`${pilot.key}: scene-root package contains no nodes.`);
+  const descendants = nodes.filter((node) => roots.some((root) => isDescendantOrSelf(node, root)));
+  const meshNodes = descendants.filter((node) => node.getMesh());
+  if (meshNodes.length === 0) throw new Error(`${pilot.key}: package source contains no mesh nodes.`);
+
+  const semanticIds = new Map();
+  const usedIds = new Set();
+  for (const node of descendants) {
+    assertUniqueNodeName(pilot, node, names);
+    const id = `${pilot.assetId}.node.${idToken(node.getName())}`;
+    if (usedIds.has(id)) {
+      throw new Error(`${pilot.key}: semantic node names collapse to duplicate ID ${id}.`);
+    }
+    usedIds.add(id);
+    semanticIds.set(node, id);
+  }
+
+  const clusterId = `${pilot.assetId}.body`;
+  const semanticNodes = descendants.map((node) => {
+    const nodeName = node.getName();
+    const mesh = node.getMesh();
+    const dynamic = !!mesh && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
+    const blend = !!mesh && /glass|canopy/i.test(nodeName);
+    const parent = node.getParentNode();
+    return {
+      id: semanticIds.get(node),
+      node: nodeName,
+      role: dynamic ? 'dynamic' : 'immutable',
+      parentId: parent ? semanticIds.get(parent) : null,
+      mergeBoundary: nodeName,
+      pipelineKey: !mesh ? 'root' : nodeName === 'COLLISION_HULL' ? 'non-render' : blend ? 'blend' : 'opaque',
+      transparency: blend ? 'blend' : 'opaque',
+      cullingGroup: 'asset',
+      independentlyCulled: false,
+      spatialClusterId: clusterId,
+    };
+  });
+  const byNodeName = new Map(semanticNodes.map((record) => [record.node, record]));
+  const anchors = descendants
+    .filter((node) => !node.getMesh() && String(node.getName() || '').startsWith('SOCKET_'))
+    .map((node) => ({
+      id: `${pilot.assetId}.anchor.${idToken(node.getName())}`,
+      node: node.getName(),
+      kind: 'socket',
+      parentNodeId: semanticIds.get(node.getParentNode()) || semanticIds.get(node),
+    }));
+  const dynamicGroups = semanticNodes
+    .filter((record) => record.role === 'dynamic')
+    .map((record) => ({
+      id: `${record.id}.dynamic`,
+      nodeId: record.id,
+      kind: 'dynamic-surface',
+    }));
+  const collision = byNodeName.get('COLLISION_HULL');
+
+  return {
+    schema: RENDER_PACKAGE_SOURCE_SCHEMA,
+    assetId: pilot.assetId,
+    kind: pilot.kind,
+    semanticNodes,
+    anchors,
+    dynamicGroups,
+    mergeGroups: [],
+    lods: [],
+    hlods: [],
+    collisions: collision ? [{
+      id: `${pilot.assetId}.collision`,
+      nodeId: collision.id,
+      reference: 'COLLISION_HULL',
+    }] : [],
+  };
+}
+
 function assertPilotManifest(manifest) {
   if (manifest?.schema !== 'spaceface.renderPackagePilots.v1') {
     throw new Error('Render-package pilot manifest has an unsupported schema.');
@@ -190,6 +271,11 @@ function assertPilotManifest(manifest) {
   for (const pilot of manifest.pilots) {
     if (!pilot?.key || keys.has(pilot.key)) throw new Error(`Duplicate or missing pilot key ${pilot?.key}.`);
     if (!pilot.sourceUrl || sourceUrls.has(pilot.sourceUrl)) throw new Error(`${pilot.key}: duplicate or missing source URL.`);
+    const hasNamedRoot = typeof pilot.rootNode === 'string' && pilot.rootNode.length > 0;
+    const hasSceneRoot = pilot.sceneRoot === true;
+    if (hasNamedRoot === hasSceneRoot) {
+      throw new Error(`${pilot.key}: choose exactly one of rootNode or sceneRoot.`);
+    }
     keys.add(pilot.key);
     sourceUrls.add(pilot.sourceUrl);
   }

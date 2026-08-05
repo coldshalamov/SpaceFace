@@ -24,6 +24,7 @@ test('production manifest packages every live whole-ship family and admitted aut
     'helios-lark',
     'helios-cradle',
     'helios-span',
+    'helios-trade-hub',
     'debris-chunk',
     'dead-hulk',
     'dock-interior',
@@ -34,6 +35,10 @@ test('production manifest packages every live whole-ship family and admitted aut
     'assets/ships/release/parts/wholeships/wasp_production_v1.glb',
   );
   assert.equal(wasp?.runtimeAssetId, 'SF_WASP_PRODUCTION_V1');
+  const tradeHub = renderPackagePilotForSourceUrl(
+    'assets/ships/release/parts/places/place_station_trade_hub.glb',
+  );
+  assert.equal(tradeHub?.runtimeAssetId, 'place_station_trade_hub');
 
   for (const binding of RENDER_PACKAGE_PILOTS) {
     assert.strictEqual(renderPackagePilotForSourceUrl(binding.sourceUrl), binding);
@@ -50,6 +55,12 @@ test('production manifest packages every live whole-ship family and admitted aut
     assert.equal(metadata.provenance.sourceGlb.sha256, binding.sourceSha256);
     assert.ok(metadata.geometry.every((geometry) => geometry.indexed === true),
       `${binding.key} preserves indexed production geometry`);
+    if (binding.key === 'helios-trade-hub') {
+      assert.ok(metadata.nodes.filter((node) => node.parentId === null).length > 1,
+        'scene-root package preserves the authored multi-root hierarchy');
+      assert.ok(metadata.anchors.some((anchor) => anchor.nodeName === 'SOCKET_Structure_Core'));
+      assert.ok(metadata.collisions.some((collision) => collision.reference === 'COLLISION_HULL'));
+    }
   }
 
   assert.equal(renderPackagePilotForSourceUrl('assets/ships/release/parts/wholeships/pelican.glb'), null);
