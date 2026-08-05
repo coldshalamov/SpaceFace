@@ -879,3 +879,33 @@ test('boot preload contains only the opening-shot identities', () => {
 
   assert.equal([...hulls].some((file) => /_lod[12]\.glb$/.test(file)), false);
 });
+
+test('the default Helios relay settles inside the loading-time authored runway', () => {
+  const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 } };
+  const relay = {
+    id: 'world_site_helios_relay',
+    alive: true,
+    type: 'fx',
+    pos: { x: 760, z: -620 },
+    data: {
+      placeId: 'place_claim_outpost_relay',
+      sectorId: 'sector_helios_prime',
+    },
+  };
+  const outsideImmediateRunway = {
+    ...relay,
+    id: 'world_site_outside_opening_runway',
+    pos: { x: 1001, z: 0 },
+  };
+  const state = {
+    mode: 'loading',
+    playerId: player.id,
+    entities: new Map([[player.id, player], [relay.id, relay]]),
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+
+  assert.equal(isInitialAuthoredCompositionEntity(relay, state), true,
+    'the default-route relay must decode, compose, upload, and link before flight is exposed');
+  assert.equal(isInitialAuthoredCompositionEntity(outsideImmediateRunway, state), false,
+    'loading must not widen beyond the ordinary immediate-admission runway');
+});

@@ -13,6 +13,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import { AUTHORED_ASSET_IMMEDIATE_RADIUS } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
@@ -278,7 +279,7 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
 // associated garbage collection finish behind loading. Distant authored-only boundaries remain
 // hidden and continue to stream on demand.
 const INITIAL_SHIP_COMPOSITION_RADIUS = 2400;
-const INITIAL_PLACE_COMPOSITION_RADIUS = 700;
+const INITIAL_PLACE_COMPOSITION_RADIUS = AUTHORED_ASSET_IMMEDIATE_RADIUS;
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
