@@ -4428,7 +4428,7 @@
       "priority": 244,
       "title": "Recapture only the corrected Core-commit transition",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "blocked",
       "dependsOn": [
         "PQ-024.committed-transition-repair"
       ],
@@ -4448,8 +4448,8 @@
         "npm run check:pq024:survey-claim"
       ],
       "receiptRefs": [],
-      "brief": "Ready and unproven after release of the stale 2026-08-04 claim: Browser attempt 1 missed the transient Helios dock prompt and was repaired at 355483eb; Browser attempt 2 reached Core but an unconditional Escape from Drive exited Asteroid Ops, repaired headlessly at 91202dea with 16/16 focused checks. Exactly two Browser launches, zero Electron launches, and no accepted target screenshot are retained. The unit holds no path or mutex; Survey, production, relay, Continue, re-entry, and H3 remain accepted without recapture.",
-      "blocker": null
+      "brief": "Acceptance remains unproven after three Browser launches and zero Electron launches. Fresh claim 3472-619b7b30c67a1862b84795e0 exposed a production station-autopilot defect before the Core cell: the generic 38-WU arrival floor stopped outside the 20-WU physical berth gate. Commit ac02d9c1 repairs production and proves the owner contract focused-green without changing generic waypoints, manual flight, corridor geometry, or prompt rules. A post-source-change broker invocation launched no runtime because this manifest's regression identity does not bind the repaired flight owner/regression. Under the no-manifest-expansion boundary, the cell stays blocked/unproven; accepted Survey, production, relay, Continue, re-entry, and H3 remain retained.",
+      "blocker": "Existing pq024-committed-transition regression identity omits src/systems/flightV3.js and test/station-docking-corridor.test.mjs, so the broker cannot acknowledge the retained failure after production repair ac02d9c1; this goal forbids expanding broker manifests merely to close a packet."
     },
     {
       "id": "PQ-024.committed-transition-review",
