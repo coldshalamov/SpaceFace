@@ -24,6 +24,7 @@ import {
 } from '../src/ui/galaxyMap.js';
 import { resolveTravelCeiling } from '../src/core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
+import { travelTapeLaneStatus } from '../src/ui/hud.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 
@@ -352,6 +353,42 @@ test('Travel Burn gains only inside the active physical corridor and structures 
     assert.equal(h.state.input.travelDrive.ceiling, base, 'leaving the tube restores the unmodified drive');
     assert.equal(h.state.input.travelDrive.rampMult, 1);
   });
+});
+
+test('the Travel Burn tape names manufactured corridor state without owning the drive', () => {
+  assert.equal(travelTapeLaneStatus({
+    manufactured: true,
+    inLane: true,
+    infrastructureStage: 'active',
+    infrastructureOperational: true,
+    ceilingMult: 2,
+  }), 'THROUGHLINE ×2');
+  assert.equal(travelTapeLaneStatus({
+    manufactured: true,
+    inLane: true,
+    infrastructureStage: 'aligning',
+    infrastructureOperational: false,
+    ceilingMult: 1,
+  }), 'THROUGHLINE ALIGNING');
+  assert.equal(travelTapeLaneStatus({
+    manufactured: true,
+    inLane: true,
+    infrastructureStage: 'active',
+    infrastructureOperational: false,
+    ceilingMult: 1,
+  }), 'THROUGHLINE OFFLINE');
+  assert.equal(travelTapeLaneStatus({
+    manufactured: true,
+    inLane: false,
+    infrastructureStage: 'active',
+    infrastructureOperational: true,
+    ceilingMult: 2,
+  }), '', 'the Throughline never occupies the tape outside its physical corridor');
+  assert.equal(travelTapeLaneStatus({
+    manufactured: false,
+    inLane: true,
+    ceilingMult: 1.35,
+  }), '', 'the authored lane keeps its existing presentation');
 });
 
 test('one existing ambient hauler physically flies the same route under normal NPC intent', () => {

@@ -421,6 +421,19 @@ export function travelTapeNavigationState(nav = {}) {
   return { manual: !autopilotActive && !executorEngaged, arrival };
 }
 
+/** Non-colour flight feedback for the manufactured route read model. The travel owner publishes
+ * this status; the HUD only names it and never interprets or changes drive behavior. */
+export function travelTapeLaneStatus(status = null) {
+  if (!status || status.manufactured !== true || status.inLane !== true) return '';
+  if (status.infrastructureStage === 'aligning') return 'THROUGHLINE ALIGNING';
+  if (status.infrastructureOperational !== true) return 'THROUGHLINE OFFLINE';
+  const multiplier = Number(status.ceilingMult);
+  const label = Number.isFinite(multiplier) && multiplier > 1
+    ? String(Math.round(multiplier * 10) / 10)
+    : '1';
+  return `THROUGHLINE ×${label}`;
+}
+
 // Ordinary-load HUD gates, kept in lockstep with src/render/vfx.js:229-230
 // (TETHER_TAUT_LOAD / TETHER_OVERLOAD_LOAD) so the cable and the status line never disagree about
 // whether the Massline is working. These key off tether.load, NOT tether.strain — see the note on
@@ -3634,7 +3647,8 @@ export function createHud(ctx, alerts) {
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
       else if (driveState === 'cooldown') note = 'COOLDOWN' + (drive && drive.breakReason ? ' · ' + String(drive.breakReason).toUpperCase() : '');
       else if (nearCeiling) note = 'AT CEILING';
-      setText(vt.spool, note);
+      const laneStatus = travelTapeLaneStatus(state.travelLanes);
+      setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
     }
 
     // --- approach row: the stopping arc, manual burns only ---
