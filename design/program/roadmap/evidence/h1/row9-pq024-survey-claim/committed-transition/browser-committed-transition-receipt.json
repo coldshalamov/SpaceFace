@@ -1,0 +1,190 @@
+{
+  "schema": "spaceface.pq024-committed-transition-route.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "PASS",
+  "problems": [],
+  "fixedSeed": 24024,
+  "recordedSeed": 24024,
+  "brokerManifestId": "pq024-committed-transition",
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "New Game -> Helios public market -> public local-map asteroid course -> Massline -> Asteroid Ops -> survey reveal -> Core -> settled committed presentation",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Bounded functional transition receipt only: public controls, owner state, visible DOM, and one screenshot. No downstream production or performance claim is recorded.",
+  "actorControls": [
+    "New Game and Launch buttons",
+    "N galaxy map search and Set Waypoint",
+    "held E dock and canonical Undock",
+    "Market search, commodity tabs, quantity input, and Confirm Purchase",
+    "M local-map asteroid dot and production autopilot",
+    "Space Massline, B Asteroid Ops, Pulse survey, command-card Core, arrows, Enter, Escape"
+  ],
+  "observations": {
+    "cargo": [
+      {
+        "commodityId": "cmdty_regocrete",
+        "name": "Regocrete",
+        "qty": 7,
+        "before": {
+          "owned": 0,
+          "credits": 5000
+        },
+        "after": {
+          "owned": 7,
+          "credits": 4808
+        }
+      },
+      {
+        "commodityId": "cmdty_control_unit",
+        "name": "Machine Control Unit",
+        "qty": 2,
+        "before": {
+          "owned": 0,
+          "credits": 4808
+        },
+        "after": {
+          "owned": 2,
+          "credits": 4059
+        }
+      },
+      {
+        "commodityId": "cmdty_refined_metals",
+        "name": "Refined Metals",
+        "qty": 2,
+        "before": {
+          "owned": 0,
+          "credits": 4059
+        },
+        "after": {
+          "owned": 2,
+          "credits": 3873
+        }
+      }
+    ],
+    "asteroid": {
+      "targetEntityId": 27,
+      "label": "asteroid",
+      "sx": 506.6280066228207,
+      "sy": 410.01441040916296,
+      "siteId": null
+    },
+    "surveyReveal": {
+      "visibleText": "ASSAY 2/3",
+      "revealed": 2,
+      "cells": 3
+    },
+    "core": {
+      "siteId": "site_1",
+      "asteroidId": 27,
+      "anchored": true,
+      "lifecycle": "committed",
+      "machineId": "m1",
+      "cell": {
+        "col": 14,
+        "row": 1
+      }
+    },
+    "committedPresentation": {
+      "owner": {
+        "siteId": "site_1",
+        "anchored": true,
+        "lifecycle": "committed",
+        "cells": 3
+      },
+      "claimText": "Anchored",
+      "assayText": "Assay 3 cells",
+      "inspector": {
+        "kicker": "Site overview",
+        "title": "Anchored claim",
+        "text": "Site overviewAnchored claimMassline Core online. This asteroid persists and accepts remote construction.Survey record: Silver Ore vein cluster — 3 cells committed to the claim.Awaiting first real output — the exterior relay comes online when the site produces.Power: 12 MW generated · 0 MW demanded.Export production: 0.0 units/min.Nothing is flagged for export yet.Couriers ready: 0 of 4 target · 0 in flight.Site runs on ship time — flows resume when you retract the rig.−Courier fleet target: 4+"
+      },
+      "assessment": {
+        "schema": "spaceface.pq024-committed-presentation.v1",
+        "pass": true,
+        "failures": []
+      }
+    }
+  },
+  "screenshots": [
+    {
+      "path": ".devshots/pq024-committed-transition/03-core-committed.png",
+      "bytes": 698365,
+      "sha256": "0e04354e48d6bc0be6155433d4429bb1c83d1a3e67df0d0ce0f92ea7b34ce731"
+    }
+  ],
+  "pageIssues": [],
+  "validation": {
+    "schema": "spaceface.pq024-committed-transition-validation.v1",
+    "pass": true,
+    "failures": []
+  },
+  "semanticProjection": {
+    "schema": "spaceface.pq024-committed-transition-semantics.v1",
+    "fixedSeed": 24024,
+    "recordedSeed": 24024,
+    "cargo": [
+      {
+        "commodityId": "cmdty_regocrete",
+        "requested": 7,
+        "acquired": 7
+      },
+      {
+        "commodityId": "cmdty_control_unit",
+        "requested": 2,
+        "acquired": 2
+      },
+      {
+        "commodityId": "cmdty_refined_metals",
+        "requested": 2,
+        "acquired": 2
+      }
+    ],
+    "sameAsteroid": true,
+    "survey": {
+      "revealed": 2,
+      "cells": 3
+    },
+    "core": {
+      "siteId": "site_1",
+      "anchored": true,
+      "lifecycle": "committed",
+      "cell": {
+        "col": 14,
+        "row": 1
+      }
+    },
+    "presentation": {
+      "owner": {
+        "siteId": "site_1",
+        "anchored": true,
+        "lifecycle": "committed",
+        "cells": 3
+      },
+      "claimText": "Anchored",
+      "assayText": "Assay 3 cells",
+      "inspector": {
+        "kicker": "Site overview",
+        "title": "Anchored claim",
+        "text": "Site overviewAnchored claimMassline Core online. This asteroid persists and accepts remote construction.Survey record: Silver Ore vein cluster — 3 cells committed to the claim.Awaiting first real output — the exterior relay comes online when the site produces.Power: 12 MW generated · 0 MW demanded.Export production: 0.0 units/min.Nothing is flagged for export yet.Couriers ready: 0 of 4 target · 0 in flight.Site runs on ship time — flows resume when you retract the rig.−Courier fleet target: 4+"
+      }
+    }
+  },
+  "broker": {
+    "manifestId": "pq024-committed-transition",
+    "reason": "broker-claim-consumed",
+    "diagnostic": false,
+    "primaryAcceptance": true,
+    "claimId": "33664-f9675c3395d754504988f263",
+    "digests": {
+      "candidateDigest": "965e0b46cee6bc1042cd663627d0664a7ae486f8d5ff1de219b496c1556a8f4c",
+      "sourceCandidateDigest": null,
+      "routeDigest": "833fc2572e93d42e129d2b87dc068f4edd71e1c4119e54efdef063f61d18bc7c",
+      "regressionDigest": "5649f6ffe562c0badf66b03b8af83c06c36cece622f22babece3fa4c4c5203dd",
+      "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+      "manifestDigest": "3ceca7a550e563a01b9cbdb7def435285dcbc6eec6b1efdc3360173270dcf8dd"
+    }
+  }
+}
