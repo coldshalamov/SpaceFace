@@ -36,6 +36,9 @@ const EXACT_H = argv.height != null ? Number(argv.height) : null;
 const EXACT_VIEWPORT = Number.isFinite(EXACT_W) && Number.isFinite(EXACT_H) && EXACT_W > 0 && EXACT_H > 0;
 // Optional JS expression evaluated in the page after the scenario is applied (A/B experiments).
 const EVAL_JS = typeof argv.eval === 'string' ? argv.eval : null;
+// Same, but evaluated AFTER the warmup + capture window (see the call site). Use this for anything
+// whose value is only meaningful once the world has actually run for a while.
+const EVAL_AFTER_JS = typeof argv.evalAfter === 'string' ? argv.evalAfter : null;
 
 const CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -158,6 +161,19 @@ async function cdpCapture() {
   }
   const report = await readRuntimeReport(send);
   report.timeline = timeline;
+
+  // Late experiment hook — the counterpart to --eval. `--eval` fires the instant the scenario is
+  // applied, so it can only ever observe the world at t≈0. Anything that DEVELOPS (an NPC job
+  // leaving `commission`, a convoy reaching its terminal, an encounter interrupting another) is
+  // invisible to it, and reading a t≈0 census as if it described settled play is exactly the stale-
+  // baseline class of error §5 of the expansion brief warns about. This runs after the full
+  // warmup + capture window, against the same page, so before/after are the SAME session.
+  if (EVAL_AFTER_JS) {
+    const r = await send('Runtime.evaluate', { expression: `(() => { try { return String(${EVAL_AFTER_JS}); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true });
+    const value = r && r.result && r.result.value;
+    console.log(`[gameplay] --evalAfter -> ${value}`);
+    report.evalAfter = value == null ? null : String(value);
+  }
 
   // Scenario self-check. A scenario that claims to move the ship but does not is the worst kind of
   // capture bug: it produces a plausible screenshot and a plausible frame time, and every downstream
