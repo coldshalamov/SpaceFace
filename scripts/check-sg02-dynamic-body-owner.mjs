@@ -221,6 +221,22 @@ async function runLayeredSyncScenario() {
     assert.equal(steadyDiagnostics.syncDynamicEntities, 1, 'unchanged layered sync should still refresh dynamic bodies');
     assert.equal(steadyDiagnostics.bodies, 2, 'unchanged layered sync should preserve fixed collision bodies');
 
+    const secondAsteroid = makeAsteroid(405, 48);
+    const firstStaticBody = owner.records.get(asteroid.id).body;
+    const dynamicBody = owner.records.get(ship.id).body;
+    owner.syncFromEntityLayers([asteroid, secondAsteroid], [ship], 2, [asteroid, ship, secondAsteroid]);
+    const bumpedDiagnostics = owner.diagnostics();
+    assert.equal(bumpedDiagnostics.syncStaticEntities, 1,
+      'a static version bump should touch only the newly admitted static record');
+    assert.equal(bumpedDiagnostics.syncDynamicEntities, 1,
+      'ordered layered sync should count, but not double-sync, its dynamic record');
+    assert.equal(owner.records.get(asteroid.id).body, firstStaticBody,
+      'a version bump must retain an unchanged static Rapier body');
+    assert.equal(owner.records.get(ship.id).body, dynamicBody,
+      'a version bump must retain the existing dynamic Rapier body');
+    assert.equal(bumpedDiagnostics.bodies, 3,
+      'a version bump should admit the new static alongside existing bodies');
+
     writePhysicsControl(ship, {
       source: 'sg02-layered-sync-check',
       mode: 'assisted',
@@ -233,7 +249,8 @@ async function runLayeredSyncScenario() {
     assert.equal(asteroid.pos.x, 24, 'layered sync should not write kinematics into fixed collision bodies');
 
     asteroid.alive = false;
-    owner.syncFromEntityLayers([], [ship], 2);
+    secondAsteroid.alive = false;
+    owner.syncFromEntityLayers([], [ship], 3);
     const removedDiagnostics = owner.diagnostics();
     assert.equal(removedDiagnostics.bodies, 1, 'static layer version changes should remove stale fixed bodies');
     assert.equal(removedDiagnostics.dynamicBodies, 1, 'static removal should keep dynamic craft alive');

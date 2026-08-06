@@ -224,6 +224,7 @@ export class Sg02DynamicBodyOwner {
           continue;
         }
         staticLive.add(entity.id);
+        if (this._reuseUnchangedStaticRecord(entity, spec)) continue;
         staticCount++;
         this._syncRecord(entity, spec);
       }
@@ -236,6 +237,13 @@ export class Sg02DynamicBodyOwner {
     let dynamicCount = 0;
     for (const entity of dynamicEntities) {
       if (!entity || entity.alive === false) continue;
+      // `orderedEntities` preserves canonical cross-layer body creation order when a static
+      // version changes. An existing dynamic encountered there has already consumed this tick's
+      // authoritative entity object, so visiting it again here only repeats pose/WASM reads.
+      if (dynamicLive.has(entity.id) && this.records.get(entity.id)?.entity === entity) {
+        dynamicCount++;
+        continue;
+      }
       const spec = resolvePhysicsBodySpec(entity);
       if (!spec || !(spec.radius > 0) || !spec.dynamic) continue;
       dynamicLive.add(entity.id);
@@ -247,6 +255,23 @@ export class Sg02DynamicBodyOwner {
     }
 
     this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
+  }
+
+  _reuseUnchangedStaticRecord(entity, spec) {
+    const rec = this.records.get(entity.id);
+    if (!rec || rec.spec.dynamic || !recordMatchesSpec(rec, spec)) return false;
+    if (rec.proxyId !== proxyIdForEntity(entity)) return false;
+    const kinematics = rec.kinematics;
+    if (!kinematics || (entity.flags && entity.flags.noInterp)) return false;
+    const localX = finite(entity.pos && entity.pos.x) - this._frameOrigin.x;
+    const localZ = finite(entity.pos && entity.pos.z) - this._frameOrigin.z;
+    const dx = localX - finite(kinematics.x);
+    const dz = localZ - finite(kinematics.z);
+    if (dx * dx + dz * dz > POSE_RESYNC_EPS2) return false;
+    // Keep event/ownership identity current even when a save/rebuild supplied an equivalent
+    // replacement object. This mirrors `_syncRecord` without touching Rapier.
+    rec.entity = entity;
+    return true;
   }
 
   step(dt = this.fixedDt) {
