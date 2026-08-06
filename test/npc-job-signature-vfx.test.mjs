@@ -241,10 +241,21 @@ test('corrupt inputs degrade quietly instead of throwing into the render loop', 
   assert.doesNotThrow(() => writeNpcJobSignatureFrame(null, 1, 0, 0, 0, 0, false, null));
 });
 
-test('pool capacity covers a saturated sector and the draw range is declared', () => {
+test('pool capacity covers a saturated sector; draw range matches what the camera can show', () => {
   // traffic.js caps a sector at 8 civilian hulls; world/mission producers may add a few more.
   assert.ok(NPC_JOB_SIGNATURE_CAPACITY >= 8,
     'the pool must cover a fully-populated sector or hulls silently go dark');
-  assert.ok(NPC_JOB_SIGNATURE_DRAW_RANGE >= 1000,
-    'signals must survive to the distance the research says they are read at');
+
+  // The draw range is bounded by the CAMERA, not by the research's 500-2000 wu read band — that band
+  // comes from games with free or cockpit views. Measured on the live chase camera (FOV 50, 54.9 up /
+  // 31.7 back): a ground-plane point at z=45 lands at screen y=14, and z=60 is already off-screen at
+  // y=-105. The visible bubble is ~100 wu across, ~280 at maximum manual zoom-out.
+  //
+  // This test exists because the value was wrong twice by reasoning from the research instead of from
+  // the camera, and both times the counters still reported the signals as "drawn" while they sat
+  // hundreds of pixels above the top of the frame.
+  assert.ok(NPC_JOB_SIGNATURE_DRAW_RANGE >= 200,
+    'must cover the bubble at maximum zoom-out (CAMERA_ZOOM_MAX 330)');
+  assert.ok(NPC_JOB_SIGNATURE_DRAW_RANGE <= 600,
+    'must not spend pool slots on hulls that project above the top of the screen');
 });

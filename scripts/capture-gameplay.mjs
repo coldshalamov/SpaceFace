@@ -169,7 +169,11 @@ async function cdpCapture() {
   // baseline class of error §5 of the expansion brief warns about. This runs after the full
   // warmup + capture window, against the same page, so before/after are the SAME session.
   if (EVAL_AFTER_JS) {
-    const r = await send('Runtime.evaluate', { expression: `(() => { try { return String(${EVAL_AFTER_JS}); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true });
+    // awaitPromise, unlike --eval. An expression that needs a FRAME to elapse before its answer
+    // exists — "I moved these hulls, now where do their effects land on screen?" — is unanswerable
+    // synchronously, and answering it anyway returns the state before the change. Returning a
+    // promise that awaits a few rAFs is the only honest way to read post-change render state.
+    const r = await send('Runtime.evaluate', { expression: `(async () => { try { return String(await (${EVAL_AFTER_JS})); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true, awaitPromise: true });
     const value = r && r.result && r.result.value;
     console.log(`[gameplay] --evalAfter -> ${value}`);
     report.evalAfter = value == null ? null : String(value);

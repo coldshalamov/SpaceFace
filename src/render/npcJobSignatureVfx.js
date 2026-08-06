@@ -46,9 +46,34 @@ const TAU = Math.PI * 2;
  *  bounds the per-frame cost to a fixed, knowable ceiling. */
 export const NPC_JOB_SIGNATURE_CAPACITY = 12;
 
-/** Beyond this the signature is not drawn at all. Matched to the station-side-event draw range so the
- *  two ambient presentation layers pop in together rather than at different distances. */
-export const NPC_JOB_SIGNATURE_DRAW_RANGE = 1500;
+/**
+ * Beyond this the signature is not drawn at all.
+ *
+ * This number was WRONG TWICE before it was measured, and the correction is worth recording because
+ * it is not a fact about this file — it is a fact about the game's camera.
+ *
+ * The research says these signals are read at 500-2000 world units in shipped space games, so the
+ * first two guesses were 1500 (matching the station-side-event layer) and then 2000 (the top of that
+ * band). Both were nonsense HERE. Projecting the live chase camera (FOV 50, positioned 54.9 above
+ * and 31.7 behind the hull) gives this ladder for a point on the ground plane directly ahead:
+ *
+ *      z =   0  ->  screen y  540   (the player, dead centre)
+ *      z =  20  ->            267
+ *      z =  45  ->             14   (the very top edge of a 1080-tall frame)
+ *      z =  60  ->           -105   (off-screen)
+ *      z = 100  ->           -345
+ *      z = 800  ->          -1192
+ *
+ * Lateral limit is +/-50. **The visible ground-plane bubble is about 100 world units across.** A
+ * signal on a hull 1500 units away is not dim or small; it is above the top of the monitor. Measured
+ * confirmation: four live signatures projected to screen y -885, -896, -648 and -71 while the
+ * counters happily reported them "drawn".
+ *
+ * 300 covers the bubble at maximum manual zoom-out (CAMERA_ZOOM_MAX 330 in render/camera.js) plus
+ * headroom for tall hulls whose upper hardware clears the horizon. Anything past that spends pool
+ * slots on geometry no player can ever see.
+ */
+export const NPC_JOB_SIGNATURE_DRAW_RANGE = 300;
 
 // ─── The signals ──────────────────────────────────────────────────────────────────────────────────
 // One frozen profile per working state. `codeName` and `means` are quoted from THE WORKING LIGHT so a

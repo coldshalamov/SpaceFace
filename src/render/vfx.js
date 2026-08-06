@@ -3506,10 +3506,14 @@ export const vfx = {
   /**
    * Draw one beat of one hull's signal.
    *
-   * Every branch is a distinct SILHOUETTE and CADENCE, not a re-tint: the research is unambiguous
-   * that at 500-2000 world units colour is already gone and only shape change, contact geometry and
-   * blink rhythm survive. The colours below are the fiction's, and they matter close in; the beat
-   * count and the arrangement are what carry the meaning far out.
+   * SUBSTRATE CHOICE IS PHYSICAL, and it was wrong the first time. Lamps are point sources, so they
+   * are sprites — a soft bright core that grows and fades, which is what a blinking navigation light
+   * actually looks like. Only genuinely LINEAR things are streaks: a cut beam, a sweep, a chevron
+   * arm, a transfer boom, a plume. Drawing a lamp as a stretched quad produced a flat opaque orange
+   * BAR beside the hull rather than a light on it — visible, correctly placed, and obviously wrong.
+   *
+   * Every branch is a distinct SILHOUETTE and CADENCE, not a re-tint: at the distance this reads at,
+   * arrangement and blink rhythm carry the meaning and colour is a close-range bonus.
    */
   _emitNpcJobSignature(slot, profile, ent, job, reducedMotion) {
     const frame = slot.frame;
@@ -3527,13 +3531,10 @@ export const vfx = {
 
     switch (profile.rhythm) {
       case 'spine-wake': {
-        // "Bow lamp, midships, stern, one beat each." One pip walks the keel; the hull's length is
-        // the message, so the read is a travelling dot rather than a flash.
+        // "Bow lamp, midships, stern, one beat each." One lamp walks the keel; the hull's LENGTH is
+        // the message, so the read is a travelling light rather than a flash in place.
         const along = (1 - beat) * r * 1.05;
-        emitted += this._spawnStationSideEventStreak(
-          x + dx * along, 0.42, z + dz * along,
-          reducedMotion ? 0.62 : 0.38, 0.30, r * 0.42, 0.62, '#e8f0ff', 0, 0, dx, dz,
-        );
+        emitted += this._spawnJobLamp(x + dx * along, 0.42, z + dz * along, r, 0.085, '#e8f0ff', reducedMotion);
         break;
       }
 
@@ -3542,14 +3543,8 @@ export const vfx = {
         // a PAIR is what separates mass from every single-lamp code in the book.
         if (beat === 0) {
           const off = r * 0.92;
-          emitted += this._spawnStationSideEventStreak(
-            x + nx * off, 0.46, z + nz * off,
-            reducedMotion ? 0.72 : 0.46, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
-          );
-          emitted += this._spawnStationSideEventStreak(
-            x - nx * off, 0.46, z - nz * off,
-            reducedMotion ? 0.72 : 0.46, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
-          );
+          emitted += this._spawnJobLamp(x + nx * off, 0.46, z + nz * off, r, 0.12, '#ffb35c', reducedMotion);
+          emitted += this._spawnJobLamp(x - nx * off, 0.46, z - nz * off, r, 0.12, '#ffb35c', reducedMotion);
         }
         break;
       }
@@ -3558,24 +3553,18 @@ export const vfx = {
         // "Three dim whites in a row" — hold open for hire. Deliberately dim and ventral: an empty
         // hull is announcing that it is not worth the interdiction maths.
         const lateral = (beat - 1) * r * 0.62;
-        emitted += this._spawnStationSideEventStreak(
-          x + nx * lateral, 0.24, z + nz * lateral,
-          reducedMotion ? 0.70 : 0.44, 0.20, r * 0.20, 0.40, '#cfe4ff', 0, 0, nx, nz,
-        );
+        emitted += this._spawnJobLamp(x + nx * lateral, 0.24, z + nz * lateral, r, 0.062, '#cfe4ff', reducedMotion, 0.5);
         break;
       }
 
       case 'bow-final': {
         // Steady green bow lamp every beat — "green final is a promise" — plus one lateral thruster
         // tick that alternates sides, which is the stepped bleed-off the Code describes.
-        emitted += this._spawnStationSideEventStreak(
-          x + dx * r * 1.15, 0.44, z + dz * r * 1.15,
-          reducedMotion ? 0.80 : 0.56, 0.36, r * 0.26, 0.74, '#7dffb0', 0, 0, dx, dz,
-        );
+        emitted += this._spawnJobLamp(x + dx * r * 1.15, 0.44, z + dz * r * 1.15, r, 0.105, '#7dffb0', reducedMotion);
         const side = beat === 0 ? 1 : -1;
         emitted += this._spawnStationSideEventStreak(
           x + nx * side * r * 0.7, 0.38, z + nz * side * r * 0.7,
-          reducedMotion ? 0.34 : 0.22, 0.16, r * 0.34, 0.44, '#b8ccdd',
+          reducedMotion ? 0.34 : 0.22, r * 0.05, r * 0.38, 0.50, '#b8ccdd',
           -nx * side * 3, -nz * side * 3, -nx * side, -nz * side,
         );
         break;
@@ -3583,8 +3572,8 @@ export const vfx = {
 
       case 'work-cone': {
         // The blind cone. Three things at once, because extraction is the loudest thing a civilian
-        // hull ever does: a beam onto the face, spall coming off it, and a red flank strobe walking
-        // the arc nobody may enter.
+        // hull ever does: a beam onto the face, spall coming off it, and a red flank lamp walking
+        // the arc nobody may enter. The beam is the one place a stretched quad is the right shape.
         const rock = this._npcJobWorkTarget(job);
         const noseX = x + dx * r * 0.8;
         const noseZ = z + dz * r * 0.8;
@@ -3607,7 +3596,7 @@ export const vfx = {
         const midZ = noseZ + bz * reach * 0.5;
         emitted += this._spawnStationSideEventStreak(
           midX, 0.40, midZ,
-          reducedMotion ? 0.34 : 0.20, 0.42, reach, 0.52, '#ffcf7a', 0, 0, bx, bz,
+          reducedMotion ? 0.34 : 0.20, r * 0.10, reach, 0.62, '#ffcf7a', 0, 0, bx, bz,
         );
         // Spall off the face: thrown BACK along the beam, spreading. Contact is the channel that
         // proves the link is doing work rather than merely pointing.
@@ -3619,40 +3608,34 @@ export const vfx = {
           const sz = -bz * Math.cos(spread) - bx * Math.sin(spread);
           emitted += this._spawnStationSideEventStreak(
             hitX, 0.36, hitZ,
-            0.62, 0.13, r * 0.24, 0.46, '#d8b083', sx * 11, sz * 11, sx, sz,
+            0.62, r * 0.035, r * 0.28, 0.55, '#d8b083', sx * 11, sz * 11, sx, sz,
           );
         }
         if (this._spawnSprite(
           SPR_FLASH, hitX, 0.42, hitZ,
-          0.16, r * 0.14, r * 0.34, 0.58, 0, '#ffe0a8', 0, 0, 1.2, Math.atan2(bz, bx),
+          0.16, r * 0.10, r * 0.26, 0.62, 0, '#ffe0a8', 0, 0, 1.2, Math.atan2(bz, bx),
         )) emitted++;
-        // "Do not enter this arc." The red pip walks the forbidden flank, one quarter per beat.
+        // "Do not enter this arc." The red lamp walks the forbidden flank, one quarter per beat.
         const arc = (beat / 4) * Math.PI - Math.PI * 0.5;
         const ax = dx * Math.cos(arc) - dz * Math.sin(arc);
         const az = dz * Math.cos(arc) + dx * Math.sin(arc);
-        emitted += this._spawnStationSideEventStreak(
-          x + ax * r * 1.05, 0.50, z + az * r * 1.05,
-          reducedMotion ? 0.48 : 0.30, 0.26, r * 0.20, 0.62, '#ff6a5c', 0, 0, ax, az,
-        );
+        emitted += this._spawnJobLamp(x + ax * r * 1.05, 0.50, z + az * r * 1.05, r, 0.10, '#ff6a5c', reducedMotion);
         break;
       }
 
       case 'pin-sweep': {
-        // "A patrol that doesn't sweep is not a patrol." A lamp riding a rotating bearing, with a
-        // short outward beam so the sweep reads as hardware turning rather than a lamp blinking.
+        // "A patrol that doesn't sweep is not a patrol." A beam riding a rotating bearing — genuinely
+        // linear, so genuinely a streak — plus a steady mast lamp at the hull.
         const sx = Math.cos(frame.sweepAngle);
         const sz = Math.sin(frame.sweepAngle);
         emitted += this._spawnStationSideEventStreak(
           x + sx * r * 1.5, 0.52, z + sz * r * 1.5,
-          reducedMotion ? 0.52 : 0.30, 0.22, r * 0.62, 0.56, '#9ed8ff', 0, 0, sx, sz,
+          reducedMotion ? 0.52 : 0.30, r * 0.045, r * 0.80, 0.60, '#9ed8ff', 0, 0, sx, sz,
         );
-        // Mast lamp: constant, at the hull, so identity survives after the sweep detail dies at
-        // range. The research is explicit that nav lights should outlive job detail.
+        // Mast lamp: identity survives after the sweep detail dies at range. The research is explicit
+        // that nav lights should outlive job detail.
         if (beat === 0) {
-          emitted += this._spawnStationSideEventStreak(
-            x, 0.62, z,
-            reducedMotion ? 0.70 : 0.48, 0.28, r * 0.18, 0.60, '#dceeff', 0, 0, dx, dz,
-          );
+          emitted += this._spawnJobLamp(x, 0.62, z, r, 0.095, '#dceeff', reducedMotion);
         }
         break;
       }
@@ -3665,11 +3648,11 @@ export const vfx = {
         const mouthZ = z + nz * side * r * 0.85;
         if (this._spawnSprite(
           SPR_PUFF, mouthX, 0.38, mouthZ,
-          0.90, r * 0.26, r * 0.55, 0.42, 0, '#ffcf9a', 0, 0, 1, 0,
+          0.90, r * 0.20, r * 0.46, 0.46, 0, '#ffcf9a', 0, 0, 1, 0,
         )) emitted++;
         emitted += this._spawnStationSideEventStreak(
           mouthX + nx * side * r * 0.5, 0.44, mouthZ + nz * side * r * 0.5,
-          reducedMotion ? 0.62 : 0.42, 0.24, r * 0.85, 0.48, '#cbb89a',
+          reducedMotion ? 0.62 : 0.42, r * 0.055, r * 0.85, 0.52, '#cbb89a',
           0, 0, nx * side, nz * side,
         );
         break;
@@ -3681,13 +3664,10 @@ export const vfx = {
         const ring = (beat / 5) * Math.PI * 2;
         const tx = Math.cos(ring);
         const tz = Math.sin(ring);
-        emitted += this._spawnStationSideEventStreak(
-          x + tx * r * 0.75, 0.58, z + tz * r * 0.75,
-          reducedMotion ? 0.44 : 0.26, 0.24, r * 0.18, 0.66, '#ff9a3c', 0, 0, tx, tz,
-        );
+        emitted += this._spawnJobLamp(x + tx * r * 0.75, 0.58, z + tz * r * 0.75, r, 0.09, '#ff9a3c', reducedMotion);
         if (!reducedMotion && beat % 2 === 0 && this._spawnSprite(
           SPR_PUFF, x - dx * r * 0.9, 0.30, z - dz * r * 0.9,
-          1.10, r * 0.18, r * 0.62, 0.30, 0, '#9a8570', -dx * 4, -dz * 4, 1, 0,
+          1.10, r * 0.16, r * 0.55, 0.32, 0, '#9a8570', -dx * 4, -dz * 4, 1, 0,
         )) emitted++;
         break;
       }
@@ -3696,24 +3676,18 @@ export const vfx = {
         // Load-strobe AND the chevron. Two amber lamps stacked, walked so the chevron has a
         // direction — "if the chevron points home, don't offer them a side job."
         const off = r * 0.92;
-        emitted += this._spawnStationSideEventStreak(
-          x + nx * off, 0.46, z + nz * off,
-          reducedMotion ? 0.72 : 0.48, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
-        );
-        emitted += this._spawnStationSideEventStreak(
-          x - nx * off, 0.46, z - nz * off,
-          reducedMotion ? 0.72 : 0.48, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
-        );
+        emitted += this._spawnJobLamp(x + nx * off, 0.46, z + nz * off, r, 0.12, '#ffb35c', reducedMotion);
+        emitted += this._spawnJobLamp(x - nx * off, 0.46, z - nz * off, r, 0.12, '#ffb35c', reducedMotion);
         const rise = beat === 0 ? 0.56 : 0.76;
         const back = r * (beat === 0 ? 0.35 : 0.75);
         emitted += this._spawnStationSideEventStreak(
           x - dx * back + nx * r * 0.34, rise, z - dz * back + nz * r * 0.34,
-          reducedMotion ? 0.64 : 0.42, 0.22, r * 0.46, 0.58, '#ffd08a',
+          reducedMotion ? 0.64 : 0.42, r * 0.045, r * 0.50, 0.64, '#ffd08a',
           0, 0, dx * 0.78 + nx * 0.62, dz * 0.78 + nz * 0.62,
         );
         emitted += this._spawnStationSideEventStreak(
           x - dx * back - nx * r * 0.34, rise, z - dz * back - nz * r * 0.34,
-          reducedMotion ? 0.64 : 0.42, 0.22, r * 0.46, 0.58, '#ffd08a',
+          reducedMotion ? 0.64 : 0.42, r * 0.045, r * 0.50, 0.64, '#ffd08a',
           0, 0, dx * 0.78 - nx * 0.62, dz * 0.78 - nz * 0.62,
         );
         break;
@@ -3725,14 +3699,14 @@ export const vfx = {
         const hot = beat === 0;
         if (this._spawnSprite(
           SPR_FLASH, x, 0.46, z,
-          0.20, r * 0.55, r * 1.35, hot ? 0.82 : 0.68, 0,
+          0.20, r * 0.45, r * 1.15, hot ? 0.82 : 0.68, 0,
           hot ? '#ff5a4a' : '#ffffff', 0, 0, 1, 0,
         )) emitted++;
         // Asymmetric plume: a wounded hull does not burn politely.
         const skew = frame.chatter * 0.5;
         emitted += this._spawnStationSideEventStreak(
           x - dx * r * 1.1, 0.40, z - dz * r * 1.1,
-          reducedMotion ? 0.40 : 0.26, 0.30, r * 0.9, 0.50, '#ffa070',
+          reducedMotion ? 0.40 : 0.26, r * 0.075, r * 0.9, 0.58, '#ffa070',
           0, 0, -dx + nx * skew, -dz + nz * skew,
         );
         break;
@@ -3745,6 +3719,29 @@ export const vfx = {
     return emitted;
   },
 
+  /**
+   * One navigation/work lamp: a soft bright core that grows slightly and fades.
+   *
+   * `scale` is a FRACTION OF HULL RADIUS, not world units, so the same code reads the same on a
+   * 6-unit courier and a 30-unit bulk mule. Reduced motion holds the lamp longer and grows it less,
+   * so the signal stays countable without the sharp blink.
+   */
+  _spawnJobLamp(x, y, z, r, scale, color, reducedMotion, opacity = 0.85) {
+    const size0 = r * scale;
+    return this._spawnSprite(
+      SPR_FLASH,
+      x, y, z,
+      reducedMotion ? 0.62 : 0.34,
+      size0,
+      size0 * (reducedMotion ? 1.35 : 2.1),
+      opacity,
+      0,
+      color,
+      0, 0,
+      1,
+      null,
+    ) ? 1 : 0;
+  },
 
   // ---- mining beam visual (energy line from ship to contact point) ----------
   _miningBeam: null,
