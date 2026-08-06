@@ -39,6 +39,7 @@ import {
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
+import { priceModForState } from './factions.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -927,6 +928,7 @@ export const economy = {
       };
     }
     const info = stationInfo(state, stationId);
+    const standing = priceModForState(state, info && info.factionId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
@@ -934,13 +936,13 @@ export const economy = {
     // and stops starter markets from becoming risk-free rare-ore vending machines.
     if (side === 'buy' && marketTier > stationTier) {
       return {
-        ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy, total: 0,
+        ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy * standing.buy, total: 0,
         priceImpactPct: 0, stockAfter: entry.stock, marketTier, stationTier,
         legalityWarning: def.legality !== 'legal' ? def.legality : null,
       };
     }
     if (qty <= 0) {
-      const u = side === 'buy' ? entry.lastBuy : entry.lastSell;
+      const u = side === 'buy' ? entry.lastBuy * standing.buy : entry.lastSell * standing.sell;
       return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null };
     }
     const frontier = info ? this.frontierPenalty(info) : 0;
@@ -964,10 +966,13 @@ export const economy = {
       avgMidPrice = avgMid(def.basePrice, entry.baseEq, el, sLo, sHi);
       stockAfter = sHi;
     }
-    // Same formula layer as charts / lastMid so quote matches what the board shows.
+    // Market fundamentals share the chart/lastMid formula. Standing then personalizes the
+    // executable quote; Choice A can remove only an above-base buy markup.
     avgMidPrice = applyPersistentDemand(avgMidPrice, entry.demandMult);
     avgMidPrice = applyCycleToMid(def.basePrice, avgMidPrice, cycle, tNow);
-    const unitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
+    const standingPriceMultiplier = side === 'buy' ? standing.buy : standing.sell;
+    const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
+    const unitAvg = marketUnitAvg * standingPriceMultiplier;
     const total = round(unitAvg * qty);
     const beforeMid = applyCycleToMid(
       def.basePrice,
@@ -986,6 +991,8 @@ export const economy = {
       ok: true, stationId, commodityId, side, qty,
       unitAvg, total,
       priceImpactPct, stockAfter,
+      standingPriceMultiplier,
+      stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,
       legalityWarning: def.legality !== 'legal' ? def.legality : null,
     };
   },
@@ -1602,7 +1609,10 @@ export const economy = {
     const m = this.getMarket(stationId);
     const e = m && m[commodityId];
     if (!e) return null;
-    return side === 'buy' ? e.lastBuy : e.lastSell;
+    const info = stationInfo(this.state, stationId);
+    const standing = priceModForState(this.state, info && info.factionId);
+    const raw = side === 'buy' ? e.lastBuy * standing.buy : e.lastSell * standing.sell;
+    return Math.max(1, round(raw));
   },
 
   // -------------------------------------------------------------------------------------------

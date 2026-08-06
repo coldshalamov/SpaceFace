@@ -5,6 +5,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { isUnsellableCargo } from '../../systems/cargo.js';
 import { economyBaseEqForSize, economySpotPriceForRole } from '../../systems/economy.js';
+import { stationSurchargeWaiverActive } from '../../systems/factions.js';
 import { confirm } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
 import { getPriceHistory } from '../priceHistory.js';
@@ -247,6 +248,12 @@ function stationMarketPurpose(state, stationId) {
   }
 }
 
+export function stationSurchargeWaiverLabel(state) {
+  return stationSurchargeWaiverActive(state)
+    ? 'CONCORD AUXILIARY · STATION SURCHARGES WAIVED'
+    : '';
+}
+
 const MARKET_MISSION_TYPES = new Set(['bulk_trade', 'cargo_delivery', 'smuggling_run', 'salvage_retrieval']);
 
 function trackedMarketMission(state, stationId) {
@@ -423,7 +430,8 @@ export function createMarketPanel(ctx) {
   // purpose copy rides inside the ledger strip — one compact row, not another stacked banner
   const purpose = document.createElement('div');
   purpose.className = 'st-market-purpose';
-  purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>';
+  purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>' +
+    '<span class="st-market-waiver mono" hidden></span>';
   header.appendChild(purpose);
 
   const missionCallout = document.createElement('div');
@@ -1223,6 +1231,12 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-cargo').textContent = formatCargoUnits(p.cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
     const purposeText = purpose.querySelector('.st-market-purpose-text');
     if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
+    const waiver = purpose.querySelector('.st-market-waiver');
+    if (waiver) {
+      const waiverText = stationSurchargeWaiverLabel(state);
+      waiver.textContent = waiverText ? ` · ${waiverText}` : '';
+      waiver.hidden = !waiverText;
+    }
     const missionInfo = trackedMarketMission(state, stationId);
     renderMissionCallout(missionInfo);
     renderRouteCallout(activeTradeRoute(state, stationId));

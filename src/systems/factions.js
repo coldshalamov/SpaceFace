@@ -495,15 +495,28 @@ export function getStanding(factionId) {
   return _state.factions[factionId] || null;
 }
 
+/** Choice A's commission removes station markups, but never creates a discount by itself. */
+export function stationSurchargeWaiverActive(state = _state) {
+  return state?.story?.flags?.surcharges_cleared === true;
+}
+
+/** Pure standing-price read used by economy quotes and focused consequence tests. */
+export function priceModForState(state, factionId) {
+  const rec = state && state.factions ? state.factions[factionId] : null;
+  const rep = rec ? rec.rep : 0;
+  const t = Math.max(-1, Math.min(1, rep / 1000));
+  const standingBuy = Math.max(0.70, Math.min(1.40,
+    1 - 0.30 * Math.max(0, t) + 0.40 * Math.max(0, -t)));
+  const sell = Math.max(0.70, Math.min(1.20,
+    1 + 0.20 * Math.max(0, t) - 0.30 * Math.max(0, -t)));
+  const surchargeWaived = standingBuy > 1 && stationSurchargeWaiverActive(state);
+  return { buy: surchargeWaived ? 1 : standingBuy, sell, surchargeWaived };
+}
+
 /** Buy/sell price multipliers from standing (spec getRepPriceMod). Economy multiplies base price
  *  by these: t = rep/1000; allies get discounts, hostiles a surcharge. Returns {buy, sell}. */
 export function priceMod(factionId) {
-  const rec = _state && _state.factions ? _state.factions[factionId] : null;
-  const rep = rec ? rec.rep : 0;
-  const t = Math.max(-1, Math.min(1, rep / 1000));
-  const buy = Math.max(0.70, Math.min(1.40, 1 - 0.30 * Math.max(0, t) + 0.40 * Math.max(0, -t)));
-  const sell = Math.max(0.70, Math.min(1.20, 1 + 0.20 * Math.max(0, t) - 0.30 * Math.max(0, -t)));
-  return { buy, sell };
+  return priceModForState(_state, factionId);
 }
 
 /** Tier name for a faction (cheap UI/AI read). */
