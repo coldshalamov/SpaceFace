@@ -4,6 +4,7 @@
 export const COMBAT_SCHEMA_VERSION = 1;
 
 export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
+export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
 export const PINNED_STATUS_ID = 'status_pinned';
 export const UNMOORED_STATUS_ID = 'status_unmoored';
 
@@ -23,7 +24,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.subsystem.sensor.disabled', 'combat.subsystem.tether.disabled',
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
-  'combat.status.scrambled', 'combat.status.gravity_marked',
+  'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
   'combat.attachment.created', 'combat.attachment.broken',
 ]);
 
@@ -137,6 +138,14 @@ export const STATUS_DEFS = Object.freeze([
     stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
     effects: { multipliers: { fieldCoupling: 1.9 } },
     interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    // PQ-026 Momentum Sink is an offensive, frame-relative force effect. The combat kernel binds
+    // this status to its attacker's translational velocity and queues capped impulses through the
+    // physics membrane; this definition deliberately owns no movement/control multiplier.
+    id: MOMENTUM_SINK_STATUS_ID, version: 1, tags: ['gravity', 'momentum', 'frame_relative'], durationTicks: 240,
+    stacking: { mode: 'replace', maxStacks: 1 }, immunityTags: [],
+    effects: {}, interactions: [], periodic: null, cueId: 'combat.status.momentum_sink',
   },
   {
     // A Well makes the body physically expensive to accelerate. The status changes only the

@@ -3,6 +3,7 @@ import { createAttachmentService } from './attachments.js';
 import { createDamageRouter } from './damage.js';
 import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
 import { createStatusService } from './statuses.js';
+import { applyMomentumSink } from './momentumSink.js';
 import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
@@ -52,6 +53,7 @@ export function createCombatKernel(ctx, options = {}) {
   let sortedCacheSource = null;
   let sortedCacheLength = -1;
   let sortedCache = null;
+  const momentumSinkImpulse = { x: 0, y: 0, z: 0 };
 
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
@@ -117,6 +119,9 @@ export function createCombatKernel(ctx, options = {}) {
       if (isDynamicPhysicsBodyEntity(entity) && response
         && (response.massScale !== 1 || response.inertiaScale !== 1)) {
         writePhysicsBodyResponse(entity, response);
+      }
+      if (isDynamicPhysicsBodyEntity(entity)) {
+        applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
       }
       coolCombatHeat(entity, runtime, dt);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));

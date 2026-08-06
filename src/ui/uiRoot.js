@@ -1600,6 +1600,26 @@ function injectHudCss() {
     to { transform:scale(.78); opacity:1; }
   }
 
+  /* Momentum Sink — static opposing brackets name the player's moving reference frame. */
+  .sf-momentum-sink { display:none; position:absolute; left:0; top:0; width:58px; height:58px;
+    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
+  .sf-momentum-sink.visible { display:block; opacity:1; }
+  .sf-momentum-sink__bracket { position:absolute; inset:5px; border-left:3px solid rgba(255,190,112,.95);
+    border-right:3px solid rgba(255,190,112,.95); box-shadow:0 0 10px rgba(255,136,64,.34); }
+  .sf-momentum-sink__bracket::before, .sf-momentum-sink__bracket::after {
+    content:''; position:absolute; left:7px; right:7px; height:2px; background:rgba(255,222,176,.8); }
+  .sf-momentum-sink__bracket::before { top:7px; }
+  .sf-momentum-sink__bracket::after { bottom:7px; }
+  .sf-momentum-sink__axis { position:absolute; left:16px; right:16px; top:50%; height:1px;
+    background:rgba(255,222,176,.9); box-shadow:0 0 6px rgba(255,136,64,.5); }
+  .sf-momentum-sink__axis::before, .sf-momentum-sink__axis::after { content:''; position:absolute; top:-3px;
+    width:7px; height:7px; border-top:1px solid rgba(255,222,176,.9); }
+  .sf-momentum-sink__axis::before { left:0; border-left:1px solid rgba(255,222,176,.9); transform:rotate(-45deg); }
+  .sf-momentum-sink__axis::after { right:0; border-right:1px solid rgba(255,222,176,.9); transform:rotate(45deg); }
+  .sf-momentum-sink__label { position:absolute; left:50%; top:60px; transform:translateX(-50%);
+    color:#ffd8a3; font-size:8px; letter-spacing:.1em; white-space:nowrap;
+    text-shadow:0 1px 2px #080402, 0 0 6px rgba(255,136,64,.72); }
+
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
      amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */

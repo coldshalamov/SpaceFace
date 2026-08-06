@@ -43,9 +43,13 @@ import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGau
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
 import {
-  fillActiveGravityMarkTargets,
   MAX_GRAVITY_MARK_OVERLAYS,
 } from './gravityMarkOverlay.js';
+import {
+  fillActiveMassCouplingTargets,
+  MAX_MOMENTUM_SINK_OVERLAYS,
+} from './momentumSinkOverlay.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
   buildCorridorOpeningWaypoint,
 } from '../systems/missions.js';
@@ -1442,17 +1446,30 @@ export function createHud(ctx, alerts) {
     gravityMarkOverlays.push(marker);
   }
   const gravityMarkTargets = [];
-  let gravityMarkScanTick = -Infinity;
+  const momentumSinkTargets = [];
+  let massCouplingScanTick = -Infinity;
 
-  function updateGravityMarkOverlays(player) {
+  function scanMassCouplingOverlays(player) {
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
-    if (player && (tick < gravityMarkScanTick || tick - gravityMarkScanTick >= 6)) {
-      fillActiveGravityMarkTargets(state, player.id, gravityMarkTargets, gravityMarkOverlays.length);
-      gravityMarkScanTick = tick;
+    if (player && (tick < massCouplingScanTick || tick - massCouplingScanTick >= 6)) {
+      fillActiveMassCouplingTargets(
+        state,
+        player.id,
+        gravityMarkTargets,
+        momentumSinkTargets,
+        gravityMarkOverlays.length,
+        MAX_MOMENTUM_SINK_OVERLAYS,
+      );
+      massCouplingScanTick = tick;
     } else if (!player) {
       gravityMarkTargets.length = 0;
-      gravityMarkScanTick = -Infinity;
+      momentumSinkTargets.length = 0;
+      massCouplingScanTick = -Infinity;
     }
+  }
+
+  function updateGravityMarkOverlays(player) {
+    scanMassCouplingOverlays(player);
     for (let i = 0; i < gravityMarkOverlays.length; i++) {
       const marker = gravityMarkOverlays[i];
       const entity = gravityMarkTargets[i];
@@ -1467,6 +1484,48 @@ export function createHud(ctx, alerts) {
       }
       setClass(marker, 'visible', true);
       setHudScreenTransform(marker, projected.x, projected.y);
+    }
+  }
+
+  // Momentum Sink advertises its explicit reference frame and remaining window. Its fixed pool
+  // shares Gravity Mark's retained 10 Hz collection pass, avoiding a second entity traversal.
+  const momentumSinkOverlays = [];
+  for (let i = 0; i < MAX_MOMENTUM_SINK_OVERLAYS; i++) {
+    const marker = document.createElement('div');
+    marker.className = 'sf-momentum-sink';
+    marker.setAttribute('role', 'img');
+    marker.innerHTML = '<div class="sf-momentum-sink__bracket" aria-hidden="true"></div>'
+      + '<div class="sf-momentum-sink__axis" aria-hidden="true"></div>'
+      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · YOUR FRAME · <span>0s</span></div>';
+    root.appendChild(marker);
+    momentumSinkOverlays.push({ marker, remaining: marker.querySelector('span'), seconds: -1 });
+  }
+
+  function updateMomentumSinkOverlays(player) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    scanMassCouplingOverlays(player);
+    for (let i = 0; i < momentumSinkOverlays.length; i++) {
+      const overlay = momentumSinkOverlays[i];
+      const entity = momentumSinkTargets[i];
+      if (!entity || entity.alive === false || !helpers.worldToScreen) {
+        setClass(overlay.marker, 'visible', false);
+        continue;
+      }
+      const projected = helpers.worldToScreen({ x: entity.pos.x, y: 0, z: entity.pos.z });
+      if (!projected.onScreen) {
+        setClass(overlay.marker, 'visible', false);
+        continue;
+      }
+      const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
+      const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
+      const seconds = active ? Math.max(0, Math.ceil((active.expiresTick - tick) / 60)) : 0;
+      if (overlay.seconds !== seconds) {
+        overlay.seconds = seconds;
+        setText(overlay.remaining, `${seconds}s`);
+        overlay.marker.setAttribute('aria-label', `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`);
+      }
+      setClass(overlay.marker, 'visible', true);
+      setHudScreenTransform(overlay.marker, projected.x, projected.y);
     }
   }
 
@@ -3054,6 +3113,7 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'visible', false);
       setStyle(wpnHeatsWrap, 'display', 'none');
       updateGravityMarkOverlays(null);
+      updateMomentumSinkOverlays(null);
       return;
     }
 
@@ -3128,6 +3188,7 @@ export function createHud(ctx, alerts) {
     }
 
     updateGravityMarkOverlays(p);
+    updateMomentumSinkOverlays(p);
 
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
     const pipOverlay = computeLeadPipOverlay(p, tgt, state, {

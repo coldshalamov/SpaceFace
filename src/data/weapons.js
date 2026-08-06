@@ -154,6 +154,15 @@ export const WEAPONS = [
     projSpeed: 520, range: 680, tracking: 'fixed', spreadDeg: 0.5,
     statuses: [{ id: 'status_gravity_marked', stacks: 1 }],
   },
+  {
+    // MOMENTUM SINK — a landed hit binds the target to the shooter's translational frame for four
+    // seconds. The combat kernel applies a capped opposing impulse; the weapon never writes target
+    // velocity, controls, facing, braking, or speed limits and remains weak as direct damage.
+    id: 'wpn_momentum_sink_s', name: 'Momentum Sink S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 21000, requiresTech: 'tech_graviton_drives',
+    dmg: 3, rof: 0.2, dps: 0.6, damageType: 'emp', energyCost: 9,
+    projSpeed: 500, range: 640, tracking: 'fixed', spreadDeg: 0.45,
+    statuses: [{ id: 'status_momentum_sink', stacks: 1 }],
+  },
 
   // --- PHYSICS-FIRST FAMILY (SF-10 / STEP 9): three setup/payoff verbs on the PQ-009 impulse
   // kernel. They read mechanically distinct in flight (see src/render/vfxProfiles.js) and are the

@@ -83,6 +83,7 @@ const checks = [
   'check:massline:telemetry',
   'check:massline:heads',
   'check:massline:mass-coupling',
+  'check:massline:momentum-sink',
   'check:massline:release',
   'check:massline:release-feedback',
   'check:massline:load',

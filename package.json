@@ -118,6 +118,7 @@
     "check:massline:telemetry": "node scripts/check-massline-telemetry.mjs",
     "check:massline:heads": "node scripts/check-massline-heads.mjs",
     "check:massline:mass-coupling": "node scripts/check-massline-mass-coupling.mjs",
+    "check:massline:momentum-sink": "node scripts/check-momentum-sink.mjs",
     "check:massline:orbit-assist": "node --test test/massline-orbit-assist.test.mjs && node scripts/validation-broker-cli.mjs --manifest massline-live -- --orbit-assist-only",
     "check:massline:release": "node scripts/check-massline-release-rating.mjs",
     "check:massline:release:live": "node scripts/validation-broker-cli.mjs --manifest massline-live -- --release-only",

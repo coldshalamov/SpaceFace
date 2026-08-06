@@ -112,7 +112,7 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 95000, rp: 150 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
