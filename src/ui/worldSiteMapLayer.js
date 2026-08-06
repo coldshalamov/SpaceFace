@@ -2,6 +2,10 @@
 // the map receives ordinary POI markers and never reads transient materialization ids.
 
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
+import {
+  CINDER_SLUICE_SITE_ID,
+  cinderSluicePhase,
+} from '../data/environmentalMachinery.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { projectWorldSite } from '../systems/worldSiteKernel.js';
 
@@ -40,6 +44,9 @@ export function worldSiteMapMarkers(state, sectorId) {
     if (!manifest || record.sectorId !== sectorId) continue;
     const projection = projectWorldSite(manifest, record);
     if (!projection.map || !projection.map.kind) continue;
+    const coursePos = projection.map.coursePos;
+    const hasCoursePos = coursePos && Number.isFinite(coursePos.x) && Number.isFinite(coursePos.z);
+    const statusLine = siteOperatingStatus(state, record, projection);
     markers.push(Object.freeze({
       id: projection.id,
       kind: 'poi',
@@ -54,12 +61,25 @@ export function worldSiteMapMarkers(state, sectorId) {
       sectorId,
       stageId: projection.stageId,
       stageLabel: projection.stageLabel,
+      coursePos: hasCoursePos ? Object.freeze({ x: coursePos.x, z: coursePos.z }) : null,
+      courseLabel: projection.map.courseLabel || null,
+      courseArrivalRadius: Number.isFinite(projection.map.courseArrivalRadius)
+        ? Math.max(1, projection.map.courseArrivalRadius)
+        : null,
+      statusLine,
       ledger: projection.ledger,
       history: worldSiteHistoryPresentation(projection),
       traffic: projection.traffic,
     }));
   }
   return Object.freeze(markers);
+}
+
+function siteOperatingStatus(state, record, projection) {
+  if (!projection || projection.id !== CINDER_SLUICE_SITE_ID) return null;
+  const phase = cinderSluicePhase(record, Number(state && state.simTime) || 0);
+  if (phase.phase === 'quiet') return 'CURRENT QUIET';
+  return `${phase.phase.toUpperCase()} ${Math.max(0, Math.ceil(phase.remainingS))}s`;
 }
 
 function semanticLabel(value) {

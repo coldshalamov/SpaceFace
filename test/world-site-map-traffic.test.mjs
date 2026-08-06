@@ -3,6 +3,12 @@ import test from 'node:test';
 
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import {
+  CINDER_SLUICE_GLOBAL_POS,
+  CINDER_SLUICE_SECTOR_ID,
+  CINDER_SLUICE_SITE_ID,
+  CINDER_SLUICE_TRAFFIC_STAGING_POS,
+} from '../src/data/environmentalMachinery.js';
+import {
   applyWorldSiteFailure,
   applyWorldSiteOperation,
   createWorldSiteRecord,
@@ -55,6 +61,38 @@ test('projection and normal system-map marker are immutable, searchable, and way
   assert.deepEqual(resolveCourseTarget(marker), {
     type: 'poi', pos: { x: 760, z: -620 }, label: 'Helios Recovery Relay',
     reason: 'Helios Recovery Relay', waypointKind: 'local', arrivalRadius: 48, autopilot: true,
+  });
+});
+
+test('Cinder map identity stays on the machinery while course plotting uses its safe approach', () => {
+  const manifest = worldSiteManifestById(CINDER_SLUICE_SITE_ID);
+  const record = createWorldSiteRecord(manifest, { tick: 0 });
+  const state = {
+    simTime: 2.25,
+    world: { currentSectorId: CINDER_SLUICE_SECTOR_ID },
+    entities: new Map(),
+    entityList: [],
+    sites: {
+      worldOrder: [CINDER_SLUICE_SITE_ID],
+      worldById: { [CINDER_SLUICE_SITE_ID]: record },
+    },
+  };
+
+  const marker = buildSystemModel(state, CINDER_SLUICE_SECTOR_ID).points
+    .find((point) => point.id === CINDER_SLUICE_SITE_ID);
+  assert.ok(marker, 'the live marker reaches the default system-map model');
+  assert.deepEqual({ x: marker.x, z: marker.z }, CINDER_SLUICE_GLOBAL_POS,
+    'the visible POI remains the physical machinery');
+  assert.deepEqual(marker.coursePos, CINDER_SLUICE_TRAFFIC_STAGING_POS);
+  assert.equal(marker.statusLine, 'SURGE 7s');
+  assert.deepEqual(resolveCourseTarget(marker), {
+    type: 'poi',
+    pos: { ...CINDER_SLUICE_TRAFFIC_STAGING_POS },
+    label: 'Cinder Sluice safe approach',
+    reason: 'Cinder Sluice safe approach',
+    waypointKind: 'local',
+    arrivalRadius: 48,
+    autopilot: true,
   });
 });
 

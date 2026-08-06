@@ -1718,14 +1718,23 @@ export function resolveCourseTarget(target) {
     return { type: 'sector', sectorId, path: null, label: target.name || sectorId };
   }
 
-  const hasPos = Number.isFinite(target.x) && Number.isFinite(target.z);
+  const authoredCoursePos = target.coursePos
+    && Number.isFinite(target.coursePos.x)
+    && Number.isFinite(target.coursePos.z)
+    ? target.coursePos
+    : null;
+  const hasPos = authoredCoursePos || (Number.isFinite(target.x) && Number.isFinite(target.z));
   if (hasPos) {
     const kind = target.kind || 'local';
-    const label = target.name || (kind === 'zone' ? 'Zone' : kind === 'gate' ? 'Gate' : kind === 'station' ? 'Station' : 'Map fix');
-    const arrivalRadius = kind === 'gate' ? 72 : kind === 'station' ? 90 : kind === 'claim' ? 170 : kind === 'zone' ? Math.max(60, (target.radius || 0) * 0.5) : 48;
+    const label = target.courseLabel || target.name || (kind === 'zone' ? 'Zone' : kind === 'gate' ? 'Gate' : kind === 'station' ? 'Station' : 'Map fix');
+    const arrivalRadius = Number.isFinite(target.courseArrivalRadius)
+      ? Math.max(1, target.courseArrivalRadius)
+      : kind === 'gate' ? 72 : kind === 'station' ? 90 : kind === 'claim' ? 170 : kind === 'zone' ? Math.max(60, (target.radius || 0) * 0.5) : 48;
     const payload = {
       type: kind,
-      pos: { x: target.x, z: target.z },
+      pos: authoredCoursePos
+        ? { x: authoredCoursePos.x, z: authoredCoursePos.z }
+        : { x: target.x, z: target.z },
       label,
       reason: label,
       waypointKind: kind === 'zone' ? 'zone' : kind === 'station' || kind === 'gate' ? 'nav' : 'local',
@@ -4303,9 +4312,13 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         mapKind: p.mapKind,
         stageId: p.stageId,
         stageLabel: p.stageLabel,
+        coursePos: p.coursePos,
+        courseLabel: p.courseLabel,
+        courseArrivalRadius: p.courseArrivalRadius,
+        statusLine: p.statusLine,
         ledger: p.ledger,
         history: p.history,
-        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`,
+        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
       });
     }
   }
@@ -8211,8 +8224,10 @@ export const galaxyMapScreen = {
         entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
+        coursePos: p.coursePos, courseLabel: p.courseLabel,
+        courseArrivalRadius: p.courseArrivalRadius, statusLine: p.statusLine,
         ledger: p.ledger, history: p.history, searchText: p.searchText,
-        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
+        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`
       });
 
       // Selection: white keyline, the only selection language on the table.
@@ -8227,6 +8242,7 @@ export const galaxyMapScreen = {
       else drawPoiMark(g, x, y);
 
       const pointLines = [displayName];
+      if (p.statusLine) pointLines.push(p.statusLine);
       let marketTint = null;
       let services = [];
       if (this._layers.services && (isStation || isGate)) {

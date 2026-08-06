@@ -475,6 +475,9 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
     mapAnnotation: Object.freeze({
       kind: 'world-site', poiType: 'environmental-machinery', label: 'Cinder Sluice',
       searchText: 'Cinder Sluice Ceres debris current phase regulator ballast industrial machinery',
+      coursePos: CINDER_SLUICE_TRAFFIC_STAGING_POS,
+      courseLabel: 'Cinder Sluice safe approach',
+      courseArrivalRadius: 48,
     }),
     trafficHook: Object.freeze({
       id: 'ceres_cinder_sluice_service', stationId: 'station_beltout',
