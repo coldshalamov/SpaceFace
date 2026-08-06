@@ -35,6 +35,15 @@ const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
 
+// Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
+// priority is only a defensive read for manually-authored/old data; live fitting rejects multiples,
+// so array slot order can never silently decide the active physics law.
+const MASSLINE_HEAD_PRIORITY = Object.freeze({ tractor: 1, elastic_whip: 2 });
+function masslineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.masslineHeadId;
+  return MASSLINE_HEAD_PRIORITY[id] ? id : null;
+}
+
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
 
@@ -238,9 +247,12 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (Number.isFinite(mods.tetherReelRateMult) && mods.tetherReelRateMult > 0) {
       tetherReelRateMult = Math.max(tetherReelRateMult, mods.tetherReelRateMult);
     }
-    // Specialized heads are fitted capabilities, not input modes. Tractor is the first admitted
-    // head; later heads add their own explicit arbitration rather than inheriting slot order.
-    if (mods.masslineHeadId === 'tractor') masslineHeadId = 'tractor';
+    // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
+    // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
+    const candidateHeadId = masslineHeadIdForDef(d);
+    if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
+      masslineHeadId = candidateHeadId;
+    }
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
     if (Number.isFinite(mods.hiddenCargoPct)) {
@@ -908,6 +920,23 @@ export const ships = {
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
+    }
+
+    const requestedHeadId = masslineHeadIdForDef(def);
+    if (requestedHeadId) {
+      const conflictingHeadId = owned.fittings.find((fittedId, index) => {
+        if (index === slotIndex || !fittedId) return false;
+        return !!masslineHeadIdForDef(defById(fittedId));
+      });
+      if (conflictingHeadId) {
+        const conflictingDef = defById(conflictingHeadId);
+        this.bus.emit('toast', {
+          text: 'Unfit ' + ((conflictingDef && conflictingDef.name) || 'the current Massline head') + ' before fitting another head',
+          kind: 'error',
+          ttl: 3,
+        });
+        return false;
+      }
     }
 
     const existing = owned.fittings[slotIndex];

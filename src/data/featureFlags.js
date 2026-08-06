@@ -77,6 +77,7 @@ export const MASSLINE2_FLAGS = {
   bombPropulsion: _initial.massline2.bombPropulsion,
   hitchhiking: _initial.massline2.hitchhiking,
   masslineHeadTractor: _initial.massline2.masslineHeadTractor,
+  masslineHeadElasticWhip: _initial.massline2.masslineHeadElasticWhip,
 };
 
 /** Read a massline2 flag: master `enabled` AND the named flag. Unknown names read false. */

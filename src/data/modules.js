@@ -120,6 +120,10 @@ export const MODULES = [
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {
+    id: 'mod_elastic_whip_m', name: 'Elastic Whip M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 16000, requiresTech: 'tech_tractor_systems',
+    energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },
+  },
+  {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
   },

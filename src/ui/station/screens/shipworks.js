@@ -744,6 +744,7 @@ export function createShipworksScreen(ctx) {
     if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
     if (def.mods && def.mods.masslineHeadId === 'tractor') return 'Massline Tractor head';
+    if (def.mods && def.mods.masslineHeadId === 'elastic_whip') return 'Massline spring-energy head';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
     return 'Utility support system';
   }

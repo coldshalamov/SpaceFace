@@ -81,6 +81,7 @@ const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
 
 const checks = [
   'check:massline:telemetry',
+  'check:massline:heads',
   'check:massline:release',
   'check:massline:release-feedback',
   'check:massline:load',

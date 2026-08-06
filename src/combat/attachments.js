@@ -23,6 +23,18 @@ const TRACTOR_TETHER_SPRING = Object.freeze({
   captureS: 0.45,
   maxForce: 4_200,
 });
+// PQ-029 Elastic Whip head. Higher stiffness and low damping turn extension the pilot physically
+// earns into a lively return stroke. There is no release impulse or control writer here: SG-02
+// still applies only equal/opposite radial rope tension, and cutting simply preserves real velocity.
+const ELASTIC_WHIP_TETHER_SPRING = Object.freeze({
+  K: 260,
+  zeta: 0.28,
+  captureS: 0.20,
+});
+const SPECIALIZED_TETHER_HEADS = Object.freeze({
+  tractor: Object.freeze({ flag: 'masslineHeadTractor', spring: TRACTOR_TETHER_SPRING }),
+  elastic_whip: Object.freeze({ flag: 'masslineHeadElasticWhip', spring: ELASTIC_WHIP_TETHER_SPRING }),
+});
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
  *  this layer scales only the standard tether's break policy and never mutates the catalog. */
@@ -56,13 +68,14 @@ export function effectiveTetherPolicy(def, owner, features = null) {
     strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
   };
   const headId = owner && owner.data && owner.data.derived && owner.data.derived.masslineHeadId;
-  if (headId !== 'tractor' || !massline2Flag('masslineHeadTractor', features)) return policy;
+  const head = SPECIALIZED_TETHER_HEADS[headId];
+  if (!head || !massline2Flag(head.flag, features)) return policy;
   return {
     ...policy,
-    headId: 'tractor',
+    headId,
     spring: {
       ...((def && def.spring) || {}),
-      ...TRACTOR_TETHER_SPRING,
+      ...head.spring,
     },
   };
 }
@@ -740,7 +753,7 @@ export function createAttachmentService(context) {
       if (reelRevision <= 0) return { mode: 'legacy_rope' };
     }
     const policy = policyForAttachment(def, owner, attachment);
-    if (policy && policy.headId === 'tractor' && policy.spring && typeof policy.spring === 'object') {
+    if (policy && policy.headId && policy.spring && typeof policy.spring === 'object') {
       return { ...policy.spring };
     }
     return { ...((def && def.spring) || {}) };

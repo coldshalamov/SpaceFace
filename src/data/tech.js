@@ -129,7 +129,7 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'logistics', prereqs: [],
     cost: { credits: 10000, rp: 15 },
-    unlocks: { modules: ['mod_tractor_beam_m'] },
+    unlocks: { modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],
