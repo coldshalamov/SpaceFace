@@ -98,6 +98,22 @@ export function trafficRoleMixForSector(sector, state = null) {
   const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
   // Industrial (mining/refinery) sectors: more miners + haulers.
   if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; }
+  // A sector with authored ROCK is a sector somebody cuts, whether or not an `industries` flag was
+  // ever set on it. Read the contents, not only the label.
+  //
+  // Concrete case this exists for: `sector_helios_prime` authors 70 asteroids across two named
+  // fields — the comments in sectors.js call one of them "the starter seam" — and Helios Station
+  // carries a standing iron shortage (`marketEquilibriumFactors: { cmdty_ore_iron: 0.09 }`). It has
+  // no `industries` flag, so the miner weight stayed at its base 16 while the `security >= 0.9`
+  // branch below multiplied patrol x1.6 and hauler x1.4 on top of it. Measured result across
+  // repeated live captures of the sector every new player starts in: **zero barges**, consistently
+  // 1 hauler + 4 patrols. The economy said iron was short and nobody was mining it.
+  //
+  // Deliberately weaker than the explicit flag (x1.7 vs x2.5) and NOT applied on top of it: a
+  // declared mining economy should still out-mine a core sector that merely happens to have rocks.
+  else if (Array.isArray(sec.fields) && sec.fields.some((f) => f && (f.count | 0) > 0)) {
+    out.miner *= 1.7;
+  }
   // Hostile/danger sectors: more suspicious raiders, fewer civilians.
   const threat = sec.threat || sec.danger;
   if (threat === 'high' || sec.security === 'lawless' || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3) {
