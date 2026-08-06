@@ -18,6 +18,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
 import { applyTradeNavigation } from './market.js';
 import { isHostileToPlayer } from '../../systems/scanner.js';
+import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -561,13 +562,14 @@ export const localmapScreen = {
 
   _missionGeometry(state) {
     const wp = state.nav && state.nav.waypoint;
-    if (!wp || !wp.pos) return EMPTY_GEOMETRY;
+    const pos = resolveWaypointPresentationPosition(state, wp);
+    if (!wp || !pos) return EMPTY_GEOMETRY;
     const item = this._missionGeometryScratch[0];
     item.id = wp.missionId || wp.targetEntityId || wp.stationId || 'nav-waypoint';
     item.kind = wp.kind || 'waypoint';
     item.label = wp.reason || wp.label || 'Objective';
-    item.position.x = wp.pos.x;
-    item.position.z = wp.pos.z;
+    item.position.x = pos.x;
+    item.position.z = pos.z;
     item.metadata.missionId = wp.missionId || null;
     item.metadata.sectorId = wp.sectorId || null;
     item.metadata.sectorName = wp.sectorName || null;

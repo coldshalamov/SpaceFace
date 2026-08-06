@@ -31,6 +31,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
+import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
@@ -507,6 +508,7 @@ export function readRouteExecutorForMap(executor) {
 export function activeMapGoal(state) {
   if (!state) return null;
   const wp = state.nav && state.nav.waypoint;
+  const wpPos = resolveWaypointPresentationPosition(state, wp);
   const trackedId = state.ui && state.ui.trackedMissionId;
   const active = (state.missions && state.missions.active) || [];
   const tracked = trackedId ? active.find((m) => m && m.status === 'active' && m.id === trackedId) : null;
@@ -517,7 +519,7 @@ export function activeMapGoal(state) {
   const sectorId = (wp && wp.sectorId)
     || (tracked && (tracked.destSectorId || (tracked.params && tracked.params.sectorId)))
     || routeDest
-    || ((wp && wp.pos) ? currentSectorId(state) : null);
+    || (wpPos ? currentSectorId(state) : null);
   if (!wp && !tracked && !routeDest) return null;
   return {
     id: 'active-map-goal',
@@ -525,7 +527,7 @@ export function activeMapGoal(state) {
     markerKind: (wp && wp.markerKind) || ((wp && (wp.missionId || wp.onboarding)) || tracked ? 'mission-objective' : 'navigation'),
     missionId: (wp && wp.missionId) || (tracked && tracked.id) || null,
     sectorId,
-    pos: wp && wp.pos ? { x: wp.pos.x, z: wp.pos.z } : null,
+    pos: wpPos ? { x: wpPos.x, z: wpPos.z } : null,
     label: String(
       (wp && (wp.label || wp.sectorName || wp.reason))
       || (tracked && (tracked.title || tracked.name))
@@ -7944,6 +7946,7 @@ export const galaxyMapScreen = {
   _drawSystem(g, state, w, h) {
     const model = buildSystemModel(state, null, { claimsSystem: this._claimsSystem() });
     const wp = state.nav && state.nav.waypoint;
+    const wpPos = resolveWaypointPresentationPosition(state, wp);
     let span = 3000;
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
@@ -7958,10 +7961,10 @@ export const galaxyMapScreen = {
       const point = bearing.drawFixedPos || bearing.drawCenter;
       if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
     }
-    // nav.waypoint.pos is the armed autopilot fix, which world.js stores GLOBAL. It reaches the
-    // span independently of the model, so an armed waypoint reproduced the blowout on its own.
-    const wpDraw = wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)
-      ? globalToSectorLocalForSector(wp.pos, model.sectorId)
+    // The waypoint's resolved presentation position is GLOBAL. It reaches the span independently
+    // of the model, so an armed waypoint reproduced the blowout on its own.
+    const wpDraw = wpPos
+      ? globalToSectorLocalForSector(wpPos, model.sectorId)
       : null;
     if (wpDraw) pts.push({ x: wpDraw.x, z: wpDraw.z, r: 180 });
     if (pts.length) {
@@ -8309,9 +8312,9 @@ export const galaxyMapScreen = {
         anchorRadius: 16,
         color: INK.amberHot,
       }));
-      // waypointClickTarget carries the GLOBAL wp.pos into the click payload on purpose; only the
+      // waypointClickTarget carries the GLOBAL resolved position into the click payload; only the
       // sx/sy screen anchor is sector-local.
-      const target = waypointClickTarget(wp, wx, wy);
+      const target = waypointClickTarget(wp, wpPos, wx, wy);
       if (target) this._clickTargets.push(target);
     }
     const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 26));
@@ -8350,6 +8353,7 @@ export const galaxyMapScreen = {
     const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem(), intel });
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
+    const wpPos = resolveWaypointPresentationPosition(state, wp);
     const nowS = Math.max(0, Number(state && state.simTime) || 0);
 
     const player = playerEntity(state);
@@ -8393,8 +8397,8 @@ export const galaxyMapScreen = {
       fitSpans.push(Math.hypot(point.x - px, point.z - pz) + uncertainty);
     }
     // The tracked objective always votes: it is the one mark the pilot opened the chart to find.
-    if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) {
-      fitSpans.push(Math.hypot(wp.pos.x - px, wp.pos.z - pz));
+    if (wpPos) {
+      fitSpans.push(Math.hypot(wpPos.x - px, wpPos.z - pz));
     }
     let m = 0;
     if (fitSpans.length) {
@@ -8499,10 +8503,10 @@ export const galaxyMapScreen = {
     }
 
     // Draw active waypoint line
-    if (wp && wp.pos && this._layers.route) {
+    if (wpPos && this._layers.route) {
       g.save();
       g.strokeStyle = INK.amber; g.lineWidth = 2; g.setLineDash([6, 5]);
-      g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
+      g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wpPos.x), sz(wpPos.z)); g.stroke();
       g.restore();
     }
 
@@ -8776,18 +8780,18 @@ export const galaxyMapScreen = {
     }
 
     // The waypoint's edge tick rides even the off-frame goal so the objective never vanishes.
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      const wx = sx(wp.pos.x);
-      const wy = sz(wp.pos.z);
+    if (wpPos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wpPos.x);
+      const wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        pushEdgeTick(wx, wy, INK.amberHot, 'waypoint', waypointClickTarget(wp, wx, wy) || undefined);
+        pushEdgeTick(wx, wy, INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy) || undefined);
       }
     }
 
     let objectivePlacement = null;
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      const wx = sx(wp.pos.x);
-      const wy = sz(wp.pos.z);
+    if (wpPos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wpPos.x);
+      const wy = sz(wpPos.z);
       const objectiveLabel = waypointMapLabel(wp);
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
@@ -8800,7 +8804,7 @@ export const galaxyMapScreen = {
         anchorRadius: 16,
         color: INK.amberHot,
       }));
-      const target = waypointClickTarget(wp, wx, wy);
+      const target = waypointClickTarget(wp, wpPos, wx, wy);
       if (target && !offView(wx, wy)) this._clickTargets.push(target);
     }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
@@ -8824,8 +8828,8 @@ export const galaxyMapScreen = {
     }
 
     // The tracked objective owns the final paint and the strongest label reservation.
-    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
-      drawWaypointPin(g, sx(wp.pos.x), sz(wp.pos.z), waypointMapLabel(wp), w, objectivePlacement);
+    if (wpPos && (this._layers.route || this._layers.mission)) {
+      drawWaypointPin(g, sx(wpPos.x), sz(wpPos.z), waypointMapLabel(wp), w, objectivePlacement);
     }
 
     // Edge ticks: keyed marks pinned to the frame edge in the true direction of anything
@@ -9739,8 +9743,8 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   if (labelPlacement) drawMapLabelBlock(g, labelPlacement);
 }
 
-function waypointClickTarget(wp, sx, sy) {
-  if (!wp || !wp.pos || !Number.isFinite(wp.pos.x) || !Number.isFinite(wp.pos.z)) return null;
+function waypointClickTarget(wp, pos, sx, sy) {
+  if (!wp || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
   const label = waypointMapLabel(wp);
   return {
     sx,
@@ -9750,8 +9754,8 @@ function waypointClickTarget(wp, sx, sy) {
     objective: true,
     markerKind: wp.markerKind || (wp.missionId || wp.onboarding ? 'mission-objective' : 'navigation'),
     id: 'active-waypoint',
-    x: wp.pos.x,
-    z: wp.pos.z,
+    x: pos.x,
+    z: pos.z,
     name: label,
     detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
     missionId: wp.missionId || null,

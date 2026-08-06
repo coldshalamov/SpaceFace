@@ -22,6 +22,7 @@
 import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
 // Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
@@ -920,7 +921,7 @@ export function createRadar(ctx) {
 
     // ── waypoint / objective marker ───────────────────────────────────────────────────────
     const wp  = state.nav && state.nav.waypoint;
-    const pos = wp && wp.pos;
+    const pos = resolveWaypointPresentationPosition(state, wp);
     const wpLabel = waypointLabel(wp);
     const objectiveKeyText = wp ? `◆ AMBER DIAMOND · ${wpLabel}` : '';
     if (objectiveKey.textContent !== objectiveKeyText) objectiveKey.textContent = objectiveKeyText;

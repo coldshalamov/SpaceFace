@@ -25,6 +25,8 @@ import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { NPC_JOB_KIND } from '../src/systems/npcJobs.js';
 import { missions } from '../src/systems/missions.js';
 import { PQ019_HEIST_SECTOR_ID } from '../src/data/heistFacilities.js';
+import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
+import { activeMapGoal } from '../src/ui/galaxyMap.js';
 import {
   PQ019C_HEIST_TYPE,
   PQ019C_HEIST_STATION_ID,
@@ -381,7 +383,7 @@ test('a fenced success never posts a recovery, even with policy enabled', () => 
 // packet names ownership as a required cue. It runs on every accept via trackMission, so "it does
 // not throw" was already covered; these assert that it points at the right thing in each state.
 
-test('the mission marker tracks ownership: launcher, then capsule, then fence', () => {
+test('the live mission marker tracks ownership: launcher, moving capsule, then fence', () => {
   const t = boot();
   const m = t.accept({ launchWindowS: 4 });
   t.step(2);
@@ -398,14 +400,31 @@ test('the mission marker tracks ownership: launcher, then capsule, then fence', 
   const inFlight = t.missionsSys._missionWaypoint(m);
   const capsule = t.capsule();
   assert.equal(inFlight.label, 'Cargo Capsule');
+  assert.equal(t.state.nav.waypoint.label, 'Cargo Capsule',
+    'launch refreshes the public marker immediately');
+  assert.equal(t.state.nav.waypoint.presentationEntityId, capsule.id,
+    'presentation follows the physical body without granting autopilot or Massline target ownership');
+  assert.equal(t.state.nav.waypoint.targetEntityId, undefined,
+    'the presentation link is not a control assist');
   assert.equal(inFlight.pos.x, capsule.pos.x);
   assert.equal(inFlight.pos.z, capsule.pos.z);
   assert.match(inFlight.reason, /intercept/i);
+  const sampledX = t.state.nav.waypoint.pos.x;
+  capsule.pos.x += 17;
+  assert.equal(resolveWaypointPresentationPosition(t.state, t.state.nav.waypoint).x, capsule.pos.x,
+    'presentation reads the live body between the mission owner\'s periodic nav refreshes');
+  assert.equal(activeMapGoal(t.state).pos.x, capsule.pos.x,
+    'the default unified map consumes the same live presentation position');
+  assert.equal(t.state.nav.waypoint.pos.x, sampledX,
+    'the gameplay-facing waypoint remains a snapshot rather than a hidden moving assist');
 
   t.latch();
   const inTow = t.missionsSys._missionWaypoint(m);
   const fenceHead = roleEntities(t.state, 'fence_receiver_head')[0];
   assert.equal(inTow.label, 'Quiet Fence Receiver');
+  assert.equal(t.state.nav.waypoint.label, 'Quiet Fence Receiver',
+    'latching refreshes custody guidance immediately');
+  assert.equal(t.state.nav.waypoint.presentationEntityId, undefined);
   assert.match(inTow.reason, /deliver/i, 'OWNERSHIP: in tow, the fence is the only buyer');
   assert.ok(Math.hypot(inTow.pos.x - fenceHead.pos.x, inTow.pos.z - fenceHead.pos.z) < 1,
     'the marker points at the head the capsule actually has to touch');
@@ -413,6 +432,9 @@ test('the mission marker tracks ownership: launcher, then capsule, then fence', 
   // Releasing the capsule hands the marker back to the capsule itself.
   t.bus.emit('tether:released', { targetId: capsule.id });
   assert.equal(t.missionsSys._missionWaypoint(m).label, 'Cargo Capsule');
+  assert.equal(t.state.nav.waypoint.label, 'Cargo Capsule',
+    'release refreshes the public marker immediately');
+  assert.equal(t.state.nav.waypoint.presentationEntityId, capsule.id);
 });
 
 test('a schedule the launcher refuses is spoken and settles, never a silent stall', () => {

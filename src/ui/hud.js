@@ -32,6 +32,7 @@ import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
+import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
@@ -4016,7 +4017,7 @@ export function createHud(ctx, alerts) {
         const station = resolveNavStation(nw);
         if (station) livePos = station.pos;
       }
-      const pos = livePos || nw.pos;
+      const pos = livePos || resolveWaypointPresentationPosition(state, nw);
       wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
       navMeta = nw;
       if (pos) wp = pos;

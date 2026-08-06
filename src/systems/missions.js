@@ -563,15 +563,24 @@ export const missions = {
     // never seen one. All of these fire BEFORE missions.update for the same tick (registry order:
     // physics 177 < tetherGameplay 197 < heistFacilities 222 < missions 246), which is the
     // arbiter's submit-before-step precondition satisfied structurally.
-    bus.on('heist:capsuleLaunched', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onCapsuleLaunched(this._heistCtx(), h, p || {})));
+    bus.on('heist:capsuleLaunched', (p) => this._heistEach((h, m) => {
+      if (heistMissionRuntime.onCapsuleLaunched(this._heistCtx(), h, p || {})) {
+        this._refreshTrackedMissionNav(m);
+      }
+    }));
     bus.on('heist:facilityCandidate', (p) => this._heistEach(
       (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {})));
-    bus.on('tether:latched', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})));
+    bus.on('tether:latched', (p) => this._heistEach((h, m) => {
+      if (heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})) {
+        this._refreshTrackedMissionNav(m);
+      }
+    }));
     for (const releaseEvent of ['tether:released', 'tether:cut', 'tether:broke']) {
-      bus.on(releaseEvent, (p) => this._heistEach(
-        (h) => heistMissionRuntime.onTetherReleased(this._heistCtx(), h, p || {})));
+      bus.on(releaseEvent, (p) => this._heistEach((h, m) => {
+        if (heistMissionRuntime.onTetherReleased(this._heistCtx(), h, p || {})) {
+          this._refreshTrackedMissionNav(m);
+        }
+      }));
     }
     // smuggling bust: a patrol scan caught contraband.
     bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
@@ -2192,6 +2201,9 @@ export const missions = {
           ...heistBase,
           label: 'Cargo Capsule',
           pos: { x: capsule.pos.x, z: capsule.pos.z },
+          // UI-only live position. `targetEntityId` would also grant control/throw owners this body,
+          // which is outside the mission marker contract and would become an unrequested assist.
+          presentationEntityId: capsule.id,
           reason: 'Intercept the capsule before the Concord catcher takes it',
         };
       }
@@ -4956,6 +4968,7 @@ function sameNavWaypoint(a, b) {
   if ((a.kind || null) !== (b.kind || null)) return false;
   if ((a.missionId || null) !== (b.missionId || null)) return false;
   if ((a.targetEntityId || null) !== (b.targetEntityId || null)) return false;
+  if ((a.presentationEntityId || null) !== (b.presentationEntityId || null)) return false;
   if ((a.storyBeat ?? null) !== (b.storyBeat ?? null)) return false;
   if ((a.stationId || null) !== (b.stationId || null)) return false;
   if ((a.sectorId || null) !== (b.sectorId || null)) return false;
