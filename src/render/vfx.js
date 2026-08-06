@@ -55,6 +55,13 @@ import {
   STATION_SIDE_EVENT_VFX_CAPACITY,
   writeStationSideEventVfxFrame,
 } from './stationSideEventVfx.js';
+import {
+  createNpcJobSignatureFrameScratch,
+  resolveNpcJobSignature,
+  writeNpcJobSignatureFrame,
+  NPC_JOB_SIGNATURE_CAPACITY,
+  NPC_JOB_SIGNATURE_DRAW_RANGE,
+} from './npcJobSignatureVfx.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
 import {
@@ -308,6 +315,14 @@ const VFX_SEAM_DRAW_RANGE = 640;
 // their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
 const VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500;
+// NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
+// phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
+// cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
+// job is in range — an empty sector costs one integer compare per frame.
+const VFX_NPC_JOB_SIGNATURE_HZ = 12;
+// The cut beam's fallback length when the worked rock cannot be resolved, in world units. Long
+// enough to read as contact with something out of frame, short enough not to cross a lane.
+const NPC_JOB_CUT_BEAM_FALLBACK = 26;
 // PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
 // particles at 30 Hz; slept when no field is deployed. Pool share is a small slice of PARTICLE_CAP
 // (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
@@ -432,6 +447,7 @@ function emptyVfxSubsystemDiag() {
     fieldFlow: 0,       // PQ-012 continuous field flow particles emitted this frame (pool share)
     lootMagnet: 0,      // magnet-pulled drops drawn as incoming light this frame
     stationSideEvents: 0, // seeded station operations drawn on pooled sprite/trail substrates
+    npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
   };
 }
 
@@ -579,6 +595,26 @@ export const vfx = {
     this._stationSideEventActive = 0;
     this._stationSideEventStarts = 0;
     this._lastStationSideEventKind = null;
+    // NPC work signatures. Unlike the station movers above these are NOT event-installed: the
+    // renderer PULLS the live job bag each cadence tick (see _updateNpcJobSignatures). A slot is
+    // therefore a pure per-job scratch cache keyed by jobId, not a lifecycle record — a job that
+    // disappears simply stops matching and its slot is reused, so there is no retire path to leak.
+    this._cadenceNpcJobSignature = 0;
+    this._npcJobSignatureSlots = [];
+    for (let i = 0; i < NPC_JOB_SIGNATURE_CAPACITY; i++) {
+      this._npcJobSignatureSlots.push({
+        jobId: null,
+        profileId: null,
+        elapsed: 0,
+        lastEmitStep: -1,
+        seed: 0,
+        gen: -1, // declared here so the slot's hidden class never changes on first claim
+        frame: createNpcJobSignatureFrameScratch(),
+      });
+    }
+    this._npcJobSignatureActive = 0;
+    this._npcJobSignatureDrawn = 0;
+    this._lastNpcJobSignatureId = null;
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -735,6 +771,15 @@ export const vfx = {
         starts: this._stationSideEventStarts || 0,
         lastKind: this._lastStationSideEventKind || null,
         capacity: STATION_SIDE_EVENT_VFX_CAPACITY,
+      },
+      // `active` counts live jobs in the bag; `drawn` counts those that survived virtualization and
+      // range culling to actually paint. The gap between them IS the cull, so a regression that
+      // silently stops drawing is visible here rather than only in a screenshot.
+      npcJobSignatures: {
+        active: this._npcJobSignatureActive || 0,
+        drawn: this._npcJobSignatureDrawn || 0,
+        lastSignal: this._lastNpcJobSignatureId || null,
+        capacity: NPC_JOB_SIGNATURE_CAPACITY,
       },
     };
   },
@@ -3258,6 +3303,446 @@ export const vfx = {
     return this._spawnProjectileTrailStreak(
       x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
     ) ? 1 : 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // NPC work signatures — "The Working Light" (design/fiction/THE_WORKING_LIGHT.md).
+  //
+  // The job kernel already knows what every civilian hull is doing; until now nothing drew it, so a
+  // miner mid-cut and a hauler asleep at a waypoint were the same silent shape. This layer PULLS the
+  // live job bag each cadence tick and paints the working state onto the SAME instanced trail/sprite
+  // substrates everything else here uses — no per-ship mesh, no new draw call, no sim writes.
+  //
+  // Pull rather than listen: the runtime emits `npcjobs:*` on PHASE COMPLETION, so a slot installed
+  // from an event is permanently one phase stale, and a dropped event leaves a ghost signalling a job
+  // that ended. Reading the bag makes the renderer stateless about lifecycle instead.
+  // -------------------------------------------------------------------------
+
+  /** Cheap enough to run every frame: returns on the first key without allocating an array. */
+  _npcJobSignaturesRelevant() {
+    const bag = this.state && this.state.npcJobs;
+    const byId = bag && bag.byId;
+    if (!byId) return false;
+    // eslint-disable-next-line no-unreachable-loop -- existence probe; the first key is the answer.
+    for (const key in byId) { if (byId[key]) return true; break; }
+    return false;
+  },
+
+  _sleepNpcJobSignatures() {
+    const slots = this._npcJobSignatureSlots;
+    if (slots) {
+      for (let i = 0; i < slots.length; i++) {
+        slots[i].jobId = null;
+        slots[i].profileId = null;
+        slots[i].lastEmitStep = -1;
+        slots[i].elapsed = 0;
+      }
+    }
+    this._npcJobSignatureActive = 0;
+    this._npcJobSignatureDrawn = 0;
+    this._cadenceNpcJobSignature = 0;
+  },
+
+  /**
+   * Is this hull heavy?
+   *
+   * Derived from the PHASE GRAPH, never from `job.payload`. The kernel treats payload as a static
+   * cargo INTENT and never clears it at unload (npcJobs.js:299-300), so reading it would report every
+   * hauler that ever carried anything as permanently full — and "Amber heartbeat means mass" is the
+   * single most-consulted line in the Code. A hauler is heavy between LOAD and UNLOAD; a miner is
+   * heavy on RETURN; a patrol is never heavy.
+   */
+  _npcJobLoaded(kind, phase) {
+    if (kind === 'hauler') return phase === 'depart' || phase === 'transit' || phase === 'approach';
+    if (kind === 'miner') return phase === 'return' || phase === 'unload';
+    return false;
+  },
+
+  /**
+   * The rock a miner is cutting, or null.
+   *
+   * traffic._buildJobSpec names the field waypoint `field:<entityId>` (traffic.js:_buildJobSpec), so
+   * the route itself carries the identity of the worked body. Recovering it lets the cut beam
+   * terminate on the real asteroid — EVE's motionless-barge-on-rock read — instead of projecting a
+   * fake beam into empty space. If the rock is gone (depleted, sector churn) the caller falls back.
+   */
+  _npcJobWorkTarget(job) {
+    const route = job && job.route;
+    if (!Array.isArray(route)) return null;
+    for (let i = 0; i < route.length; i++) {
+      const wp = route[i];
+      const id = wp && wp.id;
+      if (typeof id !== 'string' || !id.startsWith('field:')) continue;
+      const numeric = Number(id.slice(6));
+      if (!Number.isFinite(numeric)) continue;
+      const rock = this._ent(numeric);
+      if (rock && rock.alive !== false && rock.pos) return rock;
+    }
+    return null;
+  },
+
+  _updateNpcJobSignatures(step) {
+    const slots = this._npcJobSignatureSlots;
+    const byId = this.state && this.state.npcJobs && this.state.npcJobs.byId;
+    if (!slots || !slots.length || !byId) return 0;
+
+    const settings = this.state && this.state.settings || null;
+    const video = settings && settings.video || null;
+    const accessibility = settings && settings.accessibility || null;
+    const reducedMotion = !!(
+      (video && video.motionReduce)
+      || (accessibility && accessibility.motionPreference === 'reduce')
+    );
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(this.state.playerId);
+    const drawRange2 = NPC_JOB_SIGNATURE_DRAW_RANGE * NPC_JOB_SIGNATURE_DRAW_RANGE;
+
+    // Generation stamp: slots claimed this tick are off-limits for reuse, so two jobs can never
+    // fight over one slot within a single pass and produce a strobing half-drawn code.
+    const gen = (this._npcJobSignatureGen = ((this._npcJobSignatureGen | 0) + 1) | 0);
+    let emitted = 0;
+    let active = 0;
+    let drawn = 0;
+
+    for (const jobId in byId) {
+      const entry = byId[jobId];
+      if (!entry) continue;
+      const job = entry.job;
+      if (!job || job.corrupt) continue;
+      active++;
+
+      // A virtualized job has no hull on screen; there is nothing to light.
+      if (entry.entityId == null) continue;
+      const ent = this._ent(entry.entityId);
+      if (!ent || ent.alive === false || !ent.pos) continue;
+
+      if (player && player.pos) {
+        const dx = ent.pos.x - player.pos.x;
+        const dz = ent.pos.z - player.pos.z;
+        if (dx * dx + dz * dz > drawRange2) continue;
+      }
+
+      const profile = resolveNpcJobSignature(
+        entry.kind,
+        job.phase,
+        this._npcJobLoaded(entry.kind, job.phase),
+      );
+      if (!profile) continue;
+
+      let slot = null;
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].jobId === jobId) { slot = slots[i]; break; }
+      }
+      if (!slot) {
+        for (let i = 0; i < slots.length; i++) {
+          if (slots[i].gen !== gen && slots[i].jobId === null) { slot = slots[i]; break; }
+        }
+      }
+      if (!slot) {
+        for (let i = 0; i < slots.length; i++) {
+          if (slots[i].gen !== gen) { slot = slots[i]; break; }
+        }
+      }
+      if (!slot) continue; // pool saturated this tick; the remaining hulls simply stay dark
+
+      if (slot.jobId !== jobId) {
+        slot.jobId = jobId;
+        slot.profileId = null;
+        // Stable per-job de-phasing so eight patrols do not blink in lockstep and read as one
+        // machine. Derived from the id string, not RNG, so it survives save/reload unchanged.
+        let h = 2166136261;
+        for (let i = 0; i < jobId.length; i++) {
+          h ^= jobId.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        slot.seed = (h >>> 0) % 1000;
+      }
+      slot.gen = gen;
+
+      // A phase change restarts the code from its first beat. A signal caught mid-cycle is a
+      // different signal — the Code counts beats, so a chevron that begins on its second lamp is
+      // simply a different claim.
+      if (slot.profileId !== profile.id) {
+        slot.profileId = profile.id;
+        slot.elapsed = 0;
+        slot.lastEmitStep = -1;
+      }
+      slot.elapsed += step;
+
+      const frame = writeNpcJobSignatureFrame(
+        profile,
+        slot.elapsed,
+        Number.isFinite(ent.rot) ? ent.rot : 0,
+        ent.vel ? ent.vel.x : 0,
+        ent.vel ? ent.vel.z : 0,
+        slot.seed,
+        reducedMotion,
+        slot.frame,
+      );
+      drawn++;
+      if (frame.emitStep === slot.lastEmitStep) continue;
+      slot.lastEmitStep = frame.emitStep;
+      this._lastNpcJobSignatureId = profile.id;
+      emitted += this._emitNpcJobSignature(slot, profile, ent, job, reducedMotion);
+    }
+
+    // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
+    // a live one when ids are recycled.
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].gen !== gen && slots[i].jobId !== null) {
+        slots[i].jobId = null;
+        slots[i].profileId = null;
+        slots[i].lastEmitStep = -1;
+        slots[i].elapsed = 0;
+      }
+    }
+
+    this._npcJobSignatureActive = active;
+    this._npcJobSignatureDrawn = drawn;
+    return emitted;
+  },
+
+  /**
+   * Draw one beat of one hull's signal.
+   *
+   * Every branch is a distinct SILHOUETTE and CADENCE, not a re-tint: the research is unambiguous
+   * that at 500-2000 world units colour is already gone and only shape change, contact geometry and
+   * blink rhythm survive. The colours below are the fiction's, and they matter close in; the beat
+   * count and the arrangement are what carry the meaning far out.
+   */
+  _emitNpcJobSignature(slot, profile, ent, job, reducedMotion) {
+    const frame = slot.frame;
+    const x = ent.pos.x;
+    const z = ent.pos.z;
+    const dx = frame.dirX;
+    const dz = frame.dirZ;
+    const nx = frame.normalX;
+    const nz = frame.normalZ;
+    // Signals scale with the hull. A Meridian bulk mule's lamp bank is physically bigger than a
+    // courier's, and the Code is read on hulls from 6 to 30 units across.
+    const r = Math.max(3, Number(ent.radius) || 6);
+    const beat = frame.beat;
+    let emitted = 0;
+
+    switch (profile.rhythm) {
+      case 'spine-wake': {
+        // "Bow lamp, midships, stern, one beat each." One pip walks the keel; the hull's length is
+        // the message, so the read is a travelling dot rather than a flash.
+        const along = (1 - beat) * r * 1.05;
+        emitted += this._spawnStationSideEventStreak(
+          x + dx * along, 0.42, z + dz * along,
+          reducedMotion ? 0.62 : 0.38, 0.30, r * 0.42, 0.62, '#e8f0ff', 0, 0, dx, dz,
+        );
+        break;
+      }
+
+      case 'load-heartbeat': {
+        // The loaded heartbeat: port and starboard amber together, then a rest. Two lamps firing as
+        // a PAIR is what separates mass from every single-lamp code in the book.
+        if (beat === 0) {
+          const off = r * 0.92;
+          emitted += this._spawnStationSideEventStreak(
+            x + nx * off, 0.46, z + nz * off,
+            reducedMotion ? 0.72 : 0.46, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
+          );
+          emitted += this._spawnStationSideEventStreak(
+            x - nx * off, 0.46, z - nz * off,
+            reducedMotion ? 0.72 : 0.46, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
+          );
+        }
+        break;
+      }
+
+      case 'empty-bar': {
+        // "Three dim whites in a row" — hold open for hire. Deliberately dim and ventral: an empty
+        // hull is announcing that it is not worth the interdiction maths.
+        const lateral = (beat - 1) * r * 0.62;
+        emitted += this._spawnStationSideEventStreak(
+          x + nx * lateral, 0.24, z + nz * lateral,
+          reducedMotion ? 0.70 : 0.44, 0.20, r * 0.20, 0.40, '#cfe4ff', 0, 0, nx, nz,
+        );
+        break;
+      }
+
+      case 'bow-final': {
+        // Steady green bow lamp every beat — "green final is a promise" — plus one lateral thruster
+        // tick that alternates sides, which is the stepped bleed-off the Code describes.
+        emitted += this._spawnStationSideEventStreak(
+          x + dx * r * 1.15, 0.44, z + dz * r * 1.15,
+          reducedMotion ? 0.80 : 0.56, 0.36, r * 0.26, 0.74, '#7dffb0', 0, 0, dx, dz,
+        );
+        const side = beat === 0 ? 1 : -1;
+        emitted += this._spawnStationSideEventStreak(
+          x + nx * side * r * 0.7, 0.38, z + nz * side * r * 0.7,
+          reducedMotion ? 0.34 : 0.22, 0.16, r * 0.34, 0.44, '#b8ccdd',
+          -nx * side * 3, -nz * side * 3, -nx * side, -nz * side,
+        );
+        break;
+      }
+
+      case 'work-cone': {
+        // The blind cone. Three things at once, because extraction is the loudest thing a civilian
+        // hull ever does: a beam onto the face, spall coming off it, and a red flank strobe walking
+        // the arc nobody may enter.
+        const rock = this._npcJobWorkTarget(job);
+        const noseX = x + dx * r * 0.8;
+        const noseZ = z + dz * r * 0.8;
+        let bx = dx;
+        let bz = dz;
+        let reach = NPC_JOB_CUT_BEAM_FALLBACK;
+        if (rock && rock.pos) {
+          const rx = rock.pos.x - noseX;
+          const rz = rock.pos.z - noseZ;
+          const dist = Math.hypot(rx, rz);
+          if (dist > 1e-3) {
+            bx = rx / dist;
+            bz = rz / dist;
+            // Stop at the rock's surface, not its centre — a beam that vanishes inside the body
+            // reads as a bug, and the spall belongs on the face.
+            reach = Math.max(2, dist - (Number(rock.radius) || 6));
+          }
+        }
+        const midX = noseX + bx * reach * 0.5;
+        const midZ = noseZ + bz * reach * 0.5;
+        emitted += this._spawnStationSideEventStreak(
+          midX, 0.40, midZ,
+          reducedMotion ? 0.34 : 0.20, 0.42, reach, 0.52, '#ffcf7a', 0, 0, bx, bz,
+        );
+        // Spall off the face: thrown BACK along the beam, spreading. Contact is the channel that
+        // proves the link is doing work rather than merely pointing.
+        const hitX = noseX + bx * reach;
+        const hitZ = noseZ + bz * reach;
+        if (!reducedMotion) {
+          const spread = (beat - 1.5) * 0.34;
+          const sx = -bx * Math.cos(spread) + bz * Math.sin(spread);
+          const sz = -bz * Math.cos(spread) - bx * Math.sin(spread);
+          emitted += this._spawnStationSideEventStreak(
+            hitX, 0.36, hitZ,
+            0.62, 0.13, r * 0.24, 0.46, '#d8b083', sx * 11, sz * 11, sx, sz,
+          );
+        }
+        if (this._spawnSprite(
+          SPR_FLASH, hitX, 0.42, hitZ,
+          0.16, r * 0.14, r * 0.34, 0.58, 0, '#ffe0a8', 0, 0, 1.2, Math.atan2(bz, bx),
+        )) emitted++;
+        // "Do not enter this arc." The red pip walks the forbidden flank, one quarter per beat.
+        const arc = (beat / 4) * Math.PI - Math.PI * 0.5;
+        const ax = dx * Math.cos(arc) - dz * Math.sin(arc);
+        const az = dz * Math.cos(arc) + dx * Math.sin(arc);
+        emitted += this._spawnStationSideEventStreak(
+          x + ax * r * 1.05, 0.50, z + az * r * 1.05,
+          reducedMotion ? 0.48 : 0.30, 0.26, r * 0.20, 0.62, '#ff6a5c', 0, 0, ax, az,
+        );
+        break;
+      }
+
+      case 'pin-sweep': {
+        // "A patrol that doesn't sweep is not a patrol." A lamp riding a rotating bearing, with a
+        // short outward beam so the sweep reads as hardware turning rather than a lamp blinking.
+        const sx = Math.cos(frame.sweepAngle);
+        const sz = Math.sin(frame.sweepAngle);
+        emitted += this._spawnStationSideEventStreak(
+          x + sx * r * 1.5, 0.52, z + sz * r * 1.5,
+          reducedMotion ? 0.52 : 0.30, 0.22, r * 0.62, 0.56, '#9ed8ff', 0, 0, sx, sz,
+        );
+        // Mast lamp: constant, at the hull, so identity survives after the sweep detail dies at
+        // range. The research is explicit that nav lights should outlive job detail.
+        if (beat === 0) {
+          emitted += this._spawnStationSideEventStreak(
+            x, 0.62, z,
+            reducedMotion ? 0.70 : 0.48, 0.28, r * 0.18, 0.60, '#dceeff', 0, 0, dx, dz,
+          );
+        }
+        break;
+      }
+
+      case 'mouth-open': {
+        // Hatch aperture spill plus a transfer arm. Three beats against a two-swing arm never line
+        // up, which is what makes the cadence read as irregular without any randomness at all.
+        const side = beat === 1 ? -1 : 1;
+        const mouthX = x + nx * side * r * 0.85;
+        const mouthZ = z + nz * side * r * 0.85;
+        if (this._spawnSprite(
+          SPR_PUFF, mouthX, 0.38, mouthZ,
+          0.90, r * 0.26, r * 0.55, 0.42, 0, '#ffcf9a', 0, 0, 1, 0,
+        )) emitted++;
+        emitted += this._spawnStationSideEventStreak(
+          mouthX + nx * side * r * 0.5, 0.44, mouthZ + nz * side * r * 0.5,
+          reducedMotion ? 0.62 : 0.42, 0.24, r * 0.85, 0.48, '#cbb89a',
+          0, 0, nx * side, nz * side,
+        );
+        break;
+      }
+
+      case 'tally': {
+        // "Spilling the count." The one signal a bystander is meant to literally count, so it is
+        // fast, regular and paired with the dust that proves the hold is actually emptying.
+        const ring = (beat / 5) * Math.PI * 2;
+        const tx = Math.cos(ring);
+        const tz = Math.sin(ring);
+        emitted += this._spawnStationSideEventStreak(
+          x + tx * r * 0.75, 0.58, z + tz * r * 0.75,
+          reducedMotion ? 0.44 : 0.26, 0.24, r * 0.18, 0.66, '#ff9a3c', 0, 0, tx, tz,
+        );
+        if (!reducedMotion && beat % 2 === 0 && this._spawnSprite(
+          SPR_PUFF, x - dx * r * 0.9, 0.30, z - dz * r * 0.9,
+          1.10, r * 0.18, r * 0.62, 0.30, 0, '#9a8570', -dx * 4, -dz * 4, 1, 0,
+        )) emitted++;
+        break;
+      }
+
+      case 'return-chevron': {
+        // Load-strobe AND the chevron. Two amber lamps stacked, walked so the chevron has a
+        // direction — "if the chevron points home, don't offer them a side job."
+        const off = r * 0.92;
+        emitted += this._spawnStationSideEventStreak(
+          x + nx * off, 0.46, z + nz * off,
+          reducedMotion ? 0.72 : 0.48, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
+        );
+        emitted += this._spawnStationSideEventStreak(
+          x - nx * off, 0.46, z - nz * off,
+          reducedMotion ? 0.72 : 0.48, 0.34, r * 0.30, 0.70, '#ffb35c', 0, 0, dx, dz,
+        );
+        const rise = beat === 0 ? 0.56 : 0.76;
+        const back = r * (beat === 0 ? 0.35 : 0.75);
+        emitted += this._spawnStationSideEventStreak(
+          x - dx * back + nx * r * 0.34, rise, z - dz * back + nz * r * 0.34,
+          reducedMotion ? 0.64 : 0.42, 0.22, r * 0.46, 0.58, '#ffd08a',
+          0, 0, dx * 0.78 + nx * 0.62, dz * 0.78 + nz * 0.62,
+        );
+        emitted += this._spawnStationSideEventStreak(
+          x - dx * back - nx * r * 0.34, rise, z - dz * back - nz * r * 0.34,
+          reducedMotion ? 0.64 : 0.42, 0.22, r * 0.46, 0.58, '#ffd08a',
+          0, 0, dx * 0.78 - nx * 0.62, dz * 0.78 - nz * 0.62,
+        );
+        break;
+      }
+
+      case 'distress-alternate': {
+        // "Red-white is not a negotiation." A whole-hull alternating flash, the fastest and largest
+        // signal in the Code, because its entire job is to break any rhythm the reader has locked on.
+        const hot = beat === 0;
+        if (this._spawnSprite(
+          SPR_FLASH, x, 0.46, z,
+          0.20, r * 0.55, r * 1.35, hot ? 0.82 : 0.68, 0,
+          hot ? '#ff5a4a' : '#ffffff', 0, 0, 1, 0,
+        )) emitted++;
+        // Asymmetric plume: a wounded hull does not burn politely.
+        const skew = frame.chatter * 0.5;
+        emitted += this._spawnStationSideEventStreak(
+          x - dx * r * 1.1, 0.40, z - dz * r * 1.1,
+          reducedMotion ? 0.40 : 0.26, 0.30, r * 0.9, 0.50, '#ffa070',
+          0, 0, -dx + nx * skew, -dz + nz * skew,
+        );
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    return emitted;
   },
 
 
@@ -5799,6 +6284,19 @@ export const vfx = {
     } else {
       this._cadenceStationSideEvent = 0;
       sub.stationSideEvents = 0;
+    }
+    // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with
+    // no live NPC job, which costs one existence probe per frame and nothing else.
+    if (this._npcJobSignaturesRelevant()) {
+      const jobStep = this._consumeCadence(
+        '_cadenceNpcJobSignature',
+        dt,
+        VFX_NPC_JOB_SIGNATURE_HZ,
+      );
+      sub.npcJobSignatures = jobStep > 0 && this._updateNpcJobSignatures(jobStep) > 0 ? 1 : 0;
+    } else {
+      this._sleepNpcJobSignatures();
+      sub.npcJobSignatures = 0;
     }
     if (this._seamMarkersRelevant()) {
       const seamWake = !this._seamMarkersWereRelevant;
