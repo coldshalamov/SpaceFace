@@ -667,10 +667,75 @@ export const routeFollower = {
   _onSectorEnter({ sectorId }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
-    if (!executor || executor.engaged !== true) return;
+    if (!nav || !sectorId) return;
+
+    this._retireArrivedGateWaypoint(sectorId);
+
+    // The chart's adjacent-sector primary action is intentionally "Set Course & Jump": it starts
+    // the public world jump before the player has engaged a route executor. `ui:setCourse` still
+    // plots the one-hop route for truthful map/HUD guidance, so sector entry must consume that plot
+    // even though there is no controller to advance it. Otherwise the completed gate remains behind
+    // the player as OUT OF RANGE and the next Continue rejects it as a stale saved route.
+    //
+    // A longer unengaged plot advances one leg without arming any assist. Engaged itineraries keep
+    // using the executor path below, which owns their waypoint, autopilot, and transition receipts.
+    if (!executor) {
+      const route = nav.route;
+      const legs = route && Array.isArray(route.legs) ? route.legs : [];
+      const completed = legs[0];
+      if (!completed || completed.to !== sectorId) return;
+      const remaining = legs.slice(1);
+      if (remaining.length) {
+        nav.route = {
+          ...route,
+          legs: remaining,
+          totalHops: remaining.length,
+          totalFuel: remaining.reduce(
+            (sum, leg) => sum + (Number.isFinite(leg && leg.fuel) ? leg.fuel : 0),
+            0,
+          ),
+        };
+        return;
+      }
+      this._disarmAutopilot('arrived');
+      nav.route = null;
+      nav.autoTravel = false;
+      this._publish('arrived', { reason: 'sector-enter', destinationSectorId: sectorId });
+      return;
+    }
+
+    if (executor.engaged !== true) return;
     const leg = (executor.legs || [])[executor.legIndex];
     if (!leg || leg.toSectorId !== sectorId) return;
     this._advanceLeg('gate-handoff');
+  },
+
+  _retireArrivedGateWaypoint(sectorId) {
+    const nav = this.state && this.state.nav;
+    const waypoint = nav && nav.waypoint;
+    if (!waypoint || waypoint.targetSectorId !== sectorId) return false;
+
+    // Only the autopilot paired with this exact gate fix is ours to release. A foreign/local target
+    // that replaced it between jump request and arrival remains untouched.
+    const autopilot = nav.autopilot;
+    const ownsAutopilot = !!(autopilot && sameXZ(autopilot.target, waypoint.pos));
+    nav.waypoint = null;
+    this._emit('nav:waypoint', null);
+    if (ownsAutopilot) {
+      autopilot.active = false;
+      autopilot.status = 'arrived';
+      autopilot.target = null;
+      autopilot.targetEntityId = null;
+      autopilot.label = '';
+      autopilot.initialDistance = null;
+      this._emittingAutopilot = true;
+      try {
+        this._emit('nav:autopilot', autopilot);
+      } finally {
+        this._emittingAutopilot = false;
+      }
+    }
+    return true;
   },
 
   _onCombatHit(payload) {
@@ -783,6 +848,8 @@ export const routeFollower = {
     executor.interruptReason = null;
     this._releaseTravelDrive('arrived');
     this._disarmAutopilot('arrived');
+    nav.route = null;
+    nav.autoTravel = false;
     this._publish('arrived', { reason });
   },
 

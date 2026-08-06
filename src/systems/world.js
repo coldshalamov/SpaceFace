@@ -2251,6 +2251,9 @@ export const world = {
     if (pos) {
       const label = String(payload.label || payload.reason || 'Autopilot fix');
       const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
+      const targetSectorId = typeof payload.targetSectorId === 'string'
+        ? payload.targetSectorId
+        : (payload.type === 'gate' && typeof payload.sectorId === 'string' ? payload.sectorId : null);
       const arrivalRadius = Number.isFinite(payload.arrivalRadius)
         ? Math.max(12, Math.min(500, payload.arrivalRadius))
         : 36;
@@ -2263,6 +2266,10 @@ export const world = {
         pos,
       };
       if (targetEntityId != null) this.state.nav.waypoint.targetEntityId = targetEntityId;
+      // A physical gate is a local position with an inter-sector completion condition. Preserve the
+      // destination identity so navigation can retire the old-sector marker only after authoritative
+      // sector entry; ordinary local fixes intentionally carry no targetSectorId.
+      if (targetSectorId) this.state.nav.waypoint.targetSectorId = targetSectorId;
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,

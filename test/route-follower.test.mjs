@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { routeFollower, ROUTE_EXECUTOR_STATUS } from '../src/systems/routeFollower.js';
 import { buildAtlasIndex, gateNodeId } from '../src/core/atlasIndex.js';
 import { save } from '../src/save/saveSystem.js';
+import { world } from '../src/systems/world.js';
 
 const ATLAS = buildAtlasIndex();
 
@@ -301,10 +302,77 @@ test('completing the final leg finishes the itinerary and disengages', () => {
   const executor = h.state.nav.executor;
   assert.equal(executor.status, ROUTE_EXECUTOR_STATUS.ARRIVED);
   assert.equal(executor.engaged, false, 'arrival disengages — it does not keep driving');
+  assert.equal(h.state.nav.route, null, 'the completed itinerary must not remain plotted behind the player');
+  assert.equal(h.state.nav.autoTravel, false, 'completed travel intent retires with the itinerary');
+  assert.equal(h.state.nav.waypoint, null, 'the completed route cannot leave an orphan HUD marker');
 
   h.bus.clear();
   h.sys.update(1 / 60, h.state);
   assert.equal(h.bus.events.length, 0, 'an arrived executor is a strict no-op');
+});
+
+test('a one-hop Set Course & Jump retires its plot on arrival without requiring Engage', () => {
+  const route = routeFromChain(CHAIN.slice(0, 2));
+  const h = makeHarness({ route, autoTravel: true });
+  const destination = route.legs[0].to;
+
+  // The chart's shipped one-hop action requests the jump before ui:setCourse creates this route, so
+  // there is deliberately no executor. sector:enter is still authoritative proof that the course
+  // was completed; leaving it plotted produces a false OUT OF RANGE target and a stale-route warning
+  // after Continue.
+  h.state.world.currentSectorId = destination;
+  h.bus.emit('sector:enter', { sectorId: destination });
+
+  assert.equal('executor' in h.state.nav, false, 'arrival does not invent an engaged controller');
+  assert.equal(h.state.nav.route, null, 'the completed one-hop plot retires at its destination');
+  assert.equal(h.state.nav.autoTravel, false, 'no completed travel intent survives the jump');
+  assert.equal(h.state.nav.autopilot.active, false, 'route cleanup never takes control of the ship');
+});
+
+test('an arrived physical-gate waypoint retires through the real ui:setCourse shape', () => {
+  const destination = CHAIN[1];
+  const h = makeHarness();
+  const worldSystem = Object.create(world);
+  worldSystem.state = h.state;
+  worldSystem.bus = h.bus;
+
+  worldSystem._onSetCourse({
+    type: 'gate',
+    pos: { x: 640, z: -90 },
+    targetEntityId: 'gate_helios_to_ceres',
+    sectorId: destination,
+    label: 'Gate → Ceres Belt',
+    waypointKind: 'nav',
+    arrivalRadius: 72,
+    autopilot: true,
+  });
+  assert.equal(h.state.nav.waypoint.targetSectorId, destination,
+    'world preserves the gate destination needed to distinguish completed guidance from a local fix');
+
+  h.state.world.currentSectorId = destination;
+  h.bus.emit('sector:enter', { sectorId: destination });
+
+  assert.equal(h.state.nav.waypoint, null, 'the origin gate is not a target after entering its destination');
+  assert.equal(h.state.nav.autopilot.active, false, 'arrival releases only the gate-owned local autopilot');
+  assert.equal(h.state.nav.autopilot.target, null, 'the old-sector gate position cannot remain HUD guidance');
+  assert.equal(h.state.nav.autopilot.status, 'arrived');
+});
+
+test('an unengaged multi-hop plot advances when the player manually completes a leg', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  const firstDestination = route.legs[0].to;
+  const remainingFuel = route.legs.slice(1).reduce((sum, leg) => sum + leg.fuel, 0);
+
+  h.state.world.currentSectorId = firstDestination;
+  h.bus.emit('sector:enter', { sectorId: firstDestination });
+
+  assert.equal('executor' in h.state.nav, false, 'manual progress remains a plot, not an assist');
+  assert.equal(h.state.nav.route.legs.length, route.legs.length - 1);
+  assert.equal(h.state.nav.route.legs[0].from, firstDestination, 'the next leg starts where the player arrived');
+  assert.equal(h.state.nav.route.totalHops, route.legs.length - 1);
+  assert.equal(h.state.nav.route.totalFuel, remainingFuel);
+  assert.equal(h.state.nav.autopilot.active, false, 'advancing a plot never arms thrust or steering');
 });
 
 // ── interruption / resume ─────────────────────────────────────────────────────────────────────────
@@ -474,7 +542,7 @@ test('a moving ship gets a longer handoff range than a stationary one', () => {
 
 // ── save / load ───────────────────────────────────────────────────────────────────────────────────
 
-test('the route survives save/load in EVERY executor state', () => {
+test('unfinished routes survive save/load; a completed itinerary restores as idle', () => {
   const route = routeFromChain(CHAIN);
 
   // Reach each status through the real transitions, then round-trip through the real serializer.
@@ -522,6 +590,12 @@ test('the route survives save/load in EVERY executor state', () => {
     saveInstance._restoreNav(serialized);
 
     const after = saveInstance.state.nav.executor;
+    if (status === ROUTE_EXECUTOR_STATUS.ARRIVED) {
+      assert.equal(after, undefined, 'a completed executor is a receipt, not resumable save state');
+      assert.equal(saveInstance.state.nav.route, null, 'the destination does not reload as a stale route');
+      assert.equal(saveInstance.state.nav.autoTravel, false, 'completed travel intent stays retired');
+      continue;
+    }
     assert.ok(after, `${status}: the executor must survive the round trip`);
     assert.equal(after.status, before.status, `${status}: status round-trips`);
     assert.equal(after.engaged, before.engaged, `${status}: engagement round-trips`);
