@@ -206,6 +206,51 @@ const runtimeState = {
 const system = Object.create(vfx);
 system.init({ state: runtimeState, bus: { on() { return () => {}; } }, helpers: {} });
 
+const trailShip = {
+  id: 2,
+  type: 'ship',
+  alive: true,
+  pos: { x: 24, z: 8 },
+  vel: { x: 60, z: 0 },
+  rot: 0,
+  radius: 10,
+  maxSpeed: 120,
+  flags: {},
+  data: {},
+};
+const bookkeepingScene = new THREE.Scene();
+const bookkeepingState = {
+  playerId: 1,
+  entities: new Map([[trailShip.id, trailShip]]),
+  entityList: [trailShip],
+  settings: { video: { particleQuality: 'high' } },
+  render: { scene: bookkeepingScene },
+};
+const bookkeepingSystem = Object.create(vfx);
+bookkeepingSystem.init({
+  state: bookkeepingState,
+  bus: { on() { return () => {}; } },
+  helpers: {},
+});
+const trailDiagIdentity = bookkeepingSystem._trailBudgetDiag;
+const trailSpawnRecords = [];
+const recordTrailBudget = bookkeepingSystem._recordTrailBudget;
+bookkeepingSystem._recordTrailBudget = function recordTrailBudgetIdentity(tier, spawned) {
+  trailSpawnRecords.push(spawned);
+  return recordTrailBudget.call(this, tier, spawned);
+};
+bookkeepingSystem._emitTrails(0.016);
+const firstTrailDiag = { ...bookkeepingSystem._trailBudgetDiag };
+bookkeepingSystem._emitTrails(0.016);
+
+assert.strictEqual(bookkeepingSystem._trailBudgetDiag, trailDiagIdentity,
+  'trail diagnostics must reset in place instead of allocating one record per render tick');
+assert.equal(trailSpawnRecords.length, 2, 'the moving legacy ship must emit on both trail ticks');
+assert.strictEqual(trailSpawnRecords[0], trailSpawnRecords[1],
+  'engine-trail spawn counts must reuse one VFX-owned result record');
+assert.deepEqual(bookkeepingSystem._trailBudgetDiag, firstTrailDiag,
+  'retained trail bookkeeping must reset rather than accumulate between identical ticks');
+
 for (let i = 0; i < 96; i++) {
   system._spawnProjectileTrailStreak(i, 0, -i, 1, 0.2, 5, 0.6,
     i === 0 ? '#123456' : '#88aaff', 10, 0);

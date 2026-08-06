@@ -351,6 +351,18 @@ function emptyTrailBudgetDiag() {
   };
 }
 
+function resetTrailBudgetDiag(diag) {
+  diag.trailCandidates = 0;
+  diag.trailEmittersFull = 0;
+  diag.trailEmittersNormal = 0;
+  diag.trailEmittersReduced = 0;
+  diag.trailEmittersSkipped = 0;
+  diag.trailParticlesSpawned = 0;
+  diag.trailStreaksSpawned = 0;
+  diag.trailSpritesSpawned = 0;
+  return diag;
+}
+
 function emptyProjectileTrailDiag() {
   const diag = {
     candidates: 0,
@@ -569,6 +581,7 @@ export const vfx = {
     this._lastPresentationCue = null;
     this._trailFrameIndex = 0;
     this._trailBudgetDiag = emptyTrailBudgetDiag();
+    this._trailSpawnScratch = { particles: 0, streaks: 0 };
     this._trailScreenScratch = new THREE.Vector3();
     this._vfxSubsystemLast = emptyVfxSubsystemDiag();
     this._cadenceSeam = 0;
@@ -5720,13 +5733,14 @@ export const vfx = {
   },
 
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator
-  _emitEngineTrail(e, throttle, dt) {
-    if (!this._scene) return { particles: 0, streaks: 0 };
-    if (this._usesProductionThruster(e)) return { particles: 0, streaks: 0 };
+  _emitEngineTrail(e, throttle, dt, out = this._trailSpawnScratch) {
+    const result = out || (this._trailSpawnScratch = { particles: 0, streaks: 0 });
+    result.particles = 0;
+    result.streaks = 0;
+    if (!this._scene) return result;
+    if (this._usesProductionThruster(e)) return result;
     const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
-    if (drive <= 0.03) return { particles: 0, streaks: 0 };
-    let particlesSpawned = 0;
-    let streaksSpawned = 0;
+    if (drive <= 0.03) return result;
     const prof = this._engineProfile(e);
     // Faction exhaust identity without allocating a blended profile object:
     // lerp frozen base.coreColor toward faction thruster (matches prior blendHex 0.38).
@@ -5792,8 +5806,8 @@ export const vfx = {
       bx, 0, bz, life, width, length, corePass ? 0.62 : 0.34,
       this._c0, pvx, pvz,
     );
-    streaksSpawned = 1;
-    return { particles: particlesSpawned, streaks: streaksSpawned };
+    result.streaks = 1;
+    return result;
   },
 
   // -------------------------------------------------------------------------
@@ -7935,7 +7949,7 @@ export const vfx = {
     if (this._trailAcc < 0.016) return false;
     const step = this._trailAcc; this._trailAcc = 0;
     this._trailFrameIndex++;
-    this._trailBudgetDiag = emptyTrailBudgetDiag();
+    resetTrailBudgetDiag(this._trailBudgetDiag);
     this._refreshTrailCandidates();
     const list = this._trailCandidates;
     const ctx = this._trailContext();
@@ -7966,7 +7980,7 @@ export const vfx = {
         }
         reducedEmitted++;
       }
-      const spawned = this._emitEngineTrail(e, driveInfo.drive, step);
+      const spawned = this._emitEngineTrail(e, driveInfo.drive, step, this._trailSpawnScratch);
       this._recordTrailBudget(tier, spawned);
       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
