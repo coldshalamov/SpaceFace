@@ -133,7 +133,9 @@ test('declining Choice C aborts without filing an ending or granting fuel', () =
   assert.equal(h.state.story.endgameChoice, null);
   assert.equal(h.state.story.endgameResolved, false);
   assert.ok(h.state.story.endgameDeclined.includes('C'));
-  assert.equal(storyActionForBeat(STORY_BEATS[7], h.state).action, 'endgameSandbox');
+  const next = storyActionForBeat(STORY_BEATS[7], h.state);
+  assert.equal(next.action, undefined);
+  assert.equal(next.secondaryAction, 'endgameSandbox');
 });
 
 test('ordinary registered jump charges never masquerade as Choice C', () => {

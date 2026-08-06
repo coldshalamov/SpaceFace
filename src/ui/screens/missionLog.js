@@ -13,10 +13,9 @@ import { STORY_BEATS } from '../../data/missions.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
 import {
   evaluateEndingEligibility,
-  listBoardEligibleEndingIds,
   snapshotEndingFacts,
 } from '../../story/endings/eligibility.js';
-import { endingDef } from '../../story/endings/endingDefs.js';
+import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
 import {
@@ -942,6 +941,72 @@ function stationRouteAction(stationId, title = 'Open Star Map') {
   });
 }
 
+const FINAL_DISPOSITION_ROUTES = Object.freeze({
+  A: Object.freeze({
+    interfaceLabel: 'ASH CACHE MISSIONS',
+    routeInstruction: 'Dock at Ash Cache, open Ash Cache Missions, and review the Concord commission row.',
+  }),
+  B: Object.freeze({
+    interfaceLabel: 'ASH CACHE MISSIONS',
+    routeInstruction: 'Dock at Ash Cache, open Ash Cache Missions, and review the Quiet routing row.',
+  }),
+  C: Object.freeze({
+    interfaceLabel: 'ASHFALL · UNFILED DRIVE',
+    routeInstruction: 'In Ashfall with a full hold and no active contract, charge the destinationless drive.',
+  }),
+  D: Object.freeze({
+    interfaceLabel: 'ASHFALL · DEPARTURE PREFLIGHT',
+    routeInstruction: 'Carry the Kurtz ledger, start a normal Ashfall departure, then choose STAY.',
+  }),
+  E: Object.freeze({
+    interfaceLabel: 'ASH CACHE BAR · COURIER',
+    routeInstruction: 'After declining A-D, dock at Ash Cache, open Bar, and speak to the Courier.',
+  }),
+});
+const FINAL_DISPOSITION_PRIORITY = Object.freeze(['E', 'C', 'D', 'A', 'B']);
+
+/** Read-only truth for the five authored interfaces; never files or advances an ending. */
+export function finalDispositionRoutes(state) {
+  const declinedIds = new Set(Array.isArray(state?.story?.endgameDeclined)
+    ? state.story.endgameDeclined : []);
+  return ENDING_IDS.map((id) => {
+    const def = endingDef(id);
+    const eligibility = evaluateEndingEligibility(state, id);
+    const declined = declinedIds.has(id);
+    const ready = eligibility.eligible && !declined;
+    const route = FINAL_DISPOSITION_ROUTES[id];
+    return Object.freeze({
+      id,
+      title: def.title,
+      interfaceLabel: route.interfaceLabel,
+      routeInstruction: route.routeInstruction,
+      status: declined ? 'declined' : ready ? 'ready' : 'locked',
+      ready,
+      declined,
+      reason: declined
+        ? 'Previously declined; another disposition may still be filed.'
+        : ready ? 'Requirements met at this physical interface.'
+          : (eligibility.unmet[0]?.text || 'Requirements not yet met.'),
+      unmetCount: eligibility.unmet.length,
+    });
+  });
+}
+
+function dispositionRouteRowsHtml(routes) {
+  if (!Array.isArray(routes) || !routes.length) return '';
+  return '<div class="sf-mlog-ending-routes" role="list" aria-label="Five final disposition routes">'
+    + routes.map((route) => {
+      const status = route.status === 'ready' || route.status === 'declined' ? route.status : 'locked';
+      return '<div class="sf-mlog-ending-route sf-mlog-ending-route--' + status + '" role="listitem" data-ending-route="' + escapeHtml(route.id) + '">' +
+        '<span class="sf-mlog-ending-code mono">' + escapeHtml(route.id) + '</span>' +
+        '<span class="sf-mlog-ending-title">' + escapeHtml(route.title) + '</span>' +
+        '<span class="sf-mlog-ending-interface mono">' + escapeHtml(route.interfaceLabel) + '</span>' +
+        '<span class="sf-mlog-ending-reason">' + escapeHtml(route.reason) + '</span>' +
+      '</div>';
+    }).join('')
+    + '</div>';
+}
+
 export function setPieceContinuationAction(state) {
   const missions = state && state.missions || {};
   const boards = missions.boards && typeof missions.boards === 'object' ? missions.boards : {};
@@ -1117,26 +1182,62 @@ function postEndingStoryAction(state) {
 function offeredEndingAction(state) {
   const story = state && state.story || {};
   if (!story.endgameOffered || story.endgameResolved || story.endgameChoice) return null;
-  const boardIds = listBoardEligibleEndingIds(state);
-  const boardTitles = boardIds.map((id) => endingDef(id)?.title).filter(Boolean);
-  const declined = Array.isArray(story.endgameDeclined) ? story.endgameDeclined : [];
-  const unfiledReady = evaluateEndingEligibility(state, 'C').eligible && !declined.includes('C');
+  const routes = finalDispositionRoutes(state);
+  const primary = FINAL_DISPOSITION_PRIORITY
+    .map((id) => routes.find((route) => route.id === id))
+    .find((route) => route?.ready) || null;
+  const nearest = primary || routes
+    .filter((route) => !route.declined)
+    .sort((a, b) => a.unmetCount - b.unmetCount || a.id.localeCompare(b.id))[0] || routes[0];
   const station = STATION_INFO.get('station_ashcache');
+  const readyCount = routes.filter((route) => route.ready).length;
+  const declinedCount = routes.filter((route) => route.declined).length;
+  let title = 'Prepare a final disposition';
+  let body = nearest
+    ? `${nearest.routeInstruction} First unmet condition: ${nearest.reason}`
+    : 'Return to Ash Cache to review the final disposition routes.';
+  let action;
+  let actionLabel;
+  let mapAction = stationRouteAction('station_ashcache', `Plot route to ${station ? station.name : 'Ash Cache'}`);
+
+  if (primary?.id === 'A' || primary?.id === 'B') {
+    title = 'File 47-A at Ash Cache';
+    body = primary.routeInstruction;
+  } else if (primary?.id === 'C') {
+    title = 'Charge an unfiled jump from Ashfall';
+    body = primary.routeInstruction;
+    action = 'endgameUnfiledJump';
+    actionLabel = 'CHARGE UNFILED JUMP';
+    mapAction = null;
+  } else if (primary?.id === 'D') {
+    title = 'Choose whether the ledger leaves Ashfall';
+    body = primary.routeInstruction;
+    mapAction = mapHandoffAction({
+      focus: MAP_FOCUS.GALAXY,
+      label: 'STAR MAP',
+      title: 'Choose a registered Ashfall departure',
+      body: 'Plot a normal destination, then start the departure to reach the stay-or-leave preflight.',
+      sectorId: 'sector_ashfall_reach',
+      source: 'missionLog-ending-d',
+    });
+  } else if (primary?.id === 'E') {
+    title = 'Meet the next Courier at Ash Cache';
+    body = primary.routeInstruction;
+  }
+
   return {
     tone: 'primary',
     label: 'FINAL DISPOSITION',
-    title: unfiledReady
-      ? 'Charge an unfiled jump from Ashfall'
-      : (boardTitles.length ? 'File 47-A at Ash Cache' : 'Choose how 47-A remains open'),
-    body: unfiledReady
-      ? `Your hold is full and no contract owns the route. Start the destinationless drive charge${boardTitles.length ? `, or dock to review ${boardTitles.join(' or ')}` : ''}.`
-      : (boardTitles.length
-        ? `Ash Cache Missions holds ${boardTitles.join(' or ')}. You may instead continue without filing an ending.`
-        : 'No contract ending currently matches your path. Continue without a final disposition, or change the facts that qualify another ending.'),
-    meta: 'CONFIRMATION REQUIRED · PLAY CONTINUES',
-    action: unfiledReady ? 'endgameUnfiledJump' : 'endgameSandbox',
-    actionLabel: unfiledReady ? 'CHARGE UNFILED JUMP' : 'CONTINUE OPEN',
-    mapAction: stationRouteAction('station_ashcache', `Plot route to ${station ? station.name : 'Ash Cache'}`),
+    title,
+    body,
+    meta: `${readyCount} READY · ${declinedCount} DECLINED · CONFIRMATION REQUIRED`,
+    primaryEndingId: primary?.id || null,
+    routeOptions: routes,
+    action,
+    actionLabel,
+    secondaryAction: 'endgameSandbox',
+    secondaryActionLabel: 'CONTINUE WITHOUT FILING',
+    mapAction,
   };
 }
 
@@ -1916,9 +2017,11 @@ export const missionLogScreen = {
         '<div class="sf-mlog-story-beat">' + escapeHtml(action.label || 'STORY') + '</div>' +
         '<div class="sf-mlog-story-objective">' + escapeHtml(action.title || 'Campaign continues') + '</div>' +
         '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
+        dispositionRouteRowsHtml(action.routeOptions) +
         (action.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(action.meta) + '</div>' : '') +
-        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.secondaryAction === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(action.action) + '">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (action.secondaryAction === 'endgameSandbox' && action.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
           (action.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, action.mapAction.missionId || '') + ' title="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '">' + escapeHtml(action.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>';
@@ -1938,13 +2041,15 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-label">' + escapeHtml(a.label || 'NEXT') + '</div>' +
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
         (a.brief ? commandBriefHtml(a.brief) : '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>') +
+        dispositionRouteRowsHtml(a.routeOptions) +
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
         '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
           : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
-        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.secondaryAction === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
           (a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(a.action) + '">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (a.secondaryAction === 'endgameSandbox' && a.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(a.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
           (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>'
@@ -2116,6 +2221,17 @@ const CSS = `
   text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
 .sf-mlog-story-objective { font-size: .92rem; color: var(--ink); line-height: 1.4; font-weight: 600; }
 .sf-mlog-story-introduces { font-size: .72rem; color: var(--ink-mute); margin-top: 6px; font-style: italic; }
+.sf-mlog-ending-routes { display: grid; gap: 4px; margin-top: 9px; }
+.sf-mlog-ending-route { display: grid; grid-template-columns: 24px minmax(96px,.8fr) minmax(120px,1.2fr);
+  gap: 2px 8px; align-items: baseline; padding: 5px 7px; border-left: 2px solid var(--panel-edge);
+  background: rgba(12,15,18,.28); }
+.sf-mlog-ending-route--ready { border-left-color: var(--energy); }
+.sf-mlog-ending-route--declined { opacity: .62; }
+.sf-mlog-ending-code { color: var(--accent); font-size: .66rem; font-weight: 800; }
+.sf-mlog-ending-title { color: var(--ink); font-size: .7rem; font-weight: 650; overflow-wrap: anywhere; }
+.sf-mlog-ending-interface { color: var(--accent-3); font-size: .59rem; letter-spacing: .06em; overflow-wrap: anywhere; }
+.sf-mlog-ending-reason { grid-column: 2 / -1; color: var(--ink-mute); font-size: .63rem; line-height: 1.25;
+  overflow-wrap: anywhere; }
 
 .sf-mlog-recommend { padding: 4px 16px 8px; display: grid; grid-template-columns: minmax(0, 1fr);
   gap: 8px; }
@@ -2149,6 +2265,7 @@ const CSS = `
   color: var(--warn); background: rgba(227,161,61,.08); }
 .sf-mlog-rec-action:hover { border-color: var(--accent-3); color: var(--accent-3); background: rgba(219,152,56,.14); }
 .sf-mlog-rec-map { border-color: rgba(219,152,56,.55); color: var(--accent); background: rgba(219,152,56,.08); }
+.sf-mlog-rec-secondary { border-color: var(--panel-edge); color: var(--ink-mute); background: transparent; }
 
 /* Career ladder chip (CL-UI-03) — non-diegetic strip; no visor/portrait chrome. */
 .sf-mlog-section-career { color: var(--accent-2, var(--accent)); }

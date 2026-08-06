@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import { STORY_BEATS, MISSION_TUNING } from '../src/data/missions.js';
 import { postEndingReplayChain } from '../src/data/postEndingReplayChains.js';
 import { endingDef } from '../src/story/endings/endingDefs.js';
+import {
+  createPostEndingContinuity,
+  normalizePostEndingContinuity,
+} from '../src/story/endings/resolve.js';
 import { postEndingReplay } from '../src/systems/postEndingReplay.js';
 import {
   persistentCampaignAction,
@@ -60,23 +64,24 @@ function stateAtB7() {
   };
 }
 
+function continuityRecord(choiceId, { seed = 47, simTime = 7200, progress = 1 } = {}) {
+  const rec = createPostEndingContinuity(choiceId, simTime, seed);
+  const prefix = rec.signal === 'mission:completed' ? 'mission:mission_log_'
+    : rec.signal === 'economy:tradeCompleted' ? 'trade:station_test_:cmdty_test_'
+      : rec.signal === 'scan:completed' ? 'scan:sector:sector_test_'
+        : 'sector:sector_test_';
+  return normalizePostEndingContinuity({
+    ...rec,
+    seenKeys: Array.from({ length: progress }, (_, index) => prefix + index),
+    completedAtS: simTime + 10,
+  });
+}
+
 function resolvedState(choiceId = 'A') {
   const state = stateAtB7();
-  const def = endingDef(choiceId);
   state.story.endgameChoice = choiceId;
   state.story.endgameResolved = true;
-  state.story.postEnding = {
-    status: 'active',
-    choiceId,
-    endingId: choiceId,
-    sandboxMode: def.sandboxMode,
-    title: def.continuity.title,
-    objective: def.continuity.objective,
-    signal: def.continuity.signal,
-    target: def.continuity.target,
-    progress: 1,
-    replayHookId: def.continuity.replayHookId,
-  };
+  state.story.postEnding = continuityRecord(choiceId);
   return state;
 }
 
@@ -86,10 +91,50 @@ test('final disposition remains actionable from the public Mission Log after the
   assert.equal(action.label, 'FINAL DISPOSITION');
   assert.match(action.title, /47-A|Ash Cache/);
   assert.match(action.body, /Missions/);
-  assert.equal(action.action, 'endgameSandbox');
-  assert.equal(action.actionLabel, 'CONTINUE OPEN');
+  assert.equal(action.primaryEndingId, 'A');
+  assert.equal(action.action, undefined, 'board endings remain physical mission-board rows');
+  assert.equal(action.secondaryAction, 'endgameSandbox');
+  assert.equal(action.secondaryActionLabel, 'CONTINUE WITHOUT FILING');
   assert.equal(action.mapAction.stationId, 'station_ashcache');
   assert.equal(action.mapAction.sectorId, 'sector_ashfall_reach');
+
+  assert.deepEqual(action.routeOptions.map((route) => route.id), ['A', 'B', 'C', 'D', 'E']);
+  assert.equal(action.routeOptions.find((route) => route.id === 'A').status, 'ready');
+  assert.match(action.routeOptions.find((route) => route.id === 'A').interfaceLabel, /ASH CACHE MISSIONS/);
+  assert.match(action.routeOptions.find((route) => route.id === 'B').reason, /Quiet path/);
+  assert.match(action.routeOptions.find((route) => route.id === 'C').reason, /full cargo load/);
+  assert.match(action.routeOptions.find((route) => route.id === 'D').reason, /ledger/);
+  assert.match(action.routeOptions.find((route) => route.id === 'E').reason, /Decline disposition/);
+});
+
+test('final-disposition guidance promotes each ready physical interface without filing from the log', () => {
+  const state = stateAtB7();
+
+  state.story.branch = 'free';
+  state.careers.origins = {};
+  state.factions.faction_scn.rep = 0;
+  state.factions.faction_free.rep = 80;
+  let action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.primaryEndingId, 'B');
+  assert.match(action.body, /Ash Cache Missions/);
+
+  state.player.cargo.usedVolume = state.player.cargo.capVolume;
+  action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.primaryEndingId, 'C');
+  assert.equal(action.action, 'endgameUnfiledJump');
+
+  state.player.cargo = { items: { cmdty_personal_ledger: 1 }, capVolume: 40, usedVolume: 1 };
+  state.story.flags.hasLedger = true;
+  action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.primaryEndingId, 'D');
+  assert.match(action.body, /departure/i);
+  assert.equal(action.action, undefined, 'Choice D remains owned by a normal departure preflight');
+
+  state.story.endgameDeclined = ['A', 'B', 'C', 'D'];
+  action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.primaryEndingId, 'E');
+  assert.match(action.body, /Courier/);
+  assert.equal(action.mapAction.stationId, 'station_ashcache');
 });
 
 test('final disposition persists beside tracked, untracked, and trade-route work', () => {
@@ -125,7 +170,7 @@ test('resolved endings replace the stale B7 grind instruction with durable sandb
 test('unlocked replay work names the physical board and both authored branch destinations', () => {
   const state = resolvedState('A');
   const chain = postEndingReplayChain('A');
-  state.story.postEnding.status = 'complete';
+  state.story.postEnding = continuityRecord('A', { progress: endingDef('A').continuity.target });
   state.missions.postEndingReplay = {
     choiceId: 'A', chainId: chain.id, replayHookId: chain.replayHookId,
     cycle: 0, stageIndex: 0, branchId: null, status: 'ready',
@@ -147,7 +192,7 @@ test('unlocked replay work names the physical board and both authored branch des
 test('save load while already docked re-posts one missing replay offer and never duplicates it', () => {
   const state = resolvedState('A');
   const chain = postEndingReplayChain('A');
-  state.story.postEnding.status = 'complete';
+  state.story.postEnding = continuityRecord('A', { progress: endingDef('A').continuity.target });
   state.ui.dockedStationId = chain.opening.boardStationId;
   const bus = new Bus();
   const sys = { ...postEndingReplay };
