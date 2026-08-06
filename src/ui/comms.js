@@ -383,7 +383,8 @@ export function createComms(ctx) {
   bus.on('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
     'C', promptText || 'JUMP WITHOUT DESTINATION?',
     'The wormhole files a return, not an escape.',
-    () => bus.emit('jump:chargeAbort', { reason: 'choice_c_declined' }),
+    () => bus.emit('world:abortJumpCharge', { reason: 'choice_c_declined' }),
+    'ui:endgameUnfiledJumpConfirm',
   ));
   bus.on('endgame:promptChoiceD', ({ promptText }) => presentPhysicalChoice(
     'D', promptText || 'KEEP THE LEDGER AND STAY?', 'Ashfall needs a witness more than a pilot.',

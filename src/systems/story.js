@@ -33,7 +33,7 @@
 // SERIALIZATION: serialize()/deserialize() round-trip state.story (missions.js already serializes
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
-  COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ, COND,
+  COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
   COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, THREAD_B_FRAGMENT_ID,
 } from '../data/narrative.js';
 import { addCargo } from './cargo.js';
@@ -111,12 +111,15 @@ export const story = {
     // ── Endgame (B7): present the choice once the gate is met; detect the wormhole jump (C). ─
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
     bus.on('jump:chargeStart', (p) => this._onJumpChargeStart(p || {}));
+    bus.on('jump:unfiledConfirmed', () => this._resolveEndgameDisposition('C'));
     // UI intent: player accepted an endgame choice from the overlay.
     // Without confirm: stages pending + endgame:confirmRequired. With confirm:true or ui:endgameConfirm: resolves once.
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
     bus.on('ui:endgameConfirm', (p) => this._onEndgameConfirm(p || {}));
     bus.on('ui:endgameDecline', (p) => this._onEndgameDecline(p || {}));
     bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
+    bus.on('ui:endgameUnfiledJump', () => this._requestUnfiledJump());
+    bus.on('ui:endgameUnfiledJumpConfirm', () => this.bus.emit('world:confirmUnfiledJump', { source: 'choice_c' }));
     // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
     bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
     // Endings continue into normal public gameplay. These are existing player-driven events, not
@@ -628,30 +631,44 @@ export const story = {
     return listBoardEligibleEndingIds(this.state);
   },
 
-  _onJumpChargeStart({ targetSectorId, via }) {
+  _requestUnfiledJump() {
+    const elig = evaluateEndingEligibility(this.state, 'C');
+    if (!elig.eligible) {
+      this.bus.emit('endgame:ineligible', {
+        choice: 'C',
+        unmet: (elig.unmet || []).map((u) => ({ code: u.code, text: u.text })),
+      });
+      const first = elig.unmet && elig.unmet[0];
+      if (first && first.text) this._sayStoryLine(first.text, 5);
+      return false;
+    }
+    this.bus.emit('world:requestUnfiledJump', { source: 'choice_c' });
+    return true;
+  },
+
+  _onJumpChargeStart({ targetSectorId, via, unfiled }) {
     const state = this.state;
     const s = state.story;
     if (!s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
-    // Choice C (per ENDGAME-B7-REDESIGN): "initiate a jump drive charge toward the wormhole
-    // without a destination registered." Ashfall Reach is the documented end-of-the-line sector
-    // (the wormhole threshold). The sector graph has no outbound wormhole edge FROM Ashfall (the
-    // wormhole edge is on Veil Nebula pointing in), so we treat any DRIVE-initiated jump charge
-    // from Ashfall — after the endgame gate — as the Choice-C moment. Gates are normal transit;
-    // only the jump DRIVE (the player's deliberate, destinationless charge) qualifies.
+    // Choice C is only the explicit unfiled charge. A normal drive/gate departure has a registered
+    // target and must never be silently reclassified as an ending.
+    if (unfiled !== true) return;
     if (state.world.currentSectorId !== ASHFALL) return;
     if (via !== 'drive') return;
     if (!this._endgameGateMet()) return;
-    // only if the player meets Choice C's preconditions (full load, no active missions)
-    if (!COND.noActiveMissions(state) || !COND.fullLoad(state)) {
-      if (s.flags && s.flags.hasLedger) {
-        this.bus.emit('endgame:promptChoiceD', { promptText: 'KEEP THE LEDGER AND STAY?' });
-      }
+    const elig = evaluateEndingEligibility(state, 'C');
+    if (!elig.eligible) {
+      this.bus.emit('world:abortJumpCharge', { reason: 'choice_c_ineligible', unfiled: true });
       return;
     }
     // Fire the Vale line the instant the drive begins charging (per the spine doc timing note),
     // THEN present the prompt.
     this._fireCommsById('story_vale_goodwork');
-    this.bus.emit('endgame:promptChoiceC', { promptText: 'JUMP WITHOUT DESTINATION?', targetSectorId });
+    this.bus.emit('endgame:promptChoiceC', {
+      promptText: 'JUMP WITHOUT DESTINATION?',
+      targetSectorId,
+      unfiled: true,
+    });
   },
 
   _onEndgameChoose({ choice, confirm }) {

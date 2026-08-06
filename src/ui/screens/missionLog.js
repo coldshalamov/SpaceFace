@@ -12,6 +12,7 @@ import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
 import {
+  evaluateEndingEligibility,
   listBoardEligibleEndingIds,
   snapshotEndingFacts,
 } from '../../story/endings/eligibility.js';
@@ -1118,17 +1119,23 @@ function offeredEndingAction(state) {
   if (!story.endgameOffered || story.endgameResolved || story.endgameChoice) return null;
   const boardIds = listBoardEligibleEndingIds(state);
   const boardTitles = boardIds.map((id) => endingDef(id)?.title).filter(Boolean);
+  const declined = Array.isArray(story.endgameDeclined) ? story.endgameDeclined : [];
+  const unfiledReady = evaluateEndingEligibility(state, 'C').eligible && !declined.includes('C');
   const station = STATION_INFO.get('station_ashcache');
   return {
     tone: 'primary',
     label: 'FINAL DISPOSITION',
-    title: boardTitles.length ? 'File 47-A at Ash Cache' : 'Choose how 47-A remains open',
-    body: boardTitles.length
-      ? `Ash Cache Missions holds ${boardTitles.join(' or ')}. You may instead continue without filing an ending.`
-      : 'No contract ending currently matches your path. Continue without a final disposition, or change the facts that qualify another ending.',
+    title: unfiledReady
+      ? 'Charge an unfiled jump from Ashfall'
+      : (boardTitles.length ? 'File 47-A at Ash Cache' : 'Choose how 47-A remains open'),
+    body: unfiledReady
+      ? `Your hold is full and no contract owns the route. Start the destinationless drive charge${boardTitles.length ? `, or dock to review ${boardTitles.join(' or ')}` : ''}.`
+      : (boardTitles.length
+        ? `Ash Cache Missions holds ${boardTitles.join(' or ')}. You may instead continue without filing an ending.`
+        : 'No contract ending currently matches your path. Continue without a final disposition, or change the facts that qualify another ending.'),
     meta: 'CONFIRMATION REQUIRED · PLAY CONTINUES',
-    action: 'endgameSandbox',
-    actionLabel: 'CONTINUE OPEN',
+    action: unfiledReady ? 'endgameUnfiledJump' : 'endgameSandbox',
+    actionLabel: unfiledReady ? 'CHARGE UNFILED JUMP' : 'CONTINUE OPEN',
     mapAction: stationRouteAction('station_ashcache', `Plot route to ${station ? station.name : 'Ash Cache'}`),
   };
 }
@@ -1551,6 +1558,10 @@ export const missionLogScreen = {
         ctx.bus.emit('ui:endgameSandbox', { source: 'missionLog' });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         this._render();
+      } else if (act === 'endgameUnfiledJump') {
+        ctx.bus.emit('ui:endgameUnfiledJump', { source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
       } else if (act === 'openMap') {
         openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -1728,7 +1739,8 @@ export const missionLogScreen = {
   _focusPrimaryControl() {
     const career = this._careerEl;
     let target = this._recommendEl && this._recommendEl.querySelector(
-      'button[data-rec-act="endgameSandbox"]:not([disabled]),'
+      'button[data-rec-act="endgameUnfiledJump"]:not([disabled]),'
+      + 'button[data-rec-act="endgameSandbox"]:not([disabled]),'
       + 'button[data-rec-act="track"]:not([disabled]),button[data-rec-act="openMap"]:not([disabled])',
     );
     if (career && !career.hidden) {
@@ -1905,8 +1917,8 @@ export const missionLogScreen = {
         '<div class="sf-mlog-story-objective">' + escapeHtml(action.title || 'Campaign continues') + '</div>' +
         '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
         (action.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(action.meta) + '</div>' : '') +
-        (action.action === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
-          (action.action === 'endgameSandbox' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
+          (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(action.action) + '">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
           (action.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, action.mapAction.missionId || '') + ' title="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '">' + escapeHtml(action.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>';
@@ -1930,9 +1942,9 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
           : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
-        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
-          (a.action === 'endgameSandbox' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="endgameSandbox">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(a.action) + '">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
           (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
       '</div>'

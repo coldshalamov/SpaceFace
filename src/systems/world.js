@@ -104,6 +104,8 @@ const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
 const DRIVE_COOLDOWN = 6.0;     // s
 const JUMPING_DURATION = 1.2;   // s tunnel/blackout
+const UNFILED_JUMP_ORIGIN = 'sector_ashfall_reach';
+const UNFILED_JUMP_RETURN = 'sector_helios_prime';
 const SCAN_RANGE = 400;         // wu POI auto-detect radius
 const SECTOR_SCAN_TIME = 2.0;   // s to complete a sector scan
 const FUEL_REFUND_FRAC = 0.5;   // refunded on aborted charge
@@ -212,6 +214,9 @@ export const world = {
 
     // --- event wiring (§4.4) ---
     bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
+    bus.on('world:requestUnfiledJump', () => this._onRequestUnfiledJump());
+    bus.on('world:confirmUnfiledJump', () => this._confirmUnfiledJump());
+    bus.on('world:abortJumpCharge', (p) => this._abortCharge((p && p.reason) || 'requested'));
     bus.on('world:requestRoute', (p) => this._onRequestRoute(p || {}));
     bus.on('world:requestSectorScan', () => this._beginScan());
     bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
@@ -1948,8 +1953,13 @@ export const world = {
       this._abortCharge('combat_lock');
       return;
     }
+    // Choice C starts at a real drive seam, but the charge cannot run underneath its Yes/No
+    // prompt. Confirmation releases the ordinary charge state machine; decline aborts it.
+    if (jump._unfiled === true && jump._unfiledConfirmed !== true) return;
     jump.chargeT += dt;
-    this.bus.emit('jump:chargeTick', { progress: clamp(jump.chargeT / Math.max(0.01, jump.chargeNeeded), 0, 1) });
+    const tickPayload = { progress: clamp(jump.chargeT / Math.max(0.01, jump.chargeNeeded), 0, 1) };
+    if (jump._unfiled === true) tickPayload.unfiled = true;
+    this.bus.emit('jump:chargeTick', tickPayload);
     if (jump.chargeT >= jump.chargeNeeded) {
       // consume fuel now (charge complete)
       this._spendFuel(jump._fuelCost || 0);
@@ -1958,7 +1968,9 @@ export const world = {
       jump._jumpT = 0;
       const player = state.entities.get(state.playerId);
       const fromPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-      this.bus.emit('jump:start', { from: state.world.currentSectorId, to: jump.targetSectorId, via: jump.via, fromPos });
+      const startPayload = { from: state.world.currentSectorId, to: jump.targetSectorId, via: jump.via, fromPos };
+      if (jump._unfiled === true) startPayload.unfiled = true;
+      this.bus.emit('jump:start', startPayload);
     }
   },
 
@@ -1970,6 +1982,7 @@ export const world = {
 
     const target = jump.targetSectorId;
     const via = jump.via;
+    const unfiled = jump._unfiled === true;
     const fromSectorId = state.world.currentSectorId;
     const sector = state.world.sectors[target] || SECTOR_BY_ID.get(target);
     const drive = this._activeDrive();
@@ -1993,7 +2006,9 @@ export const world = {
 
     const player = state.entities.get(state.playerId);
     const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-    this.bus.emit('jump:arrive', { sectorId: target, interdicted, ambushCount, toPos });
+    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos };
+    if (unfiled) arrivePayload.unfiled = true;
+    this.bus.emit('jump:arrive', arrivePayload);
 
     jump.state = via === 'gate' ? (GATE_COOLDOWN > 0 ? 'COOLDOWN' : 'IDLE') : 'COOLDOWN';
     jump.cooldownT = via === 'gate' ? GATE_COOLDOWN : DRIVE_COOLDOWN;
@@ -2001,6 +2016,8 @@ export const world = {
     jump.via = null;
     jump.chargeNeeded = 0;
     jump._fuelCost = 0;
+    jump._unfiled = false;
+    jump._unfiledConfirmed = false;
   },
 
   _spawnAmbush(sector, count, origin = null) {
@@ -2133,20 +2150,81 @@ export const world = {
     jump.chargeT = 0;
     jump.chargeNeeded = chargeNeeded;
     jump._fuelCost = fuelCost;
+    jump._unfiled = false;
+    jump._unfiledConfirmed = false;
     this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded });
+  },
+
+  /**
+   * Choice C's explicit, destinationless Ashfall drive charge. The hidden return target is only
+   * world-owned transition plumbing; presentation and story receive targetSectorId:null until the
+   * normal tunnel commits. The charge remains at zero until the player confirms the prompt.
+   */
+  _onRequestUnfiledJump() {
+    const state = this.state;
+    const jump = state.jump;
+    const currentId = state.world.currentSectorId;
+    const source = state.world.sectors[currentId] || SECTOR_BY_ID.get(currentId);
+    const target = state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    const reject = (reason) => {
+      this.bus.emit('jump:chargeAbort', { reason, unfiled: true });
+      return false;
+    };
+
+    if (currentId !== UNFILED_JUMP_ORIGIN) return reject('unfiled_wrong_sector');
+    if (!source || !target) return reject('unfiled_route_missing');
+    if (jump.state !== 'IDLE') return reject('busy');
+    if (jump.cooldownT > 0) return reject('cooldown');
+    if (!this._hasDrive()) return reject('no_drive');
+
+    const drive = this._activeDrive();
+    if (this._combatLock && !drive.hotJump) return reject('combat_lock');
+    const edgeDist = this._edgeDist(source, target);
+    const fuelCost = Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
+    if (state.fuel.current < fuelCost) return reject('low_fuel');
+
+    jump.state = 'CHARGING';
+    jump.targetSectorId = UNFILED_JUMP_RETURN;
+    jump.via = 'drive';
+    jump.chargeT = 0;
+    jump.chargeNeeded = drive.baseCharge * (edgeDist / 4);
+    jump._fuelCost = fuelCost;
+    jump._unfiled = true;
+    jump._unfiledConfirmed = false;
+    this.bus.emit('jump:chargeStart', {
+      targetSectorId: null,
+      via: 'drive',
+      chargeNeeded: jump.chargeNeeded,
+      unfiled: true,
+    });
+    return true;
+  },
+
+  _confirmUnfiledJump() {
+    const jump = this.state && this.state.jump;
+    if (!jump || jump.state !== 'CHARGING' || jump._unfiled !== true) return false;
+    if (this.state.fuel.current < (jump._fuelCost || 0)) {
+      this._abortCharge('low_fuel');
+      return false;
+    }
+    jump._unfiledConfirmed = true;
+    this.bus.emit('jump:unfiledConfirmed', { returnSectorId: UNFILED_JUMP_RETURN });
+    return true;
   },
 
   _abortCharge(reason) {
     const jump = this.state.jump;
     if (jump.state !== 'CHARGING') return;
     // Fuel isn't spent until completion; refund half as goodwill to the tank (capped at max).
-    if (jump.via === 'drive' && jump._fuelCost) {
+    if (jump.via === 'drive' && jump._fuelCost && jump._unfiled !== true) {
       this._addFuel((jump._fuelCost * FUEL_REFUND_FRAC) | 0);
     }
     jump.state = 'IDLE';
     jump.targetSectorId = null; jump.via = null;
     jump.chargeT = 0; jump.chargeNeeded = 0; jump._fuelCost = 0;
-    this.bus.emit('jump:chargeAbort', { reason });
+    const unfiled = jump._unfiled === true;
+    jump._unfiled = false; jump._unfiledConfirmed = false;
+    this.bus.emit('jump:chargeAbort', { reason, ...(unfiled ? { unfiled: true } : {}) });
   },
 
   // =========================================================================================
@@ -2468,8 +2546,26 @@ export const world = {
         this._captureSectorDurableRecords(sid, { reason: 'serialize' });
       }
     }
+    // Saves never resume a transition FSM. Once Choice C is confirmed, normalize an in-flight
+    // snapshot to its inevitable return instead of reloading at Ashfall with the ending already
+    // filed and no way to charge again. A CHARGING snapshot has not spent fuel yet; JUMPING has.
+    const unfiledCommitted = state.jump._unfiled === true
+      && state.jump._unfiledConfirmed === true
+      && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING');
+    const savedJump = unfiledCommitted
+      ? {
+        state: 'COOLDOWN', targetSectorId: null, via: null,
+        chargeT: 0, chargeNeeded: 0, cooldownT: DRIVE_COOLDOWN,
+      }
+      : {
+        state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
+        chargeT: state.jump.chargeT, chargeNeeded: state.jump.chargeNeeded, cooldownT: state.jump.cooldownT,
+      };
+    const savedFuelCurrent = unfiledCommitted && state.jump.state === 'CHARGING'
+      ? Math.max(0, state.fuel.current - (state.jump._fuelCost || 0))
+      : state.fuel.current;
     return {
-      currentSectorId: state.world.currentSectorId,
+      currentSectorId: unfiledCommitted ? UNFILED_JUMP_RETURN : state.world.currentSectorId,
       discovery: cloneSaveTree(state.world.discovery || {}),
       scanPings: cloneSaveTree(state.world.scanPings || {}),
       pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
@@ -2482,11 +2578,8 @@ export const world = {
       // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
       coordinateSchema: state.world.coordinateSchema || 'global_v1',
       sectorOwners: this._ownerOverlay(),
-      jump: {
-        state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
-        chargeT: state.jump.chargeT, chargeNeeded: state.jump.chargeNeeded, cooldownT: state.jump.cooldownT,
-      },
-      fuel: { current: state.fuel.current, max: state.fuel.max },
+      jump: savedJump,
+      fuel: { current: savedFuelCurrent, max: state.fuel.max },
     };
   },
 
@@ -2537,6 +2630,8 @@ export const world = {
         state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
         state.jump.chargeT = 0; state.jump.chargeNeeded = 0;
       }
+      state.jump._unfiled = false;
+      state.jump._unfiledConfirmed = false;
     }
     if (data.fuel) state.fuel = { current: data.fuel.current, max: data.fuel.max };
     if (data.sectorOwners) {
@@ -2579,6 +2674,7 @@ export const world = {
     this._seedChartedDiscovery();
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
+    state.jump._unfiled = false; state.jump._unfiledConfirmed = false;
     state.fuel = { current: 100, max: 100 };
     state.nav.route = null; state.nav.autoTravel = false; state.nav.waypoint = null;
     state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
