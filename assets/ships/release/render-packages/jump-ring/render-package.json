@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e9246e8cd0a0d108d64191f7dc953e78cfb155c0e44cec889af61cecdae7eaf0",
+  "contentHash": "43c261812b578e6417ff0b61d265061c981687f3fb56ff85031737cd142c42c1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1564,8 +1564,8 @@
       "uri": "place_gate_jump_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 11681,
-      "sha256": "f69ec5c4de2fd9fc1eb19377171a8e40cb8d62bf60a57ef1dfd46e283c9643fc",
+      "bytes": 15265,
+      "sha256": "499c2d4f47d9ac7942de1cfdc4db6ec0093b0be6f5c1d35c1d23db35ef091121",
       "uri": "pilots.json"
     }
   },

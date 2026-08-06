@@ -1,0 +1,629 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.conveyor-barge",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a7440840278704949f52a238e288dcac77eaf3748868cb6addcacb79e6da198c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.0999832153320312,
+          2.7339466214179993,
+          0.5339465737342834
+        ],
+        "min": [
+          0.3000166416168213,
+          1.6660534739494324,
+          -0.5339465737342834
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "efac51c12e4e77bed5c11e30b967e7c7b296509196dc79469da85481d024ce93",
+      "id": "sf.render.conveyor-barge.mesh.barge-drive-core.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "f2b42a257f51c96a820b29f561d3610970e7ba96cb7e0ef2644396b526a054a0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Barge_Drive_Core",
+      "nodeId": "sf.render.conveyor-barge.mesh.barge-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 130
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4999213218688965,
+          3.986482620239258,
+          1.7417755126953125
+        ],
+        "min": [
+          -2.4999213384944596,
+          0.41351747512817383,
+          -1.7417755126953125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c52d8678e3a6d64006cdb526546efd064af89493b815f7caf4ec0592829b076",
+      "id": "sf.render.conveyor-barge.mesh.barge-drive-nozzle.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "ce4d2a65beafe5a5ac9d215536339915819f07a20962029083bdba0628b32f21",
+      "materialPipelineKey": "opaque",
+      "meshName": "Barge_Drive_Nozzle",
+      "nodeId": "sf.render.conveyor-barge.mesh.barge-drive-nozzle",
+      "primitiveIndex": 0,
+      "vertexCount": 164
+    },
+    {
+      "bounds": {
+        "max": [
+          52,
+          5.9991455078125,
+          8.998870849609375
+        ],
+        "min": [
+          0,
+          -1.9991455078125,
+          -8.998870849609375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76f96d7759419b4ec909e6ab460ea288a1a98bf849d4682963650aa80f42b2d6",
+      "id": "sf.render.conveyor-barge.mesh.barge-hull.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "9d4df440938126fc8d693089219e85e0b66632a3a19a52cadf813153372492e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Barge_Hull",
+      "nodeId": "sf.render.conveyor-barge.mesh.barge-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 166
+    },
+    {
+      "bounds": {
+        "max": [
+          70.17520141601562,
+          6.259963035583496,
+          7.675000190734863
+        ],
+        "min": [
+          69.82479858398438,
+          6.1400370597839355,
+          -7.675000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4948650aeea257369cb2c93ab7d50d9074ba601e1c4544ca4925f30e909ac07a",
+      "id": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-accent-merged.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "f2b42a257f51c96a820b29f561d3610970e7ba96cb7e0ef2644396b526a054a0",
+      "materialPipelineKey": "opaque",
+      "meshName": "place_conveyor_barge_Material_Accent_Merged",
+      "nodeId": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 132
+    },
+    {
+      "bounds": {
+        "max": [
+          48,
+          8.000690460205078,
+          3.5001220703125
+        ],
+        "min": [
+          8.75,
+          2.749309539794922,
+          -3.5001220703125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3083b3c2416b064d61d90a02099cc8c292198bd7e16533759cdcd5c2ee7c607c",
+      "id": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-mechanical-merged.primitive.0",
+      "indexCount": 1548,
+      "indexed": true,
+      "materialHash": "ce4d2a65beafe5a5ac9d215536339915819f07a20962029083bdba0628b32f21",
+      "materialPipelineKey": "opaque",
+      "meshName": "place_conveyor_barge_Material_Mechanical_Merged",
+      "nodeId": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 486
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "9d4df440938126fc8d693089219e85e0b66632a3a19a52cadf813153372492e4",
+      "id": "material:9d4df440938126fc8d693089",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ce4d2a65beafe5a5ac9d215536339915819f07a20962029083bdba0628b32f21",
+      "id": "material:ce4d2a65beafe5a5ac9d2155",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f2b42a257f51c96a820b29f561d3610970e7ba96cb7e0ef2644396b526a054a0",
+      "id": "material:f2b42a257f51c96a820b29f5",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.conveyor-barge.mesh.barge-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Barge_Drive_Core",
+      "nodeName": "Barge_Drive_Core",
+      "nodePath": [
+        0,
+        5,
+        0
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.barge-drive-nozzle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Barge_Drive_Nozzle",
+      "nodeName": "Barge_Drive_Nozzle",
+      "nodePath": [
+        0,
+        5,
+        1
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.barge-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Barge_Hull",
+      "nodeName": "Barge_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "place_conveyor_barge_Material_Accent_Merged",
+      "nodeName": "place_conveyor_barge_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "place_conveyor_barge_Material_Mechanical_Merged",
+      "nodeName": "place_conveyor_barge_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_conveyor_barge",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "f6f1749caa1334e861fb764ccb24c4514e114263bee6167e2dd7aa3394b24a44"
+    },
+    "sourceGlb": {
+      "bytes": 218704,
+      "sha256": "f304e55850309a53bd490525c53469337ea80ae87b0bf688e88b2455aab2d47e",
+      "uri": "place_conveyor_barge.glb"
+    },
+    "sourceManifest": {
+      "bytes": 15265,
+      "sha256": "499c2d4f47d9ac7942de1cfdc4db6ec0093b0be6f5c1d35c1d23db35ef091121",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 239592,
+    "sha256": "9dbd00781e5885bb4f0ccd3d9620c47777f1db9407a5caba59b7eb5fb1868f95",
+    "uri": "render.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          70.17520141601562,
+          8.000690460205078,
+          8.998870849609375
+        ],
+        "min": [
+          -2.4999213384944596,
+          -1.9991455078125,
+          -8.998870849609375
+        ]
+      },
+      "id": "sf.render.conveyor-barge.body",
+      "nodeIds": [
+        "sf.render.conveyor-barge.mesh.barge-drive-core",
+        "sf.render.conveyor-barge.mesh.barge-drive-nozzle",
+        "sf.render.conveyor-barge.mesh.barge-hull",
+        "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-accent-merged",
+        "sf.render.conveyor-barge.mesh.place-conveyor-barge-material-mechanical-merged",
+        "sf.render.conveyor-barge.root"
+      ]
+    }
+  ]
+}

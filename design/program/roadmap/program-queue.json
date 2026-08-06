@@ -4720,6 +4720,40 @@
       "blocker": null
     },
     {
+      "id": "PQ-037.resource-worksite-render-packages",
+      "parentId": "PQ-037",
+      "priority": 248,
+      "title": "Package resource-worksite admission assets",
+      "kind": "implementation",
+      "state": "done",
+      "owner": "released",
+      "claimBase": "2eb4fdb185e920892797428ab474a5fabbffa537",
+      "dependsOn": [
+        "PQ-037.geology-render-packages"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "renderer"
+      ],
+      "paths": [
+        "assets/ships/render-packages/pilots.json",
+        "assets/ships/release/render-packages/",
+        "src/render/renderPackageManifest.js",
+        "test/render-package-pilots.test.mjs",
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node --test test/render-package-pilots.test.mjs",
+        "npm run check:render-package-pilots"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
+      ],
+      "brief": "The exact accepted seamed asteroid, conveyor barge, and claim-outpost base/refinery/relay releases now have rebuildable immutable packages. All 78 worksite geometries remain indexed; seven anchors and collision ownership on each outpost remain bound while mining and claim-site source-URL admission bypasses runtime geometry clone, transform, merge, normalization, and de-index preparation. Focused tests passed 3/3 and all 22 packages rebuilt byte-identically with no gameplay, source-asset, default, or visual change.",
+      "blocker": null
+    },
+    {
       "id": "PQ-038.native-acceptance",
       "parentId": "PQ-038",
       "priority": 223,

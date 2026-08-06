@@ -273,3 +273,25 @@ Focused verification was bounded to the production seam: `test/render-package-pi
 `check:runtime-assets` command retained its unchanged three-source fingerprint (Kestrel hull LOD markers
 and two uncompressed Wasp LOD releases); none of those inputs are in this unit, and the command was not
 repeated. No headed route or one-use performance claim was spent on this deterministic offline expansion.
+
+## Resource-worksite production expansion 2026-08-06
+
+Five accepted mining/claim-site releases now enter through immutable production packages: the common
+seamed asteroid, conveyor barge, and claim-outpost base, refinery, and relay. Together they move 45.25 MB
+of prepared render data and 78 indexed geometry records off the gameplay-time geometry preparation path.
+The three outposts retain their seven named anchors and collision reference; the seamed asteroid and barge
+retain their authored hierarchy and socket records.
+
+| Package | Accepted source SHA-256 | Package content hash | Indexed geometry |
+|---|---|---|---:|
+| Seamed asteroid | `31cc9bae776abf00913e98bbc788b56a363cc6eaedcd4e1d5ae8a3cd624323d4` | `5d4e44d0c8a3aecc81c2351126295b32e7cb7882451e93c9a0c7fd2db95bbeee` | 25 / 25 |
+| Conveyor barge | `f304e55850309a53bd490525c53469337ea80ae87b0bf688e88b2455aab2d47e` | `a7440840278704949f52a238e288dcac77eaf3748868cb6addcacb79e6da198c` | 5 / 5 |
+| Claim outpost base | `6dab7e40086ddd6c0041977fac879069875d99a1aed52f2cb37962352658b4f0` | `f829af1a56457ede5eb62f15e72934f89e8fbd20f0fb8f9ef8794190bc4c648e` | 16 / 16 |
+| Claim outpost refinery | `63802aa4f426a9031139e939e16f47d0e1e9fc37ea4c1f6c86bb914ec9cf82c7` | `68de9e73e3b79581517adb4e460af915c31555db11180c76b67b13b1de730997` | 16 / 16 |
+| Claim outpost relay | `85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8` | `594ee633299dd3cc100f8d4fca4b63439b7bed5493282948230285b4fb2c7694` | 16 / 16 |
+
+`test/render-package-pilots.test.mjs` passed 3/3 and the single allowed rebuild comparison reported
+22/22 fresh production packages. Source/release GLBs, materials, LODs, placement, gameplay, controls,
+saves, authored density, and default quality did not change. The mining drone was not admitted by this
+unit: its accepted GLB declares no internal `assetId`, so the asset-metadata owner must add that identity
+before the fail-closed compiler can package it; the compiler check was not weakened or bypassed.

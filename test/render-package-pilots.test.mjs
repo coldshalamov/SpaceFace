@@ -45,6 +45,11 @@ test('production manifest packages every live whole-ship family and admitted aut
     'helios-rock-a',
     'helios-rock-b',
     'helios-rock-c',
+    'seamed-asteroid',
+    'conveyor-barge',
+    'claim-outpost-base',
+    'claim-outpost-refinery',
+    'claim-outpost-relay',
     'debris-chunk',
     'dead-hulk',
     'dock-interior',
@@ -72,6 +77,18 @@ test('production manifest packages every live whole-ship family and admitted aut
       `assets/ships/release/parts/places/place_asteroid_rock_${suffix}.glb`,
     );
     assert.equal(geology?.runtimeAssetId, `SF_PLACE_HELIOS_ROCK_${suffix.toUpperCase()}`);
+  }
+  for (const [sourceId, runtimeAssetId] of [
+    ['place_asteroid_seamed', 'SF_PLACE_ASTEROID_SEAMED_GEOLOGY_V3'],
+    ['place_conveyor_barge', 'SF_PLACE_CONVEYOR_BARGE'],
+    ['place_claim_outpost_base', 'SF_PLACE_CLAIM_OUTPOST_BASE'],
+    ['place_claim_outpost_refinery', 'SF_PLACE_CLAIM_OUTPOST_REFINERY'],
+    ['place_claim_outpost_relay', 'SF_PLACE_CLAIM_OUTPOST_RELAY'],
+  ]) {
+    const worksite = renderPackagePilotForSourceUrl(
+      `assets/ships/release/parts/places/${sourceId}.glb`,
+    );
+    assert.equal(worksite?.runtimeAssetId, runtimeAssetId);
   }
 
   for (const binding of RENDER_PACKAGE_PILOTS) {
