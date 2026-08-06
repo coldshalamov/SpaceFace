@@ -12,6 +12,9 @@
 //     (physical logistics — the base is a place you fly freight to, not a menu).
 //   - TELEPORT: if a teleporter module is built, instant travel between the body and its linked
 //     station (the V2 §8 lane-collapser — the milestone unlock that rewrites map geometry).
+//   - BUILD THROUGHLINE: an Industrial Refinery consumes carried industrial goods to align one
+//     permanent acceleration ring + nav relay toward a real station. Claims owns the durable
+//     construction receipt; travelLanes and traffic consume it without becoming save writers.
 //
 // Specialization behavior ticks in update():
 //   - REFINERY converts delivered ore into refined goods (REFINE_MAP truth, 2:1) into an output
@@ -69,10 +72,15 @@ export const SPEC_RAID_COOLDOWN_S = 300;   // raided site freeze (legacy raidCoo
 export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of halved pressure
 export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
 export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
+export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
 const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
 const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
 const RELAY_LOSS_CAP = 0.35;
 const MAX_RECEIPTS = 8;                    // per-body receipt ring (the ledger's memory)
+const SLING_BODY_CLEARANCE_WU = 160;
+const SLING_STATION_CLEARANCE_WU = 180;
+const SLING_MIN_ROUTE_WU = 520;
+const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
@@ -93,6 +101,22 @@ function sumStore(bucket) {
   let total = 0;
   for (const id in bucket) total += bucket[id] || 0;
   return total;
+}
+
+function materialName(id) {
+  return String(id || 'material').replace(/^cmdty_/, '').replace(/_/g, ' ');
+}
+
+function firstMissingModuleMaterial(mod, player) {
+  const recipe = mod && mod.materials;
+  if (!recipe || typeof recipe !== 'object') return null;
+  const items = player && player.cargo && player.cargo.items || {};
+  for (const id of Object.keys(recipe)) {
+    const need = Math.max(0, Math.floor(Number(recipe[id]) || 0));
+    const have = Math.max(0, Math.floor(Number(items[id]) || 0));
+    if (have < need) return { id, need, have, missing: need - have };
+  }
+  return null;
 }
 
 // The raid dice, decomposed so bastions produce honest receipts instead of silently editing a
@@ -208,17 +232,60 @@ export const claims = {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(mod.techReq), kind: 'error', ttl: 3 });
       return false;
     }
+    if (mod.requiresSpec && (!body.spec || body.spec.id !== mod.requiresSpec || body.spec.status !== 'active')) {
+      const spec = BODY_SPECIALIZATION_BY_ID.get(mod.requiresSpec);
+      this.bus.emit('toast', {
+        text: 'Commission ' + ((spec && spec.name) || mod.requiresSpec) + ' before building ' + mod.name,
+        kind: 'error', ttl: 4,
+      });
+      return false;
+    }
+    const missingMaterial = firstMissingModuleMaterial(mod, player);
+    if (missingMaterial) {
+      this.bus.emit('toast', {
+        text: 'Need ' + missingMaterial.missing + ' more ' + materialName(missingMaterial.id) + ' for ' + mod.name,
+        kind: 'error', ttl: 4,
+      });
+      return false;
+    }
+    // A sling is not freely placed. The claim system resolves one deterministic, clear line from
+    // this physical body to a real in-sector station before any credits or materials are spent.
+    const travelRoute = mod.effect === 'travel_sling'
+      ? this._prepareTravelInfrastructure(body, mod)
+      : null;
+    if (mod.effect === 'travel_sling' && !travelRoute) return false;
     if (player.credits < mod.cost) {
       const missing = mod.cost - (Number(player.credits) || 0);
       this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr for ' + mod.name, kind: 'error', ttl: 3 });
       return false;
     }
     this.bus.emit('economy:chargeCredits', { amount: mod.cost, reason: 'build_module' });
+    for (const id of Object.keys(mod.materials || {})) {
+      removeCargo(this.state, id, mod.materials[id]);
+    }
     body.modules.push(modId);
     // teleporter auto-links to the nearest station on build (the lane it collapses)
     if (mod.effect === 'teleport') {
       body.linkedStationId = this._nearestStationId(body);
       this.bus.emit('toast', { text: 'Teleporter linked to ' + (this._stationName(body.linkedStationId) || 'nearest station'), kind: 'good', ttl: 4 });
+    } else if (mod.effect === 'travel_sling') {
+      body.infrastructure = this._newTravelInfrastructure(body, mod, travelRoute);
+      this._receipt(body, 'throughline_fabricated', 'Throughline ring and nav relay fabricated — alignment underway', {
+        infrastructureId: body.infrastructure.id,
+        stationId: body.infrastructure.stationId,
+        distanceWU: body.infrastructure.distanceWU,
+        materials: { ...(mod.materials || {}) },
+      });
+      this.bus.emit('claim:infrastructureConstructed', {
+        bodyId: body.id,
+        infrastructureId: body.infrastructure.id,
+        stationId: body.infrastructure.stationId,
+        stage: body.infrastructure.stage,
+      });
+      this.bus.emit('toast', {
+        text: 'Throughline fabricated — ring and relay aligning to ' + (this._stationName(body.infrastructure.stationId) || 'station'),
+        kind: 'good', ttl: 5,
+      });
     } else {
       this.bus.emit('toast', { text: '✓ Built: ' + mod.name + ' on ' + body.name, kind: 'good', ttl: 3.5 });
     }
@@ -419,6 +486,21 @@ export const claims = {
         : null,
       throughput: null,
       readiness: null,
+      infrastructure: body.infrastructure ? {
+        id: body.infrastructure.id,
+        name: body.infrastructure.name,
+        stage: body.infrastructure.stage,
+        operational: body.infrastructure.operational === true,
+        stationId: body.infrastructure.stationId,
+        stationName: this._stationName(body.infrastructure.stationId) || body.infrastructure.stationId,
+        distanceWU: body.infrastructure.distanceWU,
+        ceilingMult: body.infrastructure.ceilingMult,
+        rampMult: body.infrastructure.rampMult,
+        alignRemainingS: body.infrastructure.stage === 'aligning'
+          ? Math.max(0, (body.infrastructure.alignUntil || 0) - t)
+          : 0,
+        damagePolicy: body.infrastructure.damagePolicy,
+      } : null,
       lastEvent: spec.receipts.length ? spec.receipts[spec.receipts.length - 1] : null,
       receipts: spec.receipts.slice(),
     };
@@ -465,6 +547,183 @@ export const claims = {
     return b ? { x: b.x, z: b.z } : null;
   },
 
+  _prepareTravelInfrastructure(body, mod) {
+    const stationId = this._nearestStationId(body);
+    const station = this._stationEntity(stationId);
+    if (!station || !station.pos) {
+      this.bus.emit('toast', { text: 'Throughline needs a live in-sector station endpoint', kind: 'error', ttl: 4 });
+      return null;
+    }
+    const bx = Number(body.x);
+    const bz = Number(body.z);
+    const sx = Number(station.pos.x);
+    const sz = Number(station.pos.z);
+    if (![bx, bz, sx, sz].every(Number.isFinite)) return null;
+    const dx = sx - bx;
+    const dz = sz - bz;
+    const centerDistance = Math.hypot(dx, dz);
+    if (!(centerDistance >= SLING_MIN_ROUTE_WU)) {
+      this.bus.emit('toast', { text: 'Throughline endpoint is too close for a safe acceleration corridor', kind: 'error', ttl: 4 });
+      return null;
+    }
+    const axis = { x: dx / centerDistance, z: dz / centerDistance };
+    const normal = { x: -axis.z, z: axis.x };
+    let from = null;
+    for (const lateral of SLING_LATERAL_OFFSETS_WU) {
+      const candidate = {
+        x: bx + axis.x * SLING_BODY_CLEARANCE_WU + normal.x * lateral,
+        z: bz + axis.z * SLING_BODY_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (this._travelInfrastructurePointClear(candidate, body, station)) {
+        from = candidate;
+        break;
+      }
+    }
+    if (!from) {
+      this.bus.emit('toast', { text: 'No clear Throughline ring hardpoint near this claim', kind: 'error', ttl: 4 });
+      return null;
+    }
+    const to = {
+      x: sx - axis.x * SLING_STATION_CLEARANCE_WU,
+      z: sz - axis.z * SLING_STATION_CLEARANCE_WU,
+    };
+    const routeDx = to.x - from.x;
+    const routeDz = to.z - from.z;
+    const distanceWU = Math.hypot(routeDx, routeDz);
+    if (!(distanceWU > 0)) return null;
+    // The support relay sits on the same saved line, far enough from both endpoints to be read as
+    // a second structure rather than decoration bolted onto the ring or station.
+    let support = null;
+    for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
+      const candidate = {
+        x: from.x + routeDx * fraction,
+        z: from.z + routeDz * fraction,
+      };
+      if (this._travelInfrastructurePointClear(candidate, body, station)) {
+        support = candidate;
+        break;
+      }
+    }
+    if (!support) {
+      this.bus.emit('toast', { text: 'No clear Throughline relay hardpoint along this route', kind: 'error', ttl: 4 });
+      return null;
+    }
+    return { stationId, from, to, support, distanceWU };
+  },
+
+  _travelInfrastructurePointClear(pos, body, station) {
+    const list = this.state.entityList || [];
+    for (const entity of list) {
+      if (!entity || entity.alive === false || entity === station || entity.collides === false) continue;
+      if (entity.data && entity.data.poiId === body.poiId) continue;
+      // A passing craft cannot invalidate a permanent surveyed hardpoint. Only static world bodies
+      // participate in the build clearance test.
+      if (['ship', 'drone', 'projectile', 'pickup', 'payload', 'wreck'].includes(entity.type)) continue;
+      if (!entity.pos) continue;
+      const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
+      if (Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z) < clearance) return false;
+    }
+    return true;
+  },
+
+  _newTravelInfrastructure(body, mod, route) {
+    const builtAt = Number(this.state.simTime) || 0;
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: `throughline:${body.id}`,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      name: `${body.name} Throughline`,
+      stationId: route.stationId,
+      stage: 'aligning',
+      operational: false,
+      builtAt,
+      alignUntil: builtAt + Math.max(0, Number(mod.alignTimeS) || 0),
+      from: { x: route.from.x, z: route.from.z },
+      to: { x: route.to.x, z: route.to.z },
+      support: { x: route.support.x, z: route.support.z },
+      distanceWU: route.distanceWU,
+      corridorRadiusWU: Math.max(1, Number(mod.corridorRadiusWU) || 240),
+      ceilingMult: Math.max(1, Number(mod.ceilingMult) || 1),
+      rampMult: Math.max(1, Number(mod.rampMult) || 1),
+      damagePolicy: 'claim_status',
+      fabricationReceipt: {
+        receiptId: `throughline-build:${body.id}`,
+        builtAt,
+        stationId: route.stationId,
+        costCr: Math.max(0, Number(mod.cost) || 0),
+        materials: { ...(mod.materials || {}) },
+      },
+    };
+  },
+
+  /** Visit durable Throughline records without allocating a per-frame array. */
+  visitTravelInfrastructure(sectorId, visitor) {
+    if (typeof visitor !== 'function') return 0;
+    let count = 0;
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const infrastructure = body && body.infrastructure;
+      if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
+      if (sectorId && body.sectorId !== sectorId) continue;
+      visitor(infrastructure, body);
+      count += 1;
+    }
+    return count;
+  },
+
+  activeTravelInfrastructure(sectorId) {
+    const out = [];
+    this.visitTravelInfrastructure(sectorId, (infrastructure, body) => {
+      if (infrastructure.operational === true) out.push({ infrastructure, body });
+    });
+    return out;
+  },
+
+  travelInfrastructureHooks(sectorId) {
+    return this.activeTravelInfrastructure(sectorId).map(({ infrastructure, body }) => ({
+      id: infrastructure.id,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      stationId: infrastructure.stationId,
+      slingPos: { x: infrastructure.from.x, z: infrastructure.from.z },
+      label: `${infrastructure.name} service run`,
+      eligibleRoles: ['hauler', 'trader'],
+    }));
+  },
+
+  _tickTravelInfrastructure(body, state) {
+    const infrastructure = body && body.infrastructure;
+    if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) return;
+    const now = Number(state.simTime) || 0;
+    if (infrastructure.stage === 'aligning' && now >= (Number(infrastructure.alignUntil) || 0)) {
+      infrastructure.stage = 'active';
+      if (body.spec) {
+        this._receipt(body, 'throughline_active', 'Throughline aligned — physical corridor open to ' + (this._stationName(infrastructure.stationId) || infrastructure.stationId), {
+          infrastructureId: infrastructure.id,
+          stationId: infrastructure.stationId,
+          distanceWU: infrastructure.distanceWU,
+        });
+      }
+      this.bus.emit('claim:infrastructureActive', { bodyId: body.id, infrastructureId: infrastructure.id });
+      if (body.sectorId === (state.world && state.world.currentSectorId)) {
+        this.bus.emit('toast', { text: 'Throughline online · ' + body.name + ' ↔ ' + (this._stationName(infrastructure.stationId) || 'station'), kind: 'good', ttl: 5 });
+      }
+      this._applyPoiLabel(body);
+    }
+    const operational = infrastructure.stage === 'active'
+      && !!body.spec && body.spec.id === 'spec_refinery' && body.spec.status === 'active';
+    if (infrastructure.operational !== operational) {
+      infrastructure.operational = operational;
+      this._applyPoiLabel(body);
+      this.bus.emit('claim:infrastructureStatus', {
+        bodyId: body.id,
+        infrastructureId: infrastructure.id,
+        operational,
+        reason: operational ? 'active' : (body.spec && body.spec.status) || infrastructure.stage,
+      });
+    }
+  },
+
   // Per-tick: specialization behavior + legacy passive effects. Bodies WITHOUT a specialization
   // keep the original module behavior (refinery module refines from the player hold); a
   // commissioned body runs its operating identity instead (store-based, physical logistics).
@@ -481,6 +740,7 @@ export const claims = {
         const rate = (mod.refineRate || 0.5) * dt; // ore-units this tick
         this._tickRefinery(body, rate);
       }
+      this._tickTravelInfrastructure(body, state);
     }
     this._tickRaidDefenses(bodies, state);
     if (!anySpec) return;
@@ -947,6 +1207,19 @@ export const claims = {
     return stationId;
   },
 
+  _stationEntity(stationId) {
+    if (!stationId) return null;
+    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    const stations = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList || [];
+    for (const entity of stations) {
+      if (entity && entity.alive !== false && entity.type === 'station'
+        && entity.data && entity.data.stationId === stationId) return entity;
+    }
+    return null;
+  },
+
   // Where this relay ships to: the teleporter-linked station if one exists, else a destination
   // resolved once — nearest station entity in-sector, falling back to the sector's authored
   // station data (so relays in other sectors still ship somewhere real).
@@ -987,6 +1260,58 @@ export const claims = {
       receipts: [],
       defense: null,
       totals: { refinedTotalU: 0, soldTotalCr: 0, lostU: 0, upkeepPaidCr: 0, raidsRepelled: 0, raidsSuffered: 0 },
+    };
+  },
+
+  _normalizeTravelInfrastructure(raw, body) {
+    if (!raw || typeof raw !== 'object' || !body || !Array.isArray(body.modules)
+      || !body.modules.includes('mod_throughline_sling')) return null;
+    const point = (value) => value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.z))
+      ? { x: Number(value.x), z: Number(value.z) }
+      : null;
+    const from = point(raw.from);
+    const to = point(raw.to);
+    const support = point(raw.support);
+    const stationId = typeof raw.stationId === 'string' && raw.stationId ? raw.stationId : null;
+    if (!from || !to || !support || !stationId) return null;
+    const distanceWU = Math.hypot(to.x - from.x, to.z - from.z);
+    if (!(distanceWU > 0)) return null;
+    const stage = raw.stage === 'active' ? 'active' : 'aligning';
+    const builtAt = Number.isFinite(Number(raw.builtAt)) ? Number(raw.builtAt) : 0;
+    const savedReceipt = raw.fabricationReceipt && typeof raw.fabricationReceipt === 'object'
+      ? raw.fabricationReceipt
+      : {};
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `throughline:${body.id}`,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${body.name} Throughline`,
+      stationId,
+      stage,
+      operational: stage === 'active' && !!body.spec
+        && body.spec.id === 'spec_refinery' && body.spec.status === 'active',
+      builtAt,
+      alignUntil: Number.isFinite(Number(raw.alignUntil)) ? Number(raw.alignUntil) : 0,
+      from,
+      to,
+      support,
+      distanceWU,
+      corridorRadiusWU: Math.max(1, Number(raw.corridorRadiusWU) || 240),
+      ceilingMult: Math.max(1, Number(raw.ceilingMult) || 2),
+      rampMult: Math.max(1, Number(raw.rampMult) || 2),
+      damagePolicy: 'claim_status',
+      fabricationReceipt: {
+        receiptId: typeof savedReceipt.receiptId === 'string' && savedReceipt.receiptId
+          ? savedReceipt.receiptId
+          : `throughline-build:${body.id}`,
+        builtAt: Number.isFinite(Number(savedReceipt.builtAt)) ? Number(savedReceipt.builtAt) : builtAt,
+        stationId,
+        costCr: Math.max(0, Number(savedReceipt.costCr) || 0),
+        materials: savedReceipt.materials && typeof savedReceipt.materials === 'object'
+          ? { ...savedReceipt.materials }
+          : {},
+      },
     };
   },
 
@@ -1034,17 +1359,23 @@ export const claims = {
   // idempotent, re-applied on sector entry (world respawns POIs from data).
   _applyPoiLabel(body) {
     const def = body.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    const infrastructure = body.infrastructure;
+    const throughline = infrastructure
+      ? ` · THROUGHLINE ${infrastructure.operational ? 'ONLINE' : String(infrastructure.stage || 'OFFLINE').toUpperCase()}`
+      : '';
     const list = this.state.entityList || [];
     for (const e of list) {
       if (!e || !e.alive || !e.data || e.data.poiId !== body.poiId) continue;
       if (!e.data.claimBaseName) e.data.claimBaseName = e.data.name || body.name;
-      e.data.name = def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName;
+      e.data.name = (def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName) + throughline;
       e.data.claimOwned = body.owned === true;
       e.data.claimSpecId = def ? def.id : null;
       e.data.claimRole = def ? def.short : 'CLAIM';
       e.data.claimMapGlyph = def ? def.mapGlyph : '◆';
       e.data.claimMapColor = def ? def.mapColor : '#ffd24a';
       e.data.claimPlayerVerb = def ? def.playerVerb : 'Open the Base interface to build this claim.';
+      e.data.claimTravelInfrastructureId = infrastructure ? infrastructure.id : null;
+      e.data.claimTravelInfrastructureOperational = infrastructure ? infrastructure.operational === true : false;
     }
   },
 
@@ -1156,6 +1487,9 @@ export const claims = {
       // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
       b.owned = true;
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
+      const infrastructure = this._normalizeTravelInfrastructure(b.infrastructure, b);
+      if (infrastructure) b.infrastructure = infrastructure;
+      else delete b.infrastructure;
       if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
         this._resumeDefenseIds.add(b.spec.defense.id);
       }

@@ -32,19 +32,18 @@
 //   • The ambush. `encounterDirector.requestAuthoredEncounter` places the pirates. We choose a shape
 //     (`ambush_snare`, whose authored `zoneTypes` literally include `ambush_lane`) and an anchor.
 //
-// ─── Why this system needs NO save-game persistence, and that is a design decision ────────────────
+// ─── Why this system remains a read model, not a save writer ─────────────────────────────────────
 //
-// The lane is DERIVED, not stored. Beacon geometry is a pure function of the two endpoint sectors'
-// frozen global origins; segment health is authored; and the live readout is a pure function of
-// (authored lane, player global position, drive state). Restore a save and every one of those inputs
-// is already restored by machinery that owns them — so the lane recomputes bit-identically with no
-// key of its own in the save blob. `state.travelLanes` is a PUBLISHED READOUT plus ephemeral spawn
-// bookkeeping; nothing in it is authoritative, and losing it costs one tick.
+// The authored Helios–Tethys lane is DERIVED from frozen global origins. Manufactured Throughlines
+// are persisted by their owning claim as stable construction records. This system only derives
+// geometry and a live readout from those owners; it never serializes a second copy. Restore a save
+// and both route families recompute from their authoritative inputs. `state.travelLanes` remains a
+// PUBLISHED READOUT plus ephemeral spawn bookkeeping; losing it costs one tick.
 //
 // This matters beyond convenience: `src/save/saveSystem.js` is an explicit per-system whitelist, and
-// a lane that demanded persistence would have to edit it. Deriving instead of storing is both the
-// cheaper design and the one that respects file ownership — the same "derived read model, not a
-// registry" posture ADR D2 chose for the Atlas.
+// adding another travel-owned save key would create competing route truth. Deriving instead of
+// storing is both cheaper and the same "derived read model, not a registry" posture ADR D2 chose
+// for the Atlas.
 //
 // ─── Golden safety ────────────────────────────────────────────────────────────────────────────────
 //
@@ -114,7 +113,17 @@ export function projectOntoLane(geometry, pos) {
  * position only so a test can drive it without a simulation.
  */
 export function resolveLaneSegment(geometry, pos) {
-  const { alongWU, offAxisWU } = projectOntoLane(geometry, pos);
+  return resolveLaneSegmentInto(geometry, pos, {});
+}
+
+/** Allocation-free form used by the fixed-step runtime; the public pure helper above stays intact. */
+export function resolveLaneSegmentInto(geometry, pos, out = {}) {
+  const px = finite(pos && pos.x) - geometry.from.x;
+  const pz = finite(pos && pos.z) - geometry.from.z;
+  const alongWU = px * geometry.axis.x + pz * geometry.axis.z;
+  const ox = px - geometry.axis.x * alongWU;
+  const oz = pz - geometry.axis.z * alongWU;
+  const offAxisWU = Math.sqrt(ox * ox + oz * oz);
   const segments = geometry.segments;
   const inTube = offAxisWU <= geometry.radiusWU;
   let index = -1;
@@ -124,14 +133,13 @@ export function resolveLaneSegment(geometry, pos) {
     }
   }
   const segment = index >= 0 ? segments[index] : null;
-  return {
-    alongWU,
-    offAxisWU,
-    inLane: inTube && !!segment,
-    segmentIndex: index,
-    segment,
-    progress: geometry.lengthWU > 0 ? Math.max(0, Math.min(1, alongWU / geometry.lengthWU)) : 0,
-  };
+  out.alongWU = alongWU;
+  out.offAxisWU = offAxisWU;
+  out.inLane = inTube && !!segment;
+  out.segmentIndex = index;
+  out.segment = segment;
+  out.progress = geometry.lengthWU > 0 ? Math.max(0, Math.min(1, alongWU / geometry.lengthWU)) : 0;
+  return out;
 }
 
 /**
@@ -146,6 +154,38 @@ export function nextIntactBeacon(geometry, alongWU) {
   // Past the last intact segment: the far end of the chain is the remaining anchor.
   const last = geometry.beacons[geometry.beacons.length - 1];
   return last || null;
+}
+
+/** Build the one-segment physical corridor persisted by an owned claim. */
+export function buildManufacturedLaneGeometry(infrastructure) {
+  const from = infrastructure && infrastructure.from;
+  const to = infrastructure && infrastructure.to;
+  if (!from || !to) return null;
+  const dx = finite(to.x) - finite(from.x);
+  const dz = finite(to.z) - finite(from.z);
+  const lengthWU = Math.hypot(dx, dz);
+  if (!(lengthWU > 0)) return null;
+  const axis = { x: dx / lengthWU, z: dz / lengthWU };
+  const a = { index: 0, alongWU: 0, pos: { x: finite(from.x), z: finite(from.z) } };
+  const b = { index: 1, alongWU: lengthWU, pos: { x: finite(to.x), z: finite(to.z) } };
+  return {
+    id: infrastructure.id,
+    name: infrastructure.name,
+    from: a.pos,
+    to: b.pos,
+    axis,
+    lengthWU,
+    radiusWU: Math.max(1, finite(infrastructure.corridorRadiusWU, 240)),
+    beacons: [a, b],
+    segments: [{
+      index: 0,
+      disrupted: false,
+      a,
+      b,
+      midpoint: { x: (a.pos.x + b.pos.x) / 2, z: (a.pos.z + b.pos.z) / 2 },
+      lengthWU,
+    }],
+  };
 }
 
 export const travelLanes = {
@@ -166,6 +206,39 @@ export const travelLanes = {
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
     this._lastSignature = null;    // change detection for nav:laneStatus
     this._ambushRequested = new Set();
+    this._manufacturedRoutes = [];
+    this._manufacturedCache = new Map();
+    this._manufacturedEntityIds = new Map();
+    this._authoredFixScratch = {};
+    this._collectManufactured = (infrastructure, body) => {
+      let cached = this._manufacturedCache.get(infrastructure.id);
+      // Claims replaces the whole record on build/load and owns its placement thereafter. Object
+      // identity therefore invalidates geometry without constructing a signature string each tick.
+      if (!cached || cached.infrastructureRef !== infrastructure) {
+        const geometry = buildManufacturedLaneGeometry(infrastructure);
+        if (!geometry) return;
+        cached = {
+          infrastructureRef: infrastructure,
+          geometry,
+          fixScratch: {},
+          ringKey: `${infrastructure.id}:ring`,
+          relayKey: `${infrastructure.id}:relay`,
+          lane: {
+            id: infrastructure.id,
+            name: infrastructure.name,
+            fromSectorId: body.sectorId,
+            toSectorId: body.sectorId,
+            ceilingMult: Math.max(1, finite(infrastructure.ceilingMult, 1)),
+            rampMult: Math.max(1, finite(infrastructure.rampMult, 1)),
+            manufactured: true,
+          },
+        };
+        this._manufacturedCache.set(infrastructure.id, cached);
+      }
+      cached.infrastructure = infrastructure;
+      cached.body = body;
+      this._manufacturedRoutes.push(cached);
+    };
 
     const bus = this.bus;
     if (bus && typeof bus.on === 'function') {
@@ -176,6 +249,9 @@ export const travelLanes = {
         this._trafficIds.length = 0;
         this._ambushRequested.clear();
         this._lastSignature = null;
+        this._manufacturedRoutes.length = 0;
+        this._manufacturedCache.clear();
+        this._manufacturedEntityIds.clear();
       });
     }
   },
@@ -194,16 +270,50 @@ export const travelLanes = {
     if (!player || !player.pos) return;
     // ── everything past this line runs only in live play, on a real player ──
 
-    const fix = resolveLaneSegment(geometry, player.pos);
-    const disrupted = !!(fix.inLane && fix.segment && fix.segment.disrupted);
-    const boosting = fix.inLane && !disrupted;
+    const authoredFix = resolveLaneSegmentInto(geometry, player.pos, this._authoredFixScratch);
+    const disrupted = !!(authoredFix.inLane && authoredFix.segment && authoredFix.segment.disrupted);
+    let statusLane = this.lane;
+    let statusGeometry = geometry;
+    let statusFix = authoredFix;
+    let statusInfrastructure = null;
+    let boostLane = authoredFix.inLane && !disrupted ? this.lane : null;
 
-    this._applyDriveModifier(state, player, boosting);
+    this._manufacturedRoutes.length = 0;
+    const claims = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('claims')
+      : null;
+    if (claims && typeof claims.visitTravelInfrastructure === 'function') {
+      claims.visitTravelInfrastructure(
+        state.world && state.world.currentSectorId,
+        this._collectManufactured,
+      );
+    }
+    for (const route of this._manufacturedRoutes) {
+      const fix = resolveLaneSegmentInto(route.geometry, player.pos, route.fixScratch);
+      if (!fix.inLane) continue;
+      if (!statusFix.inLane || route.lane.ceilingMult > finite(statusLane.ceilingMult, 1)) {
+        statusLane = route.lane;
+        statusGeometry = route.geometry;
+        statusFix = fix;
+        statusInfrastructure = route.infrastructure;
+      }
+      if (route.infrastructure.operational === true
+        && (!boostLane || route.lane.ceilingMult > finite(boostLane.ceilingMult, 1))) {
+        boostLane = route.lane;
+      }
+    }
+    const boosting = !!boostLane && !disrupted;
+
+    this._applyDriveModifier(state, player, boosting ? boostLane : null);
     this._applyDisruption(state, disrupted);
-    if (disrupted) this._requestAmbush(state, fix.segment);
+    if (disrupted) this._requestAmbush(state, authoredFix.segment);
     this._updateBeacons(state, player);
     this._updateTraffic(state, player);
-    this._publish(state, fix, disrupted, boosting);
+    this._updateManufacturedStructures(state, player);
+    this._publish(
+      state, statusLane, statusGeometry, statusFix, disrupted, boosting,
+      statusInfrastructure, boosting ? boostLane : null,
+    );
   },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -230,7 +340,7 @@ export const travelLanes = {
    *
    * We never touch `cap` — that is the carried ramp state, owned by the input↔kernel round trip.
    */
-  _applyDriveModifier(state, player, boosting) {
+  _applyDriveModifier(state, player, boostLane) {
     const drive = state.input && state.input.travelDrive;
     // No block means the travel-drive axis is off (flag or latch); there is nothing to modify, and
     // fabricating one here would make this system a second owner of an axis it does not own.
@@ -244,8 +354,8 @@ export const travelLanes = {
     }
     if (!(base > 0)) return;
 
-    const ceilingMult = boosting ? Math.max(1, finite(this.lane.ceilingMult, 1)) : 1;
-    const rampMult = boosting ? Math.max(1, finite(this.lane.rampMult, 1)) : 1;
+    const ceilingMult = boostLane ? Math.max(1, finite(boostLane.ceilingMult, 1)) : 1;
+    const rampMult = boostLane ? Math.max(1, finite(boostLane.rampMult, 1)) : 1;
     drive.ceiling = base * ceilingMult;
     drive.rampMult = rampMult;
   },
@@ -480,6 +590,100 @@ export const travelLanes = {
     }
   },
 
+  /**
+   * Materialize each manufactured route's two saved structures. They are ordinary authored-place
+   * entities on static physics bodies: visible, scannable and solid, but neither one moves a ship.
+   * One spawn per tick keeps a newly loaded sector from admitting every structure in one burst.
+   */
+  _updateManufacturedStructures(state, player) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const entities = state.entities;
+    if (typeof spawnEntity !== 'function' || !entities || !entities.get) return;
+    let spawned = false;
+    for (const route of this._manufacturedRoutes) {
+      const infrastructure = route.infrastructure;
+      const body = route.body;
+      const operational = infrastructure.operational === true;
+      if (route.presentationStage !== infrastructure.stage
+        || route.presentationOperational !== operational) {
+        const stageLabel = operational
+          ? 'ONLINE'
+          : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
+        route.presentationStage = infrastructure.stage;
+        route.presentationOperational = operational;
+        route.ringLabel = `${infrastructure.name} ring — ${stageLabel}`;
+        route.relayLabel = `${infrastructure.name} nav relay — ${stageLabel}`;
+      }
+      spawned = this._ensureManufacturedStructure(
+        state, player, spawnEntity, entities, route, body,
+        route.ringKey, 'ring', infrastructure.from, 'place_gate_jump_ring', 0.72, 32, route.ringLabel, spawned,
+      );
+      spawned = this._ensureManufacturedStructure(
+        state, player, spawnEntity, entities, route, body,
+        route.relayKey, 'relay', infrastructure.support, 'place_nav_buoy', 1, 12, route.relayLabel, spawned,
+      );
+    }
+  },
+
+  _ensureManufacturedStructure(
+    state, player, spawnEntity, entities, route, body,
+    key, part, pos, placeId, placeScale, radius, label, spawned,
+  ) {
+    const infrastructure = route.infrastructure;
+    const existingId = this._manufacturedEntityIds.get(key);
+    const existing = existingId != null ? entities.get(existingId) : null;
+    if (existing && existing.alive !== false) {
+      const data = existing.data || (existing.data = {});
+      if (data.claimTravelStage !== infrastructure.stage
+        || data.claimTravelOperational !== (infrastructure.operational === true)) {
+        data.name = label;
+        data.scanLabel = label;
+        data.claimTravelOperational = infrastructure.operational === true;
+        data.claimTravelStage = infrastructure.stage;
+      }
+      return spawned;
+    }
+    if (existingId != null) this._manufacturedEntityIds.delete(key);
+    if (spawned) return spawned;
+    const dx = finite(pos && pos.x) - finite(player.pos.x);
+    const dz = finite(pos && pos.z) - finite(player.pos.z);
+    if (dx * dx + dz * dz > BEACON_SPAWN_RANGE_WU * BEACON_SPAWN_RANGE_WU) return spawned;
+    const entity = spawnEntity({
+      type: 'fx',
+      factionId: 'faction_player',
+      pos: { x: finite(pos.x), z: finite(pos.z) },
+      rot: Math.atan2(route.geometry.axis.z, route.geometry.axis.x),
+      radius,
+      mass: 1e6,
+      collides: true,
+      hull: 1e6,
+      hullMax: 1e6,
+      ttl: Infinity,
+      flags: { invuln: true },
+      data: {
+        placeId,
+        placeScale,
+        visualRadius: radius,
+        placeRadius: radius,
+        name: label,
+        scanLabel: label,
+        homeSectorId: body.sectorId,
+        sectorId: body.sectorId,
+        claimId: body.id,
+        claimTravelInfrastructureId: infrastructure.id,
+        claimTravelPart: part,
+        claimTravelOperational: infrastructure.operational === true,
+        claimTravelStage: infrastructure.stage,
+        tetherable: false,
+      },
+    });
+    if (entity && entity.id != null) {
+      this._manufacturedEntityIds.set(key, entity.id);
+      return true;
+    }
+    return spawned;
+  },
+
   // ─────────────────────────────────────────────────────────────────────────────────────────────
   // the published contract (D8 acceptance item 7)
   // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -496,16 +700,18 @@ export const travelLanes = {
    * Emitted on CHANGE, not per tick: a per-tick nav event would be noise on the bus and would make
    * the event trace unreadable at exactly the moment travel is interesting.
    */
-  _publish(state, fix, disrupted, boosting) {
-    const geometry = this.geometry;
-    const recovery = disrupted ? nextIntactBeacon(geometry, fix.alongWU) : null;
+  _publish(state, lane, geometry, fix, disrupted, boosting, infrastructure = null, appliedLane = null) {
+    const recovery = disrupted && !lane.manufactured ? nextIntactBeacon(geometry, fix.alongWU) : null;
     const driveBlock = state.input && state.input.travelDrive;
     const status = {
       schema: TRAVEL_LANE_SCHEMA,
-      laneId: this.lane.id,
-      name: this.lane.name,
-      fromSectorId: this.lane.fromSectorId,
-      toSectorId: this.lane.toSectorId,
+      laneId: lane.id,
+      name: lane.name,
+      fromSectorId: lane.fromSectorId,
+      toSectorId: lane.toSectorId,
+      manufactured: lane.manufactured === true,
+      infrastructureStage: infrastructure ? infrastructure.stage : null,
+      infrastructureOperational: infrastructure ? infrastructure.operational === true : null,
       inLane: fix.inLane,
       alongWU: fix.alongWU,
       offAxisWU: fix.offAxisWU,
@@ -513,11 +719,17 @@ export const travelLanes = {
       segmentIndex: fix.segmentIndex,
       segmentCount: geometry.segments.length,
       beaconCount: geometry.beacons.length,
-      segmentState: fix.segment ? (fix.segment.disrupted ? 'disrupted' : 'intact') : null,
+      segmentState: fix.segment
+        ? fix.segment.disrupted
+          ? 'disrupted'
+          : infrastructure && !infrastructure.operational
+            ? infrastructure.stage === 'aligning' ? 'aligning' : 'offline'
+            : 'intact'
+        : null,
       disrupted,
       boosted: boosting,
-      ceilingMult: boosting ? this.lane.ceilingMult : 1,
-      rampMult: boosting ? this.lane.rampMult : 1,
+      ceilingMult: boosting && appliedLane ? appliedLane.ceilingMult : 1,
+      rampMult: boosting && appliedLane ? appliedLane.rampMult : 1,
       driveState: driveBlock && typeof driveBlock.state === 'string' ? driveBlock.state : 'off',
       recoveryBeaconIndex: recovery ? recovery.index : null,
       recoveryBeaconPos: recovery ? { x: recovery.pos.x, z: recovery.pos.z } : null,
@@ -526,7 +738,7 @@ export const travelLanes = {
     };
     state.travelLanes = status;
 
-    const signature = `${status.inLane}|${status.segmentIndex}|${status.segmentState}|${status.boosted}|${status.disrupted}|${status.driveState}`;
+    const signature = `${status.laneId}|${status.inLane}|${status.segmentIndex}|${status.segmentState}|${status.boosted}|${status.disrupted}|${status.driveState}`;
     if (signature === this._lastSignature) return;
     this._lastSignature = signature;
     this._emit('nav:laneStatus', status);

@@ -42,6 +42,23 @@ export const BODY_MODULES = [
     effect: 'teleport', // enables instant travel between body and linked station
   },
   {
+    id: 'mod_throughline_sling', name: 'Throughline Sling',
+    desc: 'Fabricates a permanent acceleration ring and nav relay on the clear line to this claim’s linked station. Travel Burn is amplified only while the ship remains inside that physical corridor.',
+    cost: 18000, techReq: 'tech_graviton_drives',
+    requiresSpec: 'spec_refinery',
+    slots: 1,
+    effect: 'travel_sling',
+    materials: Object.freeze({
+      cmdty_alloys: 12,
+      cmdty_comp_circuitry: 6,
+      cmdty_fuel_cells: 4,
+    }),
+    alignTimeS: 12,
+    ceilingMult: 2,
+    rampMult: 2,
+    corridorRadiusWU: 240,
+  },
+  {
     id: 'mod_defense', name: 'Defense Battery', desc: 'Automated turret that protects the body from raids. Required on dangerous frontier claims.',
     cost: 8000, techReq: 'tech_outpost_charter',
     slots: 1,

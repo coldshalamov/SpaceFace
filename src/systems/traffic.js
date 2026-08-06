@@ -198,9 +198,16 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
-    this.bus.on('save:loaded', () => this._applyWorldSiteTrafficHooks(
+    this.bus.on('save:loaded', () => {
+      const sectorId = this.state.world && this.state.world.currentSectorId;
+      this._applyWorldSiteTrafficHooks(sectorId);
+      this._applyClaimTravelHooks(sectorId);
+    });
+    const refreshClaimTravel = () => this._applyClaimTravelHooks(
       this.state.world && this.state.world.currentSectorId,
-    ));
+    );
+    this.bus.on('claim:infrastructureActive', refreshClaimTravel);
+    this.bus.on('claim:infrastructureStatus', refreshClaimTravel);
     this.bus.on('worldSite:operationReceipt', ({ siteId, receipt } = {}) => {
       // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
       // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
@@ -248,6 +255,7 @@ export const traffic = {
     if (need <= 0) {
       this._ensureNamedLaneContact(sectorId, sector, stations);
       this._applyWorldSiteTrafficHooks(sectorId);
+      this._applyClaimTravelHooks(sectorId);
       return;
     }
 
@@ -313,6 +321,7 @@ export const traffic = {
       // producer claims eligible haulers. Later spawns see the existing hook and remain available
       // to their ordinary jobs, so this changes ownership for exactly one deterministic hull.
       this._applyWorldSiteTrafficHooks(sectorId);
+      this._applyClaimTravelHooks(sectorId);
       // PQ-014: a miner/hauler/patrol hull naturally receives a deterministic NPC job here. The job
       // (not this ad-hoc stepper) then flies it; the update() dispatch yields for any hull with a
       // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
@@ -321,6 +330,7 @@ export const traffic = {
     }
     this._ensureNamedLaneContact(sectorId, sector, stations);
     this._applyWorldSiteTrafficHooks(sectorId);
+    this._applyClaimTravelHooks(sectorId);
   },
 
   _applyWorldSiteTrafficHooks(sectorId) {
@@ -344,7 +354,9 @@ export const traffic = {
       const available = this.state.traffic.freighters
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
         .filter(({ rec, entity }) => rec && entity
-          && !(entity.data && (entity.data.jobId || entity.data.worldSiteTrafficHookId)))
+          && !(entity.data && (entity.data.jobId
+            || entity.data.worldSiteTrafficHookId
+            || entity.data.claimTravelTrafficHookId)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       // World-record rematerialization preserves the durable entity tag but rebuilds the transient
       // traffic record. Rebind that same ambient slot before looking for a new one; otherwise the
@@ -382,6 +394,68 @@ export const traffic = {
     return assigned;
   },
 
+  _applyClaimTravelHooks(sectorId) {
+    if (!sectorId) return 0;
+    const owner = this._registry && this._registry.get && this._registry.get('claims');
+    const hooks = owner && typeof owner.travelInfrastructureHooks === 'function'
+      ? owner.travelInfrastructureHooks(sectorId)
+      : [];
+    this._ensureState();
+    const activeIds = new Set(hooks.map((hook) => hook.id));
+    for (const rec of this.state.traffic.freighters) {
+      if (!rec || !rec.claimTravelRoute || activeIds.has(rec.claimTravelRoute.hookId)) continue;
+      const entity = liveEntity(this.state, rec.id);
+      if (entity && entity.data) {
+        delete entity.data.claimTravelTrafficHookId;
+        if (entity.data.trafficLabel === rec.claimTravelRoute.label) delete entity.data.trafficLabel;
+      }
+      delete rec.claimTravelRoute;
+    }
+    if (!hooks.length) return 0;
+    let assigned = 0;
+    const stations = this._sectorStations();
+    for (const hook of hooks) {
+      const station = stations.find((candidate) => stationIdentity(candidate) === hook.stationId);
+      if (!station || !hook.slingPos) continue;
+      const existing = this.state.traffic.freighters.find((rec) => rec && rec.claimTravelRoute
+        && rec.claimTravelRoute.hookId === hook.id
+        && liveEntity(this.state, rec.id));
+      if (existing) continue;
+      const eligibleRoles = new Set(hook.eligibleRoles || []);
+      const available = this.state.traffic.freighters
+        .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
+        .filter(({ rec, entity }) => rec && entity
+          && !(entity.data && (entity.data.jobId
+            || entity.data.worldSiteTrafficHookId
+            || entity.data.claimTravelTrafficHookId)))
+        .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+      const marked = this.state.traffic.freighters
+        .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
+        .filter(({ rec, entity }) => rec && entity
+          && entity.data && entity.data.claimTravelTrafficHookId === hook.id
+          && (eligibleRoles.has(rec.role) || isWorldSiteTrafficFallbackRole(rec.role))
+          && !entity.data.jobId)
+        .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)))[0];
+      const preferred = available.find(({ rec }) => eligibleRoles.has(rec.role));
+      const fallback = available.find(({ rec }) => isWorldSiteTrafficFallbackRole(rec.role));
+      const chosen = marked || preferred || fallback;
+      if (!chosen) continue;
+      chosen.rec.claimTravelRoute = {
+        hookId: hook.id,
+        stationId: hook.stationId,
+        slingPos: { x: hook.slingPos.x, z: hook.slingPos.z },
+        endpoint: 'sling',
+        label: hook.label,
+      };
+      chosen.rec.targetId = null;
+      const data = chosen.entity.data || (chosen.entity.data = {});
+      data.claimTravelTrafficHookId = hook.id;
+      data.trafficLabel = hook.label || data.trafficLabel;
+      assigned += 1;
+    }
+    return assigned;
+  },
+
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
   // job kinds: role 'miner' → miner job (home refinery ↔ asteroid field), 'hauler' → hauler job
   // (origin → destination terminal run), 'patrol' → patrol job (cyclic beat around a station).
@@ -391,7 +465,7 @@ export const traffic = {
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
     if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
-    if (ent.data.worldSiteTrafficHookId) return;               // World Site traffic owns this slot
+    if (ent.data.worldSiteTrafficHookId || ent.data.claimTravelTrafficHookId) return; // infrastructure owns this slot
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (spec) assign(ent, spec);
   },
@@ -741,11 +815,13 @@ export const traffic = {
     if (stations.length === 0) return;
 
     let lostWorldSiteRoute = false;
+    let lostClaimTravelRoute = false;
     for (let i = list.length - 1; i >= 0; i--) {
       const rec = list[i];
       const e = state.entities.get(rec.id);
       if (!e || !e.alive) {
         if (rec && rec.worldSiteRoute) lostWorldSiteRoute = true;
+        if (rec && rec.claimTravelRoute) lostClaimTravelRoute = true;
         list.splice(i, 1);
         continue;
       }
@@ -756,6 +832,10 @@ export const traffic = {
 
       if (rec.worldSiteRoute) {
         this._stepWorldSiteRoute(e, rec, stations, dt);
+        continue;
+      }
+      if (rec.claimTravelRoute) {
+        this._stepClaimTravelRoute(e, rec, stations, dt);
         continue;
       }
 
@@ -821,6 +901,9 @@ export const traffic = {
     if (lostWorldSiteRoute) {
       this._applyWorldSiteTrafficHooks(state.world && state.world.currentSectorId);
     }
+    if (lostClaimTravelRoute) {
+      this._applyClaimTravelHooks(state.world && state.world.currentSectorId);
+    }
   },
 
   _stepWorldSiteRoute(entity, rec, stations, dt) {
@@ -848,6 +931,36 @@ export const traffic = {
       return;
     }
     setIntent(entity, 0, 1, false, false, null, aim);
+  },
+
+  _stepClaimTravelRoute(entity, rec, stations, dt) {
+    const route = rec.claimTravelRoute;
+    const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
+    const target = route.endpoint === 'station'
+      ? station && station.pos
+      : route.slingPos;
+    if (!target) {
+      setIntent(entity, 0, 0, false, false, null, entity.rot);
+      return;
+    }
+    rec.targetId = route.endpoint === 'station' && station ? station.id : null;
+    if (rec.waitT > 0) {
+      rec.waitT = Math.max(0, rec.waitT - dt);
+      setIntent(entity, 0, 0, false, false, null, entity.rot);
+      return;
+    }
+    const dx = target.x - entity.pos.x;
+    const dz = target.z - entity.pos.z;
+    const aim = Math.atan2(dz, dx);
+    if (Math.hypot(dx, dz) < DOCK_RANGE) {
+      route.endpoint = route.endpoint === 'station' ? 'sling' : 'station';
+      rec.waitT = 2.5;
+      setIntent(entity, 0, 0, false, false, null, aim);
+      return;
+    }
+    // This is a normal V3 intent. The infrastructure chooses the job's two physical endpoints;
+    // it never assigns position or velocity and never bypasses NPC thrust/turn authority.
+    setIntent(entity, 0, 1, true, false, null, aim);
   },
 
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
@@ -1071,6 +1184,7 @@ export const traffic = {
       if (list[i] && list[i].id === p.id) { rec = list[i]; idx = i; break; }
     }
     const lostWorldSiteRoute = !!(rec && rec.worldSiteRoute);
+    const lostClaimTravelRoute = !!(rec && rec.claimTravelRoute);
     const ent = this.state.entities && this.state.entities.get && this.state.entities.get(p.id);
     const role = (rec && rec.role)
       || (ent && ent.data && ent.data.trafficRole)
@@ -1081,6 +1195,9 @@ export const traffic = {
       if (idx >= 0) list.splice(idx, 1);
       if (lostWorldSiteRoute) {
         this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+      }
+      if (lostClaimTravelRoute) {
+        this._applyClaimTravelHooks(this.state.world && this.state.world.currentSectorId);
       }
       return;
     }
@@ -1140,6 +1257,9 @@ export const traffic = {
     if (activeIdx >= 0) this._active.splice(activeIdx, 1);
     if (lostWorldSiteRoute) {
       this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+    }
+    if (lostClaimTravelRoute) {
+      this._applyClaimTravelHooks(this.state.world && this.state.world.currentSectorId);
     }
   },
 

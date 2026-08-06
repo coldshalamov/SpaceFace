@@ -7,6 +7,7 @@ import {
   BODY_MODULE_BY_ID,
   BODY_SLOTS_BY_SIZE,
   BODY_SPECIALIZATIONS,
+  BODY_SPECIALIZATION_BY_ID,
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
@@ -14,7 +15,7 @@ import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
-const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_defense', 'mod_refinery', 'mod_teleporter'];
+const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_refinery', 'mod_throughline_sling', 'mod_defense', 'mod_teleporter'];
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -115,6 +116,10 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
   const techOk = !mod.techReq || researched.has(mod.techReq);
   const afford = credits >= cost;
   const slotFree = usedSlots < slots;
+  const materials = player.cargo && player.cargo.items || {};
+  const missingMaterial = Object.entries(mod.materials || {}).find(([id, need]) => (
+    Math.max(0, Number(materials[id]) || 0) < Math.max(0, Number(need) || 0)
+  ));
 
   if (built) {
     return {
@@ -131,6 +136,26 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
       disabled: true,
       label: 'Research ' + req,
       title: mod.name + ' requires ' + req + ' before this base can build it.',
+    };
+  }
+  if (mod.requiresSpec && (!body.spec || body.spec.id !== mod.requiresSpec || body.spec.status !== 'active')) {
+    const spec = BODY_SPECIALIZATION_BY_ID.get(mod.requiresSpec);
+    return {
+      state: 'requires',
+      disabled: true,
+      label: 'Commission ' + ((spec && spec.short) || pretty(mod.requiresSpec)),
+      title: mod.name + ' can only be aligned from an active ' + ((spec && spec.name) || pretty(mod.requiresSpec)) + ' claim.',
+    };
+  }
+  if (missingMaterial) {
+    const [id, needRaw] = missingMaterial;
+    const need = Math.max(0, Number(needRaw) || 0);
+    const have = Math.max(0, Number(materials[id]) || 0);
+    return {
+      state: 'materials',
+      disabled: true,
+      label: 'Need ' + (need - have) + ' ' + pretty(id.replace(/^cmdty_/, '')),
+      title: mod.name + ' requires ' + need + ' ' + pretty(id.replace(/^cmdty_/, '')) + '; the hold carries ' + have + '.',
     };
   }
   if (!afford) {
@@ -154,7 +179,8 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
     state: 'available',
     disabled: false,
     label: 'Build',
-    title: 'Build ' + mod.name + ' on ' + (body.name || 'this base') + ' for ' + fmtCr(cost) + ' cr.',
+    title: 'Build ' + mod.name + ' on ' + (body.name || 'this base') + ' for ' + fmtCr(cost) + ' cr'
+      + (Object.keys(mod.materials || {}).length ? ' plus the listed carried materials.' : '.'),
   };
 }
 
@@ -454,6 +480,17 @@ export const baseScreen = {
         ? ledgerValue((ledger.risk.tripChance || 0) * 100, '%') : 'Lawful volume');
       appendLedgerCell(grid, 'Lifetime output', ledgerValue(ledger.flows && ledger.flows.refinedTotalU, 'u'));
       appendLedgerCell(grid, 'Relay revenue', ledgerValue(ledger.flows && ledger.flows.soldTotalCr, ' cr'));
+      if (ledger.infrastructure) {
+        const infra = ledger.infrastructure;
+        const stage = infra.operational
+          ? 'ONLINE'
+          : infra.stage === 'aligning'
+            ? 'ALIGNING · ' + ledgerValue(infra.alignRemainingS, 's')
+            : 'OFFLINE';
+        appendLedgerCell(grid, 'Throughline', stage);
+        appendLedgerCell(grid, 'Sling route', (infra.stationName || infra.stationId || '—')
+          + ' · ×' + ledgerValue(infra.ceilingMult));
+      }
       ledgerEl.appendChild(grid);
 
       const freight = document.createElement('div');
@@ -525,10 +562,14 @@ export const baseScreen = {
       const built = body.modules.includes(mod.id);
       const buildAction = describeBaseBuildAction(mod, player, body);
       const techLabel = mod.techReq ? ' · ' + techName(mod.techReq) : '';
+      const materialLabel = Object.entries(mod.materials || {})
+        .map(([id, qty]) => qty + ' ' + pretty(id.replace(/^cmdty_/, '')))
+        .join(' · ');
       card.innerHTML =
         '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span style="color:var(--good)">✓ built</span>' : '') + '</div>' +
         '<div class="desc">' + escapeHtml(mod.desc || '') + '</div>' +
-        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + escapeHtml(techLabel) + '</span></div>';
+        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + escapeHtml(techLabel)
+          + (materialLabel ? ' · ' + escapeHtml(materialLabel) : '') + '</span></div>';
       if (!built) {
         const btn = document.createElement('button');
         btn.className = 'sf-btn sf-btn--primary';

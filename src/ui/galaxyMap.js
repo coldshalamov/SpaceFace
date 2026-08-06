@@ -1085,6 +1085,18 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
     pieces.push('uncommissioned');
     pieces.push('approach and open Base to build');
   }
+  const infrastructure = ledger && ledger.infrastructure || body.infrastructure || null;
+  if (infrastructure) {
+    const infraState = infrastructure.operational
+      ? 'Throughline online'
+      : infrastructure.stage === 'aligning'
+        ? `Throughline aligning ${whole(infrastructure.alignRemainingS)}s`
+        : 'Throughline offline';
+    pieces.push(infraState);
+    if (infrastructure.stationName || infrastructure.stationId) {
+      pieces.push(`route ${infrastructure.stationName || infrastructure.stationId}`);
+    }
+  }
   const position = liveEntity && liveEntity.pos || { x: Number(body.x) || 0, z: Number(body.z) || 0 };
   return {
     id: `player-claim:${body.id || body.poiId || 'unknown'}`,
@@ -1098,10 +1110,18 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
     status,
     statusLine: pieces.join(' · '),
     playerVerb: def ? def.playerVerb : 'Open the Base interface to build this claim.',
-    consequence: def ? def.consequence : 'An owned site awaiting an operating identity.',
+    consequence: infrastructure
+      ? `${def ? def.consequence : 'Owned claim.'} Throughline multiplies the pilot’s own Travel Burn only inside its physical corridor.`
+      : def ? def.consequence : 'An owned site awaiting an operating identity.',
     riskLine: def ? def.riskLine : 'Uncommissioned sites provide no operating benefit.',
     x: Number(position.x) || 0,
     z: Number(position.z) || 0,
+    infrastructure: infrastructure ? {
+      id: infrastructure.id || null,
+      stage: infrastructure.stage || 'offline',
+      operational: infrastructure.operational === true,
+      stationId: infrastructure.stationId || null,
+    } : null,
   };
 }
 
@@ -1112,9 +1132,14 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     ? claimsSystem.list()
     : state && state.claims && Array.isArray(state.claims.bodies) ? state.claims.bodies : [];
   const liveByPoi = new Map();
+  const liveByInfrastructurePart = new Map();
   for (const entity of entityIterator(state)) {
     const poiId = entity && entity.alive !== false && entity.data && entity.data.poiId;
     if (poiId) liveByPoi.set(poiId, entity);
+    const infrastructureId = entity && entity.alive !== false && entity.data
+      && entity.data.claimTravelInfrastructureId;
+    const part = entity && entity.data && entity.data.claimTravelPart;
+    if (infrastructureId && part) liveByInfrastructurePart.set(`${infrastructureId}:${part}`, entity);
   }
   const markers = [];
   for (const body of bodies) {
@@ -1125,6 +1150,45 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     const marker = describeClaimMapMarker(body, ledger, liveByPoi.get(body.poiId) || null);
     marker.drawPos = globalToSectorLocalForSector(marker, sid);
     markers.push(marker);
+    const infrastructure = body.infrastructure;
+    if (!infrastructure || !infrastructure.from || !infrastructure.support) continue;
+    const operational = infrastructure.operational === true;
+    const status = operational
+      ? 'ONLINE'
+      : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
+    for (const partDef of [
+      { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
+      { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
+    ]) {
+      const live = liveByInfrastructurePart.get(`${infrastructure.id}:${partDef.id}`) || null;
+      const point = live && live.pos || partDef.pos;
+      const partMarker = {
+        id: `player-infrastructure:${infrastructure.id}:${partDef.id}`,
+        claimId: body.id,
+        targetEntityId: live && live.id || null,
+        kind: 'claim-throughline',
+        role: partDef.role,
+        glyph: partDef.glyph,
+        color: operational ? '#39d0ff' : '#87939c',
+        name: `${partDef.role} · ${body.name} ${partDef.name}`,
+        status,
+        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
+        playerVerb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
+        consequence: 'Multiplies the pilot’s own drive ceiling and ramp only inside the constructed route.',
+        riskLine: 'If the industrial claim goes cold or is raided, ordinary unassisted flight remains available.',
+        x: Number(point.x) || 0,
+        z: Number(point.z) || 0,
+        infrastructure: {
+          id: infrastructure.id,
+          part: partDef.id,
+          stage: infrastructure.stage,
+          operational,
+          stationId: infrastructure.stationId,
+        },
+      };
+      partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
+      markers.push(partMarker);
+    }
   }
   return markers;
 }
@@ -8216,7 +8280,7 @@ export const galaxyMapScreen = {
       g.restore();
 
       labelCandidates.push(makeMapLabelCandidate(g, {
-        id: `claim:${marker.claimId}`,
+        id: `claim:${marker.id || marker.claimId}`,
         kind: 'claim',
         text: marker.name,
         lines: [marker.name, marker.statusLine],
@@ -8698,7 +8762,7 @@ export const galaxyMapScreen = {
       g.restore();
 
       labelCandidates.push(makeMapLabelCandidate(g, {
-        id: `claim:${marker.claimId}`,
+        id: `claim:${marker.id || marker.claimId}`,
         kind: 'claim',
         text: marker.name,
         lines: [marker.name, marker.statusLine],
