@@ -147,11 +147,30 @@ def build_claim_mark():
     # Claim plate on the LEE side, hung on two bolts, 0.4 x 0.25 m.
     put(box('claim_plate', (0.40, 0.03, 0.25), (0.19, 0.10, 1.35), rot=(0, 0, math.radians(-14))),
         'furniture_identity_plate', r)
-    # Caged miner-amber gel lamp, mid-shaft.
-    put(cyl('claim_lamp_cage', 0.075, 0.16, (-0.16, 0.02, 1.10), rot=(0, math.pi / 2, 0), verts=8),
-        'furniture_structural_alloy', r)
+    # Caged miner-amber gel lamp, mid-shaft. The cage is BARS, not a tube — review finding 6 called
+    # the first pass's smooth cylinder out, and bars are what make a caged lamp read as caged.
+    for i, (oy, oz) in enumerate(((0.055, 0), (-0.055, 0), (0, 0.055), (0, -0.055))):
+        put(box(f'claim_cage_bar_{i}', (0.14, 0.014, 0.014), (-0.20, 0.02 + oy, 1.10 + oz)),
+            'furniture_structural_alloy', r)
     put(cyl('claim_lamp_lens', 0.052, 0.05, (-0.24, 0.02, 1.10), rot=(0, math.pi / 2, 0), verts=8),
         'furniture_signal_lens', r)
+    # Paint-marker nozzle at the capsule tip, CAPPED WITH SLAG after the first cut bloom.
+    put(cyl('claim_paint_nozzle', 0.038, 0.12, (0, -tip * 2.9, 2.76), rot=(lean, 0, 0), verts=8),
+        'furniture_structural_alloy', r)
+    put(cyl('claim_nozzle_slag', 0.052, 0.05, (0, -tip * 3.1, 2.84), rot=(lean, 0, 0), verts=6),
+        'furniture_scorch', r)
+    # Spare gel puck, taped to the flange. Secondary mass off the vertical, which is what stops the
+    # whole thing reading as a nail with a bead past ~150 units.
+    put(cyl('claim_spare_puck', 0.040, 0.04, (0.26, -0.10, 0.09), rot=(math.pi / 2, 0, 0), verts=8),
+        'furniture_signal_lens', r)
+    put(box('claim_puck_tape', (0.11, 0.09, 0.01), (0.26, -0.10, 0.13)), 'furniture_painted_shell', r)
+    # Faded flag streamer of heat-cloth, hung off the ring with a mid-bend so it is not a flat card.
+    st_a = put(box('claim_streamer_a', (0.40, 0.012, 0.12), (0.30, -tip * 2.2, 2.52)),
+               'furniture_painted_shell', r)
+    st_a.rotation_euler = (0, math.radians(-16), math.radians(9))
+    st_b = put(box('claim_streamer_b', (0.36, 0.012, 0.10), (0.62, -tip * 2.0, 2.36)),
+               'furniture_painted_shell', r)
+    st_b.rotation_euler = (0, math.radians(-38), math.radians(-14))
     # Scarred tether loop for suit handholds.
     bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.016,
                                      location=(0.13, -0.02, 0.62), rotation=(math.pi / 2, 0, 0),
@@ -260,33 +279,74 @@ def build_tally_post():
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# 4. WHISTLE — Free Frontier distress relay, "somebody bolted together; no licence, no upkeep".
-#    Deliberately the least symmetric body in the family. Nothing here lines up with anything.
+# 4. WHISTLE — Free Frontier distress relay.
+#
+# REBUILT after adversarial review round 1, finding 4: the first pass was "a tank with sticks" and
+# carried the WRONG DAMAGE IDENTITY — a tilted drum and three straight aerials, when the fiction
+# specifies "a 2.2 m scavenged fuel drum (1 m diameter) clamped with cargo straps and three unequal
+# chains... a 0.7 m jury mast of welded rebar and a lamp cluster in a shopping basket of wire...
+# a wide-band antenna bent from a survey paddle... antenna S-curved... one chain replaced with
+# polymer line; drum lid warped and held with a clamp."
+#
+# The distinction matters: asymmetry alone is noise. Asymmetry that names WHICH part failed and what
+# it was replaced with is character, and it is what makes two Free Frontier relays differ.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_whistle():
     r = root_for('place_whistle')
-    # The primary mass is a salvaged tank, mounted off-axis because the mount was what was to hand.
-    drum = put(cyl('whistle_tank', 0.62, 1.55, (0, 0, 0.90), rot=(math.radians(12), 0, 0), verts=14),
-               'furniture_bare_steel', r)
-    put(box('whistle_strap_a', (1.34, 0.09, 0.10), (0, 0.05, 1.22)), 'furniture_structural_alloy', r)
-    put(box('whistle_strap_b', (1.34, 0.09, 0.10), (0, -0.02, 0.58)), 'furniture_structural_alloy', r)
-    # Three mismatched aerials: different lengths, different angles, one clearly a replacement.
-    for i, (ln, tilt, yaw, role) in enumerate((
-        (1.35, 0.10, 0.0, 'furniture_structural_alloy'),
-        (0.85, 0.34, 2.1, 'furniture_bare_steel'),
-        (1.10, -0.22, 4.0, 'furniture_structural_alloy'),
+    # Scavenged fuel drum, 1.0 m diameter x 2.2 m, upright. The drum is honest; everything on it
+    # is not.
+    put(cyl('whistle_drum', 0.50, 2.20, (0, 0, 1.20), verts=14), 'furniture_bare_steel', r)
+    # Warped lid, held down with a clamp because it no longer seats.
+    lid = put(cyl('whistle_lid_warped', 0.52, 0.06, (0, 0, 2.33), verts=14),
+              'furniture_structural_alloy', r)
+    lid.rotation_euler = (math.radians(7), math.radians(-4), 0)
+    put(box('whistle_lid_clamp', (0.16, 0.44, 0.05), (0.28, 0, 2.38)), 'furniture_bare_steel', r)
+    # Two cargo straps.
+    for i, z in enumerate((0.72, 1.66)):
+        put(cyl(f'whistle_strap_{i}', 0.53, 0.07, (0, 0, z), verts=14), 'furniture_painted_shell', r)
+    # THREE UNEQUAL CHAINS — 0.9 / 1.3 / 1.1 m. The third is polymer line: thinner, and a different
+    # material, because somebody ran out of chain.
+    for i, (yaw, ln, rad, role) in enumerate((
+        (0.5, 0.90, 0.030, 'furniture_bare_steel'),
+        (2.6, 1.30, 0.030, 'furniture_bare_steel'),
+        (4.6, 1.10, 0.018, 'furniture_painted_shell'),   # the polymer swap
     )):
-        a = put(cyl(f'whistle_aerial_{i}', 0.028, ln, (math.cos(yaw) * 0.34, math.sin(yaw) * 0.34,
-                                                       1.75 + ln * 0.5), verts=6), role, r)
-        a.rotation_euler = (tilt, 0, yaw)
-    # A single red-white lens, oversized for the body — it was scavenged from something bigger.
-    put(cyl('whistle_lens', 0.17, 0.20, (0.30, -0.16, 1.86), verts=12), 'furniture_signal_lens', r)
-    # Cell pack taped on the outside, because there was never a bay for it.
-    put(box('whistle_cell_pack', (0.44, 0.30, 0.26), (-0.52, 0.24, 0.86),
-            rot=(0, 0, math.radians(9))), 'furniture_painted_shell', r)
-    put(box('whistle_tape_patch', (0.50, 0.34, 0.02), (-0.52, 0.24, 1.02)), 'furniture_scorch', r)
-    # Scorch collar where somebody welded it to a rock in a hurry and did not clean the burn.
-    put(cyl('whistle_weld_collar', 0.70, 0.09, (0, 0.05, 0.10), verts=14), 'furniture_scorch', r)
+        links = 4
+        for k in range(links):
+            t = (k + 0.5) / links
+            put(cyl(f'whistle_chain_{i}_{k}', rad, ln / links,
+                    (math.cos(yaw) * (0.54 + t * 0.10), math.sin(yaw) * (0.54 + t * 0.10),
+                     0.30 + (1 - t) * 0.9),
+                    rot=(math.radians(74), 0, yaw + (0.35 if k % 2 else 0)), verts=4), role, r)
+    # A boot, hanging off the longest chain. Nobody knows whose.
+    put(box('whistle_boot', (0.28, 0.12, 0.12),
+            (math.cos(2.6) * 0.66, math.sin(2.6) * 0.66, 0.24)), 'furniture_painted_shell', r)
+    # Jury mast: 0.7 m of welded rebar, three rods that do not agree with each other.
+    for i, (dx_, dy_, tilt) in enumerate(((0.0, 0.0, 0.0), (0.06, 0.03, 0.16), (-0.05, 0.05, -0.11))):
+        rod = put(cyl(f'whistle_rebar_{i}', 0.018, 0.70, (dx_, dy_, 2.72), verts=4),
+                  'furniture_bare_steel', r)
+        rod.rotation_euler = (tilt, tilt * 0.6, 0)
+    # Lamp cluster in a basket of wire — an open frame, not a housing. Three lamp blobs inside it.
+    for i, (ox, oy) in enumerate(((0.17, 0), (-0.17, 0), (0, 0.17), (0, -0.17))):
+        put(box(f'whistle_basket_bar_{i}', (0.03, 0.03, 0.30), (ox, oy, 3.18)),
+            'furniture_bare_steel', r)
+    for i, (ox, oy, oz) in enumerate(((0.05, 0.03, 3.14), (-0.06, -0.02, 3.20), (0.01, -0.06, 3.10))):
+        put(cyl(f'whistle_lamp_{i}', 0.062, 0.09, (ox, oy, oz), verts=8), 'furniture_signal_lens', r)
+    # Wide-band antenna BENT FROM A SURVEY PADDLE, S-curved: three segments that reverse direction.
+    put(box('whistle_paddle_root', (0.45, 0.08, 0.02), (0.30, 0.10, 2.50),
+            rot=(0, math.radians(18), math.radians(22))), 'furniture_structural_alloy', r)
+    seg = ((0.58, 0.16, 2.66, 0.34), (0.78, 0.30, 2.92, -0.42), (0.88, 0.14, 3.16, 0.28))
+    for i, (sx, sy, sz, bend) in enumerate(seg):
+        a = put(cyl(f'whistle_antenna_s_{i}', 0.016, 0.42, (sx, sy, sz), verts=4),
+                'furniture_structural_alloy', r)
+        a.rotation_euler = (bend, math.radians(24), 0)
+    # Hand crank on the drum flank — the thing a survivor actually turns.
+    put(cyl('whistle_crank_hub', 0.07, 0.10, (-0.52, 0, 1.20), rot=(0, math.pi / 2, 0), verts=8),
+        'furniture_structural_alloy', r)
+    put(box('whistle_crank_arm', (0.05, 0.26, 0.04), (-0.60, 0.12, 1.20)), 'furniture_bare_steel', r)
+    put(box('whistle_plaque', (0.30, 0.02, 0.16), (0, -0.51, 1.60)), 'furniture_identity_plate', r)
+    # Scorch collar where it was welded to a rock in a hurry.
+    put(cyl('whistle_weld_collar', 0.60, 0.09, (0, 0, 0.06), verts=14), 'furniture_scorch', r)
     return r
 
 
@@ -373,27 +433,57 @@ def build_cold_locker():
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# 6. ASH PIN — a memorial where a hull died. "Nobody moves them. Nobody maintains them either."
-#    Its whole read is that it is the only thing in the lane with no working function.
+# 6. ASH PIN — a memorial where a hull died.
+#
+# REBUILT after adversarial review round 1, finding 5: the first pass was a tidy plaque-on-slab and
+# the review named it "wrong damage language". The fiction says "a 3.5 m slender pin — often a cut
+# spar... spar leaned by the explosion... plate half-melted on one corner; lamp cage empty more
+# often than not; ballast chain one link wrong alloy."
+#
+# The lean is the whole read. A memorial that stands straight has been maintained, and the entry's
+# closing line is that nobody maintains these.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_ash_pin():
     r = root_for('place_ash_pin')
-    # A section of the dead hull's own plate, stood upright. Bent, not cut square.
-    plate = put(box('ash_hull_plate', (1.30, 0.09, 2.10), (0, 0, 1.05),
-                    rot=(math.radians(6), 0, math.radians(-3))), 'furniture_bare_steel', r)
-    put(box('ash_plate_fold', (0.62, 0.09, 0.52), (0.52, 0.06, 2.02),
-            rot=(0, math.radians(24), math.radians(-3))), 'furniture_bare_steel', r)
-    put(cyl('ash_stem', 0.10, 1.0, (0, 0, 0.5), verts=8), 'furniture_structural_alloy', r)
-    put(cyl('ash_foot', 0.46, 0.10, (0, 0, 0.05), verts=12), 'furniture_structural_alloy', r)
-    # The name plate is the only cared-for surface on it, and it is small.
-    put(box('ash_name_plate', (0.52, 0.03, 0.20), (0, -0.07, 1.42)), 'furniture_identity_plate', r)
-    # One cold lamp, unlit ceramic rather than a live lens: the pin does not signal, it remembers.
-    put(cyl('ash_lamp_dead', 0.07, 0.09, (0, -0.08, 1.86), rot=(math.pi / 2, 0, 0), verts=8),
+    LEAN = math.radians(13.0)          # "leaned by the explosion", never straightened
+    # Poured base, 1 m across.
+    put(cyl('ash_base', 0.50, 0.26, (0, 0, 0.13), verts=10), 'furniture_structural_alloy', r)
+    # A cut spar, 3.5 m, slender. It is a piece of the dead hull, not a monument someone ordered.
+    spar = put(cyl('ash_spar', 0.07, 3.50, (0, 0, 1.95), verts=8), 'furniture_bare_steel', r)
+    spar.rotation_euler = (LEAN, 0, 0)
+    # The cut end is ragged: a short offset stub where the torch wandered.
+    stub = put(box('ash_spar_cut_end', (0.11, 0.09, 0.22),
+                   (0.03, -math.sin(LEAN) * 1.75 - 0.05, 3.62)), 'furniture_bare_steel', r)
+    stub.rotation_euler = (LEAN + 0.22, 0, math.radians(11))
+    # Name plate, 0.5 x 0.3 m, bolted mid-spar — the only cared-for surface on the whole object.
+    plate_y = -math.sin(LEAN) * 0.55
+    put(box('ash_name_plate', (0.50, 0.03, 0.30), (0, plate_y - 0.09, 1.72)),
+        'furniture_identity_plate', r)
+    # ONE CORNER HALF-MELTED. Modelled as a small canted wedge eating into the plate corner, so the
+    # silhouette of the plate is no longer a clean rectangle.
+    melt = put(box('ash_plate_melt_corner', (0.14, 0.04, 0.14), (0.20, plate_y - 0.10, 1.85)),
+               'furniture_scorch', r)
+    melt.rotation_euler = (0, 0, math.radians(38))
+    # Lamp cage — EMPTY. Four thin bars and no lens. The absence is the signal: the pin does not
+    # advertise, it remembers, and nobody has replaced the cell in years.
+    cage_y = -math.sin(LEAN) * 1.15
+    for i, (ox, oy) in enumerate(((0.055, 0), (-0.055, 0), (0, 0.055), (0, -0.055))):
+        put(box(f'ash_cage_bar_{i}', (0.016, 0.016, 0.20), (ox, cage_y + oy, 2.62)),
+            'furniture_structural_alloy', r)
+    put(cyl('ash_cage_ring', 0.075, 0.018, (0, cage_y, 2.72), verts=8),
         'furniture_structural_alloy', r)
-    # Tokens left by passing crews, accumulated at the foot. Three, at different angles.
-    for i, (x, y, s, a) in enumerate(((0.24, 0.20, 0.11, 0.4), (-0.30, 0.12, 0.08, 1.9),
-                                      (0.06, -0.28, 0.09, 3.1))):
-        t = put(box(f'ash_token_{i}', (s, s, s * 0.35), (x, y, 0.13)), 'furniture_painted_shell', r)
+    # Ballast chain from the foot. ONE LINK IS THE WRONG ALLOY — thicker, and a different material.
+    for k in range(5):
+        wrong = (k == 2)
+        put(cyl(f'ash_ballast_link_{k}', 0.030 if wrong else 0.022, 0.15,
+                (0.30 + k * 0.09, 0.16 - k * 0.05, 0.16),
+                rot=(math.radians(90 if k % 2 else 0), 0, math.radians(24)), verts=5),
+            'furniture_bare_steel' if wrong else 'furniture_structural_alloy', r)
+    # Tokens left by passing crews, at the foot, at three angles.
+    for i, (x, y, sz, a) in enumerate(((0.22, 0.20, 0.11, 0.4), (-0.28, 0.11, 0.08, 1.9),
+                                       (0.05, -0.26, 0.09, 3.1))):
+        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35), (x, y, 0.30)),
+                'furniture_painted_shell', r)
         t.rotation_euler = (0, 0, a)
     return r
 
