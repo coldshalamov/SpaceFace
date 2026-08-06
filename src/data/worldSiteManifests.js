@@ -6,6 +6,7 @@ import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import {
   CINDER_SLUICE_PLACEMENT,
   CINDER_SLUICE_SITE_ID,
+  CINDER_SLUICE_TRAFFIC_STAGING_POS,
 } from './environmentalMachinery.js';
 
 export const WORLD_SITE_MANIFEST_VERSION = 4;
@@ -479,6 +480,8 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
       id: 'ceres_cinder_sluice_service', stationId: 'station_beltout',
       eligibleRoles: Object.freeze(['hauler', 'courier']),
       label: 'Belt Outpost ↔ Cinder Sluice',
+      hazardPolicy: 'cinder-sluice-phase-gate',
+      stagingPos: CINDER_SLUICE_TRAFFIC_STAGING_POS,
     }),
     producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' }),
     debug: Object.freeze({

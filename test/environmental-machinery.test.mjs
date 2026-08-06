@@ -7,12 +7,14 @@ import {
   CINDER_SLUICE_OPERATIONS,
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
+  CINDER_SLUICE_TRAFFIC_STAGING_POS,
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../src/data/environmentalMachinery.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fieldKernel.js';
 import { environmentalMachinery } from '../src/systems/environmentalMachinery.js';
+import { traffic } from '../src/systems/traffic.js';
 import {
   applyWorldSiteOperation,
   createWorldSiteRecord,
@@ -243,4 +245,69 @@ test('the occupied Cinder Sluice corridor exposes its phase clock through the fi
   player.pos.z = CINDER_SLUICE_FIELD.center.z - CINDER_SLUICE_FIELD.dir.z * 180;
   assert.equal(hud._resolveEnvironmental(state, 10_000), null,
     'the clock does not occupy the HUD outside the authored corridor');
+});
+
+test('Cinder service traffic stages for unsafe inbound phases without physics immunity', () => {
+  const manifest = worldSiteManifestById(CINDER_SLUICE_SITE_ID);
+  const record = createWorldSiteRecord(manifest, { tick: 0 });
+  const station = {
+    id: 90, type: 'station', alive: true,
+    pos: { x: CINDER_SLUICE_TRAFFIC_STAGING_POS.x + 800, z: CINDER_SLUICE_TRAFFIC_STAGING_POS.z },
+    data: { stationId: 'station_beltout' },
+  };
+  const site = {
+    id: 91, type: 'poi', alive: true,
+    pos: { ...CINDER_SLUICE_FIELD.center },
+    data: { worldRecordId: `${CINDER_SLUICE_SITE_ID}/root` },
+  };
+  const hauler = {
+    id: 92, type: 'ship', alive: true,
+    pos: { ...CINDER_SLUICE_TRAFFIC_STAGING_POS },
+    vel: { x: 7, z: -3 }, rot: 0, data: {},
+  };
+  const state = {
+    simTime: 3, playerId: 1,
+    sites: { worldById: { [CINDER_SLUICE_SITE_ID]: record } },
+    entities: new Map([[station.id, station], [site.id, site], [hauler.id, hauler]]),
+  };
+  const rec = {
+    waitT: 0,
+    worldSiteRoute: {
+      hookId: 'ceres_cinder_sluice_service',
+      siteId: CINDER_SLUICE_SITE_ID,
+      stationId: 'station_beltout',
+      siteWorldRecordId: `${CINDER_SLUICE_SITE_ID}/root`,
+      endpoint: 'site',
+      label: 'Belt Outpost ↔ Cinder Sluice',
+      hazardPolicy: 'cinder-sluice-phase-gate',
+      stagingPos: { ...CINDER_SLUICE_TRAFFIC_STAGING_POS },
+    },
+  };
+  const system = Object.create(traffic);
+  system.state = state;
+  const posBefore = { ...hauler.pos };
+  const velBefore = { ...hauler.vel };
+
+  system._stepWorldSiteRoute(hauler, rec, [station], 1 / 60);
+  assert.equal(hauler.data.intent.moveZ, 0, 'inbound service holds beyond the surge boundary');
+  assert.deepEqual(rec.worldSiteRoute.hazardHold.phase, 'surge');
+  assert.deepEqual(hauler.pos, posBefore, 'traffic policy never writes position');
+  assert.deepEqual(hauler.vel, velBefore, 'traffic policy never writes velocity');
+
+  state.simTime = 10;
+  system._stepWorldSiteRoute(hauler, rec, [station], 1 / 60);
+  assert.equal(hauler.data.intent.moveZ, 1, 'the same craft enters under ordinary thrust during calm');
+  assert.equal(rec.worldSiteRoute.hazardHold, undefined);
+
+  state.simTime = 3;
+  hauler.pos.x = CINDER_SLUICE_FIELD.center.x + CINDER_SLUICE_FIELD.dir.x * 120;
+  hauler.pos.z = CINDER_SLUICE_FIELD.center.z + CINDER_SLUICE_FIELD.dir.z * 120;
+  system._stepWorldSiteRoute(hauler, rec, [station], 1 / 60);
+  assert.equal(hauler.data.intent.moveZ, 1,
+    'a craft already inside keeps flying instead of receiving a hidden rescue controller');
+
+  rec.worldSiteRoute.endpoint = 'station';
+  hauler.pos = { ...site.pos };
+  system._stepWorldSiteRoute(hauler, rec, [station], 1 / 60);
+  assert.equal(hauler.data.intent.moveZ, 1, 'outbound service may ride the same downstream surge');
 });

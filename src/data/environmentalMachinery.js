@@ -46,6 +46,14 @@ export const CINDER_SLUICE_FIELD = Object.freeze({
   team: null,
 });
 
+// Service traffic approaches from the current's downstream side and waits here until the field is
+// calm. The point sits beyond the soft cone boundary, so the same physical law that moves the
+// player and ballast cannot shove a waiting hauler while it demonstrates the safe approach.
+export const CINDER_SLUICE_TRAFFIC_STAGING_POS = Object.freeze({
+  x: CINDER_SLUICE_FIELD.center.x + CINDER_SLUICE_FIELD.dir.x * (CINDER_SLUICE_FIELD.radius + 96),
+  z: CINDER_SLUICE_FIELD.center.z + CINDER_SLUICE_FIELD.dir.z * (CINDER_SLUICE_FIELD.radius + 96),
+});
+
 const UNREGULATED_CYCLE = Object.freeze({ warningS: 2, surgeS: 7, calmS: 3 });
 const REGULATED_CYCLE = Object.freeze({ warningS: 3, surgeS: 5, calmS: 7 });
 

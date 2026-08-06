@@ -44,6 +44,11 @@ import {
   regionalTrafficDensityMultiplier,
   regionalTrafficRoleWeights,
 } from './regionalEcology.js';
+import {
+  CINDER_SLUICE_SITE_ID,
+  cinderSluicePhase,
+  pointInsideCinderSluice,
+} from '../data/environmentalMachinery.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -412,10 +417,15 @@ export const traffic = {
       if (!chosen) continue;
       chosen.rec.worldSiteRoute = {
         hookId: hook.id,
+        siteId: hook.siteId,
         stationId: hook.stationId,
         siteWorldRecordId: rootWorldRecordId,
         endpoint: 'site',
         label: hook.label,
+        hazardPolicy: hook.hazardPolicy || null,
+        stagingPos: hook.stagingPos && Number.isFinite(hook.stagingPos.x) && Number.isFinite(hook.stagingPos.z)
+          ? { x: hook.stagingPos.x, z: hook.stagingPos.z }
+          : null,
       };
       chosen.rec.targetId = root.id;
       const data = chosen.entity.data || (chosen.entity.data = {});
@@ -997,20 +1007,48 @@ export const traffic = {
     const site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
     const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
     const target = route.endpoint === 'station' ? station : site;
-    if (!target || !target.pos) {
+    let targetPos = target && target.pos;
+    let targetId = target && target.id;
+    let stagingForHazard = false;
+    if (route.endpoint === 'site'
+      && route.hazardPolicy === 'cinder-sluice-phase-gate'
+      && route.siteId === CINDER_SLUICE_SITE_ID
+      && route.stagingPos) {
+      const record = this.state.sites && this.state.sites.worldById
+        && this.state.sites.worldById[CINDER_SLUICE_SITE_ID];
+      const phase = record ? cinderSluicePhase(record, this.state.simTime) : null;
+      const alreadyCommitted = pointInsideCinderSluice(entity.pos);
+      if (phase && !alreadyCommitted && phase.phase !== 'calm' && phase.phase !== 'quiet') {
+        targetPos = route.stagingPos;
+        targetId = null;
+        stagingForHazard = true;
+        const hold = route.hazardHold || (route.hazardHold = {});
+        hold.phase = phase.phase;
+        hold.remainingS = phase.remainingS;
+      } else {
+        delete route.hazardHold;
+      }
+    } else {
+      delete route.hazardHold;
+    }
+    if (!targetPos) {
       setIntent(entity, 0, 0, false, false, null, entity.rot);
       return;
     }
-    rec.targetId = target.id;
+    rec.targetId = targetId;
     if (rec.waitT > 0) {
       rec.waitT = Math.max(0, rec.waitT - dt);
       setIntent(entity, 0, 0, false, false, null, entity.rot);
       return;
     }
-    const dx = target.pos.x - entity.pos.x;
-    const dz = target.pos.z - entity.pos.z;
+    const dx = targetPos.x - entity.pos.x;
+    const dz = targetPos.z - entity.pos.z;
     const aim = Math.atan2(dz, dx);
     if (Math.hypot(dx, dz) < DOCK_RANGE) {
+      if (stagingForHazard) {
+        setIntent(entity, 0, 0, false, false, null, aim);
+        return;
+      }
       route.endpoint = route.endpoint === 'station' ? 'site' : 'station';
       rec.waitT = 2.5;
       setIntent(entity, 0, 0, false, false, null, aim);
