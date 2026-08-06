@@ -248,3 +248,28 @@ and not used to start a validator-tuning loop.
   not reduced.
 - This closes the required three-asset production pilot. Broader package expansion and absolute cold/warm
   admission benchmarking remain optional later units, not hidden conditions on this accepted pilot.
+
+## Geology-family production expansion 2026-08-06
+
+The ordinary authored-place source URLs for `place_asteroid_rock_a`, `place_asteroid_rock_b`, and
+`place_asteroid_rock_c` now resolve through the same accepted production-package route. The binding keeps
+both existing identities explicit: the live place IDs remain the source-URL selectors, while the internal
+authored GLB identities remain `SF_PLACE_HELIOS_ROCK_A/B/C`. No source or release GLB, texture, material,
+LOD node, placement, collision, gameplay data, renderer setting, or quality default changed.
+
+| Package | Accepted source SHA-256 | Package content hash | Indexed geometry |
+|---|---|---|---:|
+| Helios Rock A | `05d8ed9c2770df65d48c331a843a92052efe5bc86990932364d403fe7e1983a6` | `da6de21f6db41ac2f853067c74b6af6629e67996d4a11040cfb9d458c62bedb5` | 6 / 6 |
+| Helios Rock B | `4d6dfecdbbd783a4694a19f03aa65300a3ea6bfd905785950b33f7eacaec114f` | `c74ea12b1518565d4b51834ba8954c7374b8c683d46f53daade4763ee27a10e4` | 6 / 6 |
+| Helios Rock C | `6e6d96ad5f75fb1908236204171462329fb491de5a14ee3ac0c29ba98fe42752` | `273659798ba653d0b64e3542f2a12bfd9e5155ed7af06ea49013d365fbfd4f13` | 7 / 7 |
+
+Adding a package changes the hash-bound source-manifest provenance for the existing package set, so the
+generated metadata and runtime trust manifest were atomically rebound. With the lockfile's exact glTF
+Transform 4.4.1 toolchain, every previously accepted `render.glb` remained byte-identical; only the three
+new geology binaries were added.
+
+Focused verification was bounded to the production seam: `test/render-package-pilots.test.mjs` passed
+3/3, and `npm run check:render-package-pilots` rebuilt all 17 packages byte-for-byte. The broader
+`check:runtime-assets` command retained its unchanged three-source fingerprint (Kestrel hull LOD markers
+and two uncompressed Wasp LOD releases); none of those inputs are in this unit, and the command was not
+repeated. No headed route or one-use performance claim was spent on this deterministic offline expansion.

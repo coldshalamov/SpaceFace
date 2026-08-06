@@ -42,6 +42,9 @@ test('production manifest packages every live whole-ship family and admitted aut
     'helios-trade-hub',
     'ceres-refinery',
     'jump-ring',
+    'helios-rock-a',
+    'helios-rock-b',
+    'helios-rock-c',
     'debris-chunk',
     'dead-hulk',
     'dock-interior',
@@ -64,6 +67,12 @@ test('production manifest packages every live whole-ship family and admitted aut
     'assets/ships/release/parts/places/place_gate_jump_ring.glb',
   );
   assert.equal(jumpRing?.runtimeAssetId, 'SF_PLACE_GATE_JUMP_RING');
+  for (const suffix of ['a', 'b', 'c']) {
+    const geology = renderPackagePilotForSourceUrl(
+      `assets/ships/release/parts/places/place_asteroid_rock_${suffix}.glb`,
+    );
+    assert.equal(geology?.runtimeAssetId, `SF_PLACE_HELIOS_ROCK_${suffix.toUpperCase()}`);
+  }
 
   for (const binding of RENDER_PACKAGE_PILOTS) {
     assert.strictEqual(renderPackagePilotForSourceUrl(binding.sourceUrl), binding);

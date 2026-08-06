@@ -4682,6 +4682,44 @@
       "blocker": null
     },
     {
+      "id": "PQ-037.geology-render-packages",
+      "parentId": "PQ-037",
+      "priority": 247,
+      "title": "Package the shipped geology family for runtime admission",
+      "kind": "implementation",
+      "state": "done",
+      "owner": "released",
+      "claimBase": "1a0f7e4607678a6f29ddcb253c0a63d1aede276e",
+      "dependsOn": [
+        "PQ-037.native-acceptance"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "renderer"
+      ],
+      "paths": [
+        "assets/ships/render-packages/pilots.json",
+        "assets/ships/release/render-packages/",
+        "assets/ships/release/render-packages/helios-rock-a/",
+        "assets/ships/release/render-packages/helios-rock-b/",
+        "assets/ships/release/render-packages/helios-rock-c/",
+        "src/render/renderPackageManifest.js",
+        "test/render-package-pilots.test.mjs",
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node --test test/render-package-pilots.test.mjs",
+        "npm run check:render-package-pilots",
+        "npm run check:runtime-assets"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
+      ],
+      "brief": "The exact accepted Rock A, B, and C releases now have rebuildable immutable render packages. All 19 geology geometries remain indexed and preserve authored identity, hierarchy, materials, LOD nodes, placement, defaults, and visuals while ordinary source-URL admission bypasses runtime geometry clone, transform, merge, normalization, and de-index preparation. Package-focused tests passed 3/3 and all 17 production packages rebuilt byte-identically; the unchanged runtime-assets audit retained its Kestrel/Wasp source-asset failure fingerprint without a retry.",
+      "blocker": null
+    },
+    {
       "id": "PQ-038.native-acceptance",
       "parentId": "PQ-038",
       "priority": 223,
