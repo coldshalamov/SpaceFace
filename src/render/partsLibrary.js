@@ -1099,7 +1099,19 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     gracefulFallback: false,
   };
 
+  let activeRoot = fallbackRoot;
+  const setActiveVisualRoot = (next) => {
+    if (!next || !next.isObject3D) return;
+    activeRoot = next;
+    boundary.userData.hull = next;
+    const level = boundary.userData.lod && boundary.userData.lod.level || 'lod0';
+    if (typeof next.userData?.updateLod === 'function') next.userData.updateLod(level);
+  };
   boundary.userData.hull = fallbackRoot;
+  boundary.userData.__setActiveVisualRoot = setActiveVisualRoot;
+  boundary.userData.updateLod = (level) => {
+    if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
+  };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene) => {
     if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
@@ -1112,9 +1124,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
         loadAuthoredPart: options.loadAuthoredPart,
         admissionEntity: options.liveEntity || entity,
         ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer),
-      }, (next) => {
-        boundary.userData.hull = next;
-      }),
+      }, setActiveVisualRoot),
       renderer,
       options: { releaseMode, ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer) },
     });

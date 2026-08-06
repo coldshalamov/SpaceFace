@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   authoredBootstrapPreloadPlan,
   buildAuthoredPlaceProp,
+  buildAuthoredStationArchetype,
   isInitialAuthoredCompositionEntity,
   resolvePlaceFileForEntity,
   upgradeAuthoredPlaceBoundaryForProbe,
@@ -486,6 +487,71 @@ test('authored place LODs remain under the stable boundary and switch by authore
   assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
   boundary.userData.updateLod('lod2');
   assert.equal(boundary.userData.hull, authoredRoot, 'LOD changes never replace the entity root');
+  assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
+  boundary.userData.updateLod('lod1');
+  assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
+});
+
+test('authored station LOD requests reach the admitted root after the async swap', async () => {
+  const entity = {
+    id: 27,
+    type: 'station',
+    alive: true,
+    radius: 34,
+    pos: { x: 0, z: 0 },
+    data: {
+      stationId: 'station_helios',
+      archetypeGlb: 'place_station_trade_hub',
+      placeId: 'place_station_trade_hub',
+      dockRadius: 72,
+      placeScale: 72 / 14,
+    },
+  };
+  const boundary = buildAuthoredStationArchetype(entity, { releaseMode: true });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const material = new THREE.MeshStandardMaterial();
+  const record = {
+    url: 'assets/ships/release/parts/places/place_station_trade_hub.glb',
+    assetId: 'place_station_trade_hub',
+    slot: 'place',
+    bounds: { size: [28, 18, 28], center: [0, 0, 0] },
+    primitives: ['lod0', 'lod1', 'lod2'].map((lod, index) => ({
+      key: `${lod}:0`,
+      name: `${lod}_TradeHub`,
+      geometry: new THREE.BoxGeometry(28 - index * 4, 18 - index * 2, 28 - index * 4),
+      material,
+      matrix: new THREE.Matrix4(),
+      tags: { lod },
+    })),
+    markers: [],
+  };
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_station_trade_hub.glb',
+    {},
+    scene,
+    { releaseMode: true, loadAuthoredPart: async () => record },
+  );
+  const authoredRoot = boundary.userData.hull;
+  const visibility = () => Object.fromEntries(['lod0', 'lod1', 'lod2'].map((lod) => {
+    let visible = false;
+    authoredRoot.traverse((object) => {
+      if (object.userData?.spacefaceTags?.lod === lod && object.visible) visible = true;
+    });
+    return [lod, visible];
+  }));
+
+  assert.equal(swapped, true);
+  assert.equal(boundary.userData.hlod?.proxyDisabledReason, 'stable-authored-identity');
+  assert.equal(boundary.userData.hull, authoredRoot, 'LOD forwarding preserves the admitted station root');
+  assert.deepEqual(visibility(), { lod0: true, lod1: false, lod2: false });
+  boundary.userData.updateLod('lod2');
+  assert.equal(boundary.userData.hull, authoredRoot, 'LOD changes never replace the station identity');
   assert.deepEqual(visibility(), { lod0: false, lod1: false, lod2: true });
   boundary.userData.updateLod('lod1');
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
