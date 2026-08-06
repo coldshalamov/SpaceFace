@@ -206,6 +206,7 @@ export const tetherGameplay = {
         masslineCommand,
         lineLengthCommand,
         automaticBreakAllowed,
+        att && att.tetherPolicy && att.tetherPolicy.headId,
       );
       return;
     }
@@ -757,6 +758,7 @@ export const tetherGameplay = {
     command = null,
     lineLengthCommand = 0,
     automaticBreakAllowed = false,
+    headId = null,
   ) {
     const player = state.player || (state.player = {});
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
@@ -777,6 +779,9 @@ export const tetherGameplay = {
     // This is a mirror of the attachment authority's decision, not a second policy. Consumers must
     // fail closed: an absent/false flag means load telemetry is informational, never a break alarm.
     t.automaticBreakAllowed = !!(t.active && automaticBreakAllowed);
+    // A deployed line snapshots its fitted head policy. Mirror that immutable attachment identity
+    // instead of reading the player's current fitting, which may change while this line is active.
+    t.headId = t.active && typeof headId === 'string' ? headId : null;
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;
   },

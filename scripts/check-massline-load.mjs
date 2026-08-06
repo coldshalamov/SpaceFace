@@ -47,6 +47,7 @@ assertSlackLoadIsNearZero();
 assertCaptureLoadUnderTension();
 assertLoadedLowStrainLoad();
 assertOverloadLoad();
+assertSpecializedHeadMirrorUsesAttachmentSnapshot();
 
 console.log('Massline load checks OK');
 
@@ -125,6 +126,25 @@ function assertOverloadLoad() {
   assertNear(h.state.player.masslineTelemetry.strain, 0.8, 'telemetry.strain must stay physical under overload');
 }
 
+// The HUD/VFX mirror must report the deployed attachment's immutable head policy. Reading the
+// current fitting here would make an already-fired line change character after a Shipworks refit.
+function assertSpecializedHeadMirrorUsesAttachmentSnapshot() {
+  const h = createHarness();
+  primeActiveTether(h, {
+    restLength: 90,
+    lastTension: 0.1 * BREAK_TENSION,
+    tetherPolicy: { headId: 'tractor' },
+  });
+  stepOnce(h);
+  assert.equal(h.state.player.tether.headId, 'tractor',
+    'active tether mirror must expose the head snapshotted on its attachment');
+
+  h.tether._active = null;
+  stepOnce(h);
+  assert.equal(h.state.player.tether.headId, null,
+    'inactive tether mirror must clear stale specialized-head identity');
+}
+
 // ---- harness (mirrors check-massline-release-rating.mjs) ----
 
 function createHarness() {
@@ -189,9 +209,14 @@ function makeFakeAttachments() {
   };
 }
 
-function primeActiveTether(harness, { restLength = 100, lastTension = 0, pastCapture = false } = {}) {
+function primeActiveTether(harness, {
+  restLength = 100,
+  lastTension = 0,
+  pastCapture = false,
+  ...attachmentProps
+} = {}) {
   const { state, tether, attachments } = harness;
-  attachments.seed({ restLength, lastTension });
+  attachments.seed({ restLength, lastTension, ...attachmentProps });
   tether._active = { attachmentId: ATT_ID, targetId: TARGET_ID, type: TETHER_DEF_ID };
   tether._ignoreReleaseCutUntilReelIdle = false;
   tether._pendingCut = null;

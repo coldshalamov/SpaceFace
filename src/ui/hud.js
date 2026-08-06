@@ -427,6 +427,12 @@ export function travelTapeNavigationState(nav = {}) {
 // masslineTetherStatus below.
 const TETHER_STATUS_LOADED_LOAD = 0.5;
 const TETHER_STATUS_HIGH_LOAD = 0.88;
+const MASSLINE_HEAD_LABELS = Object.freeze({
+  tractor: 'TRACTOR',
+  elastic_whip: 'ELASTIC WHIP',
+  frame_coupler: 'FRAME COUPLER',
+  monofilament_sweep: 'MONOFILAMENT',
+});
 
 /**
  * Resolve the truthful Massline status copy from the gameplay-owned tether mirror.
@@ -477,8 +483,9 @@ export function masslineTetherStatus(tether) {
   } else if (phase === 'loaded' || load > TETHER_STATUS_LOADED_LOAD || strain > 0.6) {
     status = operation ? `${operation} · LOADED` : 'LOADED';
   } else status = operation || 'LOCKED';
+  const headLabel = MASSLINE_HEAD_LABELS[tether && tether.headId] || '';
   return {
-    text: status,
+    text: headLabel ? `${headLabel} · ${status}` : status,
     warn: automaticBreakAllowed && strain > 0.6,
   };
 }

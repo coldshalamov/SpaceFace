@@ -201,6 +201,26 @@ function assertHudCopyMatchesBreakAuthority() {
     'normal line-control activity and truthful load telemetry must remain visible together');
   assert.equal(ordinaryReel.warn, false);
 
+  for (const [headId, label] of [
+    ['tractor', 'TRACTOR'],
+    ['elastic_whip', 'ELASTIC WHIP'],
+    ['frame_coupler', 'FRAME COUPLER'],
+    ['monofilament_sweep', 'MONOFILAMENT'],
+  ]) {
+    const specialized = masslineTetherStatus({
+      active: true,
+      phase: 'loaded',
+      load: 0.55,
+      strain: 0.1,
+      headId,
+      automaticBreakAllowed: false,
+    });
+    assert.equal(specialized.text, `${label} · LOADED`,
+      `${headId} must be named alongside the truthful active-line state`);
+    assert.equal(specialized.warn, false,
+      `${headId} identity must not manufacture a break warning`);
+  }
+
   const extreme = masslineTetherStatus({
     active: true,
     phase: 'overload',
