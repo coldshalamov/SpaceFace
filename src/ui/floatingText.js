@@ -5,6 +5,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
+import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
 
@@ -18,6 +19,14 @@ for (const sec of SECTORS) {
   if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
 }
 const STYLE_ID = 'sf-floattext-style';
+
+export function factionRepToastText(state, payload = {}) {
+  const fac = FACTION_BY_ID[payload.factionId];
+  const name = fac ? fac.short : (payload.factionId || 'Unknown');
+  if (shouldHideOwnRepDelta(state)) return 'STANDING UPDATE ROUTED · ' + name;
+  const delta = Math.round(Number(payload.delta) || 0);
+  return (delta > 0 ? '+' : '') + delta + ' REP · ' + name;
+}
 
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
@@ -143,11 +152,8 @@ export function createFloatingText(ctx) {
   // ---- faction rep changes ------------------------------------------------------------------
   bus.on('faction:repChanged', (p) => {
     if (!p || !p.delta) return;
-    const fac = FACTION_BY_ID[p.factionId];
-    const name = fac ? fac.short : (p.factionId || 'Unknown');
-    const sign = p.delta > 0 ? '+' : '';
     const kind = p.delta > 0 ? 'good' : 'danger';
-    bus.emit('toast', { text: sign + Math.round(p.delta) + ' REP · ' + name, kind, ttl: 3.5 });
+    bus.emit('toast', { text: factionRepToastText(state, p), kind, ttl: 3.5 });
   });
 
   // ---- cargo full ---------------------------------------------------------------------------

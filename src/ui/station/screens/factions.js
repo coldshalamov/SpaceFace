@@ -6,6 +6,7 @@
 import { FACTION_META } from '../../../data/factions.js';
 import { NEW_GAME } from '../../../data/newGameDefaults.js';
 import { SECTORS } from '../../../data/sectors.js';
+import { shouldHideOwnRepDelta } from '../../../story/endings/publicIdentity.js';
 import {
   tierFor,
   FACTION_TIERS,
@@ -190,7 +191,9 @@ export function createFactionsScreen(ctx) {
     const tint = tintFor(f.id);
     const next = nextTierInfo(rep);
     const live = liveFaction(state, f.id);
-    const guidance = factionStandingGuidance(rep, f.meta || {}, live && live.lastDelta);
+    const guidance = factionStandingGuidance(rep, f.meta || {}, live && live.lastDelta, {
+      hideLastDelta: shouldHideOwnRepDelta(state),
+    });
     const relations = relationEntries(f.meta);
     const positions = relations.map((relation, index) => {
       const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / Math.max(1, relations.length));
@@ -283,7 +286,9 @@ export function createFactionsScreen(ctx) {
       );
     }).join('');
     const meta = f.meta || {};
-    const guidance = factionStandingGuidance(rep, meta, liveFaction(state, f.id) && liveFaction(state, f.id).lastDelta);
+    const guidance = factionStandingGuidance(rep, meta, liveFaction(state, f.id) && liveFaction(state, f.id).lastDelta, {
+      hideLastDelta: shouldHideOwnRepDelta(state),
+    });
     const relations = relationEntries(meta);
 
     detailEl.innerHTML =

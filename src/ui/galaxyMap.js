@@ -23,6 +23,7 @@ import { SECTORS } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
+import { publicOperatorLabel } from '../story/endings/publicIdentity.js';
 import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
@@ -1125,6 +1126,12 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
       stationId: infrastructure.stationId || null,
     } : null,
   };
+}
+
+/** Public identity printed beside the ship's own chart fix. Choice B is driven by its applied,
+ * saved consequence flag; merely previewing or selecting that ending cannot change the map. */
+export function mapOperatorLabel(state) {
+  return publicOperatorLabel(state);
 }
 
 /** Build owned-site markers once for both SYSTEM and LOCAL unified-map models. */
@@ -5216,6 +5223,7 @@ export const galaxyMapScreen = {
     const state = this._ctx && this._ctx.state;
     this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
     this._syncMarketCommoditySelector(state);
+    this._syncPublicIdentity(state);
     const intent = takeMapOpenIntent(state) || { focus: MAP_FOCUS.SYSTEM };
     const view = applyMapOpenIntentToView({
       zoom: this._zoom,
@@ -5425,6 +5433,15 @@ export const galaxyMapScreen = {
     }
   },
 
+  _syncPublicIdentity(state = this._ctx && this._ctx.state) {
+    if (!HAS_DOC || !this._root) return;
+    const stamp = this._root.querySelector('.gm-stamp');
+    if (!stamp) return;
+    const label = mapOperatorLabel(state);
+    const text = label === 'OPERATOR: UNKNOWN' ? `${label} / Quiet routing` : 'Nav chart / Survey table';
+    if (stamp.textContent !== text) stamp.textContent = text;
+  },
+
   /**
    * Read the motion preference once per show rather than per frame. The global CSS rule in
    * styles/accessibility.css kills DOM transitions, but canvas animation is drawn by hand and has
@@ -5533,6 +5550,7 @@ export const galaxyMapScreen = {
 
   refresh() {
     if (galaxyMapScreen._visible) {
+      galaxyMapScreen._syncPublicIdentity();
       galaxyMapScreen._draw();
       galaxyMapScreen._updateInspector();
       galaxyMapScreen._syncScaleButtons();
@@ -7937,7 +7955,7 @@ export const galaxyMapScreen = {
       g.fillStyle = INK.ink1;
       g.textAlign = 'left';
       g.textBaseline = 'middle';
-      g.fillText('YOU', pxs + 14, pys - 9);
+      g.fillText(mapOperatorLabel(state), pxs + 14, pys - 9);
       g.restore();
     }
   },

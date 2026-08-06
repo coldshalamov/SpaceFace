@@ -5,6 +5,7 @@
 import { FACTION_META } from '../../data/factions.js';
 import { MISSION_STANDING_LADDER } from '../../data/missions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { shouldHideOwnRepDelta } from '../../story/endings/publicIdentity.js';
 import { escapeHtml } from '../comms.js';
 
 // 9 tiers over -1000..1000. Thresholds are the lower bound of each tier.
@@ -134,11 +135,11 @@ export function factionActionPlan(rep, meta = {}) {
   return 'hold Hero standing: keep work clean and avoid contraband or rival spillover';
 }
 
-export function factionStandingGuidance(rep, meta = {}, lastDelta = null) {
+export function factionStandingGuidance(rep, meta = {}, lastDelta = null, options = {}) {
   const r = safeRep(rep);
   return {
     next: factionNextTierText(r),
-    last: factionLastDeltaText(lastDelta),
+    last: options.hideLastDelta ? 'routing record withheld' : factionLastDeltaText(lastDelta),
     plan: factionActionPlan(r, meta),
     risk: factionRiskText(r),
   };
@@ -217,7 +218,9 @@ export function createFactionsPanel(ctx) {
       const rec = recordFor(meta.id);
       const rep = repFor(meta.id);
       const tier = tierFor(rep);
-      const guidance = factionStandingGuidance(rep, meta, rec && rec.lastDelta);
+      const guidance = factionStandingGuidance(rep, meta, rec && rec.lastDelta, {
+        hideLastDelta: shouldHideOwnRepDelta(ctx.state),
+      });
       const ladder = factionContractLadderRows(rep);
       const fill = (rep + 1000) / 2000; // 0..1
       const rel = relationSummary(meta);
