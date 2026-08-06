@@ -21,6 +21,12 @@ import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
+// Contact-force receipts are gameplay signals, not solver inputs. A zero threshold makes every
+// resting hull pressure and compound-proxy scrape cross the WASM event queue even though the
+// smallest routed gameplay impact is 50 impulse. At the production 60 Hz step this floor is only
+// 1 impulse, so meaningful damage/mission/audio/VFX contacts remain far above it while contact
+// response itself stays bit-for-bit inside Rapier.
+export const SG02_CONTACT_FORCE_EVENT_THRESHOLD_N = 60;
 const POSE_RESYNC_EPS2 = 1e-4;
 
 const CAPTURE_SLACK_S = 0.1;
@@ -1674,7 +1680,7 @@ function configureContactEvents(R, colliderDesc, material) {
     colliderDesc.setActiveEvents(R.ActiveEvents.CONTACT_FORCE_EVENTS);
   }
   if (typeof colliderDesc.setContactForceEventThreshold === 'function') {
-    colliderDesc.setContactForceEventThreshold(0);
+    colliderDesc.setContactForceEventThreshold(SG02_CONTACT_FORCE_EVENT_THRESHOLD_N);
   }
   return colliderDesc;
 }

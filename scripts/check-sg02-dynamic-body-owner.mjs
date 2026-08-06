@@ -11,6 +11,7 @@ import {
   writePhysicsControl,
 } from '../src/core/physicsAuthority.js';
 import {
+  SG02_CONTACT_FORCE_EVENT_THRESHOLD_N,
   SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
   createSg02CombatPhysicsPort,
   createSg02DynamicBodyOwner,
@@ -26,6 +27,8 @@ const combatFirst = await runCombatKernelScenario();
 const combatSecond = await runCombatKernelScenario();
 const ccdGateFirst = await runCcdGateScenario();
 const ccdGateSecond = await runCcdGateScenario();
+const contactFloorFirst = await runContactForceEventFloorScenario();
+const contactFloorSecond = await runContactForceEventFloorScenario();
 
 assert.deepEqual(second.hash, first.hash, 'SG-02 dynamic owner lab should replay to the same quantized hash');
 assert.deepEqual(second.snapshot, first.snapshot, 'SG-02 dynamic owner lab snapshots should be stable');
@@ -37,6 +40,7 @@ assert.deepEqual(combatSecond.compactTrace, combatFirst.compactTrace, 'SG-03 ker
 assert.deepEqual(combatSecond.snapshot, combatFirst.snapshot, 'SG-03 kernel over SG-02 port should replay to the same body snapshot');
 assert.deepEqual(ccdGateSecond.hash, ccdGateFirst.hash, 'CCD gating and ghost projectile pooling should replay deterministically');
 assert.deepEqual(ccdGateSecond.snapshot, ccdGateFirst.snapshot, 'CCD gating and ghost projectile pooling snapshots should be stable');
+assert.deepEqual(contactFloorSecond, contactFloorFirst, 'contact-force event filtering should replay deterministically');
 
 console.log('SG-02 dynamic body owner checks OK');
 
@@ -342,6 +346,64 @@ async function runCcdGateScenario() {
     assert.equal(snapshot.length, 3, 'snapshot should cover ship plus live volley');
     for (const entry of snapshot) assertFiniteSnapshot(entry);
     return { snapshot, hash: hashSnapshot(snapshot) };
+  } finally {
+    owner.dispose();
+  }
+}
+
+async function runContactForceEventFloorScenario() {
+  const low = await runContactPressureScenario(30);
+  assert.equal(low.receipts, 0,
+    'sub-threshold resting hull pressure should not cross the contact-event queue');
+  assert(Math.abs(low.finalX) < 0.01,
+    'filtering contact receipts must not let a gently pressing hull pass through its collider');
+
+  const meaningful = await runContactPressureScenario(3000);
+  assert(meaningful.receipts > 0,
+    'a meaningful collision must still cross the contact-event queue');
+  assert(meaningful.maxImpulse >= 50,
+    'the event floor must preserve the lowest routed gameplay-impact fixture');
+  return { low, meaningful };
+}
+
+async function runContactPressureScenario(forceN) {
+  const ship = makeShip(1001, 0);
+  ship.flags = {};
+  const asteroid = makeAsteroid(1002, ship.radius + 10);
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
+  let receipts = 0;
+  let totalImpulse = 0;
+  let maxImpulse = 0;
+  try {
+    owner.syncFromEntities([ship, asteroid]);
+    for (const rec of owner.records.values()) {
+      for (const collider of rec.colliders) {
+        assert.equal(collider.contactForceEventThreshold(), SG02_CONTACT_FORCE_EVENT_THRESHOLD_N,
+          'every solid SG-02 collider should use the gameplay-noise event floor');
+      }
+    }
+    for (let i = 0; i < 180; i++) {
+      writePhysicsControl(ship, {
+        source: 'sg02-contact-force-floor-check',
+        mode: 'assisted',
+        force: { x: forceN, y: 0, z: 0 },
+        torque: { x: 0, y: 0, z: 0 },
+        maxSpeed: Infinity,
+      });
+      owner.step(1 / 60);
+      for (const impact of owner.drainContactImpacts()) {
+        receipts++;
+        totalImpulse += impact.impulse;
+        maxImpulse = Math.max(maxImpulse, impact.impulse);
+      }
+    }
+    return {
+      forceN,
+      receipts,
+      totalImpulse: Number(totalImpulse.toFixed(4)),
+      maxImpulse: Number(maxImpulse.toFixed(4)),
+      finalX: Number(ship.pos.x.toFixed(4)),
+    };
   } finally {
     owner.dispose();
   }
