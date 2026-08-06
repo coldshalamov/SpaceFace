@@ -39,6 +39,7 @@ export const physics = {
     this._scratch = [];
     this._statics = [];
     this._prevPosScratch = { x: 0, z: 0 };
+    this._projectileSweepLimitScratch = { x: 0, z: 0, expired: false };
     this._segmentHitScratch = createSegmentHitRecord();
     this._bestSegmentHitScratch = createSegmentHitRecord();
     this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
@@ -484,12 +485,12 @@ export const physics = {
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
-      const limit = projectileSweepLimit(proj, start, proj.pos);
-      if (!limit) {
+      const limit = this._projectileSweepLimitScratch;
+      if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) {
         proj.alive = false;
         continue;
       }
-      const end = limit.end;
+      const end = limit;
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
@@ -1110,40 +1111,45 @@ function segmentDirection(start, end) {
   return length > 1e-9 ? { x: dx / length, z: dz / length } : { x: 0, z: 0 };
 }
 
-function projectileSweepLimit(projectile, start, end) {
+function projectileSweepLimitInto(out, projectile, start, end) {
   const data = projectile && projectile.data || {};
   const origin = data.spawnPos || data.origin || null;
   const maxDistance = Number(data.maxDistance);
   if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
-    return { end, expired: false };
+    out.x = end.x;
+    out.z = end.z;
+    out.expired = false;
+    return true;
   }
   const sx = start.x - origin.x;
   const sz = start.z - origin.z;
   const ex = end.x - origin.x;
   const ez = end.z - origin.z;
   const max2 = maxDistance * maxDistance;
-  if (sx * sx + sz * sz >= max2) return null;
-  if (ex * ex + ez * ez <= max2) return { end, expired: false };
+  if (sx * sx + sz * sz >= max2) return false;
+  if (ex * ex + ez * ez <= max2) {
+    out.x = end.x;
+    out.z = end.z;
+    out.expired = false;
+    return true;
+  }
 
   const dx = ex - sx;
   const dz = ez - sz;
   const a = dx * dx + dz * dz;
-  if (a <= 1e-9) return null;
+  if (a <= 1e-9) return false;
   const b = 2 * (sx * dx + sz * dz);
   const c = sx * sx + sz * sz - max2;
   const disc = b * b - 4 * a * c;
-  if (disc < 0) return null;
+  if (disc < 0) return false;
   const root = Math.sqrt(disc);
   const t0 = (-b - root) / (2 * a);
   const t1 = (-b + root) / (2 * a);
   const t = t0 >= 0 && t0 <= 1 ? t0 : (t1 >= 0 && t1 <= 1 ? t1 : 1);
-  return {
-    end: {
-      x: start.x + (end.x - start.x) * t,
-      z: start.z + (end.z - start.z) * t,
-    },
-    expired: true,
-  };
+  out.x = start.x + (end.x - start.x) * t;
+  out.z = start.z + (end.z - start.z) * t;
+  out.expired = true;
+  return true;
 }
 
 function segmentCircleHitInto(out, start, end, center, radius) {
