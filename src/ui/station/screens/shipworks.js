@@ -747,7 +747,7 @@ export function createShipworksScreen(ctx) {
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
     if (def.mods && def.mods.masslineHeadId === 'tractor') return 'Massline Tractor head';
     if (def.mods && def.mods.masslineHeadId === 'elastic_whip') return 'Massline spring-energy head';
-    if (def.mods && def.mods.masslineHeadId === 'frame_coupler') return 'Massline velocity-match head';
+    if (def.mods && def.mods.masslineHeadId === 'frame_coupler') return 'Massline separation-damping head';
     if (def.mods && def.mods.masslineHeadId === 'monofilament_sweep') return 'Massline hostile-cut sweep head';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
     return 'Utility support system';
