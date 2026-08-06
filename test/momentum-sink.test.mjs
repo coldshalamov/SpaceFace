@@ -29,6 +29,9 @@ test('Momentum Sink is a reachable small-slot setup weapon with no control effec
   assert.equal(weapon.size, 'S');
   assert.equal(weapon.requiresTech, 'tech_graviton_drives');
   assert.ok(weapon.dmg > 0 && weapon.dmg < 10);
+  assert.ok(weapon.impulsePerHit > 0 && weapon.impulsePerHit <= 1,
+    'the setup round has a readable hit ping, not a displacement payoff');
+  assert.equal(weapon.impulseProvenance, 'momentum_sink_latch');
   assert.deepEqual(weapon.statuses, [{ id: MOMENTUM_SINK_STATUS_ID, stacks: 1 }]);
   assert.ok(graviton.unlocks.modules.includes(WEAPON_ID));
 

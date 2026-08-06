@@ -152,6 +152,7 @@ export const WEAPONS = [
     id: 'wpn_gravity_marker_s', name: 'Gravity Marker S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 18000, requiresTech: 'tech_graviton_drives',
     dmg: 3, rof: 0.25, dps: 0.75, damageType: 'emp', energyCost: 7,
     projSpeed: 520, range: 680, tracking: 'fixed', spreadDeg: 0.5,
+    impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'gravity_marker_ping',
     statuses: [{ id: 'status_gravity_marked', stacks: 1 }],
   },
   {
@@ -161,6 +162,7 @@ export const WEAPONS = [
     id: 'wpn_momentum_sink_s', name: 'Momentum Sink S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 21000, requiresTech: 'tech_graviton_drives',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'emp', energyCost: 9,
     projSpeed: 500, range: 640, tracking: 'fixed', spreadDeg: 0.45,
+    impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'momentum_sink_latch',
     statuses: [{ id: 'status_momentum_sink', stacks: 1 }],
   },
 
