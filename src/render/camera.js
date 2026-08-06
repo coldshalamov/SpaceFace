@@ -177,16 +177,27 @@ function isCruising(state) {
   return !!(c && c.phase === 'cruising');
 }
 
-function resolveAimLead(input, player) {
-  if (!input || !input.aimWorld || !player || !player.pos) return { x: 0, z: 0 };
+function resolveAimLead(input, player, out = null) {
+  const result = out || {};
+  if (!input || !input.aimWorld || !player || !player.pos) {
+    result.x = 0;
+    result.z = 0;
+    return result;
+  }
   const px = finiteOr(player.pos.x, 0);
   const pz = finiteOr(player.pos.z, 0);
   const dx = finiteOr(input.aimWorld.x, px) - px;
   const dz = finiteOr(input.aimWorld.z, pz) - pz;
   const d = Math.hypot(dx, dz);
-  if (d <= 0.0001) return { x: 0, z: 0 };
+  if (d <= 0.0001) {
+    result.x = 0;
+    result.z = 0;
+    return result;
+  }
   const lead = Math.min(AIM_BIAS_MAX, d * AIM_BIAS);
-  return { x: (dx / d) * lead, z: (dz / d) * lead };
+  result.x = (dx / d) * lead;
+  result.z = (dz / d) * lead;
+  return result;
 }
 
 export function recenterBiasScale(remaining, duration) {
@@ -197,15 +208,17 @@ export function recenterBiasScale(remaining, duration) {
   return 1 - smooth;
 }
 
-export function clampFocusToPlayerSafeRect(focus, player, options = {}) {
+export function clampFocusToPlayerSafeRect(focus, player, options = {}, out = null) {
+  const result = out || {};
   const playerX = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
   const playerZ = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
   if (!player || !player.pos) {
-    return {
-      x: focus && Number.isFinite(focus.x) ? focus.x : 0,
-      z: focus && Number.isFinite(focus.z) ? focus.z : 0,
-      clamped: false,
-    };
+    result.x = focus && Number.isFinite(focus.x) ? focus.x : 0;
+    result.z = focus && Number.isFinite(focus.z) ? focus.z : 0;
+    result.clamped = false;
+    delete result.safeX;
+    delete result.safeZ;
+    return result;
   }
   const zoom = Number.isFinite(options.zoom) ? options.zoom : DEFAULT_ZOOM;
   const fov = Number.isFinite(options.fov) ? options.fov : 50;
@@ -223,7 +236,12 @@ export function clampFocusToPlayerSafeRect(focus, player, options = {}) {
   else if (dx < -safeX) { x = playerX - safeX; clamped = true; }
   if (dz > safeZ) { z = playerZ + safeZ; clamped = true; }
   else if (dz < -safeZ) { z = playerZ - safeZ; clamped = true; }
-  return { x, z, clamped, safeX, safeZ };
+  result.x = x;
+  result.z = z;
+  result.clamped = clamped;
+  result.safeX = safeX;
+  result.safeZ = safeZ;
+  return result;
 }
 
 export function resolveSpeedZoomFactor(speed, maxSpeed) {
@@ -258,7 +276,19 @@ function readFlybyLeaseTargetId(state) {
   return focus.targetId;
 }
 
-export function resolveChaseComposition(state, player, focus, view = {}) {
+function extendCompositionMinZoom(minZoom, item, fx, fz, tanHalf, aspect, tilt) {
+  const radius = Math.max(0, finiteOr(item.radius, 4));
+  const dx = Math.abs(item.pos.x - fx);
+  const dz = Math.abs(item.pos.z - fz);
+  return Math.max(
+    minZoom,
+    Math.cos(tilt) * dz + radius + (dx + radius) / (tanHalf * aspect * ACTIVE_ATTACKER_SAFE_NDC),
+    Math.cos(tilt) * dz + radius + (Math.sin(tilt) * dz + radius) / (tanHalf * ACTIVE_ATTACKER_SAFE_NDC),
+  );
+}
+
+export function resolveChaseComposition(state, player, focus, view = {}, out = null, tetherOut = null) {
+  const result = out || {};
   let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
   let fz = focus && Number.isFinite(focus.z) ? focus.z : (player && player.pos ? player.pos.z : 0);
   let nearbyEnemies = 0;
@@ -269,7 +299,15 @@ export function resolveChaseComposition(state, player, focus, view = {}) {
   let zoomBias = 0;
 
   if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
-    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false, zoomBias, minZoom: 0 };
+    result.x = fx;
+    result.z = fz;
+    result.nearbyEnemies = nearbyEnemies;
+    result.hasThreatFocus = false;
+    delete result.hasActiveAttacker;
+    result.hasTetherFocus = false;
+    result.zoomBias = zoomBias;
+    result.minZoom = 0;
+    return result;
   }
 
   const leasedTargetId = readFlybyLeaseTargetId(state);
@@ -312,7 +350,7 @@ export function resolveChaseComposition(state, player, focus, view = {}) {
     zoomBias = Math.max(zoomBias, THREAT_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * THREAT_ZOOM_RANGE);
   }
 
-  const tetherAnchor = resolveTetherCompositionAnchor(state, player);
+  const tetherAnchor = resolveTetherCompositionAnchor(state, player, tetherOut);
   if (tetherAnchor) {
     const dx = tetherAnchor.x - player.pos.x;
     const dz = tetherAnchor.z - player.pos.z;
@@ -331,32 +369,23 @@ export function resolveChaseComposition(state, player, focus, view = {}) {
     const tanHalf = Math.tan(fov * Math.PI / 360);
     const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
     const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
-    for (const item of [player, activeAttacker]) {
-      const radius = Math.max(0, finiteOr(item.radius, 4));
-      const dx = Math.abs(item.pos.x - fx);
-      const dz = Math.abs(item.pos.z - fz);
-      minZoom = Math.max(
-        minZoom,
-        Math.cos(tilt) * dz + radius + (dx + radius) / (tanHalf * aspect * ACTIVE_ATTACKER_SAFE_NDC),
-        Math.cos(tilt) * dz + radius + (Math.sin(tilt) * dz + radius) / (tanHalf * ACTIVE_ATTACKER_SAFE_NDC),
-      );
-    }
+    minZoom = extendCompositionMinZoom(minZoom, player, fx, fz, tanHalf, aspect, tilt);
+    minZoom = extendCompositionMinZoom(minZoom, activeAttacker, fx, fz, tanHalf, aspect, tilt);
     minZoom = Math.min(CAMERA_ZOOM_MAX, minZoom);
   }
 
-  return {
-    x: fx,
-    z: fz,
-    nearbyEnemies,
-    hasThreatFocus: !!nearestThreat,
-    hasActiveAttacker: !!activeAttacker,
-    hasTetherFocus: !!tetherAnchor,
-    zoomBias: Math.min(CONTEXT_ZOOM_MAX, zoomBias),
-    minZoom,
-  };
+  result.x = fx;
+  result.z = fz;
+  result.nearbyEnemies = nearbyEnemies;
+  result.hasThreatFocus = !!nearestThreat;
+  result.hasActiveAttacker = !!activeAttacker;
+  result.hasTetherFocus = !!tetherAnchor;
+  result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
+  result.minZoom = minZoom;
+  return result;
 }
 
-function resolveTetherCompositionAnchor(state, player) {
+function resolveTetherCompositionAnchor(state, player, out = null) {
   if (!state || !player || !state.entities || typeof state.entities.get !== 'function') return null;
 
   let x = 0;
@@ -364,7 +393,9 @@ function resolveTetherCompositionAnchor(state, player) {
   let weightTotal = 0;
   const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments) {
-    for (const attachment of Object.values(attachments)) {
+    for (const attachmentId in attachments) {
+      if (!Object.prototype.hasOwnProperty.call(attachments, attachmentId)) continue;
+      const attachment = attachments[attachmentId];
       if (!attachment || attachment.state !== 'active') continue;
       let otherId = null;
       if (attachment.ownerId === player.id) otherId = attachment.targetId;
@@ -390,12 +421,18 @@ function resolveTetherCompositionAnchor(state, player) {
       const other = state.entities.get(tether.targetId);
       if (other && other.alive !== false && other.pos
         && Number.isFinite(other.pos.x) && Number.isFinite(other.pos.z)) {
-        return { x: other.pos.x, z: other.pos.z };
+        const result = out || {};
+        result.x = other.pos.x;
+        result.z = other.pos.z;
+        return result;
       }
     }
     return null;
   }
-  return { x: x / weightTotal, z: z / weightTotal };
+  const result = out || {};
+  result.x = x / weightTotal;
+  result.z = z / weightTotal;
+  return result;
 }
 
 export function createChaseCamera(state) {
@@ -474,6 +511,25 @@ export function createChaseCamera(state) {
     aspect: cam.aspect,
     tiltDeg: c.tilt || 60,
   };
+  // FOLLOW runs every rendered frame. Keep its temporary value records camera-owned so ordinary
+  // flight does not manufacture garbage merely to pass the same numbers between pure calculations.
+  // Exported helpers still allocate by default; only this live route opts into reusable outputs.
+  const _aimLeadScratch = { x: 0, z: 0 };
+  const _compositionFocusScratch = { x: 0, z: 0 };
+  const _compositionScratch = {
+    x: 0,
+    z: 0,
+    nearbyEnemies: 0,
+    hasThreatFocus: false,
+    hasActiveAttacker: false,
+    hasTetherFocus: false,
+    zoomBias: 0,
+    minZoom: 0,
+  };
+  const _tetherAnchorScratch = { x: 0, z: 0 };
+  const _safeFocusInputScratch = { x: 0, z: 0 };
+  const _safeFocusOptionsScratch = { zoom: DEFAULT_ZOOM, fov: cam.fov, aspect: cam.aspect };
+  const _safeFocusScratch = { x: 0, z: 0, clamped: false, safeX: 0, safeZ: 0 };
 
   function snapToEntity(p) {
     if (!p || !p.pos) return false;
@@ -606,7 +662,7 @@ export function createChaseCamera(state) {
             fx += (vx / playerSpeed) * leadWU; fz += (vz / playerSpeed) * leadWU;
           }
         }
-        const aimLead = resolveAimLead(state.input, p);
+        const aimLead = resolveAimLead(state.input, p, _aimLeadScratch);
         fx += aimLead.x;
         fz += aimLead.z;
         const baseFx = fx;
@@ -633,7 +689,16 @@ export function createChaseCamera(state) {
           _contextMinZoom = 0;
         } else {
           // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
-          const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz }, _directorView);
+          _compositionFocusScratch.x = baseFx;
+          _compositionFocusScratch.z = baseFz;
+          const composition = resolveChaseComposition(
+            state,
+            p,
+            _compositionFocusScratch,
+            _directorView,
+            _compositionScratch,
+            _tetherAnchorScratch,
+          );
           const motionScale = isMotionReduced(state) ? 0.35 : 1;
           // Keeping an active attacker visible is functional combat framing, not decorative motion.
           // Reduced-motion may soften ambient/tether bias but must not move the actual threat out of
@@ -647,11 +712,17 @@ export function createChaseCamera(state) {
           _contextMinZoom = Math.max(0, finiteOr(composition.minZoom, 0));
           fx = baseFx + _compositionBiasX;
           fz = baseFz + _compositionBiasZ;
-          const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, _playerLocalProxy, {
-            zoom: _dynamicZoom,
-            fov: cam.fov,
-            aspect: cam.aspect,
-          });
+          _safeFocusInputScratch.x = fx;
+          _safeFocusInputScratch.z = fz;
+          _safeFocusOptionsScratch.zoom = _dynamicZoom;
+          _safeFocusOptionsScratch.fov = cam.fov;
+          _safeFocusOptionsScratch.aspect = cam.aspect;
+          const desiredSafe = clampFocusToPlayerSafeRect(
+            _safeFocusInputScratch,
+            _playerLocalProxy,
+            _safeFocusOptionsScratch,
+            _safeFocusScratch,
+          );
           fx = desiredSafe.x;
           fz = desiredSafe.z;
           // FR-5: during the recenter window, ease the accumulated lookahead/aim/composition bias
@@ -733,7 +804,15 @@ export function createChaseCamera(state) {
       }
       if (p && p.pos && !directorOwnsComposition) {
         // Safe-rect is frame-local (player proxy holds projected XZ for this frame).
-        const safeFocus = clampFocusToPlayerSafeRect(c.focus, _playerLocalProxy, { zoom: _dynamicZoom, fov: cam.fov, aspect: cam.aspect });
+        _safeFocusOptionsScratch.zoom = _dynamicZoom;
+        _safeFocusOptionsScratch.fov = cam.fov;
+        _safeFocusOptionsScratch.aspect = cam.aspect;
+        const safeFocus = clampFocusToPlayerSafeRect(
+          c.focus,
+          _playerLocalProxy,
+          _safeFocusOptionsScratch,
+          _safeFocusScratch,
+        );
         if (safeFocus.clamped) {
           c.focus.x = safeFocus.x;
           c.focus.z = safeFocus.z;

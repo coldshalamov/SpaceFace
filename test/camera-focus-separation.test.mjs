@@ -31,7 +31,11 @@ import {
   resolveGateApproachTarget,
   resolveGateVisualMetrics,
 } from '../src/render/cameraDirector.js';
-import { createChaseCamera, resolveChaseComposition } from '../src/render/camera.js';
+import {
+  clampFocusToPlayerSafeRect,
+  createChaseCamera,
+  resolveChaseComposition,
+} from '../src/render/camera.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
@@ -410,6 +414,63 @@ test('ordinary tether composition stays modest and keeps threat context bias', (
   // Modest lateral bias — not a full pair re-center at the rock midpoint (~140).
   assert.ok(Math.abs(composition.x) < 120,
     `ordinary tether focus bias ${composition.x} must stay modest vs pair midpoint`);
+});
+
+test('ordinary chase calculations can reuse caller-owned frame records without changing values', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const hostile = entity(2, 180, 35, 8, {
+    team: 1,
+    data: {
+      encounter: { id: 'camera-frame-scratch-hostile' },
+      combat: { targetId: player.id, lockTarget: player.id },
+    },
+  });
+  const payload = {
+    id: 60,
+    type: 'payload',
+    alive: true,
+    pos: { x: -90, z: 20 },
+    data: { tetherPayload: true },
+  };
+  const state = stateFor(player, [hostile, payload]);
+  state.combat = {
+    attachments: {
+      byId: {
+        test_tether: {
+          state: 'active',
+          ownerId: player.id,
+          targetId: payload.id,
+        },
+      },
+    },
+  };
+  const cameraView = { fov: FOV, aspect: ASPECT, tiltDeg: TILT };
+  const expectedComposition = resolveChaseComposition(state, player, { x: 8, z: -4 }, cameraView);
+  const compositionOut = {};
+  const tetherOut = {};
+  const reusedComposition = resolveChaseComposition(
+    state,
+    player,
+    { x: 8, z: -4 },
+    cameraView,
+    compositionOut,
+    tetherOut,
+  );
+
+  assert.strictEqual(reusedComposition, compositionOut,
+    'live chase composition may write into one camera-owned result record');
+  assert.deepEqual(reusedComposition, expectedComposition,
+    'reusing the result record must preserve every composition field');
+
+  const safeOptions = { zoom: 72, fov: FOV, aspect: ASPECT };
+  const expectedSafe = clampFocusToPlayerSafeRect({ x: 120, z: -80 }, player, safeOptions);
+  const safeOut = {};
+  const reusedSafe = clampFocusToPlayerSafeRect({ x: 120, z: -80 }, player, safeOptions, safeOut);
+
+  assert.strictEqual(reusedSafe, safeOut,
+    'live safe-rect clamping may write into one camera-owned result record');
+  assert.deepEqual(reusedSafe, expectedSafe,
+    'reusing the safe-rect record must preserve every clamp field');
 });
 
 // ---------------------------------------------------------------------------
