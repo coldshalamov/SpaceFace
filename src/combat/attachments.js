@@ -31,9 +31,18 @@ const ELASTIC_WHIP_TETHER_SPRING = Object.freeze({
   zeta: 0.28,
   captureS: 0.20,
 });
+// PQ-029 Frame Coupler head. SG-02 interprets this snapshotted mode as a bounded momentum
+// exchange while the line is taut. It never seeks a position, assigns velocity, or steers a body.
+const FRAME_COUPLER_TETHER_SPRING = Object.freeze({
+  mode: 'frame_coupler',
+  velocityGain: 1.6,
+  captureS: 0.35,
+  maxForce: 5_200,
+});
 const SPECIALIZED_TETHER_HEADS = Object.freeze({
   tractor: Object.freeze({ flag: 'masslineHeadTractor', spring: TRACTOR_TETHER_SPRING }),
   elastic_whip: Object.freeze({ flag: 'masslineHeadElasticWhip', spring: ELASTIC_WHIP_TETHER_SPRING }),
+  frame_coupler: Object.freeze({ flag: 'masslineHeadFrameCoupler', spring: FRAME_COUPLER_TETHER_SPRING }),
 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;

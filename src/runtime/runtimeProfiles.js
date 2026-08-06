@@ -35,6 +35,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     masslineHeadTractor: true,
     // PQ-029 / SF-27: fitted Elastic Whip heads use a lively spring-energy profile.
     masslineHeadElasticWhip: true,
+    // PQ-029 / SF-27: fitted Frame Couplers exchange bounded momentum on a taut line.
+    masslineHeadFrameCoupler: true,
   }),
   travel: Object.freeze({
     travelBurn: true,
@@ -74,6 +76,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     hitchhiking: false,
     masslineHeadTractor: false,
     masslineHeadElasticWhip: false,
+    masslineHeadFrameCoupler: false,
   }),
   travel: Object.freeze({
     travelBurn: false,

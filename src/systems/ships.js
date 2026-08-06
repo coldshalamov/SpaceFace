@@ -38,7 +38,7 @@ function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || nu
 // Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
 // priority is only a defensive read for manually-authored/old data; live fitting rejects multiples,
 // so array slot order can never silently decide the active physics law.
-const MASSLINE_HEAD_PRIORITY = Object.freeze({ tractor: 1, elastic_whip: 2 });
+const MASSLINE_HEAD_PRIORITY = Object.freeze({ tractor: 1, elastic_whip: 2, frame_coupler: 3 });
 function masslineHeadIdForDef(def) {
   const id = def && def.mods && def.mods.masslineHeadId;
   return MASSLINE_HEAD_PRIORITY[id] ? id : null;

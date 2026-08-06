@@ -404,20 +404,33 @@ export class Sg02DynamicBodyOwner {
     const nz = distance > 1e-9 ? dz / distance : 0;
     const ownerVelocity = attachment.owner.body.linvel();
     const targetVelocity = attachment.target.body.linvel();
-    const relativeSpeed = (targetVelocity.x - ownerVelocity.x) * nx + (targetVelocity.z - ownerVelocity.z) * nz;
+    const relativeVelocityX = targetVelocity.x - ownerVelocity.x;
+    const relativeVelocityZ = targetVelocity.z - ownerVelocity.z;
+    const relativeSpeed = relativeVelocityX * nx + relativeVelocityZ * nz;
+    const frameErrorSpeed = Math.hypot(relativeVelocityX, relativeVelocityZ);
     const stretch = Math.max(0, distance - attachment.restLength);
     const springState = attachment.springState || createSpringState();
     const yank = finite(springState.lastYank || 0, 0);
     const legacyRope = usesLegacyRopeSpring(attachment.spring);
     const spring = legacyRope ? null : (attachment.spring || normalizeSpring(null, attachment.defId, attachment.break));
+    const frameCoupler = usesFrameCoupler(spring);
     const damping = legacyRope
       ? positive(attachment.break.damping, 0)
-      : dampingForSpring(spring, reducedMass(attachment.owner, attachment.target));
+      : frameCoupler ? 0
+        : dampingForSpring(spring, reducedMass(attachment.owner, attachment.target));
     const fallbackTension = legacyRope
       ? stretch * positive(attachment.break.stiffness, 10) + relativeSpeed * damping
-      : Math.min(spring.maxForce, stretch * spring.K + damping * Math.max(0, relativeSpeed));
-    const telemetryTension = Math.max(0, springState.lastTension || fallbackTension);
-    const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
+      : frameCoupler
+        ? 0
+        : Math.min(spring.maxForce, stretch * spring.K + damping * Math.max(0, relativeSpeed));
+    // Coupler state is initialized at creation, so zero is a measured zero (capture ramp, matched
+    // frames, or slack), not a missing sample to replace with a hypothetical full-gain force.
+    const telemetryTension = frameCoupler
+      ? Math.max(0, springState.lastTension)
+      : Math.max(0, springState.lastTension || fallbackTension);
+    const telemetryImpulse = frameCoupler
+      ? Math.max(0, springState.lastImpulse)
+      : Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
     const source = frameToGlobal(sourceLocal, this._frameOrigin);
     const target = frameToGlobal(targetLocal, this._frameOrigin);
     // Coordinate conversion is intentionally XZ-only, but the SG-02 attachment telemetry schema
@@ -432,12 +445,13 @@ export class Sg02DynamicBodyOwner {
       distance,
       stretch,
       relativeSpeed,
+      frameErrorSpeed: frameCoupler ? frameErrorSpeed : 0,
       yank,
       tension: telemetryTension,
       impulse: telemetryImpulse,
       phase: legacyRope ? (stretch > STRETCH_EPSILON ? 'loaded' : 'slack') : (springState.phase || 'slack'),
       captureT: Math.max(0, finite(springState.captureT)),
-      springK: legacyRope ? positive(attachment.break.stiffness, 10) : spring.K,
+      springK: legacyRope ? positive(attachment.break.stiffness, 10) : frameCoupler ? 0 : spring.K,
       springDamping: damping,
       breakRequested: legacyRope ? false : !!springState.breakRequested,
       springState: legacyRope ? null : Object.freeze(cloneSpringState(springState)),
@@ -1011,6 +1025,7 @@ export class Sg02DynamicBodyOwner {
   _applyAttachmentSpring(attachment) {
     const state = attachment.springState || (attachment.springState = createSpringState());
     const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+    const spring = attachment.spring || (attachment.spring = normalizeSpring(null, attachment.defId, attachment.break));
     let restLength = positive(attachment.restLength, 0);
     const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
     const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
@@ -1021,8 +1036,8 @@ export class Sg02DynamicBodyOwner {
     const nz = distance > 1e-9 ? dz / distance : 0;
     let stretch = Math.max(0, distance - restLength);
 
-    const maxStretchRatio = positive(attachment.spring && attachment.spring.maxStretchRatio, MAX_STRETCH_RATIO);
-    const reelSafeStretchRatio = positive(attachment.spring && attachment.spring.reelSafeStretchRatio,
+    const maxStretchRatio = positive(spring.maxStretchRatio, MAX_STRETCH_RATIO);
+    const reelSafeStretchRatio = positive(spring.reelSafeStretchRatio,
       Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)));
 
     if (state.reelSlip && restLength > 0 && stretch > restLength * maxStretchRatio * REEL_SLIP_RELENGTH_RATIO) {
@@ -1031,6 +1046,13 @@ export class Sg02DynamicBodyOwner {
       restLength = distance / (1 + maxStretchRatio * REEL_SLIP_RELENGTH_RATIO);
       attachment.restLength = restLength;
       stretch = Math.max(0, distance - restLength);
+    }
+
+    if (usesFrameCoupler(spring)) {
+      this._applyFrameCoupler(attachment, state, scratch, {
+        source, target, distance, restLength, stretch, maxStretchRatio, nx, nz,
+      });
+      return;
     }
 
     state.breakRequested = false;
@@ -1053,7 +1075,6 @@ export class Sg02DynamicBodyOwner {
     const relativeSpeed = (scratch.velocityB.x - scratch.velocityA.x) * nx + (scratch.velocityB.z - scratch.velocityA.z) * nz;
     const prevRel = finite(state.lastRelativeSpeed, 0);
     const yank = (relativeSpeed - prevRel) / this.fixedDt;
-    const spring = attachment.spring || (attachment.spring = normalizeSpring(null, attachment.defId, attachment.break));
     const mu = reducedMass(attachment.owner, attachment.target);
     const damping = dampingForSpring(spring, mu);
 
@@ -1129,6 +1150,83 @@ export class Sg02DynamicBodyOwner {
     state.phase = geometricOverloadRatio > 1 ? 'overload'
       : inCapture ? 'capture'
       : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
+      : 'loaded';
+    if (inCapture) {
+      state.captureT += this.fixedDt;
+      if (state.captureT >= captureS) state.captureActive = false;
+    }
+  }
+
+  _applyFrameCoupler(attachment, state, scratch, geometry) {
+    const { source, target, distance, restLength, stretch, maxStretchRatio, nx, nz } = geometry;
+    const spring = attachment.spring;
+    state.breakRequested = false;
+    state.lastStretch = stretch;
+
+    // A coupler is still unilateral: below the chosen line length it is slack and has no authority.
+    // The small edge allowance admits the exact engagement distance on the first fixed tick.
+    if (distance + STRETCH_EPSILON < restLength) {
+      state.slackS += this.fixedDt;
+      state.captureT = 0;
+      state.captureActive = false;
+      state.wasTaut = false;
+      state.phase = 'slack';
+      state.lastTension = 0;
+      state.lastImpulse = 0;
+      state.lastRelativeSpeed = 0;
+      state.lastFrameErrorSpeed = 0;
+      state.lastYank = 0;
+      return;
+    }
+
+    const velocityA = attachment.owner.body.linvel();
+    const velocityB = attachment.target.body.linvel();
+    const rvx = finite(velocityB.x) - finite(velocityA.x);
+    const rvz = finite(velocityB.z) - finite(velocityA.z);
+    const frameErrorSpeed = Math.hypot(rvx, rvz);
+    const relativeSpeed = rvx * nx + rvz * nz;
+    const previousRelativeSpeed = finite(state.lastRelativeSpeed, 0);
+    const yank = (relativeSpeed - previousRelativeSpeed) / this.fixedDt;
+
+    if (!state.wasTaut && state.slackS >= CAPTURE_SLACK_S) {
+      state.captureActive = true;
+      state.captureT = 0;
+    }
+    state.wasTaut = true;
+    state.slackS = 0;
+
+    const captureS = positive(spring.captureS, 0);
+    const inCapture = state.captureActive && state.captureT < captureS;
+    const captureX = inCapture && captureS > 0 ? clamp(state.captureT / captureS, 0, 1) : 1;
+    const gain = spring.velocityGain * smoothstep(captureX);
+    const mu = reducedMass(attachment.owner, attachment.target);
+    const force = Math.min(spring.maxForce, mu * gain * frameErrorSpeed);
+    const forceImpulse = force * this.fixedDt;
+    const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
+    if (impulse > 0 && frameErrorSpeed > 1e-9) {
+      const invError = 1 / frameErrorSpeed;
+      scratch.impulseA.x = rvx * invError * impulse;
+      scratch.impulseA.y = 0;
+      scratch.impulseA.z = rvz * invError * impulse;
+      scratch.impulseB.x = -scratch.impulseA.x;
+      scratch.impulseB.y = 0;
+      scratch.impulseB.z = -scratch.impulseA.z;
+      applyAttachmentImpulse(attachment, scratch.impulseA, scratch.impulseB, source, target);
+      accumulateForce(attachment.owner, scratch.impulseA, this.fixedDt);
+      accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
+    }
+
+    const geometricOverloadRatio = restLength > 0
+      ? stretch / Math.max(restLength * maxStretchRatio, STRETCH_EPSILON)
+      : 0;
+    state.breakRequested = geometricOverloadRatio > 1;
+    state.lastTension = force;
+    state.lastImpulse = forceImpulse;
+    state.lastRelativeSpeed = relativeSpeed;
+    state.lastFrameErrorSpeed = frameErrorSpeed;
+    state.lastYank = yank;
+    state.phase = geometricOverloadRatio > 1 ? 'overload'
+      : inCapture ? 'capture'
       : 'loaded';
     if (inCapture) {
       state.captureT += this.fixedDt;
@@ -1217,12 +1315,16 @@ function normalizeBreak(value = {}) {
 function normalizeSpring(value = {}, defId = '', breakValue = {}) {
   const tune = SPRING_TUNES[String(defId || '')] || null;
   const maxStretchRatio = positive(value && value.maxStretchRatio, positive(tune && tune.maxStretchRatio, MAX_STRETCH_RATIO));
+  const requestedMode = value && value.mode;
   return {
-    mode: value && value.mode === 'legacy_rope' ? 'legacy_rope' : 'spring',
+    mode: requestedMode === 'legacy_rope' ? 'legacy_rope'
+      : requestedMode === 'frame_coupler' ? 'frame_coupler'
+        : 'spring',
     K: positive(value && value.K, positive(value && value.k, positive(tune && tune.K, positive(breakValue && breakValue.stiffness, 140)))),
     zeta: positive(value && value.zeta, positive(tune && tune.zeta, 0.95)),
     captureS: positive(value && value.captureS, positive(tune && tune.captureS, 0.35)),
     maxForce: positive(value && value.maxForce, Infinity),
+    velocityGain: positive(value && value.velocityGain, 0),
     maxStretchRatio,
     reelSafeStretchRatio: positive(value && value.reelSafeStretchRatio,
       positive(tune && tune.reelSafeStretchRatio, Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)))),
@@ -1231,6 +1333,10 @@ function normalizeSpring(value = {}, defId = '', breakValue = {}) {
 
 function usesLegacyRopeSpring(spring) {
   return spring && spring.mode === 'legacy_rope';
+}
+
+function usesFrameCoupler(spring) {
+  return spring && spring.mode === 'frame_coupler';
 }
 
 function createSpringState() {
@@ -1244,6 +1350,7 @@ function createSpringState() {
     breakRequested: false,
     lastStretch: 0,
     lastRelativeSpeed: 0,
+    lastFrameErrorSpeed: 0,
     lastYank: 0,
     lastTension: 0,
     lastImpulse: 0,
@@ -1262,6 +1369,7 @@ function normalizeSpringState(value = null) {
   state.breakRequested = !!value.breakRequested;
   state.lastStretch = Math.max(0, finite(value.lastStretch));
   state.lastRelativeSpeed = finite(value.lastRelativeSpeed);
+  state.lastFrameErrorSpeed = Math.max(0, finite(value.lastFrameErrorSpeed));
   state.lastYank = finite(value.lastYank);
   state.lastTension = Math.max(0, finite(value.lastTension));
   state.lastImpulse = Math.max(0, finite(value.lastImpulse));
@@ -1280,6 +1388,7 @@ function cloneSpringState(value = null) {
     breakRequested: state.breakRequested,
     lastStretch: state.lastStretch,
     lastRelativeSpeed: state.lastRelativeSpeed,
+    lastFrameErrorSpeed: state.lastFrameErrorSpeed,
     lastYank: state.lastYank,
     lastTension: state.lastTension,
     lastImpulse: state.lastImpulse,
