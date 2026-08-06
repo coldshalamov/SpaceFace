@@ -23,6 +23,7 @@ import {
   MASSLINE_BINDING_PROFILE_LEGACY,
   MASSLINE_BINDING_PROFILE_SPACE,
   PROFILE_SETTINGS_KEY,
+  migrateDefaultMutedAudioProfile,
   migrateLegacyMasslineBindingProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
@@ -440,7 +441,9 @@ export const save = {
   },
 
   _loadProfileSettings() {
-    const profile = migrateLegacyMasslineBindingProfile(this._readProfileSettings());
+    const profile = migrateDefaultMutedAudioProfile(
+      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+    );
     if (!profile) return false;
     this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, profile));
     return true;
@@ -2345,7 +2348,9 @@ export const save = {
   _restoreSettings(d) {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
-    const saveSettings = migrateLegacyMasslineBindingProfile(clonePlain(d));
+    const saveSettings = migrateDefaultMutedAudioProfile(
+      migrateLegacyMasslineBindingProfile(clonePlain(d)),
+    );
     let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, saveSettings));
     // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
     // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
@@ -2356,7 +2361,9 @@ export const save = {
       && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
       restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
     }
-    const profile = migrateLegacyMasslineBindingProfile(this._readProfileSettings());
+    const profile = migrateDefaultMutedAudioProfile(
+      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+    );
     if (profile) {
       restored = sanitizeRestoredSettings(mergePlain(restored, profile));
       // Binding maps are an atomic player profile choice. Deep-merging here would retain keys

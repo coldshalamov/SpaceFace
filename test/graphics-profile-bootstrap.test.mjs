@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import {
+  AUDIO_DEFAULT_MUTE_VERSION,
   PROFILE_SETTINGS_KEY,
   bootstrapProfileSettingsBeforeRegistry,
   mergeProfileSettings,
@@ -72,4 +73,31 @@ test('bootstrap rejects malformed profiles and preserves locked runtime backends
   assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical');
   assert.equal(state.settings.gameplay.flightBackend, 'v3');
   assert.equal(state.settings.video.particleQuality, 'high');
+});
+
+test('pre-policy profiles default to mute before registry while explicit post-policy audio survives', () => {
+  const legacyStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { audio: { master: 0.9, muted: false } },
+  }));
+  const migrated = createGameState(4);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(migrated, legacyStorage), true);
+  assert.equal(migrated.settings.audio.muted, true);
+  assert.equal(migrated.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION);
+  assert.equal(legacyStorage.writes(), 0, 'boot migration must not rewrite a profile behind the player');
+
+  const optedInStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      audio: {
+        master: 0.9,
+        muted: false,
+        defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
+      },
+    },
+  }));
+  const optedIn = createGameState(5);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(optedIn, optedInStorage), true);
+  assert.equal(optedIn.settings.audio.muted, false,
+    'an explicit unmute made under the current policy must remain a player choice');
 });

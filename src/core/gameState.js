@@ -5,13 +5,20 @@ import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
+import { AUDIO_DEFAULT_MUTE_VERSION } from './graphicsProfileBootstrap.js';
 
 function defaultSettings() {
   return {
     uiScale: 1,
     showDamageNumbers: true,
     keybinds: {},
-    audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
+    audio: {
+      master: 0.55,
+      sfx: 0.7,
+      music: 0.32,
+      muted: true,
+      defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
+    },
     // renderScale/shadows raised from 0.85/false after a matched A/B on the 60fps target hardware
     // (Intel iGPU, ANGLE/D3D11, 1920x1080, 20s warmup so authored admission had settled): baseline
     // p95 16.80ms max 17.20ms vs full-res+shadows p95 16.80ms max 17.00ms. Identical — the frame is

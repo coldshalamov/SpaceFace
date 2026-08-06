@@ -3,15 +3,17 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { AUDIO_DEFAULT_MUTE_VERSION } from '../src/core/graphicsProfileBootstrap.js';
 import { createRegistry } from '../src/core/registry.js';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { bandRadio, deriveBandEventKeys, numbersBearingDue } from '../src/systems/bandRadio.js';
 import { uniqueWrecks } from '../src/systems/uniqueWrecks.js';
 import { uniqueWreckById } from '../src/data/uniqueWrecks.js';
 
-test('new games leave audio unmuted so the Band and game are audible', () => {
+test('new games remain silent until the player explicitly enables audio', () => {
   const state = createGameState(0xa1);
-  assert.equal(state.settings.audio.muted, false);
+  assert.equal(state.settings.audio.muted, true);
+  assert.equal(state.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION);
 });
 
 test('production registry places Band after settled world readers and before onboarding/voice', () => {

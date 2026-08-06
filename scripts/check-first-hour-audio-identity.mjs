@@ -243,7 +243,6 @@ audio.rt.commsBus = ctx.createGain();
 audio.rt._caches = {};
 audio.rt.voices = [];
 audio.rt.loops = {};
-audio.rt.pads = {};
 audio.rt.sidechainDuck = 1;
 audio.rt._priorityBus = createCuePriorityBus();
 audio.rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
@@ -493,9 +492,9 @@ assert(audio.rt.loops.stationHum, 'station hum loop must start on dock');
 assert.equal(audio.rt._heliosTrafficTelemetry.active, false, 'traffic bed must fade when docked');
 assert.equal(audio.rt.heliosTrafficBed.gain.gain.value, 0.0001, 'docked traffic bed must target silent floor');
 
-// Helios pad class
-audio._updatePads(ctx.currentTime);
-assert.equal(audio.rt.activePadClass, 'core', 'Helios sector uses core pad class');
+// Sector identity keeps sparse cues, but must not rebuild the retired always-on oscillator pad.
+audio._updateSectorCues(ctx.currentTime);
+assert.equal(audio.rt.pads, undefined, 'Helios must not allocate a second continuous synth pad');
 
 // Recipe existence for identity pack
 for (const rid of [
@@ -540,7 +539,7 @@ trace.assertions.push(
   { id: 'story_comms_priority_squelch', ok: true },
   { id: 'engine_loop_duck', ok: true },
   { id: 'redock_clunk_station_hum', ok: true },
-  { id: 'helios_core_pad', ok: true },
+  { id: 'helios_no_duplicate_sector_pad', ok: true },
   { id: 'massline_latch_event_recipe', ok: true },
   { id: 'massline_strain_fatigue_guard', ok: true },
   { id: 'shield_tether_spectral_separation', ok: true },

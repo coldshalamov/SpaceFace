@@ -646,7 +646,9 @@ export const audio = {
     const bus = this.bus;
 
     // --- lazy AudioContext on first user gesture (autoplay policy) ---
-    this._gestureHandler = () => this._ensureContext();
+    this._gestureHandler = () => {
+      if (!this._isMuted()) this._ensureContext();
+    };
     if (typeof window !== 'undefined' && window.addEventListener) {
       window.addEventListener('pointerdown', this._gestureHandler, { once: false });
       window.addEventListener('keydown', this._gestureHandler, { once: false });
@@ -766,6 +768,10 @@ export const audio = {
     });
     bus.on('settings:changed', (p) => {
       if (!p || p.section === 'audio' || p.section == null) {
+        if (!this._isMuted() && !rt.ctx) {
+          this._ensureContext();
+          return;
+        }
         this._applySettings();
         this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
       }
@@ -835,8 +841,7 @@ export const audio = {
   },
 
   _setBulletTimeAudio(active) {
-    const settings = this.state && this.state.settings && this.state.settings.audio;
-    applyBulletTimeAudioTreatment(this.rt, active, !!(settings && settings.muted));
+    applyBulletTimeAudioTreatment(this.rt, active, this._isMuted());
   },
 
   // ---- context lifecycle ----
@@ -1012,7 +1017,7 @@ export const audio = {
 
   _ensureContext() {
     const rt = this.rt;
-    if (!rt || rt._lifecycleSuspended) return null;
+    if (!rt || rt._lifecycleSuspended || this._isMuted()) return null;
     if (rt.ctx) {
       if (!rt._contextStateChangeHandler) this._bindContextState(rt.ctx);
       this._resumeAudioContext(true);
@@ -1156,7 +1161,7 @@ export const audio = {
         if (rt.musicBus) {
           invalidateBusGainCache(rt, 'music');
           rt.musicBus.gain.cancelScheduledValues(t);
-          rt.musicBus.gain.setValueAtTime(0.0001, t);
+          rt.musicBus.gain.setValueAtTime(0, t);
         }
       } catch (_) {}
       this._silenceContinuousSources();
@@ -1208,13 +1213,13 @@ export const audio = {
 
   _isMuted() {
     const a = this.state && this.state.settings && this.state.settings.audio;
-    return !!(a && a.muted);
+    return !a || a.muted !== false;
   },
 
   _applySettings() {
     const rt = this.rt; if (!rt.ctx) return;
     const a = (this.state.settings && this.state.settings.audio) || {};
-    const muted = !!a.muted;
+    const muted = a.muted !== false;
     const t = rt.ctx.currentTime;
     const cache = rt._busGainCache || (rt._busGainCache = Object.create(null));
     // Unlike setTargetAtTime, the 50 ms linear glide below is NOT memoryless: it re-reads
@@ -1226,7 +1231,7 @@ export const audio = {
     // The cache key is (param identity, target, snap) — `snap` matters on its own because muting
     // leaves engine/ambient/combat/ui/comms targets untouched and only flips the ramp to a snap.
     const ramp = (key, param, target, instant) => {
-      const safe = Math.max(0.0001, target);
+      const safe = target <= 0 ? 0 : Math.max(0.0001, target);
       // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
       const snap = !!(instant || muted || safe <= 0.0001);
       const prev = cache[key];
@@ -1247,7 +1252,7 @@ export const audio = {
     };
 
     const masterVal = a.master == null ? 0.55 : a.master;
-    const masterTarget = muted ? 0.0001 : linearGain(masterVal) * 0.501187;
+    const masterTarget = muted ? 0 : linearGain(masterVal) * 0.501187;
     ramp('master', rt.masterGain.gain, masterTarget, true);
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
@@ -1277,7 +1282,7 @@ export const audio = {
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
     // Pause/main-menu must keep music bus silent even though _frame re-applies settings every tick.
     const musicTarget = (muted || rt._paused)
-      ? 0.0001
+      ? 0
       : rt._musicBase * (rt._bulletTimeMusicMult || 1);
     ramp('music', rt.musicBus.gain, musicTarget, muted || rt._paused);
   },
@@ -2468,7 +2473,7 @@ export const audio = {
     this._updateBrakeHiss(dt);
     this._updateTetherHum();
     this._updateDrillGrind();
-    this._updatePads(now);
+    this._updateSectorCues(now);
     this._updateStationMurmur(now);
     this._updateHeliosTrafficBed();
     this._updatePlaceContext(now);
@@ -2994,152 +2999,9 @@ export const audio = {
     }
   },
 
-  _startPad(className, startTime) {
+  _updateSectorCues(now) {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx) return null;
-    if (rt.pads[className]) return rt.pads[className];
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.setValueAtTime(0.0001, startTime);
-    gainNode.connect(rt.musicBus);
-
-    const nodes = [];
-    const LFO_FREQ = 0.05;
-
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = LFO_FREQ;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.15;
-    lfo.connect(lfoGain);
-    try { lfo.start(startTime); } catch (_) {}
-    nodes.push(lfo, lfoGain);
-
-    if (className === 'core') {
-      // Core: exact clean-fifths family (A2+E3); Helios varies only the layer balance.
-      const sectorId = this.state.world && this.state.world.currentSectorId;
-      const isHelios = sectorId && String(sectorId).includes('helios');
-      const freqs = [110, 164.81, 220, 329.63];
-      for (let i = 0; i < 4; i++) {
-        const osc = ctx.createOscillator();
-        osc.type = i < 2 ? 'sine' : 'triangle';
-        osc.frequency.value = freqs[i];
-        
-        const g = ctx.createGain();
-        g.gain.value = i < 2 ? (isHelios ? 0.16 : 0.14) : (isHelios ? 0.09 : 0.07);
-        lfoGain.connect(g.gain);
-
-        osc.connect(g);
-        g.connect(gainNode);
-        try { osc.start(startTime); } catch (_) {}
-        nodes.push(osc, g);
-      }
-    } else if (className === 'belt') {
-      const freqs = [87.3, 87.3, 130.81, 174.61];
-      const detunes = [-15, 15, -10, 10];
-      for (let i = 0; i < 4; i++) {
-        const osc = ctx.createOscillator();
-        osc.type = i < 2 ? 'sawtooth' : 'triangle';
-        osc.frequency.value = freqs[i];
-        osc.detune.value = detunes[i];
-
-        const g = ctx.createGain();
-        g.gain.value = 0.08;
-        lfoGain.connect(g.gain);
-
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = 180;
-
-        osc.connect(lp);
-        lp.connect(g);
-        g.connect(gainNode);
-        try { osc.start(startTime); } catch (_) {}
-        nodes.push(osc, g, lp);
-      }
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = getNoiseBuffer(ctx, rt._caches);
-      noise.loop = true;
-
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 120;
-      lp.Q.value = 1.0;
-
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.value = 0.12;
-
-      noise.connect(lp);
-      lp.connect(noiseGain);
-      noiseGain.connect(gainNode);
-      try { noise.start(startTime); } catch (_) {}
-      nodes.push(noise, lp, noiseGain);
-
-    } else if (className === 'fringe') {
-      const freqs = [123.47, 130.81, 185.0, 196.00];
-      for (let i = 0; i < 4; i++) {
-        const osc = ctx.createOscillator();
-        osc.type = i < 2 ? 'sine' : 'triangle';
-        osc.frequency.value = freqs[i];
-
-        const g = ctx.createGain();
-        g.gain.value = 0.08;
-        lfoGain.connect(g.gain);
-
-        osc.connect(g);
-        g.connect(gainNode);
-        try { osc.start(startTime); } catch (_) {}
-        nodes.push(osc, g);
-      }
-    } else if (className === 'anomaly') {
-      const freqs = [87.3, 87.3 * 2.76, 87.3 * 2.76 * 1.5, 87.3 * 5.52];
-      for (let i = 0; i < 4; i++) {
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = freqs[i];
-
-        const g = ctx.createGain();
-        g.gain.value = 0.1;
-        lfoGain.connect(g.gain);
-
-        osc.connect(g);
-        g.connect(gainNode);
-        try { osc.start(startTime); } catch (_) {}
-        nodes.push(osc, g);
-      }
-    }
-
-    const pad = {
-      className,
-      gainNode,
-      nodes,
-      startedAt: startTime,
-      volume: 0.0,
-      targetVolume: 0.0,
-      stopped: false,
-    };
-    
-    rt.pads[className] = pad;
-    return pad;
-  },
-
-  _stopPadObj(pad) {
-    if (pad.stopped) return;
-    pad.stopped = true;
-    for (const n of pad.nodes) {
-      try { n.stop(); } catch (_) {}
-      try { n.disconnect(); } catch (_) {}
-    }
-    try { pad.gainNode.disconnect(); } catch (_) {}
-    delete this.rt.pads[pad.className];
-  },
-
-  _updatePads(now) {
-    const rt = this.rt, ctx = rt.ctx;
-    if (!ctx) return;
-
-    if (!rt.pads) rt.pads = {};
+    if (!ctx || this._isMuted()) return;
 
     const currentSectorId = this.state.world && this.state.world.currentSectorId;
     const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[currentSectorId];
@@ -3147,44 +3009,10 @@ export const audio = {
     
     const docked = !!(rt._docked || (this.state.ui && this.state.ui.docked));
 
-    if (targetClass !== rt.activePadClass) {
-      const prevClass = rt.activePadClass;
-      rt.activePadClass = targetClass;
-      
-      const newPad = this._startPad(targetClass, ctx.currentTime);
-      if (newPad) {
-        newPad.targetVolume = 1.0;
-        newPad.gainNode.gain.cancelScheduledValues(ctx.currentTime);
-        newPad.gainNode.gain.setValueAtTime(Math.max(0.0001, newPad.gainNode.gain.value), ctx.currentTime);
-        newPad.gainNode.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 4.0);
-      }
-
-      if (prevClass) {
-        const oldPad = rt.pads[prevClass];
-        if (oldPad) {
-          oldPad.targetVolume = 0.0;
-          oldPad.gainNode.gain.cancelScheduledValues(ctx.currentTime);
-          oldPad.gainNode.gain.setValueAtTime(Math.max(0.0001, oldPad.gainNode.gain.value), ctx.currentTime);
-          oldPad.gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 4.0);
-          
-          setTimeout(() => {
-            this._stopPadObj(oldPad);
-          }, 4200);
-        }
-      }
-    }
-
-    const activePad = rt.pads[targetClass];
-    if (activePad) {
-      if (docked && activePad.gainNode.gain.value > 0.01) {
-        activePad.gainNode.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.5);
-      } else if (!docked && activePad.gainNode.gain.value < 0.99 && activePad.targetVolume === 1.0) {
-        activePad.gainNode.gain.setTargetAtTime(1.0, ctx.currentTime, 0.5);
-      }
-    }
-
-    const activePadObj = rt.pads[targetClass];
-    if (activePadObj && !docked && !rt._paused) {
+    // Sector identity keeps its sparse bells/ticks/swells. The old always-on four-oscillator pad
+    // duplicated the adaptive music graph and was the audible startup drone, so it has no runtime
+    // route here.
+    if (!docked && !rt._paused) {
       if (targetClass === 'core') {
         if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
           rt._lastBellTime = ctx.currentTime;

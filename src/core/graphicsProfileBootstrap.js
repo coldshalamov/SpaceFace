@@ -5,6 +5,7 @@
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
+export const AUDIO_DEFAULT_MUTE_VERSION = 1;
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
   'physicsBackend',
@@ -45,6 +46,22 @@ export function migrateLegacyMasslineBindingProfile(settings) {
   return settings;
 }
 
+/**
+ * The procedural-only audio stack is opt-in until the authored sound pass replaces it. Profiles
+ * and saves written before this policy have no way to distinguish an intentional unmute from the
+ * old audible default, so they receive one silent migration. A later explicit unmute carries the
+ * current version and remains the player's choice.
+ */
+export function migrateDefaultMutedAudioProfile(settings) {
+  if (!isPlainObject(settings)) return settings;
+  if (!isPlainObject(settings.audio)) settings.audio = {};
+  if (settings.audio.defaultMuteVersion !== AUDIO_DEFAULT_MUTE_VERSION) {
+    settings.audio.muted = true;
+    settings.audio.defaultMuteVersion = AUDIO_DEFAULT_MUTE_VERSION;
+  }
+  return settings;
+}
+
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
@@ -61,7 +78,9 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
 
 export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
   if (!state || !isPlainObject(state.settings)) return false;
-  const profile = migrateLegacyMasslineBindingProfile(readProfileSettings(storage));
+  const profile = migrateDefaultMutedAudioProfile(
+    migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
+  );
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);
   return true;

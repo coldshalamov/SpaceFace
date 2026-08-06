@@ -216,7 +216,7 @@ function fakeAudioContext() {
   };
 }
 
-test('first AudioContext unlock on paused menu does not start flight beds or free boops', () => {
+test('default mute creates no AudioContext; explicit unmute keeps paused-menu unlock silent', () => {
   // audioSystem looks at window.AudioContext (browser autoplay path), not globalThis alone.
   const previousWindow = globalThis.window;
   const previousRaf = globalThis.requestAnimationFrame;
@@ -224,8 +224,9 @@ test('first AudioContext unlock on paused menu does not start flight beds or fre
   const timers = [];
   const realSetTimeout = globalThis.setTimeout;
   const realClearTimeout = globalThis.clearTimeout;
+  let contextsCreated = 0;
   globalThis.window = {
-    AudioContext: function AudioContext() { return fakeAudioContext(); },
+    AudioContext: function AudioContext() { contextsCreated += 1; return fakeAudioContext(); },
     addEventListener() {},
     removeEventListener() {},
   };
@@ -249,7 +250,7 @@ test('first AudioContext unlock on paused menu does not start flight beds or fre
       playerId: 0,
       entities: new Map(),
       entityList: [],
-      settings: { audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false }, video: {} },
+      settings: { audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: true }, video: {} },
       ui: { docked: false },
       world: {},
       input: { actions: {} },
@@ -257,8 +258,13 @@ test('first AudioContext unlock on paused menu does not start flight beds or fre
     harness.init({ state, bus, helpers: {} });
     harness.rt._paused = true; // main menu already emitted sim:pause before first gesture
 
+    assert.equal(harness._ensureContext(), null, 'muted startup must not claim the audio device');
+    assert.equal(contextsCreated, 0, 'muted startup must not construct a hidden oscillator graph');
+
+    state.settings.audio.muted = false;
     const ctx = harness._ensureContext();
     assert.ok(ctx, 'gesture unlock creates the audio graph');
+    assert.equal(contextsCreated, 1);
     assert.equal(!!harness.rt.engineOsc1, false, 'paused menu unlock must not hard-start the engine bed');
     assert.equal(!!harness.rt.brakeGain, false, 'paused menu unlock must not start brake hiss');
     assert.ok(harness.rt.musicBus.gain.value <= 0.0001 + 1e-9, 'music bus stays silent while paused');
@@ -294,4 +300,24 @@ test('first AudioContext unlock on paused menu does not start flight beds or fre
     if (previousCancel === undefined) delete globalThis.cancelAnimationFrame;
     else globalThis.cancelAnimationFrame = previousCancel;
   }
+});
+
+test('sector ambience keeps sparse cues without constructing a second continuous synth pad', () => {
+  const played = [];
+  const harness = Object.create(audio);
+  harness.rt = { ctx: { currentTime: 46 }, _paused: false };
+  harness.state = {
+    settings: { audio: { muted: false } },
+    ui: { docked: false },
+    world: {
+      currentSectorId: 'sector_helios_prime',
+      sectors: { sector_helios_prime: { id: 'sector_helios_prime' } },
+    },
+  };
+  harness.play = (id, options) => { played.push({ id, options }); };
+
+  harness._updateSectorCues(46);
+
+  assert.equal(harness.rt.pads, undefined, 'sector identity must not allocate an oscillator pad');
+  assert.deepEqual(played.map((entry) => entry.id), ['sfx_core_bell']);
 });

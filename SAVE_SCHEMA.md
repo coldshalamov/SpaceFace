@@ -303,9 +303,10 @@ Current save version: `12`
 | `$.settings.accessibility.highContrast` | boolean | false |
 | `$.settings.accessibility.motionPreference` | string | system |
 | `$.settings.audio` | object | {} |
+| `$.settings.audio.defaultMuteVersion` | number | 1 |
 | `$.settings.audio.master` | number | 0.55 |
 | `$.settings.audio.music` | number | 0.32 |
-| `$.settings.audio.muted` | boolean | false |
+| `$.settings.audio.muted` | boolean | true |
 | `$.settings.audio.sfx` | number | 0.7 |
 | `$.settings.controls` | object | {} |
 | `$.settings.controls.bindings` | null | null |
@@ -342,8 +343,8 @@ Current save version: `12`
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
 | `$.settings.video.renderGraph` | boolean | false |
-| `$.settings.video.renderScale` | number | 0.85 |
-| `$.settings.video.shadows` | boolean | false |
+| `$.settings.video.renderScale` | number | 1 |
+| `$.settings.video.shadows` | boolean | true |
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |

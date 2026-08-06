@@ -81,19 +81,19 @@ function expectedBusTargets(a, { sidechain = 1, bulletMusicMult = 1, paused = fa
   const sfx = linearGain(a.sfx);
   const musicBase = linearGain(a.music) * 0.05012 * sidechain;
   return {
-    masterGain: muted ? 0.0001 : linearGain(a.master) * 0.501187,
+    masterGain: muted ? 0 : linearGain(a.master) * 0.501187,
     engineBus: sfx * linearGain(a.engine) * 0.12589,
     ambientBus: sfx * linearGain(a.ambient) * 0.06309 * sidechain,
     combatBus: sfx * linearGain(a.combat) * 0.25119,
     uiBus: sfx * linearGain(a.ui) * 0.1,
     commsBus: sfx * linearGain(a.comms) * 0.15849,
-    musicBus: (muted || paused) ? 0.0001 : musicBase * bulletMusicMult,
+    musicBus: (muted || paused) ? 0 : musicBase * bulletMusicMult,
   };
 }
 
 function assertBusTargets(rt, expected, label) {
   for (const key of BUS_KEYS) {
-    assert.equal(rt[key].gain.scheduled, Math.max(0.0001, expected[key]),
+    assert.equal(rt[key].gain.scheduled, expected[key],
       `${label}: ${key} landed on the wrong final gain`);
   }
 }
@@ -175,7 +175,7 @@ test('mute and unmute re-apply every bus even though five targets never change',
   assert.equal(ctx.calls.setValueAtTime, 7, 'mute must snap all seven buses');
   assert.equal(ctx.calls.linearRampToValueAtTime, 0, 'mute must not leave a ramp blip');
   assertBusTargets(rt, expectedBusTargets(settings), 'muted');
-  assert.equal(rt.masterGain.gain.scheduled, 0.0001);
+  assert.equal(rt.masterGain.gain.scheduled, 0);
 
   ctx.reset();
   runFrames(host, ctx, 600);
@@ -200,7 +200,7 @@ test('pause and bullet-time inputs are part of the gate signature', () => {
   rt._paused = true;
   ctx.currentTime += 1 / 60;
   host._applySettings();
-  assert.equal(rt.musicBus.gain.scheduled, 0.0001, 'pause must silence the music bus');
+  assert.equal(rt.musicBus.gain.scheduled, 0, 'pause must silence the music bus');
   assert.equal(ctx.calls.setValueAtTime, 1, 'pause only changes the music bus');
 
   ctx.reset();
