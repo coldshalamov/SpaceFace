@@ -56,6 +56,34 @@ test('identical same-tick trades receive distinct durable identities published o
   assert.deepEqual(events.map((entry) => entry.payload.tradeSequence), [1, 2]);
 });
 
+test('sale receipt, progression stats, and trade event share the carried-lot cost basis', () => {
+  const state = makeState();
+  state.player.tradeLots.cmdty_ore_iron = [{ qty: 2, unit: 50 }];
+  const emitted = [];
+  const system = makeEconomy(state, emitted);
+
+  const receipt = system.afterTrade(
+    state,
+    'station_helios',
+    'cmdty_ore_iron',
+    'sell',
+    2,
+    80,
+    160,
+    0,
+    { basePrice: 20, legality: 'legal' },
+  );
+
+  assert.equal(receipt.profit, 60, 'profit uses the 50 CR carried lot, not the 20 CR base price');
+  assert.equal(state.player.stats.lifetimeProfit, 60);
+  assert.equal(state.player.stats.biggestSingleProfit, 60);
+  assert.equal(state.player.stats.tradesCount, 1);
+  assert.equal(state.player.tradeLots.cmdty_ore_iron.length, 0);
+  const completed = emitted.find((entry) => entry.name === 'economy:tradeCompleted');
+  assert.equal(completed.payload.profit, receipt.profit);
+  assert.equal(completed.payload.receiptId, receipt.receiptId);
+});
+
 test('trade receipt history stays capped while its occurrence sequence remains monotonic', () => {
   const state = makeState();
   const system = makeEconomy(state);

@@ -1043,7 +1043,7 @@ export const economy = {
       this.recomputeLivePrices(entry, def, stationId, commodityId);
       this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
-      this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def, null);
+      this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def);
       return { ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct };
     } else {
       // SELL — need the stock in cargo
@@ -1062,9 +1062,18 @@ export const economy = {
       this.recomputeLivePrices(entry, def, stationId, commodityId);
       this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realGross / realQty;
-      // profit estimate: sale proceeds minus the goods' base value (for stats/ledger)
-      const profit = round(realGross - def.basePrice * realQty);
-      this.afterTrade(state, stationId, commodityId, 'sell', realQty, unitAvg, realGross, fq.priceImpactPct, def, profit);
+      const receipt = this.afterTrade(
+        state,
+        stationId,
+        commodityId,
+        'sell',
+        realQty,
+        unitAvg,
+        realGross,
+        fq.priceImpactPct,
+        def,
+      );
+      const profit = receipt ? receipt.profit : 0;
       return { ok: true, qty: realQty, unitAvg, total: realGross, priceImpactPct: fq.priceImpactPct, profit };
     }
   },
@@ -1085,8 +1094,10 @@ export const economy = {
   },
 
   /** Common post-trade bookkeeping: stats, intel refresh, emit economy:tradeCompleted. */
-  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def, profit) {
+  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def) {
     const info = stationInfo(state, stationId);
+    const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
+    const profit = side === 'sell' && receipt ? receipt.profit : null;
     const stats = state.player.stats;
     if (stats) {
       stats.tradesCount = (stats.tradesCount || 0) + 1;
@@ -1096,7 +1107,6 @@ export const economy = {
       }
       if (def && def.legality !== 'legal') stats.smuggledValue = (stats.smuggledValue || 0) + Math.abs(total);
     }
-    const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
     this.snapshotIntel(stationId);
     this.bus.emit('economy:tradeCompleted', {
       stationId, commodityId, side, qty, unitAvg, total,
@@ -1106,6 +1116,7 @@ export const economy = {
       tradeSequence: receipt && receipt.tradeSequence,
       seenAt: receipt && receipt.seenAt,
     });
+    return receipt;
   },
 
   recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
