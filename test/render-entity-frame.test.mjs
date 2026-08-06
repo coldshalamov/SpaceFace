@@ -125,6 +125,11 @@ test('authored instance pools consume bounded frame records, clean omissions, an
   assert.equal(result.stable.ownersVisited, 0, 'stable frame records avoid owner work');
   assert.equal(result.stable.slotsVisited, 0, 'stable frame records avoid a pooled-slot rescan');
   assert.equal(result.stableVersion, result.firstVersion, 'stable frame performs no GPU upload');
+  assert.equal(result.statsObjectStable, true, 'frame stats reuse one stable object instead of allocating per frame');
+  assert.equal(result.cullContextObjectStable, true,
+    'instance culling reuses one scene-owned context instead of allocating per frame');
+  assert.equal(result.ownerVisibilityRecordStable, true,
+    'authored-owner visibility mutates one stable record instead of allocating per frame');
   assert.equal(result.replaced.submittedInstanceSlots, 1);
   assert.equal(result.replaced.ownersVisited, 2, 'new owner sync and omitted-owner cleanup are both bounded');
   assert.ok(result.replacedVersion > result.stableVersion);

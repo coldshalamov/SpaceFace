@@ -55,6 +55,7 @@ const INSTANCE_FAR_CULL_RADIUS = 9000;
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const EMPTY_ARRAY = Object.freeze([]);
+const HIDDEN_INSTANCE_OWNER_FRAME = Object.freeze({ frame: 0, visible: false });
 const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
 const resolvedLibraryByRenderer = new WeakMap();
@@ -4712,10 +4713,9 @@ function isVisibleToOwner(object, owner, context, stats, record = null) {
 }
 
 function syncOwnerForInstanceFrame(owner, context, record = null) {
-  const empty = { frame: 0, visible: false };
-  if (!owner || !owner.parent || !context || !context.state) return empty;
+  if (!owner || !owner.parent || !context || !context.state) return HIDDEN_INSTANCE_OWNER_FRAME;
   if (context.frameBounded) {
-    if (!record || record.visible === false || record.viewCulled === true) return empty;
+    if (!record || record.visible === false || record.viewCulled === true) return HIDDEN_INSTANCE_OWNER_FRAME;
   }
   let cached = context.state.ownerVisibility.get(owner);
   if (cached && cached.frame === context.frame) return cached;
@@ -4723,8 +4723,12 @@ function syncOwnerForInstanceFrame(owner, context, record = null) {
   owner.updateWorldMatrix(true, false);
   const visible = isOwnerInCullContext(owner, context);
   if (visible) owner.updateWorldMatrix(false, true);
-  cached = { frame: context.frame, visible };
-  context.state.ownerVisibility.set(owner, cached);
+  if (!cached) {
+    cached = { frame: 0, visible: false };
+    context.state.ownerVisibility.set(owner, cached);
+  }
+  cached.frame = context.frame;
+  cached.visible = visible;
   return cached;
 }
 
@@ -4759,6 +4763,7 @@ function sceneState(scene) {
       nextFrameOwners: new Set(),
       affectedChunks: new Set(),
       frameRecordsByOwner: new Map(),
+      cullContext: createInstanceCullContext(),
       cameraState: { initialized: false, present: false, values: new Float64Array(32) },
       syncFrame: 0,
     };
@@ -4848,8 +4853,25 @@ function normalizeWaspDomeGlass(root, entity) {
 }
 
 function resetPoolStats(state) {
-  state.stats = createPoolStats();
-  return state.stats;
+  const stats = state.stats || (state.stats = createPoolStats());
+  stats.pools = 0;
+  stats.chunks = 0;
+  stats.pooledInstanceSlots = 0;
+  stats.activeInstanceSlots = 0;
+  stats.submittedInstanceSlots = 0;
+  stats.visibleInstancePools = 0;
+  stats.offscreenInstancePools = 0;
+  stats.culledInstanceSlots = 0;
+  stats.hiddenInstanceSlots = 0;
+  stats.avgPoolOccupancy = 0;
+  stats.tinyPools = 0;
+  stats.dirtyChunks = 0;
+  stats.matrixUploads = 0;
+  stats.matrixReuses = 0;
+  stats.frameBounded = false;
+  stats.ownersVisited = 0;
+  stats.slotsVisited = 0;
+  return stats;
 }
 
 function primePoolStats(state, stats) {
@@ -4889,36 +4911,43 @@ function buildInstanceCullContext(state, opts) {
   const camera = opts && opts.camera;
   const recordsByOwner = state.frameRecordsByOwner;
   recordsByOwner.clear();
+  const context = state.cullContext || (state.cullContext = createInstanceCullContext());
+  context.state = state;
+  context.frame = state.syncFrame;
+  context.frameBounded = frameBounded;
+  context.authoredRecords = authoredRecords || EMPTY_ARRAY;
+  context.recordsByOwner = recordsByOwner;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
-    return {
-      state,
-      frame: state.syncFrame,
-      frameBounded,
-      authoredRecords: authoredRecords || EMPTY_ARRAY,
-      recordsByOwner,
-      cameraDirty: captureCullCameraState(null, state.cameraState),
-      camera: null,
-      frustum: null,
-      cameraPosition: null,
-    };
+    context.cameraDirty = captureCullCameraState(null, state.cameraState);
+    context.camera = null;
+    context.frustum = null;
+    context.cameraPosition = null;
+    return context;
   }
   camera.updateMatrixWorld();
   if (typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
-  const cameraDirty = captureCullCameraState(camera, state.cameraState);
+  context.cameraDirty = captureCullCameraState(camera, state.cameraState);
   CULL_PROJECTION.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   CULL_FRUSTUM.setFromProjectionMatrix(CULL_PROJECTION);
   state.stats.frameBounded = frameBounded;
+  context.camera = camera;
+  context.frustum = CULL_FRUSTUM;
+  context.cameraPosition = camera.getWorldPosition(CULL_CAMERA_POSITION);
+  return context;
+}
+
+function createInstanceCullContext() {
   return {
-    state,
-    frame: state.syncFrame,
-    frameBounded,
-    authoredRecords: authoredRecords || EMPTY_ARRAY,
-    recordsByOwner,
-    cameraDirty,
-    camera,
-    frustum: CULL_FRUSTUM,
-    cameraPosition: camera.getWorldPosition(CULL_CAMERA_POSITION),
+    state: null,
+    frame: 0,
+    frameBounded: false,
+    authoredRecords: EMPTY_ARRAY,
+    recordsByOwner: null,
+    cameraDirty: true,
+    camera: null,
+    frustum: null,
+    cameraPosition: null,
   };
 }
 
@@ -5009,17 +5038,23 @@ export function runAuthoredInstanceFrameContractProbe() {
   });
 
   const firstFrame = frame(1, [record(ownerA, true)]);
-  const first = { ...syncAuthoredInstancePools(scene, {
+  const firstStats = syncAuthoredInstancePools(scene, {
     entityFrame: firstFrame,
     authoredRecords: firstFrame.authored,
-  }) };
+  });
+  const first = { ...firstStats };
+  const firstCullContext = poolState.cullContext;
+  const firstOwnerVisibility = poolState.ownerVisibility.get(ownerA);
   const firstVersion = chunk.mesh.instanceMatrix.version;
 
   const stableFrame = frame(2, [record(ownerA, false)]);
-  const stable = { ...syncAuthoredInstancePools(scene, {
+  const stableStats = syncAuthoredInstancePools(scene, {
     entityFrame: stableFrame,
     authoredRecords: stableFrame.authored,
-  }) };
+  });
+  const stable = { ...stableStats };
+  const stableCullContext = poolState.cullContext;
+  const stableOwnerVisibility = poolState.ownerVisibility.get(ownerA);
   const stableVersion = chunk.mesh.instanceMatrix.version;
 
   const replacedFrame = frame(3, [record(ownerB, true)]);
@@ -5035,6 +5070,7 @@ export function runAuthoredInstanceFrameContractProbe() {
     authoredRecords: emptyFrame.authored,
   }) };
   const fallback = { ...syncAuthoredInstancePools(scene) };
+  const fallbackOwnerVisibility = poolState.ownerVisibility.get(ownerA);
 
   scene.remove(ownerA); // exercises the exact owner `removed` release listener
   const afterRelease = { ...syncAuthoredInstancePools(scene) };
@@ -5052,6 +5088,10 @@ export function runAuthoredInstanceFrameContractProbe() {
     firstVersion,
     stableVersion,
     replacedVersion,
+    statsObjectStable: firstStats === stableStats,
+    cullContextObjectStable: firstCullContext === stableCullContext,
+    ownerVisibilityRecordStable: firstOwnerVisibility === stableOwnerVisibility
+      && firstOwnerVisibility === fallbackOwnerVisibility,
   };
 }
 
