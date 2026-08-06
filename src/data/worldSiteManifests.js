@@ -3,6 +3,10 @@
 
 import { CERES_WRECK_CATHEDRAL_LOCAL_POS } from './sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import {
+  CINDER_SLUICE_PLACEMENT,
+  CINDER_SLUICE_SITE_ID,
+} from './environmentalMachinery.js';
 
 export const WORLD_SITE_MANIFEST_VERSION = 4;
 
@@ -61,7 +65,33 @@ function cathedralStagePresentation(color, intensity, pulseRate, rotationRate) {
   });
 }
 
-export const WORLD_SITE_MANIFESTS = Object.freeze([
+function sluiceStagePresentation(color, intensity, pulseRate, rotationRate) {
+  return Object.freeze({
+    schemaVersion: 1,
+    fixtures: Object.freeze([
+      Object.freeze({
+        id: 'phase_status', kind: 'status-light', socketId: 'SOCKET_Emissive',
+        componentId: 'phase_regulator', color, intensity, radius: 3.2, opacity: 0.9,
+      }),
+      Object.freeze({
+        id: 'phase_ring', kind: 'ring', socketId: 'SOCKET_Structure_Core',
+        componentId: 'phase_regulator', color, intensity: intensity * 0.72,
+        radius: 9, tube: 0.65, opacity: 0.68,
+      }),
+      Object.freeze({
+        id: 'receiver_bar', kind: 'bar', socketId: 'SOCKET_Module_Teleporter',
+        componentId: 'settling_socket', color, intensity: intensity * 0.64,
+        size: Object.freeze([5.6, 0.7, 0.7]), opacity: 0.64,
+      }),
+    ]),
+    animations: Object.freeze([
+      Object.freeze({ id: 'phase_pulse', kind: 'pulse', targetId: 'phase_status', rate: pulseRate, amplitude: 0.2 }),
+      Object.freeze({ id: 'phase_rotate', kind: 'rotate', targetId: 'phase_ring', rate: rotationRate, amplitude: 1 }),
+    ]),
+  });
+}
+
+const WORLD_SITE_MANIFESTS_UNSORTED = [
   Object.freeze({
     schemaVersion: WORLD_SITE_MANIFEST_VERSION,
     id: 'world_site_helios_relay',
@@ -319,7 +349,150 @@ export const WORLD_SITE_MANIFESTS = Object.freeze([
       reservationEnvelope: 620,
     }),
   }),
-]);
+  Object.freeze({
+    schemaVersion: WORLD_SITE_MANIFEST_VERSION,
+    id: CINDER_SLUICE_SITE_ID,
+    worldObjectId: CINDER_SLUICE_SITE_ID,
+    name: 'Cinder Sluice',
+    sectorId: 'sector_ceres_belt',
+    placement: CINDER_SLUICE_PLACEMENT,
+    visualRoot: Object.freeze({
+      placeId: 'place_claim_outpost_relay',
+      anchorId: 'SOCKET_Structure_Core',
+      initialScale: 0.12,
+      visualRadius: 72,
+    }),
+    requestStreams: Object.freeze([
+      Object.freeze({ id: 'player-industrial-beam', owner: 'mining', sequenceSource: 'state.tick' }),
+    ]),
+    proxies: Object.freeze([
+      Object.freeze({
+        id: 'proxy_phase_regulator', componentId: 'phase_regulator',
+        anchorId: 'SOCKET_Structure_Core', shape: 'circle', bodyType: 'solid', radius: 11,
+        offset: Object.freeze({ x: 0, z: 0 }),
+      }),
+      Object.freeze({
+        id: 'proxy_ballast_clamp', componentId: 'ballast_clamp',
+        anchorId: 'SOCKET_Module_Depot', shape: 'circle', bodyType: 'solid', radius: 8,
+        bodyTypeByStatus: Object.freeze({ released: 'sensor' }),
+        offset: Object.freeze({ x: 0, z: 0 }),
+      }),
+      Object.freeze({
+        id: 'proxy_ballast_cradle', componentId: 'ballast_cradle',
+        anchorId: 'SOCKET_Module_Refinery', shape: 'circle', bodyType: 'sensor', radius: 8,
+        offset: Object.freeze({ x: 0, z: 1 }),
+      }),
+      Object.freeze({
+        id: 'proxy_settling_socket', componentId: 'settling_socket',
+        anchorId: 'SOCKET_Module_Teleporter', shape: 'circle', bodyType: 'sensor', radius: 10,
+        offset: Object.freeze({ x: 0, z: 0 }),
+      }),
+    ]),
+    components: Object.freeze([
+      Object.freeze({ id: 'phase_regulator', label: 'PHASE REGULATOR', kind: 'machine', anchorId: 'SOCKET_Structure_Core', initialStatus: 'damaged' }),
+      Object.freeze({ id: 'ballast_clamp', label: 'BALLAST CLAMP', kind: 'weakpoint', anchorId: 'SOCKET_Module_Depot', initialStatus: 'attached' }),
+      Object.freeze({ id: 'ballast_cradle', label: 'SLUICE BALLAST', kind: 'payload_mount', anchorId: 'SOCKET_Module_Refinery', initialStatus: 'sealed' }),
+      Object.freeze({ id: 'settling_socket', label: 'SETTLING SOCKET', kind: 'receiver', anchorId: 'SOCKET_Module_Teleporter', initialStatus: 'ready' }),
+    ]),
+    operations: Object.freeze([
+      Object.freeze({
+        id: 'repair_phase_regulator', componentId: 'phase_regulator', verb: 'repair',
+        requestStreamId: 'player-industrial-beam', threshold: 28,
+        from: Object.freeze(['damaged']), to: 'synchronized',
+        dependsOn: Object.freeze([]), consequenceIds: Object.freeze([]),
+      }),
+      Object.freeze({
+        id: 'cut_ballast_clamp', componentId: 'ballast_clamp', verb: 'cut',
+        requestStreamId: 'player-industrial-beam', threshold: 24,
+        from: Object.freeze(['attached']), to: 'released',
+        dependsOn: Object.freeze(['repair_phase_regulator']), payloadId: 'sluice_ballast',
+        consequenceIds: Object.freeze([]),
+      }),
+      Object.freeze({
+        id: 'settle_sluice_ballast', componentId: 'settling_socket', verb: 'transfer',
+        requestStreamId: 'player-industrial-beam', threshold: 1,
+        from: Object.freeze(['ready']), to: 'settled',
+        dependsOn: Object.freeze(['cut_ballast_clamp']), payloadId: 'sluice_ballast',
+        receiverId: 'sluice_receiver', consequenceIds: Object.freeze(['cinder_sluice_secured']),
+      }),
+    ]),
+    failureTriggers: Object.freeze([]),
+    payloads: Object.freeze([
+      Object.freeze({
+        id: 'sluice_ballast',
+        worldObjectId: `${CINDER_SLUICE_SITE_ID}/payload/sluice_ballast`,
+        label: 'Cinder Sluice Ballast',
+        componentId: 'ballast_cradle',
+        releaseOperationId: 'cut_ballast_clamp',
+        radius: 3,
+        mass: 240,
+        releaseVelocity: Object.freeze({ x: -65, z: 0 }),
+        salvagePool: Object.freeze({ cmdty_scrap_metal: 8, cmdty_salvage_electronics: 2 }),
+      }),
+    ]),
+    receivers: Object.freeze([
+      Object.freeze({
+        id: 'sluice_receiver',
+        componentId: 'settling_socket',
+        acceptsPayloadIds: Object.freeze(['sluice_ballast']),
+        settlementOperationId: 'settle_sluice_ballast',
+      }),
+    ]),
+    stages: Object.freeze([
+      Object.freeze({
+        id: 'surging', placeId: 'place_claim_outpost_relay', scale: 0.12,
+        label: 'CINDER SLUICE — UNREGULATED', requires: Object.freeze([]),
+        presentation: sluiceStagePresentation(0xff7a45, 1.08, 1.5, 0.42),
+      }),
+      Object.freeze({
+        id: 'regulated', placeId: 'place_claim_outpost_base', scale: 0.14,
+        label: 'CINDER SLUICE — PHASE CLOCK ONLINE',
+        requires: Object.freeze(['repair_phase_regulator']),
+        presentation: sluiceStagePresentation(0xffc24a, 1.12, 1.0, 0.3),
+      }),
+      Object.freeze({
+        id: 'ballast_free', placeId: 'place_claim_outpost_base', scale: 0.15,
+        label: 'CINDER SLUICE — BALLAST FREE',
+        requires: Object.freeze(['repair_phase_regulator', 'cut_ballast_clamp']),
+        presentation: sluiceStagePresentation(0x55d7ff, 1.18, 0.8, 0.24),
+      }),
+      Object.freeze({
+        id: 'quiet', placeId: 'place_claim_outpost_refinery', scale: 0.17,
+        label: 'CINDER SLUICE — CURRENT QUIET',
+        requires: Object.freeze(['repair_phase_regulator', 'cut_ballast_clamp', 'settle_sluice_ballast']),
+        presentation: sluiceStagePresentation(0x6eff9b, 1.22, 0.55, 0.12),
+      }),
+    ]),
+    consequences: Object.freeze([
+      Object.freeze({ id: 'cinder_sluice_secured', intents: Object.freeze([
+        { domain: 'economy', type: 'economy:grantCredits', payload: Object.freeze({ amount: 520, reason: 'cinder_sluice_recovery' }) },
+        { domain: 'faction', type: 'faction:repDelta', payload: Object.freeze({ factionId: 'faction_dmc', delta: 1, reason: 'cinder_sluice_recovery' }) },
+      ]) }),
+    ]),
+    persistence: Object.freeze({ collection: 'state.sites.worldById', serializer: 'asteroidSites', recordSchemaVersion: 1 }),
+    discovery: Object.freeze({ naturalProducer: 'asteroidSites', visibleOnDefaultRoute: true, revealRadius: 1100, initialDiscovered: true }),
+    mapAnnotation: Object.freeze({
+      kind: 'world-site', poiType: 'environmental-machinery', label: 'Cinder Sluice',
+      searchText: 'Cinder Sluice Ceres debris current phase regulator ballast industrial machinery',
+    }),
+    trafficHook: Object.freeze({
+      id: 'ceres_cinder_sluice_service', stationId: 'station_beltout',
+      eligibleRoles: Object.freeze(['hauler', 'courier']),
+      label: 'Belt Outpost ↔ Cinder Sluice',
+    }),
+    producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' }),
+    debug: Object.freeze({
+      packet: 'PQ-027', fixture: 'ceres_cinder_sluice',
+      routeNote: 'Ceres Helios-arrival side, outside the repair sockets and inside the current corridor',
+    }),
+  }),
+];
+
+// Durable site iteration is ID-stable rather than authoring-order-stable. This keeps old saves,
+// natural production, traffic hooks, and map projection deterministic as new manifests are added.
+export const WORLD_SITE_MANIFESTS = Object.freeze(
+  [...WORLD_SITE_MANIFESTS_UNSORTED].sort((a, b) => a.id.localeCompare(b.id)),
+);
 
 const WORLD_SITE_MANIFEST_BY_ID = new Map(WORLD_SITE_MANIFESTS.map((manifest) => [manifest.id, manifest]));
 

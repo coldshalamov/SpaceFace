@@ -197,6 +197,9 @@ export function validateWorldSiteManifest(manifest) {
     if (!nonEmpty(payload.worldObjectId)) add('payload-world-id-missing', `$.payloads[${i}].worldObjectId`);
     const release = operations.find((operation) => operation.id === payload.releaseOperationId);
     if (release && release.payloadId !== payload.id) add('payload-release-binding-invalid', `$.payloads[${i}].releaseOperationId`);
+    if (payload.releaseVelocity != null && !finitePoint(payload.releaseVelocity)) {
+      add('payload-release-velocity-invalid', `$.payloads[${i}].releaseVelocity`);
+    }
   }
   for (let i = 0; i < receivers.length; i += 1) {
     const receiver = receivers[i] || {};
@@ -1051,12 +1054,13 @@ function initialPayloadMotion(manifest, payload, stageId = null) {
   const binding = worldSiteAssetBinding(stage.placeId || manifest.visualRoot.placeId);
   const local = socketLocalOffset(binding, proxy, stage.scale);
   const offset = rotatedOffset({ x: local.x + 8 * stage.scale, z: local.z + 4 * stage.scale }, manifest.placement.rot);
+  const velocity = rotatedOffset(payload.releaseVelocity || { x: 0, z: 0 }, manifest.placement.rot);
   return {
     pos: {
       x: manifest.placement.pos.x + offset.x,
       z: manifest.placement.pos.z + offset.z,
     },
-    vel: { x: 0, z: 0 },
+    vel: velocity,
   };
 }
 

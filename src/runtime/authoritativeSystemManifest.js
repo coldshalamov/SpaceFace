@@ -19,7 +19,7 @@ export const PRESENTATION_PLATFORM_IDS = Object.freeze([
 const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
 
 /**
- * Production init order — matches createRegistry SYSTEMS (129 entries) at the PQ-019A
+ * Production init order — matches createRegistry SYSTEMS (130 entries) after SF-22
  * baseline. Includes presentation platform IDs so the browser path can materialize an
  * identical full list; Node consumers filter with isNodeSafeSystemId.
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
@@ -30,7 +30,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   'uniqueWrecks', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (97 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER (98 entries).
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
@@ -62,7 +62,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   'collisionConsequences', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'dockingCorridor', 'fields', 'planetRuntime', 'physics', 'combat',
+  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',

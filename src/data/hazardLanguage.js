@@ -59,6 +59,12 @@ export const HAZARD_LANGUAGE = {
     counterplay: ['avoid', 'time'],
     hint: 'Debris field: fast junk on flat arcs — keep your speed down and time the crossings.',
   },
+  debris_current: {
+    glyph: '⇢', color: '#39D0FF',
+    damages: ['trajectory and unsecured payload control'],
+    counterplay: ['time', 'tether', 'route'],
+    hint: 'Debris current: the warning rails precede each surge — time the calm, tether the ballast, or route around.',
+  },
 
   // ── hazard zone types (sectorZones.js `hazard:true`; same phenomenon = same glyph, zone color
   //    derived from ZONE_TYPES so the map and the language can never disagree) ──

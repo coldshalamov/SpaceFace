@@ -361,6 +361,14 @@ export const fields = {
     return this._kernel.register({ ...spec, tag: 'external', durationS: Infinity });
   },
 
+  // SF-22: authored environmental machinery uses the same force/predictor path but deliberately
+  // opts into the pooled world-space field presentation. It remains external to player deploy
+  // lifecycle/cooldowns; the owning environment adapter unregisters it on calm/sector/load.
+  registerEnvironmental(spec) {
+    if (!this._kernel || !spec) return null;
+    return this._kernel.register({ ...spec, tag: 'environmental', durationS: Infinity });
+  },
+
   unregisterExternal(id) {
     return this._kernel ? this._kernel.unregister(id) : false;
   },
@@ -451,6 +459,7 @@ export const fields = {
       if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
       n++;
       rec.id = f.id; rec.kind = f.kind;
+      rec.tag = f.tag;
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
