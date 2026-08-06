@@ -28,6 +28,24 @@ const { COLS, ROWS } = DRILL_CONST;
 
 const TICKER_IDLE = 'Systems nominal.';
 
+export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
+  const buildSelected = mode === MODES.BUILD;
+  driveButton?.classList?.toggle?.('active', !buildSelected);
+  buildButton?.classList?.toggle?.('active', buildSelected);
+  driveButton?.setAttribute?.('aria-pressed', String(!buildSelected));
+  buildButton?.setAttribute?.('aria-pressed', String(buildSelected));
+}
+
+export function anchoredClaimAnnouncement(claim) {
+  const survey = claim && claim.survey;
+  const committed = survey && (survey.lifecycle === 'committed' || survey.lifecycle === 'producing');
+  if (!committed) return 'Massline Core online. This asteroid is now a permanent site.';
+  const cells = Array.isArray(survey.cells)
+    ? survey.cells.length : Math.max(0, Math.trunc(Number(survey.cells) || 0));
+  const count = cells > 0 ? `${cells} formation ${cells === 1 ? 'cell' : 'cells'} are` : 'the formation is';
+  return `Massline Core online. Survey committed: ${count} now part of this permanent site.`;
+}
+
 export const asteroidScreen = {
   id: 'drill',
 
@@ -191,6 +209,7 @@ export const asteroidScreen = {
     const buildBtn = document.createElement('button');
     buildBtn.type = 'button';
     buildBtn.innerHTML = 'Build <span class="ao-key-cap">B</span>';
+    syncAsteroidConsoleModeButtons(driveBtn, buildBtn, MODES.DRIVE);
     modeSwitch.append(driveBtn, buildBtn);
     const cardHost = document.createElement('div');
     const scanBtn = document.createElement('button');
@@ -260,8 +279,7 @@ export const asteroidScreen = {
       controlMap,
       hooks: {
         onModeChanged(mode) {
-          driveBtn.classList.toggle('active', mode === MODES.DRIVE);
-          buildBtn.classList.toggle('active', mode === MODES.BUILD);
+          syncAsteroidConsoleModeButtons(driveBtn, buildBtn, mode);
           palette.setVisible(mode === MODES.BUILD);
           inspElapsed = 10;
           announce(mode === MODES.BUILD
@@ -582,7 +600,7 @@ export const asteroidScreen = {
         syncLedgerFromSite();
         if (event === 'site:anchored') {
           clearBanner('unanchored');
-          announce('Massline Core online. This asteroid is now a permanent site.');
+          announce(anchoredClaimAnnouncement(site()));
         }
       }));
     }

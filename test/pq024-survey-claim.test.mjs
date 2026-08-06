@@ -18,6 +18,7 @@ import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { SITE_MACHINE_BY_ID } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { formationLabel, surveySentences, placementReason } from '../src/ui/asteroid/inspector.js';
+import * as asteroidScreenPresentation from '../src/ui/asteroid/asteroidScreen.js';
 
 const { COLS, ROWS } = DRILL_CONST;
 const EMPTY = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
@@ -578,6 +579,33 @@ test('survey copy stays one-voice: labels, sentences, and the stale placement re
   assert.ok(producing.some((s) => /Producing since first real output/.test(s.text)));
   assert.ok(producing.some((s) => /relay online/.test(s.text)));
   assert.ok(placementReason({ reason: 'survey-stale' }).includes('Survey'));
+});
+
+test('Asteroid Ops exposes mode selection and the atomic Core-survey consequence without color', () => {
+  assert.equal(typeof asteroidScreenPresentation.syncAsteroidConsoleModeButtons, 'function');
+  assert.equal(typeof asteroidScreenPresentation.anchoredClaimAnnouncement, 'function');
+  const button = () => {
+    const attrs = new Map();
+    const classes = new Set();
+    return {
+      attrs, classes,
+      setAttribute(name, value) { attrs.set(name, String(value)); },
+      classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); } },
+    };
+  };
+  const drive = button();
+  const build = button();
+  asteroidScreenPresentation.syncAsteroidConsoleModeButtons(drive, build, 'build');
+  assert.equal(drive.attrs.get('aria-pressed'), 'false');
+  assert.equal(build.attrs.get('aria-pressed'), 'true');
+  assert.equal(build.classes.has('active'), true);
+
+  const line = asteroidScreenPresentation.anchoredClaimAnnouncement({
+    survey: { lifecycle: 'committed', cells: [11, 12, 13] },
+  });
+  assert.match(line, /Massline Core online/i);
+  assert.match(line, /survey committed/i);
+  assert.match(line, /3 formation cells/i);
 });
 
 test('the asteroid screen wires the survey surfaces (chip, subscriptions, inspector pass-through)', () => {
