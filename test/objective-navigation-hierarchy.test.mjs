@@ -8,6 +8,7 @@ import {
   contactOverflowSummary,
   objectiveBearingGlyph,
   objectiveTravelReadout,
+  resolveFlightObjectiveCommand,
   resolveObjectiveEdgePlacement,
   resolveObjectiveHudLayout,
 } from '../src/ui/hud.js';
@@ -41,6 +42,44 @@ test('goal bearing is an explicit eight-way direction, not an unlabeled color', 
   ]) {
     const { playerId, entities, waypoint } = bearingState(x, z);
     assert.equal(objectiveBearingGlyph({ playerId, entities }, waypoint), glyph);
+  }
+});
+
+test('a foreign live waypoint never borrows the tracked mission action or deadline', () => {
+  const mission = {
+    id: 'm_deadline', status: 'active', type: 'cargo_delivery', title: 'Timed delivery',
+    deadline_s: 600, destStationId: 'station_ceres', params: {},
+  };
+  const state = {
+    ui: { trackedMissionId: mission.id },
+    missions: { active: [mission] },
+    nav: { waypoint: null },
+    story: { beatIndex: 0 },
+  };
+
+  let command = resolveFlightObjectiveCommand(state);
+  assert.equal(command.owner, 'tracked-mission');
+  assert.equal(command.mission, mission);
+
+  state.nav.waypoint = {
+    kind: 'mission', missionId: mission.id, reason: 'Deliver the cargo',
+    pos: { x: 100, z: 20 },
+  };
+  command = resolveFlightObjectiveCommand(state);
+  assert.equal(command.owner, 'tracked-mission', 'matching mission waypoint may share its timer');
+  assert.equal(command.mission, mission);
+
+  for (const waypoint of [
+    { kind: 'trade', reason: 'Sell ore at Tethys' },
+    { kind: 'nav', reason: 'Fly to Helios Station' },
+    { kind: 'claim_defense', reason: 'Defend Ash Claim', deadline_s: 45 },
+    { onboarding: true, reason: 'Brake below ten' },
+  ]) {
+    state.nav.waypoint = { ...waypoint, pos: { x: 30, z: -40 } };
+    command = resolveFlightObjectiveCommand(state);
+    assert.equal(command.owner, 'navigation', `${waypoint.kind || 'onboarding'} owns the command`);
+    assert.equal(command.mission, null, 'foreign navigation must not supply the tracked mission timer');
+    assert.equal(command.waypoint.reason, waypoint.reason);
   }
 });
 

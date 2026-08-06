@@ -302,6 +302,39 @@ function mtObjectiveAction(action, wp) {
   return `${verb} · ${destination}`;
 }
 
+/**
+ * Resolve the sole flight command without combining state from different navigation owners.
+ * A matching mission waypoint may carry its tracked mission's timer; every other live waypoint
+ * temporarily owns the command by itself while leaving mission tracking untouched.
+ */
+export function resolveFlightObjectiveCommand(
+  state,
+  waypoint = (state && state.nav && state.nav.waypoint) || buildCorridorOpeningWaypoint(state),
+) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = (state && state.missions && state.missions.active) || [];
+  const tracked = trackedId
+    ? active.find((mission) => mission && mission.id === trackedId && mission.status === 'active')
+    : null;
+  const navWaypoint = state && state.nav && state.nav.waypoint;
+  const trackedOwnsWaypoint = !!(
+    tracked && navWaypoint && navWaypoint.kind === 'mission' && navWaypoint.missionId === tracked.id
+  );
+
+  if (tracked && (!navWaypoint || trackedOwnsWaypoint)) {
+    return { owner: 'tracked-mission', mission: tracked, waypoint: navWaypoint || null };
+  }
+
+  if (waypoint) return { owner: 'navigation', mission: null, waypoint };
+
+  const candidate = active.find((mission) => mission && mission.status === 'active');
+  if (candidate) return { owner: 'untracked-mission', mission: candidate, waypoint: null };
+  if (state && state.story && STORY_BEATS[state.story.beatIndex]) {
+    return { owner: 'story', mission: null, waypoint: null };
+  }
+  return null;
+}
+
 function mtMarkerLine(state, wp, suffix = '') {
   const bearing = objectiveBearingGlyph(state, wp);
   const travel = objectiveTravelReadout(state, wp);
@@ -3867,28 +3900,28 @@ export function createHud(ctx, alerts) {
 
     // --- mission tracker @10Hz ---
     if (slow) {
-      const trackedId = state.ui && state.ui.trackedMissionId;
-      const active = (state.missions && state.missions.active) || [];
-      const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
+      // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
       const navWaypoint = state.nav && state.nav.waypoint;
-      // G05: one paint path — live nav, else corridor idle waypoint (resolve once inside build).
-      // buildCorridorOpeningWaypoint already gates first-dock + tracked mission; no extra branch.
       const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
-      if (tracked) {
-        setText(mtTitle, coreText(navWaypoint && navWaypoint.onboarding ? 'tutorialObjective' : 'currentObjective'));
-        setText(mtObj, mtObjectiveAction(navWaypoint && navWaypoint.reason || mtObjectiveText(tracked), navWaypoint));
+      const command = resolveFlightObjectiveCommand(state, wp);
+      if (command && command.owner === 'tracked-mission') {
+        const tracked = command.mission;
+        const waypoint = command.waypoint;
+        setText(mtTitle, coreText('currentObjective'));
+        setText(mtObj, mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
-          setText(mtTime, mtMarkerLine(state, navWaypoint, mtFmtTime(remaining)));
+          setText(mtTime, mtMarkerLine(state, waypoint, mtFmtTime(remaining)));
           setClass(mtTime, 'sf-mt-urgent', remaining < 120);
           setDisplay(mtTime, true);
         } else {
-          setText(mtTime, mtMarkerLine(state, navWaypoint));
+          setText(mtTime, mtMarkerLine(state, waypoint));
           setClass(mtTime, 'sf-mt-urgent', false);
           setDisplay(mtTime, true);
         }
         setDisplay(missionTracker, true);
-      } else if (wp) {
+      } else if (command && command.owner === 'navigation') {
+        const wp = command.waypoint;
         const routeGuide = mtRouteGuidance(state, wp);
         setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
         setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
@@ -3896,8 +3929,8 @@ export function createHud(ctx, alerts) {
         setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
-      } else if (active.some((m) => m && m.status === 'active')) {
-        const candidate = active.find((m) => m && m.status === 'active');
+      } else if (command && command.owner === 'untracked-mission') {
+        const candidate = command.mission;
         setText(mtTitle, coreText('nextAction'));
         setText(mtObj, coreText('trackContract', {
           key: BINDINGS.missionLog.label,
@@ -3907,7 +3940,7 @@ export function createHud(ctx, alerts) {
         setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
-      } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
+      } else if (command && command.owner === 'story') {
         setText(mtTitle, coreText('nextAction'));
         setText(mtObj, coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }));
         setText(mtTime, coreText('noGoalSet'));
