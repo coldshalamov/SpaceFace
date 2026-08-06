@@ -1770,25 +1770,21 @@ async function enterAsteroidOps(page, targetEntityId) {
     if (!acquired) throw await createPq024MasslineLatchError(page, targetEntityId, samples);
 
     // The ordinary Massline press consumes the exact route-anchor receipt that was just rendered.
-    // Keep the key down until the 60 Hz input owner has consumed its edge; a zero-duration press can
-    // deliver both DOM edges between fixed ticks and intermittently produce no gameplay command.
+    // Keep the key down until a later fixed tick exposes the terminal tether owner state; the input
+    // edge itself can be consumed before an external actor has a chance to observe it.
+    const latchStartTick = await page.evaluate(() => Number(window.SF?.state?.tick) || 0);
     await page.keyboard.down('Space');
     let latched = false;
     let inputError = null;
     try {
-      const heldTickHandle = await page.waitForFunction(() => {
+      await page.waitForFunction(({ id, startTick }) => {
         const state = window.SF?.state;
-        return state?.input?.actions?.massline?.source === 'keyboard'
-          && state.input.actions.massline.latch === true
-          ? Number(state.tick) : null;
-      }, null, { timeout: 2_000 });
-      const heldTick = await heldTickHandle.jsonValue();
-      await page.waitForFunction((tick) => Number(window.SF?.state?.tick) > tick,
-        heldTick, { timeout: 2_000 });
-      latched = await page.waitForFunction((id) => {
-        const tether = window.SF?.state?.player?.tether;
-        return tether?.active === true && String(tether.targetId) === String(id);
-      }, targetEntityId, { timeout: 5_000 }).then(() => true, () => false);
+        const tether = state?.player?.tether;
+        return Number(state?.tick) > Number(startTick)
+          && tether?.active === true
+          && String(tether.targetId) === String(id);
+      }, { id: targetEntityId, startTick: latchStartTick }, { timeout: 5_000 });
+      latched = true;
     } catch (error) {
       inputError = error;
     } finally {

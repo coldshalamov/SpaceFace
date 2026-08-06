@@ -544,8 +544,10 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   const enterSource = source.slice(enterStart, enterEnd);
   assert.match(enterSource, /masslineAcquisition[\s\S]*selected\?\.targetId[\s\S]*selected\?\.status === 'ready'/,
     'Asteroid Ops entry must wait until the exact route-anchor acquisition is visibly ready');
-  assert.match(enterSource, /keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*Number\(window\.SF\?\.state\?\.tick\) > tick[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)/,
-    'Asteroid Ops entry must hold the ordinary Massline input across a fixed tick and verify its exact rock');
+  assert.match(enterSource, /latchStartTick[\s\S]*keyboard\.down\('Space'\)[\s\S]*Number\(state\?\.tick\) > Number\(startTick\)[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)/,
+    'Asteroid Ops entry must hold the ordinary Massline input through terminal owner confirmation on a later fixed tick');
+  assert.doesNotMatch(enterSource, /actions\?\.massline\?\.source === 'keyboard'/,
+    'the actor must not miss a successful latch while polling a one-tick input edge');
   assert.doesNotMatch(enterSource, /keyboard\.(?:down|press)\(['"]Control/,
     'Asteroid Ops entry must not replace the selected asteroid with the nearest-surface override');
   assert.doesNotMatch(source, /keyboard\.press\('Control\+Space'\)/,
