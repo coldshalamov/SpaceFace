@@ -226,7 +226,64 @@ const BREAKING_THE_PATTERN = Object.freeze({
   reducedCadenceHz: 2.4,
 });
 
+// ── The working trades (design/fiction/THE_WORKING_TRADES.md) ────────────────────────────────────
+// Three states THE WORKING LIGHT already codified but nothing could show, because no job kind
+// reached them. Each is deliberately built from a different combination of the four channels than
+// any signal above, so the fleet does not converge into "ship with a blinking thing on it".
+
+const READING_THE_DARK = Object.freeze({
+  id: 'reading_the_dark',
+  codeName: 'Reading the dark',
+  means: 'Mapping, seam-finding, wreck sniffing. Not extracting yet. Lower threat than a cutter, higher interest than a hauler.',
+  link: 'scan-sweep',
+  contact: null,
+  attitude: 'station-keep',
+  rhythm: 'pulse-ring',
+  // "Pulse. Wait. Pulse." — the Code's slowest working cadence, and the only signal whose whole
+  // read is the SILENCE between beats. A surveyor that pulses fast is lost or lying.
+  beats: 3,
+  cadenceHz: 0.9,
+  reducedCadenceHz: 0.55,
+});
+
+const PICKING_THE_BONES = Object.freeze({
+  id: 'picking_the_bones',
+  codeName: 'Picking the bones',
+  means: 'Recovery, not murder-in-progress — if the umbrellas are on and the weapons are cold.',
+  link: 'cut-arc',
+  contact: 'scrap-cloud',
+  attitude: 'station-keep',
+  rhythm: 'salvage-umbrella',
+  // Hooded floods aimed DOWN at the hull being stripped, plus intermittent cutter arcs. Deliberately
+  // irregular against the miner's even work-cone: a wreck fights back in a way a rock does not.
+  beats: 6,
+  cadenceHz: 4.8,
+  reducedCadenceHz: 1.8,
+});
+
+const HULL_OPEN = Object.freeze({
+  id: 'hull_open',
+  codeName: 'Hull open',
+  means: 'Soft target by necessity. Do not bounce wake off them.',
+  link: 'weld-stitch',
+  // The one authored ABSENCE in the whole code. THE WORKING LIGHT is explicit that repair ADDS
+  // material, so a tender throws no ejecta at all — and that missing channel is itself the signal
+  // separating a repair rig from a salvor working two hundred units away.
+  contact: null,
+  attitude: 'station-keep',
+  rhythm: 'men-at-work',
+  // Static red corners that do NOT blink (the Code calls them "static red men-at-work corners"),
+  // with the welding stars carrying the rhythm instead. Two beats, slow, so the corners read as
+  // continuous presence rather than a warning flash.
+  beats: 2,
+  cadenceHz: 2.9,
+  reducedCadenceHz: 1.2,
+});
+
 export const NPC_JOB_SIGNATURE_PROFILES = Object.freeze({
+  reading_the_dark: READING_THE_DARK,
+  picking_the_bones: PICKING_THE_BONES,
+  hull_open: HULL_OPEN,
   spine_wake: SPINE_WAKE,
   heavy_burn: HEAVY_BURN,
   clean_burn: CLEAN_BURN,
@@ -253,6 +310,22 @@ const EXACT = Object.freeze({
   // Only a miner works a rock face; only a miner comes home under rock.
   'miner:work': BLIND_CONE,
   'miner:return': HOME_UNDER_ROCK,
+  // The working trades. Each claims `work` for itself, because "what this hull does when it is
+  // stopped and busy" is the single most identifying thing about a trade — and it is exactly where
+  // the three original kinds were indistinguishable.
+  'surveyor:work': READING_THE_DARK,
+  // A survey rig crabs its grid rather than cruising it. The Code says the pulse never stops, so
+  // the transit legs keep the same signal instead of borrowing a freighter's cadence.
+  'surveyor:transit': READING_THE_DARK,
+  'surveyor:approach': READING_THE_DARK,
+  'salvor:work': PICKING_THE_BONES,
+  // Getting the cut piece aboard is still work on the wreck, not a berth transfer.
+  'salvor:load': PICKING_THE_BONES,
+  'salvor:return': HOME_UNDER_ROCK,
+  'tender:work': HULL_OPEN,
+  // A tender re-undocks for every call-out; the Code's spine wake is what that looks like, and it
+  // is why a repair rig reads differently from a barge even before it arrives anywhere.
+  'tender:depart': SPINE_WAKE,
 });
 
 const BY_PHASE = Object.freeze({

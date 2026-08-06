@@ -3711,6 +3711,81 @@ export const vfx = {
         break;
       }
 
+      case 'pulse-ring': {
+        // "Pulse. Wait. Pulse." An expanding shell-flash, and a single cool pin held out on the
+        // boom. The whole read is the SILENCE between beats — a fast pulse means lost or lying —
+        // so the ring is large and short-lived rather than bright and frequent.
+        if (beat === 0 && this._spawnSprite(
+          SPR_RING, x, 0.44, z,
+          reducedMotion ? 1.30 : 0.86, r * 0.55, r * 3.4, 0.44, 0, '#8fe6ff', 0, 0, 1, 0,
+        )) emitted++;
+        // The survey pin sits off the nose on its boom, crabbed to one side — the dossier's
+        // "slender boom that can crab ninety degrees off the nose". It never blinks off.
+        const pinX = x + dx * r * 0.5 + nx * r * 1.25;
+        const pinZ = z + dz * r * 0.5 + nz * r * 1.25;
+        emitted += this._spawnJobLamp(pinX, 0.58, pinZ, r, 0.075, '#bfe8ff', reducedMotion, 0.7);
+        emitted += this._spawnStationSideEventStreak(
+          x + dx * r * 0.3 + nx * r * 0.7, 0.54, z + dz * r * 0.3 + nz * r * 0.7,
+          reducedMotion ? 0.90 : 0.62, r * 0.035, r * 1.1, 0.34, '#7fc4e0', 0, 0, nx, nz,
+        );
+        break;
+      }
+
+      case 'salvage-umbrella': {
+        // Hooded floods aimed DOWN at the hull being stripped, plus intermittent cutter arcs. The
+        // Code is emphatic that umbrellas-on is what separates recovery from a kill still in
+        // progress, so they are the constant and the arc is the flicker.
+        const hood = (beat % 3) - 1;
+        emitted += this._spawnStationSideEventStreak(
+          x + nx * hood * r * 0.7 + dx * r * 0.3, 0.20, z + nz * hood * r * 0.7 + dz * r * 0.3,
+          reducedMotion ? 0.74 : 0.52, r * 0.11, r * 0.44, 0.50, '#ffb35c', 0, 0, dx, dz,
+        );
+        // Cutter arc: short, bright, and off half the beats — a wreck fights back in a way a rock
+        // does not, which is what makes this irregular where the miner's work cone is even.
+        if (beat % 2 === 0) {
+          const bite = r * (0.9 + (beat / 6) * 0.5);
+          if (this._spawnSprite(
+            SPR_FLASH, x + dx * bite, 0.40, z + dz * bite,
+            0.13, r * 0.08, r * 0.22, 0.78, 0, '#dff0ff', 0, 0, 1.4, Math.atan2(dz, dx),
+          )) emitted++;
+          if (!reducedMotion) {
+            const fling = (beat === 0 ? 1 : -1) * 0.8;
+            emitted += this._spawnStationSideEventStreak(
+              x + dx * bite, 0.36, z + dz * bite,
+              0.70, r * 0.03, r * 0.30, 0.46, '#9fb0bd',
+              (dx + nx * fling) * 9, (dz + nz * fling) * 9, dx + nx * fling, dz + nz * fling,
+            );
+          }
+        }
+        break;
+      }
+
+      case 'men-at-work': {
+        // Static red corners bracketing the open bay — the Code's own words — carried every beat so
+        // they read as continuous presence, not a warning flash. The welding stars carry the rhythm.
+        for (const side of [1, -1]) {
+          emitted += this._spawnJobLamp(
+            x + nx * side * r * 0.8 + dx * r * 0.55, 0.30,
+            z + nz * side * r * 0.8 + dz * r * 0.55,
+            r, 0.07, '#ff4a3a', reducedMotion, 0.66,
+          );
+        }
+        // Weld stars on the client's plate, alternating along the seam. No ejecta anywhere: repair
+        // ADDS material, and that absence is the channel separating this from a salvor's arc.
+        const seam = (beat === 0 ? 0.5 : -0.5) * r;
+        if (this._spawnSprite(
+          SPR_FLASH, x + dx * r * 1.05 + nx * seam, 0.46, z + dz * r * 1.05 + nz * seam,
+          reducedMotion ? 0.34 : 0.19, r * 0.06, r * 0.30, 0.88, 0, '#cfe4ff', 0, 0, 1, null,
+        )) emitted++;
+        // One drive cold: a tender on a call-out is a soft target by necessity, and the Code says
+        // so with a "do not push" bar across the dead engine.
+        emitted += this._spawnStationSideEventStreak(
+          x - dx * r * 1.0, 0.36, z - dz * r * 1.0,
+          reducedMotion ? 0.80 : 0.58, r * 0.045, r * 0.62, 0.40, '#e8eef4', 0, 0, nx, nz,
+        );
+        break;
+      }
+
       case 'distress-alternate': {
         // "Red-white is not a negotiation." A whole-hull alternating flash, the fastest and largest
         // signal in the Code, because its entire job is to break any rhythm the reader has locked on.

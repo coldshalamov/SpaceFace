@@ -86,6 +86,18 @@ const TRAFFIC_ROLES = {
   // path is the V3 NPC boost intent in update(), which keeps momentum honest and tether-shareable.
   express:  { ship: 'ship_mule',     team: 2, speed: 247, archetype: 'fleeing_trader', weight: 3,
               label: 'Express Liner', docks: true, trades: true, express: true },
+  // ── The working trades (design/fiction/THE_WORKING_TRADES.md) ─────────────────────────────────
+  // Hulls chosen from the dossiers, not from what was convenient: the Ranger's long-endurance
+  // utility spine is why a surveyor flies one and why "surveyors who cannot afford a Ranger fake
+  // the trade on a Hitch and die of range"; the Pelican is a barge frame, which is what a salvor
+  // needs to drag cut plate home; the Drifter's speed is why a tender gets off the berth fast when
+  // somebody is venting.
+  surveyor: { ship: 'ship_ranger',   team: 2, speed: 34, archetype: 'passive', weight: 9,
+              label: 'Survey Rig', docks: true, trades: false },
+  salvor:   { ship: 'ship_pelican',  team: 2, speed: 40, archetype: 'fleeing_trader', weight: 7,
+              label: 'Salvage Cutter', docks: true, trades: true },
+  tender:   { ship: 'ship_drifter',  team: 2, speed: 66, archetype: 'passive', weight: 6,
+              label: 'Repair Tender', docks: true, trades: false },
 };
 
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
@@ -522,6 +534,48 @@ export const traffic = {
           { id: 'dest:' + stationIdentity(dest), pos: { x: dest.pos.x, z: dest.pos.z }, label: 'Destination' },
         ],
         payload: { commodity: 'cmdty_ore_iron', units: 40 },
+      };
+    }
+    if (role === 'surveyor') {
+      // A grid, not a beat. The dossier's shift is "crab the grid — pulse, wait, pulse, log", so
+      // the marks are laid out as an offset lattice rather than a ring: a ring reads as a patrol
+      // circling something, and a surveyor is covering ground nobody has charted.
+      const cx = home.pos.x; const cz = home.pos.z;
+      const marks = [[300, 120], [520, -180], [180, -420], [-160, -140]];
+      return {
+        kind: 'surveyor', sectorId,
+        route: marks.map(([ox, oz], i) => ({
+          id: 'mark' + i, pos: { x: cx + ox, z: cz + oz }, label: 'Mark ' + (i + 1),
+        })),
+      };
+    }
+    if (role === 'salvor') {
+      // Salvors work the dead, so the site must actually be a wreck. Without one there is nothing
+      // to cut and the hull keeps its ambient stepper — a salvor stripping a live rock would be a
+      // miner, and the fiction is emphatic that those are different trades.
+      const wreck = this._nearestOfTypeTo(this.state, home, 'wreck');
+      if (!wreck) return null;
+      return {
+        kind: 'salvor', sectorId,
+        route: [
+          { id: 'yard:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Scrap Yard' },
+          { id: 'hulk:' + wreck.id, pos: { x: wreck.pos.x, z: wreck.pos.z }, label: 'Hulk' },
+        ],
+        payload: { commodity: 'cmdty_scrap_metal', units: 24 },
+      };
+    }
+    if (role === 'tender') {
+      // A call-out: berth to client hull and back. The client is another station rather than a
+      // moving ship, because a tender's WORK phase holds station and welding onto something that
+      // flies away mid-repair would contradict the "soft target by necessity" the Code promises.
+      const client = this._pickExpressDestination(stations, home);
+      if (!client || !client.pos) return null;
+      return {
+        kind: 'tender', sectorId,
+        route: [
+          { id: 'berth:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Berth' },
+          { id: 'client:' + stationIdentity(client), pos: { x: client.pos.x, z: client.pos.z }, label: 'Call-out' },
+        ],
       };
     }
     if (role === 'patrol') {
@@ -1117,6 +1171,27 @@ export const traffic = {
     // thin field still yields a job instead of silently dropping the barge to its ambient stepper.
     for (let i = wanted - 1; i >= 0; i--) if (bestId[i] != null) return bestId[i];
     return null;
+  },
+
+  /**
+   * Nearest live entity of `type` to `anchor`, or null. Used to bind a working job to a real body
+   * (a salvor's hulk) rather than a coordinate, so the site can be resolved again at render time
+   * and the job dies honestly when the body does.
+   *
+   * Linear over the entity list, but this runs once per hull at commission — never per frame.
+   */
+  _nearestOfTypeTo(state, anchor, type) {
+    if (!anchor || !anchor.pos || !state) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of state.entityList || []) {
+      if (!e || e.type !== type || e.alive === false || !e.pos) continue;
+      const dx = e.pos.x - anchor.pos.x;
+      const dz = e.pos.z - anchor.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best;
   },
 
   // Escorts convoy with the nearest civilian freighter — they shadow it, distinct from patrols.

@@ -1,9 +1,13 @@
 // npcJobs — deterministic, serializable NPC job-state kernel (PQ-014 / SF-15 / W06).
 //
 // WHAT THIS IS: a PURE LIBRARY of plain serializable job records and the functions that create,
-// validate, advance, interrupt, resume, virtualize, materialize, and serialize them. Three job
-// kinds — miner, hauler, patrol — are three genuinely different phase graphs (cyclic field work,
-// one-shot payload delivery, cyclic scheduled patrol), not three labels on one machine.
+// validate, advance, interrupt, resume, virtualize, materialize, and serialize them. Its SIX job
+// kinds are six genuinely different phase graphs, not six labels on one machine: cyclic field work
+// (miner), one-shot payload delivery (hauler), cyclic scheduled patrol, a circuit that measures at
+// every stop instead of dwelling (surveyor), a shuttle that severs and then separately wrangles what
+// it severed (salvor), and the only cycle that re-undocks for each call-out and never touches cargo
+// at all (tender). test/npc-jobs-working-trades.test.mjs enforces that distinctness directly: strip
+// the labels off a phase trace and you must still be able to tell which trade produced it.
 //
 // WHAT THIS IS NOT: it is not a registered system, not a scheduler, not an entity spawner, and not
 // an owner of any single-writer state. It emits bounded, sequence-stamped INTENTS through a
@@ -42,11 +46,18 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 
 export const NPC_JOB_SCHEMA = 'npc_jobs_v1';
 
-/** The three job kinds. Each has a distinct phase graph (see PHASE_GRAPHS below). */
+/** The job kinds. Each has a distinct phase graph (see PHASE_GRAPHS below). */
 export const NPC_JOB_KIND = Object.freeze({
   MINER: 'miner',
   HAULER: 'hauler',
   PATROL: 'patrol',
+  // Added with the working-trades wave. Each is a STRUCTURALLY different graph, not a relabelling —
+  // see PHASE_GRAPHS. The test that matters is whether you can tell two kinds apart from the phase
+  // sequence alone with the labels stripped off; three kinds that all read
+  // commission/transit/approach/work/return are one kind wearing three hats.
+  SURVEYOR: 'surveyor',
+  SALVOR: 'salvor',
+  TENDER: 'tender',
 });
 
 /**
@@ -75,7 +86,33 @@ const LEGAL_PHASES = new Set(Object.values(NPC_JOB_PHASE));
 // Speeds in world-units/sec; durations in seconds. These are KERNEL planning constants used only to
 // turn route geometry into phase durations — they are not movement commands. The owning movement
 // system flies the materialized entity; the kernel merely decides WHEN each phase ends.
-const DEFAULT_SPEED = { miner: 60, hauler: 45, patrol: 80 };
+// Planning speeds, wu/s. Ordering encodes the trades: a survey rig crawls because it is measuring
+// while it moves; a salvor is a barge dragging cut plate; a tender is quick off the berth because
+// somebody is venting. These only turn leg geometry into durations — they are not movement commands.
+const DEFAULT_SPEED = {
+  miner: 60, hauler: 45, patrol: 80,
+  surveyor: 34, salvor: 40, tender: 66,
+};
+/**
+ * How long a stop at the work face lasts, per kind, in seconds.
+ *
+ * This table exists because its absence was a SILENT skip, not a visible bug. `workS` previously
+ * defaulted to 30 for miners and to MIN_PHASE_S (one millisecond) for everything else, so a kind
+ * whose whole identity is what it does while stopped would enter WORK, complete it inside a single
+ * tick, and leave — producing a phase trace of `approach -> load` with no work in it at all. The
+ * job still ran, the intents still fired, and nothing anywhere reported a problem.
+ *
+ * Durations are the trades' own, from design/fiction/THE_WORKING_TRADES.md: a survey stop is
+ * "pulse, wait, pulse, log"; cutting a hull apart is the longest single act on any shift; a weld
+ * call-out outlasts it because you cannot rush a seal somebody has to breathe behind.
+ */
+const DEFAULT_WORK_S = {
+  miner: 30, surveyor: 22, salvor: 40, tender: 45,
+};
+/** Work duration for a kind, or a floor for kinds that have no work phase at all. */
+function defaultWorkS(kind) {
+  return DEFAULT_WORK_S[kind] || MIN_PHASE_S;
+}
 const DEFAULT_COMMISSION_S = 2;
 const DEFAULT_DEPART_S = 3;
 const DEFAULT_APPROACH_S = 4;
@@ -140,6 +177,54 @@ const PHASE_GRAPHS = {
       [NPC_JOB_PHASE.TRANSIT]: NPC_JOB_PHASE.APPROACH,
       [NPC_JOB_PHASE.APPROACH]: NPC_JOB_PHASE.HOLD,
       [NPC_JOB_PHASE.HOLD]: NPC_JOB_PHASE.TRANSIT,
+    },
+  },
+  // ── The working-trades wave ─────────────────────────────────────────────────────────────────────
+  // Each graph below differs from all three originals in SHAPE, and each shape is the trade's actual
+  // working day rather than a route with a different label on it.
+  //
+  //   surveyor — a patrol that WORKS its marks instead of holding them. Same modulo-N circuit, but
+  //              every stop is a measurement, so the phase that ends a stop is WORK and there is no
+  //              scheduled dwell at all. "Reading the dark" (THE WORKING LIGHT §2): pulse, move,
+  //              pulse. It never carries and never unloads, which is why it has no LOAD/UNLOAD edge.
+  //   salvor   — a miner that must LIFT what it cut. Same home<->site toggle, but WORK (cutting the
+  //              hull apart) and LOAD (getting the piece aboard) are separate acts with separate
+  //              durations, because on a wreck they genuinely are: you sever, then you wrangle.
+  //              That LOAD between WORK and RETURN is the whole structural difference from a barge.
+  //   tender   — the only cycle carrying DEPART, and the only one with no cargo phase whatsoever.
+  //              A repair rig re-undocks for every call-out, welds on the client's hull, and comes
+  //              home with nothing: the Code's "hull open" entry is explicit that repair ADDS
+  //              material, which is why there is no ejecta and no unload to model.
+  surveyor: {
+    start: NPC_JOB_PHASE.COMMISSION,
+    next: {
+      [NPC_JOB_PHASE.COMMISSION]: NPC_JOB_PHASE.TRANSIT,
+      [NPC_JOB_PHASE.TRANSIT]: NPC_JOB_PHASE.APPROACH,
+      [NPC_JOB_PHASE.APPROACH]: NPC_JOB_PHASE.WORK,
+      [NPC_JOB_PHASE.WORK]: NPC_JOB_PHASE.TRANSIT,
+    },
+  },
+  salvor: {
+    start: NPC_JOB_PHASE.COMMISSION,
+    next: {
+      [NPC_JOB_PHASE.COMMISSION]: NPC_JOB_PHASE.TRANSIT,
+      [NPC_JOB_PHASE.TRANSIT]: NPC_JOB_PHASE.APPROACH,
+      // APPROACH forks on arrival — wreck (idx 1) cuts, home (idx 0) unloads. See successorPhase.
+      [NPC_JOB_PHASE.WORK]: NPC_JOB_PHASE.LOAD,
+      [NPC_JOB_PHASE.LOAD]: NPC_JOB_PHASE.RETURN,
+      [NPC_JOB_PHASE.RETURN]: NPC_JOB_PHASE.APPROACH,
+      [NPC_JOB_PHASE.UNLOAD]: NPC_JOB_PHASE.TRANSIT,
+    },
+  },
+  tender: {
+    start: NPC_JOB_PHASE.COMMISSION,
+    next: {
+      [NPC_JOB_PHASE.COMMISSION]: NPC_JOB_PHASE.DEPART,
+      [NPC_JOB_PHASE.DEPART]: NPC_JOB_PHASE.TRANSIT,
+      [NPC_JOB_PHASE.TRANSIT]: NPC_JOB_PHASE.APPROACH,
+      // APPROACH forks — client (idx 1) welds, home berth (idx 0) re-departs for the next call-out.
+      [NPC_JOB_PHASE.WORK]: NPC_JOB_PHASE.RETURN,
+      [NPC_JOB_PHASE.RETURN]: NPC_JOB_PHASE.APPROACH,
     },
   },
 };
@@ -329,7 +414,7 @@ function baseRecord(spec, route) {
     commissionS: Math.max(finite(spec.commissionS, DEFAULT_COMMISSION_S), MIN_PHASE_S),
     departS: Math.max(finite(spec.departS, DEFAULT_DEPART_S), MIN_PHASE_S),
     approachS: Math.max(finite(spec.approachS, DEFAULT_APPROACH_S), MIN_PHASE_S),
-    workS: Math.max(finite(spec.workS, kind === NPC_JOB_KIND.MINER ? 30 : 0) || MIN_PHASE_S, MIN_PHASE_S),
+    workS: Math.max(finite(spec.workS, defaultWorkS(kind)) || MIN_PHASE_S, MIN_PHASE_S),
     loadS: Math.max(finite(spec.loadS, DEFAULT_LOAD_S), MIN_PHASE_S),
     unloadS: Math.max(finite(spec.unloadS, DEFAULT_UNLOAD_S), MIN_PHASE_S),
     dwellS: Math.max(finite(spec.dwellS, DEFAULT_DWELL_S), MIN_PHASE_S),
@@ -448,7 +533,7 @@ export function normalizeJob(input) {
     commissionS: Math.max(finite(input.commissionS, DEFAULT_COMMISSION_S), MIN_PHASE_S),
     departS: Math.max(finite(input.departS, DEFAULT_DEPART_S), MIN_PHASE_S),
     approachS: Math.max(finite(input.approachS, DEFAULT_APPROACH_S), MIN_PHASE_S),
-    workS: Math.max(finite(input.workS, kind === NPC_JOB_KIND.MINER ? 30 : MIN_PHASE_S), MIN_PHASE_S),
+    workS: Math.max(finite(input.workS, defaultWorkS(kind)), MIN_PHASE_S),
     loadS: Math.max(finite(input.loadS, DEFAULT_LOAD_S), MIN_PHASE_S),
     unloadS: Math.max(finite(input.unloadS, DEFAULT_UNLOAD_S), MIN_PHASE_S),
     dwellS: Math.max(finite(input.dwellS, DEFAULT_DWELL_S), MIN_PHASE_S),
@@ -486,8 +571,13 @@ function originIndex(job) {
  */
 function targetIndex(job) {
   const n = job.route.length;
-  if (job.kind === NPC_JOB_KIND.MINER) return job.routeIndex === 0 ? 1 : 0;
-  if (job.kind === NPC_JOB_KIND.PATROL) return (job.routeIndex + 1) % n;
+  // Two-point shuttles (home <-> site) toggle; circuit walkers wrap.
+  if (job.kind === NPC_JOB_KIND.MINER
+    || job.kind === NPC_JOB_KIND.SALVOR
+    || job.kind === NPC_JOB_KIND.TENDER) return job.routeIndex === 0 ? 1 : 0;
+  if (job.kind === NPC_JOB_KIND.PATROL || job.kind === NPC_JOB_KIND.SURVEYOR) {
+    return (job.routeIndex + 1) % n;
+  }
   // hauler: linear advance; null once we are at the final waypoint
   return job.routeIndex < n - 1 ? job.routeIndex + 1 : null;
 }
@@ -606,10 +696,12 @@ function emit(job, intents, sink, kind, payload) {
 function advanceRouteIndex(job, finishedPhase) {
   const n = job.route.length;
   if (finishedPhase === NPC_JOB_PHASE.TRANSIT || finishedPhase === NPC_JOB_PHASE.RETURN) {
-    if (job.kind === NPC_JOB_KIND.MINER) {
+    if (job.kind === NPC_JOB_KIND.MINER
+      || job.kind === NPC_JOB_KIND.SALVOR
+      || job.kind === NPC_JOB_KIND.TENDER) {
       return job.routeIndex === 0 ? 1 : 0;
     }
-    if (job.kind === NPC_JOB_KIND.PATROL) {
+    if (job.kind === NPC_JOB_KIND.PATROL || job.kind === NPC_JOB_KIND.SURVEYOR) {
       return (job.routeIndex + 1) % n;
     }
     // hauler: linear
@@ -708,6 +800,39 @@ function successorPhase(job, finishedPhase, intents, sink) {
     }
     if (finishedPhase === NPC_JOB_PHASE.UNLOAD) {
       return NPC_JOB_PHASE.COMPLETE;
+    }
+  }
+  if (k === NPC_JOB_KIND.SURVEYOR) {
+    if (finishedPhase === NPC_JOB_PHASE.WORK) {
+      // A circuit closes when the next mark is the first one again — a survey sweep is only a sweep
+      // once it has come back round, and that is what the crew logs.
+      if (job.routeIndex === 0) {
+        job.loopCount += 1;
+        emit(job, intents, sink, 'cycle', { loopCount: job.loopCount, at: waypoint(job, 0)?.id || null });
+      }
+      return NPC_JOB_PHASE.TRANSIT;
+    }
+  }
+  if (k === NPC_JOB_KIND.SALVOR) {
+    if (finishedPhase === NPC_JOB_PHASE.APPROACH) {
+      // Arrived at the wreck (idx 1) → cut; arrived home (idx 0) → put the pieces on the scales.
+      return job.routeIndex === 1 ? NPC_JOB_PHASE.WORK : NPC_JOB_PHASE.UNLOAD;
+    }
+    if (finishedPhase === NPC_JOB_PHASE.UNLOAD) {
+      job.loopCount += 1;
+      emit(job, intents, sink, 'cycle', { loopCount: job.loopCount, at: waypoint(job, 0)?.id || null });
+      return NPC_JOB_PHASE.TRANSIT;
+    }
+  }
+  if (k === NPC_JOB_KIND.TENDER) {
+    if (finishedPhase === NPC_JOB_PHASE.APPROACH) {
+      // At the client (idx 1) → open the hull and weld. Back at the berth (idx 0) → the call-out is
+      // over, so re-DEPART for the next one. That second DEPART is why a tender's cycle is visibly
+      // different from a barge's: it undocks properly every single time.
+      if (job.routeIndex === 1) return NPC_JOB_PHASE.WORK;
+      job.loopCount += 1;
+      emit(job, intents, sink, 'cycle', { loopCount: job.loopCount, at: waypoint(job, 0)?.id || null });
+      return NPC_JOB_PHASE.DEPART;
     }
   }
   if (k === NPC_JOB_KIND.PATROL) {
