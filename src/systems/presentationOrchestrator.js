@@ -139,6 +139,7 @@ export const presentationOrchestrator = {
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
+      this.bus.on('ai:counterTether', (payload) => this._onCounterTether(payload || {})),
       this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload || {})),
       this.bus.on('ai:flee', (payload) => this._onDoctrineWithdraw(payload || {})),
       this.bus.on('combat:fire', (payload) => this._onCombatFire(payload || {})),
@@ -405,6 +406,24 @@ export const presentationOrchestrator = {
     const targetId = payload.target && payload.target.entityId;
     if (targetId != null && targetId !== cycle.targetId) return;
     this._emitDoctrineAction(cycle, payload, 'combat:actionStarted');
+  },
+
+  _onCounterTether(payload) {
+    const cueId = payload.kind === 'line_cut'
+      ? 'massline.counter_tether.cut'
+      : payload.kind === 'overload_dash'
+        ? 'massline.counter_tether.overload'
+        : null;
+    if (!cueId || payload.actorId == null || payload.attachmentId == null) return false;
+    const source = this.state && this.state.entities && this.state.entities.get(payload.actorId);
+    return this._emitCue(cueId, { ...payload, pos: source && source.pos || payload.pos || null }, {
+      sourceEvent: 'ai:counterTether',
+      sourceId: payload.actorId,
+      targetId: payload.targetId,
+      material: 'massline',
+      sequence: payload.threatId || `${payload.actorId}:${payload.attachmentId}:${payload.readyTick}`,
+      tags: ['counter_tether', payload.kind, payload.actionId, 'response_window'].filter(Boolean),
+    });
   },
 
   _onTetherAttached(payload) {

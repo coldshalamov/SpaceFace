@@ -32,7 +32,7 @@ const probes = [
   {
     id: 'cut',
     tapeId: '47a-live-counter-tether-cut',
-    ticks: 9,
+    ticks: 90,
     command: {
       kind: 'combatAction',
       actor: 'scavenger_thief',
@@ -43,7 +43,10 @@ const probes = [
     assert(result) {
       assert.equal(result.metrics.enemyActionCut > 0, true, 'SG-06 thief should start action_cut on its exposed Massline');
       assertSg06Action(result, 'action_cut');
-      assertEvent(result, 'ai:counterTether', (record) => record.payload && record.payload.kind === 'line_cut');
+      assertEvent(result, 'ai:counterTether', (record) => record.payload
+        && record.payload.kind === 'line_cut'
+        && record.payload.durationTicks >= 60
+        && record.payload.readyTick > record.payload.tick);
       assert(result.combatTrace.events.some((event) =>
         event.kind === 'attachment.broken' && event.reason === 'action_cut'),
       'SG-06 line-cut probe should break the live SG-02 attachment through action_cut');

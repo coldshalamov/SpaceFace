@@ -1,5 +1,5 @@
 import { getCombatKernel } from '../combat/kernel.js';
-import { ContactKind, wrapAngle } from './contracts.js';
+import { ContactKind, ObjectiveKind, wrapAngle } from './contracts.js';
 import {
   authorizeAIEngagement,
   isHostileForAI,
@@ -8,6 +8,7 @@ import {
 import { isPlayerWanted } from '../systems/heat.js';
 
 const TACTICAL_ACTION_DEF_FLAG = '__spacefaceTacticalActionDef';
+export const COUNTER_TETHER_RESPONSE_TICKS = 60;
 const TACTICAL_PROFILE = Object.freeze({
   action_dash: Object.freeze({
     tags: Object.freeze(['evade', 'retreat', 'counter_tether_overload']),
@@ -88,6 +89,9 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
   const tacticalViews = new Map();
   const listCache = new Map();
   const signatureCache = new Map();
+  // One bounded response record per live actor. Weak keys ensure despawned actors cannot accumulate
+  // in a long session, while a replacement target/action simply overwrites the actor's old record.
+  const counterTetherWindows = new WeakMap();
   const tacticalViewFor = (def) => {
     let view = tacticalViews.get(def.id);
     if (!view) {
@@ -158,6 +162,15 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
           return { ok: false, reason: 'not_attachment_owner' };
         }
       }
+      const responseGate = counterTetherResponseGate({
+        state,
+        bus: ctx.bus,
+        actor: entity,
+        actionId,
+        request,
+        windows: counterTetherWindows,
+      });
+      if (responseGate) return responseGate;
       return { ok: true, reason: 'sg03_predictive_gate' };
     },
 
@@ -319,6 +332,70 @@ function responseWindowReadyTick(entity) {
   return Number.isFinite(windowS) && windowS >= 0
     ? startedTick + Math.ceil(windowS * 60)
     : null;
+}
+
+function counterTetherResponseGate({ state, bus, actor, actionId, request, windows }) {
+  if (!actor || request.source !== 'ai') return null;
+  const kind = counterTetherKind(actionId, request.objective);
+  if (!kind) return null;
+
+  const attachmentId = request.target && request.target.attachmentId || request.targetId || null;
+  const attachment = attachmentId == null
+    ? null
+    : state.combat && state.combat.attachments && state.combat.attachments.byId
+      && state.combat.attachments.byId[String(attachmentId)] || null;
+  // A counter-tether response must remain tied to a real live rope. A stale perception frame may
+  // still select the action for a tick after release; reject it at the predictive gate instead of
+  // queueing repeated SG-03 actions that can only fail with attachment_missing.
+  if (!attachment || attachment.state !== 'active') {
+    windows.delete(actor);
+    return { ok: false, reason: 'counter_tether_resolved' };
+  }
+
+  const tick = Number.isInteger(request.tick) ? request.tick : state.tick;
+  const signature = [actionId, attachment.id, attachment.ownerId, attachment.targetId].join('|');
+  let window = windows.get(actor);
+  if (!window || window.signature !== signature || tick > window.readyTick + 2) {
+    const targetId = attachment.ownerId === state.playerId || attachment.targetId === state.playerId
+      ? state.playerId
+      : attachment.targetId;
+    window = {
+      signature,
+      readyTick: tick + COUNTER_TETHER_RESPONSE_TICKS,
+      threatId: `counter-tether:${actor.id}:${attachment.id}:${tick}`,
+    };
+    windows.set(actor, window);
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ai:counterTether', {
+        actorId: actor.id,
+        actor: actor.data && actor.data.scenarioActorId || null,
+        targetId,
+        attachmentId: attachment.id,
+        actionId,
+        kind,
+        tick,
+        readyTick: window.readyTick,
+        durationTicks: COUNTER_TETHER_RESPONSE_TICKS,
+        threatId: window.threatId,
+        source: 'sg06',
+      });
+    }
+  }
+  if (tick < window.readyTick) {
+    return {
+      ok: false,
+      reason: 'counter_tether_response_window',
+      retryAtTick: window.readyTick,
+    };
+  }
+  windows.delete(actor);
+  return null;
+}
+
+function counterTetherKind(actionId, objective) {
+  if (actionId === 'action_cut' && objective === ObjectiveKind.COUNTER_TETHER_CUT) return 'line_cut';
+  if (actionId === 'action_dash' && objective === ObjectiveKind.COUNTER_TETHER_OVERLOAD) return 'overload_dash';
+  return null;
 }
 
 function actionListSignature(capabilities, blockedTags) {

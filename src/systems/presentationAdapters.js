@@ -77,6 +77,8 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.break': 'presentation.tether.break',
   'tether.whip_impact': 'presentation.tether.whip_impact',
   'massline.threat': 'presentation.massline.threat',
+  'massline.counter_tether.cut': 'presentation.massline.threat',
+  'massline.counter_tether.overload': 'presentation.massline.threat',
   'tether.release.good': 'presentation.tether.release',
   'tether.release.clean': 'presentation.tether.release',
   'tether.release.razor': 'presentation.tether.release',
@@ -106,6 +108,8 @@ const UI_CUES = Object.freeze({
   'tether.whip_impact': uiCue('presentation:tether:whip-impact', 'info', 'MASSLINE IMPACT', 1.4),
   // Rung 10 — swing-danger warn (line-near-break / hostile-on-arc / collision-course).
   'massline.threat': uiCue('presentation:massline:threat', 'warn', 'SWING THREAT', 1.4),
+  'massline.counter_tether.cut': uiCue('presentation:massline:counter-tether-cut', 'danger', 'LINE CUT', 1.4),
+  'massline.counter_tether.overload': uiCue('presentation:massline:counter-tether-overload', 'danger', 'OVERLOAD', 1.4),
   // Prompt 03 — release-rated toasts. Severity/ttl escalate good -> clean -> razor so the razor
   // cue is visibly stronger than good. Messy has no entry (no UI cue for messy releases).
   'tether.release.good': uiCue('presentation:tether:release-good', 'info', 'CLEAN RELEASE', 1.1),
@@ -127,6 +131,8 @@ const CAPTIONS = Object.freeze({
   'tether.break': 'Massline broken.',
   'tether.whip_impact': 'Massline impact landed.',
   'massline.threat': 'Swing threat detected.',
+  'massline.counter_tether.cut': 'Enemy is preparing to cut the Massline.',
+  'massline.counter_tether.overload': 'Enemy is preparing a Massline overload break.',
   'tether.release.good': 'Clean release.',
   'tether.release.clean': 'Clean cut.',
   'tether.release.razor': 'Razor cut.',
@@ -547,7 +553,7 @@ function shapeForCue(id) {
   // failure from a restoration without reading the caption.
   if (id === 'world_site.damage') return 'bracket';
   if (id === 'world_site.recovery') return 'ring';
-  if (id && id.startsWith('tether.')) return 'arc';
+  if (id && (id.startsWith('tether.') || id.startsWith('massline.counter_tether.'))) return 'arc';
   if (id === 'shield.collapse') return 'ring';
   if (id === 'subsystem.disabled') return 'bracket';
   if (id && id.startsWith('scenario.comms.')) return 'diamond';

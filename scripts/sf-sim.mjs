@@ -431,21 +431,9 @@ async function run47a({
     } else if (isSg06Action && actionId === 'action_dash') {
       metrics.enemyActionDash++;
       metrics.enemyCounterTetherBehavior++;
-      bus.emit('ai:counterTether', {
-        actorId: actor.id,
-        actor: actor.data.scenarioActorId,
-        actionId,
-        kind: 'overload_dash',
-      });
     } else if (isSg06Action && actionId === 'action_cut') {
       metrics.enemyActionCut++;
       metrics.enemyCounterTetherBehavior++;
-      bus.emit('ai:counterTether', {
-        actorId: actor.id,
-        actor: actor.data.scenarioActorId,
-        actionId,
-        kind: 'line_cut',
-      });
     } else if (isSg06Action && actor.data.scenarioActorId === 'official_recovery_tug' && (actionId === 'action_burst' || actionId === 'action_reel')) {
       metrics.officialRecoveryAction++;
     }
