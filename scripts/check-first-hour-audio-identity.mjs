@@ -250,12 +250,10 @@ audio.rt._priorityWeaponProbe = { role: 'weaponLoop', loop: true };
 audio.rt._priorityDuckEngine = 1;
 audio.rt._priorityDuckWeapon = 1;
 audio.rt._signatureLastAt = Object.create(null);
-audio.rt._heliosTrafficTarget = NaN;
-audio.rt._heliosTrafficTelemetry = { active: false, targetGain: 0.0001, sectorId: null };
 audio.rt.musicState = 'calm';
 audio.rt.threat = 0;
 audio.rt._engineTelemetry = {
-  tier: 'idle', f1: 55, f2: 55, noiseG: 0.0001, humG: 0.48, massNorm: 1, duck: 1,
+  tier: 'idle', f1: 55, f2: 55, noiseG: 0, humG: 0, massNorm: 1, duck: 1,
 };
 audio.rt._docked = true;
 audio.rt._paused = false;
@@ -267,7 +265,7 @@ audio._ensureContinuousSources();
 assert(audio.rt.engineOsc1, 'engine continuous source must start');
 assert(audio.rt.brakeGain, 'brake continuous source must start');
 assert(audio.rt.tetherOsc, 'tether continuous source must start');
-assert(audio.rt.heliosTrafficBed, 'Helios traffic bed graph must be pooled with continuous sources');
+assert.equal(audio.rt.heliosTrafficBed, undefined, 'Helios must not allocate a continuous traffic oscillator bed');
 
 const trace = {
   schema: 'spaceface.firstHourAudioTrace.v1',
@@ -425,20 +423,20 @@ for (const stepName of ['massline_latch', 'massline_strain_fatigue_guard', 'mass
   );
 }
 
-// 9) HELIOS TRAFFIC — sustained calm-flight bed, then fast fade on dock/threat ownership.
-step('helios_traffic_bed', () => {
+// 9) IDLE SILENCE — no unearned low-frequency floor between player actions.
+step('idle_silence', () => {
   clearPriority();
   state.ui.docked = false;
   state.entities.get('player').flags.docked = false;
   audio.rt._docked = false;
-  audio.rt.musicState = 'calm';
-  audio.rt.threat = 0;
-  audio._updateHeliosTrafficBed();
-  assert(audio.rt._heliosTrafficTelemetry.active, 'calm undocked Helios flight must activate traffic bed');
-  assert(
-    audio.rt.heliosTrafficBed.gain.gain.value > 0.001,
-    'active Helios traffic bed must rise above its silent floor',
-  );
+  state.input.moveZ = 0;
+  state.entities.get('player').flags.boosting = false;
+  state.player.cruise = { phase: 'idle' };
+  audio._updateEngineHum();
+  assert.equal(audio.rt._engineTelemetry.tier, 'idle');
+  assert.equal(audio.rt._engineTelemetry.humG, 0, 'idle propulsion must not emit the 55 Hz startup buzz');
+  assert.equal(audio.rt.engineHumGain.gain.value, 0, 'idle engine output must land on hard silence');
+  assert.equal(audio.rt.heliosTrafficBed, undefined, 'Helios must not replace idle silence with a traffic bed');
 });
 
 // 10) Story comms use the real popup seam and must own the mix.
@@ -481,7 +479,6 @@ step('redock', () => {
   state.ui.docked = true;
   state.entities.get('player').flags.docked = true;
   bus.emit('dock:docked', { stationId: 'station_helios' });
-  audio._updateHeliosTrafficBed();
 });
 assert(
   trace.steps.find((s) => s.name === 'redock').played.includes('sfx_dock_clunk'),
@@ -489,8 +486,6 @@ assert(
 );
 assert(audio.rt._docked, 'docked flag must set');
 assert(audio.rt.loops.stationHum, 'station hum loop must start on dock');
-assert.equal(audio.rt._heliosTrafficTelemetry.active, false, 'traffic bed must fade when docked');
-assert.equal(audio.rt.heliosTrafficBed.gain.gain.value, 0.0001, 'docked traffic bed must target silent floor');
 
 // Sector identity keeps sparse cues, but must not rebuild the retired always-on oscillator pad.
 audio._updateSectorCues(ctx.currentTime);
@@ -544,7 +539,7 @@ trace.assertions.push(
   { id: 'massline_strain_fatigue_guard', ok: true },
   { id: 'shield_tether_spectral_separation', ok: true },
   { id: 'player_kill_confirmation_ownership', ok: true },
-  { id: 'helios_traffic_continuous_bed', ok: true },
+  { id: 'idle_flight_has_no_low_frequency_bed', ok: true },
 );
 trace.signatureProfiles = FIRST_HOUR_AUDIO_SIGNATURES;
 trace.summary = {
@@ -557,8 +552,8 @@ trace.summary = {
     engine: !!audio.rt.engineOsc1,
     brake: !!audio.rt.brakeGain,
     tether: !!audio.rt.tetherOsc,
-    heliosTraffic: !!audio.rt.heliosTrafficBed,
-    heliosTrafficActiveAfterDock: !!audio.rt._heliosTrafficTelemetry.active,
+    heliosTraffic: false,
+    idleEngineGain: audio.rt._engineTelemetry.humG,
     stationHum: !!audio.rt.loops.stationHum,
   },
   priorityThreshold: PRIORITY_DUCK_THRESHOLD,

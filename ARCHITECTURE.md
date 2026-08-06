@@ -311,7 +311,7 @@ settings = {
   uiScale:float(0.75..1.5, def 1),
   showDamageNumbers:bool,
   keybinds:{[action]:code},        // includes quicksave 'F5', quickload 'F9'
-  audio:{ master:0.8, sfx:0.9, music:0.6, muted:false },
+  audio:{ master:0.8, sfx:0.9, music:0.6, muted:true, defaultMuteVersion:1 },
   video:{ renderScale:1, bloom:true, bloomStrength:0.9, bloomThreshold:0.65,
           vsync:true, fov:50, particleQuality:'high', pixelRatioCap:2 },
   gameplay:{ autosaveIntervalS:120, tutorialHints:true, difficulty:'standard' },

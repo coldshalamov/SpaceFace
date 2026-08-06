@@ -256,10 +256,9 @@ for (let i = 1; i < gains.length; i++) {
 console.log('Check 3 PASSED: Tether hum gain tracks strain monotonically.');
 
 // ==========================================
-// CHECK 4: Pads Crossfade
+// CHECK 4: Sector identity stays finite
 // ==========================================
-console.log('\nRunning Check 4: Pads Crossfade...');
-// Mock sector enter and check pad gains
+console.log('\nRunning Check 4: Finite sector identity...');
 mockState.world = {
   currentSectorId: 's1',
   sectors: {
@@ -267,41 +266,23 @@ mockState.world = {
     s2: { id: 's2', palette: SECTOR_PALETTE_CLASSES.belt },
   }
 };
+mockState.settings = { audio: { muted: false } };
+mockState.ui = { docked: false };
+mockCtx.currentTime = 46;
+const sectorCues = [];
+const playBeforeSectorCheck = audio.play;
+audio.play = (recipeId) => { sectorCues.push(recipeId); return null; };
+try {
+  audio._updateSectorCues(mockCtx.currentTime);
+  mockState.world.currentSectorId = 's2';
+  audio._updateSectorCues(mockCtx.currentTime);
+} finally {
+  audio.play = playBeforeSectorCheck;
+}
+assert.equal(audio.rt.pads, undefined, 'sector changes must not allocate an oscillator pad');
+assert.deepEqual(sectorCues, ['sfx_core_bell'], 'sector identity should use only the earned sparse cue');
 
-audio.rt.pads = {};
-audio.rt.activePadClass = null;
-
-// Move to sector 1
-audio._updatePads(0);
-const pad1 = audio.rt.pads['core'];
-assert(pad1, 'Core pad must be started');
-
-// Move to sector 2
-mockState.world.currentSectorId = 's2';
-audio._updatePads(0);
-const pad2 = audio.rt.pads['belt'];
-assert(pad2, 'Belt pad must be started');
-
-// Inspect crossfade duration
-const timeline1 = pad1.gainNode.gain.timeline;
-const timeline2 = pad2.gainNode.gain.timeline;
-
-// Find linear ramp commands
-const fadeOut = timeline1.find(e => e.type === 'linear' && e.val === 0.0001);
-const fadeIn = timeline2.find(e => e.type === 'linear' && e.val === 1.0);
-
-assert(fadeOut, 'Core pad must be scheduled to fade out');
-assert(fadeIn, 'Belt pad must be scheduled to fade in');
-
-const fadeOutDur = fadeOut.t - mockCtx.currentTime;
-const fadeInDur = fadeIn.t - mockCtx.currentTime;
-
-console.log(`Fade out duration: ${fadeOutDur}s`);
-console.log(`Fade in duration: ${fadeInDur}s`);
-assert(fadeOutDur <= 4.5, `Fade out duration ${fadeOutDur}s exceeds 4.5s`);
-assert(fadeInDur <= 4.5, `Fade in duration ${fadeInDur}s exceeds 4.5s`);
-
-console.log('Check 4 PASSED: Pads crossfade in <= 4.5 seconds smoothly.');
+console.log('Check 4 PASSED: sector identity uses finite cues without a continuous oscillator pad.');
 
 // ==========================================
 // CHECK 5: Mute/Volume Settings
@@ -510,7 +491,7 @@ for (const rid of placeRecipes) {
   assert(AUDIO_RECIPE_BY_ID[rid], `First-hour place/identity recipe ${rid} must be defined`);
 }
 
-// Live continuous ensure: after mock context + ensure, engine oscillators exist
+// Live continuous ensure: the reusable engine graph exists, but idle output remains hard-silent.
 const engState = {
   playerId: 'p1',
   entities: new Map([
@@ -543,7 +524,7 @@ audio.rt = {
   _priorityDuckEngine: 1,
   _priorityDuckWeapon: 1,
   _engineTelemetry: {
-    tier: 'idle', f1: 55, f2: 55, noiseG: 0.0001, humG: 0.48, massNorm: 1, duck: 1,
+    tier: 'idle', f1: 55, f2: 55, noiseG: 0, humG: 0, massNorm: 1, duck: 1,
   },
   pads: {},
   loops: {},
@@ -576,6 +557,7 @@ for (const row of tiers) {
   const tel = audio.rt._engineTelemetry;
   assert(tel && tel.tier === row.name, `Engine tier must resolve to ${row.name}, got ${tel && tel.tier}`);
   assert(Math.abs(tel.f1 - row.expect) < 0.01, `Engine ${row.name} f1 must be ${row.expect} in ${row.sector}, got ${tel.f1}`);
+  if (row.name === 'idle') assert.equal(tel.humG, 0, 'idle engine identity must be informational, not audible');
 }
 // Loop voices must share the same bus routing as one-shots (no sfxBus bypass).
 assert.match(

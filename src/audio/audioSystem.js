@@ -48,7 +48,7 @@ export const BULLET_TIME_AUDIO = Object.freeze({
   loopRate: 0.85,
   musicMult: 0.630957, // -4 dB
 });
-// target stem weights per music state (A=calm drone, B=tense pad, C=combat, D=docked warm)
+// target stem weights per music state (A=calm sequence, B=tense pad, C=combat, D=docked warm)
 const STEM_WEIGHTS = {
   calm:   { A: 1.0, B: 0.0, C: 0.0, D: 0.0 },
   tense:  { A: 0.7, B: 0.8, C: 0.0, D: 0.0 },
@@ -98,7 +98,8 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
 });
 
 // The first-hour ear-training contract. These five foreground receipts deliberately occupy
-// different registers and priority levels; Helios traffic is the low-priority environmental floor.
+// different registers and priority levels. Continuous low-frequency ambience is intentionally not
+// part of the contract: the procedural stack stays quiet until a player action earns a cue.
 // The policy lives beside the live router so it cannot drift into an unwired design-only table.
 export const FIRST_HOUR_AUDIO_SIGNATURES = Object.freeze({
   masslineLatch: Object.freeze({
@@ -124,10 +125,6 @@ export const FIRST_HOUR_AUDIO_SIGNATURES = Object.freeze({
     sourceEvent: 'entity:killed[killerId=playerId]', semanticId: 'presentation.combat.player_kill',
     recipeId: 'sfx.killConfirmed', priority: 0.82, cooldownS: 0,
     register: 'sub-plus-rising-confirm',
-  }),
-  heliosTraffic: Object.freeze({
-    sourceEvent: 'calm Helios flight state', semanticId: null,
-    recipeId: null, priority: 0.12, cooldownS: 0, register: 'spatial-low-bed', gain: 0.032,
   }),
 });
 
@@ -627,9 +624,6 @@ export const audio = {
     rt._lastTrafficBlipAt = 0;
     rt._lastMachineryAt = 0;
     rt._signatureLastAt = Object.create(null);
-    rt.heliosTrafficBed = null;
-    rt._heliosTrafficTarget = NaN;
-    rt._heliosTrafficTelemetry = { active: false, targetGain: 0.0001, sectorId: null };
     rt._lastSquelchEndTime = 0;
     rt.sidechainDuck = 1;
     rt._busGainCache = null;      // last settings-derived bus gain written per bus
@@ -1100,7 +1094,6 @@ export const audio = {
     this._ensureEngineHum();
     this._ensureBrakeHiss();
     this._ensureTetherHum();
-    this._ensureHeliosTrafficBed();
   },
 
   _wallClockMs() {
@@ -1203,8 +1196,6 @@ export const audio = {
     silence(rt.brakeGain);
     silence(rt.tetherHum);
     silence(rt.tetherOverloadGain);
-    if (rt.heliosTrafficBed) silence(rt.heliosTrafficBed.gain);
-    rt._heliosTrafficTarget = 0.0001;
     // These params were just hard-written behind the bed updaters' backs. Drop their cached
     // targets so resume re-asserts the live value even when it happens to equal the cached one
     // (e.g. still braking across a pause, where a skip would leave the hiss silenced forever).
@@ -1936,17 +1927,6 @@ export const audio = {
       delay.connect(lp); // delay output mixes into filter
     }
 
-    // Sub-bass pad: a quiet, always-on triangle oscillator for warmth (not a drone — very low)
-    const padOsc = ctx.createOscillator();
-    const padGain = ctx.createGain();
-    padOsc.type = 'sine';
-    padOsc.frequency.value = key === 'C' ? 55 : key === 'D' ? 65.41 : key === 'B' ? 55 : 55; // A1 or C2
-    padGain.gain.value = key === 'C' ? 0.06 : 0.04;
-    padOsc.connect(padGain);
-    padGain.connect(parentGain); // bypass filter for clean sub
-    try { padOsc.start(ctx.currentTime); } catch (_) {}
-    nodes.push(padOsc, padGain);
-
     // Slow filter sweep LFO for movement (calm/docked breathe, tense/combat pulse)
     const filterLfo = ctx.createOscillator();
     const filterLfoGain = ctx.createGain();
@@ -2475,7 +2455,6 @@ export const audio = {
     this._updateDrillGrind();
     this._updateSectorCues(now);
     this._updateStationMurmur(now);
-    this._updateHeliosTrafficBed();
     this._updatePlaceContext(now);
 
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
@@ -2609,7 +2588,7 @@ export const audio = {
     // Soft-start at near-silence — _updateEngineHum ramps to the live idle/thrust target.
     // Starting at 0.8 produced a hard one-shot click on first unlock.
     const humGain = ctx.createGain();
-    humGain.gain.value = 0.0001;
+    humGain.gain.value = 0;
 
     const osc1 = ctx.createOscillator();
     osc1.type = 'sawtooth';
@@ -2624,7 +2603,7 @@ export const audio = {
     sub.type = 'sine';
     sub.frequency.value = 27.5;
     const subGain = ctx.createGain();
-    subGain.gain.value = 0.0001;
+    subGain.gain.value = 0;
 
     const noise = ctx.createBufferSource();
     noise.buffer = getNoiseBuffer(ctx, rt._caches);
@@ -2636,7 +2615,7 @@ export const audio = {
     noiseFilter.Q.value = 1.0;
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.value = 0.0001;
+    noiseGain.gain.value = 0;
 
     osc1.connect(humGain);
     osc2.connect(humGain);
@@ -2770,8 +2749,11 @@ export const audio = {
       subG = 0.12 * massNorm;
       humG = 0.72;
     } else {
-      // idle — quiet living hum at the exact 55 Hz contract
-      humG = 0.48;
+      // Idle has no physical event to voice. The old 55 Hz saw/sine stack was the startup buzz;
+      // thrust, boost, and cruise still retain their authored propulsion identities.
+      humG = 0;
+      subG = 0;
+      noiseG = 0;
     }
 
     // Preserve the tier fundamental while giving each drive a different overtone/noise/sub shape.
@@ -2801,7 +2783,7 @@ export const audio = {
       if (rt.engineSubGain) rt.engineSubGain.gain.setTargetAtTime(subG, t, 0.12);
       rt.engineNoiseGain.gain.setTargetAtTime(noiseG * duck, t, 0.15);
       if (rt.engineNoiseFilter) rt.engineNoiseFilter.frequency.setTargetAtTime(noiseHz, t, 0.12);
-      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0.0001, humG), t, 0.08);
+      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0, humG), t, 0.08);
     } catch (_) {}
 
     // Mutate a stable telemetry object for harness/evidence traces (no per-frame allocation).
@@ -3045,96 +3027,8 @@ export const audio = {
   },
 
   /**
-   * A single low-cost, continuously pooled Helios traffic layer. Two quiet carriers share one
-   * low-pass and drift across the stereo field over ~42 s, suggesting distant shipping lanes
-   * without a fatiguing repeating loop. It lives on ambientBus, so the existing combat sidechain,
-   * mute and Ambient slider remain the only gain authorities.
-   */
-  _ensureHeliosTrafficBed() {
-    const rt = this.rt, ctx = rt && rt.ctx;
-    if (!ctx || rt.heliosTrafficBed) return;
-
-    const low = ctx.createOscillator();
-    low.type = 'sine';
-    low.frequency.value = 49;
-    const upper = ctx.createOscillator();
-    upper.type = 'triangle';
-    upper.frequency.value = 73.5;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 240;
-    filter.Q.value = 0.65;
-    const gain = ctx.createGain();
-    gain.gain.value = 0.0001;
-
-    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-    const drift = ctx.createOscillator();
-    drift.type = 'sine';
-    drift.frequency.value = 0.024;
-    const driftDepth = ctx.createGain();
-    driftDepth.gain.value = 0.42;
-    drift.connect(driftDepth);
-
-    low.connect(filter);
-    upper.connect(filter);
-    if (panner) {
-      filter.connect(panner);
-      panner.connect(gain);
-      driftDepth.connect(panner.pan);
-    } else {
-      filter.connect(gain);
-    }
-    gain.connect(rt.ambientBus);
-    try {
-      low.start(ctx.currentTime);
-      upper.start(ctx.currentTime);
-      drift.start(ctx.currentTime);
-    } catch (_) {}
-
-    rt.heliosTrafficBed = { low, upper, filter, gain, panner, drift, driftDepth };
-  },
-
-  _updateHeliosTrafficBed() {
-    const rt = this.rt, ctx = rt && rt.ctx;
-    if (!ctx) return;
-    if (!rt.heliosTrafficBed) this._ensureHeliosTrafficBed();
-    const bed = rt.heliosTrafficBed;
-    if (!bed) return;
-
-    const sectorId = this.state.world && this.state.world.currentSectorId;
-    const isHelios = !!(sectorId && String(sectorId).includes('helios'));
-    const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    const docked = !!(rt._docked
-      || (this.state.ui && this.state.ui.docked)
-      || (player && player.flags && player.flags.docked));
-    const calm = (rt.threat == null || rt.threat < 0.35)
-      && rt.musicState !== 'combat'
-      && rt.musicState !== 'tense';
-    const active = this.state.mode === 'flight'
-      && isHelios
-      && !docked
-      && !rt._paused
-      && !this._motionReduced()
-      && calm;
-    const targetGain = active ? FIRST_HOUR_AUDIO_SIGNATURES.heliosTraffic.gain : 0.0001;
-
-    if (targetGain !== rt._heliosTrafficTarget) {
-      rt._heliosTrafficTarget = targetGain;
-      try {
-        bed.gain.gain.cancelScheduledValues(ctx.currentTime);
-        bed.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, active ? 0.8 : 0.12);
-      } catch (_) { try { bed.gain.gain.value = targetGain; } catch (__) {} }
-    }
-    const telemetry = rt._heliosTrafficTelemetry || (rt._heliosTrafficTelemetry = {});
-    telemetry.active = active;
-    telemetry.targetGain = targetGain;
-    telemetry.sectorId = sectorId || null;
-  },
-
-  /**
-   * Restrained place accents above the pooled bed: sparse station machinery when docked and quiet
-   * Helios traffic blips in calm undocked flight. Silence discipline keeps both accents rare.
+   * Restrained place accents: sparse station machinery when docked and quiet Helios traffic blips
+   * in calm undocked flight. Silence discipline keeps both accents rare and finite.
    */
   _updatePlaceContext(now) {
     const rt = this.rt, ctx = rt.ctx;

@@ -273,11 +273,19 @@ test('default mute creates no AudioContext; explicit unmute keeps paused-menu un
     state.settings.audio.muted = true;
     assert.equal(harness.play('sfx_ui_click', { gain: 1 }), null);
 
-    // Entering flight (resume) may build continuous beds, but they soft-start near silence.
+    // Entering an idle flight must remain silent. Thrust may opt into propulsion feedback later,
+    // but startup must not allocate a separate low-frequency environmental oscillator bed.
     state.settings.audio.muted = false;
+    state.mode = 'flight';
     harness._onPause(false);
     assert.ok(harness.rt.engineOsc1, 'resume builds the engine bed for flight');
-    assert.ok(harness.rt.engineHumGain.gain.value <= 0.0001 + 1e-9, 'engine bed soft-starts silent');
+    harness._updateEngineHum();
+    assert.ok(harness.rt.engineHumGain.gain.value <= 0.0001 + 1e-9,
+      'idle propulsion must stay silent instead of becoming a 55 Hz startup buzz');
+    assert.equal(harness.rt.heliosTrafficBed, undefined,
+      'idle Helios flight must not allocate an always-on traffic oscillator bed');
+    assert.doesNotMatch(harness._buildStemVoices.toString(), /padOsc|always-on triangle oscillator/,
+      'music stems must not hide another continuous sub-bass oscillator under the sequencer');
   } finally {
     try {
       if (harness.rt && harness.rt.stems) {
