@@ -7,6 +7,7 @@
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 
 export const CINDER_SLUICE_SITE_ID = 'world_site_ceres_cinder_sluice';
+export const CINDER_SLUICE_SECTOR_ID = 'sector_ceres_belt';
 export const CINDER_SLUICE_OPERATIONS = Object.freeze({
   regulate: 'repair_phase_regulator',
   release: 'cut_ballast_clamp',
@@ -15,7 +16,7 @@ export const CINDER_SLUICE_OPERATIONS = Object.freeze({
 
 export const CINDER_SLUICE_LOCAL_POS = Object.freeze({ x: 1950, z: -1250 });
 export const CINDER_SLUICE_GLOBAL_POS = Object.freeze(
-  sectorLocalToGlobalForSector(CINDER_SLUICE_LOCAL_POS, 'sector_ceres_belt'),
+  sectorLocalToGlobalForSector(CINDER_SLUICE_LOCAL_POS, CINDER_SLUICE_SECTOR_ID),
 );
 
 // The machine faces back into the belt, while its current exhausts toward the Helios arrival side.

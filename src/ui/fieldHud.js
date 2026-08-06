@@ -9,6 +9,13 @@
 // DOM subtree. No sim state. Fully guarded headless. Never touches hud.js/targetPanel/styles/*
 // (PQ-015 lease) — it self-injects its own scoped CSS like massSeedHud.
 
+import {
+  CINDER_SLUICE_SECTOR_ID,
+  CINDER_SLUICE_SITE_ID,
+  cinderSluicePhase,
+  pointInsideCinderSluice,
+} from '../data/environmentalMachinery.js';
+
 const FIELD_HUD_CSS = `
 .sf-field-pill {
   position: absolute; left: 50%; bottom: 146px; transform: translateX(-50%);
@@ -21,6 +28,9 @@ const FIELD_HUD_CSS = `
 .sf-field-pill.field-repulsor { color: #ffe0b0; border-color: rgba(240, 180, 90, 0.5); }
 .sf-field-pill.field-denied { color: #ffb0a0; border-color: rgba(240, 110, 90, 0.6); }
 .sf-field-pill.field-cooldown { color: #9fb4c8; border-color: rgba(120, 140, 160, 0.35); }
+.sf-field-pill.field-current-warning { color: #ffe0a3; border-color: rgba(255, 194, 74, 0.62); }
+.sf-field-pill.field-current-surge { color: #ffb0a0; border-color: rgba(255, 105, 82, 0.72); }
+.sf-field-pill.field-current-calm { color: #b9ffe4; border-color: rgba(88, 224, 176, 0.58); }
 `;
 
 const KIND_LABEL = { well: 'WELL', repulsor: 'REPULSOR', cone: 'CONE' };
@@ -36,6 +46,7 @@ export const fieldHud = {
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
+    this._cinderPhaseOut = {};
   },
 
   destroy() {
@@ -51,16 +62,17 @@ export const fieldHud = {
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const f = state.fields || null;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const { text, cls } = this._resolve(f, now);
+    const environmental = this._resolveEnvironmental(state, now);
+    const { text, cls } = this._resolve(f, now, environmental);
     this._apply(dom, text, cls);
   },
 
-  // One-voice resolution: a fresh denial wins for a beat, then the primary active field, then a
-  // pending cooldown. Returns { text, cls }.
-  _resolve(f, now) {
-    if (!f) return { text: '', cls: '' };
+  // One-voice resolution: a fresh denial wins for a beat, then an occupied environmental timing
+  // corridor, then the primary active player field, then a pending cooldown. Returns { text, cls }.
+  _resolve(f, now, environmental = null) {
+    if (!f && !environmental) return { text: '', cls: '' };
     // Denial (transient, ~1.8s): the reason is the HUD's whole job here.
-    const denial = f.lastDenial;
+    const denial = f && f.lastDenial;
     if (denial && Number.isFinite(denial.at) && now - denial.at < 1.8) {
       const label = KIND_LABEL[denial.kind] || 'FIELD';
       if (denial.reason === 'cooldown' && Number.isFinite(denial.readyAt)) {
@@ -68,8 +80,21 @@ export const fieldHud = {
       }
       return { text: `${label} DENIED`, cls: 'field-denied' };
     }
+    if (environmental) {
+      if (environmental.phase === 'quiet') {
+        return { text: 'CINDER SLUICE — CURRENT QUIET', cls: 'field-current-calm' };
+      }
+      const seconds = Math.max(0, Math.ceil(environmental.remainingS));
+      const label = environmental.phase === 'warning'
+        ? 'WARNING'
+        : environmental.phase === 'surge' ? 'SURGE' : 'CALM';
+      const cls = environmental.phase === 'warning'
+        ? 'field-current-warning'
+        : environmental.phase === 'surge' ? 'field-current-surge' : 'field-current-calm';
+      return { text: `CINDER SLUICE — ${label} ${seconds}s`, cls };
+    }
     // Primary active field: prefer the cone (held tool), else the deployed field expiring soonest.
-    const active = Array.isArray(f.active) ? f.active : [];
+    const active = Array.isArray(f && f.active) ? f.active : [];
     let cone = null, soonest = null;
     for (const rec of active) {
       // Authored environmental fields use the same pooled world-space presentation but are not a
@@ -90,7 +115,7 @@ export const fieldHud = {
       return { text: remain != null ? `${label} — ${stateWord} ${remain}s` : `${label} — ${stateWord}`, cls };
     }
     // Cooldown readiness (soonest pending).
-    const cds = f.cooldowns || {};
+    const cds = f && f.cooldowns || {};
     let bestKind = null, bestReady = Infinity;
     for (const kind of Object.keys(cds)) {
       const until = cds[kind];
@@ -100,6 +125,19 @@ export const fieldHud = {
       return { text: `${KIND_LABEL[bestKind] || 'FIELD'} READY ${Math.max(0, Math.ceil(bestReady - now))}s`, cls: 'field-cooldown' };
     }
     return { text: '', cls: '' };
+  },
+
+  _resolveEnvironmental(state, now) {
+    if (!state || state.mode !== 'flight'
+      || !state.world || state.world.currentSectorId !== CINDER_SLUICE_SECTOR_ID) return null;
+    const record = state.sites && state.sites.worldById
+      && state.sites.worldById[CINDER_SLUICE_SITE_ID];
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!record || !player || player.alive === false || !pointInsideCinderSluice(player.pos)) return null;
+    if (!this._cinderPhaseOut) this._cinderPhaseOut = {};
+    return cinderSluicePhase(record, now, this._cinderPhaseOut);
   },
 
   _apply(dom, text, cls) {
@@ -114,6 +152,9 @@ export const fieldHud = {
       dom.pill.classList.toggle('field-repulsor', cls === 'field-repulsor');
       dom.pill.classList.toggle('field-denied', cls === 'field-denied');
       dom.pill.classList.toggle('field-cooldown', cls === 'field-cooldown');
+      dom.pill.classList.toggle('field-current-warning', cls === 'field-current-warning');
+      dom.pill.classList.toggle('field-current-surge', cls === 'field-current-surge');
+      dom.pill.classList.toggle('field-current-calm', cls === 'field-current-calm');
     }
     if (!this._visible) {
       dom.pill.style.display = 'flex';

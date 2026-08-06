@@ -9,12 +9,12 @@
 import { fieldsFlag } from '../data/fields.js';
 import {
   CINDER_SLUICE_FIELD,
+  CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
 
-const SECTOR_ID = 'sector_ceres_belt';
 const HAZARD_TYPE = 'debris_current';
 
 function simTimeOf(state) {
@@ -64,7 +64,7 @@ export const environmentalMachinery = {
     const record = state && state.sites && state.sites.worldById
       && state.sites.worldById[CINDER_SLUICE_SITE_ID];
     const inSector = state && state.mode === 'flight'
-      && state.world && state.world.currentSectorId === SECTOR_ID;
+      && state.world && state.world.currentSectorId === CINDER_SLUICE_SECTOR_ID;
     if (!fieldsFlag('enabled') || !inSector || !record) {
       this._clear(!record ? 'site_missing' : 'inactive_route');
       return;

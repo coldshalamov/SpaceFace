@@ -5,6 +5,7 @@ import { FIELD_FLAGS } from '../src/data/fields.js';
 import {
   CINDER_SLUICE_FIELD,
   CINDER_SLUICE_OPERATIONS,
+  CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   cinderSluicePhase,
   pointInsideCinderSluice,
@@ -198,4 +199,48 @@ test('environmental cone presentation never steals the player field HUD voice', 
     active: [{ id: CINDER_SLUICE_FIELD.id, kind: 'cone', tag: 'environmental', expireAt: Infinity }],
     cooldowns: {},
   }, 5), { text: '', cls: '' });
+});
+
+test('the occupied Cinder Sluice corridor exposes its phase clock through the field HUD', () => {
+  const manifest = worldSiteManifestById(CINDER_SLUICE_SITE_ID);
+  const player = {
+    id: 1, type: 'ship', alive: true,
+    pos: { x: CINDER_SLUICE_FIELD.center.x, z: CINDER_SLUICE_FIELD.center.z },
+  };
+  const state = {
+    mode: 'flight', playerId: player.id,
+    world: { currentSectorId: CINDER_SLUICE_SECTOR_ID },
+    entities: new Map([[player.id, player]]),
+    sites: { worldById: { [CINDER_SLUICE_SITE_ID]: createWorldSiteRecord(manifest, { tick: 0 }) } },
+  };
+  const hud = Object.create(fieldHud);
+  hud._cinderPhaseOut = {};
+
+  let read = hud._resolveEnvironmental(state, 0);
+  assert.deepEqual(hud._resolve(null, 0, read), {
+    text: 'CINDER SLUICE — WARNING 2s', cls: 'field-current-warning',
+  });
+
+  read = hud._resolveEnvironmental(state, 3);
+  assert.deepEqual(hud._resolve({
+    active: [{ id: 'player_cone', kind: 'cone', engaged: true }], cooldowns: {},
+  }, 3, read), {
+    text: 'CINDER SLUICE — SURGE 6s', cls: 'field-current-surge',
+  }, 'the current clock keeps the one HUD voice while the player is inside');
+
+  read = hud._resolveEnvironmental(state, 10);
+  assert.deepEqual(hud._resolve(null, 10, read), {
+    text: 'CINDER SLUICE — CALM 2s', cls: 'field-current-calm',
+  });
+
+  state.sites.worldById[CINDER_SLUICE_SITE_ID] = settledRecord(manifest);
+  read = hud._resolveEnvironmental(state, 10_000);
+  assert.deepEqual(hud._resolve(null, 10_000, read), {
+    text: 'CINDER SLUICE — CURRENT QUIET', cls: 'field-current-calm',
+  });
+
+  player.pos.x = CINDER_SLUICE_FIELD.center.x - CINDER_SLUICE_FIELD.dir.x * 180;
+  player.pos.z = CINDER_SLUICE_FIELD.center.z - CINDER_SLUICE_FIELD.dir.z * 180;
+  assert.equal(hud._resolveEnvironmental(state, 10_000), null,
+    'the clock does not occupy the HUD outside the authored corridor');
 });
