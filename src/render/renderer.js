@@ -1464,7 +1464,6 @@ export const render = {
       if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
       this._publishAssetResidencyDiagnostics();
     });
-    let deferredStartupPrecompile = null;
     const compileSectorPipelines = (sector) => {
       if (gpu.software) {
         return Promise.resolve({
@@ -1511,16 +1510,27 @@ export const render = {
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
       if (state.mode === 'loading') {
-        deferredStartupPrecompile = sector;
-        state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
-          incremental: true,
-          preparePipelines: compileForCurrentTarget,
-          video: state.settings && state.settings.video,
-          yieldToMain: yieldToBrowser,
-        }).catch((error) => {
-          console.warn('[render] global pipeline precompile failed', error);
-          return null;
-        });
+        state.render.pipelinePrecompileReady = gpu.software
+          ? precompileGlobalPipelines(renderer, scene, cam.obj, {
+            incremental: true,
+            preparePipelines: compileForCurrentTarget,
+            video: state.settings && state.settings.video,
+            yieldToMain: yieldToBrowser,
+          }).catch((error) => {
+            console.warn('[render] global pipeline precompile failed', error);
+            return null;
+          })
+          : precompilePipelines(renderer, scene, cam.obj, {
+            sector,
+            includeGlobalPipelines: true,
+            incremental: true,
+            preparePipelines: compileForCurrentTarget,
+            video: state.settings && state.settings.video,
+            yieldToMain: yieldToBrowser,
+          }).catch((error) => {
+            console.warn('[render] opening pipeline precompile failed', error);
+            return null;
+          });
       } else {
         state.render.pipelinePrecompileReady = compileSectorPipelines(sector);
       }
@@ -1535,15 +1545,6 @@ export const render = {
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
       this._deferNoncriticalMeshStreaming = true;
-      if (!deferredStartupPrecompile) return;
-      const sector = deferredStartupPrecompile;
-      deferredStartupPrecompile = null;
-      const begin = () => {
-        if (state.mode !== 'flight') return;
-        state.render.backgroundPipelinePrecompileReady = compileSectorPipelines(sector);
-      };
-      if (typeof requestIdleCallback === 'function') requestIdleCallback(begin, { timeout: 1200 });
-      else setTimeout(begin, 250);
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;

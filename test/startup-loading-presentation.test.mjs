@@ -116,8 +116,11 @@ test('canonical game shell and transition wire the shared staged loading present
     'noncritical sector roots must resume only after the first completed flight draw');
   assert.match(renderer, /openingFrameStarted[\s\S]{0,900}?renderer\.render\(scene, cam\.obj\)/,
     'the exact scoped opening frame must render under the loading shell before handoff');
-  assert.match(renderer, /deferredStartupPrecompile[\s\S]{0,1800}?requestIdleCallback/,
-    'noncritical sector shader probes must begin after the first playable frame');
+  assert.match(renderer,
+    /state\.mode === 'loading'[\s\S]{0,900}?precompilePipelines\(renderer, scene, cam\.obj, \{[\s\S]{0,240}?sector,[\s\S]{0,240}?includeGlobalPipelines:\s*true/,
+    'hardware startup must admit current-sector and global shader variants behind the loading shell');
+  assert.doesNotMatch(renderer, /deferredStartupPrecompile|backgroundPipelinePrecompileReady/,
+    'current-sector shader admission must not begin after the first playable frame');
   assert.match(renderer, /gpu\.software[\s\S]{0,300}?bounded on-demand pipeline admission/,
     'software renderers must not pay a multi-second speculative sector compile');
   assert.match(renderer, /gpu\.software[\s\S]{0,900}?state\.render\.dynResScale = dynFloor[\s\S]{0,120}?this\._applySize\(\)/,

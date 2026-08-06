@@ -24,7 +24,7 @@ export const PERFORMANCE_ELECTRON_MODERNIZATION_SOURCE_IDENTITY = Object.freeze(
 });
 
 const FAST_GATES = Object.freeze([
-  'node --test test/performance-electron-modernization-manifests.test.mjs test/electron-packaged-startup-contract.test.mjs test/electron-packaged-startup.test.mjs',
+  'node --test test/performance-electron-modernization-manifests.test.mjs test/startup-loading-presentation.test.mjs test/electron-packaged-startup-contract.test.mjs test/electron-packaged-startup.test.mjs',
   'node --test test/release-soak-contract.test.mjs test/release-soak-evidence-contract.test.mjs test/release-soak-checker.test.mjs test/m6-platform-matrix.test.mjs',
   'npm run check:launch-policy',
   'node scripts/check-electron-platform-contracts.mjs',
@@ -47,6 +47,7 @@ const REGRESSION_PATHS = Object.freeze([
   'test/release-soak-checker.test.mjs',
   'test/release-soak-contract.test.mjs',
   'test/release-soak-evidence-contract.test.mjs',
+  'test/startup-loading-presentation.test.mjs',
   'test/validation-broker.test.mjs',
   'test/validation-manifest-registry.test.mjs',
 ]);
@@ -61,6 +62,7 @@ const PRODUCTION_PATHS = Object.freeze([
   'src/main.js',
   'src/core/loop.js',
   'src/core/registry.js',
+  'src/render/renderer.js',
 ]);
 
 const HARNESS_PATHS = Object.freeze([

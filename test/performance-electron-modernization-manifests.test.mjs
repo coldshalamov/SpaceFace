@@ -26,6 +26,9 @@ test('paired Electron-modernization manifests bind one public route to distinct 
     assert.ok(manifest.commandArgs.includes('--cycles=1'));
     assert.ok(manifest.commandArgs.includes(`--task-id=release-soak-${manifest.runtimeKind}`));
     assert.ok(manifest.commandArgs.includes(`--output-root=${manifest.artifactRoot.replaceAll('\\', '/')}`));
+    assert.ok(manifest.fastGateCommands.some((command) => command.includes('test/startup-loading-presentation.test.mjs')));
+    assert.ok(manifest.regressionSourcePaths.includes('test/startup-loading-presentation.test.mjs'));
+    assert.ok(manifest.productionSourcePaths.includes('src/render/renderer.js'));
   }
   assert.equal(browserManifest.runtimeKind, 'browser');
   assert.equal(electronManifest.runtimeKind, 'electron');
