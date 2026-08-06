@@ -154,6 +154,15 @@ export const autoTargetAssist = {
   },
 
   update(dt, state) {
-    tickAutoTarget(state || this.state, dt, this.bus, this._runtime);
+    const live = state || this.state;
+    const controllerToggle = live && live.input && live.input.actions
+      && live.input.actions.autoTargetToggle === true;
+    if (controllerToggle) {
+      const enabled = toggleAutoTarget(live, this.bus, this._runtime);
+      // Controller draw-to-fly is a direct right-stick clutch and never needs pointer lock.
+      if (!enabled) setPointerLock(false);
+      this._pointerLockAcquired = false;
+    }
+    tickAutoTarget(live, dt, this.bus, this._runtime);
   },
 };

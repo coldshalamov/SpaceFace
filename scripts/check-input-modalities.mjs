@@ -332,6 +332,7 @@ function makeFakePad(id = 'modality-harness-pad') {
 installDom();
 const { createGameState } = await import('../src/core/gameState.js');
 const { input, DEFAULTS } = await import('../src/systems/input.js');
+const { autoTargetAssist } = await import('../src/systems/autoTargetAssist.js');
 const { save } = await import('../src/save/saveSystem.js');
 
 const busEvents = [];
@@ -550,6 +551,13 @@ const FLIGHT_MATRIX = [
       touch: { down: (d) => d.touchStick('right', 55, -35), up: (d) => d.releaseStick('right') },
     },
   },
+  {
+    verb: 'toggle auto-target',
+    read: (st) => st.input.actions.autoTargetToggle === true,
+    serves: {
+      gamepad: padAction('autoTarget'),
+    },
+  },
 ];
 
 const MODALITIES = ['keyboard', 'mouse', 'gamepad', 'touch'];
@@ -623,6 +631,52 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
     'relative mouse motion records the draw-to-fly gesture path');
   check(s.state.input.pointerScreen.x !== 300,
     'draw-to-fly re-centres the software pointer instead of letting the cursor escape');
+}
+
+// Controller parity for the accepted PQ-007 contract: explicit toggle, then a clutchable direct
+// right-stick vector. The auto-target owner runs immediately after input in production, so drive it
+// in that order here; releasing the right stick must expose the ordinary left-stick command again.
+{
+  const s = newSession();
+  const pad = makeFakePad('auto-target-controller');
+  const toggle = padAction('autoTarget');
+  s.dom.setPads([pad]);
+  autoTargetAssist.init(s.ctx);
+  s.tick();
+  autoTargetAssist.update(1 / 60, s.state);
+
+  toggle.down(s.dom, pad);
+  s.tick();
+  autoTargetAssist.update(1 / 60, s.state);
+  checkEqual(s.state.input.autoFire, true,
+    'controller auto-target button toggles the same auto-target owner as the keyboard route');
+
+  toggle.up(s.dom, pad);
+  pad.axes[2] = 0.8;
+  pad.axes[3] = -0.45;
+  s.tick();
+  const directVector = { ...s.state.input.autoTargetVector };
+  autoTargetAssist.update(1 / 60, s.state);
+  check(directVector.active && directVector.worldX > 0.5 && directVector.worldZ > 0.2,
+    'right stick publishes an active world-space draw-to-fly vector only while held');
+  check(Math.abs(s.state.input.turnIntent) > 0.05 || Math.abs(s.state.input.moveX) > 0.05,
+    'auto-target owner consumes the held controller vector as direct flight intent');
+
+  pad.axes[2] = 0;
+  pad.axes[3] = 0;
+  pad.axes[0] = -0.75;
+  pad.axes[1] = -0.65;
+  s.tick();
+  const ordinaryTurn = s.state.input.turnIntent;
+  const ordinaryThrust = s.state.input.moveZ;
+  autoTargetAssist.update(1 / 60, s.state);
+  checkEqual(s.state.input.autoTargetVector.active, false,
+    'releasing the right stick clutches draw-to-fly out immediately');
+  checkEqual(s.state.input.turnIntent, ordinaryTurn,
+    'released draw-to-fly does not replace ordinary left-stick steering');
+  checkEqual(s.state.input.moveZ, ordinaryThrust,
+    'released draw-to-fly does not replace ordinary left-stick thrust');
+  autoTargetAssist.destroy();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

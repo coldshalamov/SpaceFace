@@ -17,7 +17,7 @@
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
 //  11  R3              -> countermeasure
-//  12  D-pad up        -> UI nav up
+//  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
 //  13  D-pad down      -> UI nav down
 //  14  D-pad left      -> UI nav left
 //  15  D-pad right     -> UI nav right
@@ -49,6 +49,7 @@ const ACTION_MAP = {
   boost: ['r1'],
   brake: ['l1'],
   cycleTarget: ['action'],
+  autoTarget: ['dUp'],
   map: ['view'],
   codex: ['alt'],
   pause: ['menu'],

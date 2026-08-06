@@ -492,6 +492,22 @@ function neutralAutoTargetVector() {
   return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
 }
 
+function writeAutoTargetVector(inp, worldX = 0, worldZ = 0, active = false) {
+  const vector = inp.autoTargetVector && typeof inp.autoTargetVector === 'object'
+    ? inp.autoTargetVector
+    : (inp.autoTargetVector = neutralAutoTargetVector());
+  const x = Number.isFinite(worldX) ? worldX : 0;
+  const z = Number.isFinite(worldZ) ? worldZ : 0;
+  const magnitude = active ? Math.min(1, Math.hypot(x, z)) : 0;
+  vector.active = magnitude > 0.001;
+  vector.screenX = vector.active ? x : 0;
+  vector.screenY = vector.active ? z : 0;
+  vector.worldX = vector.active ? x : 0;
+  vector.worldZ = vector.active ? z : 0;
+  vector.magnitude = vector.active ? magnitude : 0;
+  return vector;
+}
+
 function neutralAutoTargetPath() {
   return {
     active: false,
@@ -785,6 +801,7 @@ export const input = {
       massline: true,
       countermeasure: true,
       travelBurn: true,
+      autoTarget: true,
     };
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
@@ -827,7 +844,7 @@ export const input = {
     const quarantine = this._gamepadLifecycleQuarantine;
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
-    for (const action of ['massline', 'countermeasure', 'travelBurn']) {
+    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget']) {
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
@@ -901,11 +918,11 @@ export const input = {
       resetAutoTargetPath(this, state);
       syncPointerScreen(state, this._screen.x, this._screen.y);
       inp.pointerScreen.active = autoTargetPointer;
-      inp.autoTargetVector = neutralAutoTargetVector();
+      writeAutoTargetVector(inp);
     }
     // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
     const acts = inp.actions || (inp.actions = {
-      brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
+      brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0, autoTargetToggle: false,
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
@@ -921,6 +938,7 @@ export const input = {
       acts.deployBeacon = false;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       acts.siteBeam = false; acts.aimedMine = false;
+      acts.autoTargetToggle = false;
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
@@ -929,7 +947,7 @@ export const input = {
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
       inp.tetherMode = null;
       resetAutoTargetPath(this, state);
-      inp.autoTargetVector = neutralAutoTargetVector();
+      writeAutoTargetVector(inp);
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._prevM1 = false;
       this._edgePrev = this._edgePrev || {};
@@ -1101,7 +1119,8 @@ export const input = {
       inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
-      inp.autoTargetVector = neutralAutoTargetVector();
+      const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
+      writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
@@ -1112,7 +1131,7 @@ export const input = {
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
-      inp.autoTargetVector = neutralAutoTargetVector();
+      writeAutoTargetVector(inp);
       // N2: flight-profile-affecting path drawing uses deterministic sim clock, not wall time.
       if (inp.autoFire) updateAutoTargetPathDrawing(this, simClockMs(state));
       else resetAutoTargetPath(this, state);
@@ -1120,6 +1139,13 @@ export const input = {
 
     // Middle-click has no hidden flight authority. G auto-target is owned by autoTargetAssist.
     this._prevM1 = this._m1;
+
+    // D-pad up is unused by ordinary flight and remains UI navigation while a screen is open.
+    // In flight it requests the same explicit auto-target toggle as G; the next registered owner
+    // consumes this edge. Holding the right stick is the only controller draw-to-fly authority.
+    acts.autoTargetToggle = !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('autoTarget')
+      && gp.actions.autoTarget && gp.actions.autoTarget.pressed);
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});

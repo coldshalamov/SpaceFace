@@ -58,6 +58,7 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     massline: true,
     countermeasure: true,
     travelBurn: true,
+    autoTarget: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);
@@ -83,11 +84,13 @@ test('gamepad lifecycle quarantine waits for a connected neutral sample without 
     massline: true,
     countermeasure: true,
     travelBurn: true,
+    autoTarget: true,
   };
   const actions = {
     massline: { held: false },
     countermeasure: { held: false },
     travelBurn: { held: false },
+    autoTarget: { held: false },
   };
 
   host._refreshGamepadLifecycleQuarantine({ isConnected: () => false, actions });
@@ -98,6 +101,7 @@ test('gamepad lifecycle quarantine waits for a connected neutral sample without 
     massline: { held: true },
     countermeasure: { held: true },
     travelBurn: { held: true },
+    autoTarget: { held: true },
   };
   host._refreshGamepadLifecycleQuarantine({ isConnected: () => true, actions: heldActions });
   assert.equal(host._gamepadLifecycleActionAllowed('massline'), false,
@@ -113,6 +117,7 @@ test('gamepad lifecycle quarantine waits for a connected neutral sample without 
   assert.equal(host._gamepadLifecycleActionAllowed('massline'), true);
   assert.equal(host._gamepadLifecycleActionAllowed('countermeasure'), true);
   assert.equal(host._gamepadLifecycleActionAllowed('travelBurn'), true);
+  assert.equal(host._gamepadLifecycleActionAllowed('autoTarget'), true);
 });
 
 test('input release preserves the committed Massline packet before resetting grammar state', () => {

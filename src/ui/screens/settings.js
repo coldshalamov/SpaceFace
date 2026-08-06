@@ -449,7 +449,7 @@ export const settingsScreen = {
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, View star map, Y/Triangle codex, Start → Pause → Mission Log.'));
+    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.'));
 
     const touchMode = () => {
       const cfg = s.controls.touch || {};
