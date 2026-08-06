@@ -270,11 +270,31 @@ export function resolvePropulsionProfile(entity, state = null) {
     (derived && derived.propulsion) ||
     null;
 
+  let profile = null;
+  let completeDerivedProfile = false;
   if (authored && typeof authored === 'object') {
-    const base = authored.id && PROPULSION_PROFILES[authored.id]
-      ? PROPULSION_PROFILES[authored.id]
-      : inferProfile(entity);
-    return normalizeProfile({ ...base, ...authored, resources: { ...(base.resources || {}), ...(authored.resources || {}) }, assist: { ...(base.assist || {}), ...(authored.assist || {}) } });
+    // ships.js publishes a complete, frozen derived profile once per fitting/mass recompute. Reuse
+    // it directly: rebuilding three spread objects on every flight tick would turn an upgrade into
+    // a steady heap/GC tax. Partial authored profiles still take the merge path below.
+    const completeDerived = derived
+      && authored === derived.propulsion
+      && authored.schemaVersion === PROPULSION_SCHEMA_VERSION
+      && PROPULSION_PROFILES[authored.id]
+      && Number.isFinite(authored.travelCeiling);
+    if (completeDerived) {
+      profile = authored;
+      completeDerivedProfile = true;
+    } else {
+      const base = authored.id && PROPULSION_PROFILES[authored.id]
+        ? PROPULSION_PROFILES[authored.id]
+        : inferProfile(entity);
+      profile = normalizeProfile({
+        ...base,
+        ...authored,
+        resources: { ...(base.resources || {}), ...(authored.resources || {}) },
+        assist: { ...(base.assist || {}), ...(authored.assist || {}) },
+      });
+    }
   }
 
   const driveId =
@@ -283,15 +303,18 @@ export function resolvePropulsionProfile(entity, state = null) {
     (entity && entity.data && entity.data.driveId) ||
     null;
 
-  let profile = null;
-  if (driveId && PROPULSION_PROFILES[driveId]) {
+  if (!profile && driveId && PROPULSION_PROFILES[driveId]) {
     profile = PROPULSION_PROFILES[driveId];
   }
 
   // A setting hook is useful for a controlled migration / flight laboratory, but
   // it must never silently rewrite NPCs or saves in production.
   const labOverride = state && state.settings && state.settings.gameplay && state.settings.gameplay.flightLabDrive;
-  if (!profile && labOverride && PROPULSION_PROFILES[labOverride] && entity && entity.id === state.playerId) {
+  if ((!profile || completeDerivedProfile)
+      && labOverride
+      && PROPULSION_PROFILES[labOverride]
+      && entity
+      && entity.id === state.playerId) {
     profile = PROPULSION_PROFILES[labOverride];
   }
 

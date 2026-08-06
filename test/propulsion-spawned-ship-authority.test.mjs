@@ -48,7 +48,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { SHIPS } from '../src/data/ships.js';
 import {
@@ -247,6 +247,49 @@ test('the travel ceiling honours an authored per-drive override — the upgrade 
     TRAVEL_CEILING_ABSOLUTE_WU_S,
     'an authored ceiling must still be clamped by the absolute engineering bound'
   );
+});
+
+test('fitted engine tiers raise Travel Burn V-MAX without changing ordinary propulsion', () => {
+  // Hornet has an L engine bay, so all three production engine tiers fit through the real fitting
+  // helper. The hull is held constant: only the fitted engine tier may move Travel Burn V-MAX.
+  const shipId = 'ship_hornet';
+  const profileFor = (engineId) => player(
+    shipId,
+    fittingsFromDefaultModules(shipId, [engineId]),
+  ).profile;
+  const ion = profileFor('mod_engine_ion_m');
+  const fusion = profileFor('mod_engine_fusion_m');
+  const warp = profileFor('mod_engine_warp_l');
+
+  for (const field of ['id', 'family', 'combatSpeed', 'mainAccel', 'reverseAccel', 'strafeAccel']) {
+    assert.equal(fusion[field], ion[field], `${field}: fusion must not rewrite ordinary flight`);
+    assert.equal(warp[field], ion[field], `${field}: warp must not rewrite ordinary flight`);
+  }
+
+  const ionCeiling = resolveTravelCeiling(ion);
+  const fusionCeiling = resolveTravelCeiling(fusion);
+  const warpCeiling = resolveTravelCeiling(warp);
+  assert.equal(fusionCeiling, Math.min(ionCeiling * 1.15, TRAVEL_CEILING_ABSOLUTE_WU_S));
+  assert.equal(warpCeiling, Math.min(ionCeiling * 1.30, TRAVEL_CEILING_ABSOLUTE_WU_S));
+  assert.ok(ionCeiling < fusionCeiling && fusionCeiling < warpCeiling,
+    `engine progression must be legible in V-MAX (${ionCeiling} < ${fusionCeiling} < ${warpCeiling})`);
+
+  const warpEntity = spawnPlayerEntity(
+    shipId,
+    fittingsFromDefaultModules(shipId, ['mod_engine_warp_l']),
+  );
+  const firstRead = resolvePropulsionProfile(warpEntity, { playerId: 1, player: {} });
+  const secondRead = resolvePropulsionProfile(warpEntity, { playerId: 1, player: {} });
+  assert.strictEqual(secondRead, firstRead,
+    'the complete refit-derived profile must be reused instead of allocated on every flight read');
+
+  const labRead = resolvePropulsionProfile(warpEntity, {
+    playerId: 1,
+    player: {},
+    settings: { gameplay: { flightLabDrive: 'drive_field_sail_m' } },
+  });
+  assert.equal(labRead.id, 'drive_field_sail_m',
+    'the explicit player-only flight-lab override must remain authoritative over derived fittings');
 });
 
 // --------------------------------------------------------------------------------------------

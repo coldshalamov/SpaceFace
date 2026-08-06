@@ -149,13 +149,13 @@ spends the earned momentum rather than confiscating it.
 | T.3 | Holding boost above the cap never brakes the ship | `check:travel-drive` (RC-4 reproduced numerically before and after) | **met** |
 | T.4 | Braking breaks the latch; steering, carving and spinning do not | `travelBrakeBreaks` reads brake + reverse throttle only, never `turnIntent`/`moveX`; pinned in `check:travel-latch` | **met** |
 | T.5 | The ceiling and earned cap are **visible on an instrument**, which reveals contextually and fades out again | velocity tape ships (`.sf-vtape__vmax`, `V-MAX <n>`, forced-colors block); **no automated player-visible evidence that it reveals and fades during a real burn** | **NOT MET (ungraded)** |
-| T.6 | Drive-tier upgrades raise the travel ceiling | **fails**: `mod_engine_ion_m` / `fusion_m` / `warp_l` all resolve to ceiling 472.5 WU/s on `ship_kestrel` — the authored-override seam works but nothing populates it | **NOT MET** |
+| T.6 | Drive-tier upgrades raise the travel ceiling | `check:propulsion:authority` drives real Ion/Fusion/Warp fittings through ship derivation and spawn: 472.5 → 543.375 → 614.25 WU/s on one hull, with ordinary propulsion unchanged and no per-tick profile allocation | **met** |
 | T.7 | Engaging the burn during a real journey is reachable and useful to a player travelling somewhere | never demonstrated in a live journey run | **NOT MET (unreached)** |
 
-**Travel Burn is NOT met.** The mechanism (T.1–T.4) is genuinely built, wired and reachable — the
-earlier report that it was player-unreachable was **false** and is corrected in the ledger. What is
-missing is the *payoff*: the upgrade path does nothing (T.6), and nothing has yet proven the
-instrument or the burn itself in a real journey (T.5, T.7).
+**Travel Burn is NOT met.** The mechanism and upgrade progression (T.1–T.4, T.6) are built, wired
+and reachable — the earlier reports that the input and upgrade paths did nothing are now stale and
+corrected in the ledger. What remains is player-route evidence that the instrument reveals/fades and
+that the burn is useful during a real journey (T.5, T.7).
 
 > **Assumed condition:** every travel-burn behaviour is gated on `travelFlag('travelBurn')`, which is
 > `IS_BROWSER` — **true in the browser, false under Node**. That gate is deliberate and protects the
@@ -251,7 +251,7 @@ gets a **dated ruling**, not a deletion.
 | **R-2** | **Does "compare and plot" require a real route-alternatives affordance** (C.6), or does the requirement narrow to plotting? | One plotted Dijkstra path with nothing to weigh it against cannot satisfy "compare" under any reading. Either build alternatives or narrow the wording. |
 | **R-3** | **Mission-destination position confidence** (A.5): adopt the 2-state model the code implements, or build per-destination confidence as an atlas feature with its own packet. | The four-state model in the acceptance language describes something that does not exist and never did. |
 | **R-4** | **The Wave 2 entry gate was jumped.** D1 required a live Helios → Tethys route execution before Wave 2. It never happened; Waves 2 and 3 shipped regardless. Ratify retroactively with justification, or treat W2/W3 rows as provisional until Route Execution is met. | Several rows currently read as delivered on top of a spine that was never proven to execute. |
-| **R-5** | **Drive-tier upgrades do not move the travel ceiling** (T.6). Author `travelCeiling` overrides per engine tier, or amend D5 to drop the upgrade path. | D5 states the ceiling is "upgradeable by drive tier". It is not. The seam works; nothing feeds it. |
+| **R-5** | **RESOLVED 2026-08-06 — keep D5's upgrade path.** Engine tiers now author bounded 1.00× / 1.15× / 1.30× Travel Burn ceilings through the ships-derived propulsion profile; the unique Pale-Coil tier authors 1.40×. | The real fitting/spawn check proves progression while ordinary propulsion stays unchanged, and the complete profile is reused rather than rebuilt per flight tick. |
 | **R-6** | **Four stale `check:ci` literal-containment assertions are red at HEAD** and cannot ever pass, because they assert that `check:ci` literally contains `npm run check:art` when `check:ci` is a single delegating segment. Fix the assertions to walk the expansion, or restructure. | These are red for a *wrong reason* while the thing they guard is actually fine. That is worse than a plain red: it trains readers to ignore them. **Do not "fix" by adding a literal `check:art` to `check:ci` — that would run the whole art suite twice.** |
 | **R-7** | **Is `check:journey:textile` allowed into `check` / CI while failing?** It is currently registered standalone and deliberately excluded. | Wiring a multi-minute failing headed gate into the aggregate turns the whole suite red; leaving it out means the finish line gates nothing. This is a sequencing call for the lead. |
 

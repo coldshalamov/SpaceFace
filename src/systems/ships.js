@@ -20,6 +20,8 @@ import {
   roleOperationalBiases,
 } from '../data/shipRoleLattice.js';
 import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import {
   defaultShipAppearance,
   normalizeShipAppearance,
@@ -170,14 +172,35 @@ function pickEngine(equipped) {
 
 // Default engine modifiers when no engine module is fitted (a ship must still move). Mirrors the
 // Ion Thruster M baseline so an un-outfitted hull is sluggish but functional.
-const FALLBACK_ENGINE = { topSpeed: 60, accelMult: 0.9, turnMult: 0.9, mass: 0, mods: { topSpeed: 60, accelMult: 0.9, turnMult: 0.9 } };
+const FALLBACK_ENGINE = {
+  topSpeed: 60,
+  accelMult: 0.9,
+  turnMult: 0.9,
+  mass: 0,
+  mods: { topSpeed: 60, accelMult: 0.9, turnMult: 0.9, travelCeilingMult: 1.0 },
+};
 function engineMods(def) {
   const m = (def && def.mods) || (def === FALLBACK_ENGINE ? FALLBACK_ENGINE.mods : null);
   return {
     topSpeed: (m && m.topSpeed) || FALLBACK_ENGINE.mods.topSpeed,
     accelMult: (m && m.accelMult) || FALLBACK_ENGINE.mods.accelMult,
     turnMult: (m && m.turnMult) || FALLBACK_ENGINE.mods.turnMult,
+    travelCeilingMult: Number.isFinite(m && m.travelCeilingMult) && m.travelCeilingMult > 0
+      ? m.travelCeilingMult
+      : FALLBACK_ENGINE.mods.travelCeilingMult,
   };
+}
+
+/** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
+ * exactly the one flight already infers from class/mass; only Travel Burn V-MAX is tier-scaled, so
+ * fitting an engine cannot silently rewrite ordinary thrust, handling or drive-family behavior. */
+function buildDerivedPropulsion(flightClass, totalMass, engine) {
+  const base = resolvePropulsionProfile({ flightClass, mass: totalMass });
+  const mult = engineMods(engine).travelCeilingMult;
+  return Object.freeze({
+    ...base,
+    travelCeiling: resolveTravelCeiling(base) * mult,
+  });
 }
 
 /** Role lattice owns flight-class identity; fallback keeps legacy string matching. */
@@ -293,7 +316,8 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   // ~1/3 of maxSpeed, so ships crept and never reached their own ceiling (felt dead). We now solve
   // thrust from a desired CRUISE velocity so every hull actually reaches a satisfying speed, and
   // pick drag for responsiveness (~1/drag is the accelerate/stop time constant in seconds).
-  const eng = engineMods(pickEngine(equipped) || FALLBACK_ENGINE);
+  const engine = pickEngine(equipped) || FALLBACK_ENGINE;
+  const eng = engineMods(engine);
   const maxSpeed = eng.topSpeed * SPEED_SCALE * handling * speedMass;   // boost ceiling
   const drag = 1.7 + 0.6 * massRatio;                                   // ~0.4–0.6s time constant
   const cruiseFrac = Math.min(0.85, 0.60 + 0.14 * eng.accelMult);       // 0.72 baseline; better engines cruise faster
@@ -314,6 +338,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const bdef = shipDef.boost || {};
   const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
+  const propulsion = buildDerivedPropulsion(flightClass, totalMass, engine);
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,
@@ -350,6 +375,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     bankFactor,
     flightClass,
     flightModel,
+    propulsion,
     dryMass, cargoMass, operationalMass: totalMass,
     operationalFeelMass: feelMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
@@ -472,6 +498,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
     pos: pos || { x: 0, z: 0 }, rot,
     radius: derived.radius, mass: derived.mass,
     flightClass: derived.flightClass, flightModel: derived.flightModel,
+    propulsion: derived.propulsion,
     // flat health/energy/flight fields (flight + physics read these directly) — §shared shape
     hull: derived.hull, hullMax: derived.hullMax,
     armorHp: derived.armorHp, armorMax: derived.armorMax, armorFlat: derived.armorFlat,
@@ -1084,6 +1111,7 @@ function copyDerivedOntoEntity(e, d) {
   e.bankFactor = d.bankFactor;
   e.flightClass = d.flightClass;
   e.flightModel = d.flightModel;
+  e.propulsion = d.propulsion;
   e.radius = d.radius; e.mass = d.mass;
   syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
 }
@@ -1095,6 +1123,7 @@ function copyOperationalMassOntoEntity(e, d) {
   e.bankFactor = d.bankFactor;
   e.flightClass = d.flightClass;
   e.flightModel = d.flightModel;
+  e.propulsion = d.propulsion;
   e.mass = d.operationalMass;
   syncDerivedPhysicsMass(e, d.operationalMass, d.flightModel && d.flightModel.inertia);
 }

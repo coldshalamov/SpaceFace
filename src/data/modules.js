@@ -26,20 +26,20 @@ export const MODULES = [
   // ===================== ENGINES (exactly 1 per ship) =====================
   {
     id: 'mod_engine_ion_m', name: 'Ion Thruster M', slotType: 'engine', size: 'M', tier: 1, mass: 6, price: 7000,
-    energyDraw: 4, mods: { topSpeed: 70, accelMult: 1.0, turnMult: 1.0 },
+    energyDraw: 4, mods: { topSpeed: 70, accelMult: 1.0, turnMult: 1.0, travelCeilingMult: 1.0 },
   },
   {
     id: 'mod_engine_fusion_m', name: 'Fusion Drive M', slotType: 'engine', size: 'M', tier: 2, mass: 9, price: 24000, requiresTech: 'tech_drive_tuning',
-    energyDraw: 7, mods: { topSpeed: 95, accelMult: 1.3, turnMult: 1.15 },
+    energyDraw: 7, mods: { topSpeed: 95, accelMult: 1.3, turnMult: 1.15, travelCeilingMult: 1.15 },
   },
   {
     id: 'mod_engine_warp_l', name: 'Warp Coil L', slotType: 'engine', size: 'L', tier: 3, mass: 18, price: 70000, requiresTech: 'tech_graviton_drives',
-    energyDraw: 12, mods: { topSpeed: 130, accelMult: 1.6, turnMult: 1.25 },
+    energyDraw: 12, mods: { topSpeed: 130, accelMult: 1.6, turnMult: 1.25, travelCeilingMult: 1.30 },
   },
   {
     id: 'unique_pale_coil_warp_drive', baseId: 'mod_engine_warp_l', name: 'Pale-Coil Warp Drive', slotType: 'engine', size: 'L', tier: 3, mass: 18, price: 0,
     energyDraw: 12, purchasable: false, unique: true, salvageOnly: true,
-    mods: { topSpeed: 149.5, accelMult: 1.6, turnMult: 1.25, microJumpBlink: { usesPerEncounter: 1 } },
+    mods: { topSpeed: 149.5, accelMult: 1.6, turnMult: 1.25, travelCeilingMult: 1.40, microJumpBlink: { usesPerEncounter: 1 } },
     variantBonuses: { topSpeedPct: 0.15, microJumpBlinkUsesPerEncounter: 1 },
   },
 
