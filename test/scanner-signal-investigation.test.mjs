@@ -4,11 +4,15 @@ import { readFileSync } from 'node:fs';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import {
+  recordAnomalyBearing,
   scanner,
   signalClassLabel,
   signalClassificationStage,
   signalStrengthFor,
 } from '../src/systems/scanner.js';
+import { world } from '../src/systems/world.js';
+import { SECTORS } from '../src/data/sectors.js';
+import { signalMetaText } from '../src/ui/signalInvestigationPrompt.js';
 
 function boot(seed = 4701) {
   const sim = createSimulation({ seed, systems: [scanner] });
@@ -53,6 +57,49 @@ function clearCooldown(t) {
   t.sim.runTicks(Math.ceil(8.1 / SIM_DT));
 }
 
+function bootAnomaly(seed = 4702) {
+  const t = boot(seed);
+  t.state.ambushSignatures.tells = {};
+  const definition = SECTORS.find((sector) => sector.id === 'sector_veil_nebula')
+    .pois.find((poi) => poi.id === 'poi_anomaly');
+  const anomaly = t.sim.spawn({
+    type: 'fx', team: 2, pos: { x: 1200, z: 0 }, radius: 10, mass: 0, collides: false,
+    data: {
+      poi: true,
+      poiId: definition.id,
+      poiType: definition.type,
+      hidden: true,
+      requiresTriangulation: true,
+      triangulation: { ...definition.triangulation },
+      anomalyTriangulated: false,
+    },
+  });
+  t.state.world.activeSector = {
+    id: 'sector_test_signals',
+    pois: [{
+      id: anomaly.id,
+      poiId: definition.id,
+      type: definition.type,
+      pos: { ...anomaly.pos },
+      hidden: true,
+      requiresTriangulation: true,
+      triangulation: { ...definition.triangulation },
+      anomalyTriangulated: false,
+    }],
+  };
+  const anomalyEvents = [];
+  const discovered = [];
+  const worldOwner = Object.create(world);
+  worldOwner.state = t.state;
+  worldOwner.bus = t.bus;
+  t.bus.on('anomaly:triangulated', (payload) => {
+    anomalyEvents.push(payload);
+    worldOwner._onAnomalyTriangulated(payload);
+  });
+  t.bus.on('poi:discovered', (payload) => discovered.push(payload));
+  return { ...t, anomaly, anomalyEvents, discovered };
+}
+
 test('signal helpers improve by proximity or repeated scans and remain bounded', () => {
   assert.equal(signalClassificationStage(1, 900), 1);
   assert.equal(signalClassificationStage(2, 900), 2);
@@ -60,6 +107,56 @@ test('signal helpers improve by proximity or repeated scans and remain bounded',
   assert.equal(signalStrengthFor(0, 1200), 1);
   assert.equal(signalStrengthFor(1200, 1200), 0);
   assert.equal(signalStrengthFor(600, 1200), 0.5);
+});
+
+test('anomaly bearing admission requires movement and a changed bearing', () => {
+  const first = recordAnomalyBearing(null, { x: 0, z: 0 }, { x: 1200, z: 0 }, {}, 1);
+  assert.equal(first.accepted, true);
+  assert.equal(first.sampleCount, 1);
+  assert.equal(first.record.fixedPos, null, 'the hidden target position is not retained before triangulation');
+  const tooClose = recordAnomalyBearing(first.record, { x: 100, z: 0 }, { x: 1200, z: 0 }, {}, 2);
+  assert.equal(tooClose.accepted, false);
+  assert.equal(tooClose.reason, 'baseline_short');
+  assert.equal(tooClose.sampleCount, 1);
+  const sameBearing = recordAnomalyBearing(first.record, { x: -400, z: 0 }, { x: 1200, z: 0 }, {}, 3);
+  assert.equal(sameBearing.accepted, false);
+  assert.equal(sameBearing.reason, 'bearing_too_similar');
+  assert.equal(sameBearing.sampleCount, 1);
+});
+
+test('Veil anomaly requires three distinct bearings before the canonical course seam unlocks', () => {
+  const t = bootAnomaly();
+  pulse(t);
+  const signalId = t.events.results[0].primary.id;
+  assert.equal(t.events.results[0].primary.classification, 'ANOMALY BEARING');
+  assert.equal(t.events.results[0].primary.trackable, false);
+  assert.equal(t.events.results[0].primary.triangulation.sampleCount, 1);
+  assert.equal(signalMetaText(t.events.results[0].primary), 'BEARING 090° · FIX 1/3');
+  t.bus.emit('signal:track', { signalId, source: 'premature-test' });
+  assert.equal(t.events.courses.length, 0, 'a bearing is not an exact waypoint');
+
+  clearCooldown(t);
+  t.player.pos = { x: 0, z: 400 };
+  pulse(t);
+  assert.equal(t.events.results[1].primary.classification, 'ANOMALY BEARING');
+  assert.equal(t.events.results[1].primary.triangulation.sampleCount, 2);
+
+  const saved = t.sim.registry.get('scanner').serialize();
+  assert.equal(saved.triangulations.poi_anomaly.samples.length, 2);
+  assert.equal(saved.triangulations.poi_anomaly.fixedPos, null);
+
+  const restored = bootAnomaly();
+  restored.sim.registry.get('scanner').deserialize(saved);
+  restored.player.pos = { x: 0, z: -400 };
+  pulse(restored);
+  assert.equal(restored.anomalyEvents.length, 1);
+  assert.equal(restored.events.results[0].primary.classification, 'ANOMALOUS PHENOMENON');
+  assert.equal(restored.anomaly.data.anomalyTriangulated, true);
+  assert.equal(restored.state.world.discovery.sector_test_signals.pois.poi_anomaly.triangulated, true);
+  assert.equal(restored.discovered.length, 1);
+  restored.bus.emit('signal:track', { signalId, source: 'earned-test' });
+  assert.equal(restored.events.courses.length, 1);
+  assert.deepEqual(restored.events.courses[0].pos, { x: 1200, z: 0 });
 });
 
 test('ambush investigation never reveals hostility and repeated pulse improves uncertainty', () => {

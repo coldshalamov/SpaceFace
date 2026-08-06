@@ -29,6 +29,10 @@ const PINGED_S = 45;
 const SIGNAL_RECORD_CAP = 64;
 const SIGNAL_RECEIPT_CAP = 32;
 const SIGNAL_INVESTIGATE_RADIUS = 150;
+const ANOMALY_TRIANGULATION_CAP = 16;
+const ANOMALY_TRIANGULATION_REQUIRED = 3;
+const ANOMALY_TRIANGULATION_MIN_BASELINE_WU = 350;
+const ANOMALY_TRIANGULATION_MIN_BEARING_DEG = 8;
 const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
@@ -190,6 +194,79 @@ function pos2(pos) {
   return { x: Number(pos && pos.x) || 0, z: Number(pos && pos.z) || 0 };
 }
 
+function bearingDeg(from, to) {
+  const dx = (Number(to && to.x) || 0) - (Number(from && from.x) || 0);
+  const dz = (Number(to && to.z) || 0) - (Number(from && from.z) || 0);
+  return (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
+}
+
+function bearingDeltaDeg(a, b) {
+  const raw = Math.abs((Number(a) || 0) - (Number(b) || 0)) % 360;
+  return Math.min(raw, 360 - raw);
+}
+
+/**
+ * Add one player-earned bearing to an anomaly fix. The target position is read only to calculate
+ * the bearing; it is not retained until the required distinct samples have been earned.
+ */
+export function recordAnomalyBearing(previous, origin, targetPos, options = {}, now = 0) {
+  const requiredPings = Math.max(2, Math.min(6,
+    Math.trunc(Number(options.requiredPings) || ANOMALY_TRIANGULATION_REQUIRED)));
+  const minBaselineWu = Math.max(50,
+    Number(options.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU);
+  const minBearingDeltaDeg = Math.max(1,
+    Number(options.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG);
+  const samples = (previous && Array.isArray(previous.samples) ? previous.samples : [])
+    .slice(0, requiredPings).map((sample) => ({ ...sample, origin: pos2(sample.origin) }));
+  const from = pos2(origin);
+  const target = pos2(targetPos);
+  const nextBearingDeg = bearingDeg(from, target);
+  const last = samples[samples.length - 1] || null;
+  const baselineWu = last ? dist(from, last.origin) : Infinity;
+  const angleDeltaDeg = last ? bearingDeltaDeg(nextBearingDeg, last.bearingDeg) : Infinity;
+
+  let accepted = true;
+  let reason = null;
+  if (last && baselineWu < minBaselineWu) {
+    accepted = false;
+    reason = 'baseline_short';
+  } else if (last && angleDeltaDeg < minBearingDeltaDeg) {
+    accepted = false;
+    reason = 'bearing_too_similar';
+  }
+  if (accepted && samples.length < requiredPings) {
+    samples.push({
+      origin: from,
+      bearingDeg: Number(nextBearingDeg.toFixed(3)),
+      sampledAt: Number(now) || 0,
+    });
+  }
+  const revealed = samples.length >= requiredPings;
+  const record = {
+    schemaVersion: 1,
+    sectorId: options.sectorId || previous && previous.sectorId || null,
+    poiId: options.poiId || previous && previous.poiId || null,
+    requiredPings,
+    minBaselineWu,
+    minBearingDeltaDeg,
+    samples,
+    revealed,
+    fixedPos: revealed ? target : null,
+    revealedAt: revealed ? Number(now) || 0 : null,
+  };
+  return {
+    record,
+    accepted,
+    reason,
+    revealed,
+    sampleCount: samples.length,
+    requiredPings,
+    bearingDeg: Number(nextBearingDeg.toFixed(3)),
+    baselineWu: Number.isFinite(baselineWu) ? Number(baselineWu.toFixed(3)) : null,
+    angleDeltaDeg: Number.isFinite(angleDeltaDeg) ? Number(angleDeltaDeg.toFixed(3)) : null,
+  };
+}
+
 function dist(posA, posB) {
   return Math.hypot((posA.x || 0) - (posB.x || 0), (posA.z || 0) - (posB.z || 0));
 }
@@ -331,17 +408,30 @@ function signalDetail(kind, stage) {
   return 'Investigation fix stable. Track to inspect at close range.';
 }
 
+function anomalyTriangulationDetail(result, config) {
+  const baseline = Math.round(Number(config && config.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU);
+  const bearingDelta = Math.round(Number(config && config.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG);
+  if (result.reason === 'baseline_short') {
+    return `Baseline too short (${Math.round(result.baselineWu || 0)} WU). Move at least ${baseline} WU laterally, then pulse again.`;
+  }
+  if (result.reason === 'bearing_too_similar') {
+    return `Bearing unchanged. Move laterally until the return shifts by at least ${bearingDelta}°, then pulse again.`;
+  }
+  return `Bearing ${result.sampleCount}/${result.requiredPings} logged. Move laterally, then pulse again for a distinct fix.`;
+}
+
 function freshSignalState() {
-  return { schemaVersion: 1, records: {}, completed: {}, receipts: [], trackedId: null };
+  return { schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null };
 }
 
 function ensureSignalState(state) {
   if (!state.signalInvestigation || typeof state.signalInvestigation !== 'object') state.signalInvestigation = freshSignalState();
   const own = state.signalInvestigation;
-  own.schemaVersion = 1;
+  own.schemaVersion = 2;
   if (!own.records || typeof own.records !== 'object' || Array.isArray(own.records)) own.records = {};
   if (!own.completed || typeof own.completed !== 'object' || Array.isArray(own.completed)) own.completed = {};
   if (!Array.isArray(own.receipts)) own.receipts = [];
+  if (!own.triangulations || typeof own.triangulations !== 'object' || Array.isArray(own.triangulations)) own.triangulations = {};
   return own;
 }
 
@@ -401,6 +491,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
 
   for (const entity of nearby || []) {
     if (!entity || !entity.alive || entity.id === state.playerId || !entity.pos) continue;
+    if (entity.data && entity.data.requiresTriangulation) continue;
     const kind = signalKindForEntity(entity);
     if (!kind) continue;
     add({
@@ -422,6 +513,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     const pos = entity && entity.pos || poi.pos;
     if (!pos) continue;
     const sourceId = poi.poiId || poi.id;
+    const entityData = entity && entity.data || {};
     add({
       id: `signal:poi:${sourceId}`,
       kind,
@@ -429,6 +521,9 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       entityId: entity && entity.id || null,
       pos,
       range: profile.hiddenPoiRadius,
+      requiresTriangulation: poi.requiresTriangulation === true || entityData.requiresTriangulation === true,
+      triangulated: poi.anomalyTriangulated === true || entityData.anomalyTriangulated === true,
+      triangulation: poi.triangulation || entityData.triangulation || null,
     });
   }
 
@@ -493,7 +588,13 @@ function pruneSignalRecords(own) {
 
 function cloneSignalRecord(record) {
   if (!record || typeof record !== 'object') return null;
-  return { ...record, pos: pos2(record.pos) };
+  return {
+    ...record,
+    pos: pos2(record.pos),
+    triangulation: record.triangulation && typeof record.triangulation === 'object'
+      ? { ...record.triangulation }
+      : null,
+  };
 }
 
 function cloneSignalReceipt(receipt) {
@@ -501,9 +602,30 @@ function cloneSignalReceipt(receipt) {
   return { ...receipt, pos: pos2(receipt.pos) };
 }
 
+function cloneTriangulationRecord(record) {
+  if (!record || typeof record !== 'object') return null;
+  return {
+    schemaVersion: 1,
+    sectorId: record.sectorId || null,
+    poiId: record.poiId || null,
+    requiredPings: Math.max(2, Math.min(6, Math.trunc(Number(record.requiredPings) || ANOMALY_TRIANGULATION_REQUIRED))),
+    minBaselineWu: Math.max(50, Number(record.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU),
+    minBearingDeltaDeg: Math.max(1, Number(record.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG),
+    samples: (Array.isArray(record.samples) ? record.samples : []).slice(0, 6).map((sample) => ({
+      origin: pos2(sample && sample.origin),
+      bearingDeg: Number(sample && sample.bearingDeg) || 0,
+      sampledAt: Number(sample && sample.sampledAt) || 0,
+    })),
+    revealed: record.revealed === true,
+    fixedPos: record.revealed && record.fixedPos ? pos2(record.fixedPos) : null,
+    revealedAt: record.revealed ? Number(record.revealedAt) || 0 : null,
+  };
+}
+
 function cloneSignalState(own) {
   const records = {};
   const completed = {};
+  const triangulations = {};
   for (const [id, row] of Object.entries(own.records || {})) {
     const clone = cloneSignalRecord(row);
     if (clone) records[id] = clone;
@@ -512,11 +634,16 @@ function cloneSignalState(own) {
     const clone = cloneSignalReceipt(receipt);
     if (clone) completed[id] = clone;
   }
+  for (const [id, row] of Object.entries(own.triangulations || {})) {
+    const clone = cloneTriangulationRecord(row);
+    if (clone) triangulations[id] = clone;
+  }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     records,
     completed,
     receipts: (own.receipts || []).map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP),
+    triangulations,
     trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
   };
 }
@@ -531,6 +658,24 @@ function normalizeSignalState(data) {
   for (const [id, receipt] of Object.entries(source.completed || {})) {
     if (!id || !receipt || typeof receipt !== 'object') continue;
     normalized.completed[id] = cloneSignalReceipt({ ...receipt, signalId: receipt.signalId || id });
+  }
+  for (const [id, row] of Object.entries(source.triangulations || {})) {
+    if (!id || !row || typeof row !== 'object') continue;
+    const clone = cloneTriangulationRecord(row);
+    if (clone) normalized.triangulations[id] = clone;
+  }
+  const triangulationIds = Object.keys(normalized.triangulations);
+  if (triangulationIds.length > ANOMALY_TRIANGULATION_CAP) {
+    triangulationIds.sort((a, b) => {
+      const ar = normalized.triangulations[a];
+      const br = normalized.triangulations[b];
+      return (Number(ar.revealedAt) || Number(ar.samples.at(-1)?.sampledAt) || 0)
+        - (Number(br.revealedAt) || Number(br.samples.at(-1)?.sampledAt) || 0)
+        || a.localeCompare(b);
+    });
+    for (const id of triangulationIds.slice(0, triangulationIds.length - ANOMALY_TRIANGULATION_CAP)) {
+      delete normalized.triangulations[id];
+    }
   }
   normalized.receipts = (Array.isArray(source.receipts) ? source.receipts : [])
     .map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP);
@@ -641,6 +786,7 @@ export const scanner = {
       } else if (isCargoLike(entity)) {
         data.pingedUntil = now + profile.pingPersistS;
       } else if (isAnomalyLike(entity)) {
+        if (data.requiresTriangulation && !data.anomalyTriangulated) continue;
         data.pingedUntil = now + profile.pingPersistS;
         found.anomalies++;
       } else if ((entity.type === 'ship' || entity.type === 'drone') && (data.isGhost || data.ghost)) {
@@ -695,6 +841,7 @@ export const scanner = {
     for (const poi of active && active.pois || []) {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+      if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
       const pos = entity && entity.pos || poi.pos;
       if (!pos || dist(origin, pos) > scanRadius) continue;
       upsertUnknownPing(state, sectorId, {
@@ -712,6 +859,80 @@ export const scanner = {
     for (const candidate of raw) {
       if (own.completed[candidate.id]) continue;
       const previous = own.records[candidate.id] || null;
+      if (candidate.kind === 'anomaly' && candidate.requiresTriangulation && !candidate.triangulated) {
+        const config = candidate.triangulation && typeof candidate.triangulation === 'object'
+          ? candidate.triangulation
+          : {};
+        const previousTriangulation = own.triangulations[candidate.sourceId] || null;
+        const result = recordAnomalyBearing(previousTriangulation, origin, candidate.pos, {
+          ...config,
+          sectorId,
+          poiId: candidate.sourceId,
+        }, now);
+        own.triangulations[candidate.sourceId] = result.record;
+        this.bus.emit('anomaly:bearing', {
+          sectorId,
+          poiId: candidate.sourceId,
+          accepted: result.accepted,
+          reason: result.reason,
+          sampleCount: result.sampleCount,
+          requiredPings: result.requiredPings,
+          bearingDeg: result.bearingDeg,
+          baselineWu: result.baselineWu,
+          angleDeltaDeg: result.angleDeltaDeg,
+        });
+        if (result.revealed) {
+          candidate.triangulated = true;
+          const entity = candidate.entityId && state.entities && state.entities.get && state.entities.get(candidate.entityId);
+          if (entity && entity.data) entity.data.anomalyTriangulated = true;
+          const activePoi = state.world && state.world.activeSector && (state.world.activeSector.pois || [])
+            .find((poi) => poi && (poi.poiId === candidate.sourceId || poi.id === candidate.entityId));
+          if (activePoi) activePoi.anomalyTriangulated = true;
+          this.bus.emit('anomaly:triangulated', {
+            sectorId,
+            poiId: candidate.sourceId,
+            entityId: candidate.entityId,
+            pos: pos2(candidate.pos),
+            sampleCount: result.sampleCount,
+            completedAt: now,
+          });
+        } else {
+          const scanCount = result.sampleCount;
+          const record = {
+            id: candidate.id,
+            sectorId,
+            sourceKind: candidate.kind,
+            sourceId: candidate.sourceId || null,
+            entityId: candidate.entityId || null,
+            // Before the fix, this is the pilot's sample origin—not the hidden target position.
+            pos: pos2(origin),
+            classification: 'ANOMALY BEARING',
+            detail: anomalyTriangulationDetail(result, result.record),
+            stage: Math.max(1, Math.min(2, scanCount)),
+            confidence: Number(Math.min(0.72, 0.18 + scanCount * 0.18).toFixed(3)),
+            strength: Number(signalStrengthFor(candidate.distance, candidate.range).toFixed(3)),
+            distance: 0,
+            range: candidate.range,
+            scanCount,
+            firstSeenAt: previous ? previous.firstSeenAt : now,
+            lastScanAt: now,
+            bestDistance: previous && Number.isFinite(Number(previous.bestDistance))
+              ? Number(previous.bestDistance) : 0,
+            status: 'triangulating',
+            trackable: false,
+            triangulation: {
+              bearingDeg: result.bearingDeg,
+              sampleCount: scanCount,
+              requiredPings: result.requiredPings,
+              accepted: result.accepted,
+              reason: result.reason,
+            },
+          };
+          own.records[record.id] = record;
+          rows.push(record);
+          continue;
+        }
+      }
       const scanCount = (previous && previous.scanCount || 0) + 1;
       const stage = signalClassificationStage(scanCount, candidate.distance);
       const strength = signalStrengthFor(candidate.distance, candidate.range);
@@ -752,7 +973,7 @@ export const scanner = {
     const own = state && ensureSignalState(state);
     const id = String(payload.signalId || payload.id || '');
     const record = own && own.records[id];
-    if (!record || own.completed[id] || !record.pos) return false;
+    if (!record || own.completed[id] || record.trackable === false || !record.pos) return false;
     if (own.trackedId && own.records[own.trackedId]) own.records[own.trackedId].status = 'detected';
     own.trackedId = id;
     record.status = 'tracked';

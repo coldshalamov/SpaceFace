@@ -225,6 +225,7 @@ export const world = {
     bus.on('module:unequipped', () => this._resolveShipModules());
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
+    bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
@@ -1267,12 +1268,19 @@ export const world = {
       const visualRadius = finitePositive(poi.visualRadius)
         ? Number(poi.visualRadius)
         : (placeId && DRESSING_RADIUS[placeId]) || (poi.landmark ? 24 : 10);
+      const triangulation = poi.triangulation && typeof poi.triangulation === 'object'
+        ? { ...poi.triangulation }
+        : null;
+      const anomalyTriangulated = disc.pois[poi.id] && disc.pois[poi.id].triangulated === true;
       const ent = this.helpers.spawnEntity({
         type: 'fx', factionId: poi.factionId || null, pos,
         radius: visualRadius, mass: 0, collides: false, ttl: Infinity,
         data: {
           poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
           hidden: !!poi.hidden, gatedBy: poi.gatedBy || null,
+          requiresTriangulation: !!triangulation,
+          triangulation,
+          anomalyTriangulated,
           scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
           // V2 §6 / M3: claimable bodies carry their claim flag + size so the player can claim them.
           claimable: !!poi.claimable, size: poi.size || 'M',
@@ -1296,6 +1304,9 @@ export const world = {
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden: !!poi.hidden, claimable: !!poi.claimable,
+        requiresTriangulation: !!triangulation,
+        triangulation,
+        anomalyTriangulated,
       });
 
       // A1/V2 physical Quiessence carriers. H1c still owns the eventual dark-freighter art;
@@ -2405,6 +2416,7 @@ export const world = {
       if (!ent || !ent.alive) continue;
       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
       if (rec.identified) continue;
+      if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
       const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
       const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * (1 + 0.25 * scannerTier);
@@ -2520,6 +2532,29 @@ export const world = {
     if (!fieldId) return;
     const disc = this._discoveryFor(this.state.world.currentSectorId);
     disc.fieldsDepleted[fieldId] = clamp(depleted == null ? 1 : depleted, 0, 1);
+  },
+
+  _onAnomalyTriangulated(payload) {
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    const poiId = payload.poiId;
+    if (!sectorId || !poiId) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    const newlyDiscovered = !rec.discovered;
+    rec.discovered = true;
+    rec.triangulated = true;
+    rec.triangulatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
+    const active = this.state.world.activeSector;
+    if (active && active.id === sectorId) {
+      const row = (active.pois || []).find((poi) => poi && poi.poiId === poiId);
+      if (row) {
+        row.anomalyTriangulated = true;
+        const entity = this.state.entities.get(row.id);
+        if (entity && entity.data) entity.data.anomalyTriangulated = true;
+      }
+    }
+    if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: 'anomaly', sectorId });
+    return true;
   },
 
   // --- numeric helpers ----------------------------------------------------------------------

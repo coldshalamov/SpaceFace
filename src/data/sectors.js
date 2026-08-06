@@ -295,7 +295,10 @@ const CORE_SECTORS = [
       { type: 'radiation', center: { x: 200, z: -200 }, radius: 600,  intensity: 0.6 },
     ],
     pois: [
-      { id: 'poi_anomaly',  type: 'anomaly',  name: 'Anomaly Signal' },
+      {
+        id: 'poi_anomaly', type: 'anomaly', name: 'Anomaly Signal', hidden: true,
+        triangulation: { requiredPings: 3, minBaselineWu: 350, minBearingDeltaDeg: 8 },
+      },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
     ],
   },

@@ -16,6 +16,13 @@ export function signalStrengthWord(value) {
 
 export function signalMetaText(record) {
   if (!record) return 'FAINT · RANGE —';
+  if (record.triangulation) {
+    const bearing = Math.round(Number(record.triangulation.bearingDeg) || 0)
+      .toString().padStart(3, '0');
+    const sampleCount = Math.max(0, Math.round(Number(record.triangulation.sampleCount) || 0));
+    const requiredPings = Math.max(1, Math.round(Number(record.triangulation.requiredPings) || 3));
+    return `BEARING ${bearing}° · FIX ${sampleCount}/${requiredPings}`;
+  }
   const distance = Math.max(0, Math.round(Number(record.distance) || 0)).toLocaleString('en-US');
   const pass = Math.max(1, Math.round(Number(record.scanCount) || 1));
   return `${signalStrengthWord(record.strength)} · ${distance} WU · PASS ${pass}`;
@@ -32,6 +39,10 @@ function safeRecord(payload) {
     strength: Math.max(0, Math.min(1, Number(row.strength) || 0)),
     distance: Math.max(0, Number(row.distance) || 0),
     scanCount: Math.max(1, Math.round(Number(row.scanCount) || 1)),
+    trackable: row.trackable !== false,
+    triangulation: row.triangulation && typeof row.triangulation === 'object'
+      ? { ...row.triangulation }
+      : null,
   };
 }
 
@@ -82,6 +93,7 @@ export function createSignalInvestigationPrompt(ctx) {
     active = {
       mode: 'result',
       signalId: record.id,
+      trackable: record.trackable,
       hideAt: Number(state.simTime || 0) + RESULT_TTL_S,
     };
     root.className = 'sf-signal--result';
@@ -91,10 +103,14 @@ export function createSignalInvestigationPrompt(ctx) {
     text(el.meta, signalMetaText(record));
     text(el.detail, record.detail);
     const other = Math.max(0, Number(payload.total || (payload.signals && payload.signals.length) || 1) - 1);
-    text(el.more, other ? `+${other} OTHER RETURN${other === 1 ? '' : 'S'}` : 'PRIMARY RETURN');
-    el.track.hidden = false;
-    el.track.disabled = false;
-    root.setAttribute('aria-label', `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} Track or investigate.`);
+    text(el.more, record.trackable
+      ? (other ? `+${other} OTHER RETURN${other === 1 ? '' : 'S'}` : 'PRIMARY RETURN')
+      : 'MOVE LATERALLY · PULSE AGAIN');
+    el.track.hidden = !record.trackable;
+    el.track.disabled = !record.trackable;
+    root.setAttribute('aria-label', record.trackable
+      ? `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} Track or investigate.`
+      : `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail}`);
     root.hidden = false;
     return true;
   }
@@ -132,7 +148,8 @@ export function createSignalInvestigationPrompt(ctx) {
   }
 
   function track(source = 'click') {
-    if (isUiInteractionFenced(state) || !active || active.mode !== 'result' || !active.signalId) return false;
+    if (isUiInteractionFenced(state) || !active || active.mode !== 'result'
+      || active.trackable === false || !active.signalId) return false;
     const signalId = active.signalId;
     el.track.disabled = true;
     bus.emit('signal:track', { signalId, source });
