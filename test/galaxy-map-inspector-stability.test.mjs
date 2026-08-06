@@ -8,6 +8,7 @@ globalThis.window = { devicePixelRatio: 1 };
 const { galaxyMapScreen } = await import('../src/ui/galaxyMap.js');
 
 const emitted = [];
+const routeRequests = [];
 let popCount = 0;
 const ctx = {
   state: createStateFixture(),
@@ -16,6 +17,24 @@ const ctx = {
   },
   screenManager: {
     popScreen() { popCount += 1; },
+  },
+  registry: {
+    get(name) {
+      if (name !== 'world') return null;
+      return {
+        computeRoute(destination, mode) {
+          routeRequests.push({ destination, mode });
+          return {
+            legs: [
+              { from: 'sector_helios_prime', to: 'sector_ceres_belt', fuel: 19 },
+              { from: 'sector_ceres_belt', to: destination, fuel: 18 },
+            ],
+            totalFuel: 37,
+            totalHops: 2,
+          };
+        },
+      };
+    },
   },
 };
 const root = new FakeRoot(documentRef);
@@ -58,6 +77,26 @@ galaxyMapScreen._selectedTarget = {
 galaxyMapScreen._updateInspector();
 assert.doesNotMatch(details.innerHTML, /Current Conditions|Why it changed/,
   'an undiscovered real sector cannot reveal field causes through a forged selection');
+
+ctx.state.world.discovery = { sector_tethys_junction: { discovered: true } };
+galaxyMapScreen._selectedTarget = {
+  id: 'sector_tethys_junction', sectorId: 'sector_tethys_junction', kind: 'sector', name: 'Tethys Junction',
+  factionId: 'faction_mts', security: 0.65, x: 2, y: 2,
+};
+galaxyMapScreen._updateInspector();
+assert.match(details.innerHTML, /2 Jumps \(Fuel: 37 Units\)/,
+  'the inspector reports the executable world plan instead of multiplying hops by a fixed fuel guess');
+assert.deepEqual(routeRequests.at(-1), { destination: 'sector_tethys_junction', mode: 'fuel' });
+
+ctx.registry.get = () => null;
+galaxyMapScreen._selectedTarget = {
+  id: 'sector_ceres_belt', sectorId: 'sector_ceres_belt', kind: 'sector', name: 'Ceres Belt',
+  factionId: 'faction_mts', security: 0.72, x: 1, y: 1,
+};
+galaxyMapScreen._updateInspector();
+assert.match(details.innerHTML, /1 Jump \(Fuel unavailable\)/,
+  'the graph-only fallback reports hop reachability while refusing to invent fuel cost');
+assert.doesNotMatch(details.innerHTML, /Fuel: 10 Units/);
 
 const helios = {
   id: 'station_helios',

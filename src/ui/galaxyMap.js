@@ -4280,6 +4280,35 @@ export function computePreviewRoute(state, startSectorId, targetSectorId) {
   return path.reverse();
 }
 
+/**
+ * Format route cost without introducing a second fuel model in the map.
+ *
+ * A world-owned plan may report the total directly or through its authored legs. The local graph
+ * fallback can establish reachability and hop count only, so it must refuse to guess at fuel.
+ */
+export function formatRoutePlanCost(route, fallbackPath = null) {
+  if (route && typeof route === 'object') {
+    const legs = Array.isArray(route.legs) ? route.legs : [];
+    const reportedHops = Number(route.totalHops);
+    const hops = Number.isFinite(reportedHops) && reportedHops >= 0
+      ? Math.floor(reportedHops)
+      : legs.length;
+    let fuel = Number(route.totalFuel);
+    if (!Number.isFinite(fuel) && legs.length && legs.every((leg) => Number.isFinite(Number(leg && leg.fuel)))) {
+      fuel = legs.reduce((sum, leg) => sum + Number(leg.fuel), 0);
+    }
+    if (hops > 0 && Number.isFinite(fuel) && fuel >= 0) {
+      return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel: ${Math.round(fuel)} Units)`;
+    }
+  }
+
+  if (Array.isArray(fallbackPath) && fallbackPath.length > 1) {
+    const hops = fallbackPath.length - 1;
+    return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel unavailable)`;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Search Target Gathering Helper
 // ---------------------------------------------------------------------------------------------
@@ -4422,6 +4451,7 @@ export const galaxyMapScreen = {
   // {origin > destination}. Never assigned to `nav.route` — see `_previewRouteTo`.
   _previewRoute: null,
   _previewRouteKey: null,
+  _previewRouteStatus: null,
   // Contextual reveal bookkeeping for the alternatives rail — see `_revealAlternatives`.
   _altRevealedFor: null,
   _altAutoOpened: false,
@@ -4709,11 +4739,18 @@ export const galaxyMapScreen = {
     const world = this._ctx && this._ctx.registry && typeof this._ctx.registry.get === 'function'
       ? this._ctx.registry.get('world') : null;
     let route = null;
+    let status = 'unavailable';
     if (world && typeof world.computeRoute === 'function') {
-      try { route = world.computeRoute(destSectorId, 'fuel'); } catch { route = null; }
+      try {
+        route = world.computeRoute(destSectorId, 'fuel');
+        status = route ? 'ready' : 'unreachable';
+      } catch {
+        route = null;
+      }
     }
     this._previewRouteKey = key;
     this._previewRoute = route;
+    this._previewRouteStatus = status;
     return route;
   },
 
@@ -5726,12 +5763,13 @@ export const galaxyMapScreen = {
       // Compute route distance/cost
       const curSec = currentSectorId(state);
       let routeInfo = 'Select to plot route';
-      let pathLen = 0;
       if (curSec && curSec !== t.id) {
-        const previewPath = computePreviewRoute(state, curSec, t.id);
-        if (previewPath) {
-          pathLen = previewPath.length - 1;
-          routeInfo = `${pathLen} Jumps (Fuel: ${pathLen * 10} Units)`;
+        const routePlan = this._previewRouteTo(t.id);
+        if (routePlan) {
+          routeInfo = formatRoutePlanCost(routePlan) || 'Route cost unavailable';
+        } else if (this._previewRouteStatus === 'unavailable') {
+          const previewPath = computePreviewRoute(state, curSec, t.id);
+          routeInfo = formatRoutePlanCost(null, previewPath) || 'Unreachable/No path';
         } else {
           routeInfo = 'Unreachable/No path';
         }
