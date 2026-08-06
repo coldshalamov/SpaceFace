@@ -37,6 +37,7 @@ import assert from 'node:assert/strict';
 
 import { routeFollower, ROUTE_EXECUTOR_STATUS, summarizeExecutor } from '../src/systems/routeFollower.js';
 import { buildAtlasIndex } from '../src/core/atlasIndex.js';
+import { travelTapeNavigationState } from '../src/ui/hud.js';
 
 const ATLAS = buildAtlasIndex();
 
@@ -324,17 +325,35 @@ test('replanning onto a stale route from a live one does not strand the executor
     'replanning onto an unflyable route must stop cleanly');
   assert.equal(state.nav.autopilot.active, false,
     'the autopilot armed for the PREVIOUS route must be released, not left steering at the old target');
+  assert.equal(state.nav.autopilot.target, null,
+    'the abandoned route coordinate must not survive as manual braking guidance');
+  assert.equal(state.nav.waypoint, null,
+    'the route-owned waypoint must retire with the interrupted controller');
+});
 
-  // NOT asserted here, and the omission is deliberate and disclosed: `nav.autopilot.target` still
-  // holds the ABANDONED route's coordinate at this point, because `_disarmAutopilot`
-  // (routeFollower.js:443) clears `active` and `status` but not `target`. That is a live defect, and
-  // it is player-visible — `hud.js:3327` falls back to `autopilot.target` without consulting
-  // `active`, so the manual-burn stopping arc cues a destination the player walked away from.
-  //
-  // The assertion is not softened, it is RELOCATED, intact and failing, to
-  // `scripts/repro-abandoned-route-hud.mjs` (run it; it exits 1). It is kept out of this file so the
-  // gate stays green for everyone else — a verifier reports defects, it does not hold the build
-  // hostage to them. When the defect is fixed, promote the assertion back here and retire the repro.
+test('Travel Burn guidance reads route engagement and ignores an inactive orphan target', () => {
+  const target = { x: 2388, z: 1592 };
+  const engaged = travelTapeNavigationState({
+    executor: { engaged: true },
+    waypoint: { kind: 'route', pos: target },
+    autopilot: { active: false, target, arrivalRadius: 260 },
+  });
+  assert.equal(engaged.manual, false, 'an acquiring route still owns braking before autopilot arm');
+
+  const orphan = travelTapeNavigationState({
+    executor: { engaged: false },
+    waypoint: null,
+    autopilot: { active: false, target, arrivalRadius: 260 },
+  });
+  assert.equal(orphan.manual, true);
+  assert.equal(orphan.arrival, null, 'an inactive target with no waypoint cannot become a brake cue');
+
+  const local = travelTapeNavigationState({
+    waypoint: { kind: 'local', pos: target },
+    autopilot: { active: false, target, arrivalRadius: 36 },
+  });
+  assert.deepEqual(local.arrival, { ...target, radius: 36 },
+    'a player-retained local waypoint remains useful during manual flight');
 });
 
 // ── one fact, one reading ────────────────────────────────────────────────────────────────────────

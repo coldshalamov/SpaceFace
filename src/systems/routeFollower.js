@@ -97,6 +97,10 @@ function hasXZ(p) {
   return !!p && Number.isFinite(p.x) && Number.isFinite(p.z);
 }
 
+function sameXZ(a, b) {
+  return hasXZ(a) && hasXZ(b) && a.x === b.x && a.z === b.z;
+}
+
 function playerEntity(state) {
   return state && state.entities && state.playerId ? state.entities.get(state.playerId) || null : null;
 }
@@ -526,14 +530,43 @@ export const routeFollower = {
   _disarmAutopilot(reason) {
     const nav = this.state && this.state.nav;
     const autopilot = nav && nav.autopilot;
-    if (!autopilot || autopilot.active !== true) return;
-    autopilot.active = false;
-    autopilot.status = reason || 'idle';
-    this._emittingAutopilot = true;
-    try {
-      this._emit('nav:autopilot', autopilot);
-    } finally {
-      this._emittingAutopilot = false;
+    if (!nav) return;
+
+    // The route follower owns only route-kind guidance. Retire that guidance even when flightV3 has
+    // already set active=false (manual/lost-target arrives here through nav:autopilot), otherwise
+    // the HUD keeps drawing a braking cue toward the abandoned leg. A local/manual waypoint is not
+    // ours and is deliberately left intact.
+    const routeWaypoint = nav.waypoint && nav.waypoint.kind === 'route' ? nav.waypoint : null;
+    const executor = nav.executor;
+    const leg = executor && Array.isArray(executor.legs) ? executor.legs[executor.legIndex] : null;
+    const routeTarget = !!(autopilot && (
+      sameXZ(autopilot.target, routeWaypoint && routeWaypoint.pos)
+      || sameXZ(autopilot.target, leg && leg.target)
+    ));
+    const wasActive = !!(autopilot && autopilot.active === true);
+    if (!wasActive && !routeWaypoint && !routeTarget) return;
+
+    if (autopilot) {
+      autopilot.active = false;
+      autopilot.status = reason || 'idle';
+      if (routeTarget) {
+        autopilot.target = null;
+        autopilot.targetEntityId = null;
+        autopilot.label = '';
+        autopilot.initialDistance = null;
+      }
+    }
+    if (routeWaypoint) {
+      nav.waypoint = null;
+      this._emit('nav:waypoint', null);
+    }
+    if (autopilot && (wasActive || routeTarget)) {
+      this._emittingAutopilot = true;
+      try {
+        this._emit('nav:autopilot', autopilot);
+      } finally {
+        this._emittingAutopilot = false;
+      }
     }
   },
 
@@ -673,16 +706,13 @@ export const routeFollower = {
     const routeAutopilot = routeWaypoint || !!(
       nav.autopilot
       && nav.autopilot.active === true
-      && hasXZ(nav.autopilot.target)
       && currentLeg
-      && hasXZ(currentLeg.target)
-      && nav.autopilot.target.x === currentLeg.target.x
-      && nav.autopilot.target.z === currentLeg.target.z
+      && sameXZ(nav.autopilot.target, currentLeg.target)
     );
 
     this._releaseTravelDrive('route-invalidated');
     if (routeAutopilot) this._disarmAutopilot('route-invalidated');
-    if (routeWaypoint) {
+    if (nav.waypoint && nav.waypoint.kind === 'route') {
       nav.waypoint = null;
       this._emit('nav:waypoint', null);
     }
@@ -752,6 +782,7 @@ export const routeFollower = {
     executor.handoffRequestedLegIndex = null;
     executor.interruptReason = null;
     this._releaseTravelDrive('arrived');
+    this._disarmAutopilot('arrived');
     this._publish('arrived', { reason });
   },
 

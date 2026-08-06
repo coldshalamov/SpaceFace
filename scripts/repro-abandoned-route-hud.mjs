@@ -1,44 +1,20 @@
 #!/usr/bin/env node
-// DEFECT REPRODUCTION — not a gate. Run it; it exits 1 while the defect is live.
+// REGRESSION REPRODUCTION — not a gate. Run it to prove abandoned route guidance stays retired.
 //
 //   node scripts/repro-abandoned-route-hud.mjs
 //
-// This file exists so that two navigation defects found by packet E-2 are provable on demand rather
-// than asserted in prose. It is deliberately NOT registered in any aggregate: a red gate would block
-// the whole tree, and a verifier does not get to hold the build hostage to make a point. The
-// assertions below were NOT weakened to go green anywhere else — they live here, intact, and they
-// fail. `test/navigation-stale-route.test.mjs` carries only the invariants that genuinely hold.
+// This file began as the bounded D-2 defect reproduction. The product fix promoted its durable
+// invariants into test/navigation-stale-route.test.mjs; this script remains as the seconds-scale
+// end-to-end state reproduction and consumes the HUD's production truth helper.
 //
-// ── DEFECT 1 — the HUD reads a field the executor never sets ─────────────────────────────────────
-//
-// `src/ui/hud.js:3325`:   const executorActive = !!(nav.executor && nav.executor.active);
-//
-// The route executor has no `active` field. It has `engaged` (`routeFollower.js:175/275/307/577`),
-// and `summarizeExecutor` publishes `engaged`. `executor.active` is read in exactly one place in the
-// codebase and written in none, so `executorActive` is permanently false.
-//
-// The line's own comment states the intent: "The follower auto-brakes, so its arc would be noise.
-// Only a hand-flown approach gets this." That suppression is therefore load-bearing and currently
-// rests entirely on the autopilot flag next to it. Whenever the follower owns the ship but has not
-// got the autopilot armed — between legs, while acquiring, during transit before handoff — the HUD
-// concludes the player is hand-flying.
-//
-// ── DEFECT 2 — an abandoned route's destination survives into the arrival cue ────────────────────
-//
-// `_disarmAutopilot` (`routeFollower.js:443`) clears `active` and `status` but leaves `target`.
-// `hud.js:3327` falls back to `nav.autopilot.target` whenever no waypoint is set, without consulting
-// `active`. So after aborting or replanning a route, the manual-burn stopping arc and its BRAKE NOW
-// cue are computed against the destination the player just walked away from.
-//
-// Graded as an OUTCOME, not as an internal call sequence: the check below recomputes hud.js's own
-// three expressions verbatim from real post-replan state and asks whether the player is shown an
-// arrival cue for an abandoned destination.
+// Two regressions are pinned here: the HUD reads executor.engaged while the route owns braking, and
+// routeFollower retires its waypoint/target on abort, failed replan and interruption. Graded as an
+// outcome from real post-transition state; the HUD calculation itself is not reimplemented here.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-
 import { routeFollower, ROUTE_EXECUTOR_STATUS } from '../src/systems/routeFollower.js';
 import { buildAtlasIndex } from '../src/core/atlasIndex.js';
+import { travelTapeNavigationState } from '../src/ui/hud.js';
 
 const ATLAS = buildAtlasIndex();
 const GHOST = 'sector_removed_by_content_patch';
@@ -105,13 +81,7 @@ function hudTravelTape(state, { driveState = 'off', speed = 0, ceiling = 473 } =
   const nearCeiling = ceiling > 0 && speed >= ceiling * 0.8;
   const want = active || nearCeiling;
 
-  const autopilotActive = !!(nav.autopilot && nav.autopilot.active);
-  const executorActive = !!(nav.executor && nav.executor.active);
-  const manual = !autopilotActive && !executorActive;
-  const wp = nav.waypoint && nav.waypoint.pos ? nav.waypoint.pos : (nav.autopilot && nav.autopilot.target);
-  const arrival = wp && Number.isFinite(wp.x) && Number.isFinite(wp.z)
-    ? { x: wp.x, z: wp.z, radius: Math.max(0, Number(nav.autopilot && nav.autopilot.arrivalRadius) || 36) }
-    : null;
+  const { manual, arrival } = travelTapeNavigationState(nav);
 
   return {
     revealed: want,
@@ -122,34 +92,20 @@ function hudTravelTape(state, { driveState = 'off', speed = 0, ceiling = 473 } =
   };
 }
 
-console.log('\nDEFECT 1 — hud.js reads nav.executor.active, which nothing writes\n');
+console.log('\nREGRESSION 1 — the HUD reads the route executor\'s real engagement field\n');
 
-record('the shipped HUD line still reads `nav.executor.active`', () => {
-  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.match(hud, /nav\.executor && nav\.executor\.active/,
-    'if this no longer matches, the defect may already be fixed — re-verify and retire this repro');
-});
-
-record('`executor.active` is never assigned anywhere in src/', () => {
-  const follower = readFileSync(new URL('../src/systems/routeFollower.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(follower, /executor\.active\s*=/,
-    'executor.active is assigned after all — re-verify the defect');
-  assert.match(follower, /engaged\s*=\s*true/, 'the real field is `engaged`');
-});
-
-record('DEFECT: an engaged executor reads as inactive to the HUD', () => {
+record('an engaged executor reads as route-owned rather than hand-flown', () => {
   const { state, sys } = harness({
     legs: [{ from: 'sector_helios_prime', to: 'sector_tethys_junction' }], totalHops: 1,
   });
   sys.engage({});
   const executor = state.nav.executor;
   assert.equal(executor.engaged, true, 'precondition: the executor is engaged');
-  assert.equal(!!executor.active, true,
-    `the HUD asks for executor.active and gets ${JSON.stringify(executor.active)} while engaged===true`
-    + ' — so `executorActive` is false and the HUD believes the ship is hand-flown');
+  assert.equal(hudTravelTape(state, { driveState: 'off', speed: 400, ceiling: 439 }).manual, false,
+    'an engaged route owns braking even before the delegated autopilot arms');
 });
 
-console.log('\nDEFECT 2 — an abandoned route\'s target survives into the arrival cue\n');
+console.log('\nREGRESSION 2 — an abandoned route cannot survive into the arrival cue\n');
 
 /** Fly a route, then abandon it the given way. Returns the post-abandonment state. */
 function abandonedRouteState(how) {
@@ -179,7 +135,7 @@ function abandonedRouteState(how) {
 const TRAVEL_SPEED = { driveState: 'off', speed: 400, ceiling: 439 };
 const AT_REST = { driveState: 'off', speed: 0, ceiling: 439 };
 
-record('DEFECT: aborting mid-transit leaves a BRAKE cue for the ABANDONED destination', () => {
+record('aborting mid-transit removes the BRAKE cue for the abandoned destination', () => {
   const state = abandonedRouteState('manual');
   const readout = hudTravelTape(state, TRAVEL_SPEED);
   assert.equal(readout.revealed, true, 'precondition: near the ceiling the tape IS revealed');
@@ -189,7 +145,7 @@ record('DEFECT: aborting mid-transit leaves a BRAKE cue for the ABANDONED destin
     + ' _disarmAutopilot, and hud.js:3327 consumes it without checking autopilot.active');
 });
 
-record('DEFECT: replanning onto a dead route mid-transit cues the abandoned destination too', () => {
+record('replanning onto a dead route does not cue the previous destination', () => {
   const state = abandonedRouteState('replan');
   const readout = hudTravelTape(state, TRAVEL_SPEED);
   assert.equal(readout.showsArrivalCue, false,
@@ -197,25 +153,20 @@ record('DEFECT: replanning onto a dead route mid-transit cues the abandoned dest
     + ' player just replaced');
 });
 
-record('SCOPE: at rest with the drive off the tape is hidden, so the stale target is latent only', () => {
+record('at rest the tape is hidden and the abandoned target is retired', () => {
   const state = abandonedRouteState('manual');
   const readout = hudTravelTape(state, AT_REST);
   assert.equal(readout.revealed, false,
     'the contextual tape must stay hidden at rest with the drive off (D5 Amendment 2)');
   assert.equal(readout.showsArrivalCue, false,
     'a hidden tape shows nothing — this is what bounds the defect above to revealed states');
-  // The stale target is still SITTING there; it is simply not being drawn in this state.
-  assert.ok(state.nav.autopilot.target,
-    'the residual target persists regardless — only its visibility is state-dependent');
+  assert.equal(state.nav.autopilot.target, null,
+    'the route owner must retire its target rather than relying on the tape being hidden');
 });
 
-record('DEFECT (compound): resuming after an interdiction cues the leg already flown', () => {
-  // The realistic sequence both defects meet in: on a route, pirates interdict (`combat:hit` ->
-  // interrupt), the player re-engages. `engage()` resumes into ACQUIRING with `armedLegIndex` reset,
-  // so the autopilot is not armed yet — but `_disarmAutopilot` left the PREVIOUS leg's target in
-  // place. Defect 1 means the engaged executor cannot tell the HUD it owns the ship, so the HUD
-  // reads "hand-flown"; defect 2 supplies the stale coordinate. At travel speed the tape is up, and
-  // the player is told to brake for a waypoint already behind them while the follower is flying.
+record('resuming after an interdiction does not cue the leg already flown', () => {
+  // The compound edge case: pirates interdict, then the player resumes. During ACQUIRING the local
+  // autopilot is not armed yet, but the executor still owns braking and the prior leg stays retired.
   const { state, sys } = harness({
     legs: [{ from: 'sector_helios_prime', to: 'sector_tethys_junction' }], totalHops: 1,
   });
@@ -230,8 +181,7 @@ record('DEFECT (compound): resuming after an interdiction cues the leg already f
 
   const readout = hudTravelTape(state, TRAVEL_SPEED);
   assert.equal(readout.showsArrivalCue, false,
-    'the route follower owns the ship, yet the HUD reads hand-flown (executor.active is undefined)'
-    + ` and cues a brake for (${readout.arrival?.x}, ${readout.arrival?.z}) — the leg already flown`);
+    `the resumed route must not cue a brake for the prior leg at (${readout.arrival?.x}, ${readout.arrival?.z})`);
 });
 
 record('control: a never-engaged nav cues nothing even when revealed (grader is not always-fail)', () => {
@@ -246,10 +196,9 @@ record('control: a never-engaged nav cues nothing even when revealed (grader is 
 
 console.log('');
 if (failures.length) {
-  console.error(`REPRODUCED ${failures.length} defect assertion(s):\n`);
+  console.error(`FAILED ${failures.length} abandoned-route regression assertion(s):\n`);
   for (const f of failures) console.error(`  - ${f.label}\n      ${f.message}\n`);
-  console.error('These are FINDINGS for the navigation and presentation lanes, not verifier tasks.');
+  console.error('The D-2 navigation/presentation regression has returned.');
   process.exit(1);
 }
-console.log('No defect reproduced — both navigation defects appear fixed. Retire this file and');
-console.log('promote its assertions into test/navigation-stale-route.test.mjs.');
+console.log('D-2 regression held: route ownership is truthful and abandoned guidance is retired.');

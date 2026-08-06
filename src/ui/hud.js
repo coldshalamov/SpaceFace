@@ -402,6 +402,25 @@ export function contactRosterVisible({
   return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
 }
 
+/** One truthful reading for the manual Travel Burn stopping cue. The route executor owns braking
+ * while engaged, and an inactive autopilot target without a visible waypoint is stale state rather
+ * than a destination the player is still approaching. */
+export function travelTapeNavigationState(nav = {}) {
+  const autopilot = nav.autopilot || null;
+  const autopilotActive = !!(autopilot && autopilot.active === true);
+  const executorEngaged = !!(nav.executor && nav.executor.engaged === true);
+  const waypointPos = nav.waypoint && nav.waypoint.pos;
+  const target = waypointPos || (autopilotActive && autopilot && autopilot.target) || null;
+  const arrival = target && Number.isFinite(target.x) && Number.isFinite(target.z)
+    ? {
+      x: target.x,
+      z: target.z,
+      radius: Math.max(0, Number(autopilot && autopilot.arrivalRadius) || 36),
+    }
+    : null;
+  return { manual: !autopilotActive && !executorEngaged, arrival };
+}
+
 // Ordinary-load HUD gates, kept in lockstep with src/render/vfx.js:229-230
 // (TETHER_TAUT_LOAD / TETHER_OVERLOAD_LOAD) so the cable and the status line never disagree about
 // whether the Massline is working. These key off tether.load, NOT tether.strain — see the note on
@@ -3613,13 +3632,7 @@ export function createHud(ctx, alerts) {
 
     // --- approach row: the stopping arc, manual burns only ---
     const nav = state.nav || {};
-    const autopilotActive = !!(nav.autopilot && nav.autopilot.active);
-    const executorActive = !!(nav.executor && nav.executor.active);
-    const manual = !autopilotActive && !executorActive;
-    const wp = nav.waypoint && nav.waypoint.pos ? nav.waypoint.pos : (nav.autopilot && nav.autopilot.target);
-    const arrival = wp && Number.isFinite(wp.x) && Number.isFinite(wp.z)
-      ? { x: wp.x, z: wp.z, radius: Math.max(0, Number(nav.autopilot && nav.autopilot.arrivalRadius) || 36) }
-      : null;
+    const { manual, arrival } = travelTapeNavigationState(nav);
 
     // The follower auto-brakes, so its arc would be noise. Only a hand-flown approach gets this.
     const cue = (manual && arrival) ? evaluateArrivalCue(p, profile, arrival) : null;
