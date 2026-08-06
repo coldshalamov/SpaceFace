@@ -3690,7 +3690,26 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 /* ── 12 · Outfitting ──────────────────────────────────────────────────────────────────────────── */
 .st-outfit-engineering { display: grid; grid-template-columns: 270px minmax(0, 1fr) 290px; gap: 16px; min-height: 480px; }
 .st-outfit-tree-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.st-outfit-stage-wrap { min-height: 280px; }
+.st-outfit-center { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+.st-outfit-stage-wrap { min-height: 280px; flex: 1 1 280px; }
+.st-outfit-feel { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 10px 12px; background: var(--os-surface); }
+.st-outfit-feel__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--st-accent); }
+.st-outfit-feel__head .mono { color: var(--os-ink-mute); letter-spacing: .06em; }
+.st-outfit-feel-axes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 12px; }
+.st-outfit-feel-axis__head { display: flex; justify-content: space-between; gap: 8px; color: var(--os-ink-dim); font-size: 11px; }
+.st-outfit-feel-axis__sense { margin-top: 2px; color: var(--os-ink-mute); font-size: 9.5px; }
+.st-outfit-feel-bar { height: 5px; margin-top: 3px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.055); }
+.st-outfit-feel-bar__fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--st-accent) 45%, transparent), var(--st-accent)); }
+.st-outfit-feel-section { margin-top: 9px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--os-line) 72%, transparent); }
+.st-outfit-feel-label { display: block; margin-bottom: 5px; color: var(--os-ink-mute); font-family: var(--mono); font-size: 9.5px; letter-spacing: .11em; text-transform: uppercase; }
+.st-outfit-feel-preview, .st-outfit-feel-risks { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--os-ink-dim); font-size: 11px; }
+.st-outfit-feel-delta, .st-outfit-feel-risk { padding: 2px 7px; border: 1px solid var(--os-line); border-radius: 999px; background: rgba(255,255,255,.025); font-family: var(--mono); font-size: 10px; }
+.st-outfit-feel-delta b { color: var(--st-accent); }
+.st-outfit-feel-risk--illegal { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 38%, transparent); }
+.st-outfit-feel-risk--loud, .st-outfit-feel-risk--hot { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 38%, transparent); }
+.st-outfit-feel-risk--heavy { color: var(--energy); border-color: color-mix(in srgb, var(--energy) 34%, transparent); }
+.st-outfit-feel-note, .st-outfit-feel-empty { color: var(--os-ink-mute); font-size: 10.5px; line-height: 1.35; }
+.st-outfit-feel-note--warn { color: var(--warn); }
 .st-outfit-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
 /* In the narrow right column the module shop stacks as compact cards, never a crushed table. */
 .st-outfit-right .st-shop-head-row.st-row { display: none; }

@@ -6,12 +6,19 @@ import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import {
   describeOutfittingPurchase,
+  buildOutfittingEngineeringFeel,
   missionFitGuide,
   missionPickForOutfitting,
+  outfittingEngineeringFeelHtml,
   recommendOutfittingPurchase,
   slotReadiness,
 } from '../src/ui/screens/outfitting.js';
-import { buildSlotList, findMasslineHeadConflict, ships } from '../src/systems/ships.js';
+import {
+  buildSlotList,
+  findMasslineHeadConflict,
+  fittingsFromDefaultModules,
+  ships,
+} from '../src/systems/ships.js';
 
 function createBus() {
   const handlers = new Map();
@@ -48,6 +55,11 @@ assert.match(outfitSource, /missionFitGuide/, 'Outfitting should centralize miss
 assert.match(outfitSource, /recommendOutfittingPurchase/, 'Outfitting should centralize next-buy recommendation guidance');
 assert.match(outfitSource, /Next buy:/, 'Outfitting advisor should name the next concrete shop action');
 assert.match(outfitSource, /st-outfit-nextbuy/, 'Outfitting advisor should render the next-buy guidance as player-facing copy');
+assert.match(outfitSource, /buildMassDelta/, 'Outfitting should consume the shipped mass-feel readout');
+assert.match(outfitSource, /handlingProfileForShip/, 'Outfitting should consume the shipped handling profile');
+assert.match(outfitSource, /moduleRiskStrip/, 'Outfitting should consume the shipped module-risk readout');
+assert.match(outfitSource, /shopList\.addEventListener\('focusin'/,
+  'keyboard focus should drive the same engineering preview as pointer hover');
 
 const trackedPick = missionPickForOutfitting({
   ui: { trackedMissionId: 'm_smuggle' },
@@ -88,6 +100,55 @@ const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const slots = buildSlotList(shipDef);
 const moduleById = (id) => MODULES.find((entry) => entry.id === id);
 const weaponById = (id) => WEAPONS.find((entry) => entry.id === id);
+
+const starterFittings = fittingsFromDefaultModules('ship_kestrel', [
+  'wpn_pulse_laser_s',
+  'mod_mining_laser_s',
+  'mod_engine_ion_m',
+  'mod_shield_booster_s',
+]);
+let feel = buildOutfittingEngineeringFeel({
+  shipId: 'ship_kestrel',
+  fittings: starterFittings,
+  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
+});
+assert.equal(feel.mode, 'current');
+assert.equal(feel.profile.axes.length, 4, 'current fit exposes all four live flight-model axes');
+assert.equal(feel.delta, null, 'current fit does not manufacture a before/after change');
+
+const engineSlot = slots.findIndex((slot) => slot.type === 'engine');
+feel = buildOutfittingEngineeringFeel({
+  shipId: 'ship_kestrel',
+  fittings: starterFittings,
+  preview: { slotIndex: engineSlot, defId: 'mod_engine_fusion_m' },
+  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
+});
+assert.equal(feel.mode, 'preview');
+assert.equal(feel.afterFittings[engineSlot], 'mod_engine_fusion_m');
+assert.ok(feel.delta.metrics.some((metric) => metric.id === 'topSpeed' && metric.delta > 0),
+  'engine hover previews the real derived top-speed change');
+assert.match(outfittingEngineeringFeelHtml(feel), /Fusion Drive M preview/);
+assert.match(outfittingEngineeringFeelHtml(feel), /Top speed <b>\+/,
+  'player-facing panel renders the measured fitting delta');
+
+const cargoSlot = slots.findIndex((slot) => slot.type === 'cargo');
+feel = buildOutfittingEngineeringFeel({
+  shipId: 'ship_kestrel',
+  fittings: starterFittings,
+  preview: { slotIndex: cargoSlot, defId: 'mod_smuggler_hold' },
+  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
+});
+assert.ok(feel.risks.risks.some((risk) => risk.id === 'contraband'),
+  'previewed fit exposes a risk already declared by live module data');
+assert.match(outfittingEngineeringFeelHtml(feel), /Contraband/);
+
+feel = buildOutfittingEngineeringFeel({
+  shipId: 'ship_kestrel',
+  fittings: starterFittings,
+  preview: { slotIndex: cargoSlot, defId: 'mod_cargo_pod_m' },
+});
+assert.equal(feel.mode, 'unavailable', 'incompatible preview fails closed');
+assert.match(outfittingEngineeringFeelHtml(feel), /Preview unavailable/);
 
 let nextBuy = recommendOutfittingPurchase({
   credits: 10000,
