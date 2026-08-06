@@ -132,7 +132,11 @@ export const combatOutcome = {
   },
 
   _disabled(payload) {
-    const entityId = payload.entityId != null ? payload.entityId : payload.id;
+    // The combat kernel names the damaged combatant `targetId`; retain the older aliases for
+    // authored/test emitters that predate that live event contract.
+    const entityId = payload.targetId != null
+      ? payload.targetId
+      : payload.entityId != null ? payload.entityId : payload.id;
     const subsystemId = String(payload.subsystemId || '');
     if (!DISABLE_OUTCOME_SUBSYSTEMS.has(subsystemId)) return;
     const entity = entityFor(this.state, entityId);

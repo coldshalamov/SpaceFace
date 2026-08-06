@@ -102,6 +102,38 @@ function surrender(t) {
   });
 }
 
+function disableDrive(t, { attackerId = t.player.id } = {}) {
+  if (!t.state.combat || typeof t.state.combat !== 'object') t.state.combat = {};
+  if (!t.state.combat.entities || typeof t.state.combat.entities !== 'object') t.state.combat.entities = {};
+  t.state.combat.entities[String(t.hostile.id)] = {
+    entityId: t.hostile.id,
+    capabilities: { drive: false, weapon: true },
+    subsystems: {
+      subsystem_drive: {
+        id: 'subsystem_drive',
+        destroyed: true,
+        effectiveDisabled: true,
+      },
+    },
+  };
+  t.bus.emit('combat:subsystemDisabled', {
+    attackerId,
+    targetId: t.hostile.id,
+    subsystemId: 'subsystem_drive',
+  });
+}
+
+function restoreDrive(t) {
+  const runtime = t.state.combat.entities[String(t.hostile.id)];
+  runtime.capabilities.drive = true;
+  runtime.subsystems.subsystem_drive.destroyed = false;
+  runtime.subsystems.subsystem_drive.effectiveDisabled = false;
+  t.bus.emit('combat:subsystemEnabled', {
+    targetId: t.hostile.id,
+    subsystemId: 'subsystem_drive',
+  });
+}
+
 function attachAndReel(t, after = SECURE_REEL_WU) {
   t.state.player.tether = {
     active: true,
@@ -131,6 +163,44 @@ test('surrender creates one readable massline custody option', { skip: !surrende
   assert.match(t.events.option[0].instruction, /station|custody/i);
   assert.equal(t.hostile.data.surrenderRecovery.phase, 'awaiting_tether');
   assert.equal(t.hostile.data.ai.passive, true);
+});
+
+test('a player-disabled hostile drive opens custody without forcing surrender or controls', { skip: !surrenderRecovery }, () => {
+  const t = boot({ hostileData: { ai: { fsm: 'attack', passive: false, roe: 'fire_at_will' } } });
+  t.hostile.data.intent.fire = true;
+  t.hostile.data.intent.moveX = -1;
+  t.hostile.data.intent.boost = true;
+  const beforeAi = structuredClone(t.hostile.data.ai);
+  const beforeIntent = structuredClone(t.hostile.data.intent);
+
+  disableDrive(t);
+  disableDrive(t);
+
+  assert.equal(t.events.option.length, 1, 'duplicate drive transition cannot spam the option');
+  assert.equal(t.events.option[0].recoveryKind, 'drive_disabled');
+  assert.match(t.events.option[0].instruction, /drive disabled|massline/i);
+  assert.equal(t.hostile.data.surrenderRecovery.escapeAt, null, 'a ballistic disabled hull has no fake escape timer');
+  assert.deepEqual(t.hostile.data.ai, beforeAi, 'drive recovery does not force surrender or passive AI');
+  assert.deepEqual(t.hostile.data.intent, beforeIntent, 'drive recovery never takes over fire, thrust, facing, or boost');
+
+  attachAndReel(t);
+  assert.equal(t.events.secured.length, 1);
+  assert.deepEqual(t.hostile.data.ai, beforeAi);
+  assert.deepEqual(t.hostile.data.intent, beforeIntent);
+
+  t.player.pos.x = 100;
+  t.hostile.pos.x = 140;
+  t.sim.step();
+  assert.equal(t.events.custody.length, 1);
+  assert.equal(t.events.custody[0].recoveryKind, 'drive_disabled');
+  assert.match(t.events.custody[0].text, /disabled hull/i);
+});
+
+test('only a player-caused drive disable creates the nonlethal recovery option', { skip: !surrenderRecovery }, () => {
+  const t = boot({ hostileData: { ai: { fsm: 'attack', passive: false } } });
+  disableDrive(t, { attackerId: t.hostile.id + 100 });
+  assert.equal(t.events.option.length, 0);
+  assert.equal(t.hostile.data.surrenderRecovery, undefined);
 });
 
 test('only a real close player tether secures the surrendered ship', { skip: !surrenderRecovery }, () => {
@@ -216,6 +286,44 @@ test('an ignored surrender escapes instead of remaining inert forever', { skip: 
   assert.ok(t.hostile.data.despawnAt > t.state.simTime);
 });
 
+test('a released disabled hull remains ballistic, and repair closes the option without fake flight', { skip: !surrenderRecovery }, () => {
+  const t = boot({ hostileData: { ai: { fsm: 'attack', passive: false, roe: 'fire_at_will' } } });
+  t.hostile.data.intent.fire = true;
+  t.hostile.data.intent.moveX = -1;
+  t.hostile.data.intent.boost = false;
+  const beforeAi = structuredClone(t.hostile.data.ai);
+  const beforeIntent = structuredClone(t.hostile.data.intent);
+
+  disableDrive(t);
+  attachAndReel(t);
+  t.state.player.tether.active = false;
+  t.state.player.tether.targetId = null;
+  t.bus.emit('tether:released', { targetId: t.hostile.id });
+  assert.equal(t.hostile.data.surrenderRecovery.phase, 'awaiting_tether');
+  assert.equal(t.hostile.data.surrenderRecovery.escapeAt, null);
+  assert.match(t.hostile.data.surrenderRecovery.instruction, /drive remains disabled/i);
+
+  t.sim.runTicks(Math.ceil((ESCAPE_S + 0.2) / SIM_DT));
+  assert.equal(t.events.escaped.length, 0, 'disabled recovery never invents an escape controller or despawn');
+  assert.equal(t.hostile.data.despawnAt, undefined);
+  assert.deepEqual(t.hostile.data.ai, beforeAi);
+  assert.deepEqual(t.hostile.data.intent, beforeIntent);
+
+  restoreDrive(t);
+  t.sim.step();
+  assert.equal(t.hostile.data.surrenderRecovery.phase, 'lost');
+  assert.match(t.hostile.data.surrenderRecovery.instruction, /drive restored/i);
+  assert.equal(t.events.escaped.length, 0);
+  assert.deepEqual(t.hostile.data.ai, beforeAi);
+  assert.deepEqual(t.hostile.data.intent, beforeIntent);
+
+  disableDrive(t);
+  assert.equal(t.events.option.length, 2, 'a later real drive disable reopens the physical option');
+  assert.equal(t.hostile.data.surrenderRecovery.phase, 'awaiting_tether');
+  assert.deepEqual(t.hostile.data.ai, beforeAi);
+  assert.deepEqual(t.hostile.data.intent, beforeIntent);
+});
+
 test('authored bosses and aces cannot enter generic surrender recovery', { skip: !surrenderRecovery }, () => {
   for (const hostileData of [
     { isBoss: true },
@@ -227,5 +335,16 @@ test('authored bosses and aces cannot enter generic surrender recovery', { skip:
     surrender(t);
     assert.equal(t.events.option.length, 0);
     assert.equal(t.hostile.data.surrenderRecovery, undefined);
+
+    const disabled = boot({
+      seed: t.state.meta.seed + 100,
+      hostileData: {
+        ...hostileData,
+        ai: { fsm: 'attack', passive: false, ...(hostileData.ai || {}) },
+      },
+    });
+    disableDrive(disabled);
+    assert.equal(disabled.events.option.length, 0);
+    assert.equal(disabled.hostile.data.surrenderRecovery, undefined);
   }
 });

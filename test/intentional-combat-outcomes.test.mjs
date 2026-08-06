@@ -166,6 +166,20 @@ test('a critically damaged ordinary combatant surrenders with one readable recei
   assert.equal(t.events.outcomes.length, 1, 'combat outcome is exactly once');
 });
 
+test('the live combat-kernel targetId shape records a disabled outcome', () => {
+  const t = bootCombatant({ seed: 4711 });
+  t.bus.emit('combat:subsystemDisabled', {
+    attackerId: t.player.id,
+    targetId: t.hostile.id,
+    subsystemId: 'subsystem_drive',
+  });
+
+  assert.equal(t.events.outcomes.length, 1);
+  assert.equal(t.events.outcomes[0].entityId, t.hostile.id);
+  assert.equal(t.events.outcomes[0].outcome, 'disabled');
+  assert.equal(t.events.outcomes[0].reason, 'subsystem_drive');
+});
+
 test('a damaged ordinary combatant retreats, but healthy and authored boss combatants do not', () => {
   const damaged = bootCombatant({ seed: 4703 });
   damaged.hostile.hull = 26;
