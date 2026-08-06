@@ -349,7 +349,14 @@ export function createComms(ctx) {
   // expose a reader for the station hub (it imports nothing from here; it reads state.ui.graffiti)
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
-  function presentPhysicalChoice(choice, promptText, hint, declineEffect = null, intentEvent = 'ui:endgameChoose') {
+  function presentPhysicalChoice(
+    choice,
+    promptText,
+    hint,
+    declineEffect = null,
+    intentEvent = 'ui:endgameChoose',
+    decision = null,
+  ) {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');
     choiceModalOpen = true;
@@ -369,14 +376,17 @@ export function createComms(ctx) {
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
-    // YES is the irreversible confirmation (confirm:true one-shot).
     wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => {
-      bus.emit(intentEvent, { choice, confirm: true });
+      if (decision && typeof decision.onYes === 'function') decision.onYes();
+      else bus.emit(intentEvent, { choice, confirm: true });
       cleanup();
     });
     wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
-      bus.emit('ui:endgameDecline', { choice });
-      if (typeof declineEffect === 'function') declineEffect();
+      if (decision && typeof decision.onNo === 'function') decision.onNo();
+      else {
+        bus.emit('ui:endgameDecline', { choice });
+        if (typeof declineEffect === 'function') declineEffect();
+      }
       cleanup();
     });
   }
@@ -386,9 +396,14 @@ export function createComms(ctx) {
     () => bus.emit('world:abortJumpCharge', { reason: 'choice_c_declined' }),
     'ui:endgameUnfiledJumpConfirm',
   ));
-  bus.on('endgame:promptChoiceD', ({ promptText }) => presentPhysicalChoice(
-    'D', promptText || 'KEEP THE LEDGER AND STAY?', 'Ashfall needs a witness more than a pilot.',
-    () => bus.emit('jump:chargeAbort', { reason: 'choice_d_declined' }),
+  bus.on('endgame:promptChoiceD', ({ promptText, targetSectorId, via }) => presentPhysicalChoice(
+    'D', promptText || 'DEPART ASHFALL REACH?', 'Leave, or stay and keep the record.',
+    null,
+    'ui:endgameChoose',
+    {
+      onYes: () => bus.emit('ui:endgameDepartAshfall', { targetSectorId, via }),
+      onNo: () => bus.emit('ui:endgameStayAshfall', { targetSectorId, via }),
+    },
   ));
   bus.on('endgame:promptChoiceE', ({ promptText }) => presentPhysicalChoice(
     'E', promptText || 'ACCEPT THE NEXT RUN?', '47-A closes. Another manifest opens.',

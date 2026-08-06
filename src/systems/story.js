@@ -110,6 +110,7 @@ export const story = {
 
     // ── Endgame (B7): present the choice once the gate is met; detect the wormhole jump (C). ─
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
+    bus.on('jump:departurePreflight', (p) => this._onDeparturePreflight(p || {}));
     bus.on('jump:chargeStart', (p) => this._onJumpChargeStart(p || {}));
     bus.on('jump:unfiledConfirmed', () => this._resolveEndgameDisposition('C'));
     // UI intent: player accepted an endgame choice from the overlay.
@@ -120,6 +121,8 @@ export const story = {
     bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
     bus.on('ui:endgameUnfiledJump', () => this._requestUnfiledJump());
     bus.on('ui:endgameUnfiledJumpConfirm', () => this.bus.emit('world:confirmUnfiledJump', { source: 'choice_c' }));
+    bus.on('ui:endgameDepartAshfall', (p) => this._departAshfall(p || {}));
+    bus.on('ui:endgameStayAshfall', () => this._resolveEndgameDisposition('D'));
     // Ending C: loop-return receipt/sandbox only — never resets beatIndex or closes flight.
     bus.on('endgame:loopBack', (p) => this._onEndgameLoopBack(p || {}));
     // Endings continue into normal public gameplay. These are existing player-driven events, not
@@ -643,6 +646,38 @@ export const story = {
       return false;
     }
     this.bus.emit('world:requestUnfiledJump', { source: 'choice_c' });
+    return true;
+  },
+
+  _onDeparturePreflight(p) {
+    const state = this.state;
+    const s = state && state.story;
+    if (!p || !s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
+    if (state.world.currentSectorId !== ASHFALL || !p.targetSectorId || p.targetSectorId === ASHFALL) return;
+    if (!this._endgameGateMet()) return;
+    const declined = Array.isArray(s.endgameDeclined) ? s.endgameDeclined : [];
+    if (declined.includes('D')) return;
+    const elig = evaluateEndingEligibility(state, 'D');
+    if (!elig.eligible) return;
+
+    // The attempt remains a validated intent, not a started jump. The decision modal owns whether
+    // to resubmit it, so no charge, toll, fuel, or transition state advances under the prompt.
+    p.deferred = true;
+    this.bus.emit('endgame:promptChoiceD', {
+      promptText: 'DEPART ASHFALL REACH?',
+      targetSectorId: p.targetSectorId,
+      via: p.via,
+    });
+  },
+
+  _departAshfall({ targetSectorId, via }) {
+    const state = this.state;
+    const s = state && state.story;
+    if (!s || s.endgameChoice || s.endgameResolved || state.world.currentSectorId !== ASHFALL) return false;
+    const elig = evaluateEndingEligibility(state, 'D');
+    if (!elig.eligible || !targetSectorId) return false;
+    this._onEndgameDecline({ choice: 'D' });
+    this.bus.emit('world:requestJump', { targetSectorId, via });
     return true;
   },
 

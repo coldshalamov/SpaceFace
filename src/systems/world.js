@@ -2136,11 +2136,21 @@ export const world = {
     const fuelCost = via === 'gate' ? 0 : Math.ceil(BASE_FUEL * edgeDist * drive.tierFuelMult);
     if (via === 'drive' && state.fuel.current < fuelCost) return reject('low_fuel');
 
-    // gate toll (high-sec customs) — charge credits via economy (single-writer)
+    // Gate toll (high-sec customs) is validated before the departure preflight, but charged only
+    // after it. Contextual story choices may defer a valid departure without consuming credits or
+    // entering the jump state machine.
+    let gateToll = 0;
     if (via === 'gate') {
-      const toll = this._gateToll(target);
-      if (toll > 0 && ((state.player && state.player.credits) | 0) < toll) return reject('credits');
-      if (toll > 0) this.bus.emit('economy:chargeCredits', { amount: toll, reason: 'gate_toll' });
+      gateToll = this._gateToll(target);
+      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) return reject('credits');
+    }
+
+    const preflight = { targetSectorId, via, deferred: false };
+    this.bus.emit('jump:departurePreflight', preflight);
+    if (preflight.deferred === true) return;
+
+    if (gateToll > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: gateToll, reason: 'gate_toll' });
     }
 
     const chargeNeeded = via === 'gate' ? GATE_CHARGE : drive.baseCharge * (edgeDist / 4);
