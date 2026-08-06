@@ -74,13 +74,18 @@ function serializeAttachments(combat, refs) {
     if (!attachment || attachment.state !== 'active') continue;
     const ownerRef = refs.get(entityKey(attachment.ownerId));
     const targetRef = refs.get(entityKey(attachment.targetId));
-    if (!ownerRef || !targetRef) continue;
+    const controllerRef = attachment.controllerId == null
+      ? null
+      : refs.get(entityKey(attachment.controllerId));
+    if (!ownerRef || !targetRef || (attachment.controllerId != null && !controllerRef)) continue;
     const saved = clonePlain(attachment);
     delete saved.ownerId;
     delete saved.targetId;
+    delete saved.controllerId;
     delete saved.physicsHandle;
     saved.ownerRef = clonePlain(ownerRef);
     saved.targetRef = clonePlain(targetRef);
+    if (controllerRef) saved.controllerRef = clonePlain(controllerRef);
     saved.state = 'active';
     byId[id] = saved;
   }
@@ -164,13 +169,18 @@ function restoreAttachments(combat, savedAttachments, resolveEntityRef, summary)
     if (!saved || saved.state !== 'active') continue;
     const ownerId = resolveEntityRef(saved.ownerRef);
     const targetId = resolveEntityRef(saved.targetRef);
-    if (ownerId == null || targetId == null || ownerId === targetId) { summary.dropped++; continue; }
+    const controllerId = saved.controllerRef == null ? null : resolveEntityRef(saved.controllerRef);
+    if (ownerId == null || targetId == null || ownerId === targetId
+        || (saved.controllerRef != null && controllerId == null)) { summary.dropped++; continue; }
     const attachment = clonePlain(saved);
     delete attachment.ownerRef;
     delete attachment.targetRef;
+    delete attachment.controllerRef;
     attachment.id = String(attachment.id || id);
     attachment.ownerId = ownerId;
     attachment.targetId = targetId;
+    if (controllerId != null) attachment.controllerId = controllerId;
+    else delete attachment.controllerId;
     attachment.physicsHandle = null;
     attachment.state = 'active';
     attachment.restLength = positiveNumber(attachment.restLength, 0);

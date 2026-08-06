@@ -192,10 +192,13 @@ export function createAttachmentService(context) {
     const def = catalog.attachments.get(spec && spec.defId);
     const owner = entity(spec && spec.ownerId);
     const target = entity(spec && spec.targetId);
+    const controllerId = spec && spec.controllerId != null ? spec.controllerId : null;
+    const controller = controllerId == null ? null : entity(controllerId);
     const physics = combatPhysics();
     if (!def) return fail('unknown_attachment_def');
     if (!owner || !owner.alive) return fail('owner_missing');
     if (!target || !target.alive || target.id === owner.id) return fail('target_missing');
+    if (controllerId != null && (!controller || controller.alive === false)) return fail('controller_missing');
     if (!physics || typeof physics.createAttachment !== 'function') return fail('physics_port_unavailable');
 
     const ownerRuntime = ensureCombatant(state, owner, catalog);
@@ -220,6 +223,8 @@ export function createAttachmentService(context) {
       defId: def.id,
       ownerId: owner.id,
       targetId: target.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
       sourceAnchorLocal: requestedSourceWorld
@@ -238,7 +243,7 @@ export function createAttachmentService(context) {
       lastImpulse: 0,
       nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
-      tetherPolicy: effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features),
+      tetherPolicy: effectiveTetherPolicy(def, controller || owner, state.runtime && state.runtime.features),
     };
     const physicsResult = createPhysicsAttachment(attachment, def);
     if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
@@ -320,7 +325,7 @@ export function createAttachmentService(context) {
   function cut(attachmentId, actorId, reason = 'cut') {
     const attachment = get(attachmentId);
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
-    if (actorId != null && attachment.ownerId !== actorId) return fail('not_attachment_owner');
+    if (actorId != null && !actorControlsAttachment(attachment, actorId)) return fail('not_attachment_owner');
     return breakAttachment(attachment, reason, actorId);
   }
 
@@ -385,7 +390,8 @@ export function createAttachmentService(context) {
   function breakOwnedBy(ownerId, reason = 'owner_disabled') {
     const broken = [];
     for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
-      if (attachment.state !== 'active' || attachment.ownerId !== ownerId) continue;
+      if (attachment.state !== 'active'
+          || (attachment.ownerId !== ownerId && attachment.controllerId !== ownerId)) continue;
       const result = breakAttachment(attachment, reason, ownerId);
       if (result.ok) broken.push(attachment.id);
     }
@@ -401,13 +407,16 @@ export function createAttachmentService(context) {
       if (!attachment || attachment.state !== 'active') continue;
       const owner = entity(attachment.ownerId);
       const target = entity(attachment.targetId);
+      const controller = attachment.controllerId == null ? null : entity(attachment.controllerId);
       // Orphaned = the entity is GONE (despawned) or explicitly dead (alive === false). An entity
       // without an `alive` field (harness stubs, minimal records) is NOT an orphan — only a
       // positive death signal or a missing record may break a line.
       const ownerLost = !owner || owner.alive === false;
       const targetLost = !target || target.alive === false;
-      if (!ownerLost && !targetLost) continue;
-      const result = breakAttachment(attachment, 'target_lost', attachment.ownerId);
+      const controllerLost = attachment.controllerId != null && (!controller || controller.alive === false);
+      if (!ownerLost && !targetLost && !controllerLost) continue;
+      const reason = controllerLost && !ownerLost && !targetLost ? 'controller_lost' : 'target_lost';
+      const result = breakAttachment(attachment, reason, attachment.controllerId ?? attachment.ownerId);
       if (result.ok) broken++;
     }
     return broken;
@@ -504,6 +513,150 @@ export function createAttachmentService(context) {
       actorId: fromOwnerId,
       targetId: toOwnerId,
       attachmentId,
+    });
+    return { ok: true, attachment };
+  }
+
+  /** Atomically retopologize an existing line through the same SG-02 attachment authority.
+   *
+   * This is the transaction primitive used by player-commanded remote Massline heads. It changes
+   * only the two constraint endpoints and immutable deployment metadata. It never writes a body
+   * pose, velocity, thrust, facing, or reel command. Both replacement endpoints and their sockets
+   * are revalidated before the old joint is released; a rejected replacement recreates the exact
+   * prior joint or fails closed as a broken attachment if even that rollback is unavailable. */
+  function rebind(attachmentId, actorId, spec = {}) {
+    const attachment = get(attachmentId);
+    if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    if (actorId != null && !actorControlsAttachment(attachment, actorId)) return fail('not_attachment_owner');
+
+    const nextDef = catalog.attachments.get(spec.defId || attachment.defId);
+    const nextOwner = entity(spec.ownerId == null ? attachment.ownerId : spec.ownerId);
+    const nextTarget = entity(spec.targetId == null ? attachment.targetId : spec.targetId);
+    const nextControllerId = Object.prototype.hasOwnProperty.call(spec, 'controllerId')
+      ? spec.controllerId
+      : attachment.controllerId;
+    const nextController = nextControllerId == null ? null : entity(nextControllerId);
+    const physics = combatPhysics();
+    if (!nextDef) return fail('unknown_attachment_def');
+    if (!nextOwner || nextOwner.alive === false) return fail('owner_missing');
+    if (!nextTarget || nextTarget.alive === false || nextTarget.id === nextOwner.id) return fail('target_missing');
+    if (nextControllerId != null && (!nextController || nextController.alive === false)) return fail('controller_missing');
+    if (!physics || typeof physics.cutAttachment !== 'function' || typeof physics.createAttachment !== 'function') {
+      return fail('physics_port_unavailable');
+    }
+
+    const ownerRuntime = ensureCombatant(state, nextOwner, catalog);
+    const targetRuntime = ensureCombatant(state, nextTarget, catalog);
+    const sourceSocket = selectSocket(
+      ownerRuntime,
+      nextDef.sourceSocketTags,
+      spec.sourceSocketId || null,
+      nextOwner.id,
+      attachment.id,
+    );
+    const targetSocket = selectSocket(
+      targetRuntime,
+      nextDef.targetSocketTags,
+      spec.targetSocketId || null,
+      nextTarget.id,
+      attachment.id,
+    );
+    if (!sourceSocket) return fail('source_socket_unavailable');
+    if (!targetSocket) return fail('target_socket_unavailable');
+
+    const activeOwned = Object.values(state.combat.attachments.byId)
+      .filter((candidate) => candidate.id !== attachment.id
+        && candidate.state === 'active'
+        && candidate.ownerId === nextOwner.id
+        && candidate.defId === nextDef.id).length;
+    if (nextDef.limits && Number.isInteger(nextDef.limits.maxPerOwner)
+        && activeOwned >= nextDef.limits.maxPerOwner) return fail('owner_attachment_limit');
+
+    const sourceWorld = validWorldPoint(spec.sourceWorld) || socketWorldPosition(nextOwner, sourceSocket);
+    const targetWorld = validWorldPoint(spec.targetWorld) || socketWorldPosition(nextTarget, targetSocket);
+    const previous = attachmentRebindSnapshot(attachment);
+    try {
+      const released = physics.cutAttachment({
+        attachmentId: attachment.id,
+        physicsHandle: attachment.physicsHandle,
+        reason: 'endpoint_rebind',
+        tick: state.tick,
+      });
+      if (released === false) return fail('physics_rebind_cut_rejected');
+    } catch (error) {
+      return fail('physics_rebind_cut_failed', error);
+    }
+
+    attachment.defId = nextDef.id;
+    attachment.ownerId = nextOwner.id;
+    attachment.targetId = nextTarget.id;
+    if (nextController) attachment.controllerId = nextController.id;
+    else delete attachment.controllerId;
+    if (typeof spec.controlMode === 'string') attachment.controlMode = spec.controlMode;
+    attachment.sourceSocketId = sourceSocket.id;
+    attachment.targetSocketId = targetSocket.id;
+    attachment.sourceAnchorLocal = validWorldPoint(spec.sourceWorld)
+      ? worldPointToEntityLocal(nextOwner, sourceWorld)
+      : socketLocalPosition(nextOwner, sourceSocket);
+    attachment.targetAnchorLocal = validWorldPoint(spec.targetWorld)
+      ? worldPointToEntityLocal(nextTarget, targetWorld)
+      : socketLocalPosition(nextTarget, targetSocket);
+    attachment.restLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
+    attachment.physicsHandle = null;
+    attachment.reelRevision = 0;
+    attachment.lastReelTick = null;
+    attachment.lastTension = 0;
+    attachment.lastImpulse = 0;
+    attachment.lastYank = 0;
+    attachment.nearBreakWarned = false;
+    attachment.breakWarningUntilTick = null;
+    attachment.physicsSpringState = null;
+    attachment.masslineRuntime = null;
+    attachment.masslineTelemetry = null;
+    attachment.tetherPolicy = effectiveTetherPolicy(
+      nextDef,
+      nextController || nextOwner,
+      state.runtime && state.runtime.features,
+    );
+
+    const rebound = createPhysicsAttachment(attachment, nextDef);
+    if (!rebound.ok) {
+      restoreAttachmentRebindSnapshot(attachment, previous);
+      const previousDef = catalog.attachments.get(previous.defId);
+      const rollback = previousDef ? createPhysicsAttachment(attachment, previousDef) : null;
+      if (!rollback || !rollback.ok) {
+        attachment.physicsHandle = null;
+        breakAttachment(attachment, 'physics_rebind_rollback_failed', actorId);
+        return fail('physics_rebind_rollback_failed', (rollback && rollback.error) || rebound.error);
+      }
+      attachment.physicsHandle = serializableHandle(rollback.physicsHandle);
+      return fail('physics_rebind_rejected', rebound.error);
+    }
+
+    attachment.physicsHandle = serializableHandle(rebound.physicsHandle);
+    appendCombatTrace(state.combat, state.tick, 'attachment.rebound', {
+      actorId: actorId == null ? attachment.controllerId ?? attachment.ownerId : actorId,
+      attachmentId: attachment.id,
+      attachmentDefId: attachment.defId,
+      previousOwnerId: previous.ownerId,
+      previousTargetId: previous.targetId,
+      ownerId: attachment.ownerId,
+      targetId: attachment.targetId,
+      controllerId: attachment.controllerId,
+      controlMode: attachment.controlMode,
+      restLength: attachment.restLength,
+    });
+    if (bus) bus.emit('tether:rebound', {
+      actorId: actorId == null ? attachment.controllerId ?? attachment.ownerId : actorId,
+      attachmentId: attachment.id,
+      attachmentDefId: attachment.defId,
+      previousOwnerId: previous.ownerId,
+      previousTargetId: previous.targetId,
+      ownerId: attachment.ownerId,
+      targetId: attachment.targetId,
+      controllerId: attachment.controllerId,
+      controlMode: attachment.controlMode,
+      restLength: attachment.restLength,
     });
     return { ok: true, attachment };
   }
@@ -675,7 +828,14 @@ export function createAttachmentService(context) {
       .sort(byId);
   }
 
-  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
+  function listControlledBy(controllerId, activeOnly = true) {
+    return Object.values(state.combat.attachments.byId)
+      .filter((attachment) => (!activeOnly || attachment.state === 'active')
+        && attachment.controllerId === controllerId)
+      .sort(byId);
+  }
+
+  return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, onPhysicsBreak, listForEntity, listControlledBy });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;
@@ -804,6 +964,57 @@ export function otherAttachmentEndpoint(attachment, actorId) {
   if (attachment.ownerId === actorId) return attachment.targetId;
   if (attachment.targetId === actorId) return attachment.ownerId;
   return null;
+}
+
+function actorControlsAttachment(attachment, actorId) {
+  return !!attachment && (attachment.ownerId === actorId || attachment.controllerId === actorId);
+}
+
+function attachmentRebindSnapshot(attachment) {
+  return {
+    __hadControllerId: Object.prototype.hasOwnProperty.call(attachment, 'controllerId'),
+    __hadControlMode: Object.prototype.hasOwnProperty.call(attachment, 'controlMode'),
+    defId: attachment.defId,
+    ownerId: attachment.ownerId,
+    targetId: attachment.targetId,
+    controllerId: attachment.controllerId ?? null,
+    controlMode: attachment.controlMode || null,
+    sourceSocketId: attachment.sourceSocketId,
+    targetSocketId: attachment.targetSocketId,
+    sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
+    targetAnchorLocal: attachment.targetAnchorLocal && { ...attachment.targetAnchorLocal },
+    physicsHandle: attachment.physicsHandle,
+    restLength: attachment.restLength,
+    reelRevision: attachment.reelRevision,
+    lastReelTick: attachment.lastReelTick,
+    lastTension: attachment.lastTension,
+    lastImpulse: attachment.lastImpulse,
+    lastYank: attachment.lastYank,
+    nearBreakWarned: attachment.nearBreakWarned,
+    breakWarningUntilTick: attachment.breakWarningUntilTick,
+    physicsSpringState: attachment.physicsSpringState && { ...attachment.physicsSpringState },
+    masslineRuntime: cloneSerializableRecord(attachment.masslineRuntime),
+    masslineTelemetry: cloneSerializableRecord(attachment.masslineTelemetry),
+    tetherPolicy: cloneSerializableRecord(attachment.tetherPolicy),
+  };
+}
+
+function restoreAttachmentRebindSnapshot(attachment, snapshot) {
+  for (const key of Object.keys(snapshot)) {
+    if (key.startsWith('__had')) continue;
+    attachment[key] = snapshot[key];
+  }
+  if (!snapshot.__hadControllerId) delete attachment.controllerId;
+  if (!snapshot.__hadControlMode) delete attachment.controlMode;
+  attachment.physicsHandle = null;
+}
+
+function cloneSerializableRecord(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneSerializableRecord);
+  const out = {};
+  for (const [key, item] of Object.entries(value)) out[key] = cloneSerializableRecord(item);
+  return out;
 }
 
 function serializableHandle(handle) {
