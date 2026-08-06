@@ -213,6 +213,8 @@ check('mission ids and offers are deterministic for same seed', () => {
   assert.equal(o1.id, o2.id);
   assert.equal(o1.reward_cr, o2.reward_cr);
   assert.deepEqual(o1.marketTruth.fantasyMidSpread, o2.marketTruth.fantasyMidSpread);
+  assert.equal(o1.brief, step.acceptLine, 'the freight offer carries its authored route line');
+  assert.ok(o1.brief.length <= 90, 'the freight route line stays compact on the chart');
 });
 
 // ── Market truth teaching ──────────────────────────────────────────────────

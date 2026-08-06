@@ -2048,6 +2048,9 @@ export const missions = {
       title: offer.title,
       // Chart brief: one dry line of leg prose the star chart prints under the mission title.
       brief: offer.brief || null,
+      ...(offer.stageId ? { stageId: String(offer.stageId) } : {}),
+      ...(offer.stepBriefs && typeof offer.stepBriefs === 'object' && !Array.isArray(offer.stepBriefs)
+        ? { stepBriefs: JSON.parse(JSON.stringify(offer.stepBriefs)) } : {}),
       summary: offer.summary || null,
       description: offer.description || null,
       authorization: offer.authorization || null,

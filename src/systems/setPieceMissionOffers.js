@@ -115,6 +115,11 @@ function textFor(ref, fallback) {
   return row && typeof row.text === 'string' && row.text.trim() ? row.text.trim() : fallback;
 }
 
+function chartBrief(text) {
+  const line = String(text || '').replace(/\s+/g, ' ').trim();
+  return line.length <= 90 ? line : `${line.slice(0, 87).trimEnd()}...`;
+}
+
 function stageAt(definition, cursor) {
   const common = Array.isArray(definition.commonStages) ? definition.commonStages : [];
   if (cursor.stageIndex < common.length) {
@@ -177,6 +182,10 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     .filter(Boolean);
   const witness = witnessFor(state, definition, cursor, chainId);
   const source = primaryRumorSource(wreck);
+  const summary = knownRumorOpening
+    ? `${wreck.name} is already in your ledger. Reconcile its bearing and proceed to recovery.`
+    : textFor(stage.instructionRef, instructionFallback);
+  const brief = chartBrief(summary);
   const params = clone(stage.params || {});
   if (wreck) {
     params.wreckId = wreck.id;
@@ -234,9 +243,10 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     destSectorId: wreck && cursor.stageIndex < 2 ? wreck.sectorId : stage.destSectorId,
     distance: Math.max(0, Number(stage.distance) || 0),
     title,
-    summary: knownRumorOpening
-      ? `${wreck.name} is already in your ledger. Reconcile its bearing and proceed to recovery.`
-      : textFor(stage.instructionRef, instructionFallback),
+    summary,
+    brief,
+    stageId: stage.id,
+    stepBriefs: { [stage.id]: brief },
     source: SET_PIECE_MISSION_SOURCE,
     preloadedCargo: !!stage.preloadedCargo,
     upfrontCostCr: retrying || knownRumorOpening

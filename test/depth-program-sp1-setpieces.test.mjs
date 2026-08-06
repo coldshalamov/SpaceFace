@@ -184,6 +184,11 @@ function assertNormalOffer(offer, message) {
   }
   assert.ok(offer.factionId, `${message}: offering faction`);
   assert.ok(Number.isInteger(offer.riskTier), `${message}: explicit stage risk`);
+  assert.ok(typeof offer.brief === 'string' && offer.brief.length > 0 && offer.brief.length <= 90,
+    `${message}: compact chart brief`);
+  assert.equal(offer.stageId, offer.cause.stageId, `${message}: stage identity reaches the mission shape`);
+  assert.equal(offer.stepBriefs[offer.stageId], offer.brief,
+    `${message}: stage-keyed chart prose agrees with the direct brief`);
   assert.equal(Object.hasOwn(offer, 'minRep'), false,
     `${message}: standing derives from the normal risk ladder, never a chain waiver`);
   assert.ok(offer.cause && offer.cause.chainId && offer.cause.fingerprint,
@@ -827,6 +832,9 @@ test('all three Long Read phases expose semantic objective, authored brief, and 
     Object.assign(active.params, phase.flags);
     state.missions.active.push(active);
     assert.equal(missionSystem.trackMission(active.id), true);
+    assert.equal(active.brief, phase.offer.brief, 'acceptance retains the authored chart brief');
+    assert.equal(active.stepBriefs[active.stageId], active.brief,
+      'acceptance retains the stage-keyed brief used by the map fallback');
     const brief = missionCommandBrief(active, state);
     assert.match(objectiveText(active), phase.objective, `${active.params.setPieceObjective}: semantic status`);
     assert.equal(brief.why, active.summary, `${active.params.setPieceObjective}: authored summary is retained`);

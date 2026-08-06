@@ -189,6 +189,7 @@ export function buildOriginContractOffer(state, careerId, contractIndex, attempt
     type: def.type,
     title: def.title,
     description: def.description,
+    brief: def.description,
     stationId: def.stationId,
     factionId: def.factionId,
     riskTier: def.riskTier,

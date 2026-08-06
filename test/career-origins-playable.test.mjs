@@ -78,6 +78,8 @@ test('Hunter and Prospector author three physical mission-owned contracts with s
       assert.equal(a.markerKind, 'mission-objective');
       assert.equal(a.markerId, `origin:${careerId}:${CAREER_ORIGIN_CONTRACTS[careerId][i].id}`);
       assert.ok(a.destSectorId, `${careerId} contract ${i} needs a physical destination`);
+      assert.equal(a.brief, a.description, `${careerId} contract ${i} carries its authored chart line`);
+      assert.ok(a.brief.length <= 90, `${careerId} contract ${i} chart line stays compact`);
       if (careerId === 'hunter') assert.ok(a.storyTarget && a.storyTarget.name, 'hunter writ needs a named quarry');
     }
   }

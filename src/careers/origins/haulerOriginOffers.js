@@ -174,6 +174,7 @@ export function buildHaulerStepMissionOffer(state, step, attempt, offerNonce, op
     expiresAtEpoch: 1,
     marketTruth,
     description: step.acceptLine,
+    brief: step.acceptLine,
     teach: step.teach,
     originChoiceId: step.choiceId || null,
     originChoiceLabel: step.choiceLabel || null,
