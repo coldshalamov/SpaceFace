@@ -15,6 +15,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'drill',
   'claims',
   'beacons',
+  'aceMemory',
   'lossLedger',
   'factionPresence',
 ]);

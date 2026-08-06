@@ -38,6 +38,10 @@ import {
 } from '../data/narrative.js';
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import {
+  normalizeStoryNewGamePlusRecord,
+  storyNewGamePlusRecord,
+} from '../core/newGamePlus.js';
 // Campaign 47-A sidecar: ending sandbox/receipt meta only — endgameChoice stays canonical on state.story.
 import {
   ensureCampaign47aState,
@@ -96,7 +100,7 @@ export const story = {
     bus.on('story:elroyResolved', (p) => this._onElroyResolved(p || {}));
 
     // ── Ambient + trap comms timer (driven from update()). ───────────────────────────────────
-    bus.on('game:started', () => this._onNewGame());
+    bus.on('game:started', (p) => this._onNewGame(p || {}));
     bus.on('save:loaded', () => this._onLoaded());
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
     bus.on('tutorial:finished', () => {
@@ -1268,8 +1272,13 @@ export const story = {
   // =========================================================================================
   // NEW GAME / LOAD / SERIALIZE
   // =========================================================================================
-  _onNewGame() {
+  _onNewGame(payload = {}) {
     this._ensureState(true);
+    const legacy = storyNewGamePlusRecord(payload.newGamePlus, this.state.meta && this.state.meta.seed);
+    if (legacy) {
+      this.state.story.newGamePlus = legacy;
+      this.bus.emit('story:newGamePlusStarted', { ...legacy });
+    }
     // Re-install Thread-B fragment after narrative reset clears persistentCargo.
     this._ensureThreadBFragment();
     this._rescheduleAmbient();
@@ -1403,6 +1412,7 @@ export const story = {
       s.endgameResolved = false;
       s.endgamePending = null;
       s.postEnding = null;
+      s.newGamePlus = null;
       s.persistentCargo = [];
       s.valeMilestones = { conflictFlip: null };
       s.verge = createVergeStoryState();
@@ -1424,6 +1434,7 @@ export const story = {
         const choice = s.endgameChoice || SANDBOX_ID;
         s.postEnding = createPostEndingContinuity(choice, state.simTime || 0, state.meta && state.meta.seed);
       }
+      s.newGamePlus = normalizeStoryNewGamePlusRecord(s.newGamePlus);
       if (!Array.isArray(s.persistentCargo)) s.persistentCargo = [];
       if (!s.valeMilestones || typeof s.valeMilestones !== 'object' || Array.isArray(s.valeMilestones)) {
         s.valeMilestones = { conflictFlip: null };
@@ -1476,6 +1487,7 @@ export const story = {
       else if (carried.endgameChoice || (carried.flags && carried.flags.sandboxContinued)) s.endgameResolved = true;
       if (carried.endgamePending) s.endgamePending = carried.endgamePending;
       if (carried.postEnding) s.postEnding = normalizePostEndingContinuity(carried.postEnding);
+      if (carried.newGamePlus) s.newGamePlus = normalizeStoryNewGamePlusRecord(carried.newGamePlus);
       if (Array.isArray(carried.persistentCargo)) s.persistentCargo = carried.persistentCargo.slice();
       if (carried.valeMilestones && typeof carried.valeMilestones === 'object' && !Array.isArray(carried.valeMilestones)) {
         const flip = carried.valeMilestones.conflictFlip;

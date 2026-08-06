@@ -298,6 +298,7 @@ function bootstrapScene(state, helpers, bus, registry) {
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
+  const newGamePlus = resolveNewGamePlusOverlay(registry, opts);
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -327,6 +328,35 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         state.player.moduleInventory = [];
         state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
         state.player.researchPoints = NEW_GAME.researchPoints || 0;
+      }
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+
+      if (newGamePlus) {
+        if (!ships || typeof ships.grantModule !== 'function'
+            || !ships.grantModule({
+              defId: newGamePlus.keepsake.defId,
+              reason: `new-game-plus:${newGamePlus.sourceEnding}`,
+            })) {
+          throw new GameStartReadinessError(
+            'NEW_GAME_PLUS_UNAVAILABLE',
+            'new-game-plus',
+            'The selected New Run+ keepsake is no longer available.',
+          );
+        }
+        const grudges = Array.isArray(newGamePlus.grudges) ? newGamePlus.grudges : [];
+        if (grudges.length) {
+          const aceMemory = registry.get('aceMemory');
+          const applied = aceMemory && typeof aceMemory.applyNewGamePlusGrudges === 'function'
+            ? aceMemory.applyNewGamePlusGrudges(grudges)
+            : 0;
+          if (applied !== grudges.length) {
+            throw new GameStartReadinessError(
+              'NEW_GAME_PLUS_UNAVAILABLE',
+              'new-game-plus',
+              'The selected New Run+ hunter history could not be restored.',
+            );
+          }
+        }
       }
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
@@ -368,10 +398,25 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      bus.emit('game:started', {});
+      bus.emit('game:started', { newGamePlus });
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });
+}
+
+function resolveNewGamePlusOverlay(registry, opts = {}) {
+  const request = opts && opts.newGamePlus;
+  if (!request) return null;
+  const saveSystem = registry && typeof registry.get === 'function' ? registry.get('save') : null;
+  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
+    ? saveSystem.prepareNewGamePlus(request)
+    : null;
+  if (overlay) return overlay;
+  throw new GameStartReadinessError(
+    'NEW_GAME_PLUS_UNAVAILABLE',
+    'new-game-plus',
+    'The selected completed-run save is no longer available for New Run+.',
+  );
 }
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {

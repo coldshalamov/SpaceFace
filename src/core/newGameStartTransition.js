@@ -119,6 +119,8 @@ export function describeGameStartFailure(error) {
     text = 'The flight renderer did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'GPU_RESIDENCY_UNAVAILABLE') {
     text = 'The opening flight materials did not finish preparing. Retry Launch; saved games are unchanged.';
+  } else if (code === 'NEW_GAME_PLUS_UNAVAILABLE') {
+    text = 'That New Run+ legacy could not be restored. Choose it again or launch a fresh run; saved games are unchanged.';
   }
   return { code, stage, retryable, text };
 }

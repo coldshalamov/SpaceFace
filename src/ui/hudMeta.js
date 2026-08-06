@@ -63,6 +63,37 @@ export function createHudMeta(ctx) {
   document.getElementById('hud').appendChild(phaseReadout);
   const phaseValue = phaseReadout.querySelector('.sf-hudphase__v');
 
+  // New Run+ receipt: the prior ending remains legible throughout the carried run. It is a quiet
+  // provenance line, not a second progression meter or an objective.
+  const legacyReadout = document.createElement('div');
+  legacyReadout.className = 'sf-hudlegacy mono';
+  legacyReadout.id = 'sf-hudlegacy';
+  legacyReadout.setAttribute('aria-hidden', 'true');
+  legacyReadout.style.display = 'none';
+  document.getElementById('hud').appendChild(legacyReadout);
+  let legacyKey = '';
+  let legacyPresent = false;
+  let metaVisible = true;
+
+  function syncLegacyReadout() {
+    const legacy = state.story && state.story.newGamePlus;
+    const key = legacy
+      ? [legacy.sourceEnding, legacy.keepsakeId, legacy.hunterGrudgeCount].join('|')
+      : '';
+    if (key === legacyKey) return;
+    legacyKey = key;
+    legacyPresent = !!legacy;
+    if (!legacy) {
+      legacyReadout.textContent = '';
+      legacyReadout.style.display = 'none';
+      return;
+    }
+    const count = Number(legacy.hunterGrudgeCount) || 0;
+    legacyReadout.textContent = `LEGACY ${legacy.sourceEnding} · ${legacy.sourceEndingTitle} · ${legacy.keepsakeName} · ${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`;
+    legacyReadout.style.display = metaVisible ? '' : 'none';
+  }
+  bus.on('story:newGamePlusStarted', syncLegacyReadout);
+
   // ── the manifest self-correction log (Phase 2+) ───────────────────────────────────────────
   // When the cargo manifest "silently corrects", we surface a one-line ghost of the old value that
   // fades — the player notices the discrepancy only if they're paying attention. No notification.
@@ -153,6 +184,7 @@ export function createHudMeta(ctx) {
 
   // ── per-frame tick (called from hud.frame via the returned api) ───────────────────────────
   function tick(dt) {
+    syncLegacyReadout();
     // tag flicker countdown
     if (tagFlickerTimer > 0) {
       tagFlickerTimer -= (dt || 0.016) * 1000;
@@ -186,11 +218,13 @@ export function createHudMeta(ctx) {
   }
 
   function setVisible(v) {
+    metaVisible = !!v;
     stableLoad.style.display = v ? '' : 'none';
     tagFlicker.style.display = v ? '' : 'none';
     const phase = (state.story && state.story.phase) || 1;
     phaseReadout.style.display = (v && phase > 1) ? '' : 'none';
     manifestGhost.style.display = v ? '' : 'none';
+    legacyReadout.style.display = v && legacyPresent ? '' : 'none';
   }
 
   return { tick, setVisible };
@@ -227,6 +261,9 @@ export const HUD_META_CSS = `
   .sf-hudphase__v { font-size:11px; letter-spacing:.08em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-hudphase--p2 .sf-hudphase__v { color:var(--accent-2); text-shadow:var(--text-shadow-hard); }
   .sf-hudphase--p3 .sf-hudphase__v { color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudlegacy { position:absolute; top:116px; left:50%; transform:translateX(-50%); max-width:min(680px,72vw);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; font-size:8.5px;
+    letter-spacing:.11em; color:var(--text-secondary); opacity:.72; text-shadow:var(--text-shadow-hard); }
   /* manifest ghost (Phase 2 silent correction) */
   .sf-manifest-ghost { position:absolute; left:50%; top:54%; transform:translateX(-50%); pointer-events:none;
     font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--text-secondary); opacity:0;
@@ -235,5 +272,6 @@ export const HUD_META_CSS = `
   @media (max-width: 760px) {
     .sf-stableload { left:8px; bottom:210px; }
     .sf-hudphase { top:48px; }
+    .sf-hudlegacy { top:68px; max-width:88vw; }
   }
 `;

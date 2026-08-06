@@ -18,6 +18,12 @@ import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import {
+  buildNewGamePlusCandidate,
+  buildNewGamePlusOverlay,
+  completedEndingChoiceFromSaveData,
+  completedEndingChoiceFromStory,
+} from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   MASSLINE_BINDING_PROFILE_LEGACY,
@@ -760,6 +766,7 @@ export const save = {
         missionSummary,
         storySummary,
         objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
+        endingChoice: completedEndingChoiceFromStory(state.story) || undefined,
         version: envelope.version,
       };
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
@@ -836,6 +843,57 @@ export const save = {
 
   /** Public API for title + Save/Load (§ saveLoad.js readSlots). Returns {slot: meta}. */
   listSlots() { return this._slotIndexWithFallback(); },
+
+  /** Read-only New Run+ summary for the setup screen. Full save data never leaves save ownership. */
+  getNewGamePlusCandidate(slot = 'latest') {
+    const requested = slot && slot !== 'latest' ? String(slot) : null;
+    const candidates = requested
+      ? [{ slot: requested }]
+      : Object.values(this._slotIndexWithFallback())
+        .filter((meta) => completedEndingChoiceFromStory({
+          endgameChoice: meta && meta.endingChoice,
+          endgameResolved: true,
+        }))
+        .sort((a, b) => slotMetaScore(b) - slotMetaScore(a));
+    for (const meta of candidates) {
+      const prepared = this._prepareNewGamePlusSlot(meta && meta.slot);
+      if (!prepared) continue;
+      const candidate = buildNewGamePlusCandidate(prepared.data, {
+        slot: prepared.slot,
+        savedAt: prepared.env && prepared.env.savedAt,
+      });
+      if (candidate) return candidate;
+    }
+    return null;
+  },
+
+  /** Revalidate the selected source at launch and return only the bounded carry-over projection. */
+  prepareNewGamePlus(selection = {}) {
+    const slot = selection && selection.slot ? String(selection.slot) : null;
+    if (!slot) return null;
+    const prepared = this._prepareNewGamePlusSlot(slot);
+    if (!prepared) return null;
+    return buildNewGamePlusOverlay(prepared.data, selection, {
+      slot: prepared.slot,
+      savedAt: prepared.env && prepared.env.savedAt,
+    });
+  },
+
+  _prepareNewGamePlusSlot(slot) {
+    if (!slot || isUnsafePlainKey(slot) || typeof localStorage === 'undefined') return null;
+    let primaryRaw = null;
+    let recoveryRaw = null;
+    try {
+      primaryRaw = localStorage.getItem(LS_PREFIX + slot);
+      recoveryRaw = localStorage.getItem(RECOVERY_PREFIX + slot);
+    } catch (err) {
+      return null;
+    }
+    const primary = this._prepareEnvelopeString(primaryRaw);
+    if (primary.ok) return { ...primary, slot };
+    const recovery = this._prepareEnvelopeString(recoveryRaw);
+    return recovery.ok ? { ...recovery, slot } : null;
+  },
 
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
   _latestSlot() {
@@ -3204,6 +3262,7 @@ function slotMetaFromEnvelope(slot, env) {
     missionSummary,
     storySummary,
     objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
+    endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
     version: env.version,
   };
 }

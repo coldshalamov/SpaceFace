@@ -24,6 +24,17 @@ export function parseUniverseSeed(value) {
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
 }
 
+function readNewGamePlusCandidate(ctx) {
+  try {
+    const save = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    return save && typeof save.getNewGamePlusCandidate === 'function'
+      ? save.getNewGamePlusCandidate()
+      : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -84,6 +95,14 @@ function injectStyle() {
   .sf-ng-preview__still { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 49%; }
   .sf-ng-preview__cap { position:absolute; left:14px; bottom:10px; z-index:2; font-family:var(--mono);
     font-size:9px; letter-spacing:.24em; text-transform:uppercase; color:rgba(157,220,240,.9); }
+  .sf-ng-legacy { display:grid; gap:9px; padding:12px 0; border-top:1px solid var(--mf-line-2);
+    border-bottom:1px solid var(--mf-line-2); }
+  .sf-ng-legacy__toggle { display:flex; align-items:center; gap:9px; color:var(--ink); font-family:var(--mf-display);
+    font-size:13px; letter-spacing:.04em; cursor:pointer; }
+  .sf-ng-legacy__toggle input { margin:0; }
+  .sf-ng-legacy__meta { font-family:var(--mono); color:var(--ink-mute); font-size:9.5px;
+    letter-spacing:.1em; line-height:1.5; text-transform:uppercase; }
+  .sf-ng-legacy__select { width:100%; }
   /* Registry stats: hairline-ruled ledger; redacted entries get the marker-block treatment. */
   .sf-menu .sf-ng-body .sf-grid2 { gap:0 20px; font-size:12.5px; }
   .sf-menu .sf-ng-body .sf-grid2 .k { font-family:var(--mono); font-size:9.5px; letter-spacing:.16em;
@@ -252,6 +271,48 @@ export const newGameScreen = {
     seedDesc.id = 'sf-ng-seed-desc';
     body.appendChild(seedDesc);
 
+    // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
+    // selection at the transition boundary; the UI never copies a whole prior run into the event.
+    const newGamePlusCandidate = readNewGamePlusCandidate(ctx);
+    let legacyToggle = null;
+    let legacySelect = null;
+    if (newGamePlusCandidate) {
+      const legacy = el('section', 'sf-ng-legacy');
+      legacy.setAttribute('aria-labelledby', 'sf-ng-legacy-label');
+      const toggleLabel = el('label', 'sf-ng-legacy__toggle');
+      legacyToggle = el('input');
+      legacyToggle.type = 'checkbox';
+      legacyToggle.id = 'sf-ng-legacy-enabled';
+      toggleLabel.appendChild(legacyToggle);
+      const toggleText = el('span', null, 'New Run+');
+      toggleText.id = 'sf-ng-legacy-label';
+      toggleLabel.appendChild(toggleText);
+      legacy.appendChild(toggleLabel);
+      const grudgeCount = Number(newGamePlusCandidate.grudgeCount) || 0;
+      const meta = el(
+        'div',
+        'sf-ng-legacy__meta',
+        `${newGamePlusCandidate.sourceEndingTitle} · keep one item · ${grudgeCount} unresolved hunter ${grudgeCount === 1 ? 'grudge' : 'grudges'}`,
+      );
+      meta.id = 'sf-ng-legacy-desc';
+      legacy.appendChild(meta);
+      const keepsakeLabel = el('label', null, 'Carried keepsake');
+      keepsakeLabel.htmlFor = 'sf-ng-legacy-keepsake';
+      legacy.appendChild(keepsakeLabel);
+      legacySelect = el('select', 'sf-ng-legacy__select');
+      legacySelect.id = 'sf-ng-legacy-keepsake';
+      legacySelect.disabled = true;
+      legacySelect.setAttribute('aria-describedby', 'sf-ng-legacy-desc');
+      for (const item of newGamePlusCandidate.keepsakes || []) {
+        const option = el('option', null, `${item.unique ? 'RELIC · ' : ''}${item.name} · ${item.size || '?'} ${item.slotType}`);
+        option.value = item.defId;
+        legacySelect.appendChild(option);
+      }
+      legacyToggle.addEventListener('change', () => { legacySelect.disabled = !legacyToggle.checked; });
+      legacy.appendChild(legacySelect);
+      body.appendChild(legacy);
+    }
+
     const route = el('div', 'sf-ng-route');
     route.setAttribute('aria-label', coreText('firstMinutes'));
     route.innerHTML =
@@ -332,6 +393,9 @@ export const newGameScreen = {
       back.disabled = launching;
       name.disabled = launching;
       diff.disabled = launching;
+      seed.disabled = launching;
+      if (legacyToggle) legacyToggle.disabled = launching;
+      if (legacySelect) legacySelect.disabled = launching || !legacyToggle.checked;
       launch.textContent = launching ? coreText('launching') : coreText('launch');
       if (launching) {
         // Veil the warmup after 300ms so the disabled button itself is never the resting state.
@@ -353,9 +417,18 @@ export const newGameScreen = {
       // would silently mean "random" while looking deliberate.
       const rawSeed = parseUniverseSeed(seed.value);
       const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
+      const newGamePlusOpt = legacyToggle && legacyToggle.checked && legacySelect && legacySelect.value
+        ? { newGamePlus: { slot: newGamePlusCandidate.sourceSlot, keepsakeId: legacySelect.value } }
+        : {};
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
-      ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value, ...seedOpt });
+      ctx.bus.emit('game:new', {
+        name: pilot,
+        shipId: STARTER_SHIP,
+        difficulty: diff.value,
+        ...seedOpt,
+        ...newGamePlusOpt,
+      });
     });
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);

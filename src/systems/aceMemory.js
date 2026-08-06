@@ -66,6 +66,35 @@ export const aceMemory = {
     if (this.state) this.state.aceMemory = freshMemory();
   },
 
+  /** Rebuild only unresolved grudge pressure for an explicit New Run+ launch. */
+  applyNewGamePlusGrudges(grudges) {
+    if (!this.state || !Array.isArray(grudges)) return 0;
+    const memory = ensureMemory(this.state);
+    let applied = 0;
+    for (const carried of grudges) {
+      const ace = aceById(carried && carried.aceId);
+      if (!ace) continue;
+      const rec = recordFor(memory, ace);
+      rec.encountered = true;
+      rec.fled = true;
+      rec.defeated = false;
+      rec.returnScheduled = true;
+      rec.returnsBigger = true;
+      rec.returned = false;
+      rec.returnTier = Math.min(
+        PIRATE_PROMOTION_MAX_TIER,
+        Math.max(1, Math.floor(Number(carried.returnTier) || 1)),
+      );
+      rec.fleeCount = Math.max(1, Math.floor(Number(carried.fleeCount) || 1));
+      rec.encounterCount = Math.max(rec.fleeCount, Math.floor(Number(carried.encounterCount) || 1));
+      rec.carriedFromPriorRun = true;
+      Object.assign(rec, returnPlanForAce(ace, seedOf(this.state), 0));
+      applied += 1;
+    }
+    emit(this.bus, 'aceMemory:newGamePlusApplied', { count: applied });
+    return applied;
+  },
+
   serialize() {
     return clonePlain(ensureMemory(this.state));
   },
