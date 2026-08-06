@@ -79,6 +79,7 @@ export const MASSLINE2_FLAGS = {
   masslineHeadTractor: _initial.massline2.masslineHeadTractor,
   masslineHeadElasticWhip: _initial.massline2.masslineHeadElasticWhip,
   masslineHeadFrameCoupler: _initial.massline2.masslineHeadFrameCoupler,
+  masslineHeadMonofilamentSweep: _initial.massline2.masslineHeadMonofilamentSweep,
 };
 
 /** Read a massline2 flag: master `enabled` AND the named flag. Unknown names read false. */

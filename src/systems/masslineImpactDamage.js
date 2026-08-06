@@ -14,6 +14,7 @@
 // and are attributed to the player (the fling caused it). combat.js itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { isHostileToPlayer } from './scanner.js';
 
 // Mirror the shipped whip-damage scaling (combat.js: 1/1600 momentum scale, 45 ceiling) so the
 // two halves of one impact stay proportionate.
@@ -23,6 +24,7 @@ const RECOIL_DAMAGE_MAX = 24;
 const TUMBLE_IMPACT_MIN_DP = 900;    // physics:impact dp floor before a tumble contact hurts
 const TUMBLE_DAMAGE_SCALE = 1 / 220; // dp -> damage (dp is impulse x material impactScale)
 const TUMBLE_DAMAGE_MAX = 30;
+const MONOFILAMENT_DAMAGE_MAX = 35;
 const DAMAGEABLE = new Set(['ship', 'drone']);
 
 export const masslineImpactDamage = {
@@ -36,6 +38,7 @@ export const masslineImpactDamage = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onWhipImpact(p || {})));
+      this._unsubs.push(this.bus.on('massline:sweepImpact', (p) => this._onSweepImpact(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPhysicsImpact(p || {})));
     }
   },
@@ -77,6 +80,21 @@ export const masslineImpactDamage = {
       if (damage <= 0) continue;
       this._routeKinetic(e, damage, 'massline_tumble_impact', payload.pos);
     }
+  },
+
+  _onSweepImpact(payload) {
+    const features = this.state.runtime && this.state.runtime.features;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', features)) return;
+    if (payload.headId !== 'monofilament_sweep') return;
+    const victim = this._entity(payload.victimId);
+    if (!victim || victim.alive === false || !victim.pos || !DAMAGEABLE.has(victim.type)) return;
+    if (victim.id === this.state.playerId) return;
+    const player = this._entity(this.state.playerId);
+    if (!player || !isHostileToPlayer(victim, player.team, this.state)) return;
+    const momentum = Math.max(0, Number(payload.momentum) || 0);
+    const damage = Math.min(MONOFILAMENT_DAMAGE_MAX, momentum * MOMENTUM_DAMAGE_SCALE);
+    if (damage <= 0) return;
+    this._routeKinetic(victim, damage, 'massline_monofilament_sweep', payload.pos);
   },
 
   _routeKinetic(target, damage, sourceKind, pos = null) {

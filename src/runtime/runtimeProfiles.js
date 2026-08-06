@@ -37,6 +37,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     masslineHeadElasticWhip: true,
     // PQ-029 / SF-27: fitted Frame Couplers exchange bounded momentum on a taut line.
     masslineHeadFrameCoupler: true,
+    // PQ-030 / SF-28: fitted Monofilament Sweep heads turn a taut rope crossing into a cut.
+    masslineHeadMonofilamentSweep: true,
   }),
   travel: Object.freeze({
     travelBurn: true,
@@ -77,6 +79,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     masslineHeadTractor: false,
     masslineHeadElasticWhip: false,
     masslineHeadFrameCoupler: false,
+    masslineHeadMonofilamentSweep: false,
   }),
   travel: Object.freeze({
     travelBurn: false,

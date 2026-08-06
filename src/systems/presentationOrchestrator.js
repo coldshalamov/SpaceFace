@@ -121,6 +121,18 @@ export const presentationOrchestrator = {
         tags: ['whip', payload && payload.rating, payload && payload.slung ? 'slung' : 'latched'].filter(Boolean),
         playerRelevanceFloor: MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR,
       })),
+      // PQ-030 reuses the accepted Massline-impact feedback budget for the distinct physical event:
+      // a taut Monofilament Sweep line crossing a hostile. The fitted head and sweep tags preserve
+      // semantic identity without adding another concurrent audio/VFX/UI budget family.
+      this.bus.on('massline:sweepImpact', (payload) => this._emitCue('tether.whip_impact', payload || {}, {
+        sourceEvent: 'massline:sweepImpact',
+        sourceId: payload && payload.targetId,
+        targetId: payload && payload.victimId,
+        material: 'massline',
+        magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
+        tags: ['monofilament', 'sweep', payload && payload.rating].filter(Boolean),
+        playerRelevanceFloor: MASSLINE_OBSERVER_PLAYER_RELEVANCE_FLOOR,
+      })),
       // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
       // intentionally has no recipe, so _emitCue suppresses it (missing_recipe) and no
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.

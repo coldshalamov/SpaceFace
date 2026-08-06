@@ -2,9 +2,11 @@
 // Runs immediately AFTER masslineThreats in UPDATE_ORDER: it reads the already-settled
 // state.player.tether mirror (tetherGameplay) plus entities, and detects the payoff moment of the
 // swing — the tethered (or just-released) MASS whacking into a solid body. It writes ONLY its own
-// runtime subtree at state.player.masslineImpacts and emits exactly one documented event:
+// runtime subtree at state.player.masslineImpacts and emits two documented events:
 // `tether:whipImpact` ({ targetId, victimId, relSpeed, massSpeed, mass, momentum, slung, severity,
-// rating, tick, time }). It never mutates entities, attachments, the tether, or sibling subtrees.
+// rating, tick, time }) and the fitted-head-only `massline:sweepImpact` ({ headId, targetId,
+// victimId, transverseSpeed, reducedMass, momentum, pos, severity, rating, tick, time }). It never
+// mutates entities, attachments, the tether, or sibling subtrees.
 //
 // What counts as a whip-impact (thresholds mirror the massline feel bars in masslineTelemetry.js):
 //   • the whipped mass is the tether TARGET — either still on the line (latched) or coasting
@@ -23,15 +25,22 @@
 // whip feedback/damage consumer (rung 14) read after the fact; each record carries tick/time so
 // consumers can window them. Only the log cap trims them.
 
+import { massline2Flag } from '../data/featureFlags.js';
+import { isHostileToPlayer } from './scanner.js';
+
 const WHIP_IMPACT_MIN_SPEED = 25;   // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
 const WHIP_IMPACT_SOLID = 55;       // wu/s relSpeed — rating floor for a 'solid' hit
 const WHIP_IMPACT_CRUSHING = 95;    // wu/s relSpeed — 'crushing' floor; also the severity ceiling
 const WHIP_SLING_WINDOW_S = 6;      // s — a released mass stays "the player's whip" this long
 const WHIP_CONTACT_PAD = 0.5;       // wu — overlap tolerance (physics rests solids at ~touching)
 const WHIP_LOG_CAP = 12;            // per-session record cap (oldest dropped)
+const SWEEP_CONTACT_PAD = 0.75;      // wu — filament width/readability tolerance around hull radius
+const SWEEP_ENDPOINT_MARGIN = 0.08;  // line fraction — keep endpoint body hits in whip-impact domain
+const SWEEP_LOG_CAP = 12;
 
 // Solid bodies a whipped mass can meaningfully hit — same set as masslineThreats' collidables.
 const COLLIDABLE_TYPES = new Set(['asteroid', 'ship', 'station', 'drone']);
+const SWEEP_DAMAGEABLE_TYPES = new Set(['ship', 'drone']);
 
 const FALLBACK = Object.freeze({
   tracking: false,
@@ -50,10 +59,10 @@ export const masslineImpacts = {
     this.bus = ctx.bus || null;
     // Per-run trackers. System-private, like masslineThreats' throttle state.
     // _latch tracks the mass while it is on the line; _sling tracks the last released mass for a
-    // bounded ballistic window. Both carry a per-victim `warned` set (the once-per-victim
-    // throttle); the sling inherits the latch's set so a victim can't double-fire across the cut.
-    this._latch = null;   // { massId, warned:Set }
-    this._sling = null;   // { massId, until, warned:Set }
+    // bounded ballistic window. Both carry per-victim throttles; the sling inherits them so a
+    // same-mass relatch remains one run rather than re-arming damage during a cut/regrab exploit.
+    this._latch = null;   // { massId, warned:Set, sweepWarned:Set }
+    this._sling = null;   // { massId, until, warned:Set, sweepWarned:Set }
   },
 
   update(dt, state) {
@@ -84,10 +93,14 @@ export const masslineImpacts = {
       // A relatch onto the mass we are still sling-tracking resumes the same run: the line is back
       // on the same body, so its warned set carries over and the sling slot frees up.
       if (this._sling && this._sling.massId === latchedId) {
-        this._latch = { massId: latchedId, warned: this._sling.warned };
+        this._latch = {
+          massId: latchedId,
+          warned: this._sling.warned,
+          sweepWarned: this._sling.sweepWarned,
+        };
         this._sling = null;
       } else {
-        this._latch = { massId: latchedId, warned: new Set() };
+        this._latch = { massId: latchedId, warned: new Set(), sweepWarned: new Set() };
       }
     }
 
@@ -101,6 +114,7 @@ export const masslineImpacts = {
     if (this._latch) {
       const mass = getEntity(state, this._latch.massId);
       if (mass && mass.alive && mass.pos && mass.vel) {
+        this._scanForSweep(runtime, state, dt, now, tether, mass, this._latch.sweepWarned);
         this._scanForImpacts(runtime, state, dt, now, mass, this._latch.warned, false);
       }
     }
@@ -124,7 +138,45 @@ export const masslineImpacts = {
     if (speed < WHIP_IMPACT_MIN_SPEED) return;
     // Single sling slot: a newer release supersedes an older one still in flight (two live slings
     // inside one 6 s window is a corner we trade away for one tracker's worth of state).
-    this._sling = { massId: endedLatch.massId, until: now + WHIP_SLING_WINDOW_S, warned: endedLatch.warned };
+    this._sling = {
+      massId: endedLatch.massId,
+      until: now + WHIP_SLING_WINDOW_S,
+      warned: endedLatch.warned,
+      sweepWarned: endedLatch.sweepWarned,
+    };
+  },
+
+  // PQ-030 Monofilament Sweep. A fitted head does not change the rope force at all; while that
+  // ordinary rope is already loaded, its physical segment can cut one hostile ship/drone per latch.
+  // The observer reads endpoint/victim motion and emits a receipt. Damage remains a combat-kernel
+  // concern in masslineImpactDamage, and no player control or entity state is written here.
+  _scanForSweep(runtime, state, dt, now, tether, mass, warned) {
+    if (!tether || (tether.phase !== 'loaded' && tether.phase !== 'overload')) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const attachment = activeAttachment(state, tether.attachmentId);
+    if (!attachment || attachment.targetId !== mass.id) return;
+    if (!attachment.tetherPolicy || attachment.tetherPolicy.headId !== 'monofilament_sweep') return;
+
+    const player = getEntity(state, state.playerId);
+    if (!player || !player.alive || !player.pos || !player.vel) return;
+    const playerTeam = player.team;
+    const entities = state.entities;
+    if (!entities || typeof entities.values !== 'function') return;
+
+    for (const e of entities.values()) {
+      if (!e || !e.alive || !e.pos || !e.vel || !Number.isFinite(e.radius)) continue;
+      if (e.id === player.id || e.id === mass.id || warned.has(e.id)) continue;
+      if (!SWEEP_DAMAGEABLE_TYPES.has(e.type)) continue;
+      if (!isHostileToPlayer(e, playerTeam, state)) continue;
+
+      const contact = lineSweepContact(player, mass, e, dt);
+      if (!contact) continue;
+      const reducedMass = twoBodyReducedMass(player, mass);
+      if (!(reducedMass > 0)) continue;
+
+      warned.add(e.id);
+      this._emitSweep(runtime, state, now, mass, e, contact, reducedMass);
+    }
   },
 
   // One entity pass for one whipped mass. The world-speed gate is per-mass (outside the loop);
@@ -196,6 +248,34 @@ export const masslineImpacts = {
       this.bus.emit('tether:whipImpact', record);
     }
   },
+
+  _emitSweep(runtime, state, now, mass, victim, contact, reducedMass) {
+    const transverseSpeed = contact.transverseSpeed;
+    const rating = transverseSpeed >= WHIP_IMPACT_CRUSHING ? 'crushing'
+      : transverseSpeed >= WHIP_IMPACT_SOLID ? 'solid'
+      : 'glance';
+    const record = {
+      headId: 'monofilament_sweep',
+      targetId: mass.id,
+      victimId: victim.id,
+      transverseSpeed,
+      reducedMass,
+      momentum: reducedMass * transverseSpeed,
+      pos: contact.pos,
+      severity: clamp01(transverseSpeed / WHIP_IMPACT_CRUSHING),
+      rating,
+      playerRelevance: 0.88,
+      tick: Number.isFinite(state.tick) ? state.tick : null,
+      time: now,
+    };
+    if (!Array.isArray(runtime.sweeps)) runtime.sweeps = [];
+    runtime.sweeps.push(record);
+    if (runtime.sweeps.length > SWEEP_LOG_CAP) runtime.sweeps.shift();
+    runtime.latestSweep = record;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('massline:sweepImpact', record);
+    }
+  },
 };
 
 // Contact this tick: already inside the padded combined radius, OR the relative ballistic path
@@ -220,6 +300,64 @@ function inContact(mass, e, rvx, rvz, dt) {
 
 function getEntity(state, id) {
   return state.entities && state.entities.get ? state.entities.get(id) : null;
+}
+
+function activeAttachment(state, attachmentId) {
+  const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const attachment = attachmentId != null && byId ? byId[attachmentId] : null;
+  return attachment && attachment.state === 'active' ? attachment : null;
+}
+
+// Test a victim point/body against the moving line during this fixed step. The current segment
+// supplies the nearest interior point. Signed perpendicular motion is rewound one dt so a fast
+// crossing cannot tunnel from one side of a narrow filament to the other between samples.
+function lineSweepContact(owner, target, victim, dt) {
+  const ax = finite(owner.pos.x, 0);
+  const az = finite(owner.pos.z, 0);
+  const dx = finite(target.pos.x, 0) - ax;
+  const dz = finite(target.pos.z, 0) - az;
+  const lengthSq = dx * dx + dz * dz;
+  if (lengthSq < 1e-9) return null;
+  const length = Math.sqrt(lengthSq);
+  const rx = finite(victim.pos.x, 0) - ax;
+  const rz = finite(victim.pos.z, 0) - az;
+  const t = (rx * dx + rz * dz) / lengthSq;
+  if (t <= SWEEP_ENDPOINT_MARGIN || t >= 1 - SWEEP_ENDPOINT_MARGIN) return null;
+
+  const nx = -dz / length;
+  const nz = dx / length;
+  const signedDistance = rx * nx + rz * nz;
+  const lineVx = finite(owner.vel.x, 0)
+    + (finite(target.vel.x, 0) - finite(owner.vel.x, 0)) * t;
+  const lineVz = finite(owner.vel.z, 0)
+    + (finite(target.vel.z, 0) - finite(owner.vel.z, 0)) * t;
+  const signedTransverseSpeed = (finite(victim.vel.x, 0) - lineVx) * nx
+    + (finite(victim.vel.z, 0) - lineVz) * nz;
+  const transverseSpeed = Math.abs(signedTransverseSpeed);
+  if (transverseSpeed < WHIP_IMPACT_MIN_SPEED) return null;
+
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const previousSignedDistance = signedDistance - signedTransverseSpeed * step;
+  const radius = Math.max(0, finite(victim.radius, 0)) + SWEEP_CONTACT_PAD;
+  if (Math.min(signedDistance, previousSignedDistance) > radius
+    || Math.max(signedDistance, previousSignedDistance) < -radius) return null;
+
+  return {
+    transverseSpeed,
+    pos: { x: ax + dx * t, z: az + dz * t },
+  };
+}
+
+function twoBodyReducedMass(a, b) {
+  const am = bodyMass(a);
+  const bm = bodyMass(b);
+  return am > 0 && bm > 0 ? (am * bm) / (am + bm) : 0;
+}
+
+function bodyMass(entity) {
+  const direct = finite(entity && entity.mass, 0);
+  if (direct > 0) return direct;
+  return Math.max(0, finite(entity && entity.data && entity.data.mass, 0));
 }
 
 function mirrorTrackers(runtime, latch, sling) {

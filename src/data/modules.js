@@ -128,6 +128,10 @@ export const MODULES = [
     energyDraw: 5, mods: { masslineHeadId: 'frame_coupler' },
   },
   {
+    id: 'mod_monofilament_sweep_m', name: 'Monofilament Sweep M', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 44000, requiresTech: 'tech_fire_control',
+    energyDraw: 6, mods: { masslineHeadId: 'monofilament_sweep' },
+  },
+  {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
   },

@@ -43,6 +43,9 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   tractor: Object.freeze({ flag: 'masslineHeadTractor', spring: TRACTOR_TETHER_SPRING }),
   elastic_whip: Object.freeze({ flag: 'masslineHeadElasticWhip', spring: ELASTIC_WHIP_TETHER_SPRING }),
   frame_coupler: Object.freeze({ flag: 'masslineHeadFrameCoupler', spring: FRAME_COUPLER_TETHER_SPRING }),
+  // PQ-030 Monofilament Sweep changes only the consequence of a taut line crossing a hostile.
+  // Its empty override deliberately snapshots the ordinary rope spring unchanged.
+  monofilament_sweep: Object.freeze({ flag: 'masslineHeadMonofilamentSweep', spring: Object.freeze({}) }),
 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
