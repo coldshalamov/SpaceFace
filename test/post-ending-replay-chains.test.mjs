@@ -22,6 +22,7 @@ import {
   postEndingReplay,
 } from '../src/systems/postEndingReplay.js';
 import { missions } from '../src/systems/missions.js';
+import { FRESH_RUN_SYSTEMS, resetFreshRunSystems } from '../src/core/runReset.js';
 import { PRODUCTION_INIT_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 class Bus {
@@ -296,6 +297,33 @@ test('missions boards and JSON save preserve a mid-choice replay without materia
   });
 });
 
+test('Continue preserves replay progress while canonical New Game clears the prior run', () => {
+  const state = baseState('A');
+  const bus = new Bus();
+  const replaySys = { ...postEndingReplay };
+  replaySys.init({ state, bus });
+  const run = ensurePostEndingReplayState(state);
+  run.cycle = 2;
+  run.stageIndex = 1;
+  run.status = 'ready';
+  const saved = replaySys.serialize();
+
+  delete state.missions.postEndingReplay;
+  replaySys.deserialize(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(state.missions.postEndingReplay, saved, 'Continue restores the same replay run');
+
+  replaySys._pending.set('stale_offer', { chainId: run.chainId });
+  resetFreshRunSystems({
+    get(name) { return name === 'postEndingReplay' ? replaySys : null; },
+  });
+  assert.ok(FRESH_RUN_SYSTEMS.indexOf('postEndingReplay') > FRESH_RUN_SYSTEMS.indexOf('missions'),
+    'the extension resets after its mission-board owner');
+  assert.equal(Object.hasOwn(state.missions, 'postEndingReplay'), false,
+    'New Game cannot carry a prior ending cycle into the next run');
+  assert.equal(replaySys._pending.size, 0, 'runtime-only pending offers are also run-scoped');
+  replaySys.destroy();
+});
+
 test('default registry wires replay after missions/career contracts with no UI, asset, or direct-authority writes', () => {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ postEndingReplay \} from '\.\.\/systems\/postEndingReplay\.js';/);
@@ -312,4 +340,6 @@ test('default registry wires replay after missions/career contracts with no UI, 
   const source = readFileSync(new URL('../src/systems/postEndingReplay.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|\.\.\/ui\/|\.\.\/render\/|\.\.\/audio\//);
   assert.doesNotMatch(source, /economy:grantCredits|player\.credits\s*=|cargo\.items\s*=|\.rep\s*=/);
+  assert.doesNotMatch(source, /game:newGame/,
+    'production reset ownership belongs in runReset, not an event the New Game route never emits');
 });

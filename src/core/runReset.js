@@ -9,6 +9,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'intervention',
   'sectorSim',
   'missions',
+  'postEndingReplay',
   'aiEncounter',
   'crafting',
   'traffic',

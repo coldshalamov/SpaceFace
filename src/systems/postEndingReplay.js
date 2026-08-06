@@ -213,7 +213,6 @@ export const postEndingReplay = {
     this._listen('mission:failed', (payload) => this._settle(payload || {}, false));
     this._listen('mission:expired', (payload) => this._settle(payload || {}, false));
     this._listen('save:loaded', () => this._resumeAfterLoad());
-    this._listen('game:newGame', () => this.newGame());
   },
 
   _listen(event, fn) {
