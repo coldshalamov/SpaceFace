@@ -297,6 +297,18 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    id: 'attachment_twin_bridle', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 480,
+    // One physical rope between the two chosen bodies. There is no Massline winch block here:
+    // Twin Bridle never reels, seeks a speed, or turns the controller ship into a third endpoint.
+    break: { maxTension: 9200, maxImpulse: 1800, maxYank: 4200, graceTicks: 8 },
+    spring: { K: 110, zeta: 0.88, captureS: 0.35, maxStretchRatio: 0.75 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
@@ -326,7 +338,7 @@ export const COMBAT_PROFILES = Object.freeze([
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
   },
   {
-    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'masslineSnareAnchor'],
+    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor'],
     heat: { max: 0, dissipationPerTick: 0 },
     immunityTags: [],
     subsystemIds: [],
@@ -350,6 +362,7 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   asteroid: 'combat_profile_tether_anchor',
   wreck: 'combat_profile_tether_anchor',
   pickup: 'combat_profile_tether_anchor',
+  fieldEmitter: 'combat_profile_tether_anchor',
   masslineSnareAnchor: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });

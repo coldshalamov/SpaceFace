@@ -136,6 +136,10 @@ export const MODULES = [
     energyDraw: 7, mods: { masslineHeadId: 'transverse_snare' },
   },
   {
+    id: 'mod_twin_bridle_m', name: 'Twin Bridle M', slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 68000, requiresTech: 'tech_fire_control',
+    energyDraw: 8, mods: { masslineHeadId: 'twin_bridle' },
+  },
+  {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
   },

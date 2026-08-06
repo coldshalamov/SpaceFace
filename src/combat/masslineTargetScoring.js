@@ -86,7 +86,7 @@ const PRECISE_CURSOR_THRESHOLD = 0.82;
 // A cursor paint is explicit only when it separates one candidate from its nearest overlap.
 // Otherwise the named context (hostile, route, tow, etc.) must break the ambiguity truthfully.
 const PRECISE_CURSOR_SEPARATION = 0.08;
-const MASSIVE_ANCHOR_MIN_MASS = 1800;
+export const MASSIVE_ANCHOR_MIN_MASS = 1800;
 const CONTEXT_PROFILES = Object.freeze({
   // 'precision-pick' is the FALLBACK profile — no focus lease, no unambiguous paint, no route, no
   // strong turn, no hostile, no towable. That is ordinary straight-line flight, i.e. the commonest

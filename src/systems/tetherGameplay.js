@@ -8,6 +8,7 @@
 // selection then fails closed and publishes the same blocked reason the latch will consume.
 import {
   classifyMasslineIntent,
+  MASSIVE_ANCHOR_MIN_MASS,
   rankMasslineTargets,
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
@@ -18,6 +19,9 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
 
 const TETHER_DEF_ID = 'tether_standard';
+export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
+export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
+export const TWIN_BRIDLE_SETUP_S = 10;
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
 const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
@@ -48,6 +52,7 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
 const TRANSIENT_NON_TETHERABLE_TYPES = new Set(['projectile', 'fx']);
 const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
+const LARGE_BRIDLE_ENDPOINT_TYPES = new Set(['station', 'asteroid', 'massSeed', 'fieldEmitter', 'planet']);
 const LINE_CONTROL_DENIAL_COPY = Object.freeze({
   load_limit: 'line load too high',
   minimum_length: 'minimum line length reached',
@@ -78,19 +83,40 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._lastLineControlDenial = null;
     this._lastLatchDenial = null;
+    this._bridleSetup = null;
+    this._bridleActive = null;
+    this._bridleAdoptionPending = true;
     this._resetAcquisitionRuntime(this.state);
-    const resetAcquisition = () => this._resetAcquisitionRuntime(this.state);
+    this._resetTwinBridleRuntime(this.state, null, true);
+    const resetAfterLoad = () => {
+      this._resetAcquisitionRuntime(this.state);
+      this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
+    };
+    const resetForNewGame = () => {
+      this._resetAcquisitionRuntime(this.state);
+      this._resetTwinBridleRuntime(this.state, 'new_game', false);
+    };
+    const endForSectorBoundary = (reason) => {
+      this._resetAcquisitionRuntime(this.state);
+      this._endTwinBridleForBoundary(this.state, reason);
+    };
     this._acquisitionUnsubs = typeof this.bus?.on === 'function'
-      ? [this.bus.on('save:loaded', resetAcquisition), this.bus.on('game:started', resetAcquisition)]
+      ? [
+          this.bus.on('save:loaded', resetAfterLoad),
+          this.bus.on('game:new', resetForNewGame),
+          this.bus.on('game:started', resetForNewGame),
+          this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
+          this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
+        ]
       : [];
     this._resetPhaseMirror();
   },
 
   update(dt, state) {
     this._tickSlingshotState(state, dt);
-    if (state.mode !== 'flight') { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
+    if (state.mode !== 'flight') { this._endTwinBridleForBoundary(state, 'flight_exit'); this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
+    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._endTwinBridleForBoundary(state, 'controller_unavailable'); this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
@@ -103,10 +129,12 @@ export const tetherGameplay = {
       return;
     }
 
-    this._reconcileActive(attachments, state);
-    this._adoptExisting(attachments, state);
     const actions = state.input?.actions;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    this._reconcileActive(attachments, state);
+    this._adoptExisting(attachments, state);
+    this._reconcileTwinBridle(attachments, state, player, now);
+    this._adoptTwinBridle(attachments, state, player);
     const masslineCommand = actions && actions.massline;
     const lineLengthCommand = masslineCommand && masslineCommand.lineControl
       ? finite(masslineCommand.lineLength, 0)
@@ -215,6 +243,15 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     const wantsLatch = !!(actions && actions.tetherFire);
+    const bridleHeadActive = player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
+      && massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
+    const remoteBridleActive = state.player?.remoteMassline?.active
+      && state.player.remoteMassline.kind === TWIN_BRIDLE_HEAD_ID;
+    if (bridleHeadActive || this._bridleSetup || this._bridleActive || remoteBridleActive) {
+      if (this.helpers?.masslineSnares?.clearPreview) this.helpers.masslineSnares.clearPreview();
+      this._handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, bridleHeadActive);
+      return;
+    }
     const snareHeadActive = player.data?.derived?.masslineHeadId === 'transverse_snare'
       && massline2Flag('masslineHeadTransverseSnare', state.runtime && state.runtime.features);
     const remoteSnareActive = state.player?.remoteMassline?.active
@@ -353,6 +390,324 @@ export const tetherGameplay = {
     // the latch completes visually on the next frame, where the _active branch above clears the
     // receipt. Keeping it here is what lets a reader (and the live truthfulness probes) compare the
     // rendered candidate against the attachment that was actually created.
+  },
+
+  _handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, headFitted) {
+    if (this._bridleActive) {
+      this._clearAcquisitionPreview(state);
+      if ((masslineCommand && masslineCommand.cut) || wantsLatch) {
+        this._cutTwinBridle(attachments, state, player, now);
+      } else {
+        const attachment = attachments.get(this._bridleActive.attachmentId);
+        if (attachment && attachment.state === 'active') this._mirrorTwinBridle(state, attachment);
+      }
+      return true;
+    }
+
+    if (!headFitted) {
+      this._cancelTwinBridleSetup(state, 'head_unavailable');
+      return true;
+    }
+
+    if (this._bridleSetup && wantsLatch && state.input?.tetherMode === 'nearest') {
+      // Ctrl+Massline is the explicit keyboard cancel. Selecting A again below is the same
+      // gamepad/pointer-accessible cancel, so no modality needs a hidden third command.
+      this._cancelTwinBridleSetup(state, 'player_cancel');
+      return true;
+    }
+
+    const def = attachmentDef(kernel, TWIN_BRIDLE_DEF_ID);
+    const nearestOnly = !this._bridleSetup && state.input?.tetherMode === 'nearest';
+    const tickNow = Math.trunc(finite(state.tick));
+    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const standingWasRendered = !!publishedReceipt
+      && this._lastPreviewTick === tickNow - 1
+      && publishedReceipt.validUntil >= now;
+    if (!def || nearestOnly) {
+      this._clearAcquisitionPreview(state);
+    } else {
+      if (!wantsLatch || !standingWasRendered) {
+        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
+      }
+      this._lastPreviewTick = tickNow;
+    }
+    if (this._bridleSetup && this._bridleSetup.lastDenial) {
+      const previewTargetId = state.masslineAcquisition?.selected?.targetId ?? null;
+      if (previewTargetId !== this._bridleSetup.lastDenialTargetId) {
+        this._bridleSetup.lastDenial = null;
+        this._bridleSetup.lastDenialTargetId = null;
+        publishTwinBridleSetup(state, this._bridleSetup);
+      }
+    }
+    if (!wantsLatch) return true;
+    if (now < this._noRelatchUntil) {
+      this._denyTwinBridle(state, 'cooldown');
+      return true;
+    }
+    if (!def) {
+      this._denyTwinBridle(state, 'unknown_attachment_def');
+      return true;
+    }
+
+    this._lastLatchDenial = null;
+    const latch = nearestOnly
+      ? this._acquireCommandTarget(player, def, state)
+      : this._consumeAcquisitionReceipt(player, def, state, now);
+    const target = latch && latch.entity;
+    if (!target) {
+      this._denyTwinBridle(state, (this._lastLatchDenial && this._lastLatchDenial.reason) || 'no-target');
+      return true;
+    }
+
+    const receiptId = nearestOnly ? null : (state.masslineAcquisition && state.masslineAcquisition.id) || null;
+    if (!this._bridleSetup) {
+      this._bridleSetup = {
+        sourceId: target.id,
+        sourceReceiptId: receiptId,
+        selectedAt: now,
+        expiresAt: now + TWIN_BRIDLE_SETUP_S,
+        sectorId: currentSectorId(state),
+        lastDenial: null,
+        lastDenialTargetId: null,
+      };
+      publishTwinBridleSetup(state, this._bridleSetup);
+      this._clearAcquisitionPreview(state);
+      this.bus.emit('massline:bridleEndpointSelected', {
+        endpoint: 'A',
+        sourceId: target.id,
+        selectionReceiptId: receiptId,
+        expiresAt: this._bridleSetup.expiresAt,
+      });
+      return true;
+    }
+
+    const source = state.entities && state.entities.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+    if (source && source.id === target.id) {
+      this._cancelTwinBridleSetup(state, 'player_cancel');
+      return true;
+    }
+    const denial = validateTwinBridlePair(this, state, player, source, target, def);
+    if (denial) {
+      this._denyTwinBridle(state, denial, { sourceId: source && source.id, targetId: target.id });
+      return true;
+    }
+    const existing = typeof attachments.listControlledBy === 'function'
+      ? attachments.listControlledBy(player.id, true).find((entry) => entry.defId === TWIN_BRIDLE_DEF_ID)
+      : null;
+    if (existing) {
+      this._denyTwinBridle(state, 'controller_attachment_limit', { attachmentId: existing.id });
+      return true;
+    }
+
+    const attachWorlds = contextualRemoteAttachmentWorlds(source, target);
+    const result = attachments.create({
+      defId: TWIN_BRIDLE_DEF_ID,
+      ownerId: source.id,
+      targetId: target.id,
+      controllerId: player.id,
+      controlMode: TWIN_BRIDLE_HEAD_ID,
+      ...attachWorlds,
+    });
+    if (!result || !result.ok || !result.attachment) {
+      this._denyTwinBridle(state, (result && result.reason) || 'create_failed', {
+        sourceId: source.id,
+        targetId: target.id,
+      });
+      return true;
+    }
+
+    result.attachment.worldSectorId = currentSectorId(state);
+    this._bridleActive = {
+      attachmentId: result.attachment.id,
+      sourceId: source.id,
+      targetId: target.id,
+    };
+    const sourceReceiptId = this._bridleSetup.sourceReceiptId;
+    this._clearTwinBridleSetup(state);
+    this._clearAcquisitionPreview(state);
+    this._mirrorTwinBridle(state, result.attachment);
+    this.bus.emit('massline:bridleLinked', {
+      attachmentId: result.attachment.id,
+      sourceId: source.id,
+      targetId: target.id,
+      sourceReceiptId,
+      targetReceiptId: receiptId,
+    });
+    return true;
+  },
+
+  _reconcileTwinBridle(attachments, state, player, now) {
+    if (this._bridleSetup) {
+      const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+      const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
+      if (!source || source.alive === false || !sameSector) {
+        this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
+      } else if (now >= this._bridleSetup.expiresAt) {
+        this._cancelTwinBridleSetup(state, 'setup_expired');
+      }
+    }
+    if (!this._bridleActive) return;
+
+    const attachment = attachments.get(this._bridleActive.attachmentId);
+    if (!attachment || attachment.state !== 'active') {
+      const reason = attachment && attachment.breakReason || 'line_broken';
+      this._endTwinBridleMirror(state, reason);
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId: this._bridleActive && this._bridleActive.attachmentId,
+        reason,
+      });
+      this._bridleActive = null;
+      return;
+    }
+
+    const source = state.entities?.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities?.get ? state.entities.get(attachment.targetId) : null;
+    const sameSector = attachment.worldSectorId == null
+      || attachment.worldSectorId === currentSectorId(state);
+    if (!source || source.alive === false || !target || target.alive === false || !sameSector) {
+      const reason = sameSector ? 'endpoint_lost' : 'sector_changed';
+      attachments.cut(attachment.id, player.id, reason);
+      this._endTwinBridleMirror(state, reason);
+      this.bus.emit('massline:bridleEnded', { attachmentId: attachment.id, reason });
+      this._bridleActive = null;
+      return;
+    }
+    this._mirrorTwinBridle(state, attachment);
+  },
+
+  _adoptTwinBridle(attachments, state, player) {
+    if (this._bridleActive || !this._bridleAdoptionPending) return;
+    this._bridleAdoptionPending = false;
+    if (typeof attachments.listControlledBy !== 'function') return;
+    const controlled = attachments.listControlledBy(player.id, true)
+      .filter((entry) => entry.defId === TWIN_BRIDLE_DEF_ID && entry.controlMode === TWIN_BRIDLE_HEAD_ID);
+    const attachment = controlled.shift();
+    for (const extra of controlled) attachments.cut(extra.id, player.id, 'controller_attachment_limit');
+    if (!attachment) return;
+    if (attachment.worldSectorId != null && attachment.worldSectorId !== currentSectorId(state)) {
+      attachments.cut(attachment.id, player.id, 'sector_changed');
+      return;
+    }
+    this._bridleActive = {
+      attachmentId: attachment.id,
+      sourceId: attachment.ownerId,
+      targetId: attachment.targetId,
+    };
+    this._clearTwinBridleSetup(state);
+    this._mirrorTwinBridle(state, attachment);
+  },
+
+  _cutTwinBridle(attachments, state, player, now) {
+    if (!this._bridleActive) return false;
+    const attachmentId = this._bridleActive.attachmentId;
+    const sourceId = this._bridleActive.sourceId;
+    const targetId = this._bridleActive.targetId;
+    const result = attachments.cut(attachmentId, player.id, 'tether_cut');
+    this._bridleActive = null;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._endTwinBridleMirror(state, 'player_cut');
+    if (result && result.ok) {
+      this.bus.emit('massline:bridleCut', { attachmentId, sourceId, targetId });
+    }
+    return !!(result && result.ok);
+  },
+
+  _cancelTwinBridleSetup(state, reason) {
+    if (!this._bridleSetup) return false;
+    const sourceId = this._bridleSetup.sourceId;
+    this._clearTwinBridleSetup(state);
+    this._clearAcquisitionPreview(state);
+    if (reason) this.bus.emit('massline:bridleSetupEnded', { sourceId, reason });
+    return true;
+  },
+
+  _clearTwinBridleSetup(state) {
+    this._bridleSetup = null;
+    if (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')) {
+      delete state.masslineBridle;
+    }
+  },
+
+  _denyTwinBridle(state, reason, detail = null) {
+    if (this._bridleSetup) {
+      this._bridleSetup.lastDenial = reason;
+      this._bridleSetup.lastDenialTargetId = detail && detail.targetId != null
+        ? detail.targetId
+        : state.masslineAcquisition?.selected?.targetId ?? null;
+      publishTwinBridleSetup(state, this._bridleSetup);
+    }
+    this.bus.emit('tether:latchDenied', {
+      reason: `bridle_${reason}`,
+      ...(detail || {}),
+    });
+  },
+
+  _mirrorTwinBridle(state, attachment) {
+    const mirror = ensureRemoteMasslineMirror(state);
+    const source = state.entities?.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities?.get ? state.entities.get(attachment.targetId) : null;
+    const def = attachmentDef(combatKernel(this), attachment.defId);
+    const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+    const threshold = positive(def && def.break && def.break.maxTension, 1);
+    const tension = Math.max(0, finite(telemetry && telemetry.tension, finite(attachment.lastTension)));
+    const strain = clamp(tension / threshold, 0, 2);
+    let phase = telemetry && telemetry.phase ? normalizePhase(telemetry.phase) : 'slack';
+    if (attachment.nearBreakWarned || strain >= 0.75) phase = 'overload';
+    else if (phase === 'slack' && tension > 0) phase = 'loaded';
+    mirror.active = !!(source && source.alive && target && target.alive);
+    mirror.kind = TWIN_BRIDLE_HEAD_ID;
+    mirror.headId = TWIN_BRIDLE_HEAD_ID;
+    mirror.phase = phase;
+    mirror.sourceId = attachment.ownerId;
+    mirror.targetId = attachment.targetId;
+    mirror.attachmentId = attachment.id;
+    mirror.caughtId = null;
+    mirror.expiresAt = null;
+    mirror.restLength = finite(attachment.restLength);
+    mirror.strain = strain;
+    mirror.load = computeTetherLoad(phase, strain);
+    mirror.automaticBreakAllowed = automaticMasslineBreakAllowed(def, source, target);
+    mirror.lastEndReason = null;
+  },
+
+  _endTwinBridleMirror(state, reason) {
+    const mirror = state && state.player && state.player.remoteMassline;
+    if (!mirror || mirror.kind !== TWIN_BRIDLE_HEAD_ID) return;
+    mirror.active = false;
+    mirror.kind = null;
+    mirror.headId = null;
+    mirror.phase = 'idle';
+    mirror.sourceId = null;
+    mirror.targetId = null;
+    mirror.attachmentId = null;
+    mirror.caughtId = null;
+    mirror.expiresAt = null;
+    mirror.restLength = 0;
+    mirror.strain = 0;
+    mirror.load = 0;
+    mirror.lastEndReason = reason || null;
+  },
+
+  _resetTwinBridleRuntime(state, reason = null, adoptionPending = false) {
+    this._bridleSetup = null;
+    this._bridleActive = null;
+    this._bridleAdoptionPending = adoptionPending;
+    if (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')) delete state.masslineBridle;
+    this._endTwinBridleMirror(state, reason);
+  },
+
+  _endTwinBridleForBoundary(state, reason) {
+    const mirror = state && state.player && state.player.remoteMassline;
+    const hasRuntime = !!(this._bridleSetup || this._bridleActive
+      || (mirror && mirror.kind === TWIN_BRIDLE_HEAD_ID)
+      || (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')));
+    if (!hasRuntime) return;
+    const attachmentId = this._bridleActive && this._bridleActive.attachmentId;
+    const attachments = combatKernel(this)?.attachments;
+    if (attachmentId && attachments) attachments.cut(attachmentId, state.playerId, reason);
+    this._cancelTwinBridleSetup(state, reason);
+    this._resetTwinBridleRuntime(state, reason, false);
+    if (attachmentId) this.bus.emit('massline:bridleEnded', { attachmentId, reason });
   },
 
   _refreshAcquisitionPreview(player, def, state, now, force = false) {
@@ -804,6 +1159,125 @@ export const tetherGameplay = {
     t.slingshot = t.slingshotT > 0;
   },
 };
+
+function publishTwinBridleSetup(state, setup) {
+  if (!state || !setup) return null;
+  const view = state.masslineBridle && typeof state.masslineBridle === 'object'
+    ? state.masslineBridle
+    : (state.masslineBridle = {});
+  view.schemaVersion = 1;
+  view.phase = 'select_endpoint_b';
+  view.sourceId = setup.sourceId;
+  view.sourceReceiptId = setup.sourceReceiptId;
+  view.selectedAt = setup.selectedAt;
+  view.expiresAt = setup.expiresAt;
+  view.lastDenial = setup.lastDenial || null;
+  view.lastDenialTargetId = setup.lastDenialTargetId ?? null;
+  return view;
+}
+
+function ensureRemoteMasslineMirror(state) {
+  const player = state.player || (state.player = {});
+  if (!player.remoteMassline || typeof player.remoteMassline !== 'object') {
+    player.remoteMassline = {
+      active: false,
+      kind: null,
+      headId: null,
+      phase: 'idle',
+      sourceId: null,
+      targetId: null,
+      attachmentId: null,
+      caughtId: null,
+      expiresAt: null,
+      restLength: 0,
+      strain: 0,
+      load: 0,
+      automaticBreakAllowed: true,
+      lastEndReason: null,
+      lastDenial: null,
+    };
+  }
+  return player.remoteMassline;
+}
+
+function currentSectorId(state) {
+  return state && state.world && state.world.currentSectorId != null
+    ? state.world.currentSectorId
+    : null;
+}
+
+/** Validate only the authored A↔B rope. The controller ship is never considered an endpoint. */
+export function validateTwinBridlePair(host, state, player, source, target, def) {
+  if (!isAttachable(source, player && player.id) || !isAttachable(target, player && player.id)) {
+    return 'endpoint_lost';
+  }
+  if (source.id === target.id) return 'same_endpoint';
+  const maxLength = positive(def && def.maxLength, 480);
+  const worlds = contextualRemoteAttachmentWorlds(source, target);
+  const physicalDistance = Math.hypot(
+    worlds.targetWorld.x - worlds.sourceWorld.x,
+    worlds.targetWorld.z - worlds.sourceWorld.z,
+  );
+  if (physicalDistance > maxLength) return 'pair_out_of_range';
+  if (isLargeBridleEndpoint(source) && isLargeBridleEndpoint(target)) return 'two_heavy_endpoints';
+  if (activeAttachmentPathExists(state, source.id, target.id)) return 'attachment_cycle';
+  if (masslineObstructed(host, state, source, target)) return 'blocked';
+  return null;
+}
+
+function contextualRemoteAttachmentWorlds(source, target) {
+  return {
+    sourceWorld: remoteAttachmentWorld(source, target && target.pos),
+    targetWorld: remoteAttachmentWorld(target, source && source.pos),
+  };
+}
+
+function remoteAttachmentWorld(entity, toward) {
+  if (!entity || !entity.pos) return { x: 0, y: 0, z: 0 };
+  // Moving payloads/craft attach through COM. A hull-offset world-to-world rope would apply yaw
+  // torque and become an accidental facing controller; static scenery keeps the visible surface hit.
+  if (TOW_TARGET_COM_TYPES.has(entity.type)) {
+    return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  }
+  return surfacePointToward(entity, toward);
+}
+
+function isLargeBridleEndpoint(entity) {
+  if (!entity) return false;
+  if (LARGE_BRIDLE_ENDPOINT_TYPES.has(entity.type)) return true;
+  const body = entity.physicsBody;
+  if (body && typeof body === 'object' && body.dynamic === false) return true;
+  const mass = Number(body && body.mass != null ? body.mass : entity.mass);
+  return Number.isFinite(mass) && mass >= MASSIVE_ANCHOR_MIN_MASS;
+}
+
+function activeAttachmentPathExists(state, sourceId, targetId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return false;
+  const adjacency = new Map();
+  const connect = (a, b) => {
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    adjacency.get(a).push(b);
+  };
+  for (const attachment of Object.values(byId)) {
+    if (!attachment || attachment.state !== 'active') continue;
+    if (attachment.ownerId == null || attachment.targetId == null) continue;
+    connect(attachment.ownerId, attachment.targetId);
+    connect(attachment.targetId, attachment.ownerId);
+  }
+  const pending = [sourceId];
+  const visited = new Set([sourceId]);
+  while (pending.length) {
+    const id = pending.shift();
+    for (const next of adjacency.get(id) || []) {
+      if (next === targetId) return true;
+      if (visited.has(next)) continue;
+      visited.add(next);
+      pending.push(next);
+    }
+  }
+  return false;
+}
 
 function rememberAcquisitionIntent(host, state, player, now) {
   const inp = state && state.input || {};

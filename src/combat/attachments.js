@@ -49,6 +49,9 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   // PQ-030 Transverse Snare diverts the press into a remote line transaction. The empty override
   // keeps a defensive/legacy ordinary latch physically ordinary if it reaches this policy path.
   transverse_snare: Object.freeze({ flag: 'masslineHeadTransverseSnare', spring: Object.freeze({}) }),
+  // PQ-031 Twin Bridle is created from a dedicated world-to-world definition. A defensive ordinary
+  // latch remains the ordinary player rope and cannot smuggle the ship in as a third endpoint.
+  twin_bridle: Object.freeze({ flag: 'masslineHeadTwinBridle', spring: Object.freeze({}) }),
 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
@@ -254,6 +257,8 @@ export function createAttachmentService(context) {
     state.combat.attachments.byId[id] = attachment;
     appendCombatTrace(state.combat, state.tick, 'attachment.created', {
       actorId: owner.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
       targetId: target.id,
       attachmentId: id,
       attachmentDefId: def.id,
@@ -264,6 +269,8 @@ export function createAttachmentService(context) {
     });
     if (bus) bus.emit('tether:attached', {
       actorId: owner.id,
+      ...(controller ? { controllerId: controller.id } : {}),
+      ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
       targetId: target.id,
       attachmentId: id,
       attachmentDefId: def.id,

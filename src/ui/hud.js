@@ -488,6 +488,7 @@ const MASSLINE_HEAD_LABELS = Object.freeze({
   frame_coupler: 'FRAME COUPLER',
   monofilament_sweep: 'MONOFILAMENT',
   transverse_snare: 'TRANSVERSE SNARE',
+  twin_bridle: 'TWIN BRIDLE',
 });
 
 /**
@@ -537,6 +538,9 @@ export function masslineTetherStatus(tether) {
   else if (tether && tether.kind === 'transverse_snare' && phase === 'deploying') status = 'DEPLOYING';
   else if (tether && tether.kind === 'transverse_snare' && phase === 'armed') status = 'ARMED';
   else if (tether && tether.kind === 'transverse_snare' && phase === 'caught') status = 'CAUGHT';
+  else if (tether && tether.kind === 'twin_bridle'
+      && (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85)) status = 'HIGH LOAD';
+  else if (tether && tether.kind === 'twin_bridle') status = 'LINKED';
   else if (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85) {
     status = operation ? `${operation} · HIGH LOAD` : 'HIGH LOAD';
   } else if (phase === 'loaded' || load > TETHER_STATUS_LOADED_LOAD || strain > 0.6) {
@@ -1844,6 +1848,9 @@ export function createHud(ctx, alerts) {
     if (tether.kind === 'transverse_snare') {
       return cutLabel ? `TAP [${cutLabel}] CUT SNARE` : 'SNARE CUT UNBOUND';
     }
+    if (tether.kind === 'twin_bridle') {
+      return cutLabel ? `TAP [${cutLabel}] CUT BRIDLE` : 'BRIDLE CUT UNBOUND';
+    }
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
     const parts = [];
@@ -1874,8 +1881,9 @@ export function createHud(ctx, alerts) {
     const cutLabel = resolveActionLabel(state, 'tether');
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
-    const remoteOnly = tether.kind === 'transverse_snare';
-    const sig = `${cutLabel}|${remoteOnly ? '' : reelInLabel}|${remoteOnly ? '' : reelOutLabel}|${remoteOnly ? 'remote' : 'local'}`;
+    const remoteOnly = tether.kind === 'transverse_snare' || tether.kind === 'twin_bridle';
+    const remoteVerb = tether.kind === 'twin_bridle' ? 'CUT BRIDLE' : 'CUT SNARE';
+    const sig = `${cutLabel}|${remoteOnly ? '' : reelInLabel}|${remoteOnly ? '' : reelOutLabel}|${remoteOnly ? tether.kind : 'local'}`;
     if (sig === _tetherChipSig) {
       tetherControls.hidden = false;
       return;
@@ -1889,7 +1897,7 @@ export function createHud(ctx, alerts) {
       chips.push({ bind: `HOLD ${cutLabel}`, hint: LINE_CONTROL_HINT });
     }
     if (!remoteOnly && reelOutLabel) chips.push({ bind: reelOutLabel, verb: 'PAY OUT' });
-    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: remoteOnly ? 'CUT SNARE' : 'CUT' });
+    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: remoteOnly ? remoteVerb : 'CUT' });
     if (!chips.length) {
       tetherControls.hidden = false;
       tetherControls.textContent = 'TETHER UNBOUND';
@@ -3979,7 +3987,7 @@ export function createHud(ctx, alerts) {
         setStyle(elTetherStat, 'display', active ? '' : 'none');
         if (active) {
           const targetEnt = state.entities.get(tether.targetId);
-          const sourceEnt = tether.kind === 'transverse_snare' ? state.entities.get(tether.sourceId) : null;
+          const sourceEnt = tether.sourceId != null ? state.entities.get(tether.sourceId) : null;
           const targetName = sourceEnt
             ? `${hudEntityName(sourceEnt)} ↔ ${hudEntityName(targetEnt)}`
             : hudEntityName(targetEnt);

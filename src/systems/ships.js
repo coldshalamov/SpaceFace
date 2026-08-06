@@ -46,6 +46,7 @@ const MASSLINE_HEAD_PRIORITY = Object.freeze({
   frame_coupler: 3,
   monofilament_sweep: 4,
   transverse_snare: 5,
+  twin_bridle: 6,
 });
 function masslineHeadIdForDef(def) {
   const id = def && def.mods && def.mods.masslineHeadId;

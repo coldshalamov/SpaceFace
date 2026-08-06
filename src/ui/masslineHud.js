@@ -1,7 +1,7 @@
 // Massline HUD surfaces (Wave M2, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
 //
 // Three read-only surfaces over massline2 runtime state, in the BP-11 "SYSTEMS-only surfacing
-// module" style (DOM fully guarded; no hud.js edits; own scoped CSS; pointer-events none):
+// module" style (DOM fully guarded; own scoped CSS; pointer-events none):
 //
 //   1. RELEASE-TIMING INDICATOR — the glowing read Robin asked for. While a throw is armed, a
 //      diamond sits on the predicted intercept and ramps cool cyan → hot amber as the payload's
@@ -38,6 +38,8 @@ export const MASSLINE_HUD_CSS = `
   vector-effect:non-scaling-stroke; }
 #sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:rgba(125,224,255,0.92);
   stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(125,224,255,0.72)); }
+#sf-ml2 .ml2-preview-link.ml2-bridle-preview .ml2-preview-line { stroke:rgba(255,181,71,0.9);
+  stroke-width:2; stroke-dasharray:7 5; filter:drop-shadow(0 0 4px rgba(125,224,255,0.55)); }
 #sf-ml2 .ml2-preview.ml2-preview-snare { border-style:solid; border-left-width:3px; }
 /* The acquisition MARK is the world anchor: it sits on the candidate itself, so the preview never
    needs a player-to-target link line (see _updateAcquisitionPreview). Shape, not colour, carries
@@ -50,6 +52,9 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:50%; transform:none; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:#ffd08a; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable i { border-style:dashed; box-shadow:none; }
+#sf-ml2 .ml2-preview-mark.ml2-bridle-source { color:#7de0ff; }
+#sf-ml2 .ml2-preview-mark.ml2-bridle-source i { inset:2px; transform:none; box-shadow:0 0 9px currentColor; }
+#sf-ml2 .ml2-preview-mark.ml2-bridle-target { color:#ffb547; }
 #sf-ml2 .ml2-preview-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
 #sf-ml2 .ml2-preview { position:absolute; left:0; top:0; min-width:94px;
   transform:translate3d(-9999px,-9999px,0); padding:6px 9px 5px 9px;
@@ -195,6 +200,11 @@ export const masslineHud = {
   _updateAcquisitionPreview(dom, state, player, w2s) {
     const snarePreview = state.player && state.player.masslineSnarePreview;
     const remoteActive = !!(state.player && state.player.remoteMassline && state.player.remoteMassline.active);
+    const bridleSetup = state.masslineBridle;
+    if (bridleSetup && bridleSetup.phase === 'select_endpoint_b' && !remoteActive) {
+      this._updateTwinBridlePreview(dom, bridleSetup, state, w2s);
+      return;
+    }
     if (snarePreview && snarePreview.valid && !remoteActive) {
       this._updateSnarePreview(dom, snarePreview, w2s);
       return;
@@ -232,7 +242,9 @@ export const masslineHud = {
     const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
 
     setStyle(dom.previewMark, 'display', 'block');
+    setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+    setClass(dom.previewMark, 'ml2-bridle-target', false);
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
     setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
@@ -240,6 +252,8 @@ export const masslineHud = {
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
+    setClass(dom.previewSvg, 'ml2-bridle-preview', false);
+    setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
     setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
@@ -254,9 +268,11 @@ export const masslineHud = {
   _hideAcquisitionPreview(dom) {
     setStyle(dom.previewEl, 'display', 'none');
     setStyle(dom.previewMark, 'display', 'none');
+    setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
+    setClass(dom.previewSvg, 'ml2-bridle-preview', false);
   },
 
   _updateSnarePreview(dom, preview, w2s) {
@@ -285,7 +301,9 @@ export const masslineHud = {
     setAttr(dom.previewLine, 'y2', String(Math.round(ty)));
     setStyle(dom.previewSvg, 'display', 'block');
     setClass(dom.previewSvg, 'ml2-snare-preview', true);
+    setClass(dom.previewSvg, 'ml2-bridle-preview', false);
     setStyle(dom.previewMark, 'display', 'none');
+    setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
@@ -295,6 +313,99 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-snare', true);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
+    }
+  },
+
+  _updateTwinBridlePreview(dom, setup, state, w2s) {
+    const sourceEntity = state.entities?.get ? state.entities.get(setup.sourceId) : null;
+    if (!sourceEntity || !sourceEntity.pos) {
+      this._hideAcquisitionPreview(dom);
+      return;
+    }
+    const sourceScreen = w2s({ x: sourceEntity.pos.x, y: 0, z: sourceEntity.pos.z });
+    if (!finiteProjection(sourceScreen)) {
+      this._hideAcquisitionPreview(dom);
+      return;
+    }
+
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const sx = clampRange(sourceScreen.x, 24, viewportWidth - 24);
+    const sy = clampRange(sourceScreen.y, 24, viewportHeight - 24);
+    setStyle(dom.previewSourceMark, 'display', 'block');
+    setStyle(dom.previewSourceMark, 'transform', `translate3d(${Math.round(sx)}px, ${Math.round(sy)}px, 0)`);
+    setClass(dom.previewSourceMark, 'ml2-offscreen', sourceScreen.onScreen === false);
+
+    const receipt = state.masslineAcquisition;
+    const selected = receipt && receipt.selected;
+    const targetEntity = selected && state.entities?.get ? state.entities.get(selected.targetId) : null;
+    const sameEndpoint = !!(targetEntity && targetEntity.id === sourceEntity.id);
+    const pairDenial = setup.lastDenial && setup.lastDenialTargetId === selected?.targetId
+      ? setup.lastDenial
+      : null;
+    const targetScreen = targetEntity && targetEntity.pos
+      ? w2s({ x: targetEntity.pos.x, y: 0, z: targetEntity.pos.z })
+      : null;
+    const hasTarget = finiteProjection(targetScreen) && !sameEndpoint;
+    let anchorX = sx;
+    let anchorY = sy;
+    if (hasTarget) {
+      const tx = clampRange(targetScreen.x, 24, viewportWidth - 24);
+      const ty = clampRange(targetScreen.y, 24, viewportHeight - 24);
+      anchorX = (sx + tx) * 0.5;
+      anchorY = (sy + ty) * 0.5;
+      setStyle(dom.previewMark, 'display', 'block');
+      setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(tx)}px, ${Math.round(ty)}px, 0)`);
+      setClass(dom.previewMark, 'ml2-bridle-target', true);
+      setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
+      setClass(dom.previewMark, 'ml2-mark-unavailable', !!pairDenial
+        || (selected.status !== 'ready' && selected.status !== 'protected'));
+      setClass(dom.previewMark, 'ml2-offscreen', targetScreen.onScreen === false);
+      setAttr(dom.previewLine, 'x1', String(Math.round(sx)));
+      setAttr(dom.previewLine, 'y1', String(Math.round(sy)));
+      setAttr(dom.previewLine, 'x2', String(Math.round(tx)));
+      setAttr(dom.previewLine, 'y2', String(Math.round(ty)));
+      setStyle(dom.previewSvg, 'display', 'block');
+      setClass(dom.previewSvg, 'ml2-bridle-preview', true);
+      setClass(dom.previewSvg, 'ml2-snare-preview', false);
+    } else {
+      setStyle(dom.previewMark, 'display', 'none');
+      setStyle(dom.previewSvg, 'display', 'none');
+      setClass(dom.previewSvg, 'ml2-bridle-preview', false);
+    }
+
+    const sourceLabel = worldEntityLabel(sourceEntity);
+    const remaining = Math.max(0, Math.ceil(finite(setup.expiresAt) - finite(state.simTime)));
+    let text;
+    let aria;
+    if (sameEndpoint) {
+      text = `${sourceLabel} · A AGAIN · MASSLINE TO CANCEL`;
+      aria = `Twin Bridle endpoint A ${sourceLabel}. The same endpoint is selected; press Massline to cancel.`;
+    } else if (hasTarget) {
+      const targetLabel = worldEntityLabel(targetEntity);
+      const status = previewStatusCopy(pairDenial ? 'invalid' : selected.status, pairDenial || selected.reason);
+      text = `${sourceLabel} A ↔ ${targetLabel} B · ${status} · ${remaining}S`;
+      aria = pairDenial
+        ? `Twin Bridle endpoint A ${sourceLabel}, endpoint B ${targetLabel}, cannot link: ${status.toLowerCase()}.`
+        : `Twin Bridle endpoint A ${sourceLabel}, endpoint B ${targetLabel}, ${status.toLowerCase()}. Press Massline to link.`;
+    } else {
+      const denial = setup.lastDenial ? ` · ${previewStatusCopy('invalid', setup.lastDenial)}` : '';
+      text = `${sourceLabel} · A LOCKED · AIM ENDPOINT B · ${remaining}S${denial}`;
+      aria = `Twin Bridle endpoint A ${sourceLabel} locked. Aim at endpoint B and press Massline. ${remaining} seconds remain.`;
+    }
+    const captionWidth = estimateCaptionWidth(text);
+    const labelX = clampRange(anchorX - captionWidth * 0.5, 8, Math.max(8, viewportWidth - captionWidth - 12));
+    const labelY = clampRange(anchorY + 20, 8, viewportHeight - 40);
+    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'aria-label', aria);
+    setAttr(dom.previewEl, 'data-receipt-id', String((selected && receipt.id) || setup.sourceReceiptId || ''));
+    setAttr(dom.previewEl, 'data-target-id', String((selected && selected.targetId) || ''));
+    const visualStatus = pairDenial ? 'invalid' : selected?.status;
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      setClass(dom.previewEl, `ml2-preview-${name}`, visualStatus === name);
     }
   },
 
@@ -420,9 +531,9 @@ export const masslineHud = {
     const root = document.createElement('div');
     root.id = 'sf-ml2';
 
-    // Ordinary target acquisition never draws a player-to-target link. This SVG is used only by
-    // the Transverse Snare head, where the free-target segment itself is the exact thing a press
-    // will deploy; once deployed, the real rendered Massline cable replaces it.
+    // Ordinary target acquisition never draws a player-to-target link. This SVG is reserved for
+    // remote-head previews whose exact world-to-world segment is the thing a press will deploy;
+    // once deployed, the real rendered Massline cable replaces it.
     const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     previewSvg.setAttribute('class', 'ml2-preview-link');
     previewSvg.style.display = 'none';
@@ -439,6 +550,14 @@ export const masslineHud = {
     const previewMarkGlyph = document.createElement('i');
     previewMark.appendChild(previewMarkGlyph);
     root.appendChild(previewMark);
+
+    const previewSourceMark = document.createElement('div');
+    previewSourceMark.className = 'ml2-preview-mark ml2-bridle-source';
+    previewSourceMark.style.display = 'none';
+    previewSourceMark.setAttribute('aria-hidden', 'true');
+    const previewSourceGlyph = document.createElement('i');
+    previewSourceMark.appendChild(previewSourceGlyph);
+    root.appendChild(previewSourceMark);
 
     const previewEl = document.createElement('div');
     previewEl.className = 'ml2-preview';
@@ -508,7 +627,7 @@ export const masslineHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, previewEl, previewMark, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
+      root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
     };
     return this._dom;
@@ -530,9 +649,21 @@ function previewStatusCopy(status, reason) {
   if (status === 'blocked' || reason === 'blocked') return 'LINE BLOCKED';
   if (status === 'out-of-range' || reason === 'out-of-range') return 'OUT OF RANGE';
   if (status === 'cooldown' || reason === 'cooldown') return 'COOLDOWN';
-  if (reason === 'target-lost') return 'TARGET LOST';
+  if (reason === 'target-lost' || reason === 'endpoint_lost') return 'ENDPOINT LOST';
   if (reason === 'preview-stale') return 'REACQUIRE';
+  if (reason === 'pair_out_of_range') return 'PAIR OUT OF RANGE';
+  if (reason === 'two_heavy_endpoints') return 'ONE HEAVY ENDPOINT MAX';
+  if (reason === 'attachment_cycle') return 'WOULD FORM LOOP';
+  if (reason === 'controller_attachment_limit') return 'CUT ACTIVE BRIDLE';
   return 'UNAVAILABLE';
+}
+
+function worldEntityLabel(entity) {
+  const data = entity && entity.data;
+  const label = data && (data.displayName || data.name || data.label);
+  if (typeof label === 'string' && label.trim()) return label.trim();
+  const type = entity && entity.type || 'endpoint';
+  return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 // Layout-free width estimate for the caption. Used only to choose which side of the mark the

@@ -10,6 +10,7 @@ const result = spawnSync(process.execPath, [
   'test/massline-frame-coupler-head.test.mjs',
   'test/massline-monofilament-sweep-head.test.mjs',
   'test/massline-transverse-snare-head.test.mjs',
+  'test/massline-twin-bridle-head.test.mjs',
 ], { cwd: root, stdio: 'inherit', windowsHide: true });
 
 process.exitCode = Number.isInteger(result.status) ? result.status : 1;

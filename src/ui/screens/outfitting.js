@@ -282,6 +282,7 @@ export function statSnippet(def) {
     if (m.masslineHeadId === 'frame_coupler') parts.push('separation-damping head');
     if (m.masslineHeadId === 'monofilament_sweep') parts.push('hostile-cut sweep head');
     if (m.masslineHeadId === 'transverse_snare') parts.push('free-target crossing snare');
+    if (m.masslineHeadId === 'twin_bridle') parts.push('two-endpoint world tether');
     if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
     if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');
     if (m.cloakRechargePerS) parts.push(Math.round(m.cloakRechargePerS * 100) + '% cloak recharge/s');

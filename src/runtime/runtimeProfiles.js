@@ -41,6 +41,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     masslineHeadMonofilamentSweep: true,
     // PQ-030 / SF-28: fitted Transverse Snare heads deploy one visible crossing line.
     masslineHeadTransverseSnare: true,
+    // PQ-031 / SF-29: fitted Twin Bridle heads bind two selected world bodies with one rope.
+    masslineHeadTwinBridle: true,
   }),
   travel: Object.freeze({
     travelBurn: true,
@@ -83,6 +85,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     masslineHeadFrameCoupler: false,
     masslineHeadMonofilamentSweep: false,
     masslineHeadTransverseSnare: false,
+    masslineHeadTwinBridle: false,
   }),
   travel: Object.freeze({
     travelBurn: false,
