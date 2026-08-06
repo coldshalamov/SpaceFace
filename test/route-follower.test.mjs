@@ -259,6 +259,53 @@ test('reaching the GATE requests the handoff; only a real sector entry advances 
   assert.notDeepEqual(h.state.nav.autopilot.target, firstTarget, 'a new leg targets a new endpoint');
 });
 
+test('an accepted gate handoff stays engaged while the jump charge owns the transition', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+  const destination = h.state.nav.executor.legs[0].toSectorId;
+
+  // flightV3 retires the local gate autopilot before world spends three seconds charging. During
+  // that interval inactive autopilot is expected: the world jump state machine, not a controller,
+  // owns the transition.
+  h.state.nav.autopilot.active = false;
+  h.state.nav.autopilot.status = 'arrived';
+  h.bus.emit('nav:autopilot', h.state.nav.autopilot);
+  h.bus.emit('jump:chargeStart', { targetSectorId: destination, via: 'gate', chargeNeeded: 3 });
+
+  for (let i = 0; i < 240; i++) h.sys.update(1 / 60, h.state);
+
+  assert.equal(h.state.nav.executor.engaged, true,
+    'the expected inactive controller during charge must not become autopilot-lost');
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.TRANSITING);
+  assert.equal(h.state.nav.executor.interruptReason, null);
+  assert.equal(h.state.nav.executor.legIndex, 0, 'charge alone is not arrival');
+
+  h.state.world.currentSectorId = destination;
+  h.bus.emit('sector:enter', { sectorId: destination });
+  assert.equal(h.state.nav.executor.legIndex, 1, 'real sector entry advances the still-engaged route');
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.ACQUIRING);
+});
+
+test('a rejected gate handoff becomes a specific resumable interruption', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+  h.sys.update(1 / 60, h.state);
+
+  h.state.nav.autopilot.active = false;
+  h.state.nav.autopilot.status = 'arrived';
+  h.bus.emit('nav:autopilot', h.state.nav.autopilot);
+  h.bus.emit('jump:chargeAbort', { reason: 'credits' });
+
+  assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.INTERRUPTED);
+  assert.equal(h.state.nav.executor.engaged, false);
+  assert.equal(h.state.nav.executor.interruptReason, 'gate-credits');
+  assert.ok(h.state.nav.route, 'the rejected itinerary remains available to resume');
+  assert.equal(h.state.nav.executor.legIndex, 0, 'a rejected handoff cannot consume the leg');
+});
+
 test('an intra-sector leg still advances on autopilot arrival — the gate rule is not universal', () => {
   const route = routeFromChain(CHAIN);
   const h = makeHarness({ route, autoTravel: true });

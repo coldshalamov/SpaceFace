@@ -318,6 +318,11 @@ export const routeFollower = {
     // Observe the delegated controller rather than polling it — see the edge-trigger note above.
     bus.on('nav:autopilot', (p) => this._onAutopilot(p));
 
+    // A gate request can be rejected immediately or its accepted charge can later abort. While the
+    // gate handoff latch is live, that receipt belongs to this executor and must become an explicit
+    // resumable interruption instead of leaving the route claiming it is still in transit.
+    bus.on('jump:chargeAbort', (p) => this._onJumpChargeAbort(p || {}));
+
     // Gate handoff: crossing into the leg's destination sector completes that leg, whether the
     // transition came from a gate jump or continuous M2a geography.
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
@@ -432,6 +437,12 @@ export const routeFollower = {
       this.interrupt('lost-leg', { detail: leg.toSectorId });
       return;
     }
+
+    // Reaching a sector gate retires the local autopilot before world begins its charge. From that
+    // point until `sector:enter`, the inactive controller is expected: the jump state machine owns
+    // the ship's transition. Do not misclassify that handoff window as a silently lost autopilot,
+    // and do not re-request the travel drive while the world is already taking the leg across.
+    if (executor.handoffRequestedLegIndex === executor.legIndex) return;
 
     // Arm the delegated controller exactly once per leg (edge-triggered — see the header).
     if (executor.armedLegIndex !== executor.legIndex) {
@@ -664,6 +675,15 @@ export const routeFollower = {
     }
   },
 
+  _onJumpChargeAbort(payload) {
+    const nav = this.state && this.state.nav;
+    const executor = nav && nav.executor;
+    if (!executor || executor.engaged !== true || payload.unfiled === true) return;
+    if (executor.handoffRequestedLegIndex !== executor.legIndex) return;
+    const reason = String(payload.reason || 'rejected');
+    this.interrupt(`gate-${reason}`, { detail: reason });
+  },
+
   _onSectorEnter({ sectorId }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
@@ -834,7 +854,13 @@ export const routeFollower = {
     executor.handoffRequestedLegIndex = executor.legIndex;
     this._setStatus(executor, ROUTE_EXECUTOR_STATUS.TRANSITING);
     this._emit('world:requestJump', { targetSectorId: leg.toSectorId, via: 'gate' });
-    this._publish('gate-handoff-requested', { toSectorId: leg.toSectorId });
+    // The bus is synchronous. An immediate `jump:chargeAbort` may already have interrupted and
+    // cleared the latch by the time requestJump returns; do not publish a contradictory pending
+    // handoff after that terminal-for-now transition.
+    if (executor.engaged === true
+        && executor.handoffRequestedLegIndex === executor.legIndex) {
+      this._publish('gate-handoff-requested', { toSectorId: leg.toSectorId });
+    }
   },
 
   _complete(reason = 'arrived') {
