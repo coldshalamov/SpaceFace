@@ -54,6 +54,10 @@ const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 const DOCK_RANGE = 60;         // how close before "docking" (trading)
 const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
 const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
+// How many neighbouring rock faces one refinery's barges will spread across before repeating. Small
+// on purpose: the point is that a shift works ONE seam together, close enough that the barges share
+// a frame with each other and with anything passing. See _pickWorkableAsteroidNear.
+const MINER_FIELD_SPREAD_CAP = 4;
 
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
 // skin. The hull + speed + archetype encode the role's identity; the update loop encodes its
@@ -474,7 +478,14 @@ export const traffic = {
     const home = originStation && originStation.pos ? originStation : (stations && stations[0]);
     if (!home || !home.pos) return null;
     if (role === 'miner') {
-      const rockId = this._pickAsteroid(this.state);
+      // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit
+      // sector. `spread` walks the nearest few faces so a shift's barges sit beside each other
+      // instead of stacking on one; it is derived from the live job count, so it is deterministic
+      // and does not consume the traffic RNG stream (which would move every later seeded draw).
+      const spread = this.state.npcJobs && this.state.npcJobs.byId
+        ? Object.keys(this.state.npcJobs.byId).length % MINER_FIELD_SPREAD_CAP
+        : 0;
+      const rockId = this._pickWorkableAsteroidNear(this.state, home, spread);
       const rock = rockId != null && this.state.entities ? this.state.entities.get(rockId) : null;
       if (!rock || !rock.pos) return null; // no field to work → keep the ambient miner stepper
       return {
@@ -1041,6 +1052,55 @@ export const traffic = {
       if (this._rng() < 1 / seen) picked = e;
     }
     return picked ? picked.id : null;
+  },
+
+  /**
+   * The rock a barge working out of `home` would actually cut: the nearest workable one, with a
+   * deterministic spread so a shift's barges do not all stack on the same face.
+   *
+   * WHY THIS EXISTS. `_pickAsteroid` samples the sector's asteroid index UNIFORMLY, which is right
+   * for its original callers (the ambient stepper wandering to some rock) and wrong for commissioning
+   * a durable job. A sector is 4200 units in radius, so a uniformly-drawn field waypoint routinely
+   * sends a barge past several hundred identical rocks to cut one across the map. Measured in
+   * `sector_helios_prime`: live job hulls sitting 1083, 1694, 1841, 3815 and **13491** units from the
+   * player, with the working ones effectively never in the same place as anything else.
+   *
+   * That is a fiction problem before it is a density problem — no crew burns a shift's fuel to reach
+   * an identical rock — and it is a density problem because extraction ends up nowhere near the
+   * refinery that eats the ore, so neither the player nor any other NPC ever shares a frame with it.
+   *
+   * `spread` picks the Nth-nearest rather than always the 1st, so several barges out of one refinery
+   * work neighbouring faces instead of stacking on one. It is an index, not a random draw: the caller
+   * derives it from the hull's own spawn ordinal so the result stays deterministic.
+   */
+  _pickWorkableAsteroidNear(state, home, spread = 0) {
+    if (!home || !home.pos) return this._pickAsteroid(state);
+    const indexed = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+      ? state.entityIndex.asteroids
+      : null;
+    const source = indexed && indexed.length ? indexed : (state.entityList || []);
+    // Keep the best (spread + 1) by distance without sorting the whole field. The candidate count is
+    // tiny and bounded, so this stays a single linear pass over the index.
+    const wanted = Math.max(1, Math.min(MINER_FIELD_SPREAD_CAP, (spread | 0) + 1));
+    const bestId = new Array(wanted).fill(null);
+    const bestD2 = new Array(wanted).fill(Infinity);
+    for (const rock of source) {
+      if (!rock || rock.type !== 'asteroid' || !rock.alive || !rock.pos) continue;
+      const dx = rock.pos.x - home.pos.x;
+      const dz = rock.pos.z - home.pos.z;
+      const d2 = dx * dx + dz * dz;
+      for (let i = 0; i < wanted; i++) {
+        if (d2 >= bestD2[i]) continue;
+        for (let j = wanted - 1; j > i; j--) { bestD2[j] = bestD2[j - 1]; bestId[j] = bestId[j - 1]; }
+        bestD2[i] = d2;
+        bestId[i] = rock.id;
+        break;
+      }
+    }
+    // Fewer rocks than the requested rank: fall back down the list rather than returning null, so a
+    // thin field still yields a job instead of silently dropping the barge to its ambient stepper.
+    for (let i = wanted - 1; i >= 0; i--) if (bestId[i] != null) return bestId[i];
+    return null;
   },
 
   // Escorts convoy with the nearest civilian freighter — they shadow it, distinct from patrols.
