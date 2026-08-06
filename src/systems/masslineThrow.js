@@ -166,7 +166,8 @@ export const masslineThrow = {
 
     // `off` and `snap` are press-to-throw modes. OFF means no precision help, not "RMB does
     // nothing". SNAP keeps the same manual decision, but an early press inside the 90 ms window
-    // waits for the exact frame and a just-late press receives one bounded angular correction.
+    // waits for the exact frame. A late press cuts immediately and preserves the payload's earned
+    // exit vector; release assistance never steers either endpoint.
     if (assistMode === 'off') {
       if (pressed && solution.valid) this._executeThrow(state, player, payload, aim, solution, 'off');
       return;
@@ -194,14 +195,6 @@ export const masslineThrow = {
       return;
     }
 
-    const windowRad = Math.abs(kin.omega) * (SNAP_WINDOW_MS / 1000);
-    const correction = Math.abs(solution.errorRad) <= solution.tolRad + windowRad
-      ? this._correctPayloadExit(state, payload, solution)
-      : null;
-    if (correction && correction.accepted) {
-      this._executeThrow(state, player, payload, aim, solution, 'snap-corrected', correction);
-      return;
-    }
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
   },
 
@@ -344,37 +337,11 @@ export const masslineThrow = {
     };
   },
 
-  _correctPayloadExit(state, payload, solution) {
-    const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function' || !payload.vel) return null;
-    const speed = Math.hypot(finite(payload.vel.x), finite(payload.vel.z));
-    if (!(speed > 1)) return null;
-    const mass = Math.max(0.1, finite(payload.mass, 1));
-    const vx = Math.cos(solution.interceptAngle) * speed - payload.vel.x;
-    const vz = Math.sin(solution.interceptAngle) * speed - payload.vel.z;
-    const impulse = { x: vx * mass, z: vz * mass };
-    const accepted = !!physics.applyImpulse({
-      entityId: payload.id,
-      impulse,
-      point: null,
-      reason: 'massline_throw_snap',
-      tick: state.tick,
-    });
-    return {
-      entityId: payload.id,
-      reason: 'massline_throw_snap',
-      accepted,
-      impulse,
-      angularCorrectionRad: solution.errorRad,
-      tick: state.tick,
-    };
-  },
-
   // Execute an armed throw: cut through the same attachment service tetherGameplay uses (its
   // reconcile pass emits the canonical tether:released/releaseRated next tick), then announce the
   // throw. masslineImpacts arms its sling tracker off the latch transition automatically, so the
   // shipped whip-impact/whip-damage chain composes with zero extra wiring.
-  _executeThrow(state, player, payload, aim, solution, mode, correction = null) {
+  _executeThrow(state, player, payload, aim, solution, mode) {
     const attachments = combatAttachments(this);
     const attachmentId = state.player.tether.attachmentId;
     if (!attachments || attachmentId == null) return false;
@@ -384,7 +351,7 @@ export const masslineThrow = {
     const runtime = ensureThrowSubtree(state);
     const releaseId = `massline:throw:${state.tick}:${payload.id}`;
     const prediction = predictionReceipt(solution);
-    const impulses = correction && correction.accepted ? [correction] : [];
+    const impulses = [];
     runtime.lastThrow = {
       releaseId,
       payloadId: payload.id,
@@ -396,7 +363,7 @@ export const masslineThrow = {
       tick: state.tick,
       time: finite(state.simTime, state.tick / 60),
       prediction,
-      correction,
+      correction: null,
       impulses,
       cut: {
         accepted: true,

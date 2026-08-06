@@ -125,30 +125,31 @@ test('PQ-006 Arm, HUD mirror, and release validation consume the same projected 
   });
 });
 
-test('PQ-006 Snap records its one bounded correction impulse before validating actual exit', () => {
+test('PQ-029 Snap may time the cut but never steers the payload exit', () => {
   withMasslineFlags(() => {
     const harness = makeThrowHarness({ assist: 'snap', aimAngle: -0.05, omega: 0.9 });
+    const earnedExit = { ...harness.payload.vel };
     masslineThrow.init(harness.ctx);
     masslineThrow.update(1 / 60, harness.state);
 
     assert.equal(harness.cuts.length, 1);
-    assert.equal(harness.impulses.length, 1, 'one release decision queues one correction impulse');
+    assert.equal(harness.impulses.length, 0, 'release assistance must not queue a steering impulse');
+    assert.deepEqual(harness.payload.vel, earnedExit, 'the payload must keep its earned exit vector');
     const lastThrow = harness.state.massline2.throw.lastThrow;
-    assert.equal(lastThrow.mode, 'snap-corrected');
-    assert.equal(lastThrow.correction.accepted, true);
-    assert.equal(lastThrow.correction.reason, 'massline_throw_snap');
-    assert.deepEqual(lastThrow.impulses, [lastThrow.correction]);
+    assert.equal(lastThrow.mode, 'snap-manual');
+    assert.equal(lastThrow.correction, null);
+    assert.deepEqual(lastThrow.impulses, []);
 
     harness.state.tick = 101;
     harness.state.simTime = 101 / 60;
     masslineThrow.update(1 / 60, harness.state);
     const receipt = harness.state.massline2.throw.lastReleaseValidation;
-    assert.equal(receipt.impulses.length, 1);
-    assert.equal(receipt.impulses[0].reason, 'massline_throw_snap');
-    assert.equal(receipt.impulses[0].accepted, true);
-    assert.equal(receipt.withinTolerance, true);
-    assert.ok(Math.abs(receipt.divergenceRad) < 1e-9);
-    assert.ok(receipt.trajectory.divergenceWU < 1e-9);
+    assert.deepEqual(receipt.impulses, []);
+    assert.ok(Math.abs(lastThrow.errorRad) > 0, "the receipt should retain the player's late release error");
+    assert.ok(Math.abs(receipt.divergenceRad) > 0,
+      'validation should report the uncorrected late-release divergence honestly');
+    assert.ok(receipt.trajectory.divergenceWU > 0,
+      'the receipt must not pretend assistance rewrote the earned trajectory');
 
     masslineThrow.destroy();
   });
