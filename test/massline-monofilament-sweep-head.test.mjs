@@ -157,6 +157,59 @@ test('an active Monofilament line queries a bounded corridor instead of scanning
     `the 100-wu line stays inside a local corridor query, got radius ${queries[0].radius}`);
 });
 
+test('a fast Massline payload queries local impact candidates instead of scanning the world', () => {
+  const h = createSweepHarness({
+    headId: 'elastic_whip',
+    targetVel: { x: 0, z: 60 },
+    victim: { pos: { x: 100, z: 0 } },
+  });
+  const decoys = [];
+  for (let i = 0; i < 4096; i++) {
+    decoys.push({
+      id: 6000 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 8,
+      pos: { x: 8000 + i * 20, z: 8000 },
+      vel: { x: 0, z: 0 },
+    });
+  }
+  h.state.entityList.push(...decoys);
+  for (const decoy of decoys) h.state.entities.set(decoy.id, decoy);
+  assert.equal(h.state.entities.size, 4099, 'the regression world is intentionally dense');
+  h.state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    collidables: h.state.entityList,
+    spatialDynamics: [h.player, h.target, h.victim],
+    shipLike: [h.player, h.victim],
+  };
+
+  const queries = [];
+  h.state.spatialHash = {
+    diagnostics: { activeBuckets: 1 },
+    queryRadius(x, z, radius, out) {
+      queries.push({ x, z, radius });
+      out.push(h.victim);
+      return out;
+    },
+  };
+  Object.defineProperty(h.state.entities, 'values', {
+    value() { throw new Error('Massline impact detection performed an all-entity scan'); },
+  });
+  const impacts = [];
+  h.bus.on('tether:whipImpact', (payload) => impacts.push(payload));
+
+  h.system.update(DT, h.state);
+
+  assert.equal(impacts.length, 1, 'the same physical contact still produces its whip impact');
+  assert.equal(impacts[0].victimId, h.victim.id);
+  assert.equal(queries.length, 1, 'one spatial query owns impact candidate admission');
+  assert.ok(queries[0].radius > 40 && queries[0].radius < 48,
+    `the moving payload stays inside a local impact query, got radius ${queries[0].radius}`);
+});
+
 test('Monofilament damage is hostile-only, momentum-bounded, player-attributed, and kernel-routed', () => {
   const h = createSweepHarness();
   const routed = [];

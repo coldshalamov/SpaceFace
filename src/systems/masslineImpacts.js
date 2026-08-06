@@ -34,6 +34,7 @@ const WHIP_IMPACT_SOLID = 55;       // wu/s relSpeed — rating floor for a 'sol
 const WHIP_IMPACT_CRUSHING = 95;    // wu/s relSpeed — 'crushing' floor; also the severity ceiling
 const WHIP_SLING_WINDOW_S = 6;      // s — a released mass stays "the player's whip" this long
 const WHIP_CONTACT_PAD = 0.5;       // wu — overlap tolerance (physics rests solids at ~touching)
+const WHIP_VICTIM_TRAVEL_PAD = 32;  // wu — ordinary one-step victim motion covered by the query
 const WHIP_LOG_CAP = 12;            // per-session record cap (oldest dropped)
 const SWEEP_CONTACT_PAD = 0.75;      // wu — filament width/readability tolerance around hull radius
 const SWEEP_ENDPOINT_MARGIN = 0.08;  // line fraction — keep endpoint body hits in whip-impact domain
@@ -68,6 +69,7 @@ export const masslineImpacts = {
     // same-mass relatch remains one run rather than re-arming damage during a cut/regrab exploit.
     this._latch = null;   // { massId, warned:Set, sweepWarned:Set }
     this._sling = null;   // { massId, until, warned:Set, sweepWarned:Set }
+    this._impactScratch = [];
     this._sweepScratch = [];
     this._sweepQueryCenter = { x: 0, z: 0 };
   },
@@ -217,10 +219,29 @@ export const masslineImpacts = {
   _scanForImpacts(runtime, state, dt, now, mass, warned, slung) {
     const massSpeed = Math.hypot(finite(mass.vel.x, 0), finite(mass.vel.z, 0));
     if (massSpeed < WHIP_IMPACT_MIN_SPEED) return;
-    const entities = state.entities;
-    if (!entities || typeof entities.values !== 'function') return;
+    const source = impactCandidateSource(state);
+    const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    const queryRadius = Math.max(0, finite(mass.radius, 0)) + WHIP_CONTACT_PAD
+      + massSpeed * step + WHIP_VICTIM_TRAVEL_PAD;
+    const candidates = queryNearbyEntities(
+      state,
+      mass.pos,
+      queryRadius,
+      this._impactScratch || (this._impactScratch = []),
+      source,
+    );
 
-    for (const e of entities.values()) {
+    // A body moving more than the conservative query pad can begin outside the current local
+    // footprint and still cross the whipped mass within this step. Preserve that edge case from
+    // the previous full scan by supplementing only the existing dynamic-body index.
+    if (candidates !== source) {
+      for (const e of impactExceptionalSource(state, source)) {
+        if (!e || bodySpeed(e) * step <= WHIP_VICTIM_TRAVEL_PAD) continue;
+        appendUniqueCandidate(candidates, e);
+      }
+    }
+
+    for (const e of candidates) {
       if (!e || !e.alive || !e.pos) continue;
       if (e.id === mass.id) continue;
       // Reeling the mass home always ends in player contact — that is the reel, not a whip; and
@@ -399,6 +420,24 @@ function sweepCandidateSource(state) {
   if (state && Array.isArray(state.entityList)) return state.entityList;
   if (state && state.entities && typeof state.entities.values === 'function') return state.entities.values();
   return [];
+}
+
+function impactCandidateSource(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.collidables)) {
+    return index.collidables;
+  }
+  if (state && Array.isArray(state.entityList) && state.entityList.length > 0) return state.entityList;
+  if (state && state.entities && typeof state.entities.values === 'function') return state.entities.values();
+  return [];
+}
+
+function impactExceptionalSource(state, fallback) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.spatialDynamics)) {
+    return index.spatialDynamics;
+  }
+  return fallback;
 }
 
 function appendUniqueCandidate(candidates, entity) {
