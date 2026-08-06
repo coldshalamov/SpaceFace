@@ -10,6 +10,24 @@ const { COLS, ROWS } = DRILL_CONST;
 
 export const MODES = Object.freeze({ DRIVE: 'drive', BUILD: 'build' });
 
+// Asteroid Ops is a modal control surface, but its mode controller intentionally leaves
+// non-console keys unhandled for the global UI router. Claim only keys the console consumed so a
+// Build command cannot also activate a focused button, and so Escape changes exactly one layer:
+// BUILD -> DRIVE, then DRIVE -> flight.
+export function routeAsteroidScreenKeyDown({ controller, event, exit }) {
+  if (controller.onKeyDown(event)) {
+    event.stopImmediatePropagation();
+    return true;
+  }
+  if (event.code === 'Escape') {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    exit();
+    return true;
+  }
+  return false;
+}
+
 export function createAsteroidController({ drillSys, getDrillState, controlMap, hooks }) {
   const drive = createDrillInputController({ drillSys, getState: getDrillState });
   const state = {

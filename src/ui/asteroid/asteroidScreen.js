@@ -16,7 +16,11 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { MATERIALS, ORE_TINTS, machineName } from './asteroidRenderer2d.js';
 import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
-import { createAsteroidController, MODES } from './asteroidController.js';
+import {
+  createAsteroidController,
+  MODES,
+  routeAsteroidScreenKeyDown,
+} from './asteroidController.js';
 import { createInspector, placementReason, commodityName, formationLabel } from './inspector.js';
 import { createBuildPalette, costText } from './buildPalette.js';
 
@@ -486,10 +490,7 @@ export const asteroidScreen = {
       const cell = canvasCell(ev);
       if (cell) { commitRemoval(cell); ev.preventDefault(); }
     };
-    const onKeyDown = (ev) => {
-      if (controller.onKeyDown(ev)) return;
-      if (ev.code === 'Escape') exit();
-    };
+    const onKeyDown = (event) => routeAsteroidScreenKeyDown({ controller, event, exit });
     const onKeyUp = (ev) => { controller.onKeyUp(ev); };
     const onWindowBlur = () => controller.cancel();
     exitBtn.addEventListener('click', () => exit());
@@ -960,7 +961,7 @@ export const asteroidScreen = {
         showBanner('unanchored', 'UNANCHORED CLAIM — install a Massline Core or this work is lost when you leave the sector.');
       }
 
-      window.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keydown', onKeyDown, true);
       window.addEventListener('keyup', onKeyUp);
       window.addEventListener('blur', onWindowBlur);
       canvas.addEventListener('mousemove', onMouseMove);
@@ -981,7 +982,7 @@ export const asteroidScreen = {
       this._active = false;
       cancelAnimationFrame(rafId);
       controller.cancel();
-      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onWindowBlur);
       canvas.removeEventListener('mousemove', onMouseMove);

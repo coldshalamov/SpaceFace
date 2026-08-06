@@ -29,13 +29,66 @@ import {
 } from '../scripts/lib/pq024CommittedPresentation.mjs';
 import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
+import { routeAsteroidScreenKeyDown } from '../src/ui/asteroid/asteroidController.js';
 
 const PROBE_URL = new URL('../scripts/probe-pq024-asteroid-claim.mjs', import.meta.url);
 const ELECTRON_URL = new URL('../scripts/check-pq024-asteroid-claim-electron.mjs', import.meta.url);
+const ASTEROID_SCREEN_URL = new URL('../src/ui/asteroid/asteroidScreen.js', import.meta.url);
 const COMMITTED_ELECTRON_URL = new URL(
   '../scripts/check-pq024-committed-transition-electron.mjs',
   import.meta.url,
 );
+
+test('Asteroid Ops exclusively owns active Build and Drive keys', () => {
+  const makeEvent = (code) => {
+    const calls = { prevented: 0, stopped: 0 };
+    return {
+      code,
+      calls,
+      preventDefault() { calls.prevented += 1; },
+      stopImmediatePropagation() { calls.stopped += 1; },
+    };
+  };
+
+  let exits = 0;
+  const buildEnter = makeEvent('Enter');
+  assert.equal(routeAsteroidScreenKeyDown({
+    controller: {
+      onKeyDown(event) {
+        event.preventDefault();
+        return true;
+      },
+    },
+    event: buildEnter,
+    exit: () => { exits += 1; },
+  }), true);
+  assert.deepEqual(buildEnter.calls, { prevented: 1, stopped: 1 });
+  assert.equal(exits, 0, 'a handled Build command must not leak into screen exit or button activation');
+
+  const driveEscape = makeEvent('Escape');
+  assert.equal(routeAsteroidScreenKeyDown({
+    controller: { onKeyDown: () => false },
+    event: driveEscape,
+    exit: () => { exits += 1; },
+  }), true);
+  assert.deepEqual(driveEscape.calls, { prevented: 1, stopped: 1 });
+  assert.equal(exits, 1, 'Drive Escape must retract Asteroid Ops exactly once');
+
+  const unhandled = makeEvent('F5');
+  assert.equal(routeAsteroidScreenKeyDown({
+    controller: { onKeyDown: () => false },
+    event: unhandled,
+    exit: () => { exits += 1; },
+  }), false);
+  assert.deepEqual(unhandled.calls, { prevented: 0, stopped: 0 });
+  assert.equal(exits, 1, 'unhandled global keys must keep their existing owner');
+
+  const screenSource = readFileSync(ASTEROID_SCREEN_URL, 'utf8');
+  assert.match(screenSource, /document\.addEventListener\('keydown', onKeyDown, true\)/,
+    'Asteroid Ops must claim its active keys before the global modal router');
+  assert.match(screenSource, /document\.removeEventListener\('keydown', onKeyDown, true\)/,
+    'capture ownership must be released with the screen session');
+});
 
 test('PQ-024 broker manifest binds one acceptance launch to the queue-listed headless gates', () => {
   const fresh = createPq024AsteroidClaimManifest();
