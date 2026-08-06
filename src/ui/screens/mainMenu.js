@@ -9,6 +9,7 @@ import { coreText } from '../localizedCoreCopy.js';
 
 const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
+const ATTRACT_IDLE_MS = 12_000;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -292,26 +293,49 @@ export const mainMenuScreen = {
     this._stopIdleAttract();
     if (!ctx || !ctx.state) return;
     const state = ctx.state;
-    let idleS = 0;
+    let idleStartedAtMs = null;
     let drifting = false;
-    const reset = () => { idleS = 0; this._setAttractDrift(state, false); drifting = false; };
+    const reducedMotion = () => !!(
+      state.settings && state.settings.video && state.settings.video.motionReduce
+    );
+    const reset = () => {
+      idleStartedAtMs = null;
+      if (drifting) this._setAttractDrift(state, false);
+      drifting = false;
+    };
+    this._attractState = state;
     this._attractReset = reset;
     if (typeof window !== 'undefined') {
       window.addEventListener('keydown', reset);
       window.addEventListener('pointerdown', reset);
       window.addEventListener('mousemove', reset);
+      window.addEventListener('wheel', reset);
+    }
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      this._attractVisibilityReset = reset;
+      document.addEventListener('visibilitychange', reset);
     }
     this._attractRaf = (typeof requestAnimationFrame === 'function')
-      ? requestAnimationFrame(function tick() {
-          idleS += 1 / 60;
-          if (idleS >= 12 && !drifting) { drifting = true; mainMenuScreen._setAttractDrift(state, true); }
+      ? requestAnimationFrame(function tick(frameNowMs) {
+          const nowMs = Number.isFinite(frameNowMs) ? frameNowMs : Date.now();
+          if (idleStartedAtMs == null) idleStartedAtMs = nowMs;
+          if (reducedMotion()) {
+            idleStartedAtMs = nowMs;
+            if (drifting) mainMenuScreen._setAttractDrift(state, false);
+            drifting = false;
+          } else if (nowMs - idleStartedAtMs >= ATTRACT_IDLE_MS && !drifting) {
+            drifting = true;
+            mainMenuScreen._setAttractDrift(state, true);
+          }
           mainMenuScreen._attractRaf = requestAnimationFrame(tick);
         })
       : null;
   },
   _stopIdleAttract() {
     const reset = this._attractReset;
+    const state = this._attractState;
     this._attractReset = null;
+    this._attractState = null;
     if (this._attractRaf && typeof cancelAnimationFrame === 'function') {
       cancelAnimationFrame(this._attractRaf);
       this._attractRaf = null;
@@ -320,11 +344,16 @@ export const mainMenuScreen = {
       window.removeEventListener('keydown', reset);
       window.removeEventListener('pointerdown', reset);
       window.removeEventListener('mousemove', reset);
+      window.removeEventListener('wheel', reset);
     }
+    if (this._attractVisibilityReset && typeof document !== 'undefined' && document.removeEventListener) {
+      document.removeEventListener('visibilitychange', this._attractVisibilityReset);
+    }
+    this._attractVisibilityReset = null;
     // Best-effort: clear the drift flag on whatever render/camera the app exposes.
     try {
-      const sf = typeof window !== 'undefined' && window.SF;
-      const st = sf && sf.state;
+      const sf = !state && typeof window !== 'undefined' && window.SF;
+      const st = state || (sf && sf.state);
       if (st && st.render) this._setAttractDrift(st, false);
     } catch (e) { /* non-critical */ }
   },
