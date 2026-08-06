@@ -181,6 +181,33 @@ test('the nearest-berth pick degrades quietly on junk input', () => {
   assert.equal(sys._nearestStationTo([{ id: 'a', pos: { x: 5, z: 5 } }], null), null);
 });
 
+test('a working hauler ignores the ambient random target and commissions the nearest berth', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 0, z: 0 } };
+  const near = { id: 'near', pos: { x: 360, z: 80 } };
+  const ambientFar = { id: 'far', pos: { x: 14000, z: -9000 } };
+
+  const spec = sys._buildJobSpec(
+    'hauler',
+    { id: 'hull', data: {} },
+    home,
+    ambientFar,
+    [home, ambientFar, near],
+    'sector_local',
+  );
+
+  assert.ok(spec, 'two usable berths should commission a hauler job');
+  assert.equal(spec.route[0].id, 'origin:home');
+  assert.equal(spec.route[1].id, 'dest:near');
+  assert.deepEqual(spec.route[1].pos, near.pos);
+});
+
+test('a working hauler with only its home berth stays ambient instead of inventing a route', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 0, z: 0 } };
+  assert.equal(sys._buildJobSpec('hauler', { data: {} }, home, home, [home], 'sector_local'), null);
+});
+
 test('a salvor binds to a real wreck body, and to the nearest one', () => {
   const sys = Object.create(traffic);
   const home = { id: 'home', pos: { x: 0, z: 0 } };

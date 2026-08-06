@@ -535,7 +535,11 @@ export const traffic = {
       };
     }
     if (role === 'hauler') {
-      const dest = (target && target.pos && target !== home) ? target : this._pickExpressDestination(stations, home);
+      // The ambient stepper's target is deliberately random. Reusing it here can turn a local
+      // terminal run into an express-scale crossing, so durable working freight chooses the nearest
+      // other berth from its actual spawn/home station instead. Express liners keep their separate
+      // itinerary path above and never enter this branch.
+      const dest = this._nearestStationTo(stations, home);
       if (!dest || !dest.pos) return null; // only one station → nowhere to haul to
       return {
         kind: 'hauler', sectorId,
