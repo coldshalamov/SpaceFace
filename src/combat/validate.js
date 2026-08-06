@@ -135,6 +135,20 @@ function validateStatus(def, ctx) {
   const mode = def.stacking && def.stacking.mode;
   if (!STATUS_STACKING.has(mode)) ctx.errors.push(`${path}.stacking.mode is invalid`);
   if (!positiveInteger(def.stacking && def.stacking.maxStacks)) ctx.errors.push(`${path}.stacking.maxStacks must be an integer > 0`);
+  const response = def.effects && def.effects.physicsResponse;
+  if (response != null) {
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      ctx.errors.push(`${path}.effects.physicsResponse must be an object`);
+    } else {
+      for (const key of Object.keys(response)) {
+        if (key !== 'massScale' && key !== 'inertiaScale') {
+          ctx.errors.push(`${path}.effects.physicsResponse has unknown key ${key}`);
+        } else if (!(Number.isFinite(response[key]) && response[key] > 0)) {
+          ctx.errors.push(`${path}.effects.physicsResponse.${key} must be finite and > 0`);
+        }
+      }
+    }
+  }
   validateCue(def.cueId, `${path}.cueId`, ctx);
   for (const [i, interaction] of (def.interactions || []).entries()) {
     if (!ctx.statusById.has(interaction.with)) ctx.errors.push(`${path}.interactions[${i}].with does not resolve`);

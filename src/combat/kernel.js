@@ -6,6 +6,7 @@ import { createStatusService } from './statuses.js';
 import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
+import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
 
 const KERNELS = new WeakMap();
 
@@ -107,11 +108,16 @@ export function createCombatKernel(ctx, options = {}) {
 
   function prePhysics(dt) {
     for (const entity of sortedEntitiesForTick()) {
-      if (!entity.alive || !isCombatantType(entity.type)) continue;
+      if (!entity.alive || !participatesInCombat(state, entity)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
       applyPendingSubsystemTransitions(attachmentContext, entity, runtime);
       const statusChanged = statuses.advance(entity, runtime, routeDamage);
       if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
+      const response = runtime.physicsResponse;
+      if (isDynamicPhysicsBodyEntity(entity) && response
+        && (response.massScale !== 1 || response.inertiaScale !== 1)) {
+        writePhysicsBodyResponse(entity, response);
+      }
       coolCombatHeat(entity, runtime, dt);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
     }
@@ -276,4 +282,10 @@ function compareIds(a, b) {
 
 function isCombatantType(type) {
   return type === 'ship' || type === 'station' || type === 'drone';
+}
+
+function participatesInCombat(state, entity) {
+  if (isCombatantType(entity && entity.type)) return true;
+  return !!(state && state.combat && state.combat.entities
+    && state.combat.entities[entityKey(entity && entity.id)]);
 }

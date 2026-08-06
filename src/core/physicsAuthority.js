@@ -7,6 +7,7 @@
 export const PHYSICS_COMMAND_SCHEMA_VERSION = 1;
 export const PHYSICS_BODY_SCHEMA_VERSION = 1;
 export const PHYSICS_TELEMETRY_SCHEMA_VERSION = 1;
+export const PHYSICS_BODY_RESPONSE_LIMITS = Object.freeze({ minScale: 0.25, maxScale: 8 });
 
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
@@ -230,6 +231,26 @@ export function resolvePhysicsBodySpec(entity) {
   return spec;
 }
 
+/**
+ * Replace this tick's transient mass/inertia response. This is a body-property command, not a
+ * movement command: it never writes velocity, control force, facing, or a speed ceiling. The
+ * physics owner restores authored properties automatically on the first tick without a response.
+ */
+export function writePhysicsBodyResponse(entity, response = {}) {
+  if (!entity || typeof entity !== 'object') return null;
+  const command = commandFor(entity);
+  command.bodyResponse = normalizePhysicsBodyResponse(response);
+  return command.bodyResponse;
+}
+
+export function normalizePhysicsBodyResponse(response = {}) {
+  const min = PHYSICS_BODY_RESPONSE_LIMITS.minScale;
+  const max = PHYSICS_BODY_RESPONSE_LIMITS.maxScale;
+  const massScale = clamp(positive(response.massScale, 1), min, max);
+  const inertiaScale = clamp(positive(response.inertiaScale, massScale), min, max);
+  return { massScale, inertiaScale };
+}
+
 function commandFor(entity) {
   let command = COMMANDS.get(entity);
   if (!command) {
@@ -238,6 +259,7 @@ function commandFor(entity) {
       control: null,
       impulses: [],
       torqueImpulses: [],
+      bodyResponse: null,
     };
     COMMANDS.set(entity, command);
   }

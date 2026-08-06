@@ -116,6 +116,7 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
     baseCapabilities: profile ? cloneData(profile.capabilities || {}) : {},
     capabilities: profile ? cloneData(profile.capabilities || {}) : {},
     multipliers: { movement: 1, capRegen: 1, heatDissipation: 1 },
+    physicsResponse: { massScale: 1, inertiaScale: 1 },
     blockedActionTags: [],
     subsystems: {},
     statuses: {},

@@ -23,13 +23,19 @@
 // (a save/reload legitimately clears an in-flight field cooldown).
 
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, fieldsFlag } from '../data/fields.js';
-import { createFieldKernel, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { createFieldKernel, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
+const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
+const MASS_STATE_DURATION_TICKS = 90;
+const MASS_STATE_REFRESH_LEAD_TICKS = 30;
 
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
@@ -104,10 +110,14 @@ export const fields = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._kernel = createFieldKernel();
+    this._combatKernel = getCombatKernel(ctx);
     // Reused scratch — zero per-tick allocation in the force loop.
     this._queryOut = [];
     this._affected = new Map();
+    this._massStateFields = new Map();
+    this._massStateStrengths = new Map();
     this._accel = { ax: 0, az: 0 };
+    this._massStateAccel = { ax: 0, az: 0 };
     this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
@@ -239,6 +249,7 @@ export const fields = {
       falloff: def.falloff,
       durationS: def.durationS,
       sourceId: emitter.id,
+      ownerId: player.id,
       team: player.team,
       createdAt: now,
     });
@@ -417,6 +428,42 @@ export const fields = {
     return fieldBodyProfile(e, state, this._bodyProfile);
   },
 
+  _considerMassState(field, entity) {
+    if (!field || field.tag != null || field.ownerId == null) return;
+    if (field.kind !== FIELD_KINDS.WELL && field.kind !== FIELD_KINDS.REPULSOR) return;
+    if (!MASS_STATE_TYPES.has(entity.type) || String(entity.id) === String(field.ownerId)) return;
+    fieldRawAcceleration(field, entity.pos.x, entity.pos.z, this._massStateAccel);
+    const strength = this._massStateAccel.ax * this._massStateAccel.ax
+      + this._massStateAccel.az * this._massStateAccel.az;
+    if (!(strength > 0)) return;
+    const previous = this._massStateStrengths.get(entity);
+    if (previous != null && previous >= strength) return;
+    this._massStateStrengths.set(entity, strength);
+    this._massStateFields.set(entity, field);
+  },
+
+  _refreshMassState(state, entity, field) {
+    const statusId = field.kind === FIELD_KINDS.WELL ? PINNED_STATUS_ID : UNMOORED_STATUS_ID;
+    const kernel = this._combatKernel;
+    if (!kernel || !kernel.statuses) return;
+    const runtime = ensureCombatant(state, entity, kernel.catalog);
+    if (!runtime) return;
+    const tick = state.tick >>> 0;
+    const active = runtime.statuses && runtime.statuses[statusId];
+    if (active && active.expiresTick > tick + MASS_STATE_REFRESH_LEAD_TICKS) return;
+    const alreadyPending = (runtime.pendingStatuses || []).some((pending) => pending
+      && pending.id === statusId && pending.applyTick >= tick);
+    if (alreadyPending) return;
+    kernel.statuses.schedule(entity, runtime, {
+      id: statusId,
+      stacks: 1,
+      durationTicks: MASS_STATE_DURATION_TICKS,
+    }, {
+      attackerId: field.ownerId,
+      actionId: `field:${field.id}`,
+    });
+  },
+
   _applyForces(dt, state, rt) {
     const fieldsList = this._kernel.list();
     const now = nowOf(state);
@@ -424,6 +471,8 @@ export const fields = {
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
+    this._massStateFields.clear();
+    this._massStateStrengths.clear();
     let queries = 0;
     // One bounded spatial-hash query per active field (dormant = zero queries). Union the candidates
     // so a body inside two fields is force-summed once, then capped once.
@@ -434,13 +483,18 @@ export const fields = {
         queries++;
         for (let j = 0; j < this._queryOut.length; j++) {
           const e = this._queryOut[j];
-          if (this._forceableBody(e)) affected.set(e, true);
+          if (this._forceableBody(e)) {
+            affected.set(e, true);
+            this._considerMassState(field, e);
+          }
         }
       }
     }
     const accel = this._accel;
     let affectedCount = 0, accelSum = 0;
     for (const e of affected.keys()) {
+      const massStateField = this._massStateFields.get(e);
+      if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
       sampleFieldAcceleration(e.pos, e.vel, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;

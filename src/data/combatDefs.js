@@ -4,6 +4,8 @@
 export const COMBAT_SCHEMA_VERSION = 1;
 
 export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
+export const PINNED_STATUS_ID = 'status_pinned';
+export const UNMOORED_STATUS_ID = 'status_unmoored';
 
 export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.dash.start', 'combat.action.dash.active', 'combat.action.dash.end',
@@ -135,6 +137,24 @@ export const STATUS_DEFS = Object.freeze([
     stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
     effects: { multipliers: { fieldCoupling: 1.9 } },
     interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    // A Well makes the body physically expensive to accelerate. The status changes only the
+    // physics owner's effective mass/inertia; it owns no velocity, input, steering, or speed rule.
+    id: PINNED_STATUS_ID, version: 1, tags: ['gravity', 'mass_response', 'pinned'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { physicsResponse: { massScale: 6, inertiaScale: 6 } },
+    interactions: [{ with: UNMOORED_STATUS_ID, consumeWith: true }],
+    periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    // A Repulsor makes the body physically light enough for ordinary forces and impacts to throw.
+    // It does not add force of its own and never alters the body's controls or authored speed cap.
+    id: UNMOORED_STATUS_ID, version: 1, tags: ['gravity', 'mass_response', 'unmoored'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { physicsResponse: { massScale: 0.3, inertiaScale: 0.3 } },
+    interactions: [{ with: PINNED_STATUS_ID, consumeWith: true }],
+    periodic: null, cueId: 'combat.status.gravity_marked',
   },
   {
     id: 'status_ionized', version: 1, tags: ['ion'], durationTicks: 90,

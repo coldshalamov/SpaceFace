@@ -61,6 +61,7 @@ export function normalizeField(spec = {}) {
     edgeSoftRad: Math.max(0, finite(spec.edgeSoftRad, 0.12)),
     durationS: spec.durationS === Infinity ? Infinity : Math.max(0, finite(spec.durationS, 0)),
     sourceId: spec.sourceId != null ? spec.sourceId : null,
+    ownerId: spec.ownerId != null ? spec.ownerId : null,
     team: spec.team != null ? spec.team : null,
     filters: spec.filters && typeof spec.filters === 'object' ? { ...spec.filters } : null,
     createdAt: finite(spec.createdAt, 0),

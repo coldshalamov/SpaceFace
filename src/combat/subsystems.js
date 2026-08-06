@@ -54,6 +54,7 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
 
   runtime.capabilities = { ...(runtime.baseCapabilities || {}) };
   runtime.multipliers = { movement: 1, capRegen: 1, heatDissipation: 1 };
+  runtime.physicsResponse = { massScale: 1, inertiaScale: 1 };
   const blocked = new Set();
 
   for (const id of Object.keys(runtime.subsystems || {}).sort()) {
@@ -183,6 +184,12 @@ function applyEffects(runtime, blocked, effects, stacks) {
   for (const [name, value] of Object.entries(effects.multipliers || {})) {
     const factor = Number.isFinite(value) ? Math.max(0, value) : 1;
     runtime.multipliers[name] = (runtime.multipliers[name] == null ? 1 : runtime.multipliers[name]) * Math.pow(factor, stacks);
+  }
+  for (const [name, value] of Object.entries(effects.physicsResponse || {})) {
+    if (name !== 'massScale' && name !== 'inertiaScale') continue;
+    const factor = Number.isFinite(value) && value > 0 ? value : 1;
+    runtime.physicsResponse[name] = (runtime.physicsResponse[name] == null ? 1 : runtime.physicsResponse[name])
+      * Math.pow(factor, stacks);
   }
   for (const tag of effects.blockedActionTags || []) blocked.add(tag);
 }

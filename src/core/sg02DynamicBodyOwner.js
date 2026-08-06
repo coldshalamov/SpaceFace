@@ -500,6 +500,7 @@ export class Sg02DynamicBodyOwner {
       rec.maxSpeed = Infinity;
       resetBodyForces(rec.body);
       const command = consumePhysicsCommand(rec.entity);
+      this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) this._applyCommand(rec, command);
     }
 
@@ -561,9 +562,9 @@ export class Sg02DynamicBodyOwner {
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
-    e.vx = finite(v.x) + rec.controlForce.x / rec.spec.mass * this.fixedDt;
-    e.vz = finite(v.z) + rec.controlForce.z / rec.spec.mass * this.fixedDt;
-    e.wy = finite(w.y) + rec.controlTorque.y / rec.spec.inertiaY * this.fixedDt;
+    e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * this.fixedDt;
+    e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * this.fixedDt;
+    e.wy = finite(w.y) + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * this.fixedDt;
   }
 
   // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
@@ -691,6 +692,10 @@ export class Sg02DynamicBodyOwner {
         wy: finite(entity.angVel),
       },
       maxSpeed: Infinity,
+      effectiveMass: spec.mass,
+      effectiveInertiaY: spec.inertiaY,
+      bodyResponseMassScale: 1,
+      bodyResponseInertiaScale: 1,
       snapshot: {
         id: entity.id,
         x: quantize(globalX, this.quantum),
@@ -798,8 +803,8 @@ export class Sg02DynamicBodyOwner {
       const rawImpulse = Math.max(0, finite(event.totalForceMagnitude())) * this.fixedDt;
       if (!(rawImpulse > 0)) return;
       const dynamicCaps = [];
-      if (recA.spec.dynamic) dynamicCaps.push(recA.spec.mass * MAX_CONTACT_DV);
-      if (recB.spec.dynamic) dynamicCaps.push(recB.spec.mass * MAX_CONTACT_DV);
+      if (recA.spec.dynamic) dynamicCaps.push(effectiveMass(recA) * MAX_CONTACT_DV);
+      if (recB.spec.dynamic) dynamicCaps.push(effectiveMass(recB) * MAX_CONTACT_DV);
       if (!dynamicCaps.length) return;
       const boundedImpulse = Math.min(rawImpulse, Math.min(...dynamicCaps));
       if (!(boundedImpulse > 0)) return;
@@ -903,6 +908,10 @@ export class Sg02DynamicBodyOwner {
       rec.spec = spec;
       rec.revision = spec.revision;
       rec.snapshot.revision = spec.revision;
+      rec.effectiveMass = spec.mass;
+      rec.effectiveInertiaY = spec.inertiaY;
+      rec.bodyResponseMassScale = 1;
+      rec.bodyResponseInertiaScale = 1;
       return true;
     } catch (_) {
       return false;
@@ -935,6 +944,34 @@ export class Sg02DynamicBodyOwner {
     }
     for (const impulse of command.torqueImpulses || []) {
       applyYawTorqueImpulse(rec, impulse);
+    }
+  }
+
+  _applyBodyResponse(rec, response) {
+    if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body
+      || typeof rec.body.setAdditionalMassProperties !== 'function') return false;
+    const massScale = positive(response && response.massScale, 1);
+    const inertiaScale = positive(response && response.inertiaScale, massScale);
+    if (rec.bodyResponseMassScale === massScale && rec.bodyResponseInertiaScale === inertiaScale) {
+      return true;
+    }
+    const mass = rec.spec.mass * massScale;
+    const inertiaY = rec.spec.inertiaY * inertiaScale;
+    try {
+      rec.body.setAdditionalMassProperties(
+        mass,
+        vector3(rec.spec.centerOfMass),
+        { x: 1, y: inertiaY, z: 1 },
+        { x: 0, y: 0, z: 0, w: 1 },
+        true,
+      );
+      rec.effectiveMass = mass;
+      rec.effectiveInertiaY = inertiaY;
+      rec.bodyResponseMassScale = massScale;
+      rec.bodyResponseInertiaScale = inertiaScale;
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -1015,16 +1052,16 @@ export class Sg02DynamicBodyOwner {
       bodyHandle: rec.body.handle,
       dynamic: !!rec.spec.dynamic,
       ccd: rec.ccdEnabled,
-      mass: rec.spec.mass,
-      inertiaY: rec.spec.inertiaY,
+      mass: positive(rec.effectiveMass, rec.spec.mass),
+      inertiaY: positive(rec.effectiveInertiaY, rec.spec.inertiaY),
       force: rec.appliedForce,
       torque: rec.appliedTorque,
       linearAcceleration: {
-        x: rec.appliedForce.x / rec.spec.mass,
+        x: rec.appliedForce.x / positive(rec.effectiveMass, rec.spec.mass),
         y: 0,
-        z: rec.appliedForce.z / rec.spec.mass,
+        z: rec.appliedForce.z / positive(rec.effectiveMass, rec.spec.mass),
       },
-      angularAccelerationY: rec.appliedTorque.y / rec.spec.inertiaY,
+      angularAccelerationY: rec.appliedTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY),
       lateralAcceleration: 0,
       authority: measureThrusterAuthority(rec.entity),
       mode: this.mode,
@@ -1569,7 +1606,7 @@ function applyYawTorqueImpulse(rec, value) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || typeof rec.body.setAngvel !== 'function') return false;
   const impulseY = finite(value && value.y);
   if (impulseY === 0) return true;
-  const inertiaY = positive(rec.spec.inertiaY, 1);
+  const inertiaY = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
   const current = finite(rec.body.angvel && rec.body.angvel().y);
   // Rapier's applyTorqueImpulse currently produces zero yaw on our Y-only rotation-constrained
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
