@@ -44,6 +44,15 @@ const CORE_SECTOR_ANCHORS = {
         visualRadius: 28,
       },
       { id: 'poi_helios_yard', pos: { x: -1760, z: -1260 }, landmarkGlb: 'place_debris_chunk' },
+      // Lane furniture, placed along the spawn -> tutorial beacon -> starter seam corridor. These
+      // are small (1.5-9 m) so their visualRadius is set explicitly rather than inherited from the
+      // landmark default, which is sized for station-class bodies.
+      { id: 'poi_helios_lane_pin', pos: { x: 215, z: -70 }, landmarkGlb: 'place_lane_pin', visualRadius: 10 },
+      { id: 'poi_helios_tally', pos: { x: 120, z: 180 }, landmarkGlb: 'place_tally_post', visualRadius: 9 },
+      { id: 'poi_helios_claim_mark', pos: { x: 636, z: -214 }, landmarkGlb: 'place_claim_mark', visualRadius: 5 },
+      { id: 'poi_helios_locker', pos: { x: 772, z: -302 }, landmarkGlb: 'place_cold_locker', visualRadius: 11 },
+      { id: 'poi_helios_ash_pin', pos: { x: 1642, z: -792 }, landmarkGlb: 'place_ash_pin', visualRadius: 6 },
+      { id: 'poi_helios_whistle', pos: { x: -1704, z: -1212 }, landmarkGlb: 'place_whistle', visualRadius: 6 },
     ],
   },
   sector_ceres_belt: {

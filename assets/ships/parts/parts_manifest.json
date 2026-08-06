@@ -4280,6 +4280,84 @@
         ]
       },
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
+    },
+    {
+      "id": "place_claim_mark",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_claim_mark.glb",
+      "tris": 868,
+      "bytes": 78700,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=87f084ad0c36b64d"
+    },
+    {
+      "id": "place_lane_pin",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_lane_pin.glb",
+      "tris": 440,
+      "bytes": 46208,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=9c6c1c565bb8875d"
+    },
+    {
+      "id": "place_tally_post",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_tally_post.glb",
+      "tris": 460,
+      "bytes": 49552,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e2433efc7c352919"
+    },
+    {
+      "id": "place_whistle",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_whistle.glb",
+      "tris": 776,
+      "bytes": 84120,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=696e63693b6a2583"
+    },
+    {
+      "id": "place_cold_locker",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_cold_locker.glb",
+      "tris": 736,
+      "bytes": 80856,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=de17d9e996bf0b6f"
+    },
+    {
+      "id": "place_ash_pin",
+      "category": "places",
+      "priority": "P2",
+      "file": "places/place_ash_pin.glb",
+      "tris": 432,
+      "bytes": 48804,
+      "textureSize": 0,
+      "tintable": {
+        "accent": "furniture_signal_lens"
+      },
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e8ee1f32538bbd27"
     }
   ],
   "runtimeSlots": {

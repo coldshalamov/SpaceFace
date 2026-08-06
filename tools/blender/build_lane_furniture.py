@@ -36,6 +36,19 @@ import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[2]
+# The family is AUTHORED at the fiction's true metres and PLACED at this multiple.
+#
+# Measured, not chosen: the player's hull is 28 m across and the chase camera shows a ground-plane
+# strip only ~45-50 m deep (design/graphics-sprints/CAMERA_VISIBLE_BUBBLE.md). A 2.4 m claim mark
+# beside that ship is a matchstick, and the matched-distance renders at 60 units showed all six
+# classes reduced to specks. Confirmed in-game: the 9 m lane pin spawned correctly at 226 units and
+# read as roughly twenty pixels.
+#
+# The fiction's metres are kept as the RATIOS between parts, which is where their authority lies —
+# a 0.4 x 0.25 m claim plate on a 1.8 m shaft is a claim plate whatever the absolute size. What is
+# adjusted is the family's relationship to a ship, because that is a fact about this game rather
+# than about the world, and the render is what measured it.
+FAMILY_SCALE = 3.4
 OUT_SOURCE = ROOT / 'assets' / 'places' / 'lane_furniture' / 'source'
 OUT_EVIDENCE = ROOT / 'assets' / 'places' / 'lane_furniture' / 'evidence'
 
@@ -101,6 +114,82 @@ def box(name, size, loc, rot=(0, 0, 0)):
     return o
 
 
+def beam(name, a, b, radius, verts=6):
+    """A member that physically SPANS from a to b.
+
+    Round 2 of the adversarial review named this as the defect running through the whole family:
+    "parts float instead of connecting... replace with an endpoint-driven beam/curve helper so every
+    segment physically meets the next". Hand-placed segments with hand-guessed rotations do not meet
+    at their ends, and a chain whose links do not touch reads as debris rather than as a chain.
+
+    Taking two endpoints makes the join structural instead of approximate: the caller names where a
+    member starts and stops, and the geometry cannot disagree with that.
+    """
+    a = Vector(a)
+    b = Vector(b)
+    d = b - a
+    ln = d.length
+    if ln < 1e-6:
+        ln = 1e-3
+    o = cyl(name, radius, ln, tuple((a + b) * 0.5), verts=verts)
+    o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
+    return o
+
+
+def embed_root(prefix, r, parent, kind='rock', radius=0.55):
+    """The environment bite.
+
+    Review round 2, finding 4: "every root terminates in a clean cylinder or slab rather than an
+    embed plug, welded skirt, clamp jaw, ballast frame, or rock interface. These omissions leave
+    scale, ownership, orientation, and load path dependent on color or prose."
+
+    Nothing in space stands on a disc. A mark is driven into rock, welded to a face, or ballasted —
+    and WHICH of those it is tells you who installed it and how much they cared. The bite is also
+    the only part of these objects that says how big they are, because it is the one feature whose
+    real-world counterpart a viewer already knows the size of.
+    """
+    if kind == 'rock':
+        # Driven: an irregular skirt of rock-biting tabs splayed around the shaft, plus displaced
+        # spoil where the drive pushed material up.
+        put(cyl(f'{prefix}_embed_plug', radius * 0.62, 0.20, (0, 0, -0.02), verts=7),
+            'furniture_bare_steel', parent)
+        for i, (ang, ln, tilt) in enumerate(((0.0, 0.34, 0.5), (1.5, 0.28, 0.42), (2.9, 0.36, 0.58),
+                                             (4.4, 0.25, 0.38), (5.6, 0.31, 0.47))):
+            t = put(box(f'{prefix}_bite_tab_{i}', (ln, 0.09, 0.05),
+                        (math.cos(ang) * radius * 0.8, math.sin(ang) * radius * 0.8, 0.03)),
+                    'furniture_bare_steel', parent)
+            t.rotation_euler = (0, tilt, ang)
+        for i, (ang, sc) in enumerate(((0.7, 0.17), (2.4, 0.13), (5.1, 0.20))):
+            put(box(f'{prefix}_spoil_{i}', (sc, sc * 0.8, sc * 0.45),
+                    (math.cos(ang) * radius * 1.05, math.sin(ang) * radius * 1.05, 0.04)),
+                'furniture_scorch', parent)
+    elif kind == 'weld':
+        # Welded to a face in a hurry: an uneven fillet skirt, thicker on the side the welder
+        # started, plus two tack plates that were never dressed back.
+        for i in range(8):
+            a = i * math.pi / 4
+            h = 0.10 + (0.07 if i < 3 else 0.0)
+            put(box(f'{prefix}_fillet_{i}', (0.20, 0.10, h),
+                    (math.cos(a) * radius * 0.9, math.sin(a) * radius * 0.9, h * 0.5)),
+                'furniture_scorch', parent)
+        for i, a in enumerate((0.9, 3.8)):
+            put(box(f'{prefix}_tack_plate_{i}', (0.30, 0.22, 0.03),
+                    (math.cos(a) * radius * 1.15, math.sin(a) * radius * 1.15, 0.02)),
+                'furniture_bare_steel', parent)
+    else:  # 'ballast'
+        # A ballast frame: four feet on a spread base, one shimmed because the seat was not level.
+        for i in range(4):
+            a = i * math.pi / 2 + 0.4
+            fx, fy = math.cos(a) * radius * 1.25, math.sin(a) * radius * 1.25
+            put(box(f'{prefix}_foot_{i}', (0.30, 0.24, 0.09), (fx, fy, 0.045)),
+                'furniture_structural_alloy', parent)
+            beam(f'{prefix}_foot_brace_{i}', (fx * 0.35, fy * 0.35, 0.30), (fx, fy, 0.09), 0.035)
+            put(bpy.context.active_object, 'furniture_structural_alloy', parent)
+            if i == 2:
+                put(box(f'{prefix}_shim', (0.24, 0.18, 0.035), (fx, fy, 0.105)),
+                    'furniture_bare_steel', parent)
+
+
 def root_for(name):
     bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
     r = bpy.context.active_object
@@ -118,6 +207,7 @@ def build_claim_mark():
     # The lean is authored: "many lean 5-12 degrees after a beam kiss or a bad drive."
     lean = math.radians(8.0)
     put(cyl('claim_flange', 0.30, 0.06, (0, 0, 0.03), verts=12), 'furniture_structural_alloy', r)
+    embed_root('claim', r, r, kind='rock', radius=0.34)   # driven into the seam face
     # Four bolt seats; TWO are modelled as empty torn holes rather than bolts. The absence is the
     # point — a full set of four reads as new, and almost none of these are new.
     for i, present in enumerate([True, False, True, False]):
@@ -197,6 +287,8 @@ def build_lane_pin():
     r = root_for('place_lane_pin')
     # Hexagonal ballast drum, 1.2 m across flats, 0.8 m deep.
     put(cyl('pin_ballast_drum', 0.60, 0.80, (0, 0, 0.40), verts=6), 'furniture_structural_alloy', r)
+    # Ballasted, not driven: Concord marks a corridor, it does not stake a claim it has no title to.
+    embed_root('pin', r, r, kind='ballast', radius=0.60)
     put(cyl('pin_mast', 0.11, 9.0, (0, 0, 4.80), verts=10), 'furniture_painted_shell', r)
     # Vanes at TWO stations, 4.0 m and 7.5 m. At each station the third position is a bare
     # unpainted repair plate rather than a fin — Concord fixes what it can reach.
@@ -242,7 +334,8 @@ def build_lane_pin():
 def build_tally_post():
     r = root_for('place_tally_post')
     # 3 m square deck, 0.25 m thick, with cut voids so it reads as grating rather than a slab.
-    put(box('tally_deck', (3.0, 3.0, 0.25), (0, 0, 0.125)), 'furniture_structural_alloy', r)
+    embed_root('tally', r, r, kind='ballast', radius=1.35)  # a deck this size sits on a frame
+    put(box('tally_deck', (3.0, 3.0, 0.25), (0, 0, 0.28)), 'furniture_structural_alloy', r)
     for i in range(4):
         put(box(f'tally_grate_{i}', (2.6, 0.12, 0.28), (0, -0.9 + i * 0.6, 0.14)),
             'furniture_scorch', r)
@@ -305,22 +398,34 @@ def build_whistle():
     for i, z in enumerate((0.72, 1.66)):
         put(cyl(f'whistle_strap_{i}', 0.53, 0.07, (0, 0, z), verts=14), 'furniture_painted_shell', r)
     # THREE UNEQUAL CHAINS — 0.9 / 1.3 / 1.1 m. The third is polymer line: thinner, and a different
-    # material, because somebody ran out of chain.
-    for i, (yaw, ln, rad, role) in enumerate((
-        (0.5, 0.90, 0.030, 'furniture_bare_steel'),
-        (2.6, 1.30, 0.030, 'furniture_bare_steel'),
-        (4.6, 1.10, 0.018, 'furniture_painted_shell'),   # the polymer swap
+    # material, because somebody ran out of chain. Built endpoint-to-endpoint so each link actually
+    # MEETS the next and the run terminates on the drum — review round 2 called the previous
+    # hand-placed version "loose hairs", and it was right: a chain whose links do not touch is debris.
+    for i, (yaw, ln, rad, role, sag) in enumerate((
+        (0.5, 0.90, 0.030, 'furniture_bare_steel', 0.16),
+        (2.6, 1.30, 0.030, 'furniture_bare_steel', 0.30),
+        (4.6, 1.10, 0.018, 'furniture_painted_shell', 0.42),   # the polymer swap sags most
     )):
+        ax, ay = math.cos(yaw) * 0.50, math.sin(yaw) * 0.50
+        bx_, by_ = math.cos(yaw) * (0.50 + 0.30), math.sin(yaw) * (0.50 + 0.30)
         links = 4
-        for k in range(links):
-            t = (k + 0.5) / links
-            put(cyl(f'whistle_chain_{i}_{k}', rad, ln / links,
-                    (math.cos(yaw) * (0.54 + t * 0.10), math.sin(yaw) * (0.54 + t * 0.10),
-                     0.30 + (1 - t) * 0.9),
-                    rot=(math.radians(74), 0, yaw + (0.35 if k % 2 else 0)), verts=4), role, r)
+        prev = (ax, ay, 1.42)
+        for k in range(1, links + 1):
+            t = k / links
+            # A catenary, not a straight line: the sag is what says the member is slack.
+            pt = (ax + (bx_ - ax) * t, ay + (by_ - ay) * t,
+                  1.42 - ln * t - sag * math.sin(math.pi * t) * 0.6)
+            beam(f'whistle_chain_{i}_{k}', prev, pt, rad, verts=4)
+            put(bpy.context.active_object, role, r)
+            prev = pt
+        if i == 1:
+            boot_anchor = prev
+
     # A boot, hanging off the longest chain. Nobody knows whose.
+    # The boot hangs ON the long chain's last link rather than floating beside it.
     put(box('whistle_boot', (0.28, 0.12, 0.12),
-            (math.cos(2.6) * 0.66, math.sin(2.6) * 0.66, 0.24)), 'furniture_painted_shell', r)
+            (boot_anchor[0], boot_anchor[1], boot_anchor[2] - 0.10)),
+        'furniture_painted_shell', r)
     # Jury mast: 0.7 m of welded rebar, three rods that do not agree with each other.
     for i, (dx_, dy_, tilt) in enumerate(((0.0, 0.0, 0.0), (0.06, 0.03, 0.16), (-0.05, 0.05, -0.11))):
         rod = put(cyl(f'whistle_rebar_{i}', 0.018, 0.70, (dx_, dy_, 2.72), verts=4),
@@ -335,18 +440,21 @@ def build_whistle():
     # Wide-band antenna BENT FROM A SURVEY PADDLE, S-curved: three segments that reverse direction.
     put(box('whistle_paddle_root', (0.45, 0.08, 0.02), (0.30, 0.10, 2.50),
             rot=(0, math.radians(18), math.radians(22))), 'furniture_structural_alloy', r)
-    seg = ((0.58, 0.16, 2.66, 0.34), (0.78, 0.30, 2.92, -0.42), (0.88, 0.14, 3.16, 0.28))
-    for i, (sx, sy, sz, bend) in enumerate(seg):
-        a = put(cyl(f'whistle_antenna_s_{i}', 0.016, 0.42, (sx, sy, sz), verts=4),
-                'furniture_structural_alloy', r)
-        a.rotation_euler = (bend, math.radians(24), 0)
+    # S-curve antenna: three members that SHARE ENDPOINTS, rooted in a modelled clamp on the paddle.
+    put(box('whistle_antenna_clamp', (0.10, 0.10, 0.08), (0.42, 0.13, 2.56)), 'furniture_bare_steel', r)
+    pts = [(0.42, 0.13, 2.56), (0.66, 0.24, 2.84), (0.58, 0.10, 3.12), (0.80, 0.20, 3.40)]
+    for i in range(len(pts) - 1):
+        beam(f'whistle_antenna_s_{i}', pts[i], pts[i + 1], 0.016, verts=4)
+        put(bpy.context.active_object, 'furniture_structural_alloy', r)
+
     # Hand crank on the drum flank — the thing a survivor actually turns.
     put(cyl('whistle_crank_hub', 0.07, 0.10, (-0.52, 0, 1.20), rot=(0, math.pi / 2, 0), verts=8),
         'furniture_structural_alloy', r)
     put(box('whistle_crank_arm', (0.05, 0.26, 0.04), (-0.60, 0.12, 1.20)), 'furniture_bare_steel', r)
     put(box('whistle_plaque', (0.30, 0.02, 0.16), (0, -0.51, 1.60)), 'furniture_identity_plate', r)
     # Scorch collar where it was welded to a rock in a hurry.
-    put(cyl('whistle_weld_collar', 0.60, 0.09, (0, 0, 0.06), verts=14), 'furniture_scorch', r)
+    # Welded to a rock in a hurry and never dressed back — the fiction's own account of it.
+    embed_root('whistle', r, r, kind='weld', radius=0.52)
     return r
 
 
@@ -367,6 +475,7 @@ def build_cold_locker():
     BAY = 0.5
     bays = int(SPINE / BAY)
     put(cyl('locker_root_clamp', 0.34, 0.42, (0, 0, 0.21), verts=8), 'furniture_bare_steel', r)
+    embed_root('locker', r, r, kind='rock', radius=0.40)  # clipped to a rock, per the fiction
     # Lattice truss: two rails plus alternating diagonals. ONE mid bay is crushed inward.
     crushed = bays // 2 + 1
     for side in (-1, 1):
@@ -416,13 +525,12 @@ def build_cold_locker():
         leg = put(cyl(f'locker_outrigger_{i}', 0.055, ln, (ex * 0.5, ey * 0.5, 0.20 + up * 0.5),
                       verts=6), 'furniture_structural_alloy', r)
         leg.rotation_euler = Vector((ex, ey, up)).to_track_quat('Z', 'Y').to_euler()
-    # Leg B's tip is cabled back to the spine — the shear was never properly repaired.
+    # Leg B's tip is cabled back to the spine — the shear was never properly repaired. One member,
+    # spanning two real points, rather than three floating fragments.
     bx, by = math.cos(3.6) * 0.72, math.sin(3.6) * 0.72
-    for k in range(3):
-        t = (k + 0.5) / 3.0
-        put(cyl(f'locker_cable_{k}', 0.016, 0.30,
-                (bx * (1 - t), by * (1 - t), 0.64 + t * 0.9),
-                rot=(math.radians(58), 0, 3.6), verts=4), 'furniture_bare_steel', r)
+    beam('locker_shear_cable', (bx, by, 0.30), (0, 0, 1.85), 0.016, verts=4)
+    put(bpy.context.active_object, 'furniture_bare_steel', r)
+
     # Solar / trickle petals on the drum crown. ONE is bent.
     for i, a in enumerate((0.0, 2.09, 4.19)):
         pet = put(box(f'locker_petal_{i}', (0.40, 0.15, 0.02),
@@ -448,6 +556,8 @@ def build_ash_pin():
     LEAN = math.radians(13.0)          # "leaned by the explosion", never straightened
     # Poured base, 1 m across.
     put(cyl('ash_base', 0.50, 0.26, (0, 0, 0.13), verts=10), 'furniture_structural_alloy', r)
+    # Poured and ballasted. Nobody drills a memorial into somebody else's claim.
+    embed_root('ash', r, r, kind='ballast', radius=0.50)
     # A cut spar, 3.5 m, slender. It is a piece of the dead hull, not a monument someone ordered.
     spar = put(cyl('ash_spar', 0.07, 3.50, (0, 0, 1.95), verts=8), 'furniture_bare_steel', r)
     spar.rotation_euler = (LEAN, 0, 0)
@@ -499,6 +609,10 @@ BUILDERS = {
 
 
 def export_glb(root, path):
+    # Scale the whole assembly on the root, so every authored dimension keeps its ratio and the
+    # multiplier stays a single reviewable number rather than being baked into 200 literals.
+    root.scale = Vector((FAMILY_SCALE, FAMILY_SCALE, FAMILY_SCALE))
+    bpy.context.view_layer.update()
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action='DESELECT')
     root.select_set(True)
@@ -521,24 +635,44 @@ def tri_count(root):
     return total
 
 
-def setup_render(target, radius):
-    bpy.ops.object.camera_add(location=(radius * 1.55, -radius * 1.9, radius * 1.15))
+def reset_render_cameras():
+    """Drop cameras and lights between passes so a distance view cannot inherit the last framing."""
+    for o in [o for o in bpy.data.objects if o.type in {'CAMERA', 'LIGHT'}]:
+        bpy.data.objects.remove(o, do_unlink=True)
+
+
+def setup_render(target, radius, distance=None):
+    """Frame the asset.
+
+    `distance` in WORLD UNITS puts the camera at a real gameplay range, and that parameter exists
+    because adversarial review round 2 caught the evidence lying. The original version scaled camera
+    distance from each asset's own maximum dimension, so every prop filled the frame and every
+    render looked like a turntable. Small features - 16 mm cables, 14 mm cage bars, 30 mm chain
+    links - were never shown to survive projection at the range a player actually sees them, which
+    is the only question that matters.
+
+    Same class of error as trusting a `drawn` counter instead of looking at pixels: the measurement
+    was real, it just was not measuring the thing being claimed.
+    """
+    d = distance if distance is not None else radius * 2.6
+    bpy.ops.object.camera_add(location=(d * 0.62, -d * 0.72, d * 0.44))
     cam = bpy.context.active_object
-    cam.data.lens = 62
+    cam.data.lens = 50   # matches the game camera's 50-degree FOV class
     direction = Vector(target) - cam.location
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
     bpy.context.scene.camera = cam
-    # Warm key / cool fill, matching the game's authored lighting doctrine so the review is judging
-    # the geometry rather than a lighting mismatch.
-    bpy.ops.object.light_add(type='AREA', location=(radius * 2.2, -radius * 1.4, radius * 2.4))
+    # Warm key / cool fill, matching the game's authored lighting doctrine so a review judges the
+    # geometry rather than a lighting mismatch.
+    lamp_scale = max(1.0, d)
+    bpy.ops.object.light_add(type='AREA', location=(d * 1.1, -d * 0.7, d * 1.2))
     key = bpy.context.active_object
-    key.data.energy = 900 * max(1.0, radius)
-    key.data.size = radius * 2.5
+    key.data.energy = 900 * lamp_scale
+    key.data.size = max(2.0, radius * 2.5)
     key.data.color = (1.0, 0.86, 0.68)
-    bpy.ops.object.light_add(type='AREA', location=(-radius * 2.0, radius * 1.6, radius * 0.9))
+    bpy.ops.object.light_add(type='AREA', location=(-d * 1.0, d * 0.8, d * 0.45))
     fill = bpy.context.active_object
-    fill.data.energy = 260 * max(1.0, radius)
-    fill.data.size = radius * 3.0
+    fill.data.energy = 260 * lamp_scale
+    fill.data.size = max(2.0, radius * 3.0)
     fill.data.color = (0.55, 0.68, 1.0)
     scene = bpy.context.scene
     scene.render.engine = 'BLENDER_EEVEE'
@@ -554,6 +688,8 @@ def main():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument('--render', action='store_true')
+    ap.add_argument('--distances', action='store_true',
+                    help='also render at 20/60/140 world units - the real gameplay band')
     args = ap.parse_args(argv)
 
     report = {'schema': 'spaceface.laneFurniture.v1', 'assets': []}
@@ -578,6 +714,8 @@ def main():
         tris = tri_count(root)
         glb = OUT_SOURCE / f'{name}.glb'
         digest = export_glb(root, glb)
+        # Re-measure after the family scale so the report describes the PLACED object.
+        size = size * FAMILY_SCALE
         entry = {
             'id': name,
             'triangles': tris,
@@ -587,12 +725,26 @@ def main():
             'sha256': digest,
         }
         if args.render:
-            setup_render((0, 0, size.z * 0.45), max(1.2, max(size.x, size.y, size.z)))
             OUT_EVIDENCE.mkdir(parents=True, exist_ok=True)
+            radius = max(1.2, max(size.x, size.y, size.z))
+            target = (0, 0, size.z * 0.45)
+            # Turntable view, for judging construction.
+            setup_render(target, radius)
             shot = OUT_EVIDENCE / f'{name}.png'
             bpy.context.scene.render.filepath = str(shot)
             bpy.ops.render.render(write_still=True)
-            entry['render'] = str(shot.relative_to(ROOT)).replace('\\', '/')
+            entry['render'] = str(shot.relative_to(ROOT)).replace(chr(92), '/')
+            # Matched-distance views at the ranges these are actually seen from in play. The camera
+            # bubble is ~45-50 units deep, so 20 and 60 bracket the readable band and 140 is the
+            # point past which a prop is radar content.
+            if args.distances:
+                for dist in (20, 60, 140):
+                    reset_render_cameras()
+                    setup_render(target, radius, distance=float(dist))
+                    dshot = OUT_EVIDENCE / f'{name}@{dist}u.png'
+                    bpy.context.scene.render.filepath = str(dshot)
+                    bpy.ops.render.render(write_still=True)
+                entry['distanceViews'] = [20, 60, 140]
         report['assets'].append(entry)
         log(f"{name}: {tris} tris, {entry['parts']} parts, "
             f"{entry['sizeM'][0]}x{entry['sizeM'][1]}x{entry['sizeM'][2]} m")

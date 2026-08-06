@@ -3,81 +3,111 @@
   "assets": [
     {
       "id": "place_claim_mark",
-      "triangles": 748,
+      "triangles": 868,
       "sizeM": [
-        1.553,
-        0.774,
-        2.872
+        5.371,
+        2.631,
+        10.47
       ],
-      "parts": 21,
-      "bytes": 64268,
-      "sha256": "87f084ad0c36b64dc79577ad7141093678315acc83e7c2f5833587fe1ea27f12",
-      "render": "assets/places/lane_furniture/evidence/place_claim_mark.png"
+      "parts": 30,
+      "bytes": 78700,
+      "sha256": "8b3712431c82c5d1adbc76d8b9c9e0e428418c1d5f7939a0215d9ece19361b41",
+      "render": "assets/places/lane_furniture/evidence/place_claim_mark.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     },
     {
       "id": "place_lane_pin",
-      "triangles": 300,
+      "triangles": 440,
       "sizeM": [
-        2.572,
-        5.356,
-        9.3
+        8.744,
+        18.212,
+        31.62
       ],
-      "parts": 15,
-      "bytes": 30984,
-      "sha256": "9c6c1c565bb8875d7987930f6831e4eaa1789e843226f8f7e95b53245f7c351b",
-      "render": "assets/places/lane_furniture/evidence/place_lane_pin.png"
+      "parts": 24,
+      "bytes": 46208,
+      "sha256": "5dac576385c5e44c283b154995ea7db57db1a6eb377ae3583d4b6d314bbbf148",
+      "render": "assets/places/lane_furniture/evidence/place_lane_pin.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     },
     {
       "id": "place_tally_post",
-      "triangles": 320,
+      "triangles": 460,
       "sizeM": [
-        4.955,
-        3.058,
-        6.109
+        17.542,
+        11.385,
+        20.771
       ],
-      "parts": 18,
-      "bytes": 34264,
-      "sha256": "e2433efc7c352919e470b35a148481cc7395f8e42446b6d9c2be81ecf8256520",
-      "render": "assets/places/lane_furniture/evidence/place_tally_post.png"
+      "parts": 27,
+      "bytes": 49552,
+      "sha256": "2abf7cb8f5e62cdf60d942ff0aedf480283f09eaa97ffe81b553a5954452fe05",
+      "render": "assets/places/lane_furniture/evidence/place_tally_post.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     },
     {
       "id": "place_whistle",
-      "triangles": 696,
+      "triangles": 776,
       "sizeM": [
-        1.684,
-        1.273,
-        3.34
+        5.587,
+        4.724,
+        11.732
       ],
-      "parts": 36,
-      "bytes": 71600,
-      "sha256": "696e63693b6a2583a6929c24e2f8a0562c621c7e40e96b2c62645810861d24dd",
-      "render": "assets/places/lane_furniture/evidence/place_whistle.png"
+      "parts": 46,
+      "bytes": 84120,
+      "sha256": "4ef348288c22fd8b295d27d07ebf799cd2edd09f23da99cc29ed037ca642e577",
+      "render": "assets/places/lane_furniture/evidence/place_whistle.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     },
     {
       "id": "place_cold_locker",
-      "triangles": 640,
+      "triangles": 736,
       "sizeM": [
-        3.018,
-        1.892,
-        9.4
+        10.261,
+        6.432,
+        32.744
       ],
-      "parts": 36,
-      "bytes": 69416,
-      "sha256": "de17d9e996bf0b6f0d4e75f006ad7db5c775ff2c968ae92175519fd473f01a49",
-      "render": "assets/places/lane_furniture/evidence/place_cold_locker.png"
+      "parts": 43,
+      "bytes": 80856,
+      "sha256": "6193515caddcf225c5c0a9174d87fb1345f039be5defa49520d71b63a28b72d8",
+      "render": "assets/places/lane_furniture/evidence/place_cold_locker.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     },
     {
       "id": "place_ash_pin",
-      "triangles": 292,
+      "triangles": 432,
       "sizeM": [
-        1.162,
-        2.52,
-        3.671
+        4.935,
+        9.232,
+        12.481
       ],
-      "parts": 18,
-      "bytes": 33312,
-      "sha256": "e8ee1f32538bbd277ad1b05228446a38a1f565bb6af1da2349698ce5d137258d",
-      "render": "assets/places/lane_furniture/evidence/place_ash_pin.png"
+      "parts": 27,
+      "bytes": 48804,
+      "sha256": "f76cfba24e323a64e12f53910e4dab2f24ff84e5697ab2eb8d1fb408e9921828",
+      "render": "assets/places/lane_furniture/evidence/place_ash_pin.png",
+      "distanceViews": [
+        20,
+        60,
+        140
+      ]
     }
   ]
 }

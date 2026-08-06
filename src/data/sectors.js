@@ -77,6 +77,15 @@ const CORE_SECTORS = [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
       { id: 'poi_memorial', type: 'beacon', name: 'Memorial Array' },
       { id: 'poi_helios_yard', type: 'derelict', name: 'Outer Yard Derelict' },
+      // Lane furniture (design/fiction/LANE_FURNITURE.md). Deliberately placed ON the corridor a
+      // new pilot actually flies — spawn, tutorial beacon, starter seam — because the camera can
+      // only see ~50 world units of ground plane and clutter parked anywhere else is radar content.
+      { id: 'poi_helios_lane_pin', type: 'beacon', name: 'Corridor Pin 44-C' },
+      { id: 'poi_helios_tally', type: 'beacon', name: 'Helios Weigh-Point' },
+      { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim' },
+      { id: 'poi_helios_locker', type: 'derelict', name: 'Bonded Cold Locker' },
+      { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
+      { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
     ],
   },
   {

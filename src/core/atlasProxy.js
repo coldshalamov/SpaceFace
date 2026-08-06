@@ -55,14 +55,20 @@ export const PROXY_TIER = Object.freeze({
 /**
  * Triangle ceiling for ANY single map proxy.
  *
- * Derived, not picked: it sits below the smallest LOD0 in the shipped `places/` family
- * (`place_mining_drone`, 580 triangles — measured from the manifest, not assumed), so a chart marker
- * can never cost more than the cheapest real object it stands for.
+ * Derived, not picked: it sits below the smallest LOD0 in the shipped `places/` family, so a chart
+ * marker can never cost more than the cheapest real object it stands for.
  * `check-atlas-integrity.mjs` re-derives that minimum from
  * `assets/ships/parts/parts_manifest.json` on every run and fails if this constant stops being
  * below it — so the number cannot quietly rot as the asset library changes.
+ *
+ * Lowered 512 -> 256 on 2026-08-06. The gate did exactly its job: the lane-furniture family
+ * (LANE-FURNITURE-001) shipped six small ambient props and made `place_ash_pin` the new cheapest
+ * shipped place at 292 triangles, which put the old 512 cap ABOVE the object it stands for. The
+ * right response is to lower the cap, not to inflate a 292-triangle memorial pin: these props are
+ * deliberately small because they are lane clutter seen at 20-300 units, and a family of cheap
+ * bodies is the point of them. 256 restores real headroom under 292.
  */
-export const MAP_PROXY_TRIANGLE_CAP = 512;
+export const MAP_PROXY_TRIANGLE_CAP = 256;
 
 /**
  * Decimation target for a proxy derived from a gameplay GLB, as a fraction of the source LOD0.
