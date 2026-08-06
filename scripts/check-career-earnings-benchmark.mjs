@@ -37,6 +37,7 @@ import {
 } from '../src/systems/fieldDepletion.js';
 import { cargo as cargoSystem, addCargo, removeCargo } from '../src/systems/cargo.js';
 import { economy as economySystem, SERVICE_PRICES } from '../src/systems/economy.js';
+import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import { bulkHaulPayoutForChunk, BULK_HAUL_MIN_U } from '../src/systems/mining.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import {
@@ -44,6 +45,7 @@ import {
   fits,
   fittingsFromDefaultModules,
   getDerivedStats,
+  ships as shipsSystem,
 } from '../src/systems/ships.js';
 
 assert.equal(typeof window, 'undefined', 'career earnings benchmark must run headless');
@@ -204,8 +206,11 @@ function missionWorkTimeS(distanceWu, taskTimeS) {
 }
 
 // ---- sim bootstrap ------------------------------------------------------------------------
-function bootSim(seed) {
-  const sim = createSimulation({ seed, systems: [economySystem, cargoSystem] });
+function bootSim(seed, { includeShips = false } = {}) {
+  const systems = includeShips
+    ? [economySystem, cargoSystem, shipsSystem]
+    : [economySystem, cargoSystem];
+  const sim = createSimulation({ seed, systems });
   const state = sim.state;
   state.mode = 'flight';
   state.meta = state.meta || {};
@@ -226,11 +231,14 @@ function bootSim(seed) {
   state.simTime = 0;
   state.world = state.world || {};
   state.world.currentSectorId = NEW_GAME.startingSectorId;
+  const shipAuthority = includeShips ? sim.registry.get('ships') : null;
+  if (shipAuthority) shipAuthority.newGame();
   // Economy markets populate lazily via ensureMarket / execute.
   return {
     sim,
     state,
     econ: sim.registry.get('economy'),
+    ships: shipAuthority,
     bus: sim.bus,
   };
 }
@@ -696,11 +704,14 @@ function runHunter() {
     'travel:distance/time/toll adapters',
     'economy.update time advance',
   ];
-  const ctx = bootSim(seed);
+  const ctx = bootSim(seed, { includeShips: true });
   const starter = setHull(ctx.state, NEW_GAME.shipId);
   const midShip = SHIP_BY_ID.get('ship_wasp');
   const starterWpn = WEAPON_BY_ID.get('wpn_pulse_laser_s');
   const midWpn = WEAPON_BY_ID.get('wpn_autocannon_s');
+  const chargeRack = MODULE_BY_ID.get('mod_charge_rack');
+  const chargeRackSlotIndex = buildSlotList(starter).findIndex((slot) =>
+    chargeRack && fits(slot, chargeRack));
   const earlyEnemy = ENEMY_TYPES.find((e) => e.id === 'wasp_swarmer');
   const midEnemy = ENEMY_TYPES.find((e) => e.id === 'lancer_sniper');
 
@@ -712,6 +723,17 @@ function runHunter() {
     midWeapon: midWpn && midWpn.id,
     earlyEnemy: earlyEnemy && earlyEnemy.id,
     midEnemy: midEnemy && midEnemy.id,
+    currentShipId: starter.id,
+    purchases: [],
+    impulseChargeRack: {
+      id: chargeRack && chargeRack.id,
+      price: chargeRack && chargeRack.price,
+      fitSlotIndex: chargeRackSlotIndex,
+      capacityBefore: resolveImpulseChargeCapacity(ctx.state),
+      capacityAfter: null,
+      acquired: false,
+      activated: false,
+    },
   });
   receipt.adapters = adapters;
   receipt.ownedInventoryStart = { ...ctx.state.player.cargo.items };
@@ -737,6 +759,7 @@ function runHunter() {
   const dayIndex = 0;
   let ammoPurchased = 0;
   let ammoConsumed = 0;
+  let chargeRackPurchased = false;
 
   // Optional: buy starter ammo buffer for kinetic mid weapon (not free inventory).
   function ensureAmmo(units) {
@@ -884,6 +907,48 @@ function runHunter() {
       targetStrength: r2(strength),
       creditsAfter: ctx.state.player.credits | 0,
     });
+
+    // Practical Hunter step: the unlocked S utility rack is a real paid Hitch upgrade before the
+    // research-gated Wasp path. Preserve enough capital for the next outbound toll + repair sink;
+    // the purchase itself goes through ships, which emits the economy-owned credit charge.
+    if (!chargeRackPurchased && chargeRack && chargeRackSlotIndex >= 0 && ctx.ships) {
+      const operatingReserve = tollOut + repairCr;
+      const creditsBefore = ctx.state.player.credits | 0;
+      if (creditsBefore >= chargeRack.price + operatingReserve) {
+        const capacityBefore = resolveImpulseChargeCapacity(ctx.state);
+        const purchased = ctx.ships.buyModule({
+          defId: chargeRack.id,
+          fitSlotIndex: chargeRackSlotIndex,
+        });
+        const creditsAfter = ctx.state.player.credits | 0;
+        const capacityAfter = resolveImpulseChargeCapacity(ctx.state);
+        if (purchased) {
+          chargeRackPurchased = true;
+          receipt.purchaseSpend += chargeRack.price;
+          receipt.equipment.upgradeCost = chargeRack.price;
+          receipt.equipment.impulseChargeRack = {
+            ...receipt.equipment.impulseChargeRack,
+            capacityBefore,
+            capacityAfter,
+            acquired: true,
+            activated: capacityAfter > capacityBefore,
+            acquiredAtLoop: loops,
+          };
+          receipt.equipment.purchases.push({
+            kind: 'module',
+            id: chargeRack.id,
+            price: chargeRack.price,
+            reason: `buyModule:${chargeRack.id}`,
+            atS: r1(t),
+            creditsBefore,
+            creditsAfter,
+            fitSlotIndex: chargeRackSlotIndex,
+            capacityBefore,
+            capacityAfter,
+          });
+        }
+      }
+    }
 
     // Mid upgrade: Wasp + autocannon when affordable (ship + weapon prices from live data).
     if (!upgraded && midShip && midWpn) {
@@ -1283,9 +1348,8 @@ function assertCareer(receipt, bands) {
   if (receipt.startingCapital !== NEW_GAME.credits) {
     fails.push(`starting_capital_mismatch ${receipt.startingCapital}!=${NEW_GAME.credits}`);
   }
-  const paidProspectorUpgrade = receipt.career === 'prospector'
-    && receipt.assetPurchases > 0 && receipt.earnedValue >= 0;
-  if (receipt.netCredits < 0 && !paidProspectorUpgrade) {
+  const paidCareerUpgrade = receipt.assetPurchases > 0 && receipt.earnedValue >= 0;
+  if (receipt.netCredits < 0 && !paidCareerUpgrade) {
     fails.push(`negative_route net=${receipt.netCredits}`);
   }
   if (receipt.completedLoops <= 0) {
@@ -1389,6 +1453,19 @@ function assertCareer(receipt, bands) {
       }
       if (!(receipt.repairCost > 0) || !(receipt.failedMissions > 0)) {
         fails.push('hunter_route_omits_repair_or_counterplay_risk');
+      }
+      const rack = receipt.equipment.impulseChargeRack || {};
+      const rackPurchases = (receipt.equipment.purchases || [])
+        .filter((purchase) => purchase.id === 'mod_charge_rack');
+      const rackPurchase = rackPurchases[0];
+      if (!rack.acquired || !rack.activated
+        || rack.capacityBefore !== 4 || rack.capacityAfter !== 8
+        || rackPurchases.length !== 1 || !rackPurchase
+        || rackPurchase.price !== 18000
+        || rackPurchase.reason !== 'buyModule:mod_charge_rack'
+        || rackPurchase.creditsBefore - rackPurchase.creditsAfter !== rackPurchase.price
+        || rackPurchase.atS > HORIZON_S) {
+        fails.push('hunter_missing_legal_fitted_impulse_charge_rack_upgrade');
       }
     }
   }

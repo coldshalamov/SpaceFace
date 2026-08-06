@@ -94,6 +94,29 @@ function activeCharges(state, ownerId) {
   return out;
 }
 
+/** Maximum simultaneously deployed charges for the active player fit.
+ *
+ * The unfitted launcher keeps the authored four-charge limit. A fitted rack replaces that
+ * limit with its declared capacity (currently eight); inventory modules and fittings on parked
+ * hulls do not change the flown ship. This is intentionally a deployment limit, not free ammo:
+ * every throw still consumes one cargo charge through cargo's writer above.
+ */
+export function resolveImpulseChargeCapacity(state) {
+  const base = Math.max(1, Math.floor(Number(chargeDef('charge_standard').maxActive) || 1));
+  const player = state && state.player;
+  const activeShipIndex = Number.isInteger(player && player.activeShipIndex)
+    ? player.activeShipIndex : 0;
+  const owned = player && Array.isArray(player.ownedShips)
+    ? player.ownedShips[activeShipIndex] : null;
+  const fittings = owned && Array.isArray(owned.fittings) ? owned.fittings : [];
+  let capacity = base;
+  for (const id of fittings) {
+    const declared = Number(MODULE_BY_ID.get(id)?.mods?.impulseChargeCapacity);
+    if (Number.isFinite(declared)) capacity = Math.max(capacity, Math.floor(declared));
+  }
+  return capacity;
+}
+
 /** True only for a researched, fitted vector rack. The original charge rack/system stays live. */
 export function bombPropulsionAvailable(state) {
   if (!massline2Flag('bombPropulsion')) return false;
@@ -234,7 +257,8 @@ export const impulseCharges = {
     const throwSpeed = aftDrop ? BOMB_PROPULSION_DIALS.relativeDropSpeed : def.throwSpeed;
 
     const active = activeCharges(state, player.id);
-    while (active.length >= def.maxActive) {
+    const capacity = resolveImpulseChargeCapacity(state);
+    while (active.length >= capacity) {
       const oldest = active.shift();
       if (oldest) oldest.alive = false;
     }
