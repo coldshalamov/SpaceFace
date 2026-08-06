@@ -465,6 +465,59 @@ assert(narrativeCueIds.every((cueId) => getPresentationRecipe(cueId).budgets.voi
   'each 47-A information beat owns exactly one voice');
 presentationAdapters.dispose();
 
+// The first 47-A signal is already named by the staged tutorial objective, Kessler log, target,
+// and radar. Keep its world cue/receipt, but do not add a second transient instruction while that
+// persistent onboarding command owns attention.
+const onboardingBus = createBus();
+const onboardingUi = [];
+const onboardingAlerts = [];
+const onboardingCaptions = [];
+const onboardingAudio = [];
+const onboardingVfx = [];
+const onboardingApplied = [];
+const onboardingState = {
+  playerId: 1,
+  tick: 1,
+  simTime: 0,
+  settings: runtimeState.settings,
+  entities: runtimeState.entities,
+  onboarding: { active: true, finished: false },
+};
+onboardingBus.on('presentation:uiCue', (payload) => onboardingUi.push(payload));
+onboardingBus.on('alert', (payload) => onboardingAlerts.push(payload));
+onboardingBus.on('presentation:caption', (payload) => onboardingCaptions.push(payload));
+onboardingBus.on('presentation:audioCue', (payload) => onboardingAudio.push(payload));
+onboardingBus.on('presentation:vfxCue', (payload) => onboardingVfx.push(payload));
+onboardingBus.on('presentation:cueApplied', (payload) => onboardingApplied.push(payload));
+presentationAdapters.init({ state: onboardingState, bus: onboardingBus });
+const onboardingSignalRecipe = getPresentationRecipe('scenario.signal.pulse');
+onboardingBus.emit('presentation:cue', {
+  id: 'scenario.signal.pulse',
+  sourceEvent: 'scenario:beatEntered',
+  sourceId: 'scenario.47a',
+  targetId: 2,
+  position: { x: 90, y: 0, z: 0 },
+  importance: onboardingSignalRecipe.importance,
+  playerRelevance: 1,
+  material: onboardingSignalRecipe.material,
+  lanes: { ...onboardingSignalRecipe.lanes },
+  budgets: { ...onboardingSignalRecipe.budgets },
+  tags: [...onboardingSignalRecipe.tags],
+  simTimeMs: 0,
+  presentationTimeMs: 0,
+});
+onboardingBus.flush();
+assert.equal(onboardingAudio.length, 1, 'onboarding must preserve the signal sound-world receipt');
+assert.equal(onboardingVfx.length, 1, 'onboarding must preserve the signal world presentation');
+assert.equal(onboardingApplied.length, 1, 'onboarding must preserve the applied semantic cue receipt');
+assert.equal(onboardingUi.length, 0, 'persistent onboarding must suppress the duplicate center UI cue');
+assert.equal(onboardingAlerts.length, 0, 'persistent onboarding must suppress the duplicate alert mirror');
+assert.equal(onboardingCaptions.length, 0, 'persistent onboarding must suppress the duplicate assertive caption');
+assert.equal(onboardingApplied[0].outputs.ui, undefined, 'suppressed UI lane cannot claim application');
+assert.equal(onboardingApplied[0].outputs.accessibility, undefined,
+  'suppressed accessibility lane cannot claim application');
+presentationAdapters.dispose();
+
 console.log(`Presentation cue schema checks OK; dedupeStress=${uniqueEventCount}`
   + ` active=${stressInspect.activeDedupeKeys} peak=${stressInspect.dedupePeakKeys}`
   + ` sweeps=${stressInspect.dedupeSweepCount} scanned=${stressInspect.dedupeSweepScanned}`

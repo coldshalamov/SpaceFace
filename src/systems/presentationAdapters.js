@@ -266,7 +266,7 @@ export const presentationAdapters = {
     if (!this._pendingRoleBriefing) return null;
     const pending = this._pendingRoleBriefing;
     // Let every synchronous tutorial-handoff consumer retire its own opening surface first. The
-    // role card is informational and may follow that boundary; it never owns the tutorial window.
+    // role card is informational and may follow that boundary; it never owns the tutorial interval.
     queueMicrotask(() => {
       if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
       if (this.state.mode !== 'flight'
@@ -373,15 +373,18 @@ export const presentationAdapters = {
     // that is pillar 2, "read the battlefield at a glance" — and the audio lane is already
     // spatialized and voice-budgeted, so gating it would deaden the world rather than declutter it.
     const playerScoped = finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    const tutorialOwnsSignalAnnouncement = onboardingOwnsSignalAnnouncement(this.state, cue);
     const camera = playerScoped ? this._applyCamera(cue) : null;
     if (camera) outputs.camera = camera;
     const vfx = this._applyVfx(cue);
     if (vfx) outputs.vfx = vfx;
     const audio = this._applyAudio(cue);
     if (audio) outputs.audio = audio;
-    const ui = playerScoped ? this._applyUi(cue) : null;
+    const ui = playerScoped && !tutorialOwnsSignalAnnouncement ? this._applyUi(cue) : null;
     if (ui) outputs.ui = ui;
-    const accessibility = playerScoped ? this._applyAccessibility(cue) : null;
+    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement
+      ? this._applyAccessibility(cue)
+      : null;
     if (accessibility) outputs.accessibility = accessibility;
 
     const applied = {
@@ -570,6 +573,12 @@ export const presentationAdapters = {
 
 function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
   return Object.freeze({ key, sev, text, ttl, audioOwnedByPresentation });
+}
+
+function onboardingOwnsSignalAnnouncement(state, cue) {
+  const onboarding = state && state.onboarding;
+  return cue && cue.id === 'scenario.signal.pulse'
+    && !!(onboarding && onboarding.active && !onboarding.finished);
 }
 
 function shapeForCue(id) {
