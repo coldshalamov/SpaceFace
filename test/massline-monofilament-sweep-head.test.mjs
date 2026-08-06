@@ -185,6 +185,11 @@ test('Monofilament damage is hostile-only, momentum-bounded, player-attributed, 
     assert.equal(routed.at(-1).packet.channels.kinetic, 35, 'the cut has a hard damage ceiling');
 
     const routedBeforeSafety = routed.length;
+    h.bus.emit('massline:sweepImpact', sweepPayload(h, {
+      transverseSpeed: 40,
+      momentum: 2400,
+      rating: 'glance',
+    }));
     h.victim.team = h.player.team;
     h.bus.emit('massline:sweepImpact', sweepPayload(h));
     h.victim.team = 1;
@@ -192,7 +197,7 @@ test('Monofilament damage is hostile-only, momentum-bounded, player-attributed, 
     h.state.runtime.features = LEGACY47A_FEATURES;
     h.bus.emit('massline:sweepImpact', sweepPayload(h));
     assert.equal(routed.length, routedBeforeSafety,
-      'friendly, player, and flag-off payloads must never reach the damage writer');
+      'glancing, friendly, player, and flag-off payloads must never reach the damage writer');
   } finally {
     damage.destroy();
   }

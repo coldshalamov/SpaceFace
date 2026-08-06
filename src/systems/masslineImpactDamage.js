@@ -86,6 +86,7 @@ export const masslineImpactDamage = {
     const features = this.state.runtime && this.state.runtime.features;
     if (!massline2Flag('masslineHeadMonofilamentSweep', features)) return;
     if (payload.headId !== 'monofilament_sweep') return;
+    if (payload.rating !== 'solid' && payload.rating !== 'crushing') return;
     const victim = this._entity(payload.victimId);
     if (!victim || victim.alive === false || !victim.pos || !DAMAGEABLE.has(victim.type)) return;
     if (victim.id === this.state.playerId) return;
