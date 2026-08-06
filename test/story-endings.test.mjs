@@ -18,11 +18,13 @@ import {
   SANDBOX_ID,
   SANDBOX_MODE_OPEN_FRONTIER,
   assertEndingUniqueness,
+  createPostEndingContinuity,
   endingDef,
   evaluateEndingEligibility,
   listBoardEligibleEndingIds,
   listEndingEligibility,
   listUniqueEndingIds,
+  normalizePostEndingContinuity,
   planEndingResolution,
   planPendingConfirmation,
   snapshotEndingFacts,
@@ -580,6 +582,37 @@ check('save/load resumes partial continuity and cannot replay ending rewards or 
   h4.story.deserialize(legacy);
   assert.equal(h4.state.story.postEnding.choiceId, 'E');
   assert.equal(h4.state.story.postEnding.status, 'active');
+});
+
+check('save healing derives continuity completion from authored evidence, never free-standing fields', () => {
+  const active = createPostEndingContinuity('E', 777, 310);
+  const claimed = normalizePostEndingContinuity({
+    ...active,
+    status: 'complete',
+    progress: 99,
+    seenKeys: ['junk', 'mission:', 'mission:47b_save_1', 'mission:47b_save_1'],
+    completedAtS: 999,
+    receiptId: 'forged:replay-hook',
+  });
+  assert.equal(claimed.status, 'active', 'status alone cannot complete continuity');
+  assert.equal(claimed.progress, 1, 'only one valid distinct mission receipt survives');
+  assert.deepEqual(claimed.seenKeys, ['mission:47b_save_1']);
+  assert.equal(claimed.completedAtS, null);
+  assert.equal(claimed.receiptId, null);
+
+  const earned = normalizePostEndingContinuity({
+    ...active,
+    status: 'active',
+    progress: 0,
+    seenKeys: ['mission:47b_save_1', 'mission:47b_save_2'],
+    completedAtS: 1001,
+    receiptId: 'forged:replay-hook',
+  });
+  assert.equal(earned.status, 'complete', 'enough valid distinct evidence completes after load');
+  assert.equal(earned.progress, earned.target);
+  assert.equal(earned.completedAtS, 1001);
+  assert.equal(earned.receiptId, `replay_hook:${earned.replayHookId}:${earned.startedAtS}:${earned.seed}`,
+    'completion receipt is reconstructed from canonical durable fields');
 });
 
 check('live: ineligible choose reports unmet conditions', () => {

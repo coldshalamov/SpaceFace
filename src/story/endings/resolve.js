@@ -25,6 +25,36 @@ export function endingReceiptId(endingId, simTime, seed) {
 
 export const POST_ENDING_SCHEMA = 'spaceface.postEnding.v1';
 const MAX_CONTINUITY_KEYS = 32;
+const MAX_CONTINUITY_KEY_LENGTH = 384;
+
+function validContinuitySegment(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= 160
+    && !/[\s\u0000-\u001f:]/.test(value);
+}
+
+function validContinuityEvidenceKey(continuity, key) {
+  if (!continuity || typeof key !== 'string' || key.length > MAX_CONTINUITY_KEY_LENGTH) return false;
+  const parts = key.split(':');
+  if (continuity.signal === 'mission:completed') {
+    return parts.length === 2 && parts[0] === 'mission' && validContinuitySegment(parts[1]);
+  }
+  if (continuity.signal === 'economy:tradeCompleted') {
+    return parts.length === 3 && parts[0] === 'trade'
+      && validContinuitySegment(parts[1]) && validContinuitySegment(parts[2]);
+  }
+  if (continuity.signal === 'sector:enter') {
+    return parts.length === 2 && parts[0] === 'sector' && validContinuitySegment(parts[1]);
+  }
+  if (continuity.signal === 'scan:completed') {
+    return (parts.length === 3 && parts[0] === 'scan' && parts[1] === 'sector'
+        && validContinuitySegment(parts[2]))
+      || (parts.length === 4 && parts[0] === 'scan' && parts[1] === 'target'
+        && validContinuitySegment(parts[2]) && validContinuitySegment(parts[3]));
+  }
+  return false;
+}
 
 /** Create the durable, event-driven continuation for an ending or explicit sandbox choice. */
 export function createPostEndingContinuity(choiceId, simTime, seed) {
@@ -59,17 +89,21 @@ export function normalizePostEndingContinuity(raw) {
   const def = endingDef(raw.choiceId || raw.endingId || raw.sandboxMode);
   if (!def || !def.continuity || raw.directiveId !== def.continuity.id) return null;
   const seenKeys = Array.isArray(raw.seenKeys)
-    ? [...new Set(raw.seenKeys.filter((key) => typeof key === 'string' && key).slice(-MAX_CONTINUITY_KEYS))]
+    ? [...new Set(raw.seenKeys.filter((key) => validContinuityEvidenceKey(def.continuity, key)))]
+      .slice(-MAX_CONTINUITY_KEYS)
     : [];
   const out = createPostEndingContinuity(def.id, raw.startedAtS, raw.seed);
   out.seenKeys = seenKeys;
   // Progress is derived from durable distinct evidence keys, never trusted as a free-standing
   // counter from a partial/older save.
   out.progress = Math.min(out.target, seenKeys.length);
-  out.status = raw.status === 'complete' || out.progress >= out.target ? 'complete' : 'active';
-  out.completedAtS = out.status === 'complete' ? Math.floor(Number(raw.completedAtS) || raw.startedAtS || 0) : null;
+  out.status = out.progress >= out.target ? 'complete' : 'active';
+  const completedAtS = Math.floor(Number(raw.completedAtS));
+  out.completedAtS = out.status === 'complete'
+    ? (Number.isFinite(completedAtS) && completedAtS >= out.startedAtS ? completedAtS : out.startedAtS)
+    : null;
   out.receiptId = out.status === 'complete'
-    ? String(raw.receiptId || continuityReceiptId(out))
+    ? continuityReceiptId(out)
     : null;
   return out;
 }

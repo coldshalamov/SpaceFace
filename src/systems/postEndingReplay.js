@@ -8,6 +8,7 @@ import {
   postEndingReplayChain,
 } from '../data/postEndingReplayChains.js';
 import { getRegionalEcologyProfile } from '../data/regionalEcology.js';
+import { normalizePostEndingContinuity } from '../story/endings/resolve.js';
 
 const REFRESH_SECONDS = 600;
 const RECEIPT_CAP = 48;
@@ -22,7 +23,7 @@ function epochOf(state) {
 }
 
 function unlockedChoice(state) {
-  const rec = state?.story?.postEnding;
+  const rec = normalizePostEndingContinuity(state?.story?.postEnding);
   return rec?.status === 'complete' && rec?.replayHookId ? rec.choiceId : null;
 }
 

@@ -7,6 +7,10 @@ import { MISSION_TUNING, MISSION_TYPES } from '../src/data/missions.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { ENDING_IDS, SANDBOX_ID, endingDef } from '../src/story/endings/endingDefs.js';
 import {
+  createPostEndingContinuity,
+  normalizePostEndingContinuity,
+} from '../src/story/endings/resolve.js';
+import {
   POST_ENDING_REPLAY_CHAINS,
   POST_ENDING_REPLAY_SOURCE,
   postEndingReplayChain,
@@ -40,8 +44,20 @@ for (const sector of SECTORS) for (const station of sector.stations || []) STATI
 const MISSION_TYPES_SET = new Set(MISSION_TYPES.map((entry) => entry.type));
 const COMMODITIES_SET = new Set(COMMODITIES.map((entry) => entry.id));
 
+function completeContinuity(choiceId, { seed, simTime }) {
+  const rec = createPostEndingContinuity(choiceId, simTime, seed);
+  const prefix = rec.signal === 'mission:completed' ? 'mission:post_ending_'
+    : rec.signal === 'economy:tradeCompleted' ? 'trade:station_test_:cmdty_test_'
+      : rec.signal === 'scan:completed' ? 'scan:sector:sector_test_'
+        : 'sector:sector_test_';
+  return normalizePostEndingContinuity({
+    ...rec,
+    seenKeys: Array.from({ length: rec.target }, (_, index) => prefix + index),
+    completedAtS: simTime + 30,
+  });
+}
+
 function baseState(choiceId = 'A', { seed = 47, simTime = 1200 } = {}) {
-  const def = endingDef(choiceId);
   return {
     meta: { seed, playtimeS: 0 },
     seed,
@@ -54,10 +70,7 @@ function baseState(choiceId = 'A', { seed = 47, simTime = 1200 } = {}) {
       beatIndex: 7, branch: 'free', flags: { endgame: true }, chainProgress: 0,
       endgameChoice: choiceId === SANDBOX_ID ? null : choiceId,
       endgameResolved: true,
-      postEnding: {
-        status: 'complete', choiceId, endingId: choiceId === SANDBOX_ID ? null : choiceId,
-        sandboxMode: def.sandboxMode, replayHookId: def.continuity.replayHookId,
-      },
+      postEnding: completeContinuity(choiceId, { seed, simTime }),
     },
     missions: { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: JSON.parse(JSON.stringify(MISSION_TUNING)) },
     factions: { faction_scn: { rep: 500 }, faction_mts: { rep: 500 }, faction_dmc: { rep: 500 }, faction_free: { rep: 500 } },
@@ -66,6 +79,19 @@ function baseState(choiceId = 'A', { seed = 47, simTime = 1200 } = {}) {
     settings: { gameplay: { tutorialHints: false } },
   };
 }
+
+test('post-ending replay stays locked when a save only claims continuity completion', () => {
+  const state = baseState('A');
+  state.story.postEnding = {
+    ...createPostEndingContinuity('A', state.simTime, state.seed),
+    status: 'complete',
+    progress: 99,
+    seenKeys: [],
+    receiptId: 'forged:replay-hook',
+  };
+  assert.equal(ensurePostEndingReplayState(state), null);
+  assert.equal(state.missions.postEndingReplay, undefined);
+});
 
 function guarded(fn) {
   const random = Math.random;
