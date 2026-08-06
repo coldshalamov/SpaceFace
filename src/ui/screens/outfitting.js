@@ -279,7 +279,7 @@ export function statSnippet(def) {
     if (m.magnetRange) parts.push(m.magnetRange + ' magnet');
     if (m.masslineHeadId === 'tractor') parts.push('tractor head');
     if (m.masslineHeadId === 'elastic_whip') parts.push('spring-energy head');
-    if (m.masslineHeadId === 'frame_coupler') parts.push('velocity-match head');
+    if (m.masslineHeadId === 'frame_coupler') parts.push('separation-damping head');
     if (m.masslineHeadId === 'monofilament_sweep') parts.push('hostile-cut sweep head');
     if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
     if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');

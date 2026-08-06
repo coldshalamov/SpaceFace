@@ -407,7 +407,6 @@ export class Sg02DynamicBodyOwner {
     const relativeVelocityX = targetVelocity.x - ownerVelocity.x;
     const relativeVelocityZ = targetVelocity.z - ownerVelocity.z;
     const relativeSpeed = relativeVelocityX * nx + relativeVelocityZ * nz;
-    const frameErrorSpeed = Math.hypot(relativeVelocityX, relativeVelocityZ);
     const stretch = Math.max(0, distance - attachment.restLength);
     const springState = attachment.springState || createSpringState();
     const yank = finite(springState.lastYank || 0, 0);
@@ -445,7 +444,7 @@ export class Sg02DynamicBodyOwner {
       distance,
       stretch,
       relativeSpeed,
-      frameErrorSpeed: frameCoupler ? frameErrorSpeed : 0,
+      frameErrorSpeed: frameCoupler ? Math.max(0, relativeSpeed) : 0,
       yank,
       tension: telemetryTension,
       impulse: telemetryImpulse,
@@ -1183,8 +1182,8 @@ export class Sg02DynamicBodyOwner {
     const velocityB = attachment.target.body.linvel();
     const rvx = finite(velocityB.x) - finite(velocityA.x);
     const rvz = finite(velocityB.z) - finite(velocityA.z);
-    const frameErrorSpeed = Math.hypot(rvx, rvz);
     const relativeSpeed = rvx * nx + rvz * nz;
+    const openingSpeed = Math.max(0, relativeSpeed);
     const previousRelativeSpeed = finite(state.lastRelativeSpeed, 0);
     const yank = (relativeSpeed - previousRelativeSpeed) / this.fixedDt;
 
@@ -1200,14 +1199,15 @@ export class Sg02DynamicBodyOwner {
     const captureX = inCapture && captureS > 0 ? clamp(state.captureT / captureS, 0, 1) : 1;
     const gain = spring.velocityGain * smoothstep(captureX);
     const mu = reducedMass(attachment.owner, attachment.target);
-    const force = Math.min(spring.maxForce, mu * gain * frameErrorSpeed);
+    const force = Math.min(spring.maxForce, mu * gain * openingSpeed);
     const forceImpulse = force * this.fixedDt;
     const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
-    if (impulse > 0 && frameErrorSpeed > 1e-9) {
-      const invError = 1 / frameErrorSpeed;
-      scratch.impulseA.x = rvx * invError * impulse;
+    if (impulse > 0) {
+      // A Frame Coupler changes how a taut rope damps separation; it does not gain a
+      // sideways velocity controller. Equal/opposite impulses therefore stay on the line.
+      scratch.impulseA.x = nx * impulse;
       scratch.impulseA.y = 0;
-      scratch.impulseA.z = rvz * invError * impulse;
+      scratch.impulseA.z = nz * impulse;
       scratch.impulseB.x = -scratch.impulseA.x;
       scratch.impulseB.y = 0;
       scratch.impulseB.z = -scratch.impulseA.z;
@@ -1223,7 +1223,7 @@ export class Sg02DynamicBodyOwner {
     state.lastTension = force;
     state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
-    state.lastFrameErrorSpeed = frameErrorSpeed;
+    state.lastFrameErrorSpeed = openingSpeed;
     state.lastYank = yank;
     state.phase = geometricOverloadRatio > 1 ? 'overload'
       : inCapture ? 'capture'

@@ -19,7 +19,7 @@ const TRACTOR = MODULES.find((def) => def.id === 'mod_tractor_beam_m');
 const WHIP = MODULES.find((def) => def.id === 'mod_elastic_whip_m');
 const COUPLER = MODULES.find((def) => def.id === 'mod_frame_coupler_m');
 
-test('Frame Coupler is a reachable, exclusive, independently flagged velocity-match head', () => {
+test('Frame Coupler is a reachable, exclusive, independently flagged separation-damping head', () => {
   const fittings = fittingsFromDefaultModules('ship_drifter', [COUPLER.id]);
   const derived = getDerivedStats('ship_drifter', fittings, null);
   const production = effectiveTetherPolicy(STANDARD, { data: { derived } }, PRODUCTION_FEATURES);
@@ -38,7 +38,7 @@ test('Frame Coupler is a reachable, exclusive, independently flagged velocity-ma
   );
   assert.equal(legacy.headId, undefined);
   assert.equal(legacy.spring, undefined, 'flag-off preserves the ordinary standard line');
-  assert.match(statSnippet(COUPLER), /velocity-match head/i);
+  assert.match(statSnippet(COUPLER), /separation-damping head/i);
 
   const malformed = fittingsFromDefaultModules('ship_atlas', [
     COUPLER.id,
@@ -55,7 +55,74 @@ test('Frame Coupler is a reachable, exclusive, independently flagged velocity-ma
     'defensive arbitration must remain independent of fitting-slot order');
 });
 
-test('Frame Coupler matches a moving freighter through bounded momentum exchange and safe detach', async () => {
+test('Frame Coupler cannot steer by matching tangential velocity', async () => {
+  const policy = couplerPolicy();
+  const player = makeBody('coupler-tangent-player', 0, 24, { x: 40, z: 0 });
+  const target = makeBody('coupler-tangent-target', 100, 96, { x: 40, z: 80 });
+  const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
+
+  try {
+    runtime.syncFromEntities([player, target]);
+    const handle = runtime.createAttachment({
+      attachmentId: 'coupler-tangential-authority',
+      defId: 'tether_standard',
+      ownerId: player.id,
+      targetId: target.id,
+      sourceWorld: player.pos,
+      targetWorld: target.pos,
+      restLength: 100,
+      spring: policy.spring,
+      springState: { wasTaut: true, slackS: 0, captureActive: false },
+      tick: 0,
+    });
+
+    runtime.step(DT);
+    const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
+    assert.deepEqual(player.vel, { x: 40, z: 0 },
+      'a rope may not steer the player toward the target frame');
+    assert.deepEqual(target.vel, { x: 40, z: 80 },
+      'a rope may not brake tangential target motion');
+    assert.equal(telemetry.tension, 0, 'pure tangential frame error has no rope-force component');
+    assert.ok(telemetry.frameErrorSpeed < 2,
+      `telemetry must report the post-step radial projection, not 80 wu/s of sideways error; got ${telemetry.frameErrorSpeed}`);
+  } finally {
+    runtime.dispose();
+  }
+});
+
+test('Frame Coupler cannot brake endpoints that are already closing', async () => {
+  const policy = couplerPolicy();
+  const player = makeBody('coupler-closing-player', 0, 24, { x: 80, z: 0 });
+  const target = makeBody('coupler-closing-target', 100, 96, { x: 0, z: 0 });
+  const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
+
+  try {
+    runtime.syncFromEntities([player, target]);
+    const handle = runtime.createAttachment({
+      attachmentId: 'coupler-closing-authority',
+      defId: 'tether_standard',
+      ownerId: player.id,
+      targetId: target.id,
+      sourceWorld: player.pos,
+      targetWorld: target.pos,
+      restLength: 100,
+      spring: policy.spring,
+      springState: { wasTaut: true, slackS: 0, captureActive: false },
+      tick: 0,
+    });
+
+    runtime.step(DT);
+    const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
+    assert.deepEqual(player.vel, { x: 80, z: 0 });
+    assert.deepEqual(target.vel, { x: 0, z: 0 });
+    assert.equal(telemetry.tension, 0, 'a rope cannot push apart or brake closing endpoints');
+    assert.equal(telemetry.frameErrorSpeed, 0, 'closing speed is outside coupler authority');
+  } finally {
+    runtime.dispose();
+  }
+});
+
+test('Frame Coupler damps separation from a moving freighter and detaches safely', async () => {
   const player = makeBody('coupler-player', 0, 24, { x: 0, z: 0 }, 'drive_reaction_m');
   const freighter = makeBody('coupler-freighter', 100, 240, { x: 247, z: 45 }, 'drive_reaction_l');
   const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
@@ -94,11 +161,22 @@ test('Frame Coupler matches a moving freighter through bounded momentum exchange
 
     const telemetry = runtime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
     const finalMomentum = momentum(player, freighter);
-    const frameError = Math.hypot(freighter.vel.x - player.vel.x, freighter.vel.z - player.vel.z);
-    assert.ok(frameError < 0.2, `the coupled frames should converge gradually, got ${frameError}`);
+    const lineDx = telemetry.targetWorld.x - telemetry.sourceWorld.x;
+    const lineDz = telemetry.targetWorld.z - telemetry.sourceWorld.z;
+    const invDistance = 1 / Math.hypot(lineDx, lineDz);
+    const lineX = lineDx * invDistance;
+    const lineZ = lineDz * invDistance;
+    const relativeX = freighter.vel.x - player.vel.x;
+    const relativeZ = freighter.vel.z - player.vel.z;
+    const openingSpeed = Math.max(0, relativeX * lineX + relativeZ * lineZ);
+    const tangentialSpeed = Math.abs(relativeX * -lineZ + relativeZ * lineX);
+    assert.ok(openingSpeed < 1, `rope-axis separation should converge gradually, got ${openingSpeed}`);
+    assert.ok(tangentialSpeed > 1,
+      `the coupler must leave sideways relative motion under pilot/target control, got ${tangentialSpeed}`);
     assert.ok(Math.hypot(player.vel.x, player.vel.z) > playerProfile.combatSpeed,
       'the live reaction-drive command membrane must preserve velocity physically earned from the faster frame');
-    assert.ok(telemetry.frameErrorSpeed < 0.2, 'physics telemetry should expose the remaining frame error');
+    assert.ok(telemetry.frameErrorSpeed < 1,
+      'physics telemetry should expose only the remaining rope-axis separation');
     assert.ok(maxTension <= policy.spring.maxForce + 1e-6,
       `complete coupling force must stay inside ${policy.spring.maxForce}, got ${maxTension}`);
     assert.ok(Math.abs(finalMomentum.x - initialMomentum.x) < 0.05);
