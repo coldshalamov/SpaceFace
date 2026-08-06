@@ -595,9 +595,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : 'OBJECTIVE SETTLED';
     showReceipt('MISSION COMPLETE', String(p.type || 'JOB').replace(/_/g, ' ').toUpperCase(), delta);
   });
-  subscribe('mission:updated', () => {
+  subscribe('mission:updated', (payload = {}) => {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
-    applyDockAttention({ allowAutoOpen: false });
+    // A newly posted B5 choice may claim this dock session's one existing auto-open. If an earlier
+    // mission handoff already used it, the Missions badge updates without yanking the player back.
+    applyDockAttention({ allowAutoOpen: payload.onboardingChoice === true });
   });
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');

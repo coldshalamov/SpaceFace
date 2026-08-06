@@ -31,6 +31,7 @@ const missionsSrc = read('src/systems/missions.js');
 const telemetrySrc = read('src/systems/telemetry.js');
 const newGameSrc = read('src/ui/screens/newGame.js');
 const mainMenuSrc = read('src/ui/screens/mainMenu.js');
+const contractsScreenSrc = read('src/ui/station/screens/contracts.js');
 
 // ── Extract the authored BEATS table (source of truth for the first-15 pacing) ────────────────
 // We exec the BEATS constant by importing the module in a sandboxed way is not feasible without the
@@ -258,8 +259,12 @@ assert.match(onboardingSrc, /FLIGHT_DRILL_DISENGAGE_RANGE_WU/, 'disengagement mu
 assert.match(onboardingSrc, /_spawnDerelict/, 'B1 must spawn a derelict wreck for the tether trio');
 assert.match(onboardingSrc, /_spawnTrainer/, 'flight drill must spawn an inert trainer');
 assert.match(onboardingSrc, /_openChoice/, 'B5 must surface three side-by-side offers');
-assert.match(onboardingSrc, /choiceOfferTypes/, 'B5 must tag the three loop types (HAUL/BOUNTY/SURVEY)');
-assert.match(onboardingSrc, /bulk_trade.*bounty_hunt.*recon_scan/s, 'B5 must offer haul (trade) / bounty / survey');
+assert.match(onboardingSrc, /recommendedCompleted/, 'B4 must wait for the recommended contract to complete');
+assert.match(missionsSrc, /ensureOnboardingChoiceOffers/, 'missions authority must post the B5 choice offers');
+assert.match(missionsSrc, /choiceOfferTypes/, 'B5 must persist the three loop types on tutorial state');
+assert.match(missionsSrc, /bulk_trade.*bounty_hunt.*recon_scan/s, 'B5 must offer haul (trade) / bounty / survey');
+assert.match(contractsScreenSrc, /FIRST FLIGHT \/ PICK ONE · HAUL \/ BOUNTY \/ SURVEY/,
+  'the live Station OS rail must label the three B5 choices');
 
 // ── Assertion 5: §4 difficulty ramp — telemetry funnel milestones exist ───────────────────────
 assert.match(telemetrySrc, /first1000crAt/, 'telemetry funnel must track first 1000cr (spec2/03 §4)');

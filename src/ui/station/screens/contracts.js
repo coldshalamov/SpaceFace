@@ -28,6 +28,8 @@ const TYPE_ICON = {
 };
 const RISK_LABEL = ['Routine', 'Low', 'Elevated', 'High', 'Severe', 'Severe'];
 const FAC_TINT = { faction_scn: '#5b8dd6', faction_mts: '#d8b25a', faction_dmc: '#d17a4b', faction_reach: '#c1543f', faction_quiet: '#9b8bd0', faction_vael: '#cf5d86', faction_free: '#46b4a4', faction_choir: '#78c6d8' };
+const FIRST_TRADE_SOURCE = 'firstTradeContract';
+const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
 
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const num = (v) => Math.max(0, Math.round(Number(v) || 0));
@@ -45,6 +47,18 @@ export function missionOffersFollowUp(mission) {
 }
 
 export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
+  const ob = state && state.onboarding;
+  const choiceIds = ob && Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
+  if (ob && ob.active && !ob.finished && ob.choiceStationId === stationId && choiceIds.length === 3) {
+    return 'FIRST FLIGHT / PICK ONE · HAUL / BOUNTY / SURVEY';
+  }
+  const board = state && state.missions && state.missions.boards
+    && state.missions.boards[stationId];
+  const hasFirstTrade = board && Array.isArray(board.slots)
+    && board.slots.some((offer) => offer && offer.source === FIRST_TRADE_SOURCE);
+  if (ob && ob.active && !ob.finished && hasFirstTrade) {
+    return 'FIRST FLIGHT / RECOMMENDED DELIVERY';
+  }
   const station = STATION_DEF.get(stationId);
   if (!station || !station.dispatchConflictKey) return 'LIVE DISPATCH / SELECT A MISSION';
   const conflict = state && state.conflicts && state.conflicts[station.dispatchConflictKey] || {};
@@ -91,6 +105,44 @@ function sortFocusFirst(list, focusId) {
     const bHit = String(mid(b)) === fid ? 0 : 1;
     return aHit - bHit;
   });
+}
+
+/** First-hour board labels are presentation over mission-owned provenance, never a second offer. */
+export function firstHourBoardOfferPresentation(state, offer) {
+  const ob = state && state.onboarding;
+  if (!ob || !ob.active || ob.finished || !offer) return null;
+  const id = String(mid(offer));
+  const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.map(String) : [];
+  const choiceIndex = choiceIds.indexOf(id);
+  if (offer.source === ONBOARDING_CHOICE_SOURCE && choiceIndex >= 0) {
+    const authored = offer.onboardingChoice || {};
+    const fallback = ['HAUL', 'BOUNTY', 'SURVEY'][choiceIndex] || 'CHOICE';
+    return { label: String(authored.label || fallback).toUpperCase(), rank: choiceIndex, kind: 'choice' };
+  }
+  if (offer.source === FIRST_TRADE_SOURCE && choiceIds.length === 0) {
+    return { label: 'RECOMMENDED', rank: -1, kind: 'recommended' };
+  }
+  return null;
+}
+
+function sortBoardOffers(list, state, focusId) {
+  const decorated = list.map((offer, index) => ({
+    offer,
+    index,
+    firstHour: firstHourBoardOfferPresentation(state, offer),
+  }));
+  decorated.sort((a, b) => {
+    const aRank = a.firstHour ? a.firstHour.rank : Number.POSITIVE_INFINITY;
+    const bRank = b.firstHour ? b.firstHour.rank : Number.POSITIVE_INFINITY;
+    if (aRank !== bRank) return aRank - bRank;
+    if (focusId) {
+      const aFocus = String(mid(a.offer)) === String(focusId) ? 0 : 1;
+      const bFocus = String(mid(b.offer)) === String(focusId) ? 0 : 1;
+      if (aFocus !== bFocus) return aFocus - bFocus;
+    }
+    return a.index - b.index;
+  });
+  return decorated.map((row) => row.offer);
 }
 
 /** Authored mission copy shown in the dossier; missing copy leaves the existing preflight intact. */
@@ -209,9 +261,11 @@ export function createContractsScreen(ctx) {
   }
 
   function renderBoard(state) {
-    const list = sortFocusFirst(offers(state), focusId());
+    const list = sortBoardOffers(offers(state), state, focusId());
     const stationId = state && state.ui && state.ui.dockedStationId;
-    if (!selectedId && list.length) selectedId = String(mid(list[0]));
+    if (list.length && (!selectedId || !list.some((offer) => String(mid(offer)) === selectedId))) {
+      selectedId = String(mid(list[0]));
+    }
     if (!list.length) {
       boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No missions posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`;
       return;
@@ -225,9 +279,11 @@ export function createContractsScreen(ctx) {
         ? ' is-attention' : '';
       const r = risk(m);
       const filing = finalDispositionPresentation(m);
+      const firstHour = firstHourBoardOfferPresentation(state, m);
+      const firstHourPrefix = firstHour ? `${firstHour.label} · ` : '';
       const rowAria = filing
         ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-        : `${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+        : `${firstHourPrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
       return (
         `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
           ` style="--signal:${facTint(m)}"` +
@@ -238,7 +294,7 @@ export function createContractsScreen(ctx) {
             `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
             `<span class="sx-ct-row__meta">${filing
               ? `${escapeHtml(filing.issuerName)} · FINAL DISPOSITION · ${escapeHtml(filing.destinationName)}`
-              : `${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
+              : `${firstHour ? `<b>${escapeHtml(firstHour.label)}</b> · ` : ''}${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
           `</span>` +
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
           `<span class="sx-ct-row__risk">${filing ? 'FINAL' : `${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}`}</span>` +
@@ -250,7 +306,7 @@ export function createContractsScreen(ctx) {
   }
 
   function renderDossier(state) {
-    const list = sortFocusFirst(offers(state), focusId());
+    const list = sortBoardOffers(offers(state), state, focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
     if (!m) { dossierEl.innerHTML = `<div class="sx-empty">${icon('contracts', 34)}<h4>No mission selected</h4><p>Pick a job from the board to open its briefing.</p></div>`; return; }
     const focusAccept = attention && attention.kind === 'accept'

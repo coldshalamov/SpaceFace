@@ -181,6 +181,22 @@ export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
 export const CONTRACT_47A_B2_TAG = 'campaign47a:b2:elroy';
 
+// SPEC2/03 B5. These are ordinary mission offers with one extra provenance tag so the
+// first-hour rail can guarantee a legible three-loop choice without inventing a second contract
+// lifecycle. Missions still owns generation, acceptance, targets, rewards, and receipts.
+export const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
+export const ONBOARDING_CHOICE_LOOPS = Object.freeze([
+  Object.freeze({
+    type: 'bulk_trade', label: 'HAUL', maxRiskTier: 1, maxCollateralCr: 2000, maxRewardCr: 10000,
+  }),
+  Object.freeze({
+    type: 'bounty_hunt', label: 'BOUNTY', maxRiskTier: 1, maxCollateralCr: 0, maxRewardCr: 10000,
+  }),
+  Object.freeze({
+    type: 'recon_scan', label: 'SURVEY', maxRiskTier: 1, maxCollateralCr: 0, maxRewardCr: 10000,
+  }),
+]);
+
 // ── G05 corridor opening objective (one clear first-minute command) ───────────────────────────
 // When nothing is tracked and the pilot has not yet first-docked, the HUD idle tracker presents
 // this single corridor objective with the existing marker / distance / ETA machinery.
@@ -863,6 +879,13 @@ export const missions = {
       offer && offer.source === 'firstTradeContract'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
+    // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
+    // together through an epoch refresh until the player accepts one; acceptMission withdraws the
+    // two unchosen siblings atomically before publishing mission:accepted.
+    const retainedOnboardingChoices = previousSlots.filter((offer) => (
+      offer && offer.source === ONBOARDING_CHOICE_SOURCE
+      && state.onboarding && state.onboarding.active && !state.onboarding.finished
+    )).slice(0, ONBOARDING_CHOICE_LOOPS.length);
     // PQ-019C: an authored heist row (standing contract or its one reduced-stake recovery) is
     // authored progress, not a procedural roll. Carry it through an epoch refresh; _syncHeistOffer
     // re-posts the standing row only when none is present, so a pending recovery is never replaced.
@@ -872,6 +895,7 @@ export const missions = {
     board = {
       refreshEpoch: epoch,
       slots: [
+        ...retainedOnboardingChoices,
         ...retainedFirstTradeOffers,
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
@@ -890,6 +914,108 @@ export const missions = {
     this._syncHeistOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  /**
+   * SPEC2/03 B5 — post one normal, starter-risk offer for each first-hour loop.
+   *
+   * This is deliberately a board adapter rather than a parallel tutorial mission system. Each
+   * candidate comes through _rollOffer, so normal destinations, rewards, objectives, target
+   * spawning, receipts, and save behavior remain authoritative. We sample a bounded deterministic
+   * set and choose the lowest-risk normal roll; no finished offer has its economics rewritten.
+   */
+  ensureOnboardingChoiceOffers(stationId) {
+    const state = this.state;
+    const info = STATION_INFO.get(stationId);
+    if (!info) return [];
+    const board = this.ensureBoard(stationId);
+    if (!board || !Array.isArray(board.slots)) return [];
+
+    const epoch = this._epoch();
+    const helpers = this.helpers || {};
+    const seedBase = Number(state.meta && state.meta.seed) || 1;
+    const existing = new Map(board.slots
+      .filter((offer) => offer && offer.source === ONBOARDING_CHOICE_SOURCE)
+      .map((offer) => [offer.type, offer]));
+    const choices = [];
+
+    for (let order = 0; order < ONBOARDING_CHOICE_LOOPS.length; order++) {
+      const loop = ONBOARDING_CHOICE_LOOPS[order];
+      let offer = existing.get(loop.type) || null;
+      if (!offer) {
+        let best = null;
+        let bestRank = null;
+        for (let attempt = 0; attempt < 64; attempt++) {
+          const seed = typeof helpers.hash32 === 'function'
+            ? helpers.hash32(seedBase, stationId, 'first-hour-choice', loop.type, attempt)
+            : ((seedBase ^ Math.imul(order + 1, 0x9e3779b1) ^ Math.imul(attempt + 1, 0x85ebca6b)) >>> 0);
+          const rng = typeof helpers.mulberry32 === 'function'
+            ? helpers.mulberry32(seed) : mulberryLocal(seed);
+          const candidate = this._rollOffer(
+            loop.type,
+            info,
+            rng,
+            epoch,
+            `first_hour_${order}_${attempt}`,
+            { attachConditions: false },
+          );
+          if (!candidate) continue;
+          const candidateRisk = Number(candidate.riskTier) || 0;
+          const candidateCollateral = Math.max(0, Number(candidate.collateral_cr) || 0);
+          const candidateReward = Math.max(0, Number(candidate.reward_cr) || 0);
+          const rank = [
+            candidateRisk > loop.maxRiskTier ? 1 : 0,
+            candidateCollateral > loop.maxCollateralCr ? 1 : 0,
+            candidateReward > loop.maxRewardCr ? 1 : 0,
+            candidateRisk,
+            candidateCollateral,
+            candidateReward,
+          ];
+          let better = !bestRank;
+          if (bestRank) {
+            for (let index = 0; index < rank.length; index++) {
+              if (rank[index] === bestRank[index]) continue;
+              better = rank[index] < bestRank[index];
+              break;
+            }
+          }
+          if (better) {
+            best = candidate;
+            bestRank = rank;
+          }
+          if (rank[0] === 0 && rank[1] === 0 && rank[2] === 0) break;
+        }
+        offer = best;
+        if (!offer) continue;
+        offer.id = `first_hour_choice_${stationId}_${seedBase}_${loop.type}`;
+        offer.source = ONBOARDING_CHOICE_SOURCE;
+        offer.onboardingChoice = { label: loop.label, order };
+        // Long enough for a player to leave, regroup, and return; the active tutorial retention
+        // rule above, rather than this horizon, is the actual ownership contract.
+        offer.expiresAtEpoch = epoch + 8;
+      }
+      choices.push(offer);
+    }
+
+    if (choices.length !== ONBOARDING_CHOICE_LOOPS.length) return [];
+    const priorChoiceIds = board.slots
+      .filter((offer) => offer && offer.source === ONBOARDING_CHOICE_SOURCE)
+      .map((offer) => offer.id);
+    const ordinary = board.slots.filter((offer) => offer && offer.source !== ONBOARDING_CHOICE_SOURCE);
+    board.slots = [...choices, ...ordinary];
+
+    const ob = state.onboarding;
+    if (ob && ob.active && !ob.finished) {
+      ob.choiceStationId = stationId;
+      ob.choiceOfferTypes = ONBOARDING_CHOICE_LOOPS.map((loop) => loop.type);
+      ob.choiceOfferIds = choices.map((offer) => offer.id);
+    }
+    const nextChoiceIds = choices.map((offer) => offer.id);
+    if (priorChoiceIds.length !== nextChoiceIds.length
+      || priorChoiceIds.some((id, index) => id !== nextChoiceIds[index])) {
+      this.bus.emit('mission:updated', { missionId: null, stationId, onboardingChoice: true });
+    }
+    return choices;
   },
 
   /**
@@ -1706,6 +1832,14 @@ export const missions = {
         return false;
       }
     }
+    // B5 is a real choice: once one loop is accepted, withdraw the two tutorial siblings before
+    // synchronous mission:accepted listeners run. The accepted instance remains an ordinary live
+    // mission; only the unchosen board invitations disappear.
+    if (inst.source === ONBOARDING_CHOICE_SOURCE && board && Array.isArray(board.slots)) {
+      board.slots = board.slots.filter((candidate) => (
+        candidate && candidate.source !== ONBOARDING_CHOICE_SOURCE
+      ));
+    }
 
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
@@ -1719,6 +1853,7 @@ export const missions = {
       type: inst.type,
       storyTag: inst.storyTag || undefined,
       source: inst.source || undefined,
+      sourceOfferId: inst.sourceOfferId || undefined,
       sourceRef: inst.sourceRef || undefined,
       wreckId: inst.wreckId || undefined,
       channelId: inst.channelId || undefined,
@@ -1857,7 +1992,8 @@ export const missions = {
     this._refreshTrackedMissionNav(mission);
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
-      const line = `Tracking: ${mission.title || 'Mission'}${wp && wp.reason ? ` - ${wp.reason}` : ''}`;
+      const ownsWaypoint = wp && wp.kind === 'mission' && wp.missionId === mission.id;
+      const line = `Tracking: ${mission.title || 'Mission'}${ownsWaypoint && wp.reason ? ` - ${wp.reason}` : ''}`;
       // Mission-objective nudge → the one-voice arbiter's 'objective' tier (preempts chatter, yields
       // to tutorial/danger/story). Stable id so re-tracking replaces in place. Toast fallback only
       // when the arbiter helper is unavailable (headless/unit contexts).
@@ -1868,6 +2004,17 @@ export const missions = {
     }
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true });
     return true;
+  },
+
+  /** Hand the B4 marker from the completed flight lesson to its newly tracked real contract. */
+  releaseOnboardingNavigation(missionId) {
+    const mission = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.id === missionId && candidate.status === 'active'
+    ));
+    if (!mission || this._onboardingOwnsOpeningNav()) return false;
+    this._refreshTrackedMissionNav(mission);
+    const waypoint = this.state.nav && this.state.nav.waypoint;
+    return !!(waypoint && waypoint.kind === 'mission' && waypoint.missionId === mission.id);
   },
 
   _instanceFromOffer(offer) {
@@ -4591,7 +4738,10 @@ export const missions = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
-    return !!(ob && ob.active && !ob.finished);
+    // Once B4's authored delivery is accepted, that physical mission must own its route. The
+    // tutorial remains active only to await completion and present B5; keeping the Helios marker
+    // here would strand the player at the origin with a tracked job pointing nowhere.
+    return !!(ob && ob.active && !ob.finished && !ob.recommendedMissionId);
   },
 
   serialize() {

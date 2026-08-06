@@ -24,7 +24,12 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import {
+  FIRST_TRADE_CONTRACT_DEST_STATION_ID,
+  FIRST_TRADE_CONTRACT_SOURCE,
+} from '../data/economyContractTemplates.js';
 import {
   FLIGHT_DRILL_BEATS,
   FLIGHT_DRILL_BRAKE_WU,
@@ -83,7 +88,7 @@ const BEATS = [
     followups: [
       { on: 'sold', line: "Board's got one job for you." },
     ],
-    done: 'recommendSurfaced',
+    done: 'recommendedCompleted',
   },
   { // B5 CHOICE (~12:00) — three side-by-side offers; accept any → ends tutorial
     key: 'choice',
@@ -181,8 +186,8 @@ export const onboarding = {
     bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {}));
     bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {}));
     bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
-    bus.on('mission:accepted', () => this._onBeatEvent('mission:accepted'));
-    bus.on('ship:purchased', () => this._onBeatEvent('mission:accepted'));
+    bus.on('mission:accepted', (p) => this._onMissionAccepted(p || {}));
+    bus.on('mission:completed', (p) => this._onMissionCompleted(p || {}));
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
     bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
@@ -591,6 +596,35 @@ export const onboarding = {
     this._onBeatEvent('scan:hit', { ...payload, targetId: rock.id });
   },
 
+  _onMissionAccepted(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat) return;
+    if (beat.key === 'dock' && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
+      ob.recommendedMissionId = payload.missionId || null;
+      ob.beatAction = 'Complete the tracked delivery.';
+      this._clearObjectiveWaypoint();
+      const missions = this.registry && this.registry.get && this.registry.get('missions');
+      if (missions && typeof missions.releaseOnboardingNavigation === 'function') {
+        missions.releaseOnboardingNavigation(payload.missionId);
+      }
+      this._refreshBeatPanel();
+      return;
+    }
+    this._onBeatEvent('mission:accepted', payload);
+  },
+
+  _onMissionCompleted(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'dock') return;
+    if (payload.source !== FIRST_TRADE_CONTRACT_SOURCE) return;
+    if (ob.recommendedMissionId && payload.missionId !== ob.recommendedMissionId) return;
+    ob.choiceStationId = this.state.ui && this.state.ui.dockedStationId
+      || FIRST_TRADE_CONTRACT_DEST_STATION_ID;
+    this._onBeatEvent('recommended:completed', payload);
+  },
+
   _recordTrainingOreYield(payload) {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
@@ -639,10 +673,12 @@ export const onboarding = {
     } else if (done === 'flybyFocus:start' && eventName === 'flybyFocus:start') {
       resolved = true;
     } else if (done === 'mission:accepted' && eventName === 'mission:accepted') {
-      resolved = true; // B5: accepting any offer ends the tutorial
-    } else if (done === 'recommendSurfaced' && eventName === 'sold') {
-      // B4 DONE = the player sold the haul, which surfaces the board's one recommended contract.
-      // The "Board's got one job for you." followup bark fires on this same event (just above).
+      const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
+      resolved = payload && payload.source === ONBOARDING_CHOICE_SOURCE
+        && choiceIds.includes(payload.sourceOfferId);
+    } else if (done === 'recommendedCompleted' && eventName === 'recommended:completed') {
+      // B4 stays live through the authored Helios delivery. Merely selling the training ore or
+      // accepting an unrelated board row cannot skip the first complete contract loop.
       resolved = true;
     }
     // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
@@ -1030,20 +1066,16 @@ export const onboarding = {
     }
   },
 
-  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY). The mission board generates them;
-  // we just ensure the docked station's board exists and tag the three loop types for the UI.
+  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY) through the ordinary mission
+  // authority. No parallel tutorial jobs: these offers accept, track, pay, and receipt normally.
   _openChoice() {
     const st = this.state;
-    const stationId = st.ui && st.ui.dockedStationId;
+    const ob = st.onboarding;
+    const stationId = ob && ob.choiceStationId || st.ui && st.ui.dockedStationId;
     if (!stationId) return;
     const missions = this.registry && this.registry.get && this.registry.get('missions');
-    if (!missions || typeof missions.ensureBoard !== 'function') return;
-    const board = missions.ensureBoard(stationId);
-    if (!board || !Array.isArray(board.slots)) return;
-    // Tag one offer per loop type so the UI can present them side-by-side. The recommendation engine
-    // already surfaces exactly one; the choice beat shows the spread of all three loops instead.
-    const st_ob = st.onboarding;
-    if (st_ob) st_ob.choiceOfferTypes = ['bulk_trade', 'bounty_hunt', 'recon_scan'];
+    if (!missions || typeof missions.ensureOnboardingChoiceOffers !== 'function') return;
+    missions.ensureOnboardingChoiceOffers(stationId);
   },
 
   _setObjectiveWaypoint(force) {
@@ -1051,6 +1083,12 @@ export const onboarding = {
     const ob = st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
     const beat = BEATS[ob.currentBeat];
+    // The B4 flight lesson ends at acceptance. Keep the tutorial state alive for completion/B5,
+    // but never reclaim the real delivery's route with the old Helios docking marker.
+    if (beat && beat.key === 'dock' && ob.recommendedMissionId) {
+      if (st.nav.waypoint && st.nav.waypoint.onboarding) st.nav.waypoint = null;
+      return;
+    }
     const existing = st.nav.waypoint;
     // While teaching, reclaim mission/story claims so the opening marker stays onboarding-owned.
     // Leave player-set local/trade/autopilot courses alone unless force-stamping a lesson target.
