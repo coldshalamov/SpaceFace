@@ -61,6 +61,9 @@ import {
   writeNpcJobSignatureFrame,
   NPC_JOB_SIGNATURE_CAPACITY,
   NPC_JOB_SIGNATURE_DRAW_RANGE,
+  deployFraction,
+  resolveNpcJobReaction,
+  NPC_JOB_REACTION,
 } from './npcJobSignatureVfx.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
@@ -614,6 +617,9 @@ export const vfx = {
         lastEmitStep: -1,
         seed: 0,
         gen: -1, // declared here so the slot's hidden class never changes on first claim
+        deploy: 0,        // 0 stowed .. 1 gear fully out
+        reaction: 'none', // what this hull is doing about the player
+        reactionT: 0,     // 0 .. 1 as the player closes
         frame: createNpcJobSignatureFrameScratch(),
       });
     }
@@ -784,6 +790,8 @@ export const vfx = {
         active: this._npcJobSignatureActive || 0,
         drawn: this._npcJobSignatureDrawn || 0,
         lastSignal: this._lastNpcJobSignatureId || null,
+        reacting: this._npcJobReacting || 0,
+        lastReaction: this._lastNpcJobReaction || null,
         capacity: NPC_JOB_SIGNATURE_CAPACITY,
       },
     };
@@ -3415,6 +3423,7 @@ export const vfx = {
     let emitted = 0;
     let active = 0;
     let drawn = 0;
+    let reacting = 0;
 
     for (const jobId in byId) {
       const entry = byId[jobId];
@@ -3492,10 +3501,30 @@ export const vfx = {
         slot.frame,
       );
       drawn++;
+
+      // Working gear swings out to work and folds back to fly. Derived from phase + time-in-phase,
+      // never stored, so a hull can never be caught flying with its jaws still open.
+      slot.deploy = deployFraction(job.phase, slot.elapsed, reducedMotion);
+
+      // And the hull notices you. The reaction rides on top of the job — the barge is still mining,
+      // it has just stopped advertising it — so it changes presentation only and never the sim.
+      let reactionDist = Infinity;
+      if (player && player.pos) {
+        reactionDist = Math.hypot(ent.pos.x - player.pos.x, ent.pos.z - player.pos.z);
+      }
+      const reaction = resolveNpcJobReaction(entry.kind, reactionDist, job.phase);
+      slot.reaction = reaction.id;
+      slot.reactionT = reaction.intensity;
+      if (reaction.id !== NPC_JOB_REACTION.NONE) {
+        reacting++;
+        this._lastNpcJobReaction = reaction.id;
+      }
+
       if (frame.emitStep === slot.lastEmitStep) continue;
       slot.lastEmitStep = frame.emitStep;
       this._lastNpcJobSignatureId = profile.id;
       emitted += this._emitNpcJobSignature(slot, profile, ent, job, reducedMotion);
+      emitted += this._emitNpcJobReaction(slot, ent, reducedMotion);
     }
 
     // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
@@ -3511,6 +3540,7 @@ export const vfx = {
 
     this._npcJobSignatureActive = active;
     this._npcJobSignatureDrawn = drawn;
+    this._npcJobReacting = reacting;
     return emitted;
   },
 
@@ -3637,7 +3667,10 @@ export const vfx = {
         const arc = (beat / 4) * Math.PI - Math.PI * 0.5;
         const ax = dx * Math.cos(arc) - dz * Math.sin(arc);
         const az = dz * Math.cos(arc) + dx * Math.sin(arc);
-        emitted += this._spawnJobLamp(x + ax * r * 1.05, 0.50, z + az * r * 1.05, r, 0.10, '#ff6a5c', reducedMotion);
+        // The forbidden arc widens as the magnet arms come out — the cone you may not enter is
+        // literally the reach of the deployed gear.
+        const armed = 0.55 + 0.50 * (slot.deploy || 0);
+        emitted += this._spawnJobLamp(x + ax * r * armed, 0.50, z + az * r * armed, r, 0.10, '#ff6a5c', reducedMotion);
         break;
       }
 
@@ -3721,12 +3754,16 @@ export const vfx = {
         )) emitted++;
         // The survey pin sits off the nose on its boom, crabbed to one side — the dossier's
         // "slender boom that can crab ninety degrees off the nose". It never blinks off.
-        const pinX = x + dx * r * 0.5 + nx * r * 1.25;
-        const pinZ = z + dz * r * 0.5 + nz * r * 1.25;
+        // The boom SWINGS. Stowed it lies along the hull; deployed it crabs ninety degrees off the
+        // nose, which is the dossier's own description and the whole silhouette change of the trade.
+        const swing = 0.18 + 1.07 * (slot.deploy || 0);
+        const pinX = x + dx * r * 0.5 + nx * r * swing;
+        const pinZ = z + dz * r * 0.5 + nz * r * swing;
         emitted += this._spawnJobLamp(pinX, 0.58, pinZ, r, 0.075, '#bfe8ff', reducedMotion, 0.7);
         emitted += this._spawnStationSideEventStreak(
-          x + dx * r * 0.3 + nx * r * 0.7, 0.54, z + dz * r * 0.3 + nz * r * 0.7,
-          reducedMotion ? 0.90 : 0.62, r * 0.035, r * 1.1, 0.34, '#7fc4e0', 0, 0, nx, nz,
+          x + dx * r * 0.3 + nx * r * swing * 0.55, 0.54, z + dz * r * 0.3 + nz * r * swing * 0.55,
+          reducedMotion ? 0.90 : 0.62, r * 0.035, r * (0.35 + 0.75 * (slot.deploy || 0)), 0.34,
+          '#7fc4e0', 0, 0, nx, nz,
         );
         break;
       }
@@ -3735,10 +3772,13 @@ export const vfx = {
         // Hooded floods aimed DOWN at the hull being stripped, plus intermittent cutter arcs. The
         // Code is emphatic that umbrellas-on is what separates recovery from a kill still in
         // progress, so they are the constant and the arc is the flicker.
+        // The umbrellas UNFOLD. Stowed they sit tight against the hull; open they reach out over
+        // the plate being stripped, which is what stops passing traffic reading this as a kill.
+        const spread = 0.22 + 0.78 * (slot.deploy || 0);
         const hood = (beat % 3) - 1;
         emitted += this._spawnStationSideEventStreak(
-          x + nx * hood * r * 0.7 + dx * r * 0.3, 0.20, z + nz * hood * r * 0.7 + dz * r * 0.3,
-          reducedMotion ? 0.74 : 0.52, r * 0.11, r * 0.44, 0.50, '#ffb35c', 0, 0, dx, dz,
+          x + nx * hood * r * 0.7 * spread + dx * r * 0.3, 0.20, z + nz * hood * r * 0.7 * spread + dz * r * 0.3,
+          reducedMotion ? 0.74 : 0.52, r * 0.11, r * (0.16 + 0.28 * spread), 0.50, '#ffb35c', 0, 0, dx, dz,
         );
         // Cutter arc: short, bright, and off half the beats — a wreck fights back in a way a rock
         // does not, which is what makes this irregular where the miner's work cone is even.
@@ -3809,6 +3849,102 @@ export const vfx = {
         break;
     }
 
+    return emitted;
+  },
+
+  /**
+   * Draw this hull's response to the player closing.
+   *
+   * A reaction is an OVERLAY, not a mode. The job's own signal keeps running underneath — the barge
+   * is still mining, it has just stopped advertising it — which is what makes the reaction read as a
+   * crew decision rather than a state machine flipping. Each one is in the trade's own currency,
+   * from its dossier's "how they react to a stranger closing" entry.
+   */
+  _emitNpcJobReaction(slot, ent, reducedMotion) {
+    const t = slot.reactionT;
+    if (!t || slot.reaction === NPC_JOB_REACTION.NONE) return 0;
+    const frame = slot.frame;
+    const x = ent.pos.x;
+    const z = ent.pos.z;
+    const dx = frame.dirX;
+    const dz = frame.dirZ;
+    const nx = frame.normalX;
+    const nz = frame.normalZ;
+    const r = Math.max(3, Number(ent.radius) || 6);
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(this.state.playerId);
+    let emitted = 0;
+
+    switch (slot.reaction) {
+      case NPC_JOB_REACTION.PAINT: {
+        // The narrow secondary beam, swung onto YOU rather than round the sky. A patrol boat and a
+        // survey rig answer a stranger with the same gesture and mean different things by it.
+        if (!player || !player.pos) break;
+        const ax = player.pos.x - x;
+        const az = player.pos.z - z;
+        const len = Math.hypot(ax, az) || 1;
+        const ux = ax / len;
+        const uz = az / len;
+        const reach = Math.min(len, r * 6);
+        emitted += this._spawnStationSideEventStreak(
+          x + ux * reach * 0.5, 0.56, z + uz * reach * 0.5,
+          reducedMotion ? 0.44 : 0.26, r * 0.03 * (0.6 + t), reach, 0.30 + 0.34 * t,
+          '#a8e4ff', 0, 0, ux, uz,
+        );
+        break;
+      }
+
+      case NPC_JOB_REACTION.FLINCH: {
+        // Weld stops mid-stroke. The tell is the ABSENCE of the next star plus the corners coming up
+        // hard — the Code's "men at work" turning from a notice into a warning.
+        for (const side of [1, -1]) {
+          emitted += this._spawnJobLamp(
+            x + nx * side * r * 0.8 + dx * r * 0.55, 0.32,
+            z + nz * side * r * 0.8 + dz * r * 0.55,
+            r, 0.075 + 0.03 * t, '#ff3a2a', reducedMotion, 0.5 + 0.4 * t,
+          );
+        }
+        break;
+      }
+
+      case NPC_JOB_REACTION.WATCH: {
+        // Umbrellas tilt toward you and stay on. Dousing them would read as a kill in progress, and
+        // the Code is explicit that umbrellas-on is the difference. So: keep cutting, tilt, watch.
+        if (!player || !player.pos) break;
+        const ax = player.pos.x - x;
+        const az = player.pos.z - z;
+        const len = Math.hypot(ax, az) || 1;
+        emitted += this._spawnStationSideEventStreak(
+          x + (ax / len) * r * 0.95, 0.24, z + (az / len) * r * 0.95,
+          reducedMotion ? 0.80 : 0.58, r * 0.09, r * 0.5, 0.34 + 0.30 * t,
+          '#ffb35c', 0, 0, ax / len, az / len,
+        );
+        break;
+      }
+
+      case NPC_JOB_REACTION.GO_DARK: {
+        // "Loud greedy cut raises attention." The floods die back and one cold hull lamp stays lit
+        // so you can still see there is somebody there — going fully dark is a smuggler's move and
+        // a licensed barge will not risk being read that way.
+        if (t > 0.35) {
+          emitted += this._spawnJobLamp(x, 0.60, z, r, 0.05, '#7f93a6', reducedMotion, 0.30);
+        }
+        break;
+      }
+
+      case NPC_JOB_REACTION.BRIGHTEN: {
+        // An insured hull's defence is being boringly, expensively legitimate. Its running lamps go
+        // UP, not down: look at me, I am exactly what my manifest says.
+        const off = r * 1.05;
+        emitted += this._spawnJobLamp(x + nx * off, 0.50, z + nz * off, r, 0.09 + 0.04 * t, '#ffd9a0', reducedMotion, 0.55 + 0.35 * t);
+        emitted += this._spawnJobLamp(x - nx * off, 0.50, z - nz * off, r, 0.09 + 0.04 * t, '#ffd9a0', reducedMotion, 0.55 + 0.35 * t);
+        break;
+      }
+
+      default:
+        break;
+    }
     return emitted;
   },
 

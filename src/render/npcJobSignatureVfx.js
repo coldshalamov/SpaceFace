@@ -361,6 +361,106 @@ export function resolveNpcJobSignature(kind, phase, loaded) {
   return BY_PHASE[phase] || null;
 }
 
+// ─── Deploy / stow ────────────────────────────────────────────────────────────────────────────────
+// Working gear is not permanently out. A barge's magnet arms, a surveyor's pin boom, a salvor's
+// umbrellas and a tender's plate racks all swing out to work and fold back to fly — that motion is
+// the single cheapest piece of animation in the game, because it is one scalar and it is READ
+// ENTIRELY FROM SILHOUETTE, which is the channel that survives distance.
+//
+// The scalar is derived, never stored: a job's phase and its elapsed time in that phase already say
+// whether the gear should be out. Storing a deploy state would make it a second source of truth that
+// could disagree with the phase, and a hull flying with its jaws still open is a bug that looks like
+// an art asset problem.
+
+/** Seconds a boom/arm/umbrella takes to swing out or fold back. Slow enough to be seen as motion. */
+const DEPLOY_S = 2.6;
+
+/** Phases in which a trade has its working gear extended. */
+const GEAR_OUT_PHASES = new Set(['work', 'load', 'unload']);
+
+/**
+ * How far this hull's working gear is deployed, 0 (stowed) to 1 (fully out).
+ *
+ * Ramps in on entering a gear phase and ramps back out on leaving it, so the transition reads as
+ * hardware moving rather than as an effect popping on. `sinceChange` is time spent in the CURRENT
+ * phase; the caller owns that clock because it already tracks it for cadence.
+ */
+export function deployFraction(phase, sinceChange, reducedMotion) {
+  const t = Math.max(0, Number.isFinite(sinceChange) ? sinceChange : 0);
+  const span = reducedMotion ? DEPLOY_S * 0.5 : DEPLOY_S;
+  const ramp = Math.max(0, Math.min(1, t / span));
+  if (GEAR_OUT_PHASES.has(phase)) return ramp;
+  // Leaving a work phase: the gear is still folding for the first DEPLOY_S of the next phase.
+  return 1 - ramp;
+}
+
+// ─── Reactions ────────────────────────────────────────────────────────────────────────────────────
+// "Objects and NPCs should respond to the player and to each other." A working hull that does not
+// notice you is scenery no matter how well it is lit.
+//
+// Each trade reacts in its OWN currency, taken from its dossier's "how they react to a stranger
+// closing" entry — the reaction is an extension of the trade, not a shared alarm state bolted onto
+// everyone. A tender flinches because its crew is outside on the plate. A surveyor answers with the
+// only instrument it has. A salvor keeps cutting and watches you, because stopping costs money and
+// looking away costs more.
+
+export const NPC_JOB_REACTION = Object.freeze({
+  /** Deliberately sweep the newcomer — "the only instrument it has". Not hostile; pointed. */
+  PAINT: 'paint',
+  /** Stop mid-stroke. Crew outside on the plate; nobody welds while a stranger closes. */
+  FLINCH: 'flinch',
+  /** Keep working, but tilt the hoods to watch. Stopping costs money. */
+  WATCH: 'watch',
+  /** Douse the work lights. Bright work attracts the wrong attention. */
+  GO_DARK: 'go_dark',
+  /** Run the lamps up — be obviously, boringly legitimate. */
+  BRIGHTEN: 'brighten',
+  /** Nothing. Out of range, or this trade genuinely does not care. */
+  NONE: 'none',
+});
+
+/** Inside this the hull has definitely noticed you. Matched to the visible bubble's outer edge so a
+ *  reaction begins at about the moment the player could first see the hull at all. */
+export const NPC_JOB_REACTION_RANGE = 260;
+
+const REACTION_BY_KIND = Object.freeze({
+  // "Pulse too loud near a Quiet door and you get counted." A surveyor answers with its instrument.
+  surveyor: NPC_JOB_REACTION.PAINT,
+  // "Recovery, not murder-in-progress — IF the umbrellas are on." A salvor will not douse them, and
+  // will not stop; it tilts them and keeps one eye on you.
+  salvor: NPC_JOB_REACTION.WATCH,
+  // "Hit a marked repair and every Free and Drift radio for two sectors learns your name." The rig
+  // stops because its people are outside.
+  tender: NPC_JOB_REACTION.FLINCH,
+  // "Loud greedy cut raises attention — pirates interdict bright work." A barge goes dark.
+  miner: NPC_JOB_REACTION.GO_DARK,
+  // An insured hull's defence is being boringly legitimate. It gets brighter, not quieter.
+  hauler: NPC_JOB_REACTION.BRIGHTEN,
+  // A patrol paints you. That is the entire job.
+  patrol: NPC_JOB_REACTION.PAINT,
+});
+
+/**
+ * What this hull does about the player being `distance` away.
+ *
+ * Returns a plain descriptor rather than mutating anything: this module cannot and must not change
+ * what an NPC does, only how it looks doing it. A reaction is a presentation overlay on a job that
+ * carries on underneath — the barge is still mining, it has just stopped advertising it.
+ *
+ * `intensity` ramps 0->1 as the player closes, so the reaction arrives as a slide rather than a
+ * switch. A hull that snaps to full alarm at an invisible radius reads as scripted.
+ */
+export function resolveNpcJobReaction(kind, distance, phase) {
+  const d = Number.isFinite(distance) ? distance : Infinity;
+  if (d > NPC_JOB_REACTION_RANGE) return { id: NPC_JOB_REACTION.NONE, intensity: 0 };
+  // A fleeing hull is already past reacting; a completed one is not working at all.
+  if (phase === 'flee' || phase === 'complete') return { id: NPC_JOB_REACTION.NONE, intensity: 0 };
+  const id = REACTION_BY_KIND[kind] || NPC_JOB_REACTION.NONE;
+  if (id === NPC_JOB_REACTION.NONE) return { id, intensity: 0 };
+  const intensity = Math.max(0, Math.min(1, 1 - d / NPC_JOB_REACTION_RANGE));
+  return { id, intensity };
+}
+
 export function createNpcJobSignatureFrameScratch() {
   return {
     dirX: 1,
