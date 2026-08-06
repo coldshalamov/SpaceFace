@@ -3376,7 +3376,13 @@ export const vfx = {
       const numeric = Number(id.slice(6));
       if (!Number.isFinite(numeric)) continue;
       const rock = this._ent(numeric);
-      if (rock && rock.alive !== false && rock.pos) return rock;
+      // The TYPE check is the load-bearing one, not the liveness check. `job.route` is PERSISTED —
+      // npcJobsRuntime serializes the kernel record and the save owner writes it out — so this id
+      // survives a save/reload, while entity ids are handed out fresh on restore. Without this
+      // guard a restored barge would happily cut whatever now holds its old rock's id: a station,
+      // another ship, a pickup. That failure is silent and looks like an art bug, not a stale
+      // reference. A miss simply falls back to the forward-projected beam.
+      if (rock && rock.type === 'asteroid' && rock.alive !== false && rock.pos) return rock;
     }
     return null;
   },
