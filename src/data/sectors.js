@@ -224,8 +224,10 @@ const CORE_SECTORS = [
     trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
     neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
     stations: [
-      { id: 'station_expanse', name: 'Expanse Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['ore_buy','refuel','repair','refine'],
-        chartNote: 'Deep-belt intake. Pays flat on volume and sorts the grades itself.' },
+      { id: 'station_expanse', name: 'Expanse Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M',
+        missionProfile: 'bounty_board', boardAnchorType: 'bounty_hunt',
+        services: ['ore_buy','refuel','repair','refine','missions','scan_tech'],
+        chartNote: 'Deep-belt intake and hunter exchange. The writ wall tracks raiders, wrecks, and radiation-lane patrols.' },
     ],
     fields: [
       { id: 'f_charon_1', type: 'ast_rare_exotic', countWeight: 0.7 },

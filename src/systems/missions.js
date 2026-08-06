@@ -130,8 +130,8 @@ const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 
-// station id → { type, size, factionId, sectorId, sectorTier, security } resolved from the SECTORS
-// graph (dock:docked only hands us a stationId, same pattern economy uses).
+// station id → mission-board identity resolved from the SECTORS graph. Physical `type` remains
+// the economy/render contract; optional missionProfile/boardAnchorType only shape posted work.
 const STATION_INFO = new Map();
 const SECTOR_BY_ID = new Map();
 for (const sec of SECTORS) {
@@ -139,6 +139,8 @@ for (const sec of SECTORS) {
   for (const st of sec.stations || []) {
     STATION_INFO.set(st.id, {
       id: st.id, name: st.name, type: st.type, size: st.size || 'M',
+      missionProfile: st.missionProfile || st.type,
+      boardAnchorType: st.boardAnchorType || null,
       factionId: st.factionId || sec.factionId, sectorId: sec.id,
       sectorTier: sec.tier, security: sec.security,
     });
@@ -1222,14 +1224,20 @@ export const missions = {
 
     const sizeTier = SIZE_TIER[info.size] != null ? SIZE_TIER[info.size] : 1;
     const S = clamp(3 + sizeTier, 3, 9);
-    const weights = OFFER_MIX[info.type] || OFFER_MIX.trade_hub;
+    const profile = info.missionProfile || info.type;
+    const weights = OFFER_MIX[profile] || OFFER_MIX[info.type] || OFFER_MIX.trade_hub;
     // Loyalty boost: friendly players see more of the station faction's signature types.
     const rep = this._repOf(info.factionId);
     const repBoost = 1 + Math.max(0, rep) / 100;
 
     const offers = [];
     for (let i = 0; i < S; i++) {
-      const typeId = this._pickType(weights, rng, repBoost, info.type);
+      // A board may declare one defining live job. This is data-owned rather than inferred from its
+      // physical station type, so Charon can remain a real refinery while its hunter exchange never
+      // opens on a bounty-free epoch.
+      const typeId = i === 0 && info.boardAnchorType
+        ? info.boardAnchorType
+        : this._pickType(weights, rng, repBoost, profile);
       const offer = this._rollOffer(typeId, info, rng, epoch, i);
       if (offer) offers.push(offer);
     }
@@ -1237,6 +1245,10 @@ export const missions = {
     if (bulkHaul) {
       offers.unshift(bulkHaul);
       if (offers.length > S) offers.length = S;
+    }
+    if (info.boardAnchorType) {
+      const anchorIndex = offers.findIndex((offer) => offer && offer.type === info.boardAnchorType);
+      if (anchorIndex > 0) offers.unshift(...offers.splice(anchorIndex, 1));
     }
     const intro = this._rollStoryBranchIntroOffer(info, rng, epoch);
     if (intro) {

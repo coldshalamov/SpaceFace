@@ -986,6 +986,9 @@ export const OFFER_MIX = {
   military:    [1, 1, 4, 0, 1, 2, 4, 0, 1, 2],
   research:    [2, 1, 1, 1, 2, 1, 1, 0, 1, 4],
   blackmarket: [2, 1, 3, 2, 3, 1, 2, 2, 1, 2],
+  // Charon's refinery remains an economic refinery; this mission-only profile gives its writ wall
+  // the intended hunter identity without changing commodity roles, station art, or facility access.
+  bounty_board:[1, 0, 7, 0, 4, 1, 5, 1, 0, 3],
 };
 
 // 8-beat story spine FSM.
