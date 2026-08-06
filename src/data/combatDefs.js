@@ -162,7 +162,7 @@ export const SUBSYSTEM_DEFS = Object.freeze([
     volume: { shape: 'box', space: 'normalized', center: [-0.58, 0], halfExtents: [0.28, 0.42] },
     health: 45, armor: { flat: 2, multipliers: { kinetic: 0.9, thermal: 1.0, ion: 1.1, plasma: 1.0, phase: 1.0 } },
     dependencies: ['subsystem_power'],
-    disabledBehavior: { capabilities: { drive: false }, multipliers: { movement: 0.25 }, blockedActionTags: ['dash', 'sling'] },
+    disabledBehavior: { capabilities: { drive: false }, multipliers: { movement: 0 }, blockedActionTags: ['dash', 'sling'] },
     repair: { fieldRatePerTick: 0.25, dockRatePerTick: 2 }, cueId: 'combat.subsystem.drive.disabled',
   },
   {

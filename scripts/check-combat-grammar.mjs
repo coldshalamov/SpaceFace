@@ -184,6 +184,10 @@ function checkSubsystemNextTickEffects() {
     step(fixture, 21);
     assert.equal(runtime.capabilities[capability], false, `${subsystemId} must disable ${capability} on the next tick`);
     assert.ok(runtime.blockedActionTags.includes(blockedTag), `${subsystemId} must block ${blockedTag}`);
+    if (subsystemId === 'subsystem_drive') {
+      assert.equal(runtime.multipliers.movement, 0,
+        'a destroyed drive must expose zero action-movement authority for the Drifting state');
+    }
   }
 }
 

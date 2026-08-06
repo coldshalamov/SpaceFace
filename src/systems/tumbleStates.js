@@ -8,6 +8,8 @@
 //
 // Player-side only power (design principle 2): tumbles are caused exclusively by the player's
 // massline (throw releases and whip impacts). THE PLAYER SHIP NEVER TUMBLES on any path here.
+// The same last-writer slot also enforces NPC Drifting when the canonical combat runtime reports a
+// destroyed drive: zero continuous authority, with existing velocity and external forces untouched.
 //
 // Runs AFTER aiPorts in UPDATE_ORDER so its zero-control overwrite is the last writer before
 // physics consumes the command; runs BEFORE weapons so a cleared fire intent gates this tick's
@@ -42,6 +44,12 @@ const TUMBLE_CONTROL = Object.freeze({
   torque: Object.freeze({ x: 0, y: 0, z: 0 }),
   source: 'massline_tumble',
 });
+const DRIFT_CONTROL = Object.freeze({
+  mode: 'drifting',
+  force: Object.freeze({ x: 0, y: 0, z: 0 }),
+  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
+  source: 'drive_disabled',
+});
 
 export const tumbleStates = {
   id: 'tumbleStates',
@@ -65,36 +73,49 @@ export const tumbleStates = {
   },
 
   update(dt, state) {
-    if (!massline2Flag('tumble') || state.mode !== 'flight') return;
+    if (state.mode !== 'flight') return;
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const now = finite(state.simTime, state.tick / 60);
+    const tumbleEnabled = massline2Flag('tumble');
 
     for (const e of entities.values()) {
-      const tumble = e && readMasslineTumbleStatus(state, e);
-      if (!tumble) continue;
-      if (!e.alive || e.id === state.playerId) {
+      const tumble = tumbleEnabled && e ? readMasslineTumbleStatus(state, e) : null;
+      const drifting = isNpcDrifting(state, e);
+      if (!tumble && !drifting) continue;
+
+      let tumbleActive = !!tumble;
+      if (tumbleActive && (!e.alive || e.id === state.playerId)) {
         this._clearTumbleStatus(e, e.alive ? 'player_immune' : 'entity_dead');
-        continue;
+        tumbleActive = false;
       }
+      if (!e.alive) continue;
 
-      const spin = Math.abs(finite(e.angVel, 0));
-      const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
-      const recovered = elapsed >= TUMBLE_MIN_S && spin <= TUMBLE_RECOVER_OMEGA;
-      if (recovered || now >= finite(tumble.data && tumble.data.until, now)) {
-        this._clearTumbleStatus(e, recovered ? 'rcs_recovered' : 'duration_elapsed');
-        if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
-        continue;
+      if (tumbleActive) {
+        const spin = Math.abs(finite(e.angVel, 0));
+        const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
+        const recovered = elapsed >= TUMBLE_MIN_S && spin <= TUMBLE_RECOVER_OMEGA;
+        if (recovered || now >= finite(tumble.data && tumble.data.until, now)) {
+          this._clearTumbleStatus(e, recovered ? 'rcs_recovered' : 'duration_elapsed');
+          if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
+          tumbleActive = false;
+        }
       }
+      if (!tumbleActive && !drifting) continue;
 
-      // Suppress this tick's control and fire. writePhysicsControl replaces the command aiPorts
-      // queued earlier in the tick (last-writer-wins by design of the command membrane), so the
-      // hull is genuinely uncontrolled while the spin decays through the body's angularDamping.
-      writePhysicsControl(e, TUMBLE_CONTROL);
-      if (e.data.intent) {
-        e.data.intent.fire = false;
+      // Suppress this tick's drive authority. writePhysicsControl replaces the command aiPorts
+      // queued earlier in the tick (last-writer-wins by design of the command membrane), while
+      // leaving collision, tether, and other external impulses intact. A destroyed drive therefore
+      // drifts ballistically instead of receiving hidden braking or station-keeping.
+      writePhysicsControl(e, tumbleActive ? TUMBLE_CONTROL : DRIFT_CONTROL);
+      if (e.data && e.data.intent) {
+        if (tumbleActive) e.data.intent.fire = false;
         e.data.intent.moveX = 0;
         e.data.intent.moveZ = 0;
+        if (drifting) {
+          e.data.intent.boost = false;
+          e.data.intent.brake = false;
+        }
       }
     }
   },
@@ -198,6 +219,13 @@ function combatKernel(host) {
   if (combat && combat.kernel) return combat.kernel;
   const actions = host.registry && host.registry.get && host.registry.get('actions');
   return actions && actions.kernel ? actions.kernel : null;
+}
+
+function isNpcDrifting(state, entity) {
+  if (!entity || entity.alive === false || entity.id === state.playerId) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
+  return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

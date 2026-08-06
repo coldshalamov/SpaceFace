@@ -37,7 +37,7 @@ import {
 } from '../src/systems/impulseCharges.js';
 import { cloakHidesPlayerFrom } from '../src/systems/aiPorts.js';
 import { ENCOUNTER_SCRIPTS, patrolCanInitiateScan } from '../src/systems/encounterScripts.js';
-import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { consumePhysicsCommand, queuePhysicsImpulse, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createRegistry } from '../src/core/registry.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
@@ -476,6 +476,87 @@ withFlags(true, () => {
     assert.ok(bus.events.some((e) => e.name === 'combat:actionRejected'
       && e.payload.actorId === victim.id && /disabled:tag:dash/.test(e.payload.reason)),
     'dash must reject through the canonical blocked-action contract');
+  });
+
+  section('a disabled NPC drive becomes ballistic without swallowing external force', () => {
+    const bus = makeBus();
+    const state = makeState();
+    const player = addEntity(state, { id: 1, type: 'ship', team: 0, mass: 40 });
+    const victim = addEntity(state, {
+      id: 25,
+      type: 'ship',
+      team: 1,
+      mass: 60,
+      hull: 1000,
+      hullMax: 1000,
+      shield: 0,
+      shieldMax: 0,
+      armorHp: 0,
+      armorMax: 0,
+      vel: { x: 37, z: -11 },
+      data: { intent: { fire: true, moveX: 1, moveZ: -1, boost: true, brake: true } },
+    });
+    const helpers = { combatPhysics: { applyImpulse: () => true } };
+    const kernel = createCombatKernel({ state, bus, helpers });
+    const system = Object.create(tumbleStates);
+    initSystem(system, state, bus, helpers, { get: (name) => (name === 'combat' ? { kernel } : null) });
+
+    const hit = kernel.routeDamage({
+      attackerId: player.id,
+      targetId: victim.id,
+      packet: {
+        channels: { kinetic: 0, thermal: 0, ion: 0, plasma: 0, phase: 100 },
+        penetration: 1,
+        subsystemShare: 1,
+        heat: 0,
+        statuses: [],
+        hit: { subsystemId: 'subsystem_drive' },
+      },
+      origin: { kind: 'test', id: 'drifting_disable' },
+    });
+    assert.equal(hit.ok, true);
+    state.tick++;
+    kernel.prePhysics(1 / 60);
+    const runtime = state.combat.entities[String(victim.id)];
+    assert.equal(runtime.capabilities.drive, false, 'drive disable must settle on the canonical next tick');
+    assert.equal(runtime.multipliers.movement, 0, 'disabled drive must have no action-movement authority');
+
+    const velocityBefore = { ...victim.vel };
+    writePhysicsControl(victim, {
+      mode: 'ai_attack_run',
+      force: { x: 900, y: 0, z: 400 },
+      torque: { x: 0, y: 300, z: 0 },
+      source: 'aiPorts',
+      maxSpeed: 72,
+    });
+    queuePhysicsImpulse(victim, { x: 7, y: 0, z: -3 });
+    system.update(1 / 60, state);
+    const command = consumePhysicsCommand(victim);
+    assert.equal(command.control.mode, 'drifting');
+    assert.equal(command.control.source, 'drive_disabled');
+    assert.deepEqual(command.control.force, { x: 0, y: 0, z: 0 });
+    assert.deepEqual(command.control.torque, { x: 0, y: 0, z: 0 });
+    assert.equal(command.control.maxSpeed, Infinity, 'drift must not install a hidden speed governor');
+    assert.deepEqual(command.impulses, [{ x: 7, y: 0, z: -3 }],
+      'tether/collision/external impulses must survive the zero-authority overwrite');
+    assert.deepEqual(victim.vel, velocityBefore, 'the state owner must never assign or brake velocity directly');
+    assert.equal(victim.data.intent.fire, true, 'an intact weapon remains independent of the dead drive');
+    assert.deepEqual(
+      [victim.data.intent.moveX, victim.data.intent.moveZ, victim.data.intent.boost, victim.data.intent.brake],
+      [0, 0, false, false],
+    );
+
+    const playerRuntime = state.combat.entities[String(player.id)];
+    playerRuntime.capabilities.drive = false;
+    writePhysicsControl(player, {
+      mode: 'player_flight',
+      force: { x: 12, y: 0, z: 4 },
+      torque: { x: 0, y: 2, z: 0 },
+      source: 'flightV3',
+    });
+    system.update(1 / 60, state);
+    assert.equal(consumePhysicsCommand(player).control.source, 'flightV3',
+      'this NPC capture-state slice must not rewrite player controls');
   });
 
   section('the player NEVER tumbles and never takes the new impact damage', () => {
