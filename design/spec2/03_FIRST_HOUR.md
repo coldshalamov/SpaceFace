@@ -45,13 +45,10 @@ urgency, input modality, and playtest evidence; write concise lines in the speak
   sniper/capital archetypes until the player has jumped once.
 - Economy floor: starter sector sell prices guarantee the B2 ore ≥ 180 cr total (verify against
   economy sim, adjust station equilibrium not prices).
-  - **Open item (2026-07-03):** the B2 yield (~3 ore at `cmdty_ore_iron` basePrice 28) sells for
-    ~84 cr, below the 180 cr floor. Equilibrium/`basePrice` live in `src/data/commodities.js` +
-    `src/systems/economy.js` (outside the spec2/03 ownership lane). The `first1000cr` funnel milestone
-    that gates this ramp *is* wired in `scripts/check-first-hour.mjs`; the B2-alone 180 cr floor
-    itself is NOT asserted there because the economy sim is out of lane. The fix belongs to the
-    economy lane. Acceptable for this pass: the onboarding B2 beat teaches the seam mechanic; the
-    credit floor is met over B2+B4 (ore + first contract), not B2 alone.
+  - **Resolved (2026-08-06):** Helios now authors an iron-only equilibrium factor through the shared
+    economy construction path. The commodity remains 28 cr at base equilibrium and other listings
+    keep their ordinary role targets; `test/first-hour-economy-floor.test.mjs` proves the three-unit
+    executable sale stays at or above 180 cr across 512 deterministic fresh-game seeds.
 
 ## 5. Acceptance assertions (`scripts/check-first-hour.mjs`)
 1. Scripted run: beats fire in order; no beat's text appears before predecessor DONE + 4 s silence.

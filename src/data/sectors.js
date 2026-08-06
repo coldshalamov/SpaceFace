@@ -52,6 +52,9 @@ const CORE_SECTORS = [
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
+        // Helios keeps a standing shortage book for the starter seam's iron. This changes only the
+        // listing's stock equilibrium; the commodity price curve and every other market stay shared.
+        marketEquilibriumFactors: { cmdty_ore_iron: 0.09 },
         chartNote: "Everything in stock, everything watched. Fair prices, constant questions." },
       { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'],
         chartNote: "Concord's desk. Clean contracts, and a clean record while you're docked." },

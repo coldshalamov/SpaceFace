@@ -113,6 +113,7 @@ for (const sec of SECTORS) {
     STATION_INFO.set(st.id, {
       type: st.type, size: st.size || 'M', factionId: st.factionId,
       sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
+      marketEquilibriumFactors: st.marketEquilibriumFactors || null,
     });
   }
 }
@@ -126,7 +127,8 @@ function stationInfo(state, stationId) {
       for (const st of sec.stations || []) {
         if (st.id === stationId) {
           return { type: st.type, size: st.size || 'M', factionId: st.factionId,
-                   sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security };
+                   sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
+                   marketEquilibriumFactors: st.marketEquilibriumFactors || null };
         }
       }
     }
@@ -190,6 +192,16 @@ export function economyBaseEqForSize(size) {
 
 export function economyStockTargetForRole(role, baseEq = BASE_EQ_DEFAULT) {
   return baseEq * (ROLE_FACTOR[role] || 0);
+}
+
+/** Resolve a listing's authored drift target without changing its shared price curve. */
+export function economyEquilibriumForListing(info, commodityId, role, baseEq = BASE_EQ_DEFAULT) {
+  const authoredFactor = Number(info && info.marketEquilibriumFactors
+    && info.marketEquilibriumFactors[commodityId]);
+  if (Number.isFinite(authoredFactor) && authoredFactor > 0) {
+    return baseEq * clamp(authoredFactor, 0.01, 4);
+  }
+  return role === 'none' ? baseEq : economyStockTargetForRole(role, baseEq);
 }
 
 export function economyMidPrice(def, stock, baseEq = BASE_EQ_DEFAULT) {
@@ -771,7 +783,7 @@ export const economy = {
       // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
-      const equilibrium = role === 'none' ? baseEqRef : economyStockTargetForRole(role, baseEqRef);
+      const equilibrium = economyEquilibriumForListing(info, def.id, role, baseEqRef);
       const stock = equilibrium;                                 // start at rest
       const entry = {
         stock, equilibrium, baseEq: baseEqRef, role,
