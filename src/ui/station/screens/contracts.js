@@ -98,6 +98,83 @@ export function missionDossierSummary(mission) {
   return typeof (mission && mission.summary) === 'string' ? mission.summary.trim() : '';
 }
 
+/** Final-disposition offers reuse the mission board transport, but are filings rather than jobs. */
+export function finalDispositionPresentation(mission) {
+  const choiceId = String(mission && mission.storyDisposition || '').trim();
+  const raw = mission && mission.finalDisposition;
+  if (!choiceId || !raw || String(raw.choiceId || '') !== choiceId) return null;
+  const clean = (value, fallback = '') => {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text || fallback;
+  };
+  return {
+    choiceId,
+    issuerName: clean(raw.issuerName, facName(mission)),
+    confirmPrompt: clean(raw.confirmPrompt, 'FILE THIS FINAL DISPOSITION?'),
+    confirmHint: clean(raw.confirmHint, 'Irreversible after the separate confirmation.'),
+    resolution: clean(raw.resolution, 'The world continues from the position you file.'),
+    continuityTitle: clean(raw.continuityTitle, 'CONTINUING OPERATIONS'),
+    continuityObjective: clean(raw.continuityObjective, 'Continue working in the same living world.'),
+    destinationName: clean(mission.destinationName, 'ASH CACHE FILING DESK'),
+  };
+}
+
+function finalDispositionDossierHtml(mission, filing, options = {}) {
+  const tint = options.tint || '#4aa8ff';
+  const origin = options.origin || 'Ash Cache';
+  const blocked = cleanText(options.blockedReason);
+  const ready = !blocked;
+  const focus = options.focusAccept && ready ? ' is-attention' : '';
+  const title = cleanText(mission && mission.title) || `FINAL DISPOSITION — CHOICE ${filing.choiceId}`;
+  const summary = missionDossierSummary(mission) || filing.confirmHint;
+  const readiness = ready ? 'Eligibility verified · separate confirmation required' : blocked;
+  return (
+    `<div class="sx-dossier${focus}">` +
+      `<header class="sx-dossier__head">` +
+        `<span class="sx-dossier__crest" style="--tint:${tint}">${icon('contracts', 26)}</span>` +
+        `<div class="sx-dossier__id">` +
+          `<span class="sx-dossier__client">${escapeHtml(filing.issuerName)} · final disposition</span>` +
+          `<h2>${escapeHtml(title)}</h2>` +
+        `</div>` +
+      `</header>` +
+      `<p class="sx-dossier__summary">${escapeHtml(summary)}</p>` +
+      `<div class="sx-dossier__topline">` +
+        `<div class="sx-dossier__reward"><span>Filing</span><b>CHOICE ${escapeHtml(filing.choiceId)}</b></div>` +
+        `<div class="sx-dossier__risk"><span>Decision</span><div class="sx-dossier__riskrow"><em style="color:var(--warn)">IRREVERSIBLE AFTER CONFIRMATION</em></div></div>` +
+      `</div>` +
+      `<div class="sx-dossier__route" aria-label="Final disposition filing path">` +
+        `<div class="sx-route">` +
+          `<span class="sx-route__node"><i></i>${escapeHtml(origin)}</span>` +
+          `<span class="sx-route__line"><span class="sx-route__jumps">AT BERTH</span></span>` +
+          `<span class="sx-route__stage"><i></i><b>REVIEW</b><em>no filing yet</em></span>` +
+          `<span class="sx-route__line sx-route__line--short"></span>` +
+          `<span class="sx-route__node sx-route__node--dest"><i></i>CONFIRM</span>` +
+        `</div>` +
+      `</div>` +
+      `<div class="sx-dossier__grid">` +
+        `<div class="sx-brief"><span class="sx-brief__ic">${icon('info', 16)}</span><span class="sx-brief__k">Issuer</span><span class="sx-brief__v">${escapeHtml(filing.issuerName)}</span></div>` +
+        `<div class="sx-brief"><span class="sx-brief__ic">${icon('clock', 16)}</span><span class="sx-brief__k">Confirmation</span><span class="sx-brief__v">Separate prompt</span><span class="sx-brief__sub">nothing files on selection</span></div>` +
+        `<div class="sx-brief"><span class="sx-brief__ic">${icon('spark', 16)}</span><span class="sx-brief__k">Continuity</span><span class="sx-brief__v">${escapeHtml(filing.continuityTitle)}</span><span class="sx-brief__sub">${escapeHtml(filing.continuityObjective)}</span></div>` +
+      `</div>` +
+      `<div class="sx-contract-sim" aria-label="Previewed final disposition consequences">` +
+        `<span class="sx-contract-sim__label">POSITION PREVIEW</span>` +
+        `<div><span>FILED POSITION</span><b>${escapeHtml(filing.resolution)}</b><em>The same world remains playable.</em></div>` +
+        `<div><span>NEXT WORK</span><b>${escapeHtml(filing.continuityTitle)}</b><em>${escapeHtml(filing.continuityObjective)}</em></div>` +
+        `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'READY TO REVIEW' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +
+      `</div>` +
+      `<div class="sx-dossier__foot">` +
+        `<button type="button" class="sx-btn-primary sx-ct-commit${focus}" data-accept="${escapeHtml(String(mid(mission)))}"${ready ? '' : ' disabled'} aria-label="Review final disposition Choice ${escapeHtml(filing.choiceId)}; opens a separate irreversible confirmation">` +
+          `<span>${ready ? 'Review Final Disposition' : 'Resolve Readiness'}</span><em>${escapeHtml(readiness)}</em>` +
+        `</button>` +
+      `</div>` +
+    `</div>`
+  );
+}
+
+function cleanText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'sx-ct';
@@ -147,19 +224,25 @@ export function createContractsScreen(ctx) {
       const needs = attention && String(attention.focusMissionId) === id && attention.surface === 'board'
         ? ' is-attention' : '';
       const r = risk(m);
+      const filing = finalDispositionPresentation(m);
+      const rowAria = filing
+        ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
+        : `${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
       return (
         `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
           ` style="--signal:${facTint(m)}"` +
-          ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}${needs ? ', needs attention' : ''}">` +
+          ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
           `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
-          `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(TYPE_ICON[m.type] || 'contracts', 18)}</span>` +
+          `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(filing ? 'contracts' : (TYPE_ICON[m.type] || 'contracts'), 18)}</span>` +
           `<span class="sx-ct-row__mid">` +
             `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-            `<span class="sx-ct-row__meta">${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}</span>` +
+            `<span class="sx-ct-row__meta">${filing
+              ? `${escapeHtml(filing.issuerName)} · FINAL DISPOSITION · ${escapeHtml(filing.destinationName)}`
+              : `${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
           `</span>` +
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
-          `<span class="sx-ct-row__risk">${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}</span>` +
-          `<span class="sx-ct-row__rew">${reward(m).toLocaleString('en-US')}<i> cr</i></span>` +
+          `<span class="sx-ct-row__risk">${filing ? 'FINAL' : `${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}`}</span>` +
+          `<span class="sx-ct-row__rew">${filing ? `REVIEW<i> choice ${escapeHtml(filing.choiceId)}</i>` : `${reward(m).toLocaleString('en-US')}<i> cr</i>`}</span>` +
           (needs ? `<span class="sx-ct-row__flag">ACT</span>` : '') +
         `</button>`
       );
@@ -170,6 +253,18 @@ export function createContractsScreen(ctx) {
     const list = sortFocusFirst(offers(state), focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
     if (!m) { dossierEl.innerHTML = `<div class="sx-empty">${icon('contracts', 34)}<h4>No mission selected</h4><p>Pick a job from the board to open its briefing.</p></div>`; return; }
+    const focusAccept = attention && attention.kind === 'accept'
+      && String(attention.focusMissionId) === String(mid(m));
+    const filing = finalDispositionPresentation(m);
+    if (filing) {
+      dossierEl.innerHTML = finalDispositionDossierHtml(m, filing, {
+        tint: facTint(m),
+        origin: (ctx.station && ctx.station.name) || 'Ash Cache',
+        focusAccept,
+        blockedReason: m.requirementUnmet || m.lockedReason || null,
+      });
+      return;
+    }
     const r = risk(m);
     const tint = facTint(m);
     const cargo = cargoRequirement(m);
@@ -194,8 +289,6 @@ export function createContractsScreen(ctx) {
     const readiness = !standingOk ? `${facName(m)} ${requiredRep > 0 ? '+' : ''}${requiredRep} standing required`
       : !fundsOk ? `${acceptCost.toLocaleString('en-US')} cr required to bind`
         : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
-    const focusAccept = attention && attention.kind === 'accept'
-      && String(attention.focusMissionId) === String(mid(m));
     const authoredSummary = missionDossierSummary(m);
 
     dossierEl.innerHTML =

@@ -10,6 +10,7 @@ import { story as storyProto } from '../src/systems/story.js';
 import { heat as heatProto } from '../src/systems/heat.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { buildEndgameBoardOffers } from '../src/story/campaign47a/index.js';
 import {
   ENDGAME_NET_WORTH_CR,
   ENDGAME_REP_MIN,
@@ -26,6 +27,7 @@ import {
   planPendingConfirmation,
   snapshotEndingFacts,
 } from '../src/story/endings/index.js';
+import { finalDispositionPresentation } from '../src/ui/station/screens/contracts.js';
 
 let failures = 0;
 function check(name, fn) {
@@ -210,6 +212,28 @@ check('five unique ending ids/keys/modes/titles', () => {
   for (const c of continuities) {
     assert.ok(c.signal && c.target > 0 && c.objective, c.id + ' is actionable');
   }
+});
+
+check('A/B board rows present their real issuer, filing, and continuing position', () => {
+  const offers = buildEndgameBoardOffers({ seed: 47, epoch: 9 });
+  assert.equal(offers.length, 2);
+  const a = offers.find((offer) => offer.storyDisposition === 'A');
+  const b = offers.find((offer) => offer.storyDisposition === 'B');
+  assert.equal(a.factionId, 'faction_scn');
+  assert.equal(b.factionId, 'faction_quiet', 'Quiet ending must not appear as a Meridian contract');
+  for (const offer of [a, b]) {
+    const def = endingDef(offer.storyDisposition);
+    const filing = finalDispositionPresentation(offer);
+    assert.ok(filing, `${offer.storyDisposition} reaches the live final-disposition renderer`);
+    assert.equal(offer.title, def.boardText);
+    assert.equal(offer.summary, def.confirmHint);
+    assert.equal(filing.confirmPrompt, def.confirmPrompt);
+    assert.equal(filing.resolution, def.resolution);
+    assert.equal(filing.continuityObjective, def.continuity.objective);
+    assert.equal(filing.destinationName, 'ASH CACHE FILING DESK');
+  }
+  assert.equal(finalDispositionPresentation({ type: 'passenger_transport' }), null,
+    'ordinary passenger work remains on the ordinary mission presentation');
 });
 
 // ── Eligibility truth + disabled reasons ───────────────────────────────────

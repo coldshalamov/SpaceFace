@@ -10,10 +10,10 @@ import {
   CAMPAIGN_BEATS,
   ENDGAME_NET_WORTH_CR,
   ENDGAME_REP_MIN,
-  ENDINGS,
   FAIL_RECOVERY_COOLDOWN_S,
   STORY_BRANCH_INTRO_TAG,
 } from './campaignData.js';
+import { ENDING_DEFS } from '../endings/endingDefs.js';
 
 export const EMBODIED_MISSIONS_ID = 'campaign47a.embodiedMissions.v2';
 export const EMBODIED_MISSIONS_SCHEMA_VERSION = 2;
@@ -363,23 +363,43 @@ function buildBranchChainOffer(def, seed, epoch, options) {
 export function buildEndgameBoardOffers(options = {}) {
   const seed = (Number(options.seed) >>> 0) || 1;
   const epoch = Math.max(0, Number(options.epoch) | 0);
-  return ENDINGS.slice(0, 2).map((ending, index) => ({
-    id: stableOfferId(seed, 7, epoch, index, ending.id),
-    type: 'passenger_transport',
-    storyTag: `campaign47a:ending:${ending.id}`,
-    storyContractId: `campaign47a:ending:${ending.id}`,
-    storyDisposition: ending.id,
-    stationId: 'station_ashcache',
-    destStationId: 'station_ashcache',
-    destSectorId: 'sector_ashfall_reach',
-    factionId: ending.id === 'A' ? 'faction_scn' : 'faction_mts',
-    title: `FINAL DISPOSITION — ${ending.title.toUpperCase()}`,
-    params: { cmdtyId: null, qty: 1, fValue: 0, taskTime: 0 },
-    reward_cr: 0, collateral_cr: 0, riskTier: 0, time_limit_s: 0, distance: 0,
-    expiresAtEpoch: epoch + 2,
-    campaign47aBeat: 7,
-    source: 'campaign47a.embodied',
-  }));
+  return ENDING_DEFS.slice(0, 2).map((ending, index) => {
+    const issuer = ending.id === 'A'
+      ? { factionId: 'faction_scn', name: 'CONCORD ADMINISTRATION' }
+      : { factionId: 'faction_quiet', name: 'QUIET SYNDICATE' };
+    return {
+      id: stableOfferId(seed, 7, epoch, index, ending.id),
+      // The mission owner still needs a registered offer type, but acceptance is intercepted by
+      // storyDisposition before a passenger mission is instantiated. finalDisposition tells the
+      // live board to present the actual filing instead of inventing a same-berth passenger trip.
+      type: 'passenger_transport',
+      storyTag: `campaign47a:ending:${ending.id}`,
+      storyContractId: `campaign47a:ending:${ending.id}`,
+      storyDisposition: ending.id,
+      finalDisposition: {
+        choiceId: ending.id,
+        issuerName: issuer.name,
+        confirmPrompt: ending.confirmPrompt,
+        confirmHint: ending.confirmHint,
+        resolution: ending.resolution,
+        sandboxMode: ending.sandboxMode,
+        continuityTitle: ending.continuity && ending.continuity.title,
+        continuityObjective: ending.continuity && ending.continuity.objective,
+      },
+      stationId: 'station_ashcache',
+      destStationId: 'station_ashcache',
+      destSectorId: 'sector_ashfall_reach',
+      destinationName: 'ASH CACHE FILING DESK',
+      factionId: issuer.factionId,
+      title: ending.boardText,
+      summary: ending.confirmHint,
+      params: { cmdtyId: null, qty: 1, fValue: 0, taskTime: 0 },
+      reward_cr: 0, collateral_cr: 0, riskTier: 0, time_limit_s: 0, distance: 0,
+      expiresAtEpoch: epoch + 2,
+      campaign47aBeat: 7,
+      source: 'campaign47a.embodied',
+    };
+  });
 }
 
 export function getFailureRecovery(beatIndex) {
