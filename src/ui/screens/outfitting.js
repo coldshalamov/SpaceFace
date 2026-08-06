@@ -4,7 +4,7 @@
 // path interruption. Fit/unfit emits ui:fitModule / ui:unfitModule; ships system owns mutation.
 // Module shop emits ui:buyModule after shared confirm for positive-cost buys.
 // Read-only over sim state; UI emits intents only.
-import { buildSlotList, fits } from '../../systems/ships.js';
+import { buildSlotList, findMasslineHeadConflict, fits } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -86,7 +86,8 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   const safeSlots = Array.isArray(slots) ? slots : [];
   const safeFittings = Array.isArray(fittings) ? fittings : [];
   const hasSlot = safeSlots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
-  const fitSlotIndex = safeSlots.findIndex((s, i) => !safeFittings[i] && fits(s, def));
+  const fitSlotIndex = safeSlots.findIndex((s, i) =>
+    !safeFittings[i] && fits(s, def) && !findMasslineHeadConflict(safeFittings, i, def));
 
   if (!unlocked) {
     const req = techName(def.requiresTech);

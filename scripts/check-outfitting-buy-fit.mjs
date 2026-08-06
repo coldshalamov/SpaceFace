@@ -11,7 +11,7 @@ import {
   recommendOutfittingPurchase,
   slotReadiness,
 } from '../src/ui/screens/outfitting.js';
-import { buildSlotList, ships } from '../src/systems/ships.js';
+import { buildSlotList, findMasslineHeadConflict, ships } from '../src/systems/ships.js';
 
 function createBus() {
   const handlers = new Map();
@@ -220,5 +220,52 @@ assert.equal(eventPayload(bus.events, 'module:equipped').defId, 'mod_shield_boos
   'buy-and-fit should emit the canonical module:equipped event');
 assert(bus.events.some((entry) => entry.name === 'toast' && /Purchased and equipped Shield Booster S/.test(entry.payload && entry.payload.text)),
   'buy-and-fit should tell the player the module was equipped immediately');
+
+const drifterDef = SHIPS.find((entry) => entry.id === 'ship_drifter');
+const drifterSlots = buildSlotList(drifterDef);
+const utilitySlotIndexes = drifterSlots.filter((slot) => slot.type === 'utility').map((slot) => slot.index);
+const tractor = moduleById('mod_tractor_beam_m');
+const elasticWhip = moduleById('mod_elastic_whip_m');
+const drifterFittings = new Array(drifterSlots.length).fill(null);
+drifterFittings[utilitySlotIndexes[0]] = tractor.id;
+assert.equal(findMasslineHeadConflict(drifterFittings, utilitySlotIndexes[1], elasticWhip), tractor,
+  'a second Massline head in another utility slot is an exclusive-fit conflict');
+assert.equal(findMasslineHeadConflict(drifterFittings, utilitySlotIndexes[0], elasticWhip), null,
+  'replacing the head in its current slot remains valid');
+
+guidance = describeOutfittingPurchase(elasticWhip, {
+  credits: 100000,
+  researchedNodes: ['tech_tractor_systems'],
+}, drifterSlots, drifterFittings);
+assert.equal(guidance.fitSlotIndex, -1, 'compatibility Outfitting must not promise a second head will fit');
+assert.equal(guidance.state, 'inventory', 'a conflicting head remains an explicit inventory-only purchase');
+
+const conflictBus = createBus();
+const conflictState = {
+  tick: 18,
+  playerId: 1,
+  entities: new Map(),
+  player: {
+    credits: 100000,
+    activeShipIndex: 0,
+    ownedShips: [{ defId: drifterDef.id, fittings: drifterFittings.slice() }],
+    moduleInventory: [],
+    researchedNodes: ['tech_tractor_systems'],
+    efficiencyMods: {},
+    cargo: { usedVolume: 0, capVolume: 40, items: {} },
+  },
+};
+const conflictSystem = Object.create(ships);
+conflictSystem.init({ state: conflictState, bus: conflictBus, helpers: {} });
+assert.equal(conflictSystem.buyModule({ defId: elasticWhip.id, fitSlotIndex: utilitySlotIndexes[1] }), false,
+  'a rejected second-head Buy & Fit must fail atomically');
+assert.deepEqual(conflictState.player.ownedShips[0].fittings, drifterFittings,
+  'failed Buy & Fit must preserve the loadout');
+assert.equal(conflictState.player.moduleInventory.length, 0,
+  'failed Buy & Fit must not deposit an unwanted inventory item');
+assert.equal(conflictBus.events.some((entry) => entry.name === 'economy:chargeCredits'), false,
+  'failed Buy & Fit must not charge credits');
+assert.equal(conflictBus.events.some((entry) => entry.name === 'module:purchased'), false,
+  'failed Buy & Fit must not publish a purchase receipt');
 
 console.log('Outfitting buy-and-fit checks OK');

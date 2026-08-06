@@ -51,6 +51,20 @@ function masslineHeadIdForDef(def) {
   return MASSLINE_HEAD_PRIORITY[id] ? id : null;
 }
 
+/** Return the differently slotted Massline head that makes this requested fit exclusive. Replacing
+ * the head in its current slot is valid; fitting a second head elsewhere is not. */
+export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
+  if (!masslineHeadIdForDef(requestedDef)) return null;
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  for (let index = 0; index < safeFittings.length; index += 1) {
+    const fittedId = safeFittings[index];
+    if (index === slotIndex || !fittedId) continue;
+    const fittedDef = defById(fittedId);
+    if (masslineHeadIdForDef(fittedDef)) return fittedDef;
+  }
+  return null;
+}
+
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
 
@@ -782,12 +796,24 @@ export const ships = {
       this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
       return false;
     }
-    // Deduct credits via the economy's sole-writer path (§0.6).
-    if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
+    const shouldFit = Number.isInteger(fitSlotIndex);
+    if (shouldFit) {
+      const blocker = this.moduleFitBlocker({ slotIndex: fitSlotIndex, def });
+      if (blocker) {
+        if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
     const item = { instanceId: this.nextInstanceId(), defId };
     p.moduleInventory.push(item);
-    const shouldFit = Number.isInteger(fitSlotIndex);
     const equipped = shouldFit ? this.fitModule({ slotIndex: fitSlotIndex, instanceId: item.instanceId }) : false;
+    if (shouldFit && !equipped) {
+      const rollbackIndex = p.moduleInventory.findIndex((entry) => entry.instanceId === item.instanceId);
+      if (rollbackIndex >= 0) p.moduleInventory.splice(rollbackIndex, 1);
+      return false;
+    }
+    // Charge only after an explicit Buy & Fit has succeeded, so a rejected fit cannot spend credits.
+    if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
     this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null });
     this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
     return true;
@@ -926,6 +952,33 @@ export const ships = {
 
   // ---- outfitting: fit / unfit modules ----------------------------------------------------
 
+  moduleFitBlocker({ shipIndex, slotIndex, def }) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned || !def) return { reason: 'missing_fit_target', text: null };
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slot = buildSlotList(shipDef)[slotIndex];
+    if (!slot) return { reason: 'unknown_slot', text: null };
+    if (!fits(slot, def)) {
+      return { reason: 'incompatible_slot', text: def.name + ' does not fit this slot' };
+    }
+    if (!this.isUnlocked(def)) {
+      return { reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };
+    }
+    const conflictingDef = findMasslineHeadConflict(owned.fittings, slotIndex, def);
+    if (conflictingDef) {
+      return {
+        reason: 'massline_head_conflict',
+        text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      };
+    }
+    const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
+    prospective.fittings[slotIndex] = def.id;
+    if (this.wouldOverflowCargo(prospective)) {
+      return { reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
+    }
+    return null;
+  },
+
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
   fitModule({ shipIndex, slotIndex, instanceId, defId }) {
@@ -949,30 +1002,10 @@ export const ships = {
       def = defById(defId);
     }
     if (!def) return false;
-    if (!fits(slot, def)) {
-      this.bus.emit('toast', { text: def.name + ' does not fit this slot', kind: 'error', ttl: 3 });
+    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def });
+    if (blocker) {
+      if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
       return false;
-    }
-    if (!this.isUnlocked(def)) {
-      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
-      return false;
-    }
-
-    const requestedHeadId = masslineHeadIdForDef(def);
-    if (requestedHeadId) {
-      const conflictingHeadId = owned.fittings.find((fittedId, index) => {
-        if (index === slotIndex || !fittedId) return false;
-        return !!masslineHeadIdForDef(defById(fittedId));
-      });
-      if (conflictingHeadId) {
-        const conflictingDef = defById(conflictingHeadId);
-        this.bus.emit('toast', {
-          text: 'Unfit ' + ((conflictingDef && conflictingDef.name) || 'the current Massline head') + ' before fitting another head',
-          kind: 'error',
-          ttl: 3,
-        });
-        return false;
-      }
     }
 
     const existing = owned.fittings[slotIndex];
@@ -982,17 +1015,7 @@ export const ships = {
 
     owned.fittings[slotIndex] = defId;
 
-    // cargo-overflow guard for downsizing cargo capacity (§ fitting rule) — only matters on the
-    // active flown ship; veto is a soft check against current usedVolume.
-    if (this.wouldOverflowCargo(owned)) {
-      // revert
-      owned.fittings[slotIndex] = existing;
-      if (fittedInventoryItem) p.moduleInventory.splice(invIdx, 0, fittedInventoryItem);
-      this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
-      return false;
-    }
-
-    // unfit whatever previously occupied the slot back to inventory (free) after validation succeeds.
+    // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
     if (existing) p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: existing });
 
     this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });

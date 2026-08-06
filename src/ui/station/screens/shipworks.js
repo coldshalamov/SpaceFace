@@ -6,7 +6,7 @@
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
-import { buildSlotList, fits } from '../../../systems/ships.js';
+import { buildSlotList, findMasslineHeadConflict, fits } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
@@ -871,6 +871,7 @@ export function createShipworksScreen(ctx) {
 
     const list = compat.map((d) => {
       const locked = moduleLocked(d, ctx.state);
+      const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const equipped = d.id === fittedId;
       const afford = (d.price || 0) <= credits;
       const shopDelta = presentShopModuleDelta({
@@ -885,11 +886,13 @@ export function createShipworksScreen(ctx) {
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
       const btn = equipped
         ? `<span class="sx-modrow__eq">Equipped</span>`
+        : headConflict
+          ? `<span class="sx-modrow__lock">${icon('info', 13)} Unfit ${escapeHtml(headConflict.name)} first</span>`
         : locked
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
           : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford ? '' : `disabled aria-label="${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short"`}>${d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit'}</button>`;
       return (
-        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked ? ' is-locked' : ''}" data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}" tabindex="0">` +
+        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
           `<span class="sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
             `<span class="sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
