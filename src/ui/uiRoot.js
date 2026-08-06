@@ -2062,6 +2062,31 @@ function injectHudCss() {
   .sf-dock-fade[hidden] { display:none!important; }
   .sf-dock-fade.active { opacity:1; }
   #sf-dock-overlay.sf-administrative-blackout { background:#05070d; }
+
+  /* ===== HUD/scene integration pass =====
+     Independent review scored ui_integration 3/5 with "the HUD reads like flat webpage panels placed
+     over the render: many rectangular boxes, high cyan strokes... little relationship to scene
+     lighting or focal hierarchy". Its fix was to reduce panel opacity and border dominance, align HUD
+     brightness to the scene grade, and reserve strong cyan for actionable state.
+
+     Done here as a trailing override rather than by editing the shared tokens in styles/ui.css,
+     because those tokens are global and the station screens depend on them. Layout, sizes, positions
+     and the authored "holographic-bleak" character are untouched — this only changes how hard the
+     surfaces sit on top of the render. Every rule is scoped to a HUD class. */
+  .sf-mission-tracker, .sf-cargo-panel, .sf-contacts, .sf-weapon-panel, .sf-shipcond {
+    backdrop-filter: blur(2px);
+  }
+  /* Panel fills: the render now carries a lifted black floor, so a near-opaque panel reads as a hole
+     punched in the frame. Dropping toward half opacity lets the scene sit behind the glass. */
+  .sf-mission-tracker { background:rgba(5,9,18,.58); }
+  .sf-cargo-panel, .sf-contacts { background:rgba(6,10,20,.55); }
+  /* Borders: keep the edge legible but stop it drawing a hard rectangle around every element. */
+  .sf-cargo-panel, .sf-contacts, .sf-weapon-panel {
+    border-color:color-mix(in srgb, var(--panel-edge) 55%, transparent);
+  }
+  /* Passive text recedes; strong cyan is reserved for actionable state, which keeps its own rules. */
+  .sf-contacts .sf-contact__meta, .sf-cargo-empty { opacity:.82; }
+
   `;
   document.head.appendChild(s);
 }

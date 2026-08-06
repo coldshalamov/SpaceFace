@@ -9,9 +9,15 @@
   ],
   "ratchetRoots": [
     "src/systems/",
-    "src/ui/"
+    "src/ui/",
+    "src/render/"
   ],
   "knownOrphans": {
+    "src/render/graphicsLab.js": "Developer technique gap-map served on its own route; intentionally not part of the game bundle graph.",
+    "src/render/renderCapabilityProfile.js": "Capability classifier superseded on the live route by adaptiveQuality's detectGpu; retained for its tests. Retire or route it.",
+    "src/render/starfield.js": "Standalone parallax starfield superseded by spaceBackground.js's L3_stars layer. Retire once nothing references it in docs/tests.",
+    "src/render/thruster/textures/encodePng.js": "Build-time PNG encoder for thruster atlas generation; not a runtime path.",
+    "src/render/thruster/textures/sample.js": "Build-time CPU texture sampler for thruster/RCS atlases; not a runtime path.",
     "src/systems/signatureAdapters.js": "Adapter layer for the unwired site signature model; blocked on the same wiring.",
     "src/systems/siteSignatureModel.js": "Asteroid-site signature model. Same shape as siteThermalModel.js — kernel plus tests, no runtime consumer.",
     "src/systems/siteThermalModel.js": "Asteroid-site thermal model. Pure kernel with tests and no runtime consumer; asteroidSites.js does not import it. Bind it to the site runtime or fold it into that system.",

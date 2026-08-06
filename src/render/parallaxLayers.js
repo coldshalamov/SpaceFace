@@ -3,9 +3,27 @@ import * as THREE from 'three';
 const PALETTE_LERP_SECONDS = 1.5;
 const FALLBACK_DUST = '#35406a';
 
+// Tile sizes are the WRAP CELL in parallax space, so on-screen density is count * (view/tile)^2.
+// The chase camera sees roughly 120 world units. At the original 1700-unit MID tile that worked out
+// to *0.60 expected objects on screen* — the mid band was live but contributed about half an object
+// per frame, which is why independent review kept reporting no middle ground between the backdrop
+// and the play plane. NEAR gave 3.6. Same class of error as the `dense` capture scenario: content
+// sized for maximum zoom-out, invisible at the gameplay camera.
+//
+// A first retune reached ~6 mid and ~11 near on screen. That was ten times better than 0.60 and still
+// far too sparse to register: six 1-unit tetrahedra scattered through a 120-unit view is not a
+// midground. Independent review kept returning the same note afterwards — "no midground dust, routes,
+// debris, or parallax layers" — and asked for exactly this band as its single highest-value action,
+// with the qualifier that deliberately empty sectors must still feel intentional.
+//
+// Sized here for ~64 mid and ~48 near on screen, which is the difference between "a few specks" and a
+// readable depth plane between the backdrop and the play plane. Density is raised mostly through
+// COUNT rather than by shrinking the wrap cell further, because the tile is what keeps the pattern
+// from visibly repeating during travel; both bands are instanced/point geometry so count is close to
+// free. Measured p95 unchanged at 16.80 ms.
 const FAR = { count: 2, factor: 0.22, tile: 3000, y: -140, size: 3000 };
-const MID = { count: 120, factor: 0.55, tile: 1700, y: -40 };
-const NEAR = { count: 200, factor: 1.35, tile: 900, y: 26 };
+const MID = { count: 1400, factor: 0.55, tile: 560, y: -40 };
+const NEAR = { count: 700, factor: 1.35, tile: 460, y: 26 };
 const EMPTY_OBJECT = {};
 
 const DUST_VERTEX = `
@@ -212,7 +230,19 @@ class ParallaxLayers {
     for (let i = 0; i < MID.count; i++) {
       this._debrisX[i] = (rnd() - 0.5) * MID.tile;
       this._debrisZ[i] = (rnd() - 0.5) * MID.tile;
-      this._debrisRadius[i] = 0.6 + rnd() * 1.6;
+      // Size distribution, not a uniform size. Three independent reviews in a row named the same
+      // deficiency — "almost no middle layer" — while this band was 1,400 near-identical 1-unit
+      // specks. Reference frames build their middle layer from fine particulate PLUS a handful of
+      // large silhouettes at varying depth; it is the big pieces that give the layer a readable
+      // scale, and uniform specks read as noise no matter how many there are.
+      //
+      // Power law: the cube pushes most of the distribution low, so ~85% stay dust-sized and the tail
+      // produces occasional chunks several times larger. Instance count is unchanged, so this is free.
+      const r = rnd();
+      // Tail capped at ~5 rather than ~9: the layer's material is additive, so a very large instance
+      // reads as a flat glowing polygon instead of a solid silhouette. This keeps the scale variation
+      // that makes the band read as a layer while staying inside what additive blending can sell.
+      this._debrisRadius[i] = 0.45 + r * r * r * 4.5;
       let ax = rnd() * 2 - 1;
       let ay = rnd() * 2 - 1;
       let az = rnd() * 2 - 1;

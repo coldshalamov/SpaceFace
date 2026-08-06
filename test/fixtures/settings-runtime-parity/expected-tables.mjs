@@ -23,17 +23,24 @@ export const QUALITY_BURST = Object.freeze({
 
 /** Default video slice from createGameState. */
 export const DEFAULT_VIDEO = Object.freeze({
-  renderScale: 0.85,
+  renderScale: 1.0,
   pixelRatioCap: 2,
-  shadows: false,
+  shadows: true,
   particleQuality: 'medium',
   bloom: true,
   fov: 50,
 });
 
-/** Max excursion for current → max → current. */
+/**
+ * Max excursion for current → max → current.
+ *
+ * renderScale is 2 (the top of the documented 0.5..2 clamp, matching
+ * graphics-profile-bootstrap's max) rather than 1. Once the shipped default rose to native 1.0,
+ * a max of 1 would have made the renderScale leg of this excursion vacuous — the "max" and the
+ * "current" it is meant to travel away from would have been the same number.
+ */
 export const MAX_VIDEO = Object.freeze({
-  renderScale: 1,
+  renderScale: 2,
   pixelRatioCap: 4,
   shadows: true,
   particleQuality: 'high',

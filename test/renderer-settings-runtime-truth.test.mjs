@@ -67,7 +67,12 @@ function expectedDrawBuffer(video, {
   };
 }
 
-const DEFAULT_VIDEO = Object.freeze({
+// A deliberately DOWN-SCALED video profile, not the shipped default. It exists so the draw-buffer
+// formula tests below exercise a non-unit renderScale and a shadows-off starting point, and so
+// MAX_VIDEO stays genuinely distinct from it. The shipped defaults are asserted separately against
+// gameState.js source (they are renderScale 1.0 / shadows true since the measured A/B showed full
+// resolution and shadows are free on the 60fps target hardware).
+const SCALED_VIDEO = Object.freeze({
   renderScale: 0.85,
   pixelRatioCap: 2,
   shadows: false,
@@ -78,7 +83,7 @@ const DEFAULT_VIDEO = Object.freeze({
 });
 
 const MAX_VIDEO = Object.freeze({
-  ...DEFAULT_VIDEO,
+  ...SCALED_VIDEO,
   renderScale: 1,
   pixelRatioCap: 4,
   shadows: true,
@@ -242,13 +247,16 @@ function createLiveShadowRuntime({ shadowsAtBoot = false } = {}) {
 
 test('default video defaults include pixelRatioCap, renderScale, shadows', () => {
   assert.match(gameStateSource, /pixelRatioCap:\s*2/, 'default pixelRatioCap is 2');
-  assert.match(gameStateSource, /renderScale:\s*0\.85/, 'default renderScale is 0.85');
-  assert.match(gameStateSource, /shadows:\s*false/, 'default shadows is false (boot path under test)');
+  // Raised from 0.85/false after a matched A/B on the 60fps target hardware (Intel iGPU, 1920x1080,
+  // 20s warmup so authored admission had settled): p95 16.80ms both, max 17.20ms vs 17.00ms. The
+  // frame is vsync-locked with headroom, so sub-native resolution bought nothing.
+  assert.match(gameStateSource, /renderScale:\s*1\.0/, 'default renderScale is 1.0 (native)');
+  assert.match(gameStateSource, /shadows:\s*true/, 'default shadows is on');
 });
 
 test('applyRendererSize formula: boot defaults vs max vs restore (devicePR=2)', () => {
   const dpr = 2;
-  const boot = expectedDrawBuffer(DEFAULT_VIDEO, { devicePixelRatio: dpr });
+  const boot = expectedDrawBuffer(SCALED_VIDEO, { devicePixelRatio: dpr });
   // min(2, cap=2) * 0.85 * 1 = 1.7
   assert.equal(boot.pixelRatio, 1.7);
   assert.equal(boot.width, Math.floor(1920 * 1.7));
@@ -260,12 +268,12 @@ test('applyRendererSize formula: boot defaults vs max vs restore (devicePR=2)', 
   assert.equal(maxed.width, 3840);
   assert.equal(maxed.height, 2160);
 
-  const restored = expectedDrawBuffer(DEFAULT_VIDEO, { devicePixelRatio: dpr });
+  const restored = expectedDrawBuffer(SCALED_VIDEO, { devicePixelRatio: dpr });
   assert.deepEqual(restored, boot, 'current→max→current must restore boot draw buffer');
 });
 
 test('applyRendererSize formula: dynResScale multiplies without mutating settings.video', () => {
-  const video = { ...DEFAULT_VIDEO };
+  const video = { ...SCALED_VIDEO };
   const full = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 1 });
   const half = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 0.5 });
   assert.equal(full, 1.7);
@@ -369,9 +377,9 @@ test('static: boot must not permanently orphan key-light when shadows start fals
 test('runtime model (live): pixel-ratio path current→max→current is stable', () => {
   // Size path is pure + wired; this is the green half of current→max→current.
   const dpr = 1.5;
-  const current = expectedDrawBuffer(DEFAULT_VIDEO, { devicePixelRatio: dpr, cssWidth: 1280, cssHeight: 720 });
+  const current = expectedDrawBuffer(SCALED_VIDEO, { devicePixelRatio: dpr, cssWidth: 1280, cssHeight: 720 });
   const maxed = expectedDrawBuffer(MAX_VIDEO, { devicePixelRatio: dpr, cssWidth: 1280, cssHeight: 720 });
-  const back = expectedDrawBuffer(DEFAULT_VIDEO, { devicePixelRatio: dpr, cssWidth: 1280, cssHeight: 720 });
+  const back = expectedDrawBuffer(SCALED_VIDEO, { devicePixelRatio: dpr, cssWidth: 1280, cssHeight: 720 });
 
   assert.ok(maxed.pixelRatio >= current.pixelRatio, 'max quality must not shrink pixel ratio');
   assert.deepEqual(back, current, 'restoring video settings restores draw buffer');
@@ -385,7 +393,7 @@ test('runtime model (source-selected): shadows false@boot → true → false rec
   assert.equal(snap.shadowConfigured, true, 'default boot prepares reusable shadow resources');
 
   // current → max (shadows on)
-  rt.applySettingsChanged({ key: 'shadows', video: { ...DEFAULT_VIDEO, shadows: true } });
+  rt.applySettingsChanged({ key: 'shadows', video: { ...SCALED_VIDEO, shadows: true } });
   rt.syncShadowMapEnabled();
   snap = rt.snapshot();
 
@@ -407,7 +415,7 @@ test('runtime model (source-selected): shadows false@boot → true → false rec
   );
 
   // max → current (shadows off) — ideal still keeps light bound for re-enable
-  rt.applySettingsChanged({ key: 'shadows', video: { ...DEFAULT_VIDEO, shadows: false } });
+  rt.applySettingsChanged({ key: 'shadows', video: { ...SCALED_VIDEO, shadows: false } });
   rt.syncShadowMapEnabled();
   snap = rt.snapshot();
   assert.equal(snap.shadowSettingOn, false);
@@ -416,7 +424,7 @@ test('runtime model (source-selected): shadows false@boot → true → false rec
 test('runtime model (ideal seam): shadows false@boot → true → false works without re-init', () => {
   // Contrasts the live model: what `_ensureKeyLightShadows` would provide.
   const rt = createLiveShadowRuntime({ shadowsAtBoot: false });
-  rt.reconcileVideoShadowsIdeal({ ...DEFAULT_VIDEO, shadows: true });
+  rt.reconcileVideoShadowsIdeal({ ...SCALED_VIDEO, shadows: true });
   rt.syncShadowMapEnabled();
   let snap = rt.snapshot();
   assert.equal(snap.keyLightBound, true);
@@ -424,7 +432,7 @@ test('runtime model (ideal seam): shadows false@boot → true → false works wi
   assert.equal(snap.shadowMapEnabled, true);
   assert.equal(snap.castShadow, true);
 
-  rt.reconcileVideoShadowsIdeal({ ...DEFAULT_VIDEO, shadows: false });
+  rt.reconcileVideoShadowsIdeal({ ...SCALED_VIDEO, shadows: false });
   rt.syncShadowMapEnabled();
   snap = rt.snapshot();
   assert.equal(snap.shadowSettingOn, false);
@@ -432,7 +440,7 @@ test('runtime model (ideal seam): shadows false@boot → true → false works wi
   assert.equal(snap.castShadow, false);
   assert.equal(snap.keyLightBound, true, 'ideal keeps key bound for re-enable');
 
-  rt.reconcileVideoShadowsIdeal({ ...DEFAULT_VIDEO, shadows: true });
+  rt.reconcileVideoShadowsIdeal({ ...SCALED_VIDEO, shadows: true });
   rt.syncShadowMapEnabled();
   snap = rt.snapshot();
   assert.equal(snap.shadowMapEnabled, true);

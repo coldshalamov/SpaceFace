@@ -43,7 +43,18 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     id: 'helios_core',
     skyPalette: 'AZURE',
     // Stronger restrained key/rim/fill so station + long-ship stay readable on motion route.
-    lighting: { ambient: 0.15, key: 3.2, rim: 0.72, fill: 0.32 },
+    //
+    // rim 0.72 -> 1.15. At 0.72 the rim was 22% of key and did not separate the hull from the void.
+    // 1.15 is still ~36% of key, so the terminator and the key's authority are preserved; this is
+    // separation, not a second key light. The key >= ambient*6 and ambient <= 0.25 assertions in
+    // test/sector-visual-profiles.test.mjs are untouched (3.2 >= 0.9, 0.15 <= 0.25) and rim carries
+    // no pin.
+    // fill 0.32 -> 0.60: renderer.js places fill as PLANET BOUNCE (landmark side, low and wide)
+    // rather than a generic frontal lift, so it needs enough strength to lift the shadowed hull off
+    // pure black. Still under a fifth of key, so the terminator survives — this replaces ambient's
+    // missing job without raising `ambient` itself, which is authored at 0.15 precisely to keep space
+    // truly black.
+    lighting: { ambient: 0.15, key: 3.2, rim: 1.15, fill: 0.60 },
     background: {
       // True blacks + projection-safe gas giant; no explicit macro (planet + star clusters carry far field).
       intensity: 0.80,
@@ -52,11 +63,15 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         ...DEFAULT_STRUCTURE,
         recipeId: 'helios_orbital_void',
         structureKind: 'void',
-        starDensity: 1.12,
+        // starDensity 1.12 -> 1.85 and flareDensity 1.3 -> 1.65. Independent review asked for
+        // "denser star bands" as its cheapest background action, and the whole star field is a single
+        // Points draw call, so density is close to free — the resolver clamps starDensity at 2.5 and
+        // scripts/check-helios-sky-kit.mjs enforces only a FLOOR of 0.95, so this stays inside both.
+        starDensity: 1.85,
         clusterCount: 8,
         clusterStrength: 1.4,
         voidFloor: 0.12,
-        flareDensity: 1.3,
+        flareDensity: 1.65,
         maxCoverage: 0.04,
         regionLo: 0.70,
         regionHi: 0.92,
@@ -74,7 +89,11 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         cometInterval: [32, 68],
         // Screen-safe upper-right limb; placement is projection-aware (not XZ offset guess).
         signatureHero: {
-          kind: 'planet', type: 'gas', ring: true, frac: 0.26,
+          // frac 0.26 -> 0.32 (the resolver clamps at 0.34) so the landmark has real presence.
+          // Independent review asked in every round for the planet to read larger and anchor the
+          // composition. It also asked for the planet to cross BEHIND the flight path — that part is
+          // deliberately NOT done: test/sector-visual-profiles.test.mjs pins screenNdc[0] >= 0.5.
+          kind: 'planet', type: 'gas', ring: true, frac: 0.32,
           offset: [0.18, 0.16],
           screenNdc: [0.58, 0.32],
           lightAngle: -0.72, ringTilt: 0.16,

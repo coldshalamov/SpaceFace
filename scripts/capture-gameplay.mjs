@@ -28,6 +28,14 @@ const SHOT_PATH = argv.shotPath || `.devshots/perf/${SHOT}`;
 const VIDEO_OVERRIDES = collectVideoOverrides(argv);
 const HARD_KILL_MS = Number(argv.hardKillMs || Math.max(90000, WARMUP_MS + DURATION_MS + 60000));
 const DEBUG_PORT = Number(argv.debugPort || 9333);
+// Optional EXACT capture viewport. Existing callers pass neither and keep the historic 1280x800
+// window (which lands on a ~1262x648 page viewport); reference-comparison runs pass --width/--height
+// so the frame is a true 16:9 1920x1080 that can be matched against press screenshots.
+const EXACT_W = argv.width != null ? Number(argv.width) : null;
+const EXACT_H = argv.height != null ? Number(argv.height) : null;
+const EXACT_VIEWPORT = Number.isFinite(EXACT_W) && Number.isFinite(EXACT_H) && EXACT_W > 0 && EXACT_H > 0;
+// Optional JS expression evaluated in the page after the scenario is applied (A/B experiments).
+const EVAL_JS = typeof argv.eval === 'string' ? argv.eval : null;
 
 const CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -53,7 +61,7 @@ if (!chrome) { console.error('No Chrome/Edge found.'); process.exit(2); }
 // browser-test dependency.
 const args = [
   '--headless=new', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
-  '--disable-extensions', '--window-size=1280,800', '--hide-scrollbars',
+  '--disable-extensions', `--window-size=${EXACT_VIEWPORT ? `${EXACT_W},${EXACT_H}` : '1280,800'}`, '--hide-scrollbars',
   // REAL GPU — deliberately NOT passing swiftshader flags so frame-times reflect hardware WebGL.
   '--ignore-gpu-blocklist', '--enable-webgl',
   `--remote-debugging-port=${DEBUG_PORT}`,
@@ -98,6 +106,16 @@ async function cdpCapture() {
   });
   const send = (method, params = {}) => new Promise((resolve) => { id++; pending.set(id, { resolve }); ws.send(JSON.stringify({ id, method, params })); });
 
+  // Force an exact page viewport when requested, so the captured frame really is WxH (the raw
+  // window-size loses ~18x152px to the headless frame). Done BEFORE the game boots its renderer so
+  // the drawing buffer, background tier bake and camera aspect are all sized for the final frame.
+  if (EXACT_VIEWPORT) {
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: EXACT_W, height: EXACT_H, deviceScaleFactor: 1, mobile: false,
+    });
+    console.log(`[gameplay] exact viewport override -> ${EXACT_W}x${EXACT_H}`);
+  }
+
   // Wait for the game handle to exist, then START A NEW GAME (the title screen otherwise blocks
   // gameplay) by emitting game:new on the bus. Then apply the requested deterministic scenario.
   console.log('[gameplay] starting a fixed-seed new game via window.SF.bus.emit("game:new")...');
@@ -113,6 +131,13 @@ async function cdpCapture() {
     await send('Runtime.evaluate', { expression: `Object.assign(window.SF.state.settings.video, ${JSON.stringify(VIDEO_OVERRIDES)}); window.SF.bus.emit("settings:changed", { section: "video", key: null });` });
   }
   await send('Runtime.evaluate', { expression: scenarioExpression(SCENARIO), awaitPromise: false });
+  // A/B experiment hook. Lets the parity loop measure a render change (background tier, intensity,
+  // a material swap) against the SAME scenario without editing game source first, so a proposed
+  // upgrade can be costed before it is committed. Evaluated after the scenario is applied.
+  if (EVAL_JS) {
+    const r = await send('Runtime.evaluate', { expression: `(() => { try { return String(${EVAL_JS}); } catch (e) { return 'EVAL_ERROR: ' + e.message; } })()`, returnByValue: true });
+    console.log(`[gameplay] --eval -> ${r && r.result && r.result.value}`);
+  }
   console.log(`[gameplay] warmup ${WARMUP_MS}ms, capture ${DURATION_MS}ms...`);
   await sleep(WARMUP_MS);
   await send('Runtime.evaluate', {
@@ -133,6 +158,26 @@ async function cdpCapture() {
   }
   const report = await readRuntimeReport(send);
   report.timeline = timeline;
+
+  // Scenario self-check. A scenario that claims to move the ship but does not is the worst kind of
+  // capture bug: it produces a plausible screenshot and a plausible frame time, and every downstream
+  // conclusion drawn from it is wrong. 'boost' and 'combat-vfx' assigned state.input directly, which
+  // systems/input.js overwrites from held keys every frame, so they silently captured a parked ship
+  // at SPD 0 — no plume, no motion cues — for the entire life of this harness. Measure the outcome
+  // and record it rather than trusting that the scenario did what its name says.
+  const motion = await send('Runtime.evaluate', {
+    expression: `JSON.stringify((() => {
+      const st = window.SF && window.SF.state; if (!st) return null;
+      const p = st.entities && st.entities.get(st.playerId);
+      if (!p || !p.vel) return null;
+      return { speed: Math.hypot(p.vel.x, p.vel.z), moveZ: st.input && st.input.moveZ };
+    })())`,
+    returnByValue: true,
+  });
+  try {
+    const parsed = JSON.parse((motion && motion.result && motion.result.value) || 'null');
+    if (parsed) report.motion = { speed: Number(parsed.speed.toFixed(2)), moveZ: parsed.moveZ };
+  } catch (_) { /* motion telemetry is advisory */ }
 
   // §16.4 scene set: capture a short sequence as the live world evolves (more entities spawn, combat/
   // mining occur over time). Each shot is a candidate scene; the runbook records which §16.4 type each
@@ -204,6 +249,26 @@ console.log(`  render — calls:${result.report.render && result.report.render.c
 console.log(`  memory — geo:${result.report.memory && result.report.memory.geometries} tex:${result.report.memory && result.report.memory.textures} prog:${result.report.memory && result.report.memory.programs}`);
 console.log(`[gameplay] report: ${OUT}`);
 console.log(`[gameplay] §16.4 screenshot: ${SHOT_PATH} ${okShot ? 'OK (' + (statSync(SHOT_PATH).size / 1024).toFixed(1) + ' KB sha256=' + shotHash.slice(0, 12) + ')' : 'MISSING'}`);
+
+// Scenarios whose whole purpose is motion. If one of these captures a stationary ship the frame is
+// invalid evidence for plume, speed language, motion streaks or in-flight cost — say so loudly
+// rather than letting a plausible-looking screenshot through.
+const MOTION_SCENARIOS = new Set(['cruise', 'cruise-boost', 'boost']);
+const measuredSpeed = (result.report.motion && result.report.motion.speed) || 0;
+if (result.report.motion) {
+  console.log(`[gameplay] motion: speed=${measuredSpeed} moveZ=${result.report.motion.moveZ}`);
+}
+if (MOTION_SCENARIOS.has(SCENARIO) && measuredSpeed < 1) {
+  console.error(`[gameplay] WARNING — scenario '${SCENARIO}' is a MOTION scenario but the ship measured speed ${measuredSpeed}.`);
+  console.error('[gameplay] The frame shows a parked ship: no plume, no speed cues, and its frame time is not in-flight cost.');
+  console.error('[gameplay] Assigning state.input.* from a timer does NOT work — systems/input.js rebuilds it from held keys each frame.');
+  result.report.scenarioMotionValid = false;
+} else if (MOTION_SCENARIOS.has(SCENARIO)) {
+  result.report.scenarioMotionValid = true;
+}
+// The report was serialised above; rewrite it so motion/scenarioMotionValid actually reach the file
+// that downstream tooling reads.
+writeFileSync(OUT, JSON.stringify(result.report, null, 2));
 
 // §12.1 verdict.
 console.log(`[gameplay] §12.1 verdict — target(<=${TARGET_MS}ms/60fps):${targetPass ? 'PASS' : 'FAIL'} floor(<=${FLOOR_MS}ms/30fps):${floorPass ? 'PASS' : 'FAIL'} mode:${STRICT ? 'strict-target' : 'floor'}`);
@@ -337,6 +402,52 @@ function scenarioExpression(name) {
         const r = 260 + (i % 18) * 42;
         spawnRock(p.pos.x + Math.cos(a) * r, p.pos.z + Math.sin(a) * r, 10 + (i % 6) * 4);
       }
+    } else if (${JSON.stringify(name)} === 'cruise' || ${JSON.stringify(name)} === 'cruise-boost') {
+      // Deep-flight means FLIGHT. 'idle' pins moveZ to 0, so its frames show a parked ship at SPD 0
+      // with no plume, no motion streak and no velocity-driven speed motes — then get compared
+      // against reference frames that are all ships under power.
+      //
+      // Writing state.input.moveZ directly does NOT work: systems/input.js rebuilds state.input
+      // from held keys every frame, so a timer-assigned value is overwritten before the sim reads
+      // it. (The pre-existing 'boost' and 'combat-vfx' scenarios assign state.input the same way and
+      // therefore never actually move the ship — left untouched here because other perf baselines
+      // are calibrated against them; use 'cruise'/'cruise-boost' for motion evidence.)
+      //
+      // Holding a real KeyW keydown drives the actual input pipeline. PILOT scheme binds
+      // forward: ['KeyW','ArrowUp'] (src/systems/input.js). Re-dispatched periodically so a focus
+      // or blur event cannot silently drop the hold mid-capture.
+      const holdBoost = ${JSON.stringify(name)} === 'cruise-boost';
+      const press = () => {
+        for (const code of ['KeyW']) {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code, key: 'w', bubbles: true }));
+        }
+        if (holdBoost) {
+          window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', key: 'Shift', bubbles: true }));
+        }
+      };
+      press();
+      window.__SF_CAPTURE_SCENARIO__.tick = setInterval(press, 500);
+    } else if (${JSON.stringify(name)} === 'asteroid-field') {
+      // VISUAL scene, not the 'dense' entity-count stress test. 'dense' seeds rocks at 260-974 WU
+      // while the chase camera only sees ~60 WU, so nothing it spawns is ever in frame. Here the
+      // rocks are deliberately placed INSIDE the frustum at mixed depths so the capture is valid
+      // evidence for an asteroid-field reference comparison.
+      const ring = [
+        [-96, -54, 22], [-58, 38, 15], [-24, -78, 26], [18, 62, 12],
+        [52, -40, 19], [86, 30, 24], [120, -66, 30], [-132, 12, 28],
+        [-70, -18, 9], [40, 16, 7], [-14, 44, 6], [74, -12, 8],
+      ];
+      for (const [dx, dz, r] of ring) spawnRock(p.pos.x + dx, p.pos.z + dz, r);
+      // A second, further band gives the field a readable back plane instead of one flat layer.
+      for (let i = 0; i < 24; i++) {
+        const a = i * 2.399963;
+        const rad = 170 + (i % 5) * 34;
+        spawnRock(p.pos.x + Math.cos(a) * rad, p.pos.z + Math.sin(a) * rad, 12 + (i % 4) * 7);
+      }
+      // Deliberately stationary. The rocks are placed relative to the player at spawn, so thrusting
+      // just leaves the field behind and empties the frame. (An earlier version assigned
+      // state.input.moveZ here, which did nothing at all — systems/input.js rebuilds state.input
+      // from held keys every frame. See the 'cruise' scenario for how to actually move the ship.)
     } else if (${JSON.stringify(name)} === 'combat-vfx') {
       const combatSpecs = ${combatSpecs};
       for (let i = 0; i < 24; i++) {

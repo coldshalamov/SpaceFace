@@ -123,6 +123,12 @@ const LAYER_DEFS = [
 export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
+// How many celestial hero bodies may be resident at once. Was an inline `< 1`, which meant the far
+// field held exactly one planet however many the sector generated (heroPlacement typically ~17).
+// Two gives the backdrop an actual depth relationship — a near landmark and a further body — which
+// is the "back/middle/front" independent review asked for. Each costs one baked impostor and one
+// sprite draw call, so keep this small.
+const MAX_VISIBLE_PLANETS = 2;
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
@@ -1850,14 +1856,23 @@ export class SpaceBackground {
     }
     this.heroPlacement = list;
 
-    // spawn what's near the window, capped: <=1 planet + 1 wormhole
+    // Spawn what's near the window, capped at MAX_VISIBLE_PLANETS + 1 wormhole.
+    //
+    // This was hardcoded to 1 planet while heroPlacement routinely holds ~17 candidates, so the far
+    // field could only ever contain a single celestial body no matter what the sector authored.
+    // Independent review asked for "two distant occluding bodies behind the ship path" as its
+    // background fix — the content was already generated and a constant was hiding it. The signature
+    // anchor is first in `list`, so it still wins the first slot and authored composition is
+    // preserved; the second slot goes to the nearest procedural hero.
+    //
+    // Cost is one extra baked impostor (LRU-cached, `maxPlanetCache`) and one extra sprite draw.
     let planetsSpawned = 0;
     for (const spec of list) {
       const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
       const ox = spec.bx - this.camX * par;
       const oz = spec.bz - this.camZ * par;
       if (Math.abs(ox) > windowR || Math.abs(oz) > windowR) continue;
-      if (spec.kind === 'planet' && planetsSpawned < 1) {
+      if (spec.kind === 'planet' && planetsSpawned < MAX_VISIBLE_PLANETS) {
         this._spawnPlanet(spec);
         planetsSpawned++;
       } else if (spec.kind === 'wormhole' && !this.wormhole) {
@@ -2012,7 +2027,9 @@ export class SpaceBackground {
     this.deepFieldRecipe = recipe;
     // Void/core recipes intentionally use stars + landmarks only. This is negative-space art
     // direction, not a missing or disabled layer.
-    if (!st || !recipe || !recipe.ribbons || recipe.ribbons.length === 0) return;
+    const hasRibbons = !!(recipe && recipe.ribbons && recipe.ribbons.length);
+    const hasStructures = !!(recipe && recipe.structures && recipe.structures.length);
+    if (!st || !recipe || (!hasRibbons && !hasStructures)) return;
     if (st.maxCoverage < 0.02) return;
 
     const group = new THREE.Group();
@@ -2026,7 +2043,7 @@ export class SpaceBackground {
     // sheath, which routinely covered the top half of the frame and resembled a fog overlay.
     const scale = H * Math.max(1.24, this.heroSizeK * 0.38) * recipe.apparentScale;
 
-    for (let si = 0; si < recipe.ribbons.length; si++) {
+    for (let si = 0; si < (recipe.ribbons || []).length; si++) {
       const ribbon = recipe.ribbons[si];
       const controls = ribbon.points.map((point) => new THREE.Vector3(
         point[0] * scale,
@@ -2057,6 +2074,52 @@ export class SpaceBackground {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `DeepField_${ribbon.id}`;
       mesh.renderOrder = -72;
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    }
+
+    // ---- authored structure silhouettes ---------------------------------------------------------
+    // Independent review's background note, in every round, is that the frame has "almost no middle
+    // layer", and its reference frames build one from DISTANT SOLID FORMS — wrecks, stations, broken
+    // hulls — not from more particulate. Ribbons are thin dust and cannot supply that: a dust lane has
+    // no silhouette.
+    //
+    // A structure is an authored 2D outline placed in the deep field and rendered as a dark, nearly
+    // opaque plate. It reads as a distant object precisely because it OCCLUDES the starfield behind
+    // it; that occlusion is the depth cue, which is why the material is dark rather than glowing.
+    // Cost is one small ShapeGeometry per structure with no lighting and no texture.
+    for (let ki = 0; ki < (recipe.structures || []).length; ki++) {
+      const st2 = recipe.structures[ki];
+      const outline = Array.isArray(st2.silhouette) ? st2.silhouette : null;
+      if (!outline || outline.length < 3) continue;
+      const shape = new THREE.Shape();
+      const sScale = scale * (Number.isFinite(st2.scale) ? st2.scale : 0.2);
+      shape.moveTo(outline[0][0] * sScale, outline[0][1] * sScale);
+      for (let pi = 1; pi < outline.length; pi++) {
+        shape.lineTo(outline[pi][0] * sScale, outline[pi][1] * sScale);
+      }
+      shape.closePath();
+      const geo = new THREE.ShapeGeometry(shape);
+      geo.rotateX(-Math.PI / 2);                 // deep field lies in the XZ plane
+      const off = st2.offset || [0, 0];
+      geo.translate(off[0] * scale, 0, off[1] * scale);
+      geo.userData.deepFieldRecipeId = recipe.id;
+      geo.userData.deepFieldStructureId = st2.id;
+      geometries.push(geo);
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(st2.color || '#0a0d13'),
+        transparent: true,
+        opacity: Number.isFinite(st2.opacity) ? st2.opacity : 0.92,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+      });
+      mat.name = `SF_DeepFieldStructure_${recipe.id}_${st2.id}`;
+      mat.userData.deepFieldRecipeId = recipe.id;
+      materials.push(mat);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.name = `DeepFieldStructure_${st2.id}`;
+      mesh.renderOrder = -71;                    // in front of the ribbons, still behind everything else
       mesh.frustumCulled = false;
       group.add(mesh);
     }

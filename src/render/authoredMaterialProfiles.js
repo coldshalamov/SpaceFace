@@ -21,6 +21,107 @@ export function authoredMaterialRole(name) {
   return null;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Surface roughness breakup.
+//
+// A Blender audit of every shipped GLB (scripts/gfx-asset-audit.mjs) measured within-material
+// roughness variation and found TWENTY assets whose ORM green channel has a standard deviation of
+// EXACTLY ZERO — all eleven modular hulls (the kit every NPC ship is assembled from), all six
+// engines, two cockpits and two dock interiors. Another 52 sit under 0.10. A constant roughness
+// gives a constant specular response, which is why correctly differentiated materials still resolve
+// as one plastic surface, and why the `material` axis scored 2/5 in every review round regardless of
+// the lighting rig, IBL and grade work.
+//
+// The authored fix is breakup painted into the ORM green channel, and that remains the right
+// long-term answer — it belongs to the asset lanes. This is the renderer-side floor: a broad,
+// low-frequency perturbation so a flat map still reads as a surface with zones rather than a
+// uniform sheet.
+//
+// Deliberate choices:
+//   * LOW frequency (large soft zones, not grain). High-frequency roughness noise sparkles and
+//     aliases at distance, which would be worse than the flat map it replaces.
+//   * Injected at `#include <lights_physical_fragment>`, NOT at `roughnessmap_fragment` — the
+//     packed-ORM single-sample shader in partsLibrary.js already rewrites that include, and two
+//     replacements of the same needle would silently no-op whichever ran second.
+//   * ONE shared program cache key, so this adds a single program variant rather than one per
+//     material (this project has been burned by shader compile storms before).
+//   * Amplitude is small and clamped; assets that already carry authored variation are not harmed.
+// The key MUST change whenever the injected shader source changes, or three.js reuses a cached
+// program compiled from the OLD source and the new term silently never appears — a change that then
+// measures as "no effect" for a reason unrelated to the hypothesis under test.
+//
+// TWO RENDERER HYPOTHESES FOR THE `material` AXIS WERE TESTED AND BOTH DISCONFIRMED AT n=5:
+//   v1  roughness breakup      -> material stayed 2, samples [2,2,2,2,2]
+//   v2  + albedo value zones   -> material stayed 2, samples [2,2,2,2,2]  (term since reverted)
+// The reviewer's note does not change either: "reads mostly as one matte gray material". It wants
+// authored variety per zone — painted metal vs glass vs worn edge, readable at ship size — which is
+// texture content, not a shader modulation. Do not spend another round modulating a global here.
+const ROUGHNESS_BREAKUP_KEY = 'spaceface-surface-breakup-v3-roughness-only';
+const ROUGHNESS_BREAKUP_ROLES = new Set(['hull', 'mechanical', 'accent', 'ceramic', 'radiator', 'service', 'docking']);
+
+export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 } = {}) {
+  if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
+  if (material.userData?.spacefaceRoughnessBreakup === true) return true;
+
+  const originalOnBeforeCompile = material.onBeforeCompile;
+  const originalProgramCacheKey = typeof material.customProgramCacheKey === 'function'
+    ? material.customProgramCacheKey()
+    : '';
+
+  material.onBeforeCompile = function roughnessBreakupShader(shader, renderer) {
+    if (typeof originalOnBeforeCompile === 'function') {
+      originalOnBeforeCompile.call(this, shader, renderer);
+    }
+    const needle = '#include <lights_physical_fragment>';
+    if (!shader.fragmentShader.includes(needle)) {
+      // Fail loud rather than silently shipping a no-op: a three.js upgrade that renames this
+      // include would otherwise turn the whole effect off with no signal.
+      throw new Error('[render] roughness-breakup shader contract changed: missing lights_physical_fragment');
+    }
+    shader.fragmentShader = shader.fragmentShader.replace(needle, [
+      // Smooth value noise over the material UV. Two cheap octaves: broad zones plus a softer
+      // second band so the result does not read as a single repeating blob.
+      'float sfBreakNoise( vec2 p ) {',
+      '\tvec2 i = floor( p ); vec2 f = fract( p );',
+      '\tf = f * f * ( 3.0 - 2.0 * f );',
+      '\tfloat a = fract( sin( dot( i + vec2( 0.0, 0.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
+      '\tfloat b = fract( sin( dot( i + vec2( 1.0, 0.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
+      '\tfloat c = fract( sin( dot( i + vec2( 0.0, 1.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
+      '\tfloat d = fract( sin( dot( i + vec2( 1.0, 1.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
+      '\treturn mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );',
+      '}',
+      needle,
+    ].join('\n'));
+
+    // Perturb roughnessFactor before the lighting model consumes it.
+    const applyNeedle = 'material.roughness = max( roughnessFactor, 0.0525 );';
+    if (shader.fragmentShader.includes(applyNeedle)) {
+      shader.fragmentShader = shader.fragmentShader.replace(applyNeedle, [
+        '#ifdef USE_UV',
+        `\tfloat sfBreak = sfBreakNoise( vMapUv * ${scale.toFixed(2)} ) * 0.7`,
+        `\t\t+ sfBreakNoise( vMapUv * ${(scale * 2.7).toFixed(2)} ) * 0.3;`,
+        `\troughnessFactor = clamp( roughnessFactor + ( sfBreak - 0.5 ) * ${amount.toFixed(3)}, 0.04, 1.0 );`,
+        // An albedo VALUE term was tried here and REVERTED. See the note above installRoughnessBreakup:
+        // it was disconfirmed at n=5 exactly like the roughness term, and a global brightness multiply
+        // on every authored hull is a substantive art-direction change belonging to the asset lanes,
+        // not something to ship unilaterally on a hypothesis the measurement rejected.
+        '#endif',
+        applyNeedle,
+      ].join('\n'));
+    }
+  };
+  material.customProgramCacheKey = () => `${originalProgramCacheKey}|${ROUGHNESS_BREAKUP_KEY}`;
+  material.userData = { ...(material.userData || {}), spacefaceRoughnessBreakup: true };
+  material.needsUpdate = true;
+  return true;
+}
+
+// Solid roles that should catch the sector's environment. `glass` is excluded because it already has
+// its own authored value below, and emissive-only roles have nothing to reflect with.
+const SOLID_ENV_ROLES = new Set(['hull', 'mechanical', 'accent', 'ceramic', 'radiator', 'service', 'docking', 'drive']);
+const SOLID_ENV_INTENSITY = 2.1;
+const SOLID_ENV_INTENSITY_METAL = 2.8;
+
 export function applyAuthoredMaterialProfile(material, explicitRole = null, options = {}) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
   const role = explicitRole || authoredMaterialRole(material.name);
@@ -31,6 +132,24 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   material.userData.spacefacePbrCoverage = coverage;
   material.userData.spacefacePbrRemasterRequired = !coverage.complete;
   const authoredSurface = coverage.complete;
+
+  // Environment reflection strength for solid surfaces.
+  //
+  // Independent review's standing `material` note is that ship surfaces read as "a dull, LOW-SPEC gray
+  // response". That is diagnostic: albedo, roughness and occlusion are all MODULATORS of a specular
+  // response, so when the specular response is near zero they cannot matter — which is exactly what
+  // eight measured experiments found (roughness breakup, albedo value zones, a real AO bake, and a
+  // per-role repaint all left the axis at 2/5).
+  //
+  // Only `glass` was ever assigned an envMapIntensity here; every solid role fell through to three's
+  // default of 1.0 against a PMREM bake of a mostly-black scene. The bake is NOT fully black — it
+  // contains the sector's signature planet — so there is real headroom to recover. Metals get the most
+  // because metal has no diffuse response at all: reflection is the only thing that shapes them.
+  if (SOLID_ENV_ROLES.has(role) && 'envMapIntensity' in material) {
+    material.envMapIntensity = role === 'mechanical' || role === 'drive'
+      ? SOLID_ENV_INTENSITY_METAL
+      : SOLID_ENV_INTENSITY;
+  }
 
   if (role === 'hull') {
     if (!authoredSurface) {
@@ -109,6 +228,14 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
       allowTextures: options.allowTextures !== false,
     });
     material.userData.spacefacePbrCoverageAfterFallback = inspectAuthoredPbrCoverage(material);
+  }
+  // Broad roughness breakup for the structural roles. See installRoughnessBreakup: twenty shipped
+  // assets — every modular hull and every engine — carry a roughness map whose variance is exactly
+  // zero, so their specular response is uniform no matter how correct the material split is. Applied
+  // to structural surfaces only: glass, emissive/signal and drive apertures are meant to be smooth,
+  // and geology already runs its own authored rock surface path.
+  if (options.roughnessBreakup !== false && ROUGHNESS_BREAKUP_ROLES.has(role)) {
+    installRoughnessBreakup(material);
   }
   material.needsUpdate = true;
   return true;

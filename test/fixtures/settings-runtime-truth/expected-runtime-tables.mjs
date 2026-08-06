@@ -24,9 +24,9 @@ export const QUALITY_BURST = Object.freeze({
 
 /** Default video slice from createGameState (src/core/gameState.js). */
 export const DEFAULT_VIDEO = Object.freeze({
-  renderScale: 0.85,
+  renderScale: 1.0,
   pixelRatioCap: 2,
-  shadows: false,
+  shadows: true,
   particleQuality: 'medium',
   bloom: true,
   fov: 50,

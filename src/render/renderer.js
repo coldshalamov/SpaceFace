@@ -4,6 +4,11 @@
 import * as THREE from 'three';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
+import * as parallaxLayers from './parallaxLayers.js';
+import {
+  createSpaceReflectionEnvironment,
+  SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
+} from './spaceReflectionEnvironment.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
@@ -68,6 +73,7 @@ import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { getAssetResidency } from './assetResidency.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
@@ -144,6 +150,12 @@ const SOCKET_WORLD_QUAT = new THREE.Quaternion();
 const SOCKET_WORLD_SCALE = new THREE.Vector3();
 const SOCKET_FORWARD = new THREE.Vector3();
 const RUNTIME_MESH_BUILD_BUDGET = 2;
+// Default cinematic post treatment for the live route. Kept BELOW the 0.62 grade / 0.18 vignette
+// that post/spaceRenderGraph.js authors for the alternate pipeline: the goal is shadow/highlight
+// colour separation and a soft frame, not a look change the player did not ask for.
+const SECTOR_POST_GRADE = 0.45;
+const SECTOR_POST_TOE = 0.020;  // lifted black floor; 0 = the old true-black look, 0.038 washes out
+const SECTOR_POST_VIGNETTE = 0.12;
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
 export function entityVisualCullRadius(entity, mesh = null) {
@@ -747,6 +759,13 @@ export const render = {
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
+    // Near/mid/far parallax dust. The module was complete but had ZERO consumers anywhere in src/,
+    // so the scene had a far backdrop and the play plane with nothing between them — the "no back,
+    // middle and front" note independent review returned on every single frame. It supplies the
+    // missing middle and near bands plus the velocity-stretched speed motes, wraps by tile against
+    // the camera focus, and already honours particleQuality:'low' and the motionReduce
+    // accessibility setting internally.
+    parallaxLayers.init(scene, state, bus, state.render.sectorPalette || SECTOR_PALETTE_CLASSES.core);
     state.render.spaceBg = spaceBg;
     const vf = createVisualFactory();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
@@ -936,6 +955,8 @@ export const render = {
     state.render.rockSurfaceLibraryReady = this.rockSurfaceLibraryReady;
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
+    this._sectorLightingTarget = null; // no authored rig applied yet; see _beginSectorPaletteTransition
+    this._sectorPost = null;           // authored per-sector grade; see setSectorPostProfile
     state.render.sectorPalette = corePalette;
     this._keyLight = key; // retained while disabled so current→max→current can reconcile live
     this._shadowSettingOn = shadowsOn;
@@ -1474,10 +1495,20 @@ export const render = {
         }
       }
       if (cam.snapToPlayer) cam.snapToPlayer();
-      this._beginSectorPaletteTransition(sector);
+      const sectorVisualProfile = resolveSectorVisualProfile(sector);
+      this._beginSectorPaletteTransition(sector, sectorVisualProfile);
+      this.setSectorPostProfile(sectorVisualProfile && sectorVisualProfile.post);
       // Per-sector sky: rebake the deep-field background with this sector's seed +
       // palette class (no-op when re-entering the same sector).
-      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
+      //
+      // The visual profile MUST be passed. onSectorEnter's second parameter defaults to null, and
+      // until now both live call sites omitted it, so every authored sector profile — signature
+      // celestial anchor, deep-field recipe, nebula opacity, background intensity — silently fell
+      // back to engine defaults in the actual game. resolveSectorVisualProfile had exactly one
+      // consumer in the whole repo: scripts/capture-space-background-acceptance.mjs, which DOES
+      // pass it. That is why the acceptance captures showed the authored composition while the
+      // played game showed an empty default sky.
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
       if (state.mode === 'loading') {
         deferredStartupPrecompile = sector;
@@ -1516,8 +1547,11 @@ export const render = {
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
-      this._beginSectorPaletteTransition(sector);
-      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
+      // Same contract as the sector:enter path above: the authored profile is required, not optional.
+      const arrivalVisualProfile = resolveSectorVisualProfile(sector);
+      this._beginSectorPaletteTransition(sector, arrivalVisualProfile);
+      this.setSectorPostProfile(arrivalVisualProfile && arrivalVisualProfile.post);
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, arrivalVisualProfile);
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
@@ -1550,6 +1584,10 @@ export const render = {
       norm.bloomThreshold.toFixed(4),
       typeof norm.exposure === 'number' ? norm.exposure.toFixed(4) : '',
       norm.acesToneMapping ? 1 : 0,
+      // Must participate in the cache key, or a sector that changes the grade is a silent no-op.
+      typeof norm.grade === 'number' ? norm.grade.toFixed(4) : '',
+      typeof norm.vignette === 'number' ? norm.vignette.toFixed(4) : '',
+      typeof norm.toe === 'number' ? norm.toe.toFixed(4) : '',
     ].join('|');
   },
 
@@ -1557,9 +1595,57 @@ export const render = {
     this._postOptionsSig = null;
   },
 
+  // The authored per-sector grade (sectorVisualProfiles `post`) MODULATES the player's video
+  // settings rather than replacing them: the slider still means what the player set, the sector
+  // decides how much bloom that sector's material palette can carry and where its black floor sits.
+  // These fields existed in five sector profiles with zero consumers before this.
+  _applySectorPost(norm) {
+    // The cinematic grade/vignette apply on every route, so an unprofiled sector still gets them;
+    // a sector profile only overrides the amounts.
+    const post = this._sectorPost || {};
+    const strengthScale = Number(post.bloomStrengthScale);
+    const thresholdBias = Number(post.bloomThresholdBias);
+    const exposure = Number(post.exposure);
+    return {
+      ...norm,
+      // The composite's authored cinematic grade (teal-weighted shadows, amber-weighted highlights,
+      // slight saturation lift) and vignette ship at 0 on the live route — bloom.js's
+      // DEFAULT_POST_PRESENTATION is { grain: 0, vignette: 0, grade: 0 } — so the only pipeline that
+      // ever applied them was post/spaceRenderGraph.js, which is off by default (renderGraph:false).
+      // Independent review kept asking for "controlled black levels and a cinematic contrast curve"
+      // against a frame whose grade was multiplied away. The grade is MULTIPLICATIVE, which is
+      // precisely what fixed the earlier full-screen cyan veil: true black stays black.
+      // Grain stays 0 — it is per-pixel noise for no measured review benefit.
+      grade: Number.isFinite(Number(post.grade)) ? Number(post.grade) : SECTOR_POST_GRADE,
+      // Lifted black floor. Independent review's grade_post fix asks for "lifted near-blacks"; every
+      // other control in the composite is multiplicative and so cannot raise a black off zero.
+      // This is a POST-STACK TOE and is deliberately NOT `lighting.ambient` — ambient is authored at
+      // 0.15 with a pinned "keep space truly black" comment and is not touched here.
+      toe: Number.isFinite(Number(post.toe)) ? Number(post.toe) : SECTOR_POST_TOE,
+      vignette: Number.isFinite(Number(post.vignette)) ? Number(post.vignette) : SECTOR_POST_VIGNETTE,
+      bloomStrength: Number.isFinite(strengthScale) && strengthScale >= 0
+        ? Math.max(0, Math.min(1, norm.bloomStrength * strengthScale))
+        : norm.bloomStrength,
+      bloomThreshold: Number.isFinite(thresholdBias)
+        ? Math.max(0, norm.bloomThreshold + thresholdBias)
+        : norm.bloomThreshold,
+      // A player-set exposure always wins; the sector value is the default when none is set.
+      exposure: typeof norm.exposure === 'number' ? norm.exposure
+        : (Number.isFinite(exposure) ? exposure : norm.exposure),
+    };
+  },
+
+  setSectorPostProfile(post) {
+    const next = post || null;
+    if (next === this._sectorPost) return;
+    this._sectorPost = next;
+    this._invalidatePostOptionsCache();
+    this._syncPostOptions();
+  },
+
   _syncPostOptions(force = false) {
     const vd = (this.state && this.state.settings && this.state.settings.video) || {};
-    const norm = this._normalizePostVideo(vd);
+    const norm = this._applySectorPost(this._normalizePostVideo(vd));
     const sig = this._postOptionsSignature(norm);
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
@@ -1571,6 +1657,9 @@ export const render = {
       bloomThreshold: norm.bloomThreshold,
       exposure: norm.exposure,
       acesToneMapping: norm.acesToneMapping,
+      grade: norm.grade,
+      vignette: norm.vignette,
+      toe: norm.toe,
     };
     if (this.bloom) this.bloom.setOptions(postOpts);
     if (this._renderGraph) {
@@ -1660,10 +1749,27 @@ export const render = {
         : this._envMap;
       const disposePrevious = options.disposePrevious !== false;
       const pmrem = new THREE.PMREMGenerator(renderer);
-      const envMap = scene.background && scene.background.isTexture
-        ? pmrem.fromEquirectangular(scene.background).texture
-        : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+      // Capture the IBL from the dedicated reflection rig, NOT from the live scene.
+      //
+      // The live scene is deliberately near-black, so convolving it produced an environment with
+      // almost no reflected structure — which is why coated paint, bare metal, glass and bevels all
+      // resolved to the same flat plastic response no matter what their roughness/metalness maps
+      // said. spaceReflectionEnvironment.js exists precisely to fix that (three broad emissive area
+      // cards: warm key, cool rim, neutral fill) and was written but never imported anywhere in
+      // src/. The cards live in their own offscreen scene, so the playable backdrop stays black and
+      // its black level is untouched.
+      let reflectionEnv = null;
+      let envMap;
+      if (scene.background && scene.background.isTexture) {
+        envMap = pmrem.fromEquirectangular(scene.background).texture;
+      } else {
+        reflectionEnv = createSpaceReflectionEnvironment(THREE);
+        envMap = pmrem.fromScene(
+          reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
+        ).texture;
+      }
       pmrem.dispose();
+      if (reflectionEnv) reflectionEnv.dispose();
       // Dispose the previous env GPU texture if we're re-baking (context restore path).
       if (disposePrevious && previousEnvMap && previousEnvMap !== envMap) {
         try { previousEnvMap.dispose(); } catch (_) {}
@@ -2158,19 +2264,74 @@ export const render = {
     }
   },
 
-  _beginSectorPaletteTransition(sector) {
+  _beginSectorPaletteTransition(sector, profile = null) {
     const rig = this._sectorPaletteRig;
     if (!rig) return;
     const palette = sector && sector.palette ? sector.palette : SECTOR_PALETTE_CLASSES.core;
     this.state.render.sectorPalette = palette;
-    if (palette === this._sectorPaletteTarget) return;
+    const lighting = (profile && profile.lighting) || null;
+    // The guard must consider the authored light rig too. Two sectors can share a palette class
+    // while authoring different key/fill ratios, and — more importantly — the boot sector's palette
+    // is already the construction-time target, so keying only on palette identity would skip the
+    // very first transition and leave the authored rig unapplied for the whole opening sector.
+    if (palette === this._sectorPaletteTarget && lighting === this._sectorLightingTarget) return;
 
     this._sectorPaletteTarget = palette;
+    this._sectorLightingTarget = lighting;
     writeRigToSectorPaletteFrame(rig.start, rig);
-    writePaletteToSectorPaletteFrame(rig.target, palette);
+    writePaletteToSectorPaletteFrame(rig.target, palette, lighting);
     rig.elapsed = 0;
     rig.active = true;
+    this._aimKeyLightAtSignatureHero(profile);
+  },
 
+  // Point the key light at the sector's authored signature body, and put the rim opposite it.
+  //
+  // The three directional lights were constructed at fixed arbitrary positions — key (60,140,40),
+  // rim (-70,50,-60), fill (20,30,120) — with no relationship to anything visible. So the ship's lit
+  // side and the one bright object on screen disagreed, and the frame had no readable light source:
+  // exactly the "no convincing environmental key source, weak rim separation" note independent
+  // review returned every round.
+  //
+  // The chase camera is fixed-tilt and never yaws, so screen-space direction maps to a stable world
+  // direction: screen +x is world +x, and screen +y is world -z (the camera looks down +Z). The
+  // authored `signatureHero.screenNdc` therefore converts directly into a light direction, which
+  // keeps this data-driven — a sector that moves its landmark moves its key light with it.
+  //
+  // Intensities are NOT touched here; those stay owned by the authored `profile.lighting` rig and
+  // its transition. Only direction changes, so the shadow camera's ortho box still frames the same
+  // local action.
+  _aimKeyLightAtSignatureHero(profile) {
+    const rig = this._sectorPaletteRig;
+    if (!rig || !rig.lights) return;
+    const hero = profile && profile.background
+      && profile.background.composition && profile.background.composition.signatureHero;
+    const ndc = hero && Array.isArray(hero.screenNdc) ? hero.screenNdc : null;
+    // No authored landmark: keep the construction-time rig rather than inventing a direction.
+    if (!ndc) return;
+    const nx = Number(ndc[0]) || 0;
+    const ny = Number(ndc[1]) || 0;
+    const KEY_DIST = 160;
+    const KEY_HEIGHT = 96;
+    // Light POSITION is the direction light arrives FROM, so place it on the landmark's side.
+    //
+    // The offset is STORED, not just applied: _updateShadowFollow re-places the key light every
+    // frame so the shadow ortho box tracks the player, and it used to do that with a literal
+    // (60,140,40). Writing the position here alone was silently reverted on the next frame.
+    this._keyLightOffset = { x: nx * KEY_DIST, y: KEY_HEIGHT, z: -ny * KEY_DIST };
+    rig.lights.key.position.set(nx * KEY_DIST, KEY_HEIGHT, -ny * KEY_DIST);
+    // Rim sits opposite and lower, so hulls get a cool separating edge away from the key.
+    rig.lights.rim.position.set(-nx * KEY_DIST * 0.9, KEY_HEIGHT * 0.45, ny * KEY_DIST * 0.9);
+    // Fill becomes PLANET BOUNCE rather than a generic frontal lift.
+    //
+    // Review reports the ship as "dim" in every round. The cause is not too little key — it is that
+    // `ambient` is authored at 0.15 for true-black space, so nothing lifts the shadow side, and the
+    // one enormous lit body on screen throws no light back. A gas giant filling that much of the
+    // frame is physically a huge bounce card. Placing fill on the LANDMARK side but low and wide
+    // (rather than frontal) makes the shadowed hull pick up the planet instead of going to black,
+    // which is also review's "colored atmospheric fill" note — the fill takes the sector palette's
+    // fill hue, so a warm giant bounces warm and an ice body bounces cold.
+    rig.lights.fill.position.set(nx * KEY_DIST * 0.7, -KEY_HEIGHT * 0.18, -ny * KEY_DIST * 0.7);
   },
 
   _updateSectorPaletteTransition(frameDt) {
@@ -2239,6 +2400,7 @@ export const render = {
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
     if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
+    parallaxLayers.update(frameDt);
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
@@ -2357,7 +2519,15 @@ export const render = {
       px = local.x;
       pz = local.z;
     }
-    this._keyLight.position.set(px + 60, 140, pz + 40);
+    // Offset comes from _aimKeyLightAtSignatureHero when the sector authors a signature landmark,
+    // so shadow-follow preserves the landmark-derived light direction instead of forcing the old
+    // literal back every frame. Falls back to the original constant when nothing is authored.
+    const off = this._keyLightOffset;
+    this._keyLight.position.set(
+      px + (off ? off.x : 60),
+      off ? off.y : 140,
+      pz + (off ? off.z : 40),
+    );
     this._keyLight.target.position.set(px, 0, pz);
   },
 
@@ -2740,17 +2910,28 @@ function writeRigToSectorPaletteFrame(frame, rig) {
   frame.fogDensity = rig.scene.fog.density;
 }
 
-function writePaletteToSectorPaletteFrame(frame, palette) {
+// `lighting` is the authored per-sector rig from sectorVisualProfiles (e.g. Helios asks for
+// ambient 0.15 / key 3.2 — deep-space blacks under a hard sun). Before this took a parameter every
+// sector rendered the same global SECTOR_LIGHT_INTENSITIES (ambient 0.85 / key 1.7), i.e. a flat
+// ~5.7x-too-bright ambient wash with a weak key, which is exactly the "no convincing environmental
+// key source, weak rim separation" note that independent review kept returning. The lerp machinery
+// already interpolated intensities per frame; only the source of the numbers was hardcoded.
+function writePaletteToSectorPaletteFrame(frame, palette, lighting = null) {
   frame.colors.ambient.setHex(palette.ambient);
   frame.colors.key.setHex(palette.key);
   frame.colors.rim.setHex(palette.rim);
   frame.colors.fill.setHex(palette.fill);
   frame.colors.fog.setHex(palette.fog);
-  frame.intensities.ambient = SECTOR_LIGHT_INTENSITIES.ambient;
-  frame.intensities.key = SECTOR_LIGHT_INTENSITIES.key;
-  frame.intensities.rim = SECTOR_LIGHT_INTENSITIES.rim;
-  frame.intensities.fill = SECTOR_LIGHT_INTENSITIES.fill;
+  frame.intensities.ambient = authoredIntensity(lighting, 'ambient');
+  frame.intensities.key = authoredIntensity(lighting, 'key');
+  frame.intensities.rim = authoredIntensity(lighting, 'rim');
+  frame.intensities.fill = authoredIntensity(lighting, 'fill');
   frame.fogDensity = palette.fogDensity;
+}
+
+function authoredIntensity(lighting, channel) {
+  const authored = lighting && Number(lighting[channel]);
+  return Number.isFinite(authored) && authored >= 0 ? authored : SECTOR_LIGHT_INTENSITIES[channel];
 }
 
 function applySectorPaletteFrame(rig, frame) {

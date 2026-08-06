@@ -1750,6 +1750,20 @@ const AST_TYPE = {
   ast_rare_exotic: { color: 0x282038, rough: 0.6,  metal: 0.5,  emissive: 0x7030d0, ei: 0.8,  detail: 2, displace: 0.32, flat: true,  variant: 'exotic', veinColor: '#ff40c0' },
 };
 
+// Legacy/alias ids used by live spawners. `ast_rock` is what src/main.js seeds the opening belt with,
+// and it is NOT a key in AST_TYPE — so the `def` lookup fell through to ast_common_rock's numbers
+// while every path that gated on the literal string `'ast_common_rock'` silently opted out. That cost
+// those rocks the authored PBR surface set (base colour + normal + ORM from the rock surface
+// library, leaving a plain white 0xffffff standard material) AND their place in the instanced
+// asteroid pool. Canonicalising once, at the single point where the id enters the visual layer,
+// fixes both without touching spawn data or save payloads.
+const AST_TYPE_ALIASES = { ast_rock: 'ast_common_rock' };
+
+function canonicalAstTypeId(typeId) {
+  const id = typeId || 'ast_common_rock';
+  return AST_TYPE_ALIASES[id] || id;
+}
+
 function transformCommonRockUvs(geometry, variantIdx) {
   const uv = geometry.getAttribute('uv');
   const transform = COMMON_ROCK_UV_TRANSFORMS[variantIdx];
@@ -2026,7 +2040,7 @@ function astMaterial(typeId, def, tint) {
 
 function buildAsteroid(e) {
   const R = e.radius || 12;
-  const typeId = (e.data && e.data.typeId) || 'ast_common_rock';
+  const typeId = canonicalAstTypeId(e.data && e.data.typeId);
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   const tint = e.data && e.data.tint; // optional sector tint override
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type

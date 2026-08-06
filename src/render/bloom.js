@@ -41,18 +41,23 @@ const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
 const DEFAULT_BLOOM_STRENGTH = 0.35;
-export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0 });
+export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0, toe: 0 });
 
 export function resolvePostPresentation(options = {}) {
   return Object.freeze({
     grain: clamp01(options.grain, DEFAULT_POST_PRESENTATION.grain),
     vignette: clamp01(options.vignette, DEFAULT_POST_PRESENTATION.vignette),
     grade: clamp01(options.grade, DEFAULT_POST_PRESENTATION.grade),
+    toe: clampRange(options.toe, DEFAULT_POST_PRESENTATION.toe, 0, 0.06),
   });
 }
 
 function clamp01(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+}
+
+function clampRange(value, fallback, lo, hi) {
+  return Number.isFinite(value) ? Math.max(lo, Math.min(hi, value)) : fallback;
 }
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
@@ -368,6 +373,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uGrainFrame)
   uniform float uVignette;  // atmospheric corner darkening 0..1
   uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
+  uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
 
   // Narkowicz 2015 ACES approximation (input in linear, output 0-1)
@@ -419,6 +425,23 @@ const COMPOSITE_FRAG = /* glsl */`
       float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
       graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
       c = mix(c, graded, uGrade);
+    }
+
+    // Optional filmic TOE — a lifted black floor. Default uToe is zero, so the "true blacks" route is
+    // bit-identical unless a caller opts in.
+    //
+    // Every other look control here is multiplicative, which by construction cannot lift a black:
+    // 0 * anything is 0. Measured against 2020s reference frames, our median pixel is luma 0.004
+    // (byte ~1) while references bottom out around byte 12 — they sit on a filmic toe, not on zero.
+    // This is the one control that can close that specific difference.
+    //
+    // Shaped as a SHADOW-ONLY lift: full strength at black, fading out by mid-grey, so highlights and
+    // the tone curve above the toe are untouched and the image does not go milky. The lift is slightly
+    // cool because a neutral grey floor reads as a washed-out screen while a cool one reads as space.
+    if (uToe > 0.0001) {
+      float toeLuma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float shadowMask = 1.0 - smoothstep(0.0, 0.22, toeLuma);
+      c += vec3(0.82, 0.92, 1.15) * uToe * shadowMask;
     }
 
     // Optional vignette. Default uVignette is zero.
@@ -475,6 +498,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let grain = defaultPresentation.grain;
   let vignette = defaultPresentation.vignette;
   let grade = defaultPresentation.grade;
+  let toe = defaultPresentation.toe;
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
@@ -584,16 +608,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uGrain:     { value: grain },     // film grain (cyberpunk-noir mood)
     uVignette:  { value: vignette },  // atmospheric corner fall-off
     uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
+    uToe:       { value: toe },       // lifted black floor (0 = true blacks)
     uGrainFrame: { value: 0 },
   });
 
   function postStyleScale() {
-    return Math.max(grain, vignette, grade);
+    return Math.max(grain, vignette, grade, toe);
   }
 
   function applyPostStyleUniforms() {
     compositeMat.uniforms.uGrain.value = grain;
     compositeMat.uniforms.uVignette.value = vignette;
+    compositeMat.uniforms.uToe.value = toe;
     compositeMat.uniforms.uGrade.value = grade;
   }
   applyPostStyleUniforms();
@@ -798,6 +824,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof o.grain === 'number') grain = Math.max(0, Math.min(1, o.grain));
     if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
     if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
+    if (typeof o.toe === 'number') toe = Math.max(0, Math.min(0.06, o.toe));
     applyPostStyleUniforms();
   }
 
@@ -818,6 +845,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       grain: compositeMat.uniforms.uGrain.value,
       vignette: compositeMat.uniforms.uVignette.value,
       grade: compositeMat.uniforms.uGrade.value,
+      toe: compositeMat.uniforms.uToe.value,
       grainSource: 'quantized-interleaved-gradient',
       grainFps: FILM_GRAIN_FPS,
       multiScaleComposite: true,
