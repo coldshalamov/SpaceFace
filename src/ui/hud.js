@@ -43,6 +43,10 @@ import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGau
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
 import {
+  fillActiveGravityMarkTargets,
+  MAX_GRAVITY_MARK_OVERLAYS,
+} from './gravityMarkOverlay.js';
+import {
   buildCorridorOpeningWaypoint,
 } from '../systems/missions.js';
 
@@ -1422,6 +1426,49 @@ export function createHud(ctx, alerts) {
   lockDiamond.className = 'sf-lockdiamond';
   lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
   root.appendChild(lockDiamond);
+
+  // Gravity Mark is a simulation state, not target selection. A fixed DOM pool follows every live
+  // player-authored mark (bounded to six) so retargeting cannot make the state disappear or jump.
+  const gravityMarkOverlays = [];
+  for (let i = 0; i < MAX_GRAVITY_MARK_OVERLAYS; i++) {
+    const marker = document.createElement('div');
+    marker.className = 'sf-gravity-mark';
+    marker.setAttribute('role', 'img');
+    marker.setAttribute('aria-label', 'Gravity-marked target');
+    marker.innerHTML = '<div class="sf-gravity-mark__ring" aria-hidden="true"></div>'
+      + '<div class="sf-gravity-mark__core" aria-hidden="true"></div>'
+      + '<div class="sf-gravity-mark__label mono">GRAVITY MARK</div>';
+    root.appendChild(marker);
+    gravityMarkOverlays.push(marker);
+  }
+  const gravityMarkTargets = [];
+  let gravityMarkScanTick = -Infinity;
+
+  function updateGravityMarkOverlays(player) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (player && (tick < gravityMarkScanTick || tick - gravityMarkScanTick >= 6)) {
+      fillActiveGravityMarkTargets(state, player.id, gravityMarkTargets, gravityMarkOverlays.length);
+      gravityMarkScanTick = tick;
+    } else if (!player) {
+      gravityMarkTargets.length = 0;
+      gravityMarkScanTick = -Infinity;
+    }
+    for (let i = 0; i < gravityMarkOverlays.length; i++) {
+      const marker = gravityMarkOverlays[i];
+      const entity = gravityMarkTargets[i];
+      if (!entity || entity.alive === false || !helpers.worldToScreen) {
+        setClass(marker, 'visible', false);
+        continue;
+      }
+      const projected = helpers.worldToScreen({ x: entity.pos.x, y: 0, z: entity.pos.z });
+      if (!projected.onScreen) {
+        setClass(marker, 'visible', false);
+        continue;
+      }
+      setClass(marker, 'visible', true);
+      setHudScreenTransform(marker, projected.x, projected.y);
+    }
+  }
 
   // Lead pip (BP-02) — world-space "aim here" marker at the ballistic lead solution for the current
   // target. Player-only HUD; solved via the same lead model the guns use (src/ai/gunnery.js).
@@ -3006,6 +3053,7 @@ export function createHud(ctx, alerts) {
       setClass(lockDiamond, 'visible', false);
       setClass(leadPip, 'visible', false);
       setStyle(wpnHeatsWrap, 'display', 'none');
+      updateGravityMarkOverlays(null);
       return;
     }
 
@@ -3078,6 +3126,8 @@ export function createHud(ctx, alerts) {
     } else {
       setClass(lockDiamond, 'visible', false);
     }
+
+    updateGravityMarkOverlays(p);
 
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
     const pipOverlay = computeLeadPipOverlay(p, tgt, state, {

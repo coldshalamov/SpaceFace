@@ -1582,6 +1582,24 @@ function injectHudCss() {
     from { box-shadow:0 0 6px rgba(var(--dia-glow),.3), inset 0 0 4px rgba(var(--dia-glow),.1); transform:rotate(45deg) scale(.92); }
     to { box-shadow:0 0 16px rgba(var(--dia-glow),.7), inset 0 0 10px rgba(var(--dia-glow),.2); transform:rotate(45deg) scale(1.04); } }
 
+  /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
+  .sf-gravity-mark { display:none; position:absolute; left:0; top:0; width:46px; height:46px;
+    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
+  .sf-gravity-mark.visible { display:block; opacity:1; }
+  .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid rgba(166,240,255,.95);
+    border-radius:50%; box-shadow:0 0 13px rgba(57,208,255,.58), inset 0 0 10px rgba(234,255,255,.2);
+    animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite; }
+  .sf-gravity-mark__core { position:absolute; left:50%; top:50%; width:6px; height:6px;
+    transform:translate(-50%,-50%) rotate(45deg); background:#eaffff;
+    box-shadow:0 0 9px #39d0ff; }
+  .sf-gravity-mark__label { position:absolute; left:50%; top:48px; transform:translateX(-50%);
+    color:#a6f0ff; font-size:8px; letter-spacing:.12em; white-space:nowrap;
+    text-shadow:0 1px 2px #02060a, 0 0 6px rgba(57,208,255,.8); }
+  @keyframes sf-gravity-mark-contract {
+    from { transform:scale(1.18); opacity:.48; }
+    to { transform:scale(.78); opacity:1; }
+  }
+
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
      amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */
@@ -2051,7 +2069,8 @@ function injectHudCss() {
   }
   @media (prefers-reduced-motion:reduce) {
     .sf-schematic.sf-sch-critical .sf-sch-ship--fill,
-    .sf-schematic.sf-sch-hit .sf-sch-ship-wrap { animation:none; }
+    .sf-schematic.sf-sch-hit .sf-sch-ship-wrap,
+    .sf-gravity-mark__ring { animation:none; }
     .sf-sch-ship-fill-crop, .sf-sch-fill-line, .sf-sch-shield { transition:none; }
   }
 

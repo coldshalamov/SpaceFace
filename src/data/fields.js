@@ -33,15 +33,14 @@ export function fieldsFlag(name) { return !!FIELD_FLAGS[name]; }
 // Coupling model. Bodies at/under refMass feel the field fully; heavier bodies shrug in
 // proportion (massCouple = refMass / max(mass, refMass)), floored so even a capital ship drifts
 // a little (a shrug, never total immunity). Projectiles and pickups are light + are the marquee
-// "curve the shot / vacuum the loot" reads, so they couple above 1. A MARKED body (the player's
-// painted target — read-only, never a new targeting vocabulary) grabs harder but a marked heavy
-// still shrugs versus a light body.
+// "curve the shot / vacuum the loot" reads, so they couple above 1. A Gravity-Marked body carries
+// an earned combat-status response multiplier; the kernel caps that boost so a marked heavy still
+// shrugs versus a light body.
 export const FIELD_COUPLING = Object.freeze({
   refMass: 12,            // at/under this solver mass → full coupling (1.0)
   minShipCouple: 0.05,    // floor: a heavy body still drifts slightly under a field
   projectileCouple: 1.35, // projectiles bend readily (the "curve the bullet" read)
   pickupCouple: 1.25,     // loose cargo/pickups vacuum in like a Tideline magnet
-  markedBoost: 1.9,       // painted-target coupling multiplier
   markedCap: 0.55,        // a marked heavy still shrugs — capped well under a light body's 1.0
 });
 

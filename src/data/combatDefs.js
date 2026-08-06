@@ -3,6 +3,8 @@
 
 export const COMBAT_SCHEMA_VERSION = 1;
 
+export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
+
 export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.dash.start', 'combat.action.dash.active', 'combat.action.dash.end',
   'combat.action.attach.start', 'combat.action.attach.lock', 'combat.action.attach.end',
@@ -19,7 +21,8 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.subsystem.sensor.disabled', 'combat.subsystem.tether.disabled',
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
-  'combat.status.scrambled', 'combat.attachment.created', 'combat.attachment.broken',
+  'combat.status.scrambled', 'combat.status.gravity_marked',
+  'combat.attachment.created', 'combat.attachment.broken',
 ]);
 
 export const DAMAGE_MODEL = Object.freeze({
@@ -123,6 +126,15 @@ export const STATUS_DEFS = Object.freeze([
     // SG-03 cannot spend capacitor on dash/tether/weapon verbs while the hull is uncontrolled.
     effects: { blockedActionTags: ['dash', 'tether', 'weapon'] },
     interactions: [], periodic: null, cueId: 'ai.formation_broken',
+  },
+  {
+    // PQ-026 Gravity Mark: the weapon earns stronger coupling to the existing field kernel. This is
+    // deliberately a response multiplier, not a mass/velocity write: flight, facing, braking, and
+    // ordinary thrust remain wholly owned by their existing systems.
+    id: GRAVITY_MARK_STATUS_ID, version: 1, tags: ['gravity', 'field_coupling'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { multipliers: { fieldCoupling: 1.9 } },
+    interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
   },
   {
     id: 'status_ionized', version: 1, tags: ['ion'], durationTicks: 90,

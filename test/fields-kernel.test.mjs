@@ -15,9 +15,9 @@ import {
 } from '../src/core/fields/fieldKernel.js';
 import { FIELD_KINDS, FIELD_MAX_ACCEL, FIELD_COUPLING, FIELD_DEFS } from '../src/data/fields.js';
 
-const LIGHT = { mass: 2, type: 'wreck', team: null, marked: false, id: 1 };
-const HEAVY = { mass: 140, type: 'ship', team: null, marked: false, id: 2 };
-const PROJ = { mass: 0.3, type: 'projectile', team: null, marked: false, id: 3 };
+const LIGHT = { mass: 2, type: 'wreck', team: null, fieldResponseMult: 1, id: 1 };
+const HEAVY = { mass: 140, type: 'ship', team: null, fieldResponseMult: 1, id: 2 };
+const PROJ = { mass: 0.3, type: 'projectile', team: null, fieldResponseMult: 1, id: 3 };
 
 function wellAt(cx, cz, extra = {}) {
   return { id: 'w', kind: FIELD_KINDS.WELL, center: { x: cx, z: cz }, radius: 200, strength: 240, falloff: 1.5, createdAt: 0, durationS: 10, ...extra };
@@ -125,7 +125,7 @@ test('heavy ship Δv is a small fraction of a light body Δv under the same fiel
 
 test('projectiles bend more than light bodies; marked heavy grabs harder but still shrugs', () => {
   assert.ok(couplingScale(PROJ) > couplingScale(LIGHT), 'projectile couples above a light body');
-  const markedHeavy = { ...HEAVY, marked: true };
+  const markedHeavy = { ...HEAVY, fieldResponseMult: 1.9 };
   const cHeavy = couplingScale(HEAVY);
   const cMarked = couplingScale(markedHeavy);
   assert.ok(cMarked > cHeavy, 'marked heavy grabs harder than unmarked heavy');

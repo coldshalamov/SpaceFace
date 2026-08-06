@@ -73,6 +73,26 @@ function aimDirection(player, state) {
   return { x: Math.cos(angle), z: Math.sin(angle) };
 }
 
+/**
+ * Build the pure body profile consumed by the field kernel. The optional output record lets the
+ * production force loop reuse one scratch object; tests/predictors may omit it for a fresh value.
+ * Target selection is intentionally absent: only an earned combat-status multiplier changes field
+ * response, so clicking another contact can neither grant nor transfer Gravity Mark.
+ */
+export function fieldBodyProfile(entity, state, out = null) {
+  const profile = out || {};
+  const runtime = entity && state && state.combat && state.combat.entities
+    ? state.combat.entities[String(entity.id)]
+    : null;
+  const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
+  profile.mass = positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
+  profile.type = entity && entity.type;
+  profile.team = entity && entity.team;
+  profile.id = entity && entity.id;
+  profile.fieldResponseMult = Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1;
+  return profile;
+}
+
 export const fields = {
   name: 'fields',
 
@@ -88,6 +108,7 @@ export const fields = {
     this._queryOut = [];
     this._affected = new Map();
     this._accel = { ax: 0, az: 0 };
+    this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     ensureRuntime(ctx.state);
@@ -393,15 +414,7 @@ export const fields = {
   },
 
   _profileFor(e, state) {
-    const targetId = state.player && state.player.targetId;
-    return {
-      mass: positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1)),
-      type: e.type,
-      team: e.team,
-      id: e.id,
-      // "marked" = the player's painted target (read-only; never a new targeting vocabulary).
-      marked: targetId != null && e.id === targetId,
-    };
+    return fieldBodyProfile(e, state, this._bodyProfile);
   },
 
   _applyForces(dt, state, rt) {

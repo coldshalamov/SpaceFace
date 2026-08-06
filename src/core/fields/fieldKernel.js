@@ -98,10 +98,10 @@ export function coneAngularGate(field, angleFromAxis) {
   return clamp(t, 0, 1);
 }
 
-// Coupling scalar — the heavy-shrug contract. bodyProfile: { mass, type, marked }.
+// Coupling scalar — the heavy-shrug contract. bodyProfile: { mass, type, fieldResponseMult }.
 //   projectile / pickup  → couple above 1 (light + the marquee reads)
 //   everything else       → massCouple = refMass / max(mass, refMass), floored (heavy shrugs)
-//   marked (painted target) → boosted but a marked heavy still shrugs (capped under a light body's 1)
+//   Gravity Mark response  → boosted but a marked heavy still shrugs (capped under a light body's 1)
 export function couplingScale(bodyProfile) {
   const type = bodyProfile && bodyProfile.type;
   if (type === 'projectile') return FIELD_COUPLING.projectileCouple;
@@ -109,10 +109,14 @@ export function couplingScale(bodyProfile) {
   const mass = positive(bodyProfile && bodyProfile.mass, 1);
   // Base mass-couple: 1 at/under refMass, falling off with mass, floored so a heavy still drifts.
   const base = clamp(FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass), FIELD_COUPLING.minShipCouple, 1);
-  if (!(bodyProfile && bodyProfile.marked)) return base;
+  const response = Number.isFinite(bodyProfile && bodyProfile.fieldResponseMult)
+    ? Math.max(0, bodyProfile.fieldResponseMult)
+    : 1;
+  if (response === 1) return base;
+  if (response < 1) return base * response;
   // Marking boosts a body that would otherwise shrug — up to markedCap — but never reduces a light
   // body already at full coupling, and a marked heavy still couples below a light body's 1.0.
-  const boosted = Math.min(base * FIELD_COUPLING.markedBoost, FIELD_COUPLING.markedCap);
+  const boosted = Math.min(base * response, FIELD_COUPLING.markedCap);
   return Math.min(1, Math.max(base, boosted));
 }
 
@@ -184,7 +188,7 @@ const _rawScratch = { ax: 0, az: 0 };
  * @param {{x:number,z:number}|null} vel
  * @param {Array} fields          id-sorted snapshot (kernel.list())
  * @param {number} simTime        caller sim clock (accepted for parity; math is time-independent)
- * @param {{mass:number,type:string,team:*,marked:boolean,id:*}} [bodyProfile]
+ * @param {{mass:number,type:string,team:*,fieldResponseMult:number,id:*}} [bodyProfile]
  * @param {{ax:number,az:number}} [out]
  * @returns {{ax:number,az:number}}
  */
@@ -215,7 +219,7 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   return o;
 }
 
-const DEFAULT_PROFILE = Object.freeze({ mass: 1, type: 'ship', team: null, marked: false, id: null });
+const DEFAULT_PROFILE = Object.freeze({ mass: 1, type: 'ship', team: null, fieldResponseMult: 1, id: null });
 
 const _projP = { x: 0, z: 0 };
 const _projV = { x: 0, z: 0 };

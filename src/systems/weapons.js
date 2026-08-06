@@ -1114,6 +1114,9 @@ function resetWeaponDiagnostics(diag) {
 
 export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {
   const applicationEnabled = combatFlag('weaponImpulseConsequences');
+  const authoredStatuses = Array.isArray(w && w.statuses)
+    ? w.statuses
+    : (Array.isArray(def && def.statuses) ? def.statuses : []);
   const effective = {
     dmg: w.dmg != null ? w.dmg : def.dmg,
     impulsePerHit: w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit,
@@ -1130,6 +1133,9 @@ export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) 
     // 0/null for normal hull weapons.
     subsystemShare: w.subsystemShare != null ? w.subsystemShare : def.subsystemShare,
     shieldBypass: w.shieldBypass != null ? w.shieldBypass : def.shieldBypass,
+    // Status applications are authored on the fitted weapon definition and cloned into every
+    // projectile/beam packet. The damage router remains the sole status scheduler.
+    statuses: authoredStatuses.map((status) => ({ ...status })),
     impulse: impulseIdentity ? { magnitude: impulseIdentity.magnitude } : null,
     tumbleTorque: impulseIdentity ? impulseIdentity.tumbleTorque : 0,
     source: {
