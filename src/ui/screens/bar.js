@@ -19,6 +19,7 @@ import {
   stationContactStanding,
 } from '../../data/stationContacts.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
+import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -268,7 +269,23 @@ export function generateContacts(stationId, state = {}) {
     }
   }
 
-  return [...authoredBarContactsForStation(stationId, state), ...contacts];
+  const endingCourier = isChoiceECourierReady(state, stationId)
+    ? [{
+      id: 'contact_ashcache_next_run_courier',
+      name: 'Settlement Courier',
+      role: 'courier',
+      roleLabel: 'Contract Courier',
+      factionId: null,
+      line: "Contract settled. New one's open.",
+      canonicalKey: 'next_run_courier',
+      endgameChoice: 'E',
+      choices: [
+        { id: 'accept_next_run', label: 'Accept.' },
+        { id: 'not_yet', label: 'Not yet.' },
+      ],
+    }]
+    : [];
+  return [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
@@ -641,6 +658,19 @@ function bestTradeRoute(state, currentStationId) {
  * Returns { text, missionOffer? }.
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (contact && contact.endgameChoice === 'E') {
+    if (choiceId === 'accept_next_run') {
+      if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
+        return { text: 'That settlement is already filed.', endgameResolved: true };
+      }
+      ctx.bus.emit('ui:endgameChoose', { choice: 'E', confirm: true, source: 'ashcache_courier' });
+      return {
+        text: '47-A closed. 47-B pending. The next manifest is already on the desk.',
+        endgameResolved: true,
+      };
+    }
+    return { text: "It stays open. The courier doesn't repeat the offer." };
+  }
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   const state = ctx.state || {};
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical

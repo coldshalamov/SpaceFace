@@ -405,9 +405,6 @@ export function createComms(ctx) {
       onNo: () => bus.emit('ui:endgameStayAshfall', { targetSectorId, via }),
     },
   ));
-  bus.on('endgame:promptChoiceE', ({ promptText }) => presentPhysicalChoice(
-    'E', promptText || 'ACCEPT THE NEXT RUN?', '47-A closes. Another manifest opens.',
-  ));
   bus.on('endgame:promptSandbox', ({ promptText, confirmHint }) => presentPhysicalChoice(
     'SANDBOX',
     promptText || 'CONTINUE WITHOUT FINAL DISPOSITION?',

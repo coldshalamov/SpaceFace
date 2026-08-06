@@ -31,6 +31,7 @@ import {
   stationExitNeedsConfirm,
 } from '../screens/stationHub.js';
 import { missionDockAttention } from './missionDockAttention.js';
+import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -221,8 +222,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let handoffSignature = '';
   /** @type {null|ReturnType<typeof missionDockAttention>} */
   let lastMissionAttention = null;
-  /** One auto-open per dock session so refresh/mission updates do not yank the player mid-flow. */
-  let missionAutoOpenedThisDock = false;
+  /** One auto-open per dock session so refreshes do not yank the player mid-flow. */
+  let attentionAutoOpenedThisDock = false;
   const receiptHistory = [];
   const subscriptions = [];
 
@@ -596,7 +597,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
   subscribe('mission:updated', () => {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
-    applyMissionAttention({ allowAutoOpen: false });
+    applyDockAttention({ allowAutoOpen: false });
   });
   subscribe('credits:changed', (p = {}) => {
     const reason = String(p.reason || '');
@@ -711,8 +712,26 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     openHoldPop(b);
   });
 
-  function applyMissionAttention({ allowAutoOpen = false, refreshActive = true } = {}) {
+  function applyDockAttention({ allowAutoOpen = false, refreshActive = true } = {}) {
     const s = state();
+    if (isChoiceECourierReady(s, stationId())) {
+      lastMissionAttention = null;
+      const courierAttention = {
+        kind: 'courier',
+        autoOpen: true,
+        destination: 'bar',
+        title: 'Settlement courier waiting',
+      };
+      dock.setAttention('bar', {
+        badge: '!',
+        title: "Bar — settlement courier: Contract settled. New one's open.",
+      });
+      if (allowAutoOpen && !attentionAutoOpenedThisDock) {
+        attentionAutoOpenedThisDock = true;
+        navigate('bar');
+      }
+      return courierAttention;
+    }
     const attention = missionDockAttention(s, stationId());
     lastMissionAttention = attention;
     if (attention) {
@@ -723,8 +742,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     } else {
       dock.setAttention(null);
     }
-    if (allowAutoOpen && attention && attention.autoOpen && !missionAutoOpenedThisDock) {
-      missionAutoOpenedThisDock = true;
+    if (allowAutoOpen && attention && attention.autoOpen && !attentionAutoOpenedThisDock) {
+      attentionAutoOpenedThisDock = true;
       navigate('contracts', {
         missionId: attention.focusMissionId,
         attention,
@@ -749,7 +768,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   function refresh(_nextCtx, options = {}) {
     renderStatus();
-    applyMissionAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
+    applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
     // The global UI loop calls this every 18 frames so live hull/fuel/credit readouts stay current.
     // Station operation screens are event-driven and contain real pointer targets. Rebuilding them
     // on that cadence replaces hovered nodes and briefly leaves new Shipworks labels at their
@@ -788,7 +807,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   renderStatus();
   // Default desk is Market, then mission attention may immediately re-route to Missions.
   navigate('market');
-  applyMissionAttention({ allowAutoOpen: true });
+  applyDockAttention({ allowAutoOpen: true });
 
   function activeScreen() {
     const dest = DESTINATIONS.find((d) => d.id === activeId);
@@ -800,10 +819,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh,
     navigate,
     onShow() {
-      // Fresh dock session: allow one auto-open to Missions when an objective needs the desk.
-      missionAutoOpenedThisDock = false;
+      // Fresh dock session: allow one auto-open for the highest-priority physical station action.
+      attentionAutoOpenedThisDock = false;
       renderStatus();
-      const attention = applyMissionAttention({ allowAutoOpen: true });
+      const attention = applyDockAttention({ allowAutoOpen: true });
       if (!(attention && attention.autoOpen)) {
         const scr = activeScreen();
         if (scr && typeof scr.onShow === 'function') {

@@ -42,10 +42,17 @@ export function createBarScreen(ctx) {
   let saidText = null;   // what the selected contact just said
   let pendingMissionOffer = null;
   let acceptedMissionId = null;
+  let pinnedContact = null;
 
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
   function contacts(state) {
-    try { return generateContacts(sid(), state) || []; } catch (_) { return []; }
+    try {
+      const generated = generateContacts(sid(), state) || [];
+      if (pinnedContact && !generated.some((contact) => contact.id === pinnedContact.id)) {
+        return [pinnedContact, ...generated];
+      }
+      return generated;
+    } catch (_) { return pinnedContact ? [pinnedContact] : []; }
   }
   function selected(state) {
     const list = contacts(state);
@@ -236,6 +243,13 @@ export function createBarScreen(ctx) {
     let result = null;
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
+    if (result && result.endgameResolved) {
+      pinnedContact = {
+        ...c,
+        line: '47-A closed. 47-B pending.',
+        choices: [{ id: 'closed', label: 'Safe flying.' }],
+      };
+    }
     saidText = (result && result.text) || 'They shrug.';
     pendingMissionOffer = result && result.missionOffer || null;
     acceptedMissionId = null;
@@ -269,6 +283,6 @@ export function createBarScreen(ctx) {
     el,
     onShow(c) { renderAll((c || ctx).state || {}); },
     refresh(c) { renderAll((c || ctx).state || {}); },
-    dispose() {},
+    dispose() { pinnedContact = null; },
   };
 }

@@ -466,12 +466,6 @@ export const story = {
         && (stationId === 'station_helios' || stationId === s.flags.homeStationId)) {
       this._showGraffiti(ENDING_AIRLOCK_GRAFFITI[s.endgameChoice], 'airlock', 7);
     }
-    if (stationId === 'station_ashcache' && s.endgameOffered && !s.endgameChoice && !s.endgameResolved
-        && !(s.flags && s.flags.sandboxContinued)
-        && Array.isArray(s.endgameDeclined)
-        && ['A', 'B', 'C', 'D'].every((id) => s.endgameDeclined.includes(id))) {
-      this.bus.emit('endgame:promptChoiceE', { promptText: 'ACCEPT THE NEXT RUN?' });
-    }
   },
 
   // =========================================================================================
@@ -590,7 +584,8 @@ export const story = {
         confirmHint: sandbox.def && sandbox.def.confirmHint,
       });
     }
-    // A/B are physical contracts on the Ashfall mission board (only when eligible). C/D/E/sandbox are world actions.
+    // A/B are physical contracts on the Ashfall mission board. C/D are flight actions; E is an
+    // Ash Cache contact; sandbox is a deliberate Mission Log continuation.
     const missions = this.registry && this.registry.get && this.registry.get('missions');
     if (missions && typeof missions.postEndgameDispositionOffers === 'function') {
       missions.postEndgameDispositionOffers();

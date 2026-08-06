@@ -110,6 +110,15 @@ export function snapshotEndingFacts(state) {
   });
 }
 
+/** Choice E is a physical Ash Cache contact, never a board row or global comms modal. */
+export function isChoiceECourierReady(state, stationId) {
+  if (stationId !== 'station_ashcache') return false;
+  const story = state && state.story;
+  if (!story || story.endgameChoice || story.endgameResolved
+      || (story.flags && story.flags.sandboxContinued)) return false;
+  return evaluateEndingEligibility(state, 'E').eligible;
+}
+
 function readAcceptedOrigins(state) {
   const out = [];
   const root = state && state.careers && state.careers.origins;
