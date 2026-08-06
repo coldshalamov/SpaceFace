@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BODY_MODULE_BY_ID } from '../src/data/claimableBodies.js';
+import { BODY_MODULE_BY_ID, BODY_SPECIALIZATION_BY_ID } from '../src/data/claimableBodies.js';
 import {
   claims as claimsBase,
   CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
@@ -12,7 +12,11 @@ import {
   resolveLaneSegmentInto,
 } from '../src/systems/travelLanes.js';
 import { traffic as trafficBase } from '../src/systems/traffic.js';
-import { describeBaseBuildAction } from '../src/ui/screens/base.js';
+import {
+  applyConfirmedBaseInvestment,
+  describeBaseBuildAction,
+  describeBaseInvestmentConfirm,
+} from '../src/ui/screens/base.js';
 import {
   buildClaimOwnershipMarkers,
   describeClaimMapMarker,
@@ -194,6 +198,56 @@ test('Throughline Sling is a material-built Industrial Refinery route, not a cre
   assert.equal(h.bus.of('claim:infrastructureActive').length, 1);
   assert.equal(h.sys.activeTravelInfrastructure(SECTOR_ID).length, 1);
   assert.equal(h.sys.travelInfrastructureHooks(SECTOR_ID)[0].stationId, STATION_ID);
+});
+
+test('claim construction and commissioning stay behind an explicit player confirmation', async () => {
+  const module = BODY_MODULE_BY_ID.get('mod_throughline_sling');
+  const specialization = BODY_SPECIALIZATION_BY_ID.get('spec_refinery');
+  const player = {
+    credits: 20_000,
+    cargo: {
+      items: {
+        cmdty_alloys: 12,
+        cmdty_comp_circuitry: 6,
+        cmdty_fuel_cells: 4,
+      },
+    },
+  };
+  const body = { name: 'Pallas Industrial Moon', spec: null };
+  const buildConfirm = describeBaseInvestmentConfirm(module, player, body);
+  assert.equal(buildConfirm.title, 'Build Throughline Sling?');
+  assert.equal(buildConfirm.confirmLabel, 'Build');
+  assert.match(buildConfirm.body, /Cost: 18,000 CR\./);
+  assert.match(buildConfirm.body, /12 Alloys, 6 Comp Circuitry, 4 Fuel Cells/);
+  assert.match(buildConfirm.body, /Adds Throughline Sling to Pallas Industrial Moon/);
+  assert.equal(buildConfirm.danger, true, 'a route consuming 90% of available credits is danger');
+
+  let ownerCalls = 0;
+  const cancelled = await applyConfirmedBaseInvestment(
+    buildConfirm,
+    () => { ownerCalls++; return true; },
+    async () => false,
+  );
+  assert.equal(cancelled, false);
+  assert.equal(ownerCalls, 0, 'cancel cannot reach the claims owner or consume resources');
+
+  const accepted = await applyConfirmedBaseInvestment(
+    buildConfirm,
+    () => { ownerCalls++; return true; },
+    async (options) => options === buildConfirm,
+  );
+  assert.equal(accepted, true);
+  assert.equal(ownerCalls, 1, 'accept reaches the claims owner exactly once');
+
+  const commissionConfirm = describeBaseInvestmentConfirm(
+    specialization,
+    { credits: 100_000 },
+    body,
+    { kind: 'specialization' },
+  );
+  assert.equal(commissionConfirm.title, 'Commission Industrial Refinery?');
+  assert.equal(commissionConfirm.confirmLabel, 'Commission');
+  assert.match(commissionConfirm.body, /Sets Pallas Industrial Moon to Industrial Refinery/);
 });
 
 test('Throughline identity, placement and active stage survive save/Continue exactly', () => {

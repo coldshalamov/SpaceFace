@@ -12,6 +12,7 @@ import {
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
+import { confirm, isConfirmOpen } from '../confirm.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
@@ -95,6 +96,53 @@ function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+/** Describe the irreversible credit/material commitment before invoking the claims owner. */
+export function describeBaseInvestmentConfirm(item, player = {}, body = {}, options = {}) {
+  if (!item) return null;
+  const cost = Math.max(0, Number(item.cost) || 0);
+  const materials = Object.entries(item.materials || {}).filter(([, qty]) => Number(qty) > 0);
+  if (cost <= 0 && materials.length === 0) return null;
+
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const remaining = Math.max(0, credits - cost);
+  const danger = cost > 0 && (
+    (credits > 0 && cost >= credits * 0.5)
+    || (remaining <= 500 && credits >= cost)
+  );
+  const materialLine = materials.length
+    ? ' Uses ' + materials.map(([id, qty]) => (
+      Math.max(0, Number(qty) || 0) + ' ' + pretty(id.replace(/^cmdty_/, ''))
+    )).join(', ') + ' from your hold.'
+    : '';
+  const targetName = body.name || 'this claim';
+  const specialization = options.kind === 'specialization';
+  const currentSpec = specialization && body.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+  const consequence = specialization
+    ? (currentSpec && currentSpec.id !== item.id
+      ? ` Replaces ${currentSpec.name} on ${targetName}.`
+      : ` Sets ${targetName} to ${item.name}.`)
+    : ` Adds ${item.name} to ${targetName}.`;
+  const riskLine = danger
+    ? (credits > 0 && cost >= credits * 0.5
+      ? ' This spends at least half your credits.'
+      : ` Remaining balance after construction is operationally thin (${fmtCr(remaining)} CR).`)
+    : '';
+
+  return {
+    title: (specialization ? 'Commission ' : 'Build ') + item.name + '?',
+    body: `Cost: ${fmtCr(cost)} CR.${materialLine}${consequence}${riskLine}`,
+    confirmLabel: specialization ? 'Commission' : 'Build',
+    cancelLabel: 'Cancel',
+    danger,
+  };
+}
+
+/** Keep the claims owner entirely behind the player's confirmation decision. */
+export async function applyConfirmedBaseInvestment(confirmOptions, apply, requestConfirm = confirm) {
+  if (confirmOptions && !(await requestConfirm(confirmOptions))) return false;
+  return typeof apply === 'function' && apply() === true;
 }
 
 export function describeBaseBuildAction(mod, player = {}, body = {}) {
@@ -445,8 +493,17 @@ export const baseScreen = {
       btn.disabled = specAction.disabled;
       btn.title = specAction.title;
       btn.setAttribute('aria-label', specAction.title);
-      btn.addEventListener('click', () => {
-        if (claims.specialize(body.id, spec.id)) this._render();
+      btn.addEventListener('click', async () => {
+        if (isConfirmOpen()) return;
+        try { btn.focus({ preventScroll: true }); } catch (_) {
+          try { btn.focus(); } catch (__) {}
+        }
+        const didCommit = await applyConfirmedBaseInvestment(
+          describeBaseInvestmentConfirm(spec, player, body, { kind: 'specialization' }),
+          () => claims.specialize(body.id, spec.id),
+        );
+        if (didCommit) this._render();
+        else if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       });
       card.append(name, verb, effect, risk, btn);
       specGrid.appendChild(card);
@@ -578,8 +635,17 @@ export const baseScreen = {
         btn.disabled = buildAction.disabled;
         btn.title = buildAction.title;
         btn.setAttribute('aria-label', buildAction.title);
-        btn.addEventListener('click', () => {
-          if (claims.buildModule(body.id, mod.id)) this._render();
+        btn.addEventListener('click', async () => {
+          if (isConfirmOpen()) return;
+          try { btn.focus({ preventScroll: true }); } catch (_) {
+            try { btn.focus(); } catch (__) {}
+          }
+          const didCommit = await applyConfirmedBaseInvestment(
+            describeBaseInvestmentConfirm(mod, player, body),
+            () => claims.buildModule(body.id, mod.id),
+          );
+          if (didCommit) this._render();
+          else if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
         });
         card.appendChild(btn);
       }
