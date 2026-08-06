@@ -110,6 +110,53 @@ test('sweep admission is taut, transverse, hostile-only, and swept between fixed
     'a fast hostile crossing from one side of the line to the other must not tunnel between ticks');
 });
 
+test('an active Monofilament line queries a bounded corridor instead of scanning the world', () => {
+  const h = createSweepHarness({
+    ownerVel: { x: 0, z: 60 },
+    targetVel: { x: 0, z: 0 },
+  });
+  const decoys = [];
+  for (let i = 0; i < 4096; i++) {
+    decoys.push({
+      id: 1000 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 8,
+      pos: { x: 5000 + i * 20, z: 5000 },
+      vel: { x: 0, z: 0 },
+    });
+  }
+  h.state.entityList.push(...decoys);
+  for (const decoy of decoys) h.state.entities.set(decoy.id, decoy);
+  assert.equal(h.state.entities.size, 4099, 'the regression world is intentionally dense');
+  h.state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    shipLike: [h.player, h.victim],
+  };
+
+  const queries = [];
+  h.state.spatialHash = {
+    diagnostics: { activeBuckets: 1 },
+    queryRadius(x, z, radius, out) {
+      queries.push({ x, z, radius });
+      out.push(h.victim);
+      return out;
+    },
+  };
+  Object.defineProperty(h.state.entities, 'values', {
+    value() { throw new Error('Monofilament performed an all-entity scan'); },
+  });
+
+  h.system.update(DT, h.state);
+
+  assert.equal(h.sweeps.length, 1, 'the same crossing still produces its cut');
+  assert.equal(queries.length, 1, 'one spatial query owns candidate admission');
+  assert.ok(queries[0].radius > 50 && queries[0].radius < 96,
+    `the 100-wu line stays inside a local corridor query, got radius ${queries[0].radius}`);
+});
+
 test('Monofilament damage is hostile-only, momentum-bounded, player-attributed, and kernel-routed', () => {
   const h = createSweepHarness();
   const routed = [];

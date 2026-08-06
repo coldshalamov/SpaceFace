@@ -26,6 +26,7 @@
 // consumers can window them. Only the log cap trims them.
 
 import { massline2Flag } from '../data/featureFlags.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const WHIP_IMPACT_MIN_SPEED = 25;   // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
@@ -36,6 +37,10 @@ const WHIP_CONTACT_PAD = 0.5;       // wu — overlap tolerance (physics rests s
 const WHIP_LOG_CAP = 12;            // per-session record cap (oldest dropped)
 const SWEEP_CONTACT_PAD = 0.75;      // wu — filament width/readability tolerance around hull radius
 const SWEEP_ENDPOINT_MARGIN = 0.08;  // line fraction — keep endpoint body hits in whip-impact domain
+// The spatial query covers the whole line plus one fixed-step of ordinary ship motion. Bodies that
+// cross more than this in one step are supplemented from the already-bounded shipLike index below,
+// preserving the swept-contact contract without returning to an all-entity scan.
+const SWEEP_VICTIM_TRAVEL_PAD = 32;  // wu — 1,920 wu/s at the production 60 Hz fixed step
 const SWEEP_LOG_CAP = 12;
 
 // Solid bodies a whipped mass can meaningfully hit — same set as masslineThreats' collidables.
@@ -63,6 +68,8 @@ export const masslineImpacts = {
     // same-mass relatch remains one run rather than re-arming damage during a cut/regrab exploit.
     this._latch = null;   // { massId, warned:Set, sweepWarned:Set }
     this._sling = null;   // { massId, until, warned:Set, sweepWarned:Set }
+    this._sweepScratch = [];
+    this._sweepQueryCenter = { x: 0, z: 0 };
   },
 
   update(dt, state) {
@@ -160,10 +167,36 @@ export const masslineImpacts = {
     const player = getEntity(state, state.playerId);
     if (!player || !player.alive || !player.pos || !player.vel) return;
     const playerTeam = player.team;
-    const entities = state.entities;
-    if (!entities || typeof entities.values !== 'function') return;
+    const source = sweepCandidateSource(state);
+    const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    const dx = finite(mass.pos.x, 0) - finite(player.pos.x, 0);
+    const dz = finite(mass.pos.z, 0) - finite(player.pos.z, 0);
+    const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
+    center.x = finite(player.pos.x, 0) + dx * 0.5;
+    center.z = finite(player.pos.z, 0) + dz * 0.5;
+    const endpointTravel = Math.max(bodySpeed(player), bodySpeed(mass)) * step;
+    const queryRadius = Math.hypot(dx, dz) * 0.5
+      + SWEEP_CONTACT_PAD + endpointTravel + SWEEP_VICTIM_TRAVEL_PAD;
+    const candidates = queryNearbyEntities(
+      state,
+      center,
+      queryRadius,
+      this._sweepScratch || (this._sweepScratch = []),
+      source,
+    );
 
-    for (const e of entities.values()) {
+    // SpatialHash contains colliders at their current cells. Preserve the prior swept-line behavior
+    // for non-colliding ship-like records and exceptional bodies that can traverse the whole query
+    // padding in one fixed step, while scanning only the bounded shipLike index rather than every
+    // asteroid, station, projectile, pickup, effect, and world prop.
+    if (candidates !== source) {
+      for (const e of source) {
+        if (!e || (e.collides !== false && bodySpeed(e) * step <= SWEEP_VICTIM_TRAVEL_PAD)) continue;
+        appendUniqueCandidate(candidates, e);
+      }
+    }
+
+    for (const e of candidates) {
       if (!e || !e.alive || !e.pos || !e.vel || !Number.isFinite(e.radius)) continue;
       if (e.id === player.id || e.id === mass.id || warned.has(e.id)) continue;
       if (!SWEEP_DAMAGEABLE_TYPES.has(e.type)) continue;
@@ -352,6 +385,27 @@ function twoBodyReducedMass(a, b) {
   const am = bodyMass(a);
   const bm = bodyMass(b);
   return am > 0 && bm > 0 ? (am * bm) / (am + bm) : 0;
+}
+
+function bodySpeed(entity) {
+  return Math.hypot(finite(entity && entity.vel && entity.vel.x, 0), finite(entity && entity.vel && entity.vel.z, 0));
+}
+
+function sweepCandidateSource(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  if (state && Array.isArray(state.entityList)) return state.entityList;
+  if (state && state.entities && typeof state.entities.values === 'function') return state.entities.values();
+  return [];
+}
+
+function appendUniqueCandidate(candidates, entity) {
+  for (let i = 0; i < candidates.length; i++) {
+    if (candidates[i] === entity || candidates[i] && candidates[i].id === entity.id) return;
+  }
+  candidates.push(entity);
 }
 
 function bodyMass(entity) {
