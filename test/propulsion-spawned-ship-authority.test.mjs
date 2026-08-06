@@ -189,6 +189,25 @@ test('the default new game spawns a ship that resolves to a REAL catalogue drive
   assert.ok(profile.combatSpeed > 0, 'the resolved drive must publish a positive governed speed');
 });
 
+test('spawned derived propulsion keeps the unbounded solver sentinel out of serializable state', () => {
+  const { entity, profile, body } = player();
+
+  assert.equal(Object.hasOwn(entity.propulsion, 'solverSpeedLimit'), false,
+    'the top-level derived descriptor must not serialize the runtime Infinity sentinel');
+  assert.equal(Object.hasOwn(entity.data.derived.propulsion, 'solverSpeedLimit'), false,
+    'the authoritative derived-stat block must contain only finite numeric state');
+
+  const secondRead = resolvePropulsionProfile(entity, { playerId: 1, player: {} });
+  assert.strictEqual(secondRead, profile,
+    'runtime hydration must be cached instead of allocating a profile every flight tick');
+  assert.equal(profile.solverSpeedLimit, Infinity,
+    'the hydrated runtime profile must preserve the reaction drive\'s unbounded solver contract');
+
+  const { result } = fly(profile, body(), { assistMode: 'assisted', throttle: 0 });
+  assert.equal(result.maxSpeed, Infinity,
+    'removing the sentinel from serializable state must not install a physics speed clamp');
+});
+
 test("the kernel body carries the ship's DERIVED stats, not invented fixture numbers", () => {
   // Provenance, not inequality: assert each field traces to the derived-stat block the rest of the
   // game reads. A test that merely asserted "!== 20" would pass on a body built from thin air.

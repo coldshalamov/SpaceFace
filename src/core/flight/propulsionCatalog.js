@@ -17,6 +17,7 @@ export const DRIVE_FAMILIES = Object.freeze({
 });
 
 const INF = Number.POSITIVE_INFINITY;
+const DERIVED_RUNTIME_PROFILE_CACHE = new WeakMap();
 
 /**
  * Canonical drive definitions. Values are gameplay-scale world units, not claims
@@ -282,7 +283,7 @@ export function resolvePropulsionProfile(entity, state = null) {
       && PROPULSION_PROFILES[authored.id]
       && Number.isFinite(authored.travelCeiling);
     if (completeDerived) {
-      profile = authored;
+      profile = hydrateDerivedRuntimeProfile(authored);
       completeDerivedProfile = true;
     } else {
       const base = authored.id && PROPULSION_PROFILES[authored.id]
@@ -363,6 +364,16 @@ export function normalizeProfile(profile) {
   };
   if (!Number.isFinite(out.solverSpeedLimit) && out.solverSpeedLimit !== INF) out.solverSpeedLimit = INF;
   return out;
+}
+
+function hydrateDerivedRuntimeProfile(profile) {
+  let hydrated = DERIVED_RUNTIME_PROFILE_CACHE.get(profile);
+  if (hydrated) return hydrated;
+  // ships.js keeps its derived descriptor serializable by omitting the unbounded Infinity sentinel.
+  // Normalize once per immutable descriptor, then reuse the runtime shape on every flight tick.
+  hydrated = Object.freeze(normalizeProfile(profile));
+  DERIVED_RUNTIME_PROFILE_CACHE.set(profile, hydrated);
+  return hydrated;
 }
 
 function inferProfile(entity) {

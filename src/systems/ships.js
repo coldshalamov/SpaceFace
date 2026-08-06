@@ -197,10 +197,14 @@ function engineMods(def) {
 function buildDerivedPropulsion(flightClass, totalMass, engine) {
   const base = resolvePropulsionProfile({ flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
-  return Object.freeze({
+  const derived = {
     ...base,
     travelCeiling: resolveTravelCeiling(base) * mult,
-  });
+  };
+  // Infinity is a runtime solver instruction, not authoritative entity state. Keep finite envelope
+  // limits in the descriptor; an omitted limit is hydrated back to Infinity by the profile owner.
+  if (!Number.isFinite(derived.solverSpeedLimit)) delete derived.solverSpeedLimit;
+  return Object.freeze(derived);
 }
 
 /** Role lattice owns flight-class identity; fallback keeps legacy string matching. */
