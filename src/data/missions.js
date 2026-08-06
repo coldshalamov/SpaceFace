@@ -989,6 +989,9 @@ export const OFFER_MIX = {
   // Charon's refinery remains an economic refinery; this mission-only profile gives its writ wall
   // the intended hunter identity without changing commodity roles, station art, or facility access.
   bounty_board:[1, 0, 7, 0, 4, 1, 5, 1, 0, 3],
+  // Tethys is the freight-and-front junction: cargo, trade, convoy, patrol, passenger, and recon
+  // work dominate its ordinary rolls while the physical station remains a normal trade hub.
+  contracts_hub:[5, 4, 2, 0, 1, 5, 3, 1, 3, 3],
 };
 
 // 8-beat story spine FSM.

@@ -121,8 +121,11 @@ const CORE_SECTORS = [
     trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_ceres_belt', 'sector_vesta_forge', 'sector_io_reach'],
     stations: [
-      { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
-        chartNote: 'Junction traffic sets the price twice a day. Arrive early or pay late.' },
+      { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L',
+        missionProfile: 'contracts_hub', boardAnchorType: 'escort',
+        dispatchLabel: 'JUNCTION DISPATCH', dispatchConflictKey: 'faction_dmc:faction_mts',
+        services: ['trade','shipyard','refuel','repair','missions'],
+        chartNote: 'Convoys, patrols, and sealed freight change hands under the live DMC–MTS front board.' },
       { id: 'station_customs', name: 'Customs Gate',      type: 'military',  factionId: 'faction_scn', size: 'S', services: ['toll','scan','refuel'],
         chartNote: 'Toll plate and a scanner. Everything transits; nothing transits unread.' },
     ],

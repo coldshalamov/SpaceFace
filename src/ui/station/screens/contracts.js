@@ -8,12 +8,17 @@
 // not a scavenger hunt under an old "Contracts" label.
 import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
-import { MISSION_TUNING, missionMinRepForRisk } from '../../../data/missions.js';
+import { MISSION_TUNING, MISSION_TYPES, missionMinRepForRisk } from '../../../data/missions.js';
+import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
+const MISSION_DEF = new Map(MISSION_TYPES.map((def) => [def.type, def]));
+const STATION_DEF = new Map(SECTORS.flatMap((sector) => (
+  (sector.stations || []).map((station) => [station.id, station])
+)));
 
 const TYPE_ICON = {
   cargo_delivery: 'cargo', bulk_trade: 'cargo', passenger_transport: 'cargo', smuggling_run: 'cargo',
@@ -33,6 +38,25 @@ const upfront = (m) => num(m.upfrontCostCr);
 const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
 const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
 const facTint = (m) => FAC_TINT[m.factionId] || '#4aa8ff';
+
+export function missionOffersFollowUp(mission) {
+  const def = mission && MISSION_DEF.get(mission.type);
+  return !!(def && def.chainable);
+}
+
+export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
+  const station = STATION_DEF.get(stationId);
+  if (!station || !station.dispatchConflictKey) return 'LIVE DISPATCH / SELECT A MISSION';
+  const conflict = state && state.conflicts && state.conflicts[station.dispatchConflictKey] || {};
+  const phase = ['cold', 'tense', 'war'].includes(conflict.state) ? conflict.state.toUpperCase() : 'COLD';
+  const tension = Math.max(0, Math.min(100, Math.round(Number(conflict.tension) || 0)));
+  // The dispatch instrument needs terse operational identifiers (DMC/MTS), not the conversational
+  // faction `short` labels (Drift/Meridian) used in prose elsewhere in Station OS.
+  const sides = station.dispatchConflictKey.split(':')
+    .map((id) => id.replace(/^faction_/, '').replace(/_/g, ' ').toUpperCase());
+  return `${station.dispatchLabel || 'LIVE DISPATCH'} / ${Math.max(0, offerCount | 0)} LIVE / ${sides.join('–')} FRONT ${phase} · ${tension}/100`;
+}
+
 function riskColor(r) { return r <= 1 ? 'var(--gain)' : r === 2 ? 'var(--warn)' : 'var(--loss)'; }
 function destName(m) {
   const params = (m && m.params) || {};
@@ -109,13 +133,14 @@ export function createContractsScreen(ctx) {
 
   function renderBoard(state) {
     const list = sortFocusFirst(offers(state), focusId());
+    const stationId = state && state.ui && state.ui.dockedStationId;
     if (!selectedId && list.length) selectedId = String(mid(list[0]));
     if (!list.length) {
       boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No missions posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`;
       return;
     }
     boardEl.innerHTML =
-      `<span class="sx-ct-dispatch__label" aria-hidden="true">LIVE DISPATCH / SELECT A MISSION</span>` +
+      `<span class="sx-ct-dispatch__label">${escapeHtml(missionBoardDispatchLabel(state, stationId, list.length))}</span>` +
       list.map((m, index) => {
       const id = String(mid(m));
       const active = id === selectedId ? ' is-active' : '';
@@ -125,12 +150,12 @@ export function createContractsScreen(ctx) {
       return (
         `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
           ` style="--signal:${facTint(m)}"` +
-          ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${needs ? ', needs attention' : ''}">` +
+          ` aria-label="${escapeHtml(m.title || typeLabel(m.type))}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}${needs ? ', needs attention' : ''}">` +
           `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
           `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(TYPE_ICON[m.type] || 'contracts', 18)}</span>` +
           `<span class="sx-ct-row__mid">` +
             `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-            `<span class="sx-ct-row__meta">${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}</span>` +
+            `<span class="sx-ct-row__meta">${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}</span>` +
           `</span>` +
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
           `<span class="sx-ct-row__risk">${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}</span>` +
@@ -206,6 +231,7 @@ export function createContractsScreen(ctx) {
           briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
           (collateral(m) ? briefCell('info', 'Collateral', collateral(m).toLocaleString('en-US') + ' cr', 'on failure') : '') +
           (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +
+          (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
           (!standingOk ? `<p class="sx-dossier__gate">${icon('factions', 14)}<span>${escapeHtml(readiness)}</span></p>` : '') +
           (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag" title="${escapeHtml(c.prose || '')}">${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
         `</div>` +
