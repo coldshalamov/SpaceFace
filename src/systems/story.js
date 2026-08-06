@@ -49,6 +49,8 @@ import {
 } from '../story/campaign47a/index.js';
 // M5 pure endings eligibility + resolution plans (five endings + sandbox continuation).
 import {
+  ENDGAME_NET_WORTH_CR,
+  ENDGAME_REP_MIN,
   SANDBOX_ID,
   SANDBOX_MODE_OPEN_FRONTIER,
   advancePostEndingContinuity,
@@ -60,6 +62,7 @@ import {
   normalizePostEndingContinuity,
   planEndingResolution,
   planPendingConfirmation,
+  snapshotEndingFacts,
 } from '../story/endings/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
@@ -593,23 +596,10 @@ export const story = {
   },
 
   _endgameGateMet() {
-    // Shared B7 gate via pure endings module (net worth + branch rep; empire stake softens offer window).
-    // Offer still opens on classic credits+rep so early B7 board can appear; full eligibility is per-ending.
-    const state = this.state;
-    const credits = (state.player && state.player.credits) | 0;
-    if (credits < 100000) return false;
-    const branch = state.story && state.story.branch;
-    const BRANCH_FACTION = { traders: 'faction_mts', patrol: 'faction_scn', free: 'faction_free' };
-    const facId = branch ? BRANCH_FACTION[branch] : null;
-    if (facId) {
-      const rec = state.factions && state.factions[facId];
-      if (!rec || (rec.rep || 0) < 50) return false;
-    } else {
-      let max = 0; const f = state.factions || {};
-      for (const k in f) max = Math.max(max, (f[k] && f[k].rep) || 0);
-      if (max < 50) return false;
-    }
-    return true;
+    // Use the same durable facts as per-ending eligibility. In particular, a capital hull is part
+    // of net worth; requiring the equivalent value again as liquid credits strands lawful owners.
+    const facts = snapshotEndingFacts(this.state);
+    return facts.netWorthCr >= ENDGAME_NET_WORTH_CR && facts.branchRep >= ENDGAME_REP_MIN;
   },
 
   _availableChoices() {

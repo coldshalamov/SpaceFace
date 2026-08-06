@@ -242,6 +242,22 @@ check('live automation outposts satisfy the empire-stake gate', () => {
   assert.equal(evaluateEndingEligibility(state, 'A').unmet.some((u) => u.code === 'empire_stake'), false);
 });
 
+check('B7 offer uses the same capital-inclusive net worth as ending eligibility', () => {
+  const h = makeLiveHarness(31);
+  h.state.story.endgameOffered = false;
+  h.state.player.credits = ENDGAME_NET_WORTH_CR - 27000;
+  h.state.player.ownedShips = [{ defId: 'ship_bastion' }];
+  h.state.claims = { bodies: [] };
+
+  const facts = snapshotEndingFacts(h.state);
+  assert.equal(facts.netWorthCr, ENDGAME_NET_WORTH_CR);
+  assert.equal(evaluateEndingEligibility(h.state, 'A').eligible, true);
+
+  h.story._maybeOfferEndgame();
+  assert.equal(h.state.story.endgameOffered, true,
+    'capital-backed net worth must not be rejected by a second liquid-credit gate');
+});
+
 check('A requires lawful alignment; B requires quiet alignment', () => {
   const state = makeB7State(2);
   // Traders branch, MTS only — no SCN, no hunter
