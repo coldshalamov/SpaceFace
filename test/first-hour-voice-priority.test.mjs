@@ -2,7 +2,8 @@
 //
 // Pins taste-law ordering (danger > tutorial > objective > comms > flavor), the named
 // `comms` tier, tutorial protection during active onboarding (non-danger story/flavor
-// cannot preempt a held tutorial beat), post-onboarding load-bearing story, and
+// cannot occupy the floor while a persistent or audible tutorial beat owns teaching),
+// post-onboarding load-bearing story, and
 // deterministic interrupt / dismiss / coalesce behavior.
 //
 // Run:
@@ -91,6 +92,31 @@ check('during tutorialProtect, story cannot preempt a held tutorial beat', () =>
   assert.equal(q.active.text, 'Thrust to the beacon.');
   assert.equal(q.pending.length, 1, 'story stays queued for after the beat');
   assert.equal(q.pending[0].channel, 'story');
+});
+
+check('during tutorialProtect, a persistent tutorial objective reserves an otherwise empty floor', () => {
+  const q = new VoiceQueue();
+  const policy = { tutorialProtect: true };
+
+  q.enqueue({ channel: 'bark', text: 'Ambient transponder query.', ttl: 10, id: 'bark:scan' }, 0);
+  q.enqueue({ channel: 'story', text: 'Contextual signal chatter.', ttl: 10, id: 'story:signal' }, 0);
+  assert.equal(q.step(0, policy), null,
+    'non-danger chatter cannot fill the transient floor while persistent onboarding owns teaching');
+  assert.equal(q.active, null);
+
+  q.enqueue({ channel: 'tutorial', text: 'Thrust to the beacon.', ttl: 10, id: 'tutorial:beat' }, 100);
+  assert.equal(q.step(100, policy).text, 'Thrust to the beacon.',
+    'an audible tutorial update may use the reserved floor');
+
+  q.enqueue({
+    channel: 'alert',
+    text: 'SHIELDS DOWN',
+    ttl: 2,
+    priority: DANGER_PRIORITY,
+    id: 'danger',
+  }, 200);
+  assert.equal(q.step(200, policy).text, 'SHIELDS DOWN',
+    'genuine danger may still interrupt the reserved tutorial floor');
 });
 
 check('during tutorialProtect, flavor (bark/news/info/comms) cannot preempt tutorial', () => {
@@ -186,6 +212,42 @@ check('system wrapper applies tutorialProtect while onboarding is teaching', () 
   state.simTime = 0.4;
   voiceArbiter.update(0.1, state);
   assert.equal(voiceArbiter.queue.active.channel, 'story', 'story remains load-bearing over flavor');
+});
+
+check('system wrapper reserves an empty floor for persistent onboarding and restores post-tutorial voice', () => {
+  const bus = createBus();
+  const state = {
+    simTime: 0,
+    onboarding: { active: true, finished: false },
+  };
+  const helpers = {};
+  const surfaces = [];
+  bus.on('voice:surface', (p) => surfaces.push(p));
+
+  voiceArbiter.init({ bus, state, helpers });
+  voiceArbiter.newGame();
+  helpers.voice.say({ channel: 'bark', text: 'Ambient transponder query.', ttl: 5, id: 'bark:scan' });
+  helpers.voice.say({ channel: 'story', text: 'Contextual signal chatter.', ttl: 5, id: 'story:signal' });
+  voiceArbiter.update(0, state);
+  assert.equal(surfaces.length, 0, 'persistent tutorial UI reserves the otherwise empty voice floor');
+  assert.equal(voiceArbiter.queue.active, null);
+
+  helpers.voice.say({
+    channel: 'alert',
+    text: 'SHIELDS DOWN',
+    ttl: 1,
+    priority: DANGER_PRIORITY,
+    id: 'danger',
+  });
+  state.simTime = 0.1;
+  voiceArbiter.update(0.1, state);
+  assert.equal(surfaces.at(-1).text, 'SHIELDS DOWN', 'danger still reaches the reserved floor');
+
+  state.onboarding = { active: false, finished: true };
+  state.simTime = 1.2;
+  voiceArbiter.update(1.1, state);
+  assert.equal(surfaces.at(-1).text, 'Contextual signal chatter.',
+    'a still-live load-bearing line resumes under ordinary post-tutorial priority');
 });
 
 // ── Deterministic interrupt / dismiss / coalesce ─────────────────────────────

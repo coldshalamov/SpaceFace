@@ -16,7 +16,8 @@
 //   • Same `id` REPLACES the existing queued/active entry (in-place text/priority update) instead of
 //     stacking a duplicate — lets a live readout (e.g. "Shields 40%" → "Shields 20%") update.
 //   • Barks are rate-limited so a firefight cannot spam the floor.
-//   • During active onboarding, a held tutorial line cannot be preempted by non-danger story/flavor
+//   • During active onboarding, the tutorial owns the transient floor even when its current command
+//     is persistent UI rather than an audible line. Only tutorial updates and danger may surface
 //     (taste law: danger > tutorial > objective > comms > flavor). Load-bearing story after
 //     onboarding is unchanged (story stays at 100; protection is policy-gated).
 //
@@ -70,6 +71,13 @@ export function isDangerVoice(entry) {
   if (!entry) return false;
   if (entry.channel === 'alert') return true;
   return Number.isFinite(entry.priority) && entry.priority >= DANGER_PRIORITY;
+}
+
+/** Whether an entry may hold the transient floor under the current presentation policy. */
+function canHoldFloor(entry, policy = {}) {
+  if (!entry) return false;
+  if (!policy.tutorialProtect) return true;
+  return entry.channel === 'tutorial' || isDangerVoice(entry);
 }
 
 /**
@@ -201,8 +209,8 @@ export class VoiceQueue {
   // entry. Returns the entry that should be surfaced THIS tick (newly took the floor), or null if
   // nothing changed / floor still held.
   //
-  // `policy.tutorialProtect` — when true, a held tutorial line yields only to danger (not story/
-  // flavor). Set by the system wrapper while onboarding is teaching.
+  // `policy.tutorialProtect` — while onboarding is teaching, reserves the floor for tutorial/danger
+  // even when the current tutorial command is persistent UI rather than a queued voice line.
   step(now = 0, policy = {}) {
     // Expire the active floor holder.
     if (this._active && now >= this._active.expireAt) this._active = null;
@@ -210,6 +218,15 @@ export class VoiceQueue {
     // Drop stale queued entries (their ttl elapsed before they ever got the floor).
     if (this._items.length) {
       this._items = this._items.filter((e) => now < e.expireAt);
+    }
+
+    // Onboarding may begin while a non-danger line is already holding the floor. Suspend it under
+    // its original TTL so the wrapper retracts it now; it may resume only if teaching ends before it
+    // becomes stale. This also makes persistent tutorial UI equivalent to a held audible beat.
+    if (this._active && !canHoldFloor(this._active, policy)) {
+      const suspended = this._active;
+      this._active = null;
+      if (now < suspended.expireAt) this._items.push(suspended);
     }
     if (!this._items.length) return null;
 
@@ -219,6 +236,7 @@ export class VoiceQueue {
 
     // Best candidate that may take the floor under interrupt policy + bark rate-limit.
     let best = this._pickBest((e) => {
+      if (!canHoldFloor(e, policy)) return false;
       if (active && !canInterrupt(active, e, policy)) return false;
       if (barkBlocked(e)) return false;
       return true;
@@ -229,12 +247,14 @@ export class VoiceQueue {
     if (!best) {
       // If there are only bark-blocked items that could otherwise interrupt, hold.
       const anyEligibleIgnoringBark = this._pickBest((e) => {
+        if (!canHoldFloor(e, policy)) return false;
         if (active && !canInterrupt(active, e, policy)) return false;
         return true;
       });
       if (!anyEligibleIgnoringBark) return null;
       // Prefer a non-bark that can interrupt.
       best = this._pickBest((e) => {
+        if (!canHoldFloor(e, policy)) return false;
         if (e.channel === 'bark') return false;
         if (active && !canInterrupt(active, e, policy)) return false;
         return true;
