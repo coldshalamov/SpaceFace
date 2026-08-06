@@ -17,6 +17,8 @@ import {
   buildSlotList,
   findMasslineHeadConflict,
   fittingsFromDefaultModules,
+  outfitBudgetBlocker,
+  outfitBudgetForFittings,
   ships,
 } from '../src/systems/ships.js';
 
@@ -101,12 +103,51 @@ const slots = buildSlotList(shipDef);
 const moduleById = (id) => MODULES.find((entry) => entry.id === id);
 const weaponById = (id) => WEAPONS.find((entry) => entry.id === id);
 
+for (const hull of SHIPS) {
+  assert.ok(Number.isFinite(hull.outfitSpace) && hull.outfitSpace > 0, hull.id + ' authors outfitSpace');
+  assert.ok(Number.isFinite(hull.weaponCapacity) && hull.weaponCapacity >= 0, hull.id + ' authors weaponCapacity');
+  assert.ok(Number.isFinite(hull.engineCapacity) && hull.engineCapacity >= 0, hull.id + ' authors engineCapacity');
+}
+
 const starterFittings = fittingsFromDefaultModules('ship_kestrel', [
   'wpn_pulse_laser_s',
   'mod_mining_laser_s',
   'mod_engine_ion_m',
   'mod_shield_booster_s',
 ]);
+const starterBudget = outfitBudgetForFittings(shipDef, starterFittings);
+assert.equal(starterBudget.fits, true, 'the shipped starter fit remains inside all nested budgets');
+assert.equal(outfitBudgetBlocker(shipDef, starterFittings), null);
+assert.match(outfittingEngineeringFeelHtml(buildOutfittingEngineeringFeel({
+  shipId: shipDef.id,
+  fittings: starterFittings,
+})), /Fit mass[\s\S]*\d+\/20 t total[\s\S]*weapons[\s\S]*engine/,
+'the live engineering readout exposes all three authored budgets');
+
+const overloadedStarter = fittingsFromDefaultModules('ship_kestrel', [
+  'wpn_autocannon_s',
+  'mod_shield_booster_s',
+  'mod_engine_fusion_m',
+  'mod_smuggler_hold',
+  'mod_mining_laser_s',
+  'mod_ram_plate',
+]);
+assert.equal(outfitBudgetBlocker(shipDef, overloadedStarter)?.reason, 'outfit_space',
+  'a slot-compatible heavy build is still rejected by the master pool');
+
+const waspDef = SHIPS.find((entry) => entry.id === 'ship_wasp');
+const waspSlots = buildSlotList(waspDef);
+const oneHeavyGun = fittingsFromDefaultModules(waspDef.id, ['wpn_autocannon_s']);
+const secondGunPurchase = describeOutfittingPurchase(
+  weaponById('wpn_autocannon_s'),
+  { credits: 10000, researchedNodes: ['tech_combat_basics'] },
+  waspSlots,
+  oneHeavyGun,
+  waspDef,
+);
+assert.equal(secondGunPurchase.state, 'inventory', 'an over-cap second gun is not promised as Buy & Fit');
+assert.equal(secondGunPurchase.fitBlocker?.reason, 'weapon_capacity');
+assert.match(secondGunPurchase.title, /Weapon capacity exceeded \(8\/7 t\)/);
 let feel = buildOutfittingEngineeringFeel({
   shipId: 'ship_kestrel',
   fittings: starterFittings,
@@ -328,5 +369,40 @@ assert.equal(conflictBus.events.some((entry) => entry.name === 'economy:chargeCr
   'failed Buy & Fit must not charge credits');
 assert.equal(conflictBus.events.some((entry) => entry.name === 'module:purchased'), false,
   'failed Buy & Fit must not publish a purchase receipt');
+
+const capacityBus = createBus();
+const capacityState = {
+  tick: 19,
+  playerId: 1,
+  entities: new Map(),
+  player: {
+    credits: 10000,
+    activeShipIndex: 0,
+    ownedShips: [{ defId: waspDef.id, fittings: oneHeavyGun.slice() }],
+    moduleInventory: [{ instanceId: 'capacity_gun', defId: 'wpn_autocannon_s' }],
+    researchedNodes: ['tech_combat_basics'],
+    efficiencyMods: {},
+    cargo: { usedVolume: 0, capVolume: 15, items: {} },
+  },
+};
+const capacitySystem = Object.create(ships);
+capacitySystem.init({ state: capacityState, bus: capacityBus, helpers: {} });
+assert.equal(capacitySystem.fitModule({ slotIndex: 1, instanceId: 'capacity_gun' }), false,
+  'inventory fitting cannot exceed the weapon sub-pool');
+assert.deepEqual(capacityState.player.ownedShips[0].fittings, oneHeavyGun,
+  'a rejected capacity fit preserves the installed loadout');
+assert.deepEqual(capacityState.player.moduleInventory,
+  [{ instanceId: 'capacity_gun', defId: 'wpn_autocannon_s' }],
+  'a rejected capacity fit preserves inventory');
+assert.match(eventPayload(capacityBus.events, 'toast').text, /Weapon capacity exceeded \(8\/7 t\)/,
+  'the runtime explains the exact over-cap budget');
+
+capacityBus.events.length = 0;
+assert.equal(capacitySystem.buyModule({ defId: 'wpn_autocannon_s', fitSlotIndex: 1 }), false,
+  'Buy & Fit rejects the same over-cap loadout before mutation');
+assert.equal(capacityState.player.credits, 10000, 'a rejected capacity Buy & Fit does not spend credits');
+assert.equal(capacityState.player.moduleInventory.length, 1, 'a rejected capacity Buy & Fit does not add inventory');
+assert.equal(capacityBus.events.some((entry) => entry.name === 'economy:chargeCredits'), false);
+assert.equal(capacityBus.events.some((entry) => entry.name === 'module:purchased'), false);
 
 console.log('Outfitting buy-and-fit checks OK');

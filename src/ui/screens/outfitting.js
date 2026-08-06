@@ -4,7 +4,13 @@
 // path interruption. Fit/unfit emits ui:fitModule / ui:unfitModule; ships system owns mutation.
 // Module shop emits ui:buyModule after shared confirm for positive-cost buys.
 // Read-only over sim state; UI emits intents only.
-import { buildSlotList, findMasslineHeadConflict, fits } from '../../systems/ships.js';
+import {
+  buildSlotList,
+  findMasslineHeadConflict,
+  fits,
+  outfitBudgetBlocker,
+  outfitBudgetForFittings,
+} from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -72,7 +78,16 @@ function techName(id) {
 
 export { describeOutfittingSpendConfirm, isOutfittingSpendDanger };
 
-export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = []) {
+function fitBlockerForSlot(shipDef, fittings, slotIndex, def) {
+  const conflict = findMasslineHeadConflict(fittings, slotIndex, def);
+  if (conflict) return { reason: 'massline_head_conflict', text: 'Unfit ' + conflict.name + ' before fitting another head' };
+  if (!shipDef) return null;
+  const prospective = Array.isArray(fittings) ? fittings.slice() : [];
+  prospective[slotIndex] = def.id;
+  return outfitBudgetBlocker(shipDef, prospective);
+}
+
+export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = [], shipDef = null) {
   if (!def) {
     return {
       state: 'missing',
@@ -93,8 +108,14 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   const safeSlots = Array.isArray(slots) ? slots : [];
   const safeFittings = Array.isArray(fittings) ? fittings : [];
   const hasSlot = safeSlots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
-  const fitSlotIndex = safeSlots.findIndex((s, i) =>
-    !safeFittings[i] && fits(s, def) && !findMasslineHeadConflict(safeFittings, i, def));
+  const emptyCompatibleSlots = safeSlots
+    .map((slot, index) => ({ slot, index }))
+    .filter(({ slot, index }) => !safeFittings[index] && fits(slot, def));
+  const fitSlotIndex = emptyCompatibleSlots.find(({ index }) =>
+    !fitBlockerForSlot(shipDef, safeFittings, index, def))?.index ?? -1;
+  const fitBlocker = fitSlotIndex < 0 && emptyCompatibleSlots.length
+    ? fitBlockerForSlot(shipDef, safeFittings, emptyCompatibleSlots[0].index, def)
+    : null;
 
   if (!unlocked) {
     const req = techName(def.requiresTech);
@@ -144,7 +165,10 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       fitSlotIndex,
       disabled: false,
       label: 'Buy to Inventory',
-      title: def.name + ' fits this hull, but every compatible slot is full. Buy it into inventory or unfit a module first.',
+      title: fitBlocker && fitBlocker.text
+        ? def.name + ' cannot fit now: ' + fitBlocker.text + '. Buy it into inventory or lighten the build first.'
+        : def.name + ' fits this hull, but every compatible slot is full. Buy it into inventory or unfit a module first.',
+      fitBlocker,
     };
   }
   return {
@@ -192,7 +216,7 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
     .filter((def) => def && tierAllows(def, opts.tier))
     .map((def) => ({
       def,
-      purchase: describeOutfittingPurchase(def, player, slots, fittings),
+      purchase: describeOutfittingPurchase(def, player, slots, fittings, opts.shipDef || null),
     }));
   const missionPool = wantedSlots.size
     ? candidates.filter((entry) => wantedSlots.has(entry.def.slotType))
@@ -211,7 +235,7 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
   const sorted = pool.slice().sort((a, b) =>
     purchaseRecommendationScore(b.def, b.purchase, wantedSlots) -
     purchaseRecommendationScore(a.def, a.purchase, wantedSlots));
-  const currentHullBuy = sorted.find((entry) => !entry.purchase.disabled && entry.purchase.hasSlot);
+  const currentHullBuy = sorted.find((entry) => entry.purchase.state === 'fit');
   const pick = currentHullBuy || sorted[0];
   const missionFit = wantedSlots.has(pick.def.slotType);
 
@@ -351,6 +375,7 @@ export function buildOutfittingEngineeringFeel({
     })
     : null;
 
+  const budget = outfitBudgetForFittings(shipId, afterFittings);
   return Object.freeze({
     shipId,
     mode: preview
@@ -359,12 +384,13 @@ export function buildOutfittingEngineeringFeel({
     previewName: previewPacket && previewPacket.moduleName
       || (preview && FITTABLE_BY_ID.get(preview.defId)?.name)
       || null,
-    detail: previewPacket && previewPacket.detail || null,
+    detail: preview && preview.detail || previewPacket && previewPacket.detail || null,
     beforeFittings: Object.freeze(beforeFittings),
     afterFittings: Object.freeze(afterFittings),
     profile,
     delta,
     risks,
+    budget,
   });
 }
 
@@ -437,9 +463,20 @@ export function outfittingEngineeringFeelHtml(packet) {
     }).join('')
     : '<span class="st-outfit-feel-note">No declared loadout risks in live module data.</span>';
 
+  const budget = packet.budget;
+  const budgetHtml = budget
+    ? '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Fit mass</span>' +
+      '<div class="st-outfit-feel-note mono">' +
+      escapeHtml(budget.used + '/' + budget.outfitSpace + ' t total · ' +
+        budget.weaponUsed + '/' + budget.weaponCapacity + ' t weapons · ' +
+        budget.engineUsed + '/' + budget.engineCapacity + ' t engine') +
+      '</div></div>'
+    : '';
+
   return '<div class="st-outfit-feel__head"><span>Flight feel</span><span class="mono">' +
       escapeHtml(profile.driveLabel || profile.flightClass || 'ship') + '</span></div>' +
     '<div class="st-outfit-feel-axes">' + axes + '</div>' +
+    budgetHtml +
     '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Fit change</span>' + changeHtml + '</div>' +
     '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Declared risks</span><div class="st-outfit-feel-risks">' +
       riskHtml + '</div></div>';
@@ -726,6 +763,7 @@ export function createOutfittingPanel(ctx) {
     const nextBuy = recommendOutfittingPurchase(ctx.state.player, slots, (owned && owned.fittings) || [], {
       wantedSlots: guide.wants,
       tier: stationTier(panel.stationId),
+      shipDef,
     });
     advisor.innerHTML =
       '<div class="st-mission-preflight">' +
@@ -751,7 +789,8 @@ export function createOutfittingPanel(ctx) {
     for (const m of inv) {
       const def = FITTABLE_BY_ID.get(m.defId);
       if (!def) continue;
-      const compatible = owned && slots.some((s, i) => !owned.fittings[i] && fits(s, def));
+      const compatible = owned && slots.some((s, i) =>
+        !owned.fittings[i] && fits(s, def) && !fitBlockerForSlot(shipDef, owned.fittings, i, def));
       const item = document.createElement('div');
       item.className = 'st-inv-item' + (compatible ? '' : ' incompat');
       item.setAttribute('data-inst', m.instanceId);
@@ -794,7 +833,7 @@ export function createOutfittingPanel(ctx) {
         frag.appendChild(hdr);
       }
 
-      const purchase = describeOutfittingPurchase(def, p, slots, fittings);
+      const purchase = describeOutfittingPurchase(def, p, slots, fittings, shipDef);
 
       // Truthful loadout deltas: ships.getDerivedStats via engineeringPreview (never raw mods keys).
       let deltaHtml = '';
@@ -856,10 +895,16 @@ export function createOutfittingPanel(ctx) {
     if (!owned) return;
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slots = buildSlotList(shipDef);
-    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : -1;
-    if (target < 0) target = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)
+      && !fitBlockerForSlot(shipDef, owned.fittings, selectedSlot, def)) ? selectedSlot : -1;
+    if (target < 0) target = slots.findIndex((s, i) =>
+      !owned.fittings[i] && fits(s, def) && !fitBlockerForSlot(shipDef, owned.fittings, i, def));
     if (target < 0) {
-      ctx.bus.emit('toast', { text: 'No compatible empty slot for ' + def.name, kind: 'warn', ttl: 3 });
+      const physicalSlot = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+      const blocker = physicalSlot >= 0
+        ? fitBlockerForSlot(shipDef, owned.fittings, physicalSlot, def)
+        : null;
+      ctx.bus.emit('toast', { text: blocker && blocker.text || 'No compatible empty slot for ' + def.name, kind: 'warn', ttl: 3 });
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       return;
     }
@@ -877,9 +922,17 @@ export function createOutfittingPanel(ctx) {
     const def = FITTABLE_BY_ID.get(item.getAttribute('data-def'));
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slots = buildSlotList(shipDef);
-    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)
+      && !fitBlockerForSlot(shipDef, owned.fittings, selectedSlot, def)) ? selectedSlot : slots.findIndex((s, i) =>
+      !owned.fittings[i] && fits(s, def) && !fitBlockerForSlot(shipDef, owned.fittings, i, def));
     if (target >= 0) previewFit = { slotIndex: target, defId: def.id };
-    else previewFit = { slotIndex: -1, defId: def.id }; // invalid fit path
+    else {
+      const physicalSlot = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+      const blocker = physicalSlot >= 0
+        ? fitBlockerForSlot(shipDef, owned.fittings, physicalSlot, def)
+        : null;
+      previewFit = { slotIndex: -1, defId: def.id, detail: blocker && blocker.text || 'No compatible hardpoint on this hull.' };
+    }
     refreshStage();
   });
 
@@ -942,9 +995,17 @@ export function createOutfittingPanel(ctx) {
     if (!owned || !def) return;
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slots = buildSlotList(shipDef);
-    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)
+      && !fitBlockerForSlot(shipDef, owned.fittings, selectedSlot, def)) ? selectedSlot : slots.findIndex((s, i) =>
+      !owned.fittings[i] && fits(s, def) && !fitBlockerForSlot(shipDef, owned.fittings, i, def));
     if (target >= 0) previewFit = { slotIndex: target, defId };
-    else previewFit = { slotIndex: -1, defId };
+    else {
+      const physicalSlot = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+      const blocker = physicalSlot >= 0
+        ? fitBlockerForSlot(shipDef, owned.fittings, physicalSlot, def)
+        : null;
+      previewFit = { slotIndex: -1, defId, detail: blocker && blocker.text || 'No compatible hardpoint on this hull.' };
+    }
     refreshStage();
   });
 
@@ -961,10 +1022,19 @@ export function createOutfittingPanel(ctx) {
     if (!owned || !def) return;
     const shipDef = SHIP_BY_ID.get(owned.defId);
     const slots = buildSlotList(shipDef);
-    const target = (selectedSlot != null && fits(slots[selectedSlot], def))
+    const target = (selectedSlot != null && fits(slots[selectedSlot], def)
+      && !fitBlockerForSlot(shipDef, owned.fittings, selectedSlot, def))
       ? selectedSlot
-      : slots.findIndex((slot, index) => !owned.fittings[index] && fits(slot, def));
-    previewFit = { slotIndex: target, defId };
+      : slots.findIndex((slot, index) =>
+        !owned.fittings[index] && fits(slot, def) && !fitBlockerForSlot(shipDef, owned.fittings, index, def));
+    if (target >= 0) previewFit = { slotIndex: target, defId };
+    else {
+      const physicalSlot = slots.findIndex((slot, index) => !owned.fittings[index] && fits(slot, def));
+      const blocker = physicalSlot >= 0
+        ? fitBlockerForSlot(shipDef, owned.fittings, physicalSlot, def)
+        : null;
+      previewFit = { slotIndex: -1, defId, detail: blocker && blocker.text || 'No compatible hardpoint on this hull.' };
+    }
     refreshStage();
   });
   shopList.addEventListener('focusout', (ev) => {

@@ -141,6 +141,73 @@ export function fits(slot, def) {
   return slot.type === def.slotType && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
 }
 
+function outfitLimit(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : Infinity;
+}
+
+/** Read the nested mass budgets for one loadout. This is deliberately separate from derived flight
+ * mass: capacity decides whether a module may be fitted, while getDerivedStats remains the sole
+ * authority for how the accepted mass changes flight. Legacy/custom hulls without authored caps
+ * remain unrestricted instead of becoming unloadable. */
+export function outfitBudgetForFittings(shipDefOrId, fittings = []) {
+  const shipDef = typeof shipDefOrId === 'string' ? SHIP_BY_ID.get(shipDefOrId) : shipDefOrId;
+  if (!shipDef) return null;
+  const slots = buildSlotList(shipDef);
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  let used = 0;
+  let weaponUsed = 0;
+  let engineUsed = 0;
+  for (let index = 0; index < slots.length; index += 1) {
+    const def = defById(safeFittings[index]);
+    if (!def) continue;
+    const mass = Math.max(0, Number(def.mass) || 0);
+    used += mass;
+    if (def.slotType === 'weapon') weaponUsed += mass;
+    if (def.slotType === 'engine') engineUsed += mass;
+  }
+  const outfitSpace = outfitLimit(shipDef.outfitSpace);
+  const weaponCapacity = outfitLimit(shipDef.weaponCapacity);
+  const engineCapacity = outfitLimit(shipDef.engineCapacity);
+  return Object.freeze({
+    used,
+    weaponUsed,
+    engineUsed,
+    outfitSpace,
+    weaponCapacity,
+    engineCapacity,
+    fits: used <= outfitSpace && weaponUsed <= weaponCapacity && engineUsed <= engineCapacity,
+  });
+}
+
+/** Return the first player-legible nested-budget violation for a prospective loadout. */
+export function outfitBudgetBlocker(shipDefOrId, fittings = []) {
+  const budget = outfitBudgetForFittings(shipDefOrId, fittings);
+  if (!budget) return { reason: 'missing_fit_target', text: null };
+  if (budget.weaponUsed > budget.weaponCapacity) {
+    return {
+      reason: 'weapon_capacity',
+      text: 'Weapon capacity exceeded (' + budget.weaponUsed + '/' + budget.weaponCapacity + ' t)',
+      budget,
+    };
+  }
+  if (budget.engineUsed > budget.engineCapacity) {
+    return {
+      reason: 'engine_capacity',
+      text: 'Engine capacity exceeded (' + budget.engineUsed + '/' + budget.engineCapacity + ' t)',
+      budget,
+    };
+  }
+  if (budget.used > budget.outfitSpace) {
+    return {
+      reason: 'outfit_space',
+      text: 'Outfit space exceeded (' + budget.used + '/' + budget.outfitSpace + ' t)',
+      budget,
+    };
+  }
+  return null;
+}
+
 /** Resolve a fittings array (defIds | null, parallel to slots) into the equipped defs per slot. */
 function resolveFittings(shipDef, fittings) {
   const slots = buildSlotList(shipDef);
@@ -975,6 +1042,8 @@ export const ships = {
     }
     const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
     prospective.fittings[slotIndex] = def.id;
+    const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
+    if (budgetBlocker) return budgetBlocker;
     if (this.wouldOverflowCargo(prospective)) {
       return { reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
     }
