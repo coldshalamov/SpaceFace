@@ -323,6 +323,11 @@ const VFX_NPC_JOB_SIGNATURE_HZ = 12;
 // The cut beam's fallback length when the worked rock cannot be resolved, in world units. Long
 // enough to read as contact with something out of frame, short enough not to cross a lane.
 const NPC_JOB_CUT_BEAM_FALLBACK = 26;
+// Furthest a barge may claim to be cutting. Beyond this the geometry says it is pointing at a rock,
+// not touching one, so the beam reverts to the short local one. Sized against the camera's ~45-50
+// unit visible ground-plane depth (design/graphics-sprints/CAMERA_VISIBLE_BUBBLE.md): a real cut
+// crosses at most a couple of frames' worth of space, never hundreds of units.
+const NPC_JOB_CUT_BEAM_MAX_REACH = 110;
 // PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
 // particles at 30 Hz; slept when no field is deployed. Pool share is a small slice of PARTICLE_CAP
 // (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
@@ -3590,7 +3595,14 @@ export const vfx = {
           const rx = rock.pos.x - noseX;
           const rz = rock.pos.z - noseZ;
           const dist = Math.hypot(rx, rz);
-          if (dist > 1e-3) {
+          // The range gate matters as much as the aim. A barge in WORK holds position wherever it
+          // happened to arrive — the kernel's route position is advisory, not a teleport — so it can
+          // legitimately be hundreds of units short of the rock its route names. Measured live: a
+          // working barge 434 units from its own seam, which would draw a 423-unit lance across the
+          // whole frame and well past it. That is not a cut, it is a targeting line. Past the gate
+          // the hull keeps its work code and its flank strobe but shows the short local beam, which
+          // reads as "rigged and running" rather than claiming a contact it does not have.
+          if (dist > 1e-3 && dist <= NPC_JOB_CUT_BEAM_MAX_REACH) {
             bx = rx / dist;
             bz = rz / dist;
             // Stop at the rock's surface, not its centre — a beam that vanishes inside the body
