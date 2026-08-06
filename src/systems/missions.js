@@ -1285,7 +1285,7 @@ export const missions = {
   },
 
   /** Roll a concrete MissionOffer for a type at an origin station. */
-  _rollOffer(typeId, info, rng, epoch, idx) {
+  _rollOffer(typeId, info, rng, epoch, idx, options = {}) {
     const def = TYPE_BY_ID.get(typeId);
     if (!def) return null;
     // Authored-only types are never rolled. Second guard behind _pickType's weighted fallthrough:
@@ -1347,7 +1347,7 @@ export const missions = {
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
-    return this._withConditions(offer, epoch);
+    return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
   },
 
   /**
@@ -1426,12 +1426,24 @@ export const missions = {
     const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
     const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
     if (!legacy && (info.id !== stake.stationId || intro.branch !== stake.branch)) return null;
-    const offer = this._rollOffer(intro.type, info, rng, epoch, `${intro.branch}_intro`);
+    const offer = this._rollOffer(
+      intro.type,
+      info,
+      rng,
+      epoch,
+      `${intro.branch}_intro`,
+      { attachConditions: false },
+    );
     if (!offer) return null;
     offer.id = `mo_${info.id}_${epoch}_${intro.branch}_intro`;
     offer.storyTag = STORY_BRANCH_INTRO_TAG;
     offer.storyBranch = intro.branch;
     offer.title = intro.title;
+    // B4 is mandatory story work, not a bankroll gate. The procedural offer may inherit a
+    // distance-scaled collateral (well above one million credits on the Coalition route), which
+    // can make the authored consequence impossible to accept after legitimately reaching it.
+    // Keep collateral on ordinary contracts; the consequence stake here is completing the work.
+    offer.collateral_cr = 0;
     // B4 paperwork: one clearing administrator for all three doors.
     offer.adminField = 'V. DIRECTOR, ACTING / REF 44-C';
     offer.authorization = 'CLEARING: V. DIRECTOR, ACTING / REF 44-C';

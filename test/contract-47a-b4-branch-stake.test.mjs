@@ -31,8 +31,10 @@ function harness(outcome) {
   const bus = createBus();
   const credits = [];
   const rep = [];
+  const toasts = [];
   bus.on('economy:grantCredits', (payload) => credits.push(payload));
   bus.on('faction:repDelta', (payload) => rep.push(payload));
+  bus.on('toast', (payload) => toasts.push(payload));
   const helpers = {
     hash32,
     mulberry32,
@@ -55,7 +57,7 @@ function harness(outcome) {
   state.story.flags.elroy_outcome = outcome;
   missions._syncCampaignSidecarAfterAdvance();
   missions._refreshNavigation({ forceStory: true, silent: true });
-  return { state, bus, missions, credits, rep };
+  return { state, bus, missions, credits, rep, toasts };
 }
 
 function completePhysicalIntro(h, mission) {
@@ -84,7 +86,13 @@ function exerciseOutcome(outcome) {
   assert.ok(offer, 'the consequence intro is physically posted');
   assert.equal(offer.storyBranch, expected.branch);
   assert.equal(offer.type, expected.type);
-  assert.equal(h.missions.acceptMission(offer.id), true);
+  assert.equal(offer.collateral_cr, 0, 'mandatory consequence work cannot inherit procedural collateral');
+  assert.equal(offer.clauses, undefined, 'mandatory consequence work cannot inherit random contract terms');
+  assert.equal(
+    h.missions.acceptMission(offer.id),
+    true,
+    `accept rejected: ${h.toasts.map((row) => row && row.text).filter(Boolean).join(' | ')}`,
+  );
   const mission = h.state.missions.active.find((row) => row.storyTag === STORY_BRANCH_INTRO_TAG);
   assert.ok(mission);
   assert.equal(h.state.story.beatIndex, 4, 'acceptance alone cannot settle Pick a Side');
