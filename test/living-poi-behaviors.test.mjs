@@ -300,6 +300,60 @@ test('entry is one voice with verb, risk, reward; repeated entry is quiet; reado
   assert.equal(read.payload.affordance, 'dock');
 });
 
+test('staged onboarding defers automatic place guidance without losing entry truth', async () => {
+  const { state, bus, spoken, emitted } = makeSystem(53);
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'convoy_industrial_route');
+  state.onboarding = { active: true, finished: false };
+  state.world.currentZoneId = row.zoneId;
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  assert.equal(state.livingPoiBehaviors.entered[row.behaviorId], true,
+    'physical entry remains durable while its optional banner waits');
+  assert.ok(emitted.some((entry) => entry.event === 'poi:behaviorReadout'
+    && entry.payload.behaviorId === row.behaviorId), 'map/radar readout remains immediate');
+  assert.equal(emitted.some((entry) => entry.event === 'poi:behaviorGuidance'
+    && entry.payload.behaviorId === row.behaviorId), false,
+  'ambient route guidance cannot replace the active tutorial command');
+  assert.equal(spoken.length, 0);
+
+  state.onboarding.active = false;
+  state.onboarding.finished = true;
+  bus.emit('tutorial:finished', {});
+  await Promise.resolve();
+  assert.equal(spoken.length, 1, 'the current place surfaces once at the tutorial handoff');
+  assert.match(spoken[0].text, /FREIGHT ROUTE.*ESCORT 0\/1.*CONVOY EXPOSURE.*ROUTE LIQUIDITY/);
+
+  bus.emit('tutorial:finished', {});
+  await Promise.resolve();
+  assert.equal(spoken.length, 1, 'repeated handoff cannot replay consumed place guidance');
+});
+
+test('player-triggered place progress stays immediate and retires deferred approach copy', async () => {
+  const { state, bus, spoken } = makeSystem(67);
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'mining_field');
+  state.onboarding = { active: true, finished: false };
+  state.world.currentZoneId = row.zoneId;
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+  assert.equal(spoken.length, 0);
+  bus.emit('mining:yield', {
+    zoneId: row.zoneId,
+    commodityId: 'cmdty_ore_iron',
+    qty: 1,
+    pos: { ...row.zoneCenter },
+  });
+  assert.equal(spoken.length, 1, 'feedback caused by the player is never hidden behind onboarding');
+  assert.match(spoken[0].text, /MINE 1\/3/);
+
+  state.onboarding.active = false;
+  state.onboarding.finished = true;
+  bus.emit('tutorial:finished', {});
+  await Promise.resolve();
+  assert.equal(spoken.length, 1, 'obsolete zero-progress approach copy cannot surface after progress');
+});
+
 test('approach, progress, outcome, and returned aftermath reach the standard one-voice seam', () => {
   const { system, bus, state, spoken, emitted } = makeSystem(67);
   const row = Object.values(state.livingPoiBehaviors.activeByZone)

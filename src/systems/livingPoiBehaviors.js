@@ -116,6 +116,7 @@ export const livingPoiBehaviors = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._unsubs = [];
+    this._deferredAutomaticGuidance = new Map();
     ensureState(this.state);
     this._listen('sector:enter', (payload) => this._activateSector(payload || {}));
     this._listen('sector:exit', (payload) => this._departSector(payload || {}));
@@ -129,6 +130,7 @@ export const livingPoiBehaviors = {
     this._listen('entity:killed', (payload) => this._onEntityKilled(payload || {}));
     this._listen('contraband:scanned', (payload) => this._onContrabandScanned(payload || {}));
     this._listen('cargo:changed', (payload) => this._onCargoChanged(payload || {}));
+    this._listen('tutorial:finished', () => this._onTutorialFinished());
   },
 
   _listen(event, fn) {
@@ -143,6 +145,7 @@ export const livingPoiBehaviors = {
 
   newGame() {
     this.state.livingPoiBehaviors = freshState();
+    this._deferredAutomaticGuidance.clear();
   },
 
   // Event-driven by design: no timers can silently turn ambience into combat.
@@ -174,6 +177,9 @@ export const livingPoiBehaviors = {
 
   planSector(sectorId, options = {}) {
     const own = ensureState(this.state);
+    if (own.activeSectorId && own.activeSectorId !== sectorId) {
+      this._deferredAutomaticGuidance.clear();
+    }
     const dayIndex = Number.isInteger(options.dayIndex)
       ? options.dayIndex
       : Math.floor((this.state.simTime || 0) / DAY_SECONDS);
@@ -221,14 +227,48 @@ export const livingPoiBehaviors = {
     if (!row) return;
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
-      this._publishGuidance(row, 'aftermath', own.aftermath[row.behaviorId] || null);
+      const aftermath = own.aftermath[row.behaviorId] || null;
+      if (!this._deferAutomaticGuidance(row, 'aftermath')) {
+        this._deferredAutomaticGuidance.delete(row.behaviorId);
+        this._publishGuidance(row, 'aftermath', aftermath);
+      }
       return;
     }
     if (row.status === 'available') row.status = 'entered';
     this._emit('poi:behaviorReadout', readoutOf(row));
-    if (own.entered[row.behaviorId]) return;
+    if (own.entered[row.behaviorId]) {
+      const deferred = this._deferredAutomaticGuidance.get(row.behaviorId);
+      if (deferred && !tutorialOwnsObjectiveVoice(this.state)) {
+        this._deferredAutomaticGuidance.delete(row.behaviorId);
+        this._publishGuidance(row, deferred.phase);
+      }
+      return;
+    }
     own.entered[row.behaviorId] = true;
-    this._publishGuidance(row, 'approach');
+    if (!this._deferAutomaticGuidance(row, 'approach')) this._publishGuidance(row, 'approach');
+  },
+
+  _deferAutomaticGuidance(row, phase) {
+    if (!row || !tutorialOwnsObjectiveVoice(this.state)) return false;
+    this._deferredAutomaticGuidance.set(row.behaviorId, { phase });
+    return true;
+  },
+
+  _onTutorialFinished() {
+    queueMicrotask(() => {
+      if (!this.state || tutorialOwnsObjectiveVoice(this.state)) return;
+      const own = ensureState(this.state);
+      const zoneId = this.state.world && this.state.world.currentZoneId;
+      const row = zoneId && own.activeByZone[zoneId];
+      const deferred = row && this._deferredAutomaticGuidance.get(row.behaviorId);
+      if (!row || !deferred) return;
+      this._deferredAutomaticGuidance.delete(row.behaviorId);
+      this._publishGuidance(
+        row,
+        deferred.phase,
+        deferred.phase === 'aftermath' ? own.aftermath[row.behaviorId] || null : null,
+      );
+    });
   },
 
   _interactAt(verb, payload) {
@@ -252,6 +292,7 @@ export const livingPoiBehaviors = {
     const row = zoneId && own.activeByZone[zoneId];
     if (!row || row.status === 'aftermath' || row.status === 'resolved') return false;
     if (verb !== row.contract.verb) return false;
+    this._deferredAutomaticGuidance.delete(row.behaviorId);
     if (row.familyId === 'anomaly_research') {
       if (!payload || !payload.pos) return false;
       const local = this._localPosition(payload.pos);
@@ -277,6 +318,7 @@ export const livingPoiBehaviors = {
   _resolve(row, outcome, payload = {}) {
     const own = ensureState(this.state);
     if (!row || row.status === 'resolved' || own.aftermath[row.behaviorId]) return false;
+    this._deferredAutomaticGuidance.delete(row.behaviorId);
     const family = POI_BEHAVIOR_FAMILIES[row.familyId];
     if (!family) return false;
     const dayIndex = Math.max(
@@ -581,11 +623,13 @@ export const livingPoiBehaviors = {
       receipts: migrated.receipts,
       entered: migrated.entered,
     };
+    this._deferredAutomaticGuidance.clear();
   },
 
   destroy() {
     for (const unsub of this._unsubs || []) unsub();
     this._unsubs = [];
+    this._deferredAutomaticGuidance.clear();
   },
 };
 
@@ -680,6 +724,11 @@ function hasActivePlan(activeByZone) {
   if (!activeByZone || typeof activeByZone !== 'object') return false;
   for (const zoneId in activeByZone) if (activeByZone[zoneId]) return true;
   return false;
+}
+
+function tutorialOwnsObjectiveVoice(state) {
+  const onboarding = state && state.onboarding;
+  return !!(onboarding && onboarding.active && !onboarding.finished);
 }
 
 function stableBehaviorId(sectorId, familyId, zoneId) {
