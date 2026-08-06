@@ -1,6 +1,6 @@
 // Settings screen (ARCHITECTURE §3.3, §5; design/specs/09).
 // Tabs: Audio / Video / Gameplay / Controls. Every change writes state.settings and
-// emits settings:changed {section,key,value} (audio/render/save listen + live-apply/profile-persist).
+// emits settings:changed {section,key,value,persist?} (audio/render/save listen + live-apply/profile-persist).
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
@@ -69,6 +69,16 @@ let refs = null;
 let controlId = 0;
 
 function nextControlId() { controlId += 1; return `sf-settings-control-${controlId}`; }
+
+export function bindCommittedRange(input, valueLabel, fmt, onValue) {
+  const publish = (persist) => {
+    const value = parseFloat(input.value);
+    onValue(value, persist);
+    valueLabel.textContent = fmt(value);
+  };
+  input.addEventListener('input', () => publish(false));
+  input.addEventListener('change', () => publish(true));
+}
 
 // --- Key rebinding (V2 §12) ---
 // input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
@@ -230,11 +240,13 @@ export const settingsScreen = {
     this._render(ctx);
   },
 
-  _set(ctx, section, key, value) {
+  _set(ctx, section, key, value, persist = true) {
     const s = ctx.state.settings;
     if (section && s[section] && typeof s[section] === 'object') s[section][key] = value;
     else s[key] = value;
-    ctx.bus.emit('settings:changed', { section, key, value });
+    const payload = { section, key, value };
+    if (persist === false) payload.persist = false;
+    ctx.bus.emit('settings:changed', payload);
   },
 
   _render(ctx) {
@@ -252,7 +264,7 @@ export const settingsScreen = {
       const ctl = el('div', 'sf-ctl');
       const r = el('input'); r.id = id; r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
       const v = el('span', 'sf-val', fmt(get()));
-      r.addEventListener('input', () => { onInput(parseFloat(r.value)); v.textContent = fmt(parseFloat(r.value)); });
+      bindCommittedRange(r, v, fmt, onInput);
       ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
     };
     const rowToggle = (label, get, onChange) => {
@@ -290,14 +302,14 @@ export const settingsScreen = {
       const a = s.audio;
       // Prominent first control: a big Mute-all button so silence is always one click away.
       rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
-      rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'master', v));
-      rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'sfx', v));
-      rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'music', v));
-      rowSlider('Engine', () => a.engine == null ? 0.7 : a.engine, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'engine', v));
-      rowSlider('Ambient', () => a.ambient == null ? 0.7 : a.ambient, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'ambient', v));
-      rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'combat', v));
-      rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'ui', v));
-      rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'comms', v));
+      rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
+      rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
+      rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'music', v, persist));
+      rowSlider('Engine', () => a.engine == null ? 0.7 : a.engine, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'engine', v, persist));
+      rowSlider('Ambient', () => a.ambient == null ? 0.7 : a.ambient, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ambient', v, persist));
+      rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'combat', v, persist));
+      rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ui', v, persist));
+      rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'comms', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
@@ -305,7 +317,7 @@ export const settingsScreen = {
         let v = vd.bloomStrength != null ? vd.bloomStrength : 0.35;
         if (v > 1) v *= 0.5;
         return Math.max(0, Math.min(1, v));
-      }, 0, 1, 0.02, pct, (v) => this._set(ctx, 'video', 'bloomStrength', v));
+      }, 0, 1, 0.02, pct, (v, persist) => this._set(ctx, 'video', 'bloomStrength', v, persist));
       // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
       // HDR radiance into the bloom target. On by default for the beautiful flight look.
       if (vd.energyMaterials == null) vd.energyMaterials = true;
@@ -314,11 +326,11 @@ export const settingsScreen = {
       // bloom + ACES/grade composite. Replaces the bloom path when on; falls back on low-end GPUs.
       if (vd.renderGraph == null) vd.renderGraph = false;
       rowToggle('Render graph (GTAO + bloom)', () => !!vd.renderGraph, (v) => this._set(ctx, 'video', 'renderGraph', v));
-      rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => this._set(ctx, 'video', 'renderScale', v));
+      rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'renderScale', v, persist));
       // Emergency-only: normal play keeps a stable render size. Structural fixes own performance.
       if (vd.dynamicResolution == null) vd.dynamicResolution = false;
       rowToggle('Emergency dynamic resolution', () => vd.dynamicResolution === true, (v) => this._set(ctx, 'video', 'dynamicResolution', v));
-      rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v) => this._set(ctx, 'video', 'fov', v));
+      rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v, persist) => this._set(ctx, 'video', 'fov', v, persist));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
       rowToggle('Engine trails', () => vd.engineTrails !== false, (v) => this._set(ctx, 'video', 'engineTrails', v));
       rowToggle('VSync', () => vd.vsync, (v) => this._set(ctx, 'video', 'vsync', v));
@@ -328,9 +340,9 @@ export const settingsScreen = {
       rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'system'),
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
         (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
-      rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v) => this._set(ctx, 'video', 'screenShake', v));
-      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
-        this._set(ctx, null, 'uiScale', v);
+      rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
+        this._set(ctx, null, 'uiScale', v, persist);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
       });
     } else if (refs.active === 'Gameplay') {
@@ -376,8 +388,8 @@ export const settingsScreen = {
         [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
         (v) => this._set(ctx, 'accessibility', 'captionSize', v));
       rowToggle('Solid caption backing', () => ac.captionBackground !== false, (v) => this._set(ctx, 'accessibility', 'captionBackground', v));
-      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
-        this._set(ctx, null, 'uiScale', v);
+      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
+        this._set(ctx, null, 'uiScale', v, persist);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
       });
       pane.appendChild(el('p', 'sf-muted', 'Colorblind mode also recolors radar blips and adds redundant shapes.'));
@@ -428,12 +440,12 @@ export const settingsScreen = {
       const ctl = el('div', 'sf-ctl');
       const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
       const v = el('span', 'sf-val', fmt(get()));
-      r.addEventListener('input', () => { onInput(parseFloat(r.value)); v.textContent = fmt(parseFloat(r.value)); });
+      bindCommittedRange(r, v, fmt, onInput);
       ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
     };
 
     rowToggle('Gamepad enabled', () => !!gp.enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, enabled: v }));
-    rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }));
+    rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }, persist));
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
