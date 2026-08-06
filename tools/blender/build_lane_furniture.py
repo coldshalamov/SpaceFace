@@ -162,49 +162,100 @@ def build_claim_mark():
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# 2. LANE PIN — Concord corridor marker. Reads as ADMINISTRATIVE: symmetric, maintained, tall.
-#    It is the control in this family: the piece that proves the others' asymmetry is authored.
+# 2. LANE PIN — Concord corridor marker.
+#
+# REBUILT after adversarial review. The first attempt was a clean symmetric toothpick, justified as
+# "the control that proves the others are damaged on purpose". The review rejected that: the
+# fiction's own modeller block specifies damage on this class too — "9 m vertical spine... planted
+# in a 1.2 m hexagonal base drum... at 4 m and 7.5 m: two vane fins... with a third vane that is
+# often not a fin at all: a flat unpainted repair plate... upper vane twisted 30 degrees;
+# speed-band middle lamp empty socket; annex plate half-sheared."
+#
+# Concord SERVICES its marks; it does not replace them. A serviced object is one that visibly has
+# been repaired, which is a different and more interesting read than one that is factory-new.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_lane_pin():
     r = root_for('place_lane_pin')
-    put(cyl('pin_base_collar', 0.34, 0.22, (0, 0, 0.11), verts=16), 'furniture_structural_alloy', r)
-    put(cyl('pin_mast', 0.11, 5.4, (0, 0, 2.9), verts=12), 'furniture_painted_shell', r)
-    # Three vanes at 120 degrees, ALL PRESENT and true — Concord services this one.
-    for i in range(3):
-        a = i * (2 * math.pi / 3)
-        v = box(f'pin_vane_{i}', (1.05, 0.05, 0.60),
-                (math.cos(a) * 0.62, math.sin(a) * 0.62, 4.30), rot=(0, 0, a))
-        put(v, 'furniture_structural_alloy', r)
-    # Stacked lens head: the vertical light stack the Code borrows from maritime practice.
-    for i, z in enumerate((5.72, 6.02, 6.32)):
-        put(cyl(f'pin_lens_{i}', 0.13, 0.16, (0, 0, z), verts=12), 'furniture_signal_lens', r)
-    put(cyl('pin_cap', 0.16, 0.10, (0, 0, 6.50), verts=12), 'furniture_structural_alloy', r)
-    put(box('pin_placard', (0.46, 0.03, 0.30), (0, 0.13, 3.30)), 'furniture_identity_plate', r)
+    # Hexagonal ballast drum, 1.2 m across flats, 0.8 m deep.
+    put(cyl('pin_ballast_drum', 0.60, 0.80, (0, 0, 0.40), verts=6), 'furniture_structural_alloy', r)
+    put(cyl('pin_mast', 0.11, 9.0, (0, 0, 4.80), verts=10), 'furniture_painted_shell', r)
+    # Vanes at TWO stations, 4.0 m and 7.5 m. At each station the third position is a bare
+    # unpainted repair plate rather than a fin — Concord fixes what it can reach.
+    for station, (z, twist) in enumerate(((4.0, 0.0), (7.5, math.radians(30)))):
+        for i in range(3):
+            a = i * (2 * math.pi / 3)
+            is_repair = (i == 2)
+            v = box(f'pin_vane_{station}_{i}', (1.60, 0.05, 0.40),
+                    (math.cos(a) * 0.90, math.sin(a) * 0.90, z), rot=(0, 0, a))
+            put(v, 'furniture_bare_steel' if is_repair else 'furniture_structural_alloy', r)
+            # The upper station's first vane is twisted 30 degrees — a strike nobody straightened.
+            if station == 1 and i == 0:
+                v.rotation_euler = (twist, 0, a)
+    # Pass-side chevron housing: tells you which side to go by, and it is one-sided by definition.
+    put(box('pin_chevron_housing', (0.50, 0.15, 0.35), (0.42, 0, 5.60)), 'furniture_painted_shell', r)
+    put(box('pin_chevron_lens', (0.34, 0.04, 0.22), (0.62, 0, 5.60)), 'furniture_signal_lens', r)
+    # Speed band: three sockets stacked. The MIDDLE one is an empty hole, not a lamp.
+    for i, z in enumerate((8.30, 8.56, 8.82)):
+        if i == 1:
+            put(cyl('pin_speed_socket_empty', 0.062, 0.10, (0, 0, z), verts=8), 'furniture_scorch', r)
+        else:
+            put(cyl(f'pin_speed_lamp_{i}', 0.070, 0.12, (0, 0, z), verts=10),
+                'furniture_signal_lens', r)
+    put(cyl('pin_cap', 0.15, 0.10, (0, 0, 9.05), verts=10), 'furniture_structural_alloy', r)
+    # Ref 44-C annex plate on the drum, HALF-SHEARED — modelled as a short plate, not a full one.
+    put(box('pin_annex_plate_sheared', (0.16, 0.03, 0.20), (0.30, 0.55, 0.52)),
+        'furniture_identity_plate', r)
     return r
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# 3. TALLY POST — Meridian weigh-point. A gantry you fly THROUGH, so its silhouette is an aperture.
-#    Negative space is a silhouette channel the research calls out explicitly.
+# 3. TALLY POST — Meridian weigh-point.
+#
+# REBUILT after adversarial review. The first attempt was a fly-through gantry; the fiction
+# specifies a TOWER ON A DECK WITH A BOOM: "a 6 m tower on a 3 m square platform deck... primary
+# vertical is a 1.1 m diameter hexagonal drum... a boom arm 3.2 m long with a mass-sensor yoke
+# (two pads like blunt tongs)... yoke pad one side worn concave, the other replaced with a flat
+# unpainted plate... boom droops 8 degrees... deck corner crumpled."
+#
+# That is a completely different silhouette, and it is a better one: a one-sided boom reads as a
+# machine reaching for something, where a symmetric gate reads as architecture.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_tally_post():
     r = root_for('place_tally_post')
-    span = 7.2
-    for side in (-1, 1):
-        put(cyl(f'tally_leg_{side}', 0.22, 5.0, (side * span * 0.5, 0, 2.5), verts=10),
-            'furniture_structural_alloy', r)
-        # Sensor heads face INWARD across the gap — the thing being counted flies between them.
-        put(box(f'tally_head_{side}', (0.55, 0.42, 0.70), (side * (span * 0.5 - 0.42), 0, 3.60)),
-            'furniture_painted_shell', r)
-        put(cyl(f'tally_eye_{side}', 0.09, 0.10, (side * (span * 0.5 - 0.68), 0, 3.60),
-                rot=(0, math.pi / 2, 0), verts=10), 'furniture_signal_lens', r)
-    put(box('tally_crossbeam', (span, 0.30, 0.34), (0, 0, 5.10)), 'furniture_structural_alloy', r)
-    # The gold invoice pulse sits on the beam centre where both sides can see it.
-    put(cyl('tally_invoice_lamp', 0.12, 0.14, (0, 0, 5.42), verts=10), 'furniture_signal_lens', r)
-    put(box('tally_ledger_box', (0.62, 0.50, 0.55), (0.9, 0.34, 4.85)), 'furniture_painted_shell', r)
-    # One leg carries a bolted-on repair sleeve — a Meridian asset gets fixed, not replaced.
-    put(cyl('tally_repair_sleeve', 0.26, 0.55, (-span * 0.5, 0, 1.30), verts=10),
+    # 3 m square deck, 0.25 m thick, with cut voids so it reads as grating rather than a slab.
+    put(box('tally_deck', (3.0, 3.0, 0.25), (0, 0, 0.125)), 'furniture_structural_alloy', r)
+    for i in range(4):
+        put(box(f'tally_grate_{i}', (2.6, 0.12, 0.28), (0, -0.9 + i * 0.6, 0.14)),
+            'furniture_scorch', r)
+    # ONE crumpled deck corner. Directional damage: a lower, tilted wedge on a single corner.
+    c = put(box('tally_deck_crumple', (0.85, 0.85, 0.14), (1.16, -1.16, 0.06)),
+            'furniture_bare_steel', r)
+    c.rotation_euler = (math.radians(-11), math.radians(9), 0)
+    # Hexagonal scale house, 1.1 m across, 4 m tall.
+    put(cyl('tally_scale_house', 0.55, 4.0, (0, 0, 2.25), verts=6), 'furniture_painted_shell', r)
+    # The boom: 3.2 m, one side only, drooping 8 degrees. This is the whole silhouette.
+    droop = math.radians(-8.0)
+    boom = put(box('tally_boom', (3.2, 0.18, 0.22), (1.72, 0, 3.50)), 'furniture_structural_alloy', r)
+    boom.rotation_euler = (0, droop, 0)
+    tip_x = 3.28
+    tip_z = 3.50 + math.sin(droop) * 1.6
+    # Yoke: two pads like blunt tongs. Pad A is WORN CONCAVE, pad B is a flat unpainted
+    # replacement plate — mismatched, because one of them has been changed and the other has not.
+    put(box('tally_yoke_pad_worn', (0.35, 0.25, 0.12), (tip_x, 0.30, tip_z)),
+        'furniture_painted_shell', r)
+    put(cyl('tally_yoke_wear_cup', 0.11, 0.06, (tip_x, 0.30, tip_z + 0.07), verts=10),
+        'furniture_scorch', r)
+    put(box('tally_yoke_pad_replacement', (0.35, 0.25, 0.02), (tip_x, -0.30, tip_z)),
         'furniture_bare_steel', r)
+    # Thermal hood over the house crown, and the gold invoice pulse on the mast.
+    put(cyl('tally_thermal_hood', 0.66, 0.18, (0, 0, 4.34), verts=6), 'furniture_structural_alloy', r)
+    put(cyl('tally_mast', 0.07, 1.5, (0, 0, 5.10), verts=8), 'furniture_structural_alloy', r)
+    put(cyl('tally_invoice_lamp', 0.12, 0.14, (0, 0, 5.92), verts=10), 'furniture_signal_lens', r)
+    put(box('tally_ledger_plate', (0.46, 0.03, 0.30), (0, 0.58, 2.40)), 'furniture_identity_plate', r)
+    # Tag chain hanging off the boom root — the soft, swinging thing every real gantry has.
+    for i in range(3):
+        put(cyl(f'tally_tag_link_{i}', 0.030, 0.16, (0.62, 0.0, 3.30 - i * 0.15),
+                rot=(math.radians(90 if i % 2 else 0), 0, 0), verts=6), 'furniture_bare_steel', r)
     return r
 
 
@@ -240,31 +291,84 @@ def build_whistle():
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# 5. COLD LOCKER — unmanned bonded cache clipped to a rock. Reads as a box with a DOOR, and the
-#    door is what makes it legible: a rectangle with a seam and a handle is instantly a container.
+# 5. COLD LOCKER — unmanned bonded cache.
+#
+# REBUILT after adversarial review. The first attempt was a box fridge; the fiction specifies a
+# "4 m hexagonal drum (face-to-face 1.8 m) mounted on a 9 m spine of lattice truss... drum at
+# mid-spine so the mass hangs like a tick on a wire... one lattice bay crushed inward... outrigger
+# leg sheared and cabled... one petal bent."
+#
+# The long lattice spine with an off-centre mass is a far stronger distance read than a cube: it is
+# mostly negative space, and negative space is a silhouette channel a box simply does not have.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_cold_locker():
     r = root_for('place_cold_locker')
-    put(box('locker_body', (2.30, 1.60, 1.70), (0, 0, 0.95)), 'furniture_painted_shell', r)
-    # The door: inset, with a visible seam gap and a lever. Negative space does the work.
-    put(box('locker_door', (1.90, 0.10, 1.34), (0, -0.82, 0.98)), 'furniture_structural_alloy', r)
-    put(box('locker_door_seam', (1.96, 0.04, 0.05), (0, -0.86, 0.98)), 'furniture_scorch', r)
-    put(cyl('locker_lever', 0.055, 0.62, (0.62, -0.92, 0.98), rot=(0, 0, math.radians(28)), verts=8),
-        'furniture_bare_steel', r)
-    # Bond seal lamp beside the door — this is the bit a pilot actually reads.
-    put(cyl('locker_seal_lamp', 0.085, 0.10, (-0.72, -0.90, 1.38), rot=(math.pi / 2, 0, 0), verts=10),
-        'furniture_signal_lens', r)
-    put(box('locker_manifest_plate', (0.55, 0.03, 0.34), (-0.62, -0.90, 0.62)),
-        'furniture_identity_plate', r)
-    # Four rock clamps, one visibly re-seated at a different angle after a slip.
-    for i, (x, y, ang) in enumerate(((-1.0, 0.7, 0.0), (1.0, 0.7, 0.0),
-                                     (-1.0, -0.6, 0.0), (1.0, -0.6, math.radians(17)))):
-        c = put(box(f'locker_clamp_{i}', (0.34, 0.30, 0.46), (x, y, 0.24)), 'furniture_bare_steel', r)
-        c.rotation_euler = (0, 0, ang)
-    # Radiator fins on the sunward face — it is COLD storage, and that has to be visible.
-    for i in range(4):
-        put(box(f'locker_fin_{i}', (0.06, 1.30, 0.70), (-1.05 + i * 0.14, 0.10, 1.55)),
+    SPINE = 9.0
+    BAY = 0.5
+    bays = int(SPINE / BAY)
+    put(cyl('locker_root_clamp', 0.34, 0.42, (0, 0, 0.21), verts=8), 'furniture_bare_steel', r)
+    # Lattice truss: two rails plus alternating diagonals. ONE mid bay is crushed inward.
+    crushed = bays // 2 + 1
+    for side in (-1, 1):
+        put(cyl(f'locker_rail_{side}', 0.045, SPINE, (side * 0.22, 0, SPINE * 0.5 + 0.4), verts=6),
             'furniture_structural_alloy', r)
+    # Rungs, not diagonals. The first attempt rotated each brace about Y after parenting and the
+    # bays scattered across an 11 m spread on a 9 m spine — visible immediately in the render as two
+    # diverging dashed lines. A horizontal rung between the rails cannot do that, still reads as a
+    # truss at distance, and leaves the crushed bay legible as the one rung that does not span.
+    for i in range(bays):
+        z = 0.55 + i * BAY
+        span = 0.30 if i == crushed else 0.44
+        put(box(f'locker_rung_{i}', (span, 0.045, 0.045), (0, 0, z)),
+            'furniture_bare_steel' if i == crushed else 'furniture_structural_alloy', r)
+    # The drum: hexagonal, 1.8 m across flats, hung at MID-spine so the mass is off-centre.
+    put(cyl('locker_drum', 0.90, 2.05, (0, 0, SPINE * 0.5 + 0.4), verts=6),
+        'furniture_painted_shell', r)
+    # Hatch face with THREE dogs — one of them a welded scrap bar rather than a proper lever.
+    put(cyl('locker_hatch', 0.62, 0.10, (0, -0.92, SPINE * 0.5 + 0.4), rot=(math.pi / 2, 0, 0),
+            verts=10), 'furniture_structural_alloy', r)
+    for i, a in enumerate((0.6, 2.7, 4.7)):
+        role = 'furniture_bare_steel' if i == 2 else 'furniture_structural_alloy'
+        size = (0.36, 0.06, 0.06) if i == 2 else (0.26, 0.05, 0.05)
+        dg = put(box(f'locker_dog_{i}', size,
+                     (math.cos(a) * 0.42, -0.99, SPINE * 0.5 + 0.4 + math.sin(a) * 0.42)),
+                 role, r)
+        dg.rotation_euler = (0, 0, a if i != 2 else a + 0.5)
+    # Bond lamp ring around the hatch — the bit a pilot actually reads.
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.72, minor_radius=0.035,
+                                     location=(0, -0.95, SPINE * 0.5 + 0.4),
+                                     rotation=(math.pi / 2, 0, 0),
+                                     major_segments=14, minor_segments=5)
+    ring = bpy.context.active_object
+    ring.name = 'locker_bond_ring'
+    put(ring, 'furniture_signal_lens', r)
+    put(box('locker_manifest_plate', (0.42, 0.03, 0.26), (0.55, -0.95, SPINE * 0.5 - 0.35)),
+        'furniture_identity_plate', r)
+    # Two outriggers off the root — leg B is SHORTER and its tip is cabled back.
+    #
+    # Placed by explicit endpoint rather than by stacking Euler rotations. The first attempt
+    # composed an X-tilt with a Z-yaw and the legs swung out to an 11.2 m envelope on a body whose
+    # spine is 9 m — which then drove the review camera's framing radius and made the whole asset
+    # render as a speck. Compute where the strut should END and aim it there.
+    for i, (yaw, ln, out, up) in enumerate(((0.8, 1.55, 1.05, 0.62), (3.6, 1.05, 0.72, 0.44))):
+        ex = math.cos(yaw) * out
+        ey = math.sin(yaw) * out
+        leg = put(cyl(f'locker_outrigger_{i}', 0.055, ln, (ex * 0.5, ey * 0.5, 0.20 + up * 0.5),
+                      verts=6), 'furniture_structural_alloy', r)
+        leg.rotation_euler = Vector((ex, ey, up)).to_track_quat('Z', 'Y').to_euler()
+    # Leg B's tip is cabled back to the spine — the shear was never properly repaired.
+    bx, by = math.cos(3.6) * 0.72, math.sin(3.6) * 0.72
+    for k in range(3):
+        t = (k + 0.5) / 3.0
+        put(cyl(f'locker_cable_{k}', 0.016, 0.30,
+                (bx * (1 - t), by * (1 - t), 0.64 + t * 0.9),
+                rot=(math.radians(58), 0, 3.6), verts=4), 'furniture_bare_steel', r)
+    # Solar / trickle petals on the drum crown. ONE is bent.
+    for i, a in enumerate((0.0, 2.09, 4.19)):
+        pet = put(box(f'locker_petal_{i}', (0.40, 0.15, 0.02),
+                      (math.cos(a) * 0.78, math.sin(a) * 0.78, SPINE * 0.5 + 1.52)),
+                  'furniture_structural_alloy', r)
+        pet.rotation_euler = (math.radians(25) if i == 1 else 0, 0, a)
     return r
 
 

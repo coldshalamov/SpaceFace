@@ -16,28 +16,28 @@
     },
     {
       "id": "place_lane_pin",
-      "triangles": 328,
+      "triangles": 300,
       "sizeM": [
-        1.739,
-        2.008,
-        6.55
+        2.572,
+        5.356,
+        9.3
       ],
-      "parts": 10,
-      "bytes": 27416,
-      "sha256": "4264b52daff7783fc9c0ba6c4997ac190e4ef2fbd8d485fbbb9c75eecc4eed1b",
+      "parts": 15,
+      "bytes": 30984,
+      "sha256": "9c6c1c565bb8875d7987930f6831e4eaa1789e843226f8f7e95b53245f7c351b",
       "render": "assets/places/lane_furniture/evidence/place_lane_pin.png"
     },
     {
       "id": "place_tally_post",
-      "triangles": 264,
+      "triangles": 320,
       "sizeM": [
-        7.657,
-        0.85,
-        5.49
+        4.955,
+        3.058,
+        6.109
       ],
-      "parts": 10,
-      "bytes": 23564,
-      "sha256": "e0206e1f50499158227ff5eb90c8e2502ba10ce771760d7b72fb389895a11fc5",
+      "parts": 18,
+      "bytes": 34264,
+      "sha256": "e2433efc7c352919e470b35a148481cc7395f8e42446b6d9c2be81ecf8256520",
       "render": "assets/places/lane_furniture/evidence/place_tally_post.png"
     },
     {
@@ -55,15 +55,15 @@
     },
     {
       "id": "place_cold_locker",
-      "triangles": 208,
+      "triangles": 640,
       "sizeM": [
-        2.508,
-        1.844,
-        1.89
+        3.018,
+        1.892,
+        9.4
       ],
-      "parts": 14,
-      "bytes": 24960,
-      "sha256": "5c844d473e9134f59623ffd6f92dd984049a9756b4cfc67c1e3df960f9d46a20",
+      "parts": 36,
+      "bytes": 69416,
+      "sha256": "de17d9e996bf0b6f0d4e75f006ad7db5c775ff2c968ae92175519fd473f01a49",
       "render": "assets/places/lane_furniture/evidence/place_cold_locker.png"
     },
     {
