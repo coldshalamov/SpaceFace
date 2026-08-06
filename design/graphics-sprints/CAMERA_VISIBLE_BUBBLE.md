@@ -1,95 +1,110 @@
 <!-- LIFETIME: DURABLE -->
-# The visible bubble is ~100 world units across
+# The visible ground-plane bubble is ~45-50 units deep, at rest and at cruise
 
-**Measured 2026-08-05 on the live chase camera, headless real-GPU Chrome, 1920x1080, seed 12345,
-`sector_helios_prime`.** This is the single most load-bearing number found so far in the expansion
-program, and it invalidates an assumption that several earlier lanes reasoned from.
+**Measured 2026-08-05, headless real-GPU Chrome, 1920x1080, seed 12345, `sector_helios_prime`,
+across three scenarios at three different speeds.** This is the most load-bearing number found so
+far in the expansion program, and it invalidates an assumption several earlier lanes reasoned from.
 
 ---
 
 ## The measurement
 
-Camera: `fov 50`, positioned `y 54.9`, `z -31.7` in the render's player-centred local frame. The
-player projects to screen centre `(960, 540)`, which confirms the projection is being read correctly.
+Screen y of a point on the ground plane (`y = 0`) directly ahead of the player, in a 1080-tall frame.
+`fwdEdge` is the greatest forward distance still inside the frame.
 
-Projecting a point on the ground plane (`y = 0`) directly ahead of the player:
+| scenario | player speed | cam y / z | **fwdEdge** | z=0 | z=45 | z=100 | z=200 | z=400 |
+|---|---|---|---|---|---|---|---|---|
+| `idle` | 0 | 54.9 / -31.7 | **45** | 540 | 14 | -345 | -688 | -983 |
+| `cruise` | 34 | 59.1 / -34.1 | **50** | 540 | 43 | -308 | -652 | -956 |
+| `cruise-boost` | 53 | 59.8 / -33.8 | **45** | 419 | 11 | -280 | -567 | -822 |
 
-| local z | screen y (1080-tall frame) | |
-|---|---|---|
-| 0 | 540 | the player, dead centre |
-| 20 | 267 | |
-| 45 | **14** | the very top edge of the frame |
-| 60 | **-105** | off-screen |
-| 100 | -345 | |
-| 200 | -688 | |
-| 400 | -983 | |
-| 800 | -1192 | |
-| 1600 | -1319 | |
+The player projects to screen centre in the parked and cruise cases, which confirms the projection is
+being read correctly.
 
-Lateral limit is **±50**. The visible strip runs from about `z = -27` (behind the hull) to `z = +45`
-ahead.
+> **The forward visible ground-plane depth is 45-50 world units, and it does not materially change
+> with speed.**
 
-> **The camera shows a ground-plane bubble roughly 100 world units across.**
+This was worth checking specifically, because the camera has speed-zoom (`_dynamicZoom`, `zoomBias`,
+`ZOOM_LERP` in `src/render/camera.js`) and a first measurement taken only at `SPD 0` would have been
+the tightest the camera ever is. It isn't: the rig moves from 54.9 to 59.8 units up between parked
+and boosting — about 9% — and the ground-plane depth is flat across that range.
 
-Cross-check: the player hull is 28 units wide and occupies ~23% of frame width. 28/100 = 28%. The
-geometry and the pixels agree.
+Frame width: the 28-unit-wide player hull occupies ~23% of frame width, so the visible strip is
+roughly **120 units across** at the player's own depth.
+
+### One number in the probe is NOT trustworthy — do not quote it
+
+The same probe also scanned laterally and returned 50 / 490 / 760 for the three scenarios. **Ignore
+those.** Points far out on the ground plane sit near the horizon where the projection is
+near-degenerate; the same probe returned screen x values like `1979270` for real asteroids. A
+scan-for-the-largest-in-range-value is not robust there, and the apparent speed correlation is an
+artifact of that degeneracy, not a widening view. Only the forward ladder — where the projected
+values are smooth and monotonic — is reliable.
 
 ## What is therefore invisible
 
 At the same instant, in the same frame:
 
-* The four nearest asteroids sat at **678, 794, 889 and 995** world units. Projected: screen y
-  **-2728 to -327266**. All far above the top of the monitor.
+* The four nearest asteroids sat at **678, 794, 889 and 995** world units. All projected far above
+  the top of the frame.
 * The HUD's own **Local Contacts** panel listed five derelicts at **261-995** units. None of them
-  can appear in frame.
+  can appear on screen.
 * The five live NPC jobs sat at **1083, 1694, 1841, 3815 and 13491** units from the player.
 
 The things the game tells the player are "local" are, without exception, off-screen. What is actually
-visible is whatever happens to lie inside ~50 units, plus the skybox, the hero planet, and any object
+visible is whatever lies inside ~50 units ahead, plus the skybox, the hero planet, and any object
 tall or large enough to clear the horizon.
 
-## Why this matters more than any shader
-
-The program's standing puzzle is that **twelve controlled single-lever experiments all returned
-exactly 2.25/5** while a real EVE frame through the same harness scored 3.63
-(`EXPANSION_PROGRAM.md` §1). Roughness breakup, albedo zones, rim x2, ambient x4, AO bakes, per-role
-repaints, authored deep-field ribbons — none moved a single axis.
-
-This is why. Those levers all change how *existing content* is lit or surfaced. The frame's problem
-is that inside the only 100 units the camera can see, there is usually **nothing to light**. You
-cannot shade your way out of an empty frame.
-
-It also retires, by measurement, the natural reading of the research finding in
-`RESEARCH_work_signatures.md` that ambient job signals are read at "500-2000 world units". That is
-true of games with free or cockpit cameras — EVE, Elite, X4. It is not true here, and reasoning from
-it directly produced a work-signature draw range of 1500 and then 2000, both of which faithfully
-drew signals **hundreds of pixels above the top of the screen** while the diagnostic counters
-reported them as `drawn`. A counter that increments when a spawn function returns non-null is not
-evidence that anything is visible.
-
-## The consequence for content
+## Consequence for content
 
 Density has to be authored at the scale the camera can see:
 
-* **~50 units** is the working radius. Anything a player is meant to *notice* has to arrive inside
-  it, or come to them.
-* Objects at 200-1000 units are map and radar content. They are legitimate — they populate the
-  Local Contacts list, the minimap, and the sense of a place having extent — but they contribute
-  **nothing to the frame** and must not be counted as visual density.
-* "More traffic per sector" does not help on its own if the traffic disperses over a 4200-unit
-  sector radius. Six more hulls spread evenly across that area put approximately zero of them on
-  screen. What matters is hulls, structures and events *near the player's actual position*.
-* Conversely, this is cheap: filling a 100-unit bubble needs very few objects. The gate is
+* **~50 units of forward depth** is the working radius. Anything a player is meant to *notice* has to
+  arrive inside it, or come to them.
+* Objects at 200-1000 units are map and radar content. They are legitimate — they populate Local
+  Contacts, the minimap, and the sense of a place having extent — but they contribute **nothing to
+  the frame** and must not be counted as visual density.
+* "More traffic per sector" does not help on its own if the traffic disperses over a 4200-unit sector
+  radius. Six more hulls spread evenly across that area put approximately zero of them on screen.
+  What matters is hulls, structures and events near the player's actual position.
+* Conversely this is cheap: filling a 120-unit-wide strip needs very few objects. The gate is
   placement, not budget.
+
+This is also why the NPC work-signature layer's draw range is 300 and not the 500-2000 the research
+reports for shipped space games (`RESEARCH_work_signatures.md`). That band is real, but it comes from
+games with free or cockpit cameras — EVE, Elite, X4. Reasoning from it directly produced draw ranges
+of 1500 and then 2000, both of which faithfully drew signals **hundreds of pixels above the top of
+the screen** while the diagnostic counters reported them as `drawn`. A counter that increments when a
+spawn function returns non-null is not evidence that anything is visible.
+
+## An untested hypothesis, flagged as such
+
+It is tempting to say this explains the program's standing puzzle — that twelve controlled
+single-lever experiments all returned exactly 2.25/5 while a real EVE frame scored 3.63 through the
+same harness (`EXPANSION_PROGRAM.md` §1) — on the grounds that those levers change how existing
+content is lit, and inside the visible strip there is often nothing to light.
+
+**That is a hypothesis, not a result.** No frame has been scored through the grader as part of this
+measurement. §5 of the standing brief names precisely this failure mode: a plausible lesson written
+into the codebase before it was measured ("idle unfairly depresses vfx" was committed as a comment
+and then refuted by a capture that scored *lower*).
+
+The test that would settle it: score two frames through the existing grader that differ **only** in
+how much authored content sits inside the visible strip, holding lighting, materials, post and camera
+fixed. If the populated frame moves off 2.25 on `composition` or `background` while every previous
+single-lever change did not, the hypothesis survives. Until someone runs that, this section is a
+question.
 
 ## How to re-measure
 
-`scripts/capture-gameplay.mjs --evalAfter` with a projection ladder. The `--evalAfter` hook exists
-because `--eval` fires the instant the scenario is applied and can only ever observe t=0.
+`scripts/capture-gameplay.mjs --evalAfter`, which awaits its promise so a probe can let frames elapse
+before reading render state. Use a scenario that actually moves the ship — `cruise`, not `idle` or
+`boost`; the harness's own `report.motion.speed` confirms it moved, and `boost`/`combat-vfx` assign
+`state.input` directly, which `systems/input.js` overwrites every frame.
 
 ```bash
-node scripts/capture-gameplay.mjs 8161 --scenario idle --warmup 15000 --duration 3000 --width 1920 --height 1080 --evalAfter "JSON.stringify((()=>{const s=window.SF.state;const T=window.SF.THREE;const cam=s.render.camera;const v=new T.Vector3();const out={};for(const D of [0,20,45,60,100,400,1600]){v.set(0,0,D);v.project(cam);out['z'+D]=Math.round((-v.y*0.5+0.5)*1080);}return out;})())"
+node scripts/capture-gameplay.mjs 8161 --scenario cruise --warmup 18000 --duration 4000 --width 1920 --height 1080 --evalAfter "(async()=>{const s=window.SF.state;const T=window.SF.THREE;const cam=s.render.camera;await new Promise(r=>requestAnimationFrame(r));const v=new T.Vector3();const o={};for(const D of [0,45,100,200,400]){v.set(0,0,D);v.project(cam);o['z'+D]=Math.round((-v.y*0.5+0.5)*1080);}return JSON.stringify(o);})()"
 ```
 
-Re-run it after any change to `src/render/camera.js`, the default FOV, or the chase offset. If the
-bubble ever changes size, every density judgement above changes with it.
+Re-run after any change to `src/render/camera.js`, the default FOV, or the chase offset. If the
+bubble ever changes depth, every density judgement above changes with it.
