@@ -39,5 +39,13 @@ export default defineFlavorPack({
     { id: 'ad_28', sponsor: 'Tethys Probate', text: 'NEXT OF KIN VERIFIED AGAINST SURVIVING SPOUSE.' },
     { id: 'ad_29', sponsor: 'Helios Bay Storage', text: 'ODOR IS CONSISTENT WITH TRANSIT. BAY REMAINS OPERATIONAL.' },
     { id: 'ad_30', sponsor: 'MTS ATMO Tokens', text: 'YOUR BREATH HAS A POSITION. IT IS PERFORMING.' },
+    // Conflict-flip denials. The live Helios board selects these only after factions has emitted
+    // an authoritative conflict:flip; they never leak into the ordinary pre-flip rotation.
+    { id: 'war_helios_01', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Continuity Office', text: 'HELIOS CONTINUITY NOTICE: {sector} REMAINS WITHIN NORMAL ADMINISTRATIVE VARIANCE.' },
+    { id: 'war_helios_02', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Civic Desk', text: '{sector} SERVICE OWNERSHIP UPDATED. NO TERRITORY WAS LOST.' },
+    { id: 'war_helios_03', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Public Information', text: 'REPORTS OF A FLAG CHANGE AT {sector} ARE OUTDATED UPON RECEIPT.' },
+    { id: 'war_helios_04', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Transit', text: 'TRANSIT THROUGH {sector} REMAINS STABLE. CASUALTY FIGURES ARE NOT A TRANSIT METRIC.' },
+    { id: 'war_helios_05', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Claims Bureau', text: '{winner} HAS ASSUMED TEMPORARY SERVICE LIABILITY FOR {sector}. OPERATIONS CONTINUE.' },
+    { id: 'war_helios_06', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Records', text: 'NO FRONT MOVED. {sector} RECORDS WERE REFILED UNDER {winner}.' },
   ],
 });

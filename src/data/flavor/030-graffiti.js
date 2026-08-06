@@ -7,7 +7,7 @@ export const flavorKind = 'graffiti';
 export default defineFlavorPack({
   id: flavorId,
   kind: flavorKind,
-  description: 'Dormant event-driven graffiti additions for Vols, Senna, and player memory.',
+  description: 'Event-driven graffiti for Vols, Senna, player memory, and live conflict fallout.',
   entries: [
     { id: 'vols_01', set: 'vols_hand', hand: 'vols', text: 'BORROWED TIME. PORT CLOCK SAYS I OWE ELEVEN YEARS.' },
     { id: 'vols_02', set: 'vols_hand', hand: 'vols', text: 'I SIGNED THE LOG. SOMEBODY ELSE KEPT FLYING.' },
@@ -35,5 +35,13 @@ export default defineFlavorPack({
     // Elroy residue: the third tag the kill feed overwrote. Same-dock guarantee.
     { id: 'elroy_01', set: 'elroy_tag', text: 'THE TAG FLICKERED HALF A SECOND. IT COUNTED.' },
     { id: 'elroy_02', set: 'elroy_tag', text: 'THEY WERE CARRYING MEDICINE. THE FEED SAYS THREAT.' },
+    // Conflict-flip mourning at Sker Bazaar. These are physical wall reactions, selected only
+    // from a saved factions-owned flip fact when the player docks at Sker.
+    { id: 'war_sker_01', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: 'THE MAP SAYS {sector} CHANGED HANDS. THE EMPTY BERTHS SAY WHO PAID.' },
+    { id: 'war_sker_02', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: '{winner} TOOK {sector}. WE KEPT THE NAMES THEY LEFT OUT.' },
+    { id: 'war_sker_03', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: '{sector} FLIPPED. THREE CREWS DID NOT. COUNT THEM BEFORE THE FLAGS.' },
+    { id: 'war_sker_04', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: 'NEW FLAG OVER {sector}. SAME COLD BUNKS BELOW IT.' },
+    { id: 'war_sker_05', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: '{loser} LOST THE LANE. THE WALL LOST SIX MORE NAMES.' },
+    { id: 'war_sker_06', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: 'THE DESK CALLS {sector} SETTLED. SKER CALLS THE DEAD BY NAME.' },
   ],
 });

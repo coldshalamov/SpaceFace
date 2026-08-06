@@ -39,6 +39,12 @@ import {
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import {
+  CONFLICT_REACTION_SURFACES,
+  conflictReactionSurfaceForStation,
+  normalizeConflictFlipFact,
+  selectConflictReaction,
+} from '../data/conflictReactions.js';
+import {
   normalizeStoryNewGamePlusRecord,
   storyNewGamePlusRecord,
 } from '../core/newGamePlus.js';
@@ -142,7 +148,11 @@ export const story = {
     });
     bus.on('economy:grantCredits', (p) => this._onAutomationRemittance(p || {}));
     bus.on('asset:deployed', () => this._armValeRemittanceWatch());
-    bus.on('conflict:flip', (p) => this._onValeConflictMilestone(p || {}));
+    bus.on('conflict:flip', (p) => {
+      const payload = p || {};
+      this._recordConflictReaction(payload);
+      this._onValeConflictMilestone(payload);
+    });
     bus.on('claim:claimed', (p) => this._onValeClaimMilestone(p || {}));
     bus.on('sector:enter', (p) => this._onPostEndingSignal('sector:enter', p || {}));
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
@@ -443,6 +453,7 @@ export const story = {
         this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
       }
     }
+    this._surfaceConflictReaction(stationId);
     if (stationId === 'station_ashcache') {
       s.flags.deep_reach_ashfall_docked = true;
       s.flags.ashfall_visited = true;
@@ -968,6 +979,57 @@ export const story = {
     return this._fireValeMilestone(VALE_PROFIT_ID);
   },
 
+  // The factions owner has already changed territory before emitting conflict:flip. Retain one
+  // compact, save-safe fact for downstream physical flavor; this never changes war or reputation.
+  _recordConflictReaction(payload) {
+    this._ensureState();
+    const own = this.state.story.conflictReaction;
+    const previous = own.latestFlip;
+    if (previous
+        && previous.pairKey === payload.pairKey
+        && previous.sectorId === payload.sectorId
+        && previous.newOwner === payload.newOwner) return false;
+    const fact = normalizeConflictFlipFact({
+      pairKey: payload.pairKey,
+      sectorId: payload.sectorId,
+      newOwner: payload.newOwner,
+      sequence: own.sequence + 1,
+      t: this.state.simTime || 0,
+    });
+    if (!fact) return false;
+    own.sequence = fact.sequence;
+    own.latestFlip = fact;
+    return true;
+  },
+
+  // Sker uses the already-mounted station airlock wall. Helios consumes the same saved fact from
+  // the existing Market ad-board renderer, so neither response creates a new presentation lane.
+  _surfaceConflictReaction(stationId) {
+    const surface = conflictReactionSurfaceForStation(stationId);
+    if (surface !== CONFLICT_REACTION_SURFACES.SKER_GRAFFITI) return false;
+    const s = this.state.story;
+    const reaction = selectConflictReaction({
+      surface,
+      seed: this.state.meta && this.state.meta.seed,
+      flip: s.conflictReaction && s.conflictReaction.latestFlip,
+    });
+    if (!reaction) return false;
+    s.graffitiShown = s.graffitiShown || {};
+    s.graffitiShown[`airlock:${reaction.text}`] = true;
+    // Re-emit on each Sker dock so Continue can rebuild the UI-only wall stash. comms.js dedupes
+    // line+location inside that stash, so repeated refreshes never stack duplicate DOM rows.
+    this.bus.emit('graffiti:show', {
+      line: reaction.text,
+      where: 'airlock',
+      beat: s.beatIndex,
+      author: reaction.author || 'Sker wall',
+      dockedStationId: stationId,
+      source: 'conflict_flip',
+      reactionId: reaction.id,
+    });
+    return true;
+  },
+
   _onValeConflictMilestone(payload) {
     const pairKey = payload && payload.pairKey;
     const conflict = pairKey && this.state && this.state.conflicts && this.state.conflicts[pairKey];
@@ -1415,6 +1477,7 @@ export const story = {
       s.newGamePlus = null;
       s.persistentCargo = [];
       s.valeMilestones = { conflictFlip: null };
+      s.conflictReaction = normalizeConflictReactionState();
       s.verge = createVergeStoryState();
     } else {
       if (s.phase == null) s.phase = 1;
@@ -1441,6 +1504,7 @@ export const story = {
       } else if (s.valeMilestones.conflictFlip === undefined) {
         s.valeMilestones.conflictFlip = null;
       }
+      s.conflictReaction = normalizeConflictReactionState(s.conflictReaction);
       if (!s.verge || typeof s.verge !== 'object' || Array.isArray(s.verge)) {
         s.verge = createVergeStoryState();
       } else {
@@ -1493,6 +1557,9 @@ export const story = {
         const flip = carried.valeMilestones.conflictFlip;
         s.valeMilestones = { conflictFlip: flip && typeof flip === 'object' ? Object.assign({}, flip) : null };
       }
+      if (carried.conflictReaction) {
+        s.conflictReaction = normalizeConflictReactionState(carried.conflictReaction);
+      }
       if (carried.flags && typeof carried.flags === 'object') {
         s.flags = Object.assign({}, s.flags || {}, carried.flags);
       }
@@ -1512,5 +1579,17 @@ function createVergeStoryState() {
     playerUsedClosureProtocol: false,
     evidence: { kellPaperTrail: false, archiveFile: false, kurtzLedger: false },
     revocations: [],
+  };
+}
+
+function normalizeConflictReactionState(input = null) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const latestFlip = normalizeConflictFlipFact(source.latestFlip);
+  return {
+    sequence: Math.max(
+      latestFlip ? latestFlip.sequence : 0,
+      Math.max(0, Math.floor(Number(source.sequence) || 0)),
+    ),
+    latestFlip,
   };
 }

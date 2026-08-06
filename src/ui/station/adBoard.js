@@ -5,6 +5,11 @@
 // ordinary station refreshes do not rewrite unchanged DOM.
 
 import { hash32 } from '../../core/rng.js';
+import {
+  CONFLICT_REACTION_SURFACES,
+  conflictReactionSurfaceForStation,
+  selectConflictReaction,
+} from '../../data/conflictReactions.js';
 import { FLAVOR_PACKS } from '../../data/flavor/index.generated.js';
 import { escapeHtml } from '../comms.js';
 
@@ -14,18 +19,35 @@ const PACK = FLAVOR_PACKS.ad_board;
 if (!PACK || !Array.isArray(PACK.entries) || PACK.entries.length === 0) {
   throw new Error('Dockside ad board requires the authored ad_board flavor pack');
 }
+const STANDARD_ENTRIES = PACK.entries.filter((entry) => entry.reactsTo !== 'conflict_flip');
 
 /**
  * Select one authored notice for a berth and simulation-time cycle.
  * Same inputs always select the same corpus row without advancing state.rng.
  */
-export function selectAdBoardNotice({ seed = 0, stationId = null, simTime = 0 } = {}) {
+export function selectAdBoardNotice({ seed = 0, stationId = null, simTime = 0, conflictFlip = null } = {}) {
   const berth = stationId == null ? '' : String(stationId).trim();
   if (!berth) return null;
   const runSeed = Number.isFinite(Number(seed)) ? Number(seed) >>> 0 : 0;
   const cycle = Math.max(0, Math.floor((Number(simTime) || 0) / ROTATION_SECONDS));
-  const index = hash32(runSeed, berth, cycle, 'v2-ad-board') % PACK.entries.length;
-  const entry = PACK.entries[index];
+  const surface = conflictReactionSurfaceForStation(berth);
+  if (surface === CONFLICT_REACTION_SURFACES.HELIOS_AD && conflictFlip) {
+    const reaction = selectConflictReaction({ surface, seed: runSeed, flip: conflictFlip, cycle });
+    if (reaction) {
+      return {
+        id: reaction.id,
+        sponsor: String(reaction.sponsor || 'Helios Public Information'),
+        text: reaction.text,
+        packId: PACK.id,
+        index: reaction.index,
+        cycle,
+        reaction: 'conflict_flip',
+        factId: reaction.factId,
+      };
+    }
+  }
+  const index = hash32(runSeed, berth, cycle, 'v2-ad-board') % STANDARD_ENTRIES.length;
+  const entry = STANDARD_ENTRIES[index];
   if (!entry || !entry.text) return null;
   return {
     id: String(entry.id || `ad_${index}`),
@@ -44,6 +66,8 @@ export function renderAdBoardNotice(element, state) {
     seed: state && state.meta && state.meta.seed,
     stationId: state && state.ui && state.ui.dockedStationId,
     simTime: state && state.simTime,
+    conflictFlip: state && state.story && state.story.conflictReaction
+      && state.story.conflictReaction.latestFlip,
   });
   const signature = notice
     ? `${notice.packId}|${notice.id}|${notice.cycle}|${notice.sponsor}|${notice.text}`
