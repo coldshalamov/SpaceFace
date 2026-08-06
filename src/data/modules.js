@@ -158,7 +158,7 @@ export const MODULES = [
   // Role kits (SPEC2/05): data-only hooks for economy/mining/tether progression.
   {
     id: 'mod_ram_plate', name: 'Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 6000,
-    energyDraw: 0, mods: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 },
+    energyDraw: 0, mods: { ramDamageDealtMult: 1.80 },
   },
   {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,

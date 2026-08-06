@@ -342,6 +342,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
+  let ramDamageDealtMult = 0;
   let masslineHeadId = null;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
@@ -361,6 +362,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     }
     if (Number.isFinite(mods.tetherReelRateMult) && mods.tetherReelRateMult > 0) {
       tetherReelRateMult = Math.max(tetherReelRateMult, mods.tetherReelRateMult);
+    }
+    if (Number.isFinite(mods.ramDamageDealtMult) && mods.ramDamageDealtMult > 0) {
+      ramDamageDealtMult = Math.max(ramDamageDealtMult, mods.ramDamageDealtMult);
     }
     // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
     // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
@@ -476,7 +480,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
       dashCooldown: bdef.dashCooldown || 3,
     },
     // informational extras (read by combat/ui; not part of the flat copy)
-    continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak,
+    continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak, ramDamageDealtMult,
     // M5 role lattice identity (recomputed; not serialized)
     roleIdentity,
     roleBiases: biases,

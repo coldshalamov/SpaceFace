@@ -106,13 +106,15 @@ export const collisionConsequences = {
   _resolveTarget(target, other, payload, exchangedMomentum, tick) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
-    const provenance = readRecentImpulseProvenance(target, tick);
+    const ramPlate = playerRamPlateImpact(other, state.playerId, tick);
+    const provenance = ramPlate?.provenance || readRecentImpulseProvenance(target, tick);
     const receipt = resolveCollisionConsequence({
       target,
       other,
       exchangedMomentum,
       tick,
       provenance,
+      craftDamageMultiplier: ramPlate?.damageMultiplier || 0,
       pos: payload.pos,
       normal: payload.normal,
     });
@@ -283,6 +285,21 @@ function nonNegativeTick(value) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function playerRamPlateImpact(entity, playerId, tick) {
+  if (!entity || entity.id !== playerId) return null;
+  const damageMultiplier = clamp(finite(entity.data?.derived?.ramDamageDealtMult), 0, 4);
+  if (!(damageMultiplier > 0)) return null;
+  return {
+    damageMultiplier,
+    provenance: {
+      actorId: playerId,
+      weaponId: 'mod_ram_plate',
+      tag: 'ram_plate',
+      appliedTick: tick,
+    },
+  };
 }
 
 function clamp(value, lo, hi) {

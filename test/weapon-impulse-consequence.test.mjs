@@ -114,6 +114,19 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
   assert.ok(light.impactDamage <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
   assert.ok(light.debrisCount > 0 && light.debrisCount <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDebris);
   assert.ok(['stagger', 'tumble'].includes(light.control));
+  const ordinaryCraft = kernel.resolveCollisionConsequence({
+    ...common,
+    target: { id: 4, type: 'ship', mass: 20, radius: 6 },
+    other: { id: 1, type: 'ship', mass: 20, radius: 6 },
+  });
+  const platedCraft = kernel.resolveCollisionConsequence({
+    ...common,
+    target: { id: 5, type: 'ship', mass: 20, radius: 6 },
+    other: { id: 1, type: 'ship', mass: 20, radius: 6 },
+    craftDamageMultiplier: 1.8,
+  });
+  assert.equal(ordinaryCraft.impactDamage, 0, 'ordinary craft contact remains non-damaging');
+  assert.ok(platedCraft.impactDamage > 0, 'an explicit Ram Plate multiplier activates craft impact damage');
   assert.equal(kernel.resolveCollisionConsequence({ ...common, exchangedMomentum: 0,
     target: { id: 2, type: 'ship', mass: 20, radius: 6 } }), null,
   'zero momentum produces no fake consequence');
@@ -411,10 +424,25 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     bus.emit('physics:impact', playerImpact);
     assert.equal(routed.length, 1, 'physical impacts preserve the existing no-player-hull-damage invariant');
 
+    attacker.data.derived.ramDamageDealtMult = 1.8;
+    state.tick += 30;
+    bus.emit('physics:impact', {
+      ...impact,
+      aId: target.id,
+      bId: attacker.id,
+      tick: state.tick,
+    });
+    assert.equal(routed.length, 2, 'a fitted Ram Plate routes one player-driven craft impact');
+    assert.equal(routed[1].attackerId, attacker.id);
+    assert.equal(routed[1].targetId, target.id);
+    assert.equal(routed[1].packet.source.kind, 'collision_craft');
+    assert.equal(routed[1].packet.source.weaponId, 'mod_ram_plate');
+    assert.ok(routed[1].packet.channels.kinetic > 0);
+
     bus.emit('game:newGame');
     state.tick = 0;
     bus.emit('physics:impact', { ...impact, tick: state.tick });
-    assert.equal(routed.length, 2,
+    assert.equal(routed.length, 3,
       'new-game tick reset must clear pair cooldowns instead of suppressing future collisions');
   } finally {
     system.destroy();

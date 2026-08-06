@@ -299,6 +299,7 @@ export function statSnippet(def) {
     if (m.cargoFlat) parts.push('+' + m.cargoFlat + ' cargo');
     if (m.cargoCapPct) parts.push('+' + Math.round(m.cargoCapPct * 100) + '% cap');
     if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
+    if (m.ramDamageDealtMult) parts.push('+' + Math.round((m.ramDamageDealtMult - 1) * 100) + '% ram dmg');
     if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
     if (m.magnetRange) parts.push(m.magnetRange + ' magnet');
     if (m.masslineHeadId === 'tractor') parts.push('tractor head');

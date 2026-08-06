@@ -12,11 +12,13 @@ import {
   outfittingEngineeringFeelHtml,
   recommendOutfittingPurchase,
   slotReadiness,
+  statSnippet,
 } from '../src/ui/screens/outfitting.js';
 import {
   buildSlotList,
   findMasslineHeadConflict,
   fittingsFromDefaultModules,
+  getDerivedStats,
   outfitBudgetBlocker,
   outfitBudgetForFittings,
   ships,
@@ -102,6 +104,14 @@ const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const slots = buildSlotList(shipDef);
 const moduleById = (id) => MODULES.find((entry) => entry.id === id);
 const weaponById = (id) => WEAPONS.find((entry) => entry.id === id);
+
+const ramPlate = moduleById('mod_ram_plate');
+assert.equal(statSnippet(ramPlate), '+80% ram dmg',
+  'the shop describes the Ram Plate combat verb before purchase');
+assert.equal(getDerivedStats(shipDef.id, fittingsFromDefaultModules(shipDef.id, [ramPlate.id])).ramDamageDealtMult, 1.8,
+  'a fitted Ram Plate reaches the live derived ship state');
+assert.equal(getDerivedStats(shipDef.id, []).ramDamageDealtMult, 0,
+  'ordinary craft contact remains non-damaging without a Ram Plate');
 
 for (const hull of SHIPS) {
   assert.ok(Number.isFinite(hull.outfitSpace) && hull.outfitSpace > 0, hull.id + ' authors outfitSpace');

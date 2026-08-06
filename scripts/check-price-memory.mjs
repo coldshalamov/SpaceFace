@@ -260,7 +260,7 @@ function changedKeys(a, b) {
 function checkRoleModules() {
   const byId = new Map(MODULES.map((m) => [m.id, m]));
   const expected = {
-    mod_ram_plate: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 },
+    mod_ram_plate: { ramDamageDealtMult: 1.80 },
     mod_winch_hd: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.50 },
     mod_charge_rack: { impulseChargeCapacity: 8 },
     mod_drill_amp: { richCoreRingPctBonus: 0.04 },

@@ -92,8 +92,11 @@ export function resolveCollisionConsequence(input = {}) {
 
   const overDamageSpeed = Math.max(0, deltaV - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
   const energyProxy = 0.5 * mass * overDamageSpeed * overDamageSpeed;
+  const surfaceDamageMultiplier = surface === 'craft'
+    ? nonNegative(input.craftDamageMultiplier)
+    : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0);
   const impactDamage = clamp(
-    Math.sqrt(energyProxy) * 0.12 * (SURFACE_DAMAGE_MULTIPLIER[surface] || 0),
+    Math.sqrt(energyProxy) * 0.12 * surfaceDamageMultiplier,
     0,
     COLLISION_CONSEQUENCE_LIMITS.maxDamage,
   );
