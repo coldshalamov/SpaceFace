@@ -19,6 +19,7 @@ import {
 } from '../src/ui/screens/base.js';
 import {
   buildClaimOwnershipMarkers,
+  buildSystemModel,
   describeClaimMapMarker,
   resolveCourseTarget,
 } from '../src/ui/galaxyMap.js';
@@ -313,6 +314,16 @@ test('Throughline identity, placement and active stage survive save/Continue exa
   assert.equal(ownership.length, 3, 'claim, acceleration ring and nav relay are all Atlas-visible');
   const ring = ownership.find((entry) => entry.infrastructure && entry.infrastructure.part === 'ring');
   assert.ok(ring);
+  assert.deepEqual(ring.travelRoute.from, expected.from);
+  assert.deepEqual(ring.travelRoute.support, expected.support);
+  assert.deepEqual(ring.travelRoute.to, expected.to);
+  assert.equal(ring.travelRoute.lineStyle, 'solid');
+  const systemRoute = buildSystemModel(state, SECTOR_ID, { claimsSystem: restored }).ownership
+    .find((entry) => entry.infrastructure && entry.infrastructure.part === 'ring').travelRoute;
+  assert.deepEqual(systemRoute.drawFrom, {
+    x: expected.from.x - SECTOR_ORIGIN.x,
+    z: expected.from.z - SECTOR_ORIGIN.z,
+  }, 'the SYSTEM draw path projects the saved global route into the sector-local frame');
   const course = resolveCourseTarget(ring);
   assert.deepEqual(course.pos, expected.from, 'the Atlas course resolves the same saved physical ring');
 

@@ -1160,11 +1160,25 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     marker.drawPos = globalToSectorLocalForSector(marker, sid);
     markers.push(marker);
     const infrastructure = body.infrastructure;
-    if (!infrastructure || !infrastructure.from || !infrastructure.support) continue;
+    if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) continue;
     const operational = infrastructure.operational === true;
     const status = operational
       ? 'ONLINE'
       : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
+    const travelRoute = {
+      id: infrastructure.id,
+      claimId: body.id,
+      stage: infrastructure.stage,
+      operational,
+      lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
+      color: operational ? '#39d0ff' : '#87939c',
+      from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
+      support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
+      to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
+    };
+    travelRoute.drawFrom = globalToSectorLocalForSector(travelRoute.from, sid);
+    travelRoute.drawSupport = globalToSectorLocalForSector(travelRoute.support, sid);
+    travelRoute.drawTo = globalToSectorLocalForSector(travelRoute.to, sid);
     for (const partDef of [
       { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
       { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
@@ -1194,6 +1208,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
           operational,
           stationId: infrastructure.stationId,
         },
+        travelRoute: partDef.id === 'ring' ? travelRoute : null,
       };
       partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
       markers.push(partMarker);
@@ -8158,6 +8173,14 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Manufactured corridors are one saved physical route, not three unrelated ownership dots.
+    // Paint the route beneath its ring/relay/station marks and only on the existing Route layer.
+    if (this._layers.route) {
+      for (const marker of model.ownership) {
+        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true);
+      }
+    }
+
     // Unique-wreck read layer. Rumors are non-interactive uncertainty regions; only a scan-fixed
     // point carries the global course target even though this system view paints sector-local XZ.
     if (this._layers.discovery) {
@@ -8542,6 +8565,12 @@ export const galaxyMapScreen = {
       g.strokeStyle = INK.amber; g.lineWidth = 2; g.setLineDash([6, 5]);
       g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wpPos.x), sz(wpPos.z)); g.stroke();
       g.restore();
+    }
+
+    if (this._layers.route) {
+      for (const marker of model.ownership) {
+        if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, false);
+      }
     }
 
     // Rock thinning: dense belts collapse into a faint texture of the nearest rocks rather than
@@ -9023,6 +9052,59 @@ function drawPoiMark(g, x, y) {
     g.lineTo(x + dx * arm, y + 1.5);
     g.stroke();
   }
+  g.restore();
+}
+
+function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame) {
+  if (!route || typeof sx !== 'function' || typeof sz !== 'function') return;
+  const from = useDrawFrame ? route.drawFrom : route.from;
+  const support = useDrawFrame ? route.drawSupport : route.support;
+  const to = useDrawFrame ? route.drawTo : route.to;
+  if (!from || !support || !to) return;
+  const ax = sx(from.x), ay = sz(from.z);
+  const mx = sx(support.x), my = sz(support.z);
+  const bx = sx(to.x), by = sz(to.z);
+  if (![ax, ay, mx, my, bx, by].every(Number.isFinite)) return;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0.5)) return;
+  const ux = dx / length;
+  const uy = dy / length;
+  const nx = -uy;
+  const ny = ux;
+  const dash = route.lineStyle === 'long-dash'
+    ? [9, 6]
+    : route.lineStyle === 'short-dash' ? [2, 5] : [];
+
+  g.save();
+  g.strokeStyle = hexToRgba(route.color || INK.teal, route.operational ? 0.82 : 0.62);
+  g.lineWidth = route.operational ? 2 : 1.5;
+  g.setLineDash(dash);
+  g.beginPath();
+  g.moveTo(ax, ay);
+  g.lineTo(mx, my);
+  g.lineTo(bx, by);
+  g.stroke();
+
+  // Solid endpoint bars make the drawn extent explicit; dash cadence carries operating state
+  // without relying on color, and the fixed chevron communicates the ring-to-station direction.
+  g.setLineDash([]);
+  g.beginPath();
+  g.moveTo(ax - nx * 5, ay - ny * 5);
+  g.lineTo(ax + nx * 5, ay + ny * 5);
+  g.moveTo(bx - nx * 5, by - ny * 5);
+  g.lineTo(bx + nx * 5, by + ny * 5);
+  g.stroke();
+
+  const arrowX = ax + dx * 0.72;
+  const arrowY = ay + dy * 0.72;
+  g.beginPath();
+  g.moveTo(arrowX - ux * 6 + nx * 4, arrowY - uy * 6 + ny * 4);
+  g.lineTo(arrowX, arrowY);
+  g.lineTo(arrowX - ux * 6 - nx * 4, arrowY - uy * 6 - ny * 4);
+  g.stroke();
   g.restore();
 }
 
