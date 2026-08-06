@@ -17,7 +17,8 @@ export const trigger = deepFreeze({
   "cooldownS": 900,
   "proximity": false,
   "gates": {
-    "namedPool": true
+    "namedPool": true,
+    "minSectorTier": 2
   }
 });
 

@@ -28,6 +28,12 @@ function migrationBaselineCatalog() {
   const catalog = structuredClone(Object.fromEntries(
     fixture.order.map((id) => [id, ENCOUNTERS[id]]),
   ));
+  // The first-hour difficulty pass later kept elite and multi-squad ambient encounters out of the
+  // tier-1 Helios neighborhood. Remove those live admission gates when reconstructing the earlier
+  // module-split baseline; this test proves that migration, not that gameplay can never evolve.
+  for (const id of ['pirate_toll', 'ambush_snare', 'named_hunter', 'distress_call']) {
+    delete catalog[id].gates.minSectorTier;
+  }
   // Claim defense deliberately became an externally requested set piece after the F2 migration.
   // Reconstruct that one pre-feature definition when proving the migration itself remained lossless.
   delete catalog.claim_threat.gates.externalOnly;
@@ -69,7 +75,11 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
     fixture.shapeHashes,
   );
   const intentionalDrift = fixture.order.filter((id) => hash(ENCOUNTERS[id]) !== fixture.shapeHashes[id]);
-  assert.deepEqual(intentionalDrift, ['claim_threat'], 'only the later claim-defense gate may differ from the F2 migration baseline');
+  assert.deepEqual(
+    intentionalDrift,
+    ['pirate_toll', 'ambush_snare', 'claim_threat', 'named_hunter', 'distress_call'],
+    'only the later claim-defense and first-hour admission gates may differ from the F2 migration baseline',
+  );
   assert.equal(ENCOUNTERS.claim_threat.gates.externalOnly, true, 'claim defense is requested by the claims system, never ambient-scheduled');
 });
 

@@ -18,7 +18,9 @@ export const trigger = deepFreeze({
   "pressureCost": 35,
   "cooldownS": 480,
   "proximity": false,
-  "gates": {}
+  "gates": {
+    "minSectorTier": 2
+  }
 });
 
 export default defineEncounter(trigger, {

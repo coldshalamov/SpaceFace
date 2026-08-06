@@ -6,7 +6,7 @@ export const encounterOrder = 270;
 export const trigger = deepFreeze({
   id: 'depth_h6_patrol_ambush', tier: 'minor', deck: 'combat', weight: 1.2,
   zoneTypes: ['patrol_corridor', 'ambush_lane'], script: 'selfRegistered', pressureCost: 42,
-  cooldownS: 540, proximity: true, gates: {},
+  cooldownS: 540, proximity: true, gates: { minSectorTier: 2 },
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h6;
 export default defineEncounter(trigger, {

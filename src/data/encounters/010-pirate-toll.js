@@ -19,7 +19,8 @@ export const trigger = deepFreeze({
   "proximity": true,
   "gates": {
     "minCargoValue": 240,
-    "maxSecurity": 0.75
+    "maxSecurity": 0.75,
+    "minSectorTier": 2
   }
 });
 

@@ -84,7 +84,9 @@ const CORE_SECTORS = [
     factionId: 'faction_dmc', position: { x: -3, y: 2 }, worldRadius: 4200,
     industries: { mining: true, refinery: true },
     palette: SECTOR_PALETTE_CLASSES.belt,
-    trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [2, 4],
+    // First-hop starter pocket: ordinary ambient danger stays readable while the player is still
+    // learning the corridor. Tier-2 sectors restore the full combat band and authored elites.
+    trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [1, 2],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
       { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'],
@@ -118,7 +120,7 @@ const CORE_SECTORS = [
     id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65, charted: true,
     factionId: 'faction_mts', position: { x: 3, y: 2 }, worldRadius: 4000,
     palette: SECTOR_PALETTE_CLASSES.core,
-    trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [2, 4],
+    trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [1, 2],
     neighbors: ['sector_helios_prime', 'sector_ceres_belt', 'sector_vesta_forge', 'sector_io_reach'],
     stations: [
       { id: 'station_tethys',  name: 'Tethys Trade Hub', type: 'trade_hub', factionId: 'faction_mts', size: 'L',
@@ -141,7 +143,7 @@ const CORE_SECTORS = [
     id: 'sector_vesta_forge', name: 'Vesta Forge', tier: 1, security: 0.60, charted: true,
     factionId: 'faction_dmc', position: { x: 0, y: 4 }, worldRadius: 4300,
     palette: SECTOR_PALETTE_CLASSES.belt,
-    trafficPerMin: 9, enemyDensity: 0.25, enemyLevel: [3, 5],
+    trafficPerMin: 9, enemyDensity: 0.25, enemyLevel: [1, 2],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_charon_expanse'],
     stations: [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],

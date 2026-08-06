@@ -18,6 +18,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ENCOUNTERS } from '../src/data/encounters.js';
+import { SECTORS } from '../src/data/sectors.js';
+import { planZoneSpawns } from '../src/data/sectorZones.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
 import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -273,6 +277,57 @@ assert.match(telemetrySrc, /credits\.earned >= 1000/, 'first1000cr must gate on 
 assert.match(telemetrySrc, /module:equipped/, 'firstModule must fire on module:equipped');
 assert.match(telemetrySrc, /\['first1000cr', f\.first1000crAt\]/, 'first1000cr must surface in getFunnel()');
 assert.match(telemetrySrc, /\['firstModule', f\.firstModuleAt\]/, 'firstModule must surface in getFunnel()');
+
+// The three ordinary first-hop destinations are the player's practical first-hour neighborhood.
+// Their ambient world squads stay basic and small; authored elite/multi-squad encounters resume in
+// tier-2 space rather than springing on a pilot immediately after the first Helios contract.
+const helios = SECTORS.find((sector) => sector.id === 'sector_helios_prime');
+assert.ok(helios, 'Helios starter sector must exist');
+const starterNeighbors = (helios.neighbors || [])
+  .map((id) => SECTORS.find((sector) => sector.id === id))
+  .filter(Boolean);
+assert.deepEqual(
+  starterNeighbors.map((sector) => sector.id).sort(),
+  ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
+  'the first-hour combat ramp must cover every ordinary first-hop Helios destination',
+);
+for (const sector of starterNeighbors) {
+  assert.deepEqual(sector.enemyLevel, [1, 2], `${sector.id} ambient enemies must stay level 1–2`);
+  for (let seed = 1; seed <= 128; seed++) {
+    const intents = planZoneSpawns(
+      sector.id,
+      8,
+      sector.enemyLevel,
+      mulberry32(hash32(seed, sector.id, 'first-hour-ambient-ramp')),
+    ).filter((intent) => intent.context === 'zone_hostile');
+    const squads = new Map();
+    for (const intent of intents) {
+      assert.ok(
+        intent.archetypeId === 'reaver_pirate' || intent.archetypeId === 'wasp_swarmer',
+        `${sector.id} starter hostile ${intent.archetypeId} must remain a basic pirate archetype`,
+      );
+      assert.ok(intent.level >= 1 && intent.level <= 2,
+        `${sector.id} starter hostile level ${intent.level} must stay within 1–2`);
+      squads.set(intent.squadId, (squads.get(intent.squadId) || 0) + 1);
+    }
+    for (const [squadId, count] of squads) {
+      assert.ok(count <= 2, `${sector.id}/${squadId} starter hostile squad must be solo or pair`);
+    }
+  }
+}
+
+for (const id of [
+  'pirate_toll',
+  'ambush_snare',
+  'named_hunter',
+  'distress_call',
+  'depth_h6_patrol_ambush',
+  'minefield_wake',
+  'curtain_convoy',
+]) {
+  assert.ok((ENCOUNTERS[id]?.gates?.minSectorTier || 0) >= 2,
+    `${id} must not admit an elite or multi-squad encounter into the starter neighborhood`);
+}
 
 // ── §3 menu polish ───────────────────────────────────────────────────────────────────────────
 assert.match(mainMenuSrc, /_startIdleAttract/, 'main menu must start a 12s idle attract (spec2/03 §3)');

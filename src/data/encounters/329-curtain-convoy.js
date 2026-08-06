@@ -15,6 +15,7 @@ export const trigger = deepFreeze({
   gates: {
     maxSecurity: 0.65,
     minStoryBeat: 1,
+    minSectorTier: 2,
   },
 });
 
