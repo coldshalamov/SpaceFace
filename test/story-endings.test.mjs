@@ -591,6 +591,30 @@ check('board eligibility lists only qualified A/B contracts', () => {
   assert.ok(!board.includes('B'));
 });
 
+check('Ash Cache redock reconciles A/B board rows after live eligibility changes', () => {
+  const h = makeLiveHarness(31);
+  h.state.story.endgameOffered = false;
+  h.state.player.ownedShips = [];
+  h.state.claims = { bodies: [] };
+  h.state.automation = { outposts: [] };
+
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  const board = h.state.missions.boards.station_ashcache;
+  assert.ok(board, 'Ash Cache board exists');
+  assert.equal(board.slots.some((offer) => offer.storyDisposition === 'A'), false,
+    'no stale A row without an empire stake');
+
+  h.state.claims.bodies.push({ id: 'claim_late_stake' });
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  assert.equal(board.slots.filter((offer) => offer.storyDisposition === 'A').length, 1,
+    'newly eligible A contract appears once on the live board');
+
+  h.state.claims.bodies.length = 0;
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  assert.equal(board.slots.some((offer) => offer.storyDisposition), false,
+    'obsolete disposition rows leave the physical board');
+});
+
 // ── 20 seeds determinism ───────────────────────────────────────────────────
 check('20 seeds: identical eligibility + receipt ids for same facts', () => {
   const seeds = [];

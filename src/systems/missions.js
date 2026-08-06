@@ -1076,10 +1076,25 @@ export const missions = {
       const ok = new Set(storySys.getBoardEligibleEndingIds() || []);
       offers = offers.filter((offer) => offer && ok.has(offer.storyDisposition));
     }
+    const eligible = new Set(offers.map((offer) => offer && offer.storyDisposition).filter(Boolean));
+    const before = board.slots.length;
+    // Eligibility can change after the B7 offer first opens (claim/outpost/capital stake, alignment,
+    // or reputation). Keep the physical board causal instead of leaving an obsolete disposition
+    // row around or requiring a new save to see one that just became valid.
+    board.slots = board.slots.filter((offer) => !(
+      offer && offer.storyDisposition && !eligible.has(offer.storyDisposition)
+    ));
+    let changed = board.slots.length !== before;
     const active = new Set(board.slots.map((offer) => offer && offer.storyDisposition).filter(Boolean));
-    for (const offer of offers) if (!active.has(offer.storyDisposition)) board.slots.unshift(offer);
-    this.bus.emit('mission:updated', { missionId: null, stationId });
-    return true;
+    for (let i = offers.length - 1; i >= 0; i--) {
+      const offer = offers[i];
+      if (active.has(offer.storyDisposition)) continue;
+      board.slots.unshift(offer);
+      active.add(offer.storyDisposition);
+      changed = true;
+    }
+    if (changed) this.bus.emit('mission:updated', { missionId: null, stationId });
+    return changed;
   },
 
   clearEndgameDispositionOffers() {

@@ -438,6 +438,16 @@ export const story = {
         this._onKurtzInteract({ action: 'approach' });
       }
       this._maybeOfferEndgame();
+      // The offer window is persistent, but its A/B board rows depend on live career facts. Reconcile
+      // them whenever the player returns so a later claim/outpost/capital stake or alignment change
+      // becomes a real board choice rather than a mission-log promise with no contract behind it.
+      if (s.endgameOffered && !s.endgameChoice && !s.endgameResolved
+          && !(s.flags && s.flags.sandboxContinued)) {
+        const missions = this.registry && this.registry.get && this.registry.get('missions');
+        if (missions && typeof missions.postEndgameDispositionOffers === 'function') {
+          missions.postEndgameDispositionOffers();
+        }
+      }
     }
     // Optional Helios Bay 7 wrong-grid payoff (explore after B3+).
     if (stationId === HELIOS_BAY7.stationId && (s.beatIndex >= 3 || s.flags.beat_2_done)
