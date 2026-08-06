@@ -148,3 +148,53 @@ test('works without the entity index, via the plain entity list', () => {
   const rock = entities.get(sys._pickWorkableAsteroidNear(state, home, 0));
   assert.ok(rock && dist(rock, home) < 400);
 });
+
+// ─── Local trades pick local endpoints ────────────────────────────────────────────────────────────
+// Same defect class as the miner field: a route drawn from "somewhere in the world" rather than
+// "somewhere a shift can reach". Measured before this constraint existed, a repair tender was
+// commissioned to a client **12,757 units** away — a three-minute transit leg for a trade whose
+// entire premise is being there before the seal fails.
+
+test('a local trade takes the nearest other berth, not the most interesting one', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 0, z: 0 } };
+  const near = { id: 'near', pos: { x: 420, z: 180 } };
+  const far = { id: 'far', pos: { x: 9000, z: -6000 } };
+  assert.equal(sys._nearestStationTo([home, far, near], home), near);
+  assert.equal(sys._nearestStationTo([far, near, home], home), near);
+});
+
+test('the nearest-berth pick never returns the home berth itself', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 100, z: 100 } };
+  const twin = { id: 'twin', pos: { x: 100, z: 100 } }; // co-located but a different berth
+  assert.equal(sys._nearestStationTo([home], home), null, 'a lone berth has no call-out to make');
+  assert.equal(sys._nearestStationTo([home, twin], home), twin);
+});
+
+test('the nearest-berth pick degrades quietly on junk input', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 0, z: 0 } };
+  assert.equal(sys._nearestStationTo(null, home), null);
+  assert.equal(sys._nearestStationTo([], home), null);
+  assert.equal(sys._nearestStationTo([home, null, {}, { pos: null }], home), null);
+  assert.equal(sys._nearestStationTo([{ id: 'a', pos: { x: 5, z: 5 } }], null), null);
+});
+
+test('a salvor binds to a real wreck body, and to the nearest one', () => {
+  const sys = Object.create(traffic);
+  const home = { id: 'home', pos: { x: 0, z: 0 } };
+  const state = {
+    entityList: [
+      { id: 1, type: 'asteroid', alive: true, pos: { x: 50, z: 0 } },
+      { id: 2, type: 'wreck', alive: true, pos: { x: 800, z: 0 } },
+      { id: 3, type: 'wreck', alive: true, pos: { x: 240, z: 0 } },
+      { id: 4, type: 'wreck', alive: false, pos: { x: 10, z: 0 } },
+    ],
+  };
+  const got = sys._nearestOfTypeTo(state, home, 'wreck');
+  assert.equal(got && got.id, 3, 'nearest LIVE wreck, and never the asteroid');
+  assert.equal(sys._nearestOfTypeTo(state, home, 'station'), null, 'absent type yields null');
+  assert.equal(sys._nearestOfTypeTo(state, null, 'wreck'), null, 'no anchor yields null');
+  assert.equal(sys._nearestOfTypeTo(null, home, 'wreck'), null, 'no state yields null');
+});

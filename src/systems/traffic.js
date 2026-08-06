@@ -568,7 +568,12 @@ export const traffic = {
       // A call-out: berth to client hull and back. The client is another station rather than a
       // moving ship, because a tender's WORK phase holds station and welding onto something that
       // flies away mid-repair would contradict the "soft target by necessity" the Code promises.
-      const client = this._pickExpressDestination(stations, home);
+      // The NEAREST other berth, not the most interesting one. A call-out is by definition local:
+      // you are the rig that can be there before the seal fails. Measured before this constraint
+      // existed, `_pickExpressDestination` handed a tender a client **12,757 units** away — a
+      // three-minute transit leg at its planning speed, for a job whose whole premise is urgency,
+      // and a hull that consequently spends its entire observable life in `transit`.
+      const client = this._nearestStationTo(stations, home);
       if (!client || !client.pos) return null;
       return {
         kind: 'tender', sectorId,
@@ -1171,6 +1176,27 @@ export const traffic = {
     // thin field still yields a job instead of silently dropping the barge to its ambient stepper.
     for (let i = wanted - 1; i >= 0; i--) if (bestId[i] != null) return bestId[i];
     return null;
+  },
+
+  /**
+   * The nearest OTHER station to `home`, or null when `home` is the only berth in reach.
+   *
+   * Distinct from `_pickExpressDestination`, which deliberately reaches for a far, interesting
+   * endpoint because an express liner's whole point is crossing the map. Local trades need the
+   * opposite: the berth you can actually be at before the seal fails.
+   */
+  _nearestStationTo(stations, home) {
+    if (!Array.isArray(stations) || !home || !home.pos) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const st of stations) {
+      if (!st || st === home || !st.pos) continue;
+      const dx = st.pos.x - home.pos.x;
+      const dz = st.pos.z - home.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = st; }
+    }
+    return best;
   },
 
   /**
