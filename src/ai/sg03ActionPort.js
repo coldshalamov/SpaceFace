@@ -355,7 +355,10 @@ function counterTetherResponseGate({ state, bus, actor, actionId, request, windo
   const tick = Number.isInteger(request.tick) ? request.tick : state.tick;
   const signature = [actionId, attachment.id, attachment.ownerId, attachment.targetId].join('|');
   let window = windows.get(actor);
-  if (!window || window.signature !== signature || tick > window.readyTick + 2) {
+  // Keep the warning armed until this actor is actually eligible to consume it. Production
+  // decisions run below the fixed-step rate and spread members across batches, so there is no
+  // guarantee the next canStart call lands on readyTick (or within a tiny grace interval).
+  if (!window || window.signature !== signature) {
     const targetId = attachment.ownerId === state.playerId || attachment.targetId === state.playerId
       ? state.playerId
       : attachment.targetId;

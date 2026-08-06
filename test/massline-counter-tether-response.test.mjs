@@ -33,6 +33,26 @@ test('SG-06 overload waits through one real response window and warns once', () 
   );
 });
 
+test('a batched AI decision after the exact ready tick consumes the existing warning window', () => {
+  const h = createHarness({ ownerId: 1, targetId: 2 });
+  const warnings = [];
+  h.bus.on('ai:counterTether', (payload) => warnings.push(payload));
+
+  const request = counterRequest(h, ObjectiveKind.COUNTER_TETHER_OVERLOAD);
+  const first = h.port.canStart(2, 'action_dash', request);
+  assert.equal(warnings.length, 1);
+
+  // Production decisions run at 30 Hz and members are spread across batches, so the actor is not
+  // guaranteed to be revisited on readyTick or either of the next two fixed steps.
+  h.state.tick = first.retryAtTick + 6;
+  request.tick = h.state.tick;
+  assert.deepEqual(
+    h.port.canStart(2, 'action_dash', request),
+    { ok: true, reason: 'sg03_predictive_gate' },
+  );
+  assert.equal(warnings.length, 1, 'late scheduling must not restart the same player warning');
+});
+
 test('the response gate is AI-only and does not delay an immediate player cut', () => {
   const h = createHarness({ ownerId: 1, targetId: 2 });
   const request = {
