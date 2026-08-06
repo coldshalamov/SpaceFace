@@ -82,6 +82,21 @@ const SLING_STATION_CLEARANCE_WU = 180;
 const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 
+function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  if (!(lengthSq > 0)) {
+    const ox = px - ax;
+    const oz = pz - az;
+    return ox * ox + oz * oz;
+  }
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / lengthSq));
+  const ox = px - (ax + dx * t);
+  const oz = pz - (az + dz * t);
+  return ox * ox + oz * oz;
+}
+
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 // F6 unification: which operating identity a legacy abstract outpost becomes.
@@ -568,36 +583,37 @@ export const claims = {
     }
     const axis = { x: dx / centerDistance, z: dz / centerDistance };
     const normal = { x: -axis.z, z: axis.x };
-    let from = null;
+    const corridorRadiusWU = Math.max(1, Number(mod.corridorRadiusWU) || 240);
+    let route = null;
     for (const lateral of SLING_LATERAL_OFFSETS_WU) {
-      const candidate = {
+      const from = {
         x: bx + axis.x * SLING_BODY_CLEARANCE_WU + normal.x * lateral,
         z: bz + axis.z * SLING_BODY_CLEARANCE_WU + normal.z * lateral,
       };
-      if (this._travelInfrastructurePointClear(candidate, body, station)) {
-        from = candidate;
-        break;
-      }
+      const to = {
+        x: sx - axis.x * SLING_STATION_CLEARANCE_WU + normal.x * lateral,
+        z: sz - axis.z * SLING_STATION_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (!this._travelInfrastructurePointClear(from, body, station)
+        || !this._travelInfrastructurePointClear(to, body, station)
+        || !this._travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station)) continue;
+      const routeDx = to.x - from.x;
+      const routeDz = to.z - from.z;
+      const distanceWU = Math.hypot(routeDx, routeDz);
+      if (distanceWU > 0) route = { from, to, routeDx, routeDz, distanceWU };
+      if (route) break;
     }
-    if (!from) {
-      this.bus.emit('toast', { text: 'No clear Throughline ring hardpoint near this claim', kind: 'error', ttl: 4 });
+    if (!route) {
+      this.bus.emit('toast', { text: 'No clear Throughline corridor between this claim and station', kind: 'error', ttl: 4 });
       return null;
     }
-    const to = {
-      x: sx - axis.x * SLING_STATION_CLEARANCE_WU,
-      z: sz - axis.z * SLING_STATION_CLEARANCE_WU,
-    };
-    const routeDx = to.x - from.x;
-    const routeDz = to.z - from.z;
-    const distanceWU = Math.hypot(routeDx, routeDz);
-    if (!(distanceWU > 0)) return null;
     // The support relay sits on the same saved line, far enough from both endpoints to be read as
     // a second structure rather than decoration bolted onto the ring or station.
     let support = null;
     for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
       const candidate = {
-        x: from.x + routeDx * fraction,
-        z: from.z + routeDz * fraction,
+        x: route.from.x + route.routeDx * fraction,
+        z: route.from.z + route.routeDz * fraction,
       };
       if (this._travelInfrastructurePointClear(candidate, body, station)) {
         support = candidate;
@@ -608,22 +624,46 @@ export const claims = {
       this.bus.emit('toast', { text: 'No clear Throughline relay hardpoint along this route', kind: 'error', ttl: 4 });
       return null;
     }
-    return { stationId, from, to, support, distanceWU };
+    return {
+      stationId,
+      from: route.from,
+      to: route.to,
+      support,
+      distanceWU: route.distanceWU,
+    };
   },
 
   _travelInfrastructurePointClear(pos, body, station) {
     const list = this.state.entityList || [];
     for (const entity of list) {
-      if (!entity || entity.alive === false || entity === station || entity.collides === false) continue;
-      if (entity.data && entity.data.poiId === body.poiId) continue;
       // A passing craft cannot invalidate a permanent surveyed hardpoint. Only static world bodies
       // participate in the build clearance test.
-      if (['ship', 'drone', 'projectile', 'pickup', 'payload', 'wreck'].includes(entity.type)) continue;
-      if (!entity.pos) continue;
+      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) continue;
       const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
       if (Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z) < clearance) return false;
     }
     return true;
+  },
+
+  _travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station) {
+    const list = this.state.entityList || [];
+    for (const entity of list) {
+      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) continue;
+      const radius = corridorRadiusWU + Math.max(0, Number(entity.radius) || 0);
+      if (pointSegmentDistanceSquared(
+        entity.pos.x, entity.pos.z,
+        from.x, from.z,
+        to.x, to.z,
+      ) < radius * radius) return false;
+    }
+    return true;
+  },
+
+  _travelInfrastructureStaticBlocker(entity, body, station) {
+    if (!entity || entity.alive === false || entity === station || entity.collides === false) return false;
+    if (body && body.poiId && entity.data && entity.data.poiId === body.poiId) return false;
+    if (['ship', 'drone', 'projectile', 'pickup', 'payload', 'wreck'].includes(entity.type)) return false;
+    return !!entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
   },
 
   _newTravelInfrastructure(body, mod, route) {

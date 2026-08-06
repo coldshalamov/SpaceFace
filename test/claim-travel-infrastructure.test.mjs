@@ -127,6 +127,21 @@ function loadSlingMaterials(state) {
   state.player.cargo.usedMass = 30;
 }
 
+function addStaticObstacle(harness, id, x, z, radius = 24) {
+  const obstacle = {
+    id,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    pos: { x, z },
+    radius,
+    data: {},
+  };
+  harness.state.entities.set(id, obstacle);
+  harness.state.entityList.push(obstacle);
+  return obstacle;
+}
+
 function bootActiveInfrastructure() {
   const harness = bootClaims();
   loadSlingMaterials(harness.state);
@@ -199,6 +214,32 @@ test('Throughline Sling is a material-built Industrial Refinery route, not a cre
   assert.equal(h.bus.of('claim:infrastructureActive').length, 1);
   assert.equal(h.sys.activeTravelInfrastructure(SECTOR_ID).length, 1);
   assert.equal(h.sys.travelInfrastructureHooks(SECTOR_ID)[0].stationId, STATION_ID);
+});
+
+test('Throughline surveys the whole physical tube and never spends into an obstructed route', () => {
+  const alternate = bootClaims();
+  const midpointX = (alternate.body.x + alternate.station.pos.x) * 0.5;
+  addStaticObstacle(alternate, 300, midpointX, alternate.body.z);
+  loadSlingMaterials(alternate.state);
+  assert.equal(alternate.sys.buildModule(alternate.body.id, 'mod_throughline_sling'), true,
+    'a bounded clear lateral route remains buildable');
+  assert.equal(alternate.body.infrastructure.from.z - alternate.body.z, 280);
+  assert.equal(alternate.body.infrastructure.to.z - alternate.station.pos.z, 280,
+    'both endpoints share the surveyed clear corridor instead of crossing back through the obstacle');
+
+  const blocked = bootClaims();
+  for (const [index, lateral] of [0, 160, -160, 280, -280].entries()) {
+    addStaticObstacle(blocked, 400 + index, midpointX, blocked.body.z + lateral);
+  }
+  loadSlingMaterials(blocked.state);
+  const creditsBefore = blocked.state.player.credits;
+  const materialsBefore = { ...blocked.state.player.cargo.items };
+  assert.equal(blocked.sys.buildModule(blocked.body.id, 'mod_throughline_sling'), false);
+  assert.equal(blocked.state.player.credits, creditsBefore, 'failed course validation charges no credits');
+  assert.deepEqual(blocked.state.player.cargo.items, materialsBefore, 'failed course validation consumes no materials');
+  assert.equal(blocked.body.modules.includes('mod_throughline_sling'), false);
+  assert.equal(blocked.body.infrastructure, undefined);
+  assert.match(blocked.bus.of('toast').at(-1).payload.text, /No clear Throughline corridor/);
 });
 
 test('claim construction and commissioning stay behind an explicit player confirmation', async () => {
