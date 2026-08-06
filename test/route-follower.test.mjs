@@ -534,6 +534,70 @@ test('the route survives save/load in EVERY executor state', () => {
   }
 });
 
+test('save:loaded discards an engaged route whose persisted destination no longer exists', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+
+  // This is a structurally valid shape accepted by the save sanitizer. The stale destination and
+  // finite cached target model an older save after authored atlas content changed: without a live
+  // atlas check, the follower trusts the cached numbers and arms the autopilot toward empty space.
+  const leg = h.state.nav.executor.legs[0];
+  route.legs[0].to = 'sector_removed_from_atlas';
+  leg.toSectorId = 'sector_removed_from_atlas';
+  leg.targetNodeId = 'gate_removed_from_atlas';
+  leg.target = { x: 987654, z: -456789 };
+  leg.resolved = true;
+  h.state.nav.waypoint = { kind: 'route', label: 'Stale route', pos: { ...leg.target } };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { ...leg.target },
+    targetEntityId: null,
+    label: 'Stale route',
+    arrivalRadius: 260,
+    status: 'armed',
+  };
+
+  const saveInstance = Object.create(save);
+  saveInstance.state = h.state;
+  saveInstance.bus = h.bus;
+  const serialized = saveInstance._serializeNav();
+  saveInstance._restoreNav(serialized);
+  assert.ok(h.state.nav.route, 'the structural save sanitizer deliberately accepts this stale shape');
+  assert.equal(h.state.nav.executor.legs[0].resolved, true, 'the finite cached target survives sanitization');
+
+  h.bus.clear();
+  h.bus.emit('save:loaded', {});
+
+  assert.equal(h.state.nav.route, null, 'an invalid restored itinerary must not remain resumable');
+  assert.equal(h.state.nav.executor, null, 'cached executor targets must be discarded with the route');
+  assert.equal(h.state.nav.autoTravel, false, 'invalid restored travel intent must be cleared');
+  assert.equal(h.state.nav.autopilot.active, false, 'stale route steering must be disarmed');
+  assert.equal(h.state.nav.waypoint, null, 'the stale route marker must be removed');
+  assert.equal(h.bus.of('nav:routeInvalidated').length, 1, 'the player-facing route loss is explicit');
+});
+
+test('save:loaded preserves a valid engaged itinerary for normal resume', () => {
+  const route = routeFromChain(CHAIN);
+  const h = makeHarness({ route, autoTravel: true });
+  h.sys.engage({});
+
+  const saveInstance = Object.create(save);
+  saveInstance.state = h.state;
+  saveInstance.bus = h.bus;
+  const serialized = saveInstance._serializeNav();
+  saveInstance._restoreNav(serialized);
+
+  h.bus.clear();
+  h.bus.emit('save:loaded', {});
+
+  assert.ok(h.state.nav.route, 'a current itinerary remains plotted');
+  assert.ok(h.state.nav.executor, 'a current executor remains resumable');
+  assert.equal(h.state.nav.autoTravel, true);
+  assert.equal(h.bus.of('nav:routeInvalidated').length, 0);
+  assert.equal(h.bus.of('toast').length, 0, 'normal resume stays silent');
+});
+
 test('an idle nav serializes with NO executor key, so the default save shape is unchanged', () => {
   // test/unified-map-professional.test.mjs:203 deep-equals the whole restored nav against a literal
   // with no executor key, and scripts/check-sectorSim.mjs:205 does the same for migrations. Emitting

@@ -210,6 +210,87 @@ export function summarizeExecutor(executor) {
   };
 }
 
+/**
+ * Validate only the durable identity of a restored itinerary. Persisted target coordinates stay
+ * authoritative so an old save is not silently retargeted when authored positions move, but the
+ * sectors, leg chain and named target must still exist in the current atlas. A structurally valid
+ * stale save is otherwise able to arm the autopilot toward an arbitrary cached point.
+ */
+function restoredRouteIssue(nav, atlas, currentSectorId) {
+  const route = nav && nav.route;
+  if (!route) return null;
+  const routeLegs = Array.isArray(route.legs) ? route.legs : [];
+  if (!routeLegs.length) return { reason: 'malformed-route', detail: 'empty itinerary' };
+
+  for (let i = 0; i < routeLegs.length; i++) {
+    const leg = routeLegs[i];
+    const from = leg && leg.from;
+    const to = leg && leg.to;
+    const fromNode = typeof from === 'string' ? atlas.getNode(from) : null;
+    const toNode = typeof to === 'string' ? atlas.getNode(to) : null;
+    if (!fromNode || fromNode.kind !== 'sector') {
+      return { reason: 'unknown-sector', detail: from || `leg ${i + 1} origin` };
+    }
+    if (!toNode || toNode.kind !== 'sector') {
+      return { reason: 'unknown-sector', detail: to || `leg ${i + 1} destination` };
+    }
+    if (i > 0 && routeLegs[i - 1].to !== from) {
+      return { reason: 'discontinuous-route', detail: `leg ${i} → ${i + 1}` };
+    }
+    if (!resolveLegTarget(atlas, from, to, i === routeLegs.length - 1)) {
+      return { reason: 'unresolved-leg', detail: `${from} → ${to}` };
+    }
+  }
+
+  const executor = nav.executor;
+  if (!executor) {
+    if (currentSectorId && routeLegs[0].from !== currentSectorId) {
+      return { reason: 'origin-mismatch', detail: currentSectorId };
+    }
+    return null;
+  }
+
+  const executorLegs = Array.isArray(executor.legs) ? executor.legs : [];
+  if (executor.schema !== ROUTE_EXECUTOR_SCHEMA || executorLegs.length !== routeLegs.length) {
+    return { reason: 'executor-mismatch', detail: 'schema or leg count' };
+  }
+  if (!Object.values(ROUTE_EXECUTOR_STATUS).includes(executor.status)) {
+    return { reason: 'executor-mismatch', detail: 'unknown status' };
+  }
+  if (!Number.isInteger(executor.legIndex)
+      || executor.legIndex < 0
+      || executor.legIndex >= executorLegs.length) {
+    return { reason: 'executor-mismatch', detail: 'invalid leg index' };
+  }
+  if (executor.destinationSectorId !== routeLegs[routeLegs.length - 1].to) {
+    return { reason: 'executor-mismatch', detail: 'destination changed' };
+  }
+
+  for (let i = 0; i < executorLegs.length; i++) {
+    const stored = executorLegs[i];
+    const planned = routeLegs[i];
+    if (!stored
+        || stored.fromSectorId !== planned.from
+        || stored.toSectorId !== planned.to
+        || stored.index !== i
+        || stored.resolved !== true
+        || !hasXZ(stored.target)) {
+      return { reason: 'executor-mismatch', detail: `leg ${i + 1}` };
+    }
+    if (stored.targetNodeId && !atlas.getNode(stored.targetNodeId)) {
+      return { reason: 'unknown-target', detail: stored.targetNodeId };
+    }
+  }
+
+  const expectedSectorId = executor.status === ROUTE_EXECUTOR_STATUS.ARRIVED
+    ? routeLegs[routeLegs.length - 1].to
+    : routeLegs[executor.legIndex].from;
+  if (currentSectorId && currentSectorId !== expectedSectorId) {
+    return { reason: 'origin-mismatch', detail: currentSectorId };
+  }
+  return null;
+}
+
 export const routeFollower = {
   name: 'routeFollower',
 
@@ -242,8 +323,8 @@ export const routeFollower = {
     bus.on('combat:hit', (p) => this._onCombatHit(p));
     bus.on('combat:routeDamage', (p) => this._onCombatHit(p));
 
-    // A restored save re-publishes the executor so UI that missed the transition is not left blank.
-    bus.on('save:loaded', () => this._publish());
+    // A restored save revalidates durable route identity before UI or the autopilot can consume it.
+    bus.on('save:loaded', () => this._onSaveLoaded());
   },
 
   /**
@@ -569,6 +650,57 @@ export const routeFollower = {
     const target = payload && (payload.targetId ?? payload.entityId ?? payload.id);
     if (target == null || String(target) !== String(playerId)) return;
     this.interrupt('combat');
+  },
+
+  _onSaveLoaded() {
+    const state = this.state;
+    const nav = state && state.nav;
+    const issue = restoredRouteIssue(
+      nav,
+      this._atlas,
+      state && state.world && state.world.currentSectorId,
+    );
+    if (!issue) {
+      this._publish();
+      return;
+    }
+
+    const executor = nav && nav.executor;
+    const currentLeg = executor && Array.isArray(executor.legs)
+      ? executor.legs[executor.legIndex]
+      : null;
+    const routeWaypoint = !!(nav.waypoint && nav.waypoint.kind === 'route');
+    const routeAutopilot = routeWaypoint || !!(
+      nav.autopilot
+      && nav.autopilot.active === true
+      && hasXZ(nav.autopilot.target)
+      && currentLeg
+      && hasXZ(currentLeg.target)
+      && nav.autopilot.target.x === currentLeg.target.x
+      && nav.autopilot.target.z === currentLeg.target.z
+    );
+
+    this._releaseTravelDrive('route-invalidated');
+    if (routeAutopilot) this._disarmAutopilot('route-invalidated');
+    if (routeWaypoint) {
+      nav.waypoint = null;
+      this._emit('nav:waypoint', null);
+    }
+    nav.route = null;
+    nav.autoTravel = false;
+    nav.executor = null;
+
+    this._emit('nav:routeInvalidated', {
+      reason: issue.reason,
+      detail: issue.detail,
+      source: 'save:loaded',
+    });
+    this._emit('toast', {
+      text: 'Saved route is no longer available. Plot a new course.',
+      kind: 'warn',
+      ttl: 5,
+    });
+    this._publish('invalidated', { reason: issue.reason, detail: issue.detail });
   },
 
   /** Leg complete: either advance to the next one (re-arming happens next tick, edge-triggered by the
