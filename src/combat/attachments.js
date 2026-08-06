@@ -3,6 +3,7 @@ import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
+import { massline2Flag } from '../data/featureFlags.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
@@ -12,6 +13,15 @@ const PREVIOUS_STANDARD_TETHER_BREAK = Object.freeze({
   maxTension: 1_050_000,
   maxImpulse: 19_000,
   maxYank: 15_000,
+});
+// PQ-029 Tractor head. This remains a rope: the SG-02 owner applies only one-sided radial tension.
+// The head changes that tension profile to an overdamped, finite-force tow so it settles a payload
+// without becoming a position/velocity controller. Standard lines retain the catalog spring.
+const TRACTOR_TETHER_SPRING = Object.freeze({
+  K: 110,
+  zeta: 1.35,
+  captureS: 0.45,
+  maxForce: 4_200,
 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
@@ -33,17 +43,27 @@ export function effectiveTetherBreak(def, owner) {
 /** Resolve every player-facing tether capability from immutable catalog data. Strength and reel
  * rate are independent max-folded ratings; active attachments snapshot this policy at creation so
  * a refit cannot silently rewrite an already-deployed line. */
-export function effectiveTetherPolicy(def, owner) {
+export function effectiveTetherPolicy(def, owner, features = null) {
   const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
   if (!def || def.id !== 'tether_standard') {
     return { break: effectiveTetherBreak(def, owner), reelRate: baseReelRate };
   }
   const rawReel = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult);
   const reelMult = Number.isFinite(rawReel) ? Math.max(1, rawReel) : 1;
-  return {
+  const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
     strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+  };
+  const headId = owner && owner.data && owner.data.derived && owner.data.derived.masslineHeadId;
+  if (headId !== 'tractor' || !massline2Flag('masslineHeadTractor', features)) return policy;
+  return {
+    ...policy,
+    headId: 'tractor',
+    spring: {
+      ...((def && def.spring) || {}),
+      ...TRACTOR_TETHER_SPRING,
+    },
   };
 }
 
@@ -193,7 +213,7 @@ export function createAttachmentService(context) {
       lastImpulse: 0,
       nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
-      tetherPolicy: effectiveTetherPolicy(def, owner),
+      tetherPolicy: effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features),
     };
     const physicsResult = createPhysicsAttachment(attachment, def);
     if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
@@ -719,6 +739,10 @@ export function createAttachmentService(context) {
       const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
       if (reelRevision <= 0) return { mode: 'legacy_rope' };
     }
+    const policy = policyForAttachment(def, owner, attachment);
+    if (policy && policy.headId === 'tractor' && policy.spring && typeof policy.spring === 'object') {
+      return { ...policy.spring };
+    }
     return { ...((def && def.spring) || {}) };
   }
 
@@ -736,7 +760,7 @@ export function createAttachmentService(context) {
       if (rebased !== attachment.tetherPolicy) attachment.tetherPolicy = rebased;
       return rebased;
     }
-    const policy = effectiveTetherPolicy(def, owner);
+    const policy = effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features);
     if (attachment) attachment.tetherPolicy = policy;
     return policy;
   }

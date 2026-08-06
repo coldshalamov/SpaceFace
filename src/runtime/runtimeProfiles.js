@@ -31,6 +31,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     jettisonImpulse: true,
     bombPropulsion: true,
     hitchhiking: true,
+    // PQ-029 / SF-27: fitted Tractor heads use a bounded overdamped rope profile.
+    masslineHeadTractor: true,
   }),
   travel: Object.freeze({
     travelBurn: true,
@@ -68,6 +70,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     jettisonImpulse: false,
     bombPropulsion: false,
     hitchhiking: false,
+    masslineHeadTractor: false,
   }),
   travel: Object.freeze({
     travelBurn: false,

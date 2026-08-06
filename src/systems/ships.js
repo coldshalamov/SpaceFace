@@ -218,6 +218,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
+  let masslineHeadId = null;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
@@ -237,6 +238,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (Number.isFinite(mods.tetherReelRateMult) && mods.tetherReelRateMult > 0) {
       tetherReelRateMult = Math.max(tetherReelRateMult, mods.tetherReelRateMult);
     }
+    // Specialized heads are fitted capabilities, not input modes. Tractor is the first admitted
+    // head; later heads add their own explicit arbitration rather than inheriting slot order.
+    if (mods.masslineHeadId === 'tractor') masslineHeadId = 'tractor';
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
     if (Number.isFinite(mods.hiddenCargoPct)) {
@@ -332,7 +336,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     dryMass, cargoMass, operationalMass: totalMass,
     operationalFeelMass: feelMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
-    tetherSpoolMult, tetherReelRateMult,
+    tetherSpoolMult, tetherReelRateMult, masslineHeadId,
     cargoCap,
     boost: {
       max: bdef.max || 0,

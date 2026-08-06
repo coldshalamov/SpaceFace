@@ -415,7 +415,7 @@ export class Sg02DynamicBodyOwner {
       : dampingForSpring(spring, reducedMass(attachment.owner, attachment.target));
     const fallbackTension = legacyRope
       ? stretch * positive(attachment.break.stiffness, 10) + relativeSpeed * damping
-      : stretch * spring.K + damping * Math.max(0, relativeSpeed);
+      : Math.min(spring.maxForce, stretch * spring.K + damping * Math.max(0, relativeSpeed));
     const telemetryTension = Math.max(0, springState.lastTension || fallbackTension);
     const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
     const source = frameToGlobal(sourceLocal, this._frameOrigin);
@@ -1088,6 +1088,10 @@ export class Sg02DynamicBodyOwner {
       const haul = clamp(c * 0.6 * relativeSpeed, 0, k * stretch * 1.2);
       force += haul;
     }
+    // A specialized Tractor remains a physical rope, not a telekinetic position writer. Its
+    // snapshotted finite-force rating caps the complete radial spring/damping/haul result. The
+    // ordinary standard line normalizes maxForce to Infinity and is bit-identical here.
+    force = Math.min(force, spring.maxForce);
 
     // Crossing the authored stretch edge enters a recoverable overload regime. The previous path
     // zeroed corrective force and fabricated an immediate threshold breach, making recovery nearly
@@ -1113,10 +1117,11 @@ export class Sg02DynamicBodyOwner {
       accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
     }
 
-    state.lastTension = geometricOverloadRatio > 1
+    const forceBounded = Number.isFinite(spring.maxForce);
+    state.lastTension = geometricOverloadRatio > 1 && !forceBounded
       ? Math.max(force, finite(attachment.break.maxTension) * geometricOverloadRatio)
       : force;
-    state.lastImpulse = geometricOverloadRatio > 1
+    state.lastImpulse = geometricOverloadRatio > 1 && !forceBounded
       ? Math.max(forceImpulse, finite(attachment.break.maxImpulse) * geometricOverloadRatio)
       : forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
@@ -1217,6 +1222,7 @@ function normalizeSpring(value = {}, defId = '', breakValue = {}) {
     K: positive(value && value.K, positive(value && value.k, positive(tune && tune.K, positive(breakValue && breakValue.stiffness, 140)))),
     zeta: positive(value && value.zeta, positive(tune && tune.zeta, 0.95)),
     captureS: positive(value && value.captureS, positive(tune && tune.captureS, 0.35)),
+    maxForce: positive(value && value.maxForce, Infinity),
     maxStretchRatio,
     reelSafeStretchRatio: positive(value && value.reelSafeStretchRatio,
       positive(tune && tune.reelSafeStretchRatio, Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)))),

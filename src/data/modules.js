@@ -111,12 +111,12 @@ export const MODULES = [
   },
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
-    energyDraw: 3, mods: { magnetRange: 400 },
+    energyDraw: 3, mods: { magnetRange: 400, masslineHeadId: 'tractor' },
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
-    mods: { magnetRange: 720, tractorWholeWrecks: true },
+    mods: { magnetRange: 720, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {
