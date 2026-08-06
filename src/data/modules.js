@@ -132,6 +132,10 @@ export const MODULES = [
     energyDraw: 6, mods: { masslineHeadId: 'monofilament_sweep' },
   },
   {
+    id: 'mod_transverse_snare_m', name: 'Transverse Snare M', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 52000, requiresTech: 'tech_fire_control',
+    energyDraw: 7, mods: { masslineHeadId: 'transverse_snare' },
+  },
+  {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
   },

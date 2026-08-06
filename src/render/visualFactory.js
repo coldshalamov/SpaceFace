@@ -3211,6 +3211,48 @@ function buildMassSeed(e) {
   return g;
 }
 
+// PQ-030 Transverse Snare endpoint. The two compact forged brackets use both hue and silhouette
+// (square A / diamond B) so the line remains parseable under color-vision deficiency and reduced
+// effects. The cable itself is rendered by the existing Massline ribbon owner.
+function buildMasslineSnareAnchor(e) {
+  const R = Math.max(0.8, Number(e && e.radius) || 2.4);
+  const endpoint = String(e && e.data && e.data.endpoint || 'A');
+  const accent = endpoint === 'B' ? 0xffb45f : 0x7de0ff;
+  const g = new THREE.Group();
+  const frame = getMaterial('snare-anchor:frame', () => new THREE.MeshStandardMaterial({
+    color: 0x28323a, roughness: 0.5, metalness: 0.78,
+  }));
+  const glow = getMaterial(`snare-anchor:glow:${endpoint}`, () => new THREE.MeshStandardMaterial({
+    color: accent, emissive: accent, emissiveIntensity: 1.7, roughness: 0.24, metalness: 0.45,
+  }));
+  const core = new THREE.Mesh(
+    getGeometry('snare-anchor:core', () => new THREE.CylinderGeometry(0.42, 0.5, 0.28, 8)),
+    frame,
+  );
+  core.scale.setScalar(R);
+  g.add(core);
+  const railGeo = getGeometry('snare-anchor:rail', () => new THREE.BoxGeometry(1.35, 0.18, 0.18));
+  const railA = new THREE.Mesh(railGeo, frame);
+  const railB = new THREE.Mesh(railGeo, frame);
+  railA.position.z = 0.48 * R;
+  railB.position.z = -0.48 * R;
+  railA.scale.setScalar(R);
+  railB.scale.setScalar(R);
+  g.add(railA, railB);
+  const signal = new THREE.Mesh(
+    getGeometry('snare-anchor:signal', () => new THREE.TorusGeometry(0.56, 0.07, 5, 16)),
+    glow,
+  );
+  signal.rotation.x = Math.PI / 2;
+  signal.position.y = 0.2 * R;
+  signal.scale.setScalar(R);
+  g.add(signal);
+  if (endpoint === 'B') g.rotation.y = Math.PI / 4;
+  g.userData.kind = 'masslineSnareAnchor';
+  g.userData.endpoint = endpoint;
+  return g;
+}
+
 function buildFallback(e) {
   const root = new THREE.Group();
   root.name = `VisualBuildFailed_${e && e.type || 'unknown'}`;
@@ -3296,6 +3338,7 @@ export function createVisualFactory() {
           case 'vectormine': return buildVectorMine(e);
           case 'charge': return buildImpulseCharge(e);
           case 'massSeed': return buildMassSeed(e);
+          case 'masslineSnareAnchor': return buildMasslineSnareAnchor(e);
           case 'wreck': return buildWreck(e);
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return buildPlanetSiteVisual(e);

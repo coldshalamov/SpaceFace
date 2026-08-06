@@ -46,6 +46,9 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   // PQ-030 Monofilament Sweep changes only the consequence of a taut line crossing a hostile.
   // Its empty override deliberately snapshots the ordinary rope spring unchanged.
   monofilament_sweep: Object.freeze({ flag: 'masslineHeadMonofilamentSweep', spring: Object.freeze({}) }),
+  // PQ-030 Transverse Snare diverts the press into a remote line transaction. The empty override
+  // keeps a defensive/legacy ordinary latch physically ordinary if it reaches this policy path.
+  transverse_snare: Object.freeze({ flag: 'masslineHeadTransverseSnare', spring: Object.freeze({}) }),
 });
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;

@@ -882,6 +882,7 @@ function maskOf(e) {
     // PQ-011: anchor seeds share the deployed-device category — projectile sweeps/hits resolve
     // (the seed spawns with collisionMask PROJECTILE), ships never broadphase against it.
     case 'massSeed': return MINE_COLLISION_CATEGORY;
+    case 'masslineSnareAnchor': return MINE_COLLISION_CATEGORY;
     default: return 0;
   }
 }

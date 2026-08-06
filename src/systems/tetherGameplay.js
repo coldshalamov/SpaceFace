@@ -214,8 +214,26 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
-    const def = attachmentDef(kernel, TETHER_DEF_ID);
     const wantsLatch = !!(actions && actions.tetherFire);
+    const snareHeadActive = player.data?.derived?.masslineHeadId === 'transverse_snare'
+      && massline2Flag('masslineHeadTransverseSnare', state.runtime && state.runtime.features);
+    const remoteSnareActive = state.player?.remoteMassline?.active
+      && state.player.remoteMassline.kind === 'transverse_snare';
+    if (snareHeadActive || remoteSnareActive) {
+      // A Transverse Snare press is a separate world-to-world transaction. Do not let it fall
+      // through and also create the ordinary player-to-target line. The snare owner consumes the
+      // same normalized latch/cut command but never receives reel, thrust, facing, or brake input.
+      this._clearAcquisitionPreview(state);
+      const snare = this.helpers && this.helpers.masslineSnares;
+      if (snare && typeof snare.handleInput === 'function') {
+        snare.handleInput({ state, player, wantsLatch, masslineCommand });
+      } else if (wantsLatch || (masslineCommand && masslineCommand.cut)) {
+        this.bus.emit('tether:latchDenied', { reason: 'snare_authority_unavailable' });
+      }
+      return;
+    }
+    if (this.helpers?.masslineSnares?.clearPreview) this.helpers.masslineSnares.clearPreview();
+    const def = attachmentDef(kernel, TETHER_DEF_ID);
     // Ctrl-nearest (src/systems/input.js:1074) is an explicit manual override of the scored pick:
     // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
     // publish or consume one either.

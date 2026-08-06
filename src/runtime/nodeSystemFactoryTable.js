@@ -41,6 +41,7 @@ import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
 import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
+import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
@@ -188,6 +189,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['masslineTelemetry', masslineTelemetry],
     ['masslineThreats', masslineThreats],
     ['masslineImpacts', masslineImpacts],
+    ['masslineSnares', masslineSnares],
     ['masslineThrow', masslineThrow],
     ['masslineImpactDamage', masslineImpactDamage],
     ['lootShards', lootShards],

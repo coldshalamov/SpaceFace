@@ -1136,7 +1136,10 @@ export const input = {
       && this._gamepadLifecycleActionAllowed('massline')
       && gpMassline && gpMassline.held);
     const masslineHeld = tetherHeld || gpMasslineHeld;
-    const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);
+    const tetherActive = !!(state.player && (
+      (state.player.tether && state.player.tether.active)
+      || (state.player.remoteMassline && state.player.remoteMassline.active)
+    ));
     const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
     const rawOrbitDirection = kbdLineOrbit || gpTurn || tpTurn;

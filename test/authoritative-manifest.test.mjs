@@ -23,14 +23,15 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  assert.equal(PRODUCTION_INIT_ORDER.length, 130);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 98);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 131);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 99);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('massSeedHud'));
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('render'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('flightSlot'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('masslineSnares'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('massSeedHud'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('environmentalMachinery')
     < PRODUCTION_UPDATE_ORDER.indexOf('fields'));
@@ -134,17 +135,20 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved.
-  assert.equal(registry.systems.length, 130);
+  assert.equal(registry.systems.length, 131);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('save'));
 
-  // Update order still has collisionConsequences between aiPorts and weapons (PQ-009 contract).
+  // Update order still has collisionConsequences between aiPorts and weapons (PQ-009 contract),
+  // and the crossing-line owner runs after impacts but before throw resolution.
   const updates = registry.updateOrder.map((s) => s.name);
   const consequenceIndex = updates.indexOf('collisionConsequences');
   assert.ok(consequenceIndex > updates.indexOf('aiPorts'));
   assert.ok(consequenceIndex < updates.indexOf('weapons'));
+  assert.ok(updates.indexOf('masslineImpacts') < updates.indexOf('masslineSnares'));
+  assert.ok(updates.indexOf('masslineSnares') < updates.indexOf('masslineThrow'));
 });
 
 test('focused explicit systems report exclusions and may not claim production-manifest evidence', () => {

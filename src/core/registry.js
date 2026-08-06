@@ -38,6 +38,7 @@ import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
 import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
+import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
@@ -202,6 +203,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['masslineTelemetry', masslineTelemetry],
     ['masslineThreats', masslineThreats],
     ['masslineImpacts', masslineImpacts],
+    ['masslineSnares', masslineSnares],
     ['masslineThrow', masslineThrow],
     ['masslineImpactDamage', masslineImpactDamage],
     ['lootShards', lootShards],
@@ -477,7 +479,10 @@ export function createRegistry(ctx) {
   // • uniqueLootAbilities runs after impulseCharges and before physics: Choir-Bell and Tideline
   //   cross the physics-command membrane in time for this tick's solve, while its unique-only
   //   capacitor premium settles before combat's later regeneration pass.
-  // • masslineThrow runs after masslineImpacts: it consumes the settled tether mirror + telemetry
+  // • masslineSnares runs after masslineImpacts: tetherGameplay has already consumed the press and
+  //   spawned its endpoints; the physics owner has already settled this tick, so this owner can
+  //   admit a pending fixed-endpoint joint or test a real crossing without writing body motion.
+  // • masslineThrow runs after masslineSnares: it consumes the settled tether mirror + telemetry
   //   and may cut the attachment; tetherGameplay reconciles the cut next tick through the same
   //   path as any external cut. masslineImpactDamage / lootShards / terrainAnchors /
   //   jettisonImpulse are event-driven (no per-tick work) and sit with the family for readability.

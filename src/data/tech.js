@@ -48,7 +48,7 @@ export const TECH_NODES = [
   {
     id: 'tech_fire_control', name: 'Fire Control', branch: 'combat', prereqs: ['tech_strike_craft'],
     cost: { credits: 80000, rp: 110 },
-    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m'] },
+    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m', 'mod_transverse_snare_m'] },
   },
   {
     id: 'tech_warship_license', name: 'Warship License', branch: 'combat', prereqs: ['tech_strike_craft'],

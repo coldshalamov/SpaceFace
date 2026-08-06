@@ -39,6 +39,8 @@ export const PRODUCTION_FEATURES = Object.freeze({
     masslineHeadFrameCoupler: true,
     // PQ-030 / SF-28: fitted Monofilament Sweep heads turn a taut rope crossing into a cut.
     masslineHeadMonofilamentSweep: true,
+    // PQ-030 / SF-28: fitted Transverse Snare heads deploy one visible crossing line.
+    masslineHeadTransverseSnare: true,
   }),
   travel: Object.freeze({
     travelBurn: true,
@@ -80,6 +82,7 @@ export const LEGACY47A_FEATURES = Object.freeze({
     masslineHeadElasticWhip: false,
     masslineHeadFrameCoupler: false,
     masslineHeadMonofilamentSweep: false,
+    masslineHeadTransverseSnare: false,
   }),
   travel: Object.freeze({
     travelBurn: false,

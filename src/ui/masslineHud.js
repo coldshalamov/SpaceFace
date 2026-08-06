@@ -36,6 +36,9 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-ml2 .ml2-preview-line { stroke:rgba(125,224,255,0.62); stroke-width:1.5; stroke-dasharray:4 6;
   vector-effect:non-scaling-stroke; }
+#sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:rgba(125,224,255,0.92);
+  stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(125,224,255,0.72)); }
+#sf-ml2 .ml2-preview.ml2-preview-snare { border-style:solid; border-left-width:3px; }
 /* The acquisition MARK is the world anchor: it sits on the candidate itself, so the preview never
    needs a player-to-target link line (see _updateAcquisitionPreview). Shape, not colour, carries
    the state — diamond = ready, circle = protected, dashed = unavailable. */
@@ -190,6 +193,12 @@ export const masslineHud = {
   // that does not exist yet — only the real rendered Massline may connect the player to an object.
   // The mark is what makes the caption world-anchored, so no connector is needed.
   _updateAcquisitionPreview(dom, state, player, w2s) {
+    const snarePreview = state.player && state.player.masslineSnarePreview;
+    const remoteActive = !!(state.player && state.player.remoteMassline && state.player.remoteMassline.active);
+    if (snarePreview && snarePreview.valid && !remoteActive) {
+      this._updateSnarePreview(dom, snarePreview, w2s);
+      return;
+    }
     const receipt = state.masslineAcquisition;
     const selected = receipt && receipt.selected;
     const tethered = !!(state.player && state.player.tether && state.player.tether.active);
@@ -229,6 +238,8 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
 
     setStyle(dom.previewEl, 'display', 'block');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
     setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
@@ -244,6 +255,47 @@ export const masslineHud = {
     setStyle(dom.previewEl, 'display', 'none');
     setStyle(dom.previewMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setClass(dom.previewSvg, 'ml2-snare-preview', false);
+  },
+
+  _updateSnarePreview(dom, preview, w2s) {
+    const source = w2s({ x: preview.source.x, y: 0, z: preview.source.z });
+    const target = w2s({ x: preview.target.x, y: 0, z: preview.target.z });
+    if (!finiteProjection(source) || !finiteProjection(target)) {
+      this._hideAcquisitionPreview(dom);
+      return;
+    }
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const sx = clampRange(source.x, 18, viewportWidth - 18);
+    const sy = clampRange(source.y, 18, viewportHeight - 18);
+    const tx = clampRange(target.x, 18, viewportWidth - 18);
+    const ty = clampRange(target.y, 18, viewportHeight - 18);
+    const midX = (sx + tx) * 0.5;
+    const midY = (sy + ty) * 0.5;
+    const text = 'TRANSVERSE SNARE · READY · MASSLINE TO DEPLOY';
+    const captionWidth = estimateCaptionWidth(text);
+    const labelX = clampRange(midX - captionWidth * 0.5, 8, Math.max(8, viewportWidth - captionWidth - 12));
+    const labelY = clampRange(midY + 16, 8, viewportHeight - 40);
+
+    setAttr(dom.previewLine, 'x1', String(Math.round(sx)));
+    setAttr(dom.previewLine, 'y1', String(Math.round(sy)));
+    setAttr(dom.previewLine, 'x2', String(Math.round(tx)));
+    setAttr(dom.previewLine, 'y2', String(Math.round(ty)));
+    setStyle(dom.previewSvg, 'display', 'block');
+    setClass(dom.previewSvg, 'ml2-snare-preview', true);
+    setStyle(dom.previewMark, 'display', 'none');
+    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'aria-label', 'Transverse Snare ready. Press Massline to deploy the shown crossing line.');
+    setAttr(dom.previewEl, 'data-receipt-id', String(preview.receiptId || ''));
+    setAttr(dom.previewEl, 'data-target-id', 'free-target-line');
+    setClass(dom.previewEl, 'ml2-preview-snare', true);
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      setClass(dom.previewEl, `ml2-preview-${name}`, false);
+    }
   },
 
   _updateThrowMark(dom, throwState, state, w2s) {
@@ -368,10 +420,9 @@ export const masslineHud = {
     const root = document.createElement('div');
     root.id = 'sf-ml2';
 
-    // Mounted and PERMANENTLY hidden. This is the pre-latch link line, and it stays switched off on
-    // purpose: only the real rendered Massline cable may draw a line from the player to an object.
-    // Keeping the node (rather than deleting it) leaves that decision visible to the next reader and
-    // to the surface's own regression, which asserts this line never displays.
+    // Ordinary target acquisition never draws a player-to-target link. This SVG is used only by
+    // the Transverse Snare head, where the free-target segment itself is the exact thing a press
+    // will deploy; once deployed, the real rendered Massline cable replaces it.
     const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     previewSvg.setAttribute('class', 'ml2-preview-link');
     previewSvg.style.display = 'none';
@@ -498,6 +549,10 @@ function viewportExtent(windowKey, documentKey, fallback) {
     ? Number(document.documentElement && document.documentElement[documentKey])
     : 0;
   return fromDocument > 0 ? fromDocument : fallback;
+}
+
+function finiteProjection(value) {
+  return !!(value && Number.isFinite(value.x) && Number.isFinite(value.y));
 }
 
 function clampRange(value, min, max) {

@@ -480,4 +480,4 @@ function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-export { FALLBACK };
+export { FALLBACK, lineSweepContact };

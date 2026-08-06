@@ -285,6 +285,18 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    id: 'attachment_transverse_snare', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    // A snare is deliberately expendable. It can hold a genuine crossing, but ordinary thrust
+    // and collision load can break it after the visible warning window instead of creating an
+    // invisible permanent slow field.
+    break: { maxTension: 5400, maxImpulse: 1000, maxYank: 2400, graceTicks: 6 },
+    spring: { K: 145, zeta: 0.72, captureS: 0.18, maxStretchRatio: 0.65 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
@@ -314,7 +326,7 @@ export const COMBAT_PROFILES = Object.freeze([
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
   },
   {
-    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup'],
+    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'masslineSnareAnchor'],
     heat: { max: 0, dissipationPerTick: 0 },
     immunityTags: [],
     subsystemIds: [],
@@ -338,6 +350,7 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   asteroid: 'combat_profile_tether_anchor',
   wreck: 'combat_profile_tether_anchor',
   pickup: 'combat_profile_tether_anchor',
+  masslineSnareAnchor: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });
 

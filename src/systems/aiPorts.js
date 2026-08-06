@@ -1138,7 +1138,8 @@ function subsystemFraction(runtime, id) {
 function contactKindFor(entity) {
   if (entity.type === 'ship' || entity.type === 'drone') return ContactKind.SHIP;
   if (entity.type === 'projectile') return ContactKind.PROJECTILE;
-  if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck') return ContactKind.HAZARD;
+  if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
+      || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
   if (entity.type === 'pickup') return ContactKind.OBJECTIVE;
   return null;
 }

@@ -487,6 +487,7 @@ const MASSLINE_HEAD_LABELS = Object.freeze({
   elastic_whip: 'ELASTIC WHIP',
   frame_coupler: 'FRAME COUPLER',
   monofilament_sweep: 'MONOFILAMENT',
+  transverse_snare: 'TRANSVERSE SNARE',
 });
 
 /**
@@ -533,6 +534,9 @@ export function masslineTetherStatus(tether) {
   let status;
   if (automaticBreakAllowed && strain > 0.85) status = 'CRITICAL';
   else if (automaticBreakAllowed && strain > 0.6) status = 'STRAINED';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'deploying') status = 'DEPLOYING';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'armed') status = 'ARMED';
+  else if (tether && tether.kind === 'transverse_snare' && phase === 'caught') status = 'CAUGHT';
   else if (phase === 'overload' || load > TETHER_STATUS_HIGH_LOAD || strain > 0.85) {
     status = operation ? `${operation} · HIGH LOAD` : 'HIGH LOAD';
   } else if (phase === 'loaded' || load > TETHER_STATUS_LOADED_LOAD || strain > 0.6) {
@@ -555,6 +559,9 @@ export function consumeContactRosterClock(clock, dt) {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+function hudEntityName(entity) {
+  return (entity && (entity.name || (entity.data && entity.data.name))) || (entity ? entity.type : '');
+}
 
 // Live flight-binding labels (matches settings rebind + help): settings overrides → scheme → classic.
 // Used so tether reel/cut prompts never hard-code a key that can drift from input.js.
@@ -1834,6 +1841,9 @@ export function createHud(ctx, alerts) {
   function buildTetherControlPrompt(tether) {
     if (!tether || !tether.active) return '';
     const cutLabel = resolveActionLabel(state, 'tether');
+    if (tether.kind === 'transverse_snare') {
+      return cutLabel ? `TAP [${cutLabel}] CUT SNARE` : 'SNARE CUT UNBOUND';
+    }
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
     const parts = [];
@@ -1864,21 +1874,22 @@ export function createHud(ctx, alerts) {
     const cutLabel = resolveActionLabel(state, 'tether');
     const reelInLabel = resolveActionLabel(state, 'reelIn');
     const reelOutLabel = resolveActionLabel(state, 'reelOut');
-    const sig = `${cutLabel}|${reelInLabel}|${reelOutLabel}`;
+    const remoteOnly = tether.kind === 'transverse_snare';
+    const sig = `${cutLabel}|${remoteOnly ? '' : reelInLabel}|${remoteOnly ? '' : reelOutLabel}|${remoteOnly ? 'remote' : 'local'}`;
     if (sig === _tetherChipSig) {
       tetherControls.hidden = false;
       return;
     }
     _tetherChipSig = sig;
     const chips = [];
-    if (reelInLabel) {
+    if (!remoteOnly && reelInLabel) {
       chips.push({ bind: reelInLabel, verb: 'REEL IN' });
-    } else if (cutLabel) {
+    } else if (!remoteOnly && cutLabel) {
       // Hold-mode axes sit under the keycap so the status line stays a short load/target readout.
       chips.push({ bind: `HOLD ${cutLabel}`, hint: LINE_CONTROL_HINT });
     }
-    if (reelOutLabel) chips.push({ bind: reelOutLabel, verb: 'PAY OUT' });
-    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: 'CUT' });
+    if (!remoteOnly && reelOutLabel) chips.push({ bind: reelOutLabel, verb: 'PAY OUT' });
+    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: remoteOnly ? 'CUT SNARE' : 'CUT' });
     if (!chips.length) {
       tetherControls.hidden = false;
       tetherControls.textContent = 'TETHER UNBOUND';
@@ -3960,13 +3971,18 @@ export function createHud(ctx, alerts) {
       setText(elSpeed, Math.round(sp) + '');
       // Tether readout: status + target while latched. Control chips paint separately so the
       // instrument value never becomes a rebind encyclopedia that overflows the deck.
-      const tether = state.player && state.player.tether;
+      const localTether = state.player && state.player.tether;
+      const remoteTether = state.player && state.player.remoteMassline;
+      const tether = localTether && localTether.active ? localTether : remoteTether;
       if (elTetherStat) {
         const active = !!(tether && tether.active);
         setStyle(elTetherStat, 'display', active ? '' : 'none');
         if (active) {
           const targetEnt = state.entities.get(tether.targetId);
-          const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
+          const sourceEnt = tether.kind === 'transverse_snare' ? state.entities.get(tether.sourceId) : null;
+          const targetName = sourceEnt
+            ? `${hudEntityName(sourceEnt)} ↔ ${hudEntityName(targetEnt)}`
+            : hudEntityName(targetEnt);
           const tetherStatus = masslineTetherStatus(tether);
           const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
           // Status only on the instrument value. Control chips + rebind-truth prompt string are

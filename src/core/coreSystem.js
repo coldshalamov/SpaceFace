@@ -197,6 +197,7 @@ function ensureEntityIndex(state) {
     shipLike: [],
     projectiles: [],
     pickups: [],
+    payloads: [],
     movables: [],
     stations: [],
     dockStations: [],
@@ -233,6 +234,7 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.shipLike)) index.shipLike = [];
   if (!Array.isArray(index.projectiles)) index.projectiles = [];
   if (!Array.isArray(index.pickups)) index.pickups = [];
+  if (!Array.isArray(index.payloads)) index.payloads = [];
   if (!Array.isArray(index.movables)) index.movables = [];
   if (!Array.isArray(index.stations)) index.stations = [];
   if (!Array.isArray(index.dockStations)) index.dockStations = [];
@@ -272,6 +274,7 @@ function clearEntityIndex(index) {
   index.shipLike.length = 0;
   index.projectiles.length = 0;
   index.pickups.length = 0;
+  index.payloads.length = 0;
   index.movables.length = 0;
   index.stations.length = 0;
   index.dockStations.length = 0;
@@ -321,7 +324,8 @@ function appendEntityIndex(index, e) {
     }
   }
   if (movable) index.movables.push(e);
-  if (e.type !== 'projectile' && e.type !== 'fx') {
+  if (e.type !== 'projectile' && e.type !== 'fx'
+      && e.type !== 'masslineSnare' && e.type !== 'masslineSnareAnchor') {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
   }
@@ -344,6 +348,9 @@ function appendEntityIndex(index, e) {
       break;
     case 'pickup':
       index.pickups.push(e);
+      break;
+    case 'payload':
+      index.payloads.push(e);
       break;
     case 'station': {
       index.stations.push(e);
@@ -378,6 +385,11 @@ function appendEntityIndex(index, e) {
       // field the same tick (counterplay + destruction cleanup). The Cone has no emitter entity.
       index.damageables.push(e);
       break;
+    case 'masslineSnareAnchor':
+      // PQ-030: visible snare endpoints are fixed ghost bodies but remain projectile-damageable;
+      // destroying either endpoint cleanly breaks the authority-owned line.
+      index.damageables.push(e);
+      break;
   }
   index.version++;
 }
@@ -401,6 +413,7 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.shipLike, e);
   removeFromIndexArray(index.projectiles, e);
   removeFromIndexArray(index.pickups, e);
+  removeFromIndexArray(index.payloads, e);
   removeFromIndexArray(index.stations, e);
   removeFromIndexArray(index.dockStations, e);
   removeFromIndexArray(index.gates, e);

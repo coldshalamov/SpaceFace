@@ -4335,11 +4335,13 @@ export const vfx = {
       mesh, glow, band, anchor, anchorCore, targetHalo, SEG, BANDS,
       along, side, glowAlong, glowSide,
       wasActive: false,
+      lastSourceId: null,
+      lastTargetId: null,
+      lastRemote: false,
       latchAge: 999,      // seconds since latch (drives the whip wave)
       snapAge: 999,       // seconds since break (drives the violent recoil whip)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
       fadeRate: TETHER_RELEASE_FADE_RATE,
-      lastTargetId: null,
       bowSide: 1,
       strainSmooth: 0,
       loadSmooth: 0,
@@ -4449,16 +4451,27 @@ export const vfx = {
   _updateTetherCable(dt) {
     const cable = this._tetherCable;
     if (!cable) return;
-    const tether = this.state.player && this.state.player.tether;
+    const playerTether = this.state.player && this.state.player.tether;
+    const remoteTether = this.state.player && this.state.player.remoteMassline;
+    const remote = !!(remoteTether && remoteTether.active
+      && remoteTether.sourceId != null && remoteTether.targetId != null);
+    const tether = remote ? remoteTether : playerTether;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    const active = !!(tether && tether.active && player && player.alive);
+    const source = remote ? this._ent(tether.sourceId) : player;
+    const active = !!(tether && tether.active && player && player.alive && source && source.alive);
     const target = active ? this._ent(tether.targetId) : null;
     const live = active && target && target.alive;
+    const sourceId = live ? source.id : null;
+    const targetId = live ? target.id : null;
+    const identityChanged = live && (cable.lastSourceId !== sourceId
+      || cable.lastTargetId !== targetId || cable.lastRemote !== remote);
 
-    if (live && !cable.wasActive) {
+    if (live && (!cable.wasActive || identityChanged)) {
       cable.latchAge = 0; cable.snapAge = 999; cable.fade = 1;
       cable.fadeRate = TETHER_RELEASE_FADE_RATE;
-      cable.lastTargetId = tether.targetId;
+      cable.lastSourceId = sourceId;
+      cable.lastTargetId = targetId;
+      cable.lastRemote = remote;
     }
     cable.wasActive = live;
     cable.latchAge += dt;
@@ -4471,16 +4484,30 @@ export const vfx = {
       if (cable.mesh.visible) setTetherCableVisible(cable, false);
       return;
     }
+    const sourceEnt = live ? source : this._ent(cable.lastSourceId);
     const anchorEnt = live ? target : this._ent(cable.lastTargetId);
-    if (!anchorEnt) { setTetherCableVisible(cable, false); return; }
+    if (!sourceEnt || !anchorEnt) { setTetherCableVisible(cable, false); return; }
 
-    // Endpoints: ship nose -> target visual surface point. Stations use a small collision radius so
-    // docking feels sane, but their visible body/ring is much larger. Using the collision radius made
-    // masslines appear to attach to empty space in the center of a station.
+    // Ordinary line: player nose -> target surface. Remote heads: source surface -> target surface;
+    // the player remains the controller but is never smuggled in as a physical third endpoint.
+    // Stations use a small collision radius so docking feels sane, but their visible body/ring is
+    // much larger. Using the collision radius made lines attach to empty space in station centers.
     // Chord math stays galactic-global; mesh buffer writes are frame-local.
-    const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
-    const noseR = (player.radius || 6);
-    const axG = player.pos.x + cf * noseR, azG = player.pos.z + sf * noseR;
+    let axG;
+    let azG;
+    if (cable.lastRemote) {
+      const sourceDx = anchorEnt.pos.x - sourceEnt.pos.x;
+      const sourceDz = anchorEnt.pos.z - sourceEnt.pos.z;
+      const sourceDistance = Math.hypot(sourceDx, sourceDz) || 1;
+      const sr = tetherVisualRadius(sourceEnt);
+      axG = sourceEnt.pos.x + (sourceDx / sourceDistance) * sr * 0.88;
+      azG = sourceEnt.pos.z + (sourceDz / sourceDistance) * sr * 0.88;
+    } else {
+      const cf = Math.cos(sourceEnt.rot), sf = Math.sin(sourceEnt.rot);
+      const noseR = (sourceEnt.radius || 6);
+      axG = sourceEnt.pos.x + cf * noseR;
+      azG = sourceEnt.pos.z + sf * noseR;
+    }
     let dxG = anchorEnt.pos.x - axG, dzG = anchorEnt.pos.z - azG;
     const dist = Math.hypot(dxG, dzG) || 1;
     const tr = tetherVisualRadius(anchorEnt);
@@ -4531,7 +4558,7 @@ export const vfx = {
     cable.loadSmooth += (loadRaw - cable.loadSmooth) * Math.min(1, dt * 8);
     const rest = (tether && tether.restLength) || 0;
     const slack = Math.max(0, rest - chord);
-    const tangential = player.vel ? (player.vel.x * px + player.vel.z * pz) : 0;
+    const tangential = sourceEnt.vel ? (sourceEnt.vel.x * px + sourceEnt.vel.z * pz) : 0;
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
     // The bow flattens as the line works. Keyed off the smoothed load, not strainSmooth: against a
     // 10.5M breakTension the old term was a constant 1.0 and the bow never straightened.
@@ -6721,7 +6748,8 @@ export const vfx = {
     if (!cable) return false;
     if (cable.fade > 0.001) return true;
     const tether = this.state.player && this.state.player.tether;
-    return !!(tether && tether.active);
+    const remote = this.state.player && this.state.player.remoteMassline;
+    return !!((tether && tether.active) || (remote && remote.active));
   },
 
   _seamMarkersRelevant() {
