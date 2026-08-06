@@ -4,7 +4,9 @@ import { createServer } from 'node:net';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { chromium, _electron as electron } from 'playwright';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+
+const { chromium, _electron: electron } = await loadPlaywright();
 
 const ROOT = new URL('../', import.meta.url);
 const ROOT_PATH = fileURLToPath(ROOT);

@@ -1203,6 +1203,11 @@ export const audio = {
   },
 
   _isMuted() {
+    // Playwright exposes this standard browser signal even in older probes that bypass the shared
+    // launcher wrapper. Automation never owns the host audio device, regardless of saved settings.
+    if (typeof window !== 'undefined'
+      && window.navigator
+      && window.navigator.webdriver === true) return true;
     const a = this.state && this.state.settings && this.state.settings.audio;
     return !a || a.muted !== false;
   },
@@ -1210,7 +1215,7 @@ export const audio = {
   _applySettings() {
     const rt = this.rt; if (!rt.ctx) return;
     const a = (this.state.settings && this.state.settings.audio) || {};
-    const muted = a.muted !== false;
+    const muted = this._isMuted();
     const t = rt.ctx.currentTime;
     const cache = rt._busGainCache || (rt._busGainCache = Object.create(null));
     // Unlike setTargetAtTime, the 50 ms linear glide below is NOT memoryless: it re-reads

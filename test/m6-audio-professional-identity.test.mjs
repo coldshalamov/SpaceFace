@@ -262,6 +262,12 @@ test('default mute creates no AudioContext; explicit unmute keeps paused-menu un
     assert.equal(contextsCreated, 0, 'muted startup must not construct a hidden oscillator graph');
 
     state.settings.audio.muted = false;
+    globalThis.window.navigator = { webdriver: true };
+    assert.equal(harness._ensureContext(), null,
+      'browser automation must stay silent even when a saved profile was explicitly unmuted');
+    assert.equal(contextsCreated, 0, 'automation must not claim the host audio device');
+    delete globalThis.window.navigator;
+
     const ctx = harness._ensureContext();
     assert.ok(ctx, 'gesture unlock creates the audio graph');
     assert.equal(contextsCreated, 1);
