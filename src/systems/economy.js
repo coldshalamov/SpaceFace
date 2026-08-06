@@ -440,6 +440,9 @@ export const economy = {
       this.refreshStationDemand(p.stationId);
       this.snapshotIntel(p.stationId);
     });
+    bus.on('map:sectorCharted', (p) => {
+      if (p && p.source === 'survey' && p.sectorId) this.seedMemoryFromSurvey(p.sectorId);
+    });
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
     // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
@@ -848,12 +851,38 @@ export const economy = {
     this.recordMarketMemory(stationId, snapshot);
   },
 
-  /** Player-facing price memory: visited stations only, stored under player so saves carry it. */
-  recordMarketMemory(stationId, snapshot = null) {
+  /**
+   * Convert one purchased sector survey into bounded, explicitly lower-confidence price memory.
+   * This is the only non-dock writer: it sees exactly the stations named by the purchased sector,
+   * takes one snapshot, and never installs live remote intel or an updating subscription.
+   */
+  seedMemoryFromSurvey(sectorId) {
+    const state = this.state;
+    const registry = state && state.content && state.content.sectors;
+    const sectors = registry ? (Array.isArray(registry) ? registry : Object.values(registry)) : SECTORS;
+    const sector = sectors.find((entry) => entry && entry.id === sectorId);
+    if (!sector) return { stationCount: 0, listingCount: 0 };
+
+    let stationCount = 0;
+    let listingCount = 0;
+    for (const station of sector.stations || []) {
+      if (!station || !station.id) continue;
+      const market = this.ensureMarket(station.id, station.type, station.size);
+      const memory = this.recordMarketMemory(station.id, market, { source: 'survey' });
+      if (!memory) continue;
+      stationCount++;
+      listingCount += Object.keys(memory).length;
+    }
+    return { stationCount, listingCount };
+  },
+
+  /** Player-facing price memory: dock observations plus purchased survey snapshots, saved on player. */
+  recordMarketMemory(stationId, snapshot = null, options = null) {
     const state = this.state;
     if (!stationId || !state || !state.player) return null;
     const market = snapshot || (state.economy && state.economy.markets && state.economy.markets[stationId]);
     if (!market) return null;
+    const source = options && options.source === 'survey' ? 'survey' : null;
     const memory = ensurePlayerMarketMemory(state.player);
     const stationMemory = memory[stationId] || (memory[stationId] = {});
     for (const cid in market) {
@@ -862,13 +891,19 @@ export const economy = {
       const buy = e.buy != null ? e.buy : e.lastBuy;
       const sell = e.sell != null ? e.sell : e.lastSell;
       if (!Number.isFinite(Number(buy)) && !Number.isFinite(Number(sell))) continue;
-      stationMemory[cid] = {
+      const prior = stationMemory[cid];
+      // A real visit is stronger knowledge than a survey packet. Duplicate/replayed chart events
+      // may refresh survey-grade memory, but can never downgrade a direct dock observation.
+      if (source === 'survey' && prior && prior.source !== 'survey') continue;
+      const record = {
         buy: Math.round(Number(buy) || 0),
         sell: Math.round(Number(sell) || 0),
         seenAt: Math.max(0, Number(state.simTime) || 0),
         demandMult: Number(e.demandMult) || 1,
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
+      if (source) record.source = source;
+      stationMemory[cid] = record;
     }
     return stationMemory;
   },
