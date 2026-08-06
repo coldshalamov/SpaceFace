@@ -12,6 +12,10 @@ import { SECTORS } from '../../data/sectors.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
+import {
+  describeOutfittingSpendConfirm,
+  isOutfittingSpendDanger,
+} from '../outfittingSpendConfirm.js';
 import { createShipEngineeringStage } from '../shipEngineeringStage.js';
 import { createFitTree } from '../fitTree.js';
 import { createMorphLabel } from '../effects/index.js';
@@ -53,58 +57,13 @@ ALL_BUYABLE.sort((a, b) => {
 
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 
-/** Remaining credits at or below this after a paid buy is treated as operationally risky (station
- *  services / insurance deductible scale). Danger styling when the spend leaves this thin reserve. */
-const OPS_RISK_BALANCE_CR = 500;
-
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
 }
 
-/**
- * Danger confirm when the spend is ≥50% of available credits, or would leave a thin operational
- * reserve (≤ OPS_RISK_BALANCE_CR). Free / zero-cost actions are never danger.
- */
-export function isOutfittingSpendDanger(price, credits) {
-  const cost = Math.max(0, Number(price) || 0);
-  const avail = Math.max(0, Number(credits) || 0);
-  if (cost <= 0) return false;
-  if (avail > 0 && cost >= avail * 0.5) return true;
-  const remaining = avail - cost;
-  return remaining >= 0 && remaining <= OPS_RISK_BALANCE_CR;
-}
-
-/**
- * Build confirm() options for a paid module purchase. Names the module + formatted cost.
- * Zero-cost: returns null (caller skips the dialog).
- */
-export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
-  if (!def) return null;
-  const price = Math.max(0, Number(def.price) || 0);
-  if (price <= 0) return null;
-  const avail = Math.max(0, Number(credits) || 0);
-  const remaining = Math.max(0, avail - price);
-  const fitSlotIndex = opts.fitSlotIndex;
-  const willFit = Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0;
-  const danger = isOutfittingSpendDanger(price, avail);
-  const fitLine = willFit
-    ? ' Will fit into an open hardpoint on confirmation.'
-    : ' Goes to module inventory.';
-  const riskLine = danger
-    ? (avail > 0 && price >= avail * 0.5
-      ? ' This spends at least half your credits.'
-      : ' Remaining balance after purchase is operationally thin (' + fmtCr(remaining) + ' CR).')
-    : '';
-  return {
-    title: 'Buy ' + def.name + '?',
-    body: 'Cost: ' + fmtCr(price) + ' CR.' + fitLine + riskLine,
-    confirmLabel: willFit ? 'Buy & Fit' : 'Buy',
-    cancelLabel: 'Cancel',
-    danger,
-  };
-}
+export { describeOutfittingSpendConfirm, isOutfittingSpendDanger };
 
 export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = []) {
   if (!def) {

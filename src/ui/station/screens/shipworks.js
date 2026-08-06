@@ -12,6 +12,8 @@ import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
+import { confirm, isConfirmOpen } from '../../confirm.js';
+import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
 import { icon } from '../icons.js';
 import {
   createShipPreviewMount,
@@ -1122,11 +1124,34 @@ export function createShipworksScreen(ctx) {
     ? new ResizeObserver(() => scheduleSpatialProjection()) : null;
   if (stageResizeObserver) stageResizeObserver.observe(stageEl);
 
-  chooserEl.addEventListener('click', (ev) => {
+  let buyConfirmBusy = false;
+  chooserEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
     const bf = ev.target.closest('[data-buyfit]');
     if (bf && !bf.disabled) {
-      const defId = bf.getAttribute('data-buyfit'); const slotIndex = Number(bf.getAttribute('data-slot'));
+      if (buyConfirmBusy || isConfirmOpen()) return;
+      const defId = bf.getAttribute('data-buyfit');
+      const slotIndex = Number(bf.getAttribute('data-slot'));
+      const def = FITTABLE_BY_ID.get(defId);
+      if (!def) return;
+      const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
+      const confirmOpts = describeOutfittingSpendConfirm(def, credits, { fitSlotIndex: slotIndex });
+      if (confirmOpts) {
+        try { bf.focus({ preventScroll: true }); } catch (_) {
+          try { bf.focus(); } catch (__) {}
+        }
+        buyConfirmBusy = true;
+        let ok = false;
+        try {
+          ok = await confirm(confirmOpts);
+        } finally {
+          buyConfirmBusy = false;
+        }
+        if (!ok) {
+          if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          return;
+        }
+      }
       if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex }); ctx.bus.emit('audio:cue', { id: 'ui_click' }); }
       closeChooser(); setTimeout(refresh, 70); return;
     }

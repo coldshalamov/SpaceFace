@@ -21,6 +21,10 @@ const OUTFIT_SOURCE = readFileSync(
   fileURLToPath(new URL('../src/ui/screens/outfitting.js', import.meta.url)),
   'utf8',
 );
+const SHIPWORKS_SOURCE = readFileSync(
+  fileURLToPath(new URL('../src/ui/station/screens/shipworks.js', import.meta.url)),
+  'utf8',
+);
 
 const ALL_BUYABLE = new Map([
   ...MODULES.map((d) => [d.id, d]),
@@ -458,6 +462,19 @@ function getConfirmDialog() {
 
   // Focus restoration: the button is focused before confirm so cancel restores to it.
   assert.match(OUTFIT_SOURCE, /btn\.focus\(\{\s*preventScroll:\s*true\s*\}\)/, 'handler focuses the Buy button before opening confirm');
+}
+
+// ── Default Shipworks source integration ──────────────────────────────
+
+{
+  assert.match(SHIPWORKS_SOURCE, /chooserEl\.addEventListener\('click',\s*async\s*\(ev\)\s*=>\s*\{/, 'default Shipworks chooser has one async click handler');
+  assert.match(SHIPWORKS_SOURCE, /if\s*\(buyConfirmBusy\s*\|\|\s*isConfirmOpen\(\)\)\s*return/, 'Shipworks blocks purchase re-entry while confirmation is open');
+  assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{\s*fitSlotIndex:\s*slotIndex\s*\}\)/, 'Shipworks uses the shared module-spend description');
+  assert.match(SHIPWORKS_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'Shipworks awaits paid-spend confirmation');
+  assert.match(SHIPWORKS_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?return;\s*\}/, 'Shipworks cancellation returns before purchase');
+  const shipworksBuyIndex = SHIPWORKS_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex })");
+  const shipworksConfirmIndex = SHIPWORKS_SOURCE.indexOf('ok = await confirm(confirmOpts)');
+  assert.ok(shipworksBuyIndex > shipworksConfirmIndex, 'default-route module purchase follows confirmation');
 }
 
 // ── describeOutfittingPurchase still reports disabled states correctly ───────
