@@ -140,6 +140,9 @@ test('PQ-024 committed-transition manifest is a distinct one-shot broker candida
   assert.equal(fresh.maxLaunchesPerCandidate, 1);
   assert.equal(fresh.requireBrokerClaim, true);
   assert.match(String(fresh.artifactRoot), /pq024-committed-transition/);
+  assert.deepEqual(fresh.fastGateCommands, [
+    'node --test test/pq024-survey-claim.test.mjs test/pq024-asteroid-claim-manifest.test.mjs test/station-docking-corridor.test.mjs',
+  ]);
   for (const required of [
     'scripts/probe-pq024-asteroid-claim.mjs',
     'scripts/check-pq024-committed-transition-electron.mjs',
@@ -149,6 +152,10 @@ test('PQ-024 committed-transition manifest is a distinct one-shot broker candida
     assert.ok(fresh.harnessSourcePaths.includes(required),
       `committed-transition digest misses ${required}`);
   }
+  assert.ok(fresh.regressionSourcePaths.includes('test/station-docking-corridor.test.mjs'),
+    'committed-transition regression identity must include the station berth contract');
+  assert.ok(fresh.productionSourcePaths.includes('src/systems/flightV3.js'),
+    'committed-transition production identity must include the station autopilot owner');
 
   const root = fileURLToPath(new URL('../', import.meta.url));
   const [boundedDigests, fullDigests] = await Promise.all([

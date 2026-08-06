@@ -20,11 +20,16 @@ export function createPq024CommittedTransitionManifest(overrides = {}) {
       '--committed-transition',
     ],
     fastGateCommands: [
-      'node --test test/pq024-survey-claim.test.mjs test/pq024-asteroid-claim-manifest.test.mjs',
+      'node --test test/pq024-survey-claim.test.mjs test/pq024-asteroid-claim-manifest.test.mjs test/station-docking-corridor.test.mjs',
     ],
     regressionSourcePaths: [...new Set([
       ...base.regressionSourcePaths,
       'test/pq024-asteroid-claim-manifest.test.mjs',
+      'test/station-docking-corridor.test.mjs',
+    ])],
+    productionSourcePaths: [...new Set([
+      ...base.productionSourcePaths,
+      'src/systems/flightV3.js',
     ])],
     harnessSourcePaths: [...new Set([
       ...base.harnessSourcePaths,
