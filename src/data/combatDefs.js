@@ -118,9 +118,9 @@ export const STATUS_DEFS = Object.freeze([
   {
     id: 'status_tumbling', version: 1, tags: ['massline', 'control_loss'], durationTicks: 360,
     stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
-    // The tumble system owns physical zero-control and recovery. This status owns the canonical
-    // combat-action gate so SG-03 cannot spend capacitor on dash/tether/weapon verbs while the
-    // hull is uncontrolled.
+    // This status owns the active tumble fact and the canonical combat-action gate. The physical
+    // tumble system consumes Massline-owned status metadata for zero-control and RCS recovery, so
+    // SG-03 cannot spend capacitor on dash/tether/weapon verbs while the hull is uncontrolled.
     effects: { blockedActionTags: ['dash', 'tether', 'weapon'] },
     interactions: [], periodic: null, cueId: 'ai.formation_broken',
   },

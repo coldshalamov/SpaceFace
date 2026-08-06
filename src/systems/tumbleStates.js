@@ -21,6 +21,11 @@ import {
 } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { ensureCombatant } from '../combat/runtime.js';
+import {
+  MASSLINE_TUMBLE_KIND,
+  readMasslineTumbleStatus,
+  TUMBLE_STATUS_ID,
+} from '../combat/tumbleStatus.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const TUMBLE_MIN_S = 1.5;             // duration clamp
@@ -66,16 +71,18 @@ export const tumbleStates = {
     const now = finite(state.simTime, state.tick / 60);
 
     for (const e of entities.values()) {
-      const tumble = e && e.data && e.data.tumble;
+      const tumble = e && readMasslineTumbleStatus(state, e);
       if (!tumble) continue;
-      if (!e.alive) { delete e.data.tumble; continue; }
+      if (!e.alive || e.id === state.playerId) {
+        this._clearTumbleStatus(e, e.alive ? 'player_immune' : 'entity_dead');
+        continue;
+      }
 
       const spin = Math.abs(finite(e.angVel, 0));
-      const elapsed = now - finite(tumble.startedAt, now);
+      const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
       const recovered = elapsed >= TUMBLE_MIN_S && spin <= TUMBLE_RECOVER_OMEGA;
-      if (recovered || now >= tumble.until) {
-        this._expireTumbleStatus(e);
-        delete e.data.tumble;
+      if (recovered || now >= finite(tumble.data && tumble.data.until, now)) {
+        this._clearTumbleStatus(e, recovered ? 'rcs_recovered' : 'duration_elapsed');
         if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
         continue;
       }
@@ -113,7 +120,7 @@ export const tumbleStates = {
     if (!victim || victim.alive === false || !victim.data) return;
     if (victim.id === state.playerId) return;                       // players never tumble
     if (victim.type !== 'ship' && victim.type !== 'drone') return;  // rocks/stations don't flail
-    if (victim.data.tumble) return;                                 // already tumbling
+    if (readMasslineTumbleStatus(state, victim)) return;            // already tumbling
 
     const player = state.entities.get(state.playerId);
     const now = finite(state.simTime, state.tick / 60);
@@ -132,16 +139,22 @@ export const tumbleStates = {
     const targetSpin = TUMBLE_SPIN_MULT * Math.max(0.8, finite(profile.maxYawRate, 3)) * massRatio / yawAuthority;
     const currentSpin = finite(victim.angVel, 0);
     const sign = currentSpin !== 0 ? Math.sign(currentSpin) : (Math.sign(victim.id % 2 === 0 ? 1 : -1));
-    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * targetSpin - currentSpin), z: 0 });
-
     // Duration is a clamp around the physical decay (angularDamping ~0.4/s gives ln(spin/recover)
     // / 0.4 seconds); update() ends the state early the moment the spin is genuinely caught.
     const expected = Math.log(Math.max(1.5, targetSpin / TUMBLE_RECOVER_OMEGA)) / 0.4;
     const until = now + clamp(expected, TUMBLE_MIN_S, TUMBLE_MAX_S);
-    victim.data.tumble = { startedAt: now, until, cause, spin: targetSpin };
+    const scheduled = this._scheduleTumbleStatus(victim, until - now, {
+      kind: MASSLINE_TUMBLE_KIND,
+      startedAt: now,
+      until,
+      cause,
+      spin: targetSpin,
+    });
+    if (!scheduled) return;
+
+    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * targetSpin - currentSpin), z: 0 });
     // Durable stamp for the pirateDisengage morale window (outlives the tumble itself).
     victim.data.tumbledAt = now;
-    this._scheduleTumbleStatus(victim, until - now);
 
     if (this.bus) {
       this.bus.emit('massline:tumbled', {
@@ -157,28 +170,26 @@ export const tumbleStates = {
     }
   },
 
-  _scheduleTumbleStatus(victim, durationS) {
+  _scheduleTumbleStatus(victim, durationS, data) {
     const kernel = combatKernel(this);
     if (!kernel || !kernel.statuses || !kernel.catalog) return false;
     const runtime = ensureCombatant(this.state, victim, kernel.catalog);
     const durationTicks = Math.max(1, Math.ceil(Math.max(0, durationS) * 60) + 1);
     const result = kernel.statuses.schedule(victim, runtime, {
-      id: 'status_tumbling',
+      id: TUMBLE_STATUS_ID,
       stacks: 1,
       durationTicks,
       applyTick: this.state.tick + 1,
+      data,
     }, { attackerId: this.state.playerId, actionId: null });
     return !!(result && result.ok);
   },
 
-  _expireTumbleStatus(victim) {
+  _clearTumbleStatus(victim, reason) {
     const kernel = combatKernel(this);
-    if (!kernel || !kernel.catalog) return;
+    if (!kernel || !kernel.catalog || !kernel.statuses || typeof kernel.statuses.clear !== 'function') return false;
     const runtime = ensureCombatant(this.state, victim, kernel.catalog);
-    const active = runtime.statuses && runtime.statuses.status_tumbling;
-    // actions/prePhysics already ran this tick. Expire at the current tick so the next
-    // prePhysics pass removes/recomputes the status before accepting another action request.
-    if (active) active.expiresTick = Math.min(active.expiresTick, this.state.tick);
+    return kernel.statuses.clear(victim, runtime, TUMBLE_STATUS_ID, reason);
   },
 };
 

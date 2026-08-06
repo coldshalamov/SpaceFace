@@ -14,6 +14,7 @@
 // and are attributed to the player (the fling caused it). combat.js itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { isMasslineTumbling } from '../combat/tumbleStatus.js';
 import { isHostileToPlayer } from './scanner.js';
 
 // Mirror the shipped whip-damage scaling (combat.js: 1/1600 momentum scale, 45 ceiling) so the
@@ -75,7 +76,7 @@ export const masslineImpactDamage = {
       const e = this._entity(id);
       if (!e || e.alive === false || !DAMAGEABLE.has(e.type)) continue;
       if (e.id === this.state.playerId) continue;          // invariant: never the player
-      if (!e.data || !e.data.tumble) continue;             // only uncontrolled hulls get hurt
+      if (!isMasslineTumbling(this.state, e)) continue;     // only uncontrolled hulls get hurt
       const damage = Math.min(TUMBLE_DAMAGE_MAX, dp * TUMBLE_DAMAGE_SCALE);
       if (damage <= 0) continue;
       this._routeKinetic(e, damage, 'massline_tumble_impact', payload.pos);

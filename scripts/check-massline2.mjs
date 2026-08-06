@@ -41,6 +41,11 @@ import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createRegistry } from '../src/core/registry.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
+import {
+  MASSLINE_TUMBLE_KIND,
+  readMasslineTumbleStatus,
+  TUMBLE_STATUS_ID,
+} from '../src/combat/tumbleStatus.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 import {
   applyBulletTimeAudioTreatment, BULLET_TIME_AUDIO,
@@ -414,23 +419,40 @@ withFlags(true, () => {
       id: 5, type: 'ship', team: 2, pos: { x: 50, z: 0 }, vel: { x: 90, z: 0 },
       mass: 20, turnRate: 3, data: { intent: { fire: true, moveX: 1, moveZ: 1 } },
     });
-    initSystem(tumbleStates, state, bus, {});
+    const helpers = { combatPhysics: { applyImpulse: () => true } };
+    const kernel = createCombatKernel({ state, bus, helpers });
+    const system = Object.create(tumbleStates);
+    initSystem(system, state, bus, helpers, { get: (name) => (name === 'combat' ? { kernel } : null) });
     bus.emit('massline:throw', { payloadId: 5, payloadSpeed: 120 });
-    assert.ok(victim.data.tumble, 'tumble state must be applied');
+    const pending = readMasslineTumbleStatus(state, victim);
+    assert.ok(pending, 'the authoritative tumble status must be scheduled');
+    assert.equal(pending.data.kind, MASSLINE_TUMBLE_KIND);
+    assert.equal(victim.data.tumble, undefined, 'entity data must not duplicate the active tumble fact');
     assert.ok(Number.isFinite(victim.data.tumbledAt), 'morale stamp must be written');
-    tumbleStates.update(1 / 60, state);
+    system.update(1 / 60, state);
     const cmd = consumePhysicsCommand(victim);
     assert.ok(cmd && cmd.torqueImpulses.length >= 1, 'a real angular impulse must be queued');
     assert.ok(cmd.control && cmd.control.mode === 'tumbling', 'control must be overwritten to tumbling');
     assert.equal(cmd.control.torque.y, 0, 'commanded torque must be zero while tumbling');
     assert.equal(victim.data.intent.fire, false, 'fire intent must be cleared');
     assert.ok(bus.events.some((e) => e.name === 'massline:tumbled'), 'massline:tumbled must be announced');
+    state.tick++;
+    kernel.prePhysics(1 / 60);
+    const active = state.combat.entities[String(victim.id)].statuses[TUMBLE_STATUS_ID];
+    assert.equal(active.data.kind, MASSLINE_TUMBLE_KIND,
+      'pending tumble metadata must become the same authoritative active status');
     // Recovery: spin caught + min duration elapsed.
     victim.angVel = 0.2;
     state.simTime += 3;
-    tumbleStates.update(1 / 60, state);
-    assert.equal(victim.data.tumble, undefined, 'tumble must end once the RCS catches the spin');
+    state.tick += 180;
+    system.update(1 / 60, state);
+    assert.equal(readMasslineTumbleStatus(state, victim), null,
+      'tumble status must clear once the RCS catches the spin');
+    assert.equal(victim.data.tumble, undefined, 'recovery must not recreate the deleted duplicate state');
     assert.ok(bus.events.some((e) => e.name === 'massline:tumbleEnd'));
+    kernel.prePhysics(1 / 60);
+    assert.ok(!state.combat.entities[String(victim.id)].blockedActionTags.includes('weapon'),
+      'clearing the active status must recompute action gates on the same production pass');
   });
 
   section('tumble status rejects dash/tether/weapon actions before spending capacitor', () => {
@@ -460,25 +482,52 @@ withFlags(true, () => {
     const bus = makeBus();
     const state = makeState();
     const player = addEntity(state, { id: 1, type: 'ship', team: 0, mass: 20, data: {} });
-    initSystem(tumbleStates, state, bus, {});
+    const helpers = { combatPhysics: { applyImpulse: () => true } };
+    const kernel = createCombatKernel({ state, bus, helpers });
+    const system = Object.create(tumbleStates);
+    initSystem(system, state, bus, helpers, { get: (name) => (name === 'combat' ? { kernel } : null) });
     bus.emit('massline:throw', { payloadId: 1, payloadSpeed: 500 });
     bus.emit('tether:whipImpact', { targetId: 2, victimId: 1, rating: 'crushing', momentum: 1e9 });
     assert.equal(player.data.tumble, undefined, 'player must never tumble');
+    assert.equal(readMasslineTumbleStatus(state, player), null, 'player events must not schedule tumble status');
+    const playerRuntime = state.combat.entities[String(player.id)];
+    kernel.statuses.schedule(player, playerRuntime, {
+      id: TUMBLE_STATUS_ID,
+      applyTick: state.tick + 1,
+      data: { kind: MASSLINE_TUMBLE_KIND, startedAt: state.simTime, until: state.simTime + 3 },
+    });
+    system.update(1 / 60, state);
+    assert.equal(readMasslineTumbleStatus(state, player), null,
+      'even an impossible forged pending status must be cleared before it can control the player');
     const routed = [];
     const registry = { get: (n) => (n === 'combat' ? { kernel: { routeDamage: (r) => { routed.push(r); return { ok: true }; } } } : null) };
     initSystem(masslineImpactDamage, state, bus, {}, registry);
-    player.data.tumble = { until: 999 }; // even under an impossible forged state...
+    kernel.statuses.schedule(player, playerRuntime, {
+      id: TUMBLE_STATUS_ID,
+      applyTick: state.tick + 1,
+      data: { kind: MASSLINE_TUMBLE_KIND, startedAt: state.simTime, until: state.simTime + 3 },
+    }); // even under an impossible forged state...
     bus.emit('physics:impact', { aId: 1, bId: 2, dp: 1e6, pos: { x: 0, z: 0 } });
     bus.emit('tether:whipImpact', { targetId: 1, victimId: 2, rating: 'crushing', momentum: 1e9 });
     assert.equal(routed.length, 0, '...no new damage path may ever target the player');
-    delete player.data.tumble;
+    kernel.statuses.clear(player, playerRuntime, TUMBLE_STATUS_ID, 'test_cleanup');
   });
 
   section('whip recoil and tumble contact damage route through the kernel for NPCs', () => {
     const bus = makeBus();
     const state = makeState();
     addEntity(state, { id: 1, type: 'ship', team: 0 });
-    const thrown = addEntity(state, { id: 6, type: 'ship', team: 2, pos: { x: 30, z: 0 }, data: { tumble: { until: 999 } } });
+    const thrown = addEntity(state, { id: 6, type: 'ship', team: 2, pos: { x: 30, z: 0 } });
+    state.combat = {
+      entities: {
+        [String(thrown.id)]: {
+          statuses: {
+            [TUMBLE_STATUS_ID]: { id: TUMBLE_STATUS_ID, data: { kind: MASSLINE_TUMBLE_KIND } },
+          },
+          pendingStatuses: [],
+        },
+      },
+    };
     const routed = [];
     const registry = { get: (n) => (n === 'combat' ? { kernel: { routeDamage: (r) => { routed.push(r); return { ok: true }; } } } : null) };
     initSystem(masslineImpactDamage, state, bus, {}, registry);

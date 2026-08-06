@@ -11,6 +11,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { appendCombatTrace } from '../combat/trace.js';
+import { COLLISION_TUMBLE_KIND, TUMBLE_STATUS_ID } from '../combat/tumbleStatus.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
   queuePhysicsTorqueImpulse,
@@ -204,10 +205,11 @@ export const collisionConsequences = {
     try { runtime = ensureCombatant(this.state, target, kernel.catalog); }
     catch { return false; }
     const result = kernel.statuses.schedule(target, runtime, {
-      id: 'status_tumbling',
+      id: TUMBLE_STATUS_ID,
       stacks: 1,
       durationTicks: Math.max(1, receipt.staggerTicks),
       applyTick: receipt.tick + 1,
+      data: { kind: COLLISION_TUMBLE_KIND },
     }, {
       attackerId: receipt.provenance.actorId,
       actionId: null,

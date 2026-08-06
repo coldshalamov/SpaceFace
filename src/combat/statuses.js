@@ -1,4 +1,5 @@
 import { appendCombatTrace } from './trace.js';
+import { cloneData } from './runtime.js';
 
 export function createStatusService(context) {
   const { state, catalog, bus } = context;
@@ -20,7 +21,7 @@ export function createStatusService(context) {
     if (!Number.isInteger(state.combat.statusNextPendingSeq) || state.combat.statusNextPendingSeq < 1) {
       state.combat.statusNextPendingSeq = 1;
     }
-    runtime.pendingStatuses.push({
+    const pending = {
       seq: state.combat.statusNextPendingSeq++,
       id: def.id,
       stacks,
@@ -28,7 +29,9 @@ export function createStatusService(context) {
       applyTick: Math.max(state.tick, applyTick),
       attackerId: source.attackerId == null ? null : source.attackerId,
       actionId: source.actionId || null,
-    });
+    };
+    if (hasOwn(application, 'data') && application.data !== undefined) pending.data = cloneData(application.data);
+    runtime.pendingStatuses.push(pending);
     runtime.pendingStatuses.sort((a, b) => a.applyTick - b.applyTick || a.seq - b.seq);
     appendCombatTrace(state.combat, state.tick, 'status.scheduled', {
       actorId: source.attackerId == null ? null : source.attackerId,
@@ -42,7 +45,8 @@ export function createStatusService(context) {
 
   function advance(targetEntity, runtime, routeDamage) {
     const tick = state.tick >>> 0;
-    let changed = false;
+    let changed = runtime.statusModifiersDirty === true;
+    if (changed) delete runtime.statusModifiersDirty;
 
     for (const statusId of Object.keys(runtime.statuses || {}).sort()) {
       const active = runtime.statuses[statusId];
@@ -88,8 +92,16 @@ export function createStatusService(context) {
   }
 
   function clear(targetEntity, runtime, statusId, reason = 'cleared') {
-    if (!runtime.statuses[statusId]) return false;
-    delete runtime.statuses[statusId];
+    const active = !!(runtime.statuses && runtime.statuses[statusId]);
+    const pending = Array.isArray(runtime.pendingStatuses) ? runtime.pendingStatuses : [];
+    const remaining = pending.filter((status) => !status || status.id !== statusId);
+    const pendingCleared = remaining.length !== pending.length;
+    if (!active && !pendingCleared) return false;
+    if (active) {
+      delete runtime.statuses[statusId];
+      runtime.statusModifiersDirty = true;
+    }
+    if (pendingCleared) runtime.pendingStatuses = remaining;
     appendCombatTrace(state.combat, state.tick, 'status.cleared', { targetId: targetEntity.id, statusId, reason });
     return true;
   }
@@ -130,6 +142,7 @@ export function createStatusService(context) {
       active.expiresTick = state.tick + duration;
       if (active.attackerId == null) active.attackerId = pending.attackerId;
     }
+    replaceStatusData(active, pending);
 
     appendCombatTrace(state.combat, state.tick, 'status.applied', {
       actorId: pending.attackerId,
@@ -168,6 +181,15 @@ export function createStatusService(context) {
   }
 
   return Object.freeze({ schedule, advance, clear });
+}
+
+function replaceStatusData(active, pending) {
+  if (hasOwn(pending, 'data') && pending.data !== undefined) active.data = cloneData(pending.data);
+  else delete active.data;
+}
+
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function scalePacket(packet, scale) {

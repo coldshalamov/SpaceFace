@@ -391,6 +391,8 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     assert.ok(routed[0].packet.channels.kinetic > 0);
     assert.equal(scheduled.length, 1, 'tumble blocks combat actions through the status owner');
     assert.equal(scheduled[0][2].id, 'status_tumbling');
+    assert.equal(scheduled[0][2].data.kind, 'collision_tumble',
+      'collision status must not masquerade as a Massline-owned physical tumble');
     assert.equal(debris.length, 1, 'terrain damage publishes its deterministic debris receipt');
     assert.equal(debris[0].count, receipts[0].debrisCount);
 
@@ -451,11 +453,20 @@ test('PQ-009 impact events do not also take the legacy Massline tumble-damage pa
   Object.assign(MASSLINE2_FLAGS, { enabled: true, tumble: true, impactDamage: true });
   const bus = createBus();
   const target = combatShip(21, 1, 0);
-  target.data.tumble = { until: 999 };
   const state = {
     tick: 5,
     playerId: 1,
     entities: new Map([[target.id, target]]),
+    combat: {
+      entities: {
+        [String(target.id)]: {
+          statuses: {
+            status_tumbling: { id: 'status_tumbling', data: { kind: 'massline_tumble' } },
+          },
+          pendingStatuses: [],
+        },
+      },
+    },
   };
   const routed = [];
   const system = Object.create(masslineImpactDamage);
