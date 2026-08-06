@@ -105,6 +105,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_free',
         size: 'M',
         services: Object.freeze(['trade', 'repair', 'refuel', 'missions']),
+        chartNote: 'Open docks on the east run: freight, repairs, and contracts under very thin law.',
       }),
       Object.freeze({
         id: 'station_nereid_claim',
@@ -113,6 +114,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_dmc',
         size: 'S',
         services: Object.freeze(['trade', 'ore_buy', 'refuel']),
+        chartNote: 'Independent ice crews sell ore same-shift under a Collective cut.',
       }),
     ]),
     fields: Object.freeze([
@@ -165,6 +167,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_quiet',
         size: 'M',
         services: Object.freeze(['black_market', 'repair', 'refuel', 'missions']),
+        chartNote: 'Off-book east-run freight changes hands here before the well-mouth choke.',
         repGated: true,
       }),
     ]),
@@ -227,6 +230,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_free',
         size: 'M',
         services: Object.freeze(['scan_tech', 'missions', 'repair']),
+        chartNote: 'Wake readings, repairs, and dangerous survey work under Vael sufferance.',
       }),
     ]),
     fields: Object.freeze([

@@ -115,6 +115,7 @@ export const SOUTH_SECTORS = Object.freeze([
         factionId: 'faction_vael',
         size: 'S',
         services: Object.freeze(['black_market', 'repair']),
+        chartNote: 'Vael-licensed salvage changes hands here; fuel and hospitality do not.',
         repGated: true,
       }),
     ]),
@@ -192,6 +193,7 @@ export const SOUTH_SECTORS = Object.freeze([
         factionId: 'faction_vael',
         size: 'S',
         services: Object.freeze(['scan_tech', 'repair']),
+        chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
     ]),
     fields: Object.freeze([
@@ -246,6 +248,7 @@ export const SOUTH_SECTORS = Object.freeze([
         factionId: 'faction_mts',
         size: 'M',
         services: Object.freeze(['trade', 'refuel', 'missions']),
+        chartNote: 'Lawful southern freight hub. Convoy contracts leave after customs clears the lane.',
       }),
       Object.freeze({
         id: 'station_dione_customs',
@@ -254,6 +257,7 @@ export const SOUTH_SECTORS = Object.freeze([
         factionId: 'faction_scn',
         size: 'S',
         services: Object.freeze(['toll', 'scan', 'refuel']),
+        chartNote: 'Concord toll plate and scanner; core-bound cargo is read before the exchange.',
       }),
     ]),
     fields: Object.freeze([

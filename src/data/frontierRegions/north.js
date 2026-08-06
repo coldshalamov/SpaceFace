@@ -120,6 +120,7 @@ export const NORTH_SECTORS = Object.freeze([
         factionId: 'faction_dmc',
         size: 'M',
         services: Object.freeze(['trade', 'ore_buy', 'refuel', 'repair', 'missions']),
+        chartNote: 'Scorched ore buys here; escort is thin and the Sker approach draws raiders.',
       }),
     ]),
     fields: Object.freeze([
@@ -167,6 +168,7 @@ export const NORTH_SECTORS = Object.freeze([
         factionId: 'faction_free',
         size: 'M',
         services: Object.freeze(['scan_tech', 'missions', 'repair', 'refuel']),
+        chartNote: 'Free scientists trade fracture readings and repairs beside sensor-ghosting ice.',
       }),
     ]),
     fields: Object.freeze([
@@ -215,6 +217,7 @@ export const NORTH_SECTORS = Object.freeze([
         factionId: 'faction_quiet',
         size: 'S',
         services: Object.freeze(['black_market', 'repair', 'refuel', 'missions']),
+        chartNote: 'Quiet contraband crosses the Ashfall approach here; manifests stop at the hatch.',
         repGated: true,
       }),
     ]),
@@ -263,6 +266,7 @@ export const NORTH_SECTORS = Object.freeze([
         factionId: 'faction_vael',
         size: 'S',
         services: Object.freeze(['scan_tech', 'repair', 'refuel']),
+        chartNote: 'Vael scan the resonance and sell repairs, not answers. There is no rescue beyond.',
         repGated: true,
       }),
     ]),
