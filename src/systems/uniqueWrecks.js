@@ -233,6 +233,11 @@ function hasModule(state, defId) {
   return !!(owned && Array.isArray(owned.fittings) && owned.fittings.includes(defId));
 }
 
+function tutorialOwnsOpeningPresentation(state) {
+  const onboarding = state && state.onboarding;
+  return !!(onboarding && onboarding.active && !onboarding.finished);
+}
+
 export const uniqueWrecks = {
   name: 'uniqueWrecks',
 
@@ -244,6 +249,7 @@ export const uniqueWrecks = {
     this._entityByWreck = new Map();
     this._wreckByEntity = new Map();
     this._bandRequestResolutions = new Map();
+    this._gameStartDispatch = false;
     this._subscriptions = [];
     this._ensureState();
 
@@ -314,33 +320,40 @@ export const uniqueWrecks = {
   },
 
   _onGameStarted() {
-    const own = this._ensureState();
-    const current = this.state.world && this.state.world.currentSectorId;
-    this._offerLostCoils();
-    this._surfaceSectorRumors(current);
-    if (current !== 'sector_helios_prime' || own.bearings.wreck_choir_tender || own.published.wreck_choir_tender) return;
-    const def = uniqueWreckById('wreck_choir_tender');
-    // R1's established ticker contract is deliberately the first headline line; the longer R2
-    // intercept/campaign producers use sourceText so their full authored copy reaches the player.
-    const text = sourceLine(def.bearingSourceRef);
-    if (!text) return;
-    this.bus.emit('news:publish', {
-      text,
-      kind: 'wreck_rumor',
-      sourceRef: def.bearingSourceRef,
-      wreckId: def.id,
-      sectorId: def.sectorId,
-      channelId: 'news',
-      followup: false,
-      receiptId: 'depth-r1:d10:first-read',
-    });
-    // marketNews normally relays news:publish to news:headline. The direct record is the
-    // headless/runtime fallback and still passes through the exact source/channel guard.
-    if (!own.bearings[def.id]) this._recordRumor({
-      wreckId: def.id,
-      sourceRef: def.bearingSourceRef,
-      channelId: 'news',
-    });
+    this._gameStartDispatch = true;
+    try {
+      const own = this._ensureState();
+      const current = this.state.world && this.state.world.currentSectorId;
+      this._offerLostCoils();
+      this._surfaceSectorRumors(current);
+      if (current !== 'sector_helios_prime'
+        || own.bearings.wreck_choir_tender
+        || own.published.wreck_choir_tender) return;
+      const def = uniqueWreckById('wreck_choir_tender');
+      // R1's established ticker contract is deliberately the first headline line; the longer R2
+      // intercept/campaign producers use sourceText so their full authored copy reaches the player.
+      const text = sourceLine(def.bearingSourceRef);
+      if (!text) return;
+      this.bus.emit('news:publish', {
+        text,
+        kind: 'wreck_rumor',
+        sourceRef: def.bearingSourceRef,
+        wreckId: def.id,
+        sectorId: def.sectorId,
+        channelId: 'news',
+        followup: false,
+        receiptId: 'depth-r1:d10:first-read',
+      });
+      // marketNews normally relays news:publish to news:headline. The direct record is the
+      // headless/runtime fallback and still passes through the exact source/channel guard.
+      if (!own.bearings[def.id]) this._recordRumor({
+        wreckId: def.id,
+        sourceRef: def.bearingSourceRef,
+        channelId: 'news',
+      });
+    } finally {
+      this._gameStartDispatch = false;
+    }
   },
 
   _onSaveLoaded() {
@@ -470,14 +483,32 @@ export const uniqueWrecks = {
       phase: record.phase,
     });
     if (!payload.silent) {
-      this.bus.emit('toast', {
-        text: `${def.name}: rumor charted. Search the amber bearing ring, then pulse scan.`,
-        kind: 'objective',
-        ttl: 6,
-      });
+      if (this._gameStartDispatch) {
+        // uniqueWrecks is registered before onboarding. Wait until the synchronous New Game
+        // dispatch completes so the tutorial can claim its opening presentation window.
+        const bus = this.bus;
+        const state = this.state;
+        queueMicrotask(() => {
+          if (this.bus !== bus || this.state !== state) return;
+          this._surfaceRumorToast(def);
+        });
+      } else {
+        this._surfaceRumorToast(def);
+      }
     }
     if (def.sectorId === (this.state.world && this.state.world.currentSectorId)) this._materialize(def.id);
     return record;
+  },
+
+  _surfaceRumorToast(def) {
+    if (!def || !this.bus || tutorialOwnsOpeningPresentation(this.state)) return null;
+    const toast = {
+      text: `${def.name}: rumor charted. Search the amber bearing ring, then pulse scan.`,
+      kind: 'objective',
+      ttl: 6,
+    };
+    this.bus.emit('toast', toast);
+    return toast;
   },
 
   _onBandBearingRequest(payload) {

@@ -163,6 +163,7 @@ export const presentationAdapters = {
       this.bus.on('ship:roleContext', (context) => this._onShipRoleContext(context || {})),
       this.bus.on('mode:changed', ({ mode } = {}) => this._onModeChanged(mode)),
       this.bus.on('game:started', () => this._onGameStarted()),
+      this.bus.on('tutorial:finished', () => this._onTutorialFinished()),
       this.bus.on('dock:undocked', () => this._onDockUndocked()),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
@@ -227,7 +228,9 @@ export const presentationAdapters = {
     // Hold only that transition-time packet. Continue can surface at mode:changed(flight); New Game
     // waits until game:started has finished so the UI's run-boundary reset cannot erase the toast.
     // A later packet replaces an abandoned transition.
-    if (this.state && (this.state.mode === 'loading' || this.state.ui?.docked === true)) {
+    if (this.state && (this.state.mode === 'loading'
+      || this.state.ui?.docked === true
+      || tutorialOwnsOpeningPresentation(this.state))) {
       this._pendingRoleBriefing = { ...context };
       return null;
     }
@@ -237,6 +240,7 @@ export const presentationAdapters = {
 
   _onModeChanged(mode) {
     if (mode !== 'flight' || !this._pendingRoleBriefing) return null;
+    if (tutorialOwnsOpeningPresentation(this.state)) return null;
     if (this._pendingRoleBriefing.source === 'new_game') return null;
     const pending = this._pendingRoleBriefing;
     this._pendingRoleBriefing = null;
@@ -246,11 +250,30 @@ export const presentationAdapters = {
   _onGameStarted() {
     if (!this._pendingRoleBriefing || this._pendingRoleBriefing.source !== 'new_game') return null;
     const pending = this._pendingRoleBriefing;
-    this._pendingRoleBriefing = null;
     // presentationAdapters is initialized before UI listeners. Defer until every synchronous
-    // game:started consumer has reset its surface, then publish the one player-visible briefing.
+    // game:started consumer has reset its surface. Onboarding is also initialized after this
+    // adapter, so its listener establishes tutorial ownership later in the same event dispatch.
     queueMicrotask(() => {
-      if (this.bus && this.state && this.state.mode === 'flight') this._surfaceRoleBriefing(pending);
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight' || tutorialOwnsOpeningPresentation(this.state)) return;
+      this._pendingRoleBriefing = null;
+      this._surfaceRoleBriefing(pending);
+    });
+    return pending;
+  },
+
+  _onTutorialFinished() {
+    if (!this._pendingRoleBriefing) return null;
+    const pending = this._pendingRoleBriefing;
+    // Let every synchronous tutorial-handoff consumer retire its own opening surface first. The
+    // role card is informational and may follow that boundary; it never owns the tutorial window.
+    queueMicrotask(() => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight'
+        || this.state.ui?.docked === true
+        || tutorialOwnsOpeningPresentation(this.state)) return;
+      this._pendingRoleBriefing = null;
+      this._surfaceRoleBriefing(pending);
     });
     return pending;
   },
@@ -262,7 +285,9 @@ export const presentationAdapters = {
     const pending = this._pendingRoleBriefing;
     const surfaceAfterStationCloses = () => {
       if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
-      if (this.state.mode !== 'flight' || this.state.ui?.docked === true) return;
+      if (this.state.mode !== 'flight'
+        || this.state.ui?.docked === true
+        || tutorialOwnsOpeningPresentation(this.state)) return;
       this._pendingRoleBriefing = null;
       this._pendingRoleUndockTimer = null;
       this._surfaceRoleBriefing(pending);
@@ -660,4 +685,9 @@ function round4(value) {
 
 function currentTick(state) {
   return state && Number.isFinite(state.tick) ? state.tick | 0 : 0;
+}
+
+function tutorialOwnsOpeningPresentation(state) {
+  const onboarding = state && state.onboarding;
+  return !!(onboarding && onboarding.active && !onboarding.finished);
 }

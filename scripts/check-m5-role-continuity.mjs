@@ -328,7 +328,8 @@ function boot() {
 }
 
 // Public-route timing: New Game and Continue publish during the authored-visual loading gate.
-// The role briefing must wait for the shared playable flight boundary so its TTL is useful.
+// The role briefing must wait for both the shared playable flight boundary and the staged
+// onboarding handoff so its TTL is useful without competing with the opening instruction.
 {
   const ctx = boot();
   const { state, bus, roleContexts, toasts, ships: shipsSys } = ctx;
@@ -345,14 +346,30 @@ function boot() {
   state.mode = 'flight';
   bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
   assert.equal(briefingToasts(toasts).length, 0, 'New Game waits through the flight-mode UI reset');
+  // Production registry order initializes presentationAdapters before onboarding. Mimic that exact
+  // listener order: onboarding becomes active later in the same game:started dispatch, before the
+  // adapter's microtask is allowed to publish.
+  bus.on('game:started', () => {
+    state.onboarding = { active: true, finished: false };
+  });
   bus.emit('game:started', {});
   await Promise.resolve();
-  assert.equal(briefingToasts(toasts).length, 1, 'post-reset New Game boundary surfaces one deferred briefing');
+  assert.equal(briefingToasts(toasts).length, 0,
+    'active onboarding retains the New Game briefing instead of competing with its instruction');
   assert.equal(
     ctx.presentationAdapters.inspect().pendingRoleBriefingSource,
-    null,
-    'deferred New Game briefing is consumed after the UI reset',
+    'new_game',
+    'the deferred role identity remains available for the tutorial handoff',
   );
+
+  state.onboarding.active = false;
+  state.onboarding.finished = true;
+  bus.emit('tutorial:finished', {});
+  await Promise.resolve();
+  assert.equal(briefingToasts(toasts).length, 1,
+    'tutorial handoff surfaces the deferred New Game role briefing exactly once');
+  assert.equal(ctx.presentationAdapters.inspect().pendingRoleBriefingSource, null,
+    'tutorial handoff consumes the deferred briefing');
 
   bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
   bus.emit('game:started', {});

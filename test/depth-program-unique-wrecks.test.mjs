@@ -45,7 +45,7 @@ function boot({ seed = 47010, sectorId = 'sector_helios_prime', cargoCap = 40 } 
   const events = [];
   for (const name of [
     'news:publish', 'news:headline', 'uniqueWreck:rumorRecorded', 'uniqueWreck:bearingFixed',
-    'uniqueWreck:salvaged', 'module:granted', 'contraband:scanned',
+    'uniqueWreck:salvaged', 'module:granted', 'contraband:scanned', 'toast',
   ]) bus.on(name, (payload) => events.push({ name, payload }));
 
   const news = createMarketNews({
@@ -236,6 +236,30 @@ test('D10 ticker creates a post-read bearing, scan fixes it, and the recovery ch
     t.bus.emit('uniqueWreck:choose', { wreckId: D10, choiceId: 'claim_hardware', source: 'duplicate' });
     assert.equal(t.state.player.cargo.items.cmdty_medical, 50, 'repeat completion cannot duplicate cargo');
     assert.equal(countInventory(t, 'unique_knitbots'), 1, 'repeat completion cannot stack a unique');
+  } finally {
+    t.dispose();
+  }
+});
+
+test('opening D10 rumor records and materializes without competing with staged onboarding', async () => {
+  const t = boot();
+  try {
+    // Registry order initializes uniqueWrecks before onboarding. Establish tutorial ownership from
+    // a later listener in the same synchronous game:started dispatch, exactly like production.
+    t.bus.on('game:started', () => {
+      t.state.onboarding = { active: true, finished: false };
+    });
+    t.bus.emit('game:started', {});
+    await Promise.resolve();
+
+    assert.ok(recordOf(t, D10), 'onboarding never suppresses durable wreck knowledge');
+    assert.ok(liveWreck(t, D10), 'the authored wreck still materializes on the default route');
+    assert.equal(
+      t.events.some((entry) => entry.name === 'toast'
+        && /rumor charted/i.test(String(entry.payload && entry.payload.text || ''))),
+      false,
+      'optional wreck discovery does not open a second objective card over the tutorial command',
+    );
   } finally {
     t.dispose();
   }
