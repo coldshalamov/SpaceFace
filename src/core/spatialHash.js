@@ -342,6 +342,7 @@ export class SpatialHash {
     const activeCount = this._activeBuckets.length + this._staticActiveBuckets.length;
     const shareResults = !!(opts && opts.shareResults === true);
     const shareSupersetResults = shareResults && !!(opts && opts.shareSupersetResults === true);
+    const mutableSharedResults = shareResults && !!(opts && opts.mutableSharedResults === true);
     const footprints = this._batchFootprints;
     let allScanActive = requestCount > 1;
     let unionX0 = Infinity;
@@ -459,10 +460,11 @@ export class SpatialHash {
         meta.out.push(entity);
       }
     }
-    if (shareResults) {
+    if (shareResults && !mutableSharedResults) {
       // Opt-in shared batches are immutable by contract: downstream sensor consumers can read
       // the common candidate list but cannot corrupt another formation member's view or the
-      // static cache. A subsequent batch receives fresh outputs.
+      // static cache. The production AI's explicitly ephemeral consumer may instead retain
+      // mutable high-water scratch because it copies contacts before returning to its caller.
       for (let index = 0; index < metaCount; index++) Object.freeze(metas[index].out);
     }
     if (!(opts && opts.countDiagnostics === false)) {

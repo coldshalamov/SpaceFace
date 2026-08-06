@@ -78,6 +78,9 @@ export const aiPorts = {
     };
     Object.defineProperty(this._liveSensorFrameScratch, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
     this._liveSensorFramesScratch = new Map();
+    this._liveSensorBatchRequests = [];
+    this._liveSensorBatchEntries = [];
+    this._liveSensorBatchEntryCount = 0;
     this._pendingFlushScratch = [];
     this._rosterCandidateScratch = [];
     this._rosterSquadsScratch = new Map();
@@ -102,7 +105,7 @@ export const aiPorts = {
     this.helpers.aiSensors = Object.freeze({
       frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
       liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
-      liveFramesFor: (entityIds, tick) => this._sensorFramesFor(entityIds, tick),
+      liveFramesFor: (entityIds, tick, options) => this._sensorFramesFor(entityIds, tick, options),
     });
     this.helpers.aiRoster = Object.freeze({
       listSquads: (tick) => this._listSquads(tick),
@@ -251,8 +254,9 @@ export const aiPorts = {
       : normalizeSensorFrame(frame, entityId, tick);
   },
 
-  _sensorFramesFor(entityIds, tick) {
+  _sensorFramesFor(entityIds, tick, options = null) {
     const ids = Array.isArray(entityIds) ? entityIds : [];
+    if (options && options.ephemeral === true) return this._ephemeralSensorFramesFor(ids, tick);
     const singleton = ids.length === 1;
     const frames = singleton
       ? (this._liveSensorFramesScratch || (this._liveSensorFramesScratch = new Map()))
@@ -294,6 +298,103 @@ export const aiPorts = {
       frames.set(id, frame);
       this._diag.sensorFrames++;
     }
+    return frames;
+  },
+
+  /**
+   * Production-only sensor batch. TacticalAIStack consumes every frame synchronously before the
+   * next call, so these containers may return to retained high-water scratch. The public two-arg
+   * liveFramesFor route above keeps its durable independent-map behavior for tools and tests.
+   */
+  _ephemeralSensorFramesFor(ids, tick) {
+    const frames = this._liveSensorFramesScratch;
+    const requests = this._liveSensorBatchRequests;
+    const entries = this._liveSensorBatchEntries;
+    const previousEntryCount = this._liveSensorBatchEntryCount;
+    frames.clear();
+    requests.length = 0;
+
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const dense = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables) &&
+      index.collidables.length >= AI_SPATIAL_MIN_COLLIDABLES;
+    const hash = state && state.spatialHash;
+    const canBatch = ids.length > 1 && dense && hash && typeof hash.queryRadiusBatch === 'function';
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const entry = liveSensorBatchEntry(entries, index);
+      entry.contacts.length = 0;
+      entry.tetherContacts.length = 0;
+      entry.frame.self = null;
+      entry.frame.events = EMPTY_ATTACHMENTS;
+      entry.requestActive = false;
+      if (!canBatch) continue;
+      const entity = getEntity(state, id);
+      if (!entity || !entity.alive) continue;
+      const request = entry.request;
+      entry.candidates.length = 0;
+      request.id = id;
+      request.x = entity.pos.x;
+      request.z = entity.pos.z;
+      request.r = sensorRangeFor(state, entity);
+      request.out = entry.candidates;
+      entry.requestActive = true;
+      requests.push(request);
+    }
+
+    if (requests.length) {
+      // This caller consumes candidates synchronously and never exposes them. Keeping the shared
+      // arrays mutable is what lets the next decision reuse them instead of allocating/freeze-GC.
+      hash.queryRadiusBatch(requests, {
+        shareResults: true,
+        shareSupersetResults: true,
+        mutableSharedResults: true,
+      });
+      this._diag.sensorBatches++;
+    }
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const entry = liveSensorBatchEntry(entries, index);
+      const frame = this._sensorFrameFor(id, tick, {
+        freezeResults: false,
+        candidates: entry.requestActive ? entry.request.out : null,
+        contactsScratch: entry.contacts,
+        tetherContactsScratch: entry.tetherContacts,
+        frameScratch: entry.frame,
+      });
+      frames.set(id, frame);
+      this._diag.sensorFrames++;
+    }
+
+    // Candidate arrays contain authoritative entity references. Release them immediately after
+    // contacts have been copied, while retaining only their capacity for the next decision.
+    for (let index = 0; index < ids.length; index++) {
+      const entry = entries[index];
+      if (!entry || !entry.requestActive) continue;
+      const shared = entry.request.out;
+      if (Array.isArray(shared) && !Object.isFrozen(shared)) shared.length = 0;
+      entry.request.out = entry.candidates;
+      entry.candidates.length = 0;
+      entry.requestActive = false;
+    }
+    requests.length = 0;
+
+    // A one-time larger formation may establish capacity, but inactive slots must not retain old
+    // contact/self/event graphs when the live formation shrinks again.
+    for (let index = ids.length; index < previousEntryCount; index++) {
+      const entry = entries[index];
+      if (!entry) continue;
+      entry.candidates.length = 0;
+      entry.contacts.length = 0;
+      entry.tetherContacts.length = 0;
+      entry.frame.self = null;
+      entry.frame.events = EMPTY_ATTACHMENTS;
+      entry.request.out = entry.candidates;
+      entry.requestActive = false;
+    }
+    this._liveSensorBatchEntryCount = ids.length;
     return frames;
   },
 
@@ -920,6 +1021,22 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     return out;
   }
   return Array.isArray(state.entityList) ? state.entityList : [];
+}
+
+function liveSensorBatchEntry(entries, index) {
+  let entry = entries[index];
+  if (entry) return entry;
+  const candidates = [];
+  entry = {
+    candidates,
+    contacts: [],
+    tetherContacts: [],
+    frame: {},
+    request: { id: null, x: 0, z: 0, r: 0, out: candidates },
+    requestActive: false,
+  };
+  entries[index] = entry;
+  return entry;
 }
 
 function addAttachment(byEntity, entityId, attachment) {

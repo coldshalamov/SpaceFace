@@ -35,6 +35,39 @@ test('actual SG06 sensor and roster ports allocate two light targets without a f
   }
 });
 
+test('production sensor batches reuse ephemeral containers without changing durable sensor truth', () => {
+  const h = squadHarness();
+  const roster = h.helpers.aiRoster.liveListSquads(60);
+  const memberIds = roster[0].members.map((member) => member.id);
+  const durable = h.helpers.aiSensors.liveFramesFor(memberIds, 60);
+  const durableSnapshot = structuredClone([...durable.entries()]);
+
+  const options = { ephemeral: true };
+  const ephemeral = h.helpers.aiSensors.liveFramesFor(memberIds, 60, options);
+  assert.deepEqual(structuredClone([...ephemeral.entries()]), durableSnapshot,
+    'the retained production path must publish byte-equivalent decision inputs');
+  const firstFrame = ephemeral.get(memberIds[0]);
+  const firstContacts = firstFrame.contacts;
+
+  const repeated = h.helpers.aiSensors.liveFramesFor(memberIds, 60, options);
+  assert.equal(repeated, ephemeral, 'production batches reuse the result map');
+  assert.equal(repeated.get(memberIds[0]), firstFrame, 'production batches reuse frame records');
+  assert.equal(repeated.get(memberIds[0]).contacts, firstContacts,
+    'production batches reuse per-member contact arrays');
+  assert.notEqual(durable, ephemeral,
+    'the public two-argument route remains a durable independent result');
+
+  assert.equal(h.ports._liveSensorBatchRequests.length, 0,
+    'candidate request scratch releases every request after the synchronous copy');
+  for (const entry of h.ports._liveSensorBatchEntries.slice(0, memberIds.length)) {
+    assert.equal(entry.request.out, entry.candidates);
+    assert.equal(entry.candidates.length, 0,
+      'candidate scratch releases authoritative entity references between decisions');
+    assert.equal(Object.isFrozen(entry.candidates), false,
+      'ephemeral candidate arrays stay reusable instead of becoming freeze-and-GC garbage');
+  }
+});
+
 test('squad command aggregation leaves member-only hazard perception untouched', () => {
   const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
   commander.registerSquad({
@@ -184,7 +217,7 @@ function squadHarness() {
   state.playerId = targetA.id;
   installEntities(state, [...attackers, targetA, targetB]);
   state.spatialHash.rebuild(state.entityList);
-  return { state, helpers, attackers, targetA, targetB };
+  return { state, helpers, ports, attackers, targetA, targetB };
 }
 
 function command(roster, frames, seed) {

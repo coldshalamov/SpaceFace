@@ -61,6 +61,8 @@ export class TacticalAIStack {
     this.lastDecisionByEntity = new Map();
     this.perceptionsByEntityScratch = new Map();
     this.orderedMemberScratch = [];
+    this.refreshMemberIdsScratch = [];
+    this.liveSensorBatchOptions = { ephemeral: true };
     this.seenMemberScratch = new Set();
     this.activeMemberScratch = new Set();
     this.resultSquadsScratch = [];
@@ -91,12 +93,13 @@ export class TacticalAIStack {
     const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers, tick) : null;
     let liveFrames = null;
     if (!this.freezeResults && typeof this.ports.sensors.liveFramesFor === 'function') {
-      const refreshIds = [];
+      const refreshIds = this.refreshMemberIdsScratch;
+      refreshIds.length = 0;
       for (const member of orderedMembers) {
         const cached = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
         if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers)) refreshIds.push(member.id);
       }
-      liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick);
+      liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick, this.liveSensorBatchOptions);
     }
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
