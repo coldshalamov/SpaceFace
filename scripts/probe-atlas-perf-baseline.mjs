@@ -53,9 +53,10 @@ import {
   layoutMapLabels,
   pickMapTargetAt,
 } from '../src/ui/galaxyMap.js';
-import { projectOntoLane, resolveLaneSegment } from '../src/systems/travelLanes.js';
+import { projectOntoLane, resolveLaneSegment, travelLanes } from '../src/systems/travelLanes.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../src/data/travelLaneRoutes.js';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
+import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CEILINGS_PATH = resolve(ROOT, 'test/atlas-perf-allocation-ceilings.json');
@@ -317,13 +318,78 @@ const lanePos = { x: heliosOrigin.x + 4000, z: heliosOrigin.z + 2600 };
 record('lane', 'projectOntoLane', {
   ...timeOp(() => projectOntoLane(laneGeometry, lanePos), { trials: 30, innerLoops: 500 }),
   allocBytesPerOp: allocPerOp(() => projectOntoLane(laneGeometry, lanePos), { iterations: 4000 }),
-  note: 'Per tick while the travel drive is engaged.',
+  note: 'Public convenience helper; the fixed-step runtime projects into retained output storage.',
 });
 record('lane', 'resolveLaneSegment', {
   ...timeOp(() => resolveLaneSegment(laneGeometry, lanePos), { trials: 30, innerLoops: 500 }),
   allocBytesPerOp: allocPerOp(() => resolveLaneSegment(laneGeometry, lanePos), { iterations: 4000 }),
-  note: 'Per tick while the travel drive is engaged.',
+  note: 'Public convenience helper; the fixed-step runtime uses retained output storage.',
 });
+
+// The helpers above are useful maths baselines, but this is the actual fixed-step path: drive
+// modifier, authored-lane projection, six resident traffic entities, and status publication. All
+// spawnable entities are pre-warmed so the row measures steady flight rather than admission work.
+const laneState = createGameState(47);
+const lanePlayer = {
+  id: 'lane-probe-player',
+  type: 'ship',
+  alive: true,
+  pos: {
+    x: laneGeometry.from.x + laneGeometry.axis.x * 2048,
+    z: laneGeometry.from.z + laneGeometry.axis.z * 2048,
+  },
+  vel: { x: 0, z: 0 },
+  rot: 0,
+  mass: 1000,
+  inertia: 1000,
+  // Shipped refits publish a complete derived profile; driveId resolves the same frozen catalogue
+  // profile without accidentally benchmarking the partial-profile compatibility merge.
+  driveId: 'drive_reaction_m',
+};
+laneState.playerId = lanePlayer.id;
+laneState.player = {};
+laneState.entities = new Map([[lanePlayer.id, lanePlayer]]);
+laneState.entityList = [lanePlayer];
+laneState.input = laneState.input || {};
+laneState.input.travelDrive = { state: 'engaged', cap: 0 };
+laneState.simTime = 120;
+laneState.world = laneState.world || {};
+laneState.world.currentSectorId = HELIOS;
+
+const laneSystem = Object.create(travelLanes);
+laneSystem.init({
+  state: laneState,
+  bus: { on() {}, emit() {} },
+  helpers: { spawnEntity() { return null; } },
+  registry: { get() { return null; } },
+});
+for (const beacon of laneSystem.geometry.beacons) {
+  const id = `lane-probe-beacon-${beacon.index}`;
+  laneSystem._beaconIds.set(beacon.index, id);
+  laneState.entities.set(id, { id, alive: true });
+}
+for (let i = 0; i < 6; i += 1) {
+  const id = `lane-probe-traffic-${i}`;
+  laneSystem._trafficIds[i] = id;
+  laneState.entities.set(id, { id, alive: true, pos: { x: 0, z: 0 }, rot: 0 });
+}
+const priorLaneFlag = TRAVEL_FLAGS.laneBoost;
+const priorBurnFlag = TRAVEL_FLAGS.travelBurn;
+TRAVEL_FLAGS.laneBoost = true;
+TRAVEL_FLAGS.travelBurn = true;
+const stepLaneRuntime = () => {
+  laneState.simTime += 1 / 60;
+  laneSystem.update(1 / 60, laneState);
+  return laneState.travelLanes;
+};
+record('lane', 'travelLanes.update@steady', {
+  ...timeOp(stepLaneRuntime, { trials: 30, innerLoops: 500 }),
+  allocBytesPerOp: allocPerOp(stepLaneRuntime, { iterations: 4000 }),
+  scale: { traffic: 6, beacons: laneSystem.geometry.beacons.length },
+  note: 'Actual fixed-step lane path after all route entities are resident.',
+});
+TRAVEL_FLAGS.laneBoost = priorLaneFlag;
+TRAVEL_FLAGS.travelBurn = priorBurnFlag;
 
 // =================================================================================================
 // Report

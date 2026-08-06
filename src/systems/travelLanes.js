@@ -147,7 +147,8 @@ export function resolveLaneSegmentInto(geometry, pos, out = {}) {
  * (D8: "recovery means physically reaching the next intact segment"). Pure.
  */
 export function nextIntactBeacon(geometry, alongWU) {
-  for (const segment of geometry.segments) {
+  for (let i = 0; i < geometry.segments.length; i++) {
+    const segment = geometry.segments[i];
     if (segment.disrupted) continue;
     if (segment.a.alongWU >= alongWU) return segment.a;
   }
@@ -204,7 +205,47 @@ export const travelLanes = {
     // ("never live encounters/squads/entity ids").
     this._beaconIds = new Map();   // beacon index -> entity id
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
-    this._lastSignature = null;    // change detection for nav:laneStatus
+    this._lastPublishedStatus = {  // scalar change detection; avoids a signature string each tick
+      laneId: null,
+      inLane: null,
+      segmentIndex: null,
+      segmentState: undefined,
+      boosted: null,
+      disrupted: null,
+      driveState: null,
+    };
+    // `state.travelLanes` is a live read model. Retain its stable shape rather than replacing a
+    // 27-field object every fixed step; change events receive their own snapshots below.
+    this._statusScratch = {
+      schema: TRAVEL_LANE_SCHEMA,
+      laneId: null,
+      name: null,
+      fromSectorId: null,
+      toSectorId: null,
+      manufactured: false,
+      infrastructureStage: null,
+      infrastructureOperational: null,
+      inLane: false,
+      alongWU: 0,
+      offAxisWU: 0,
+      progress: 0,
+      segmentIndex: -1,
+      segmentCount: 0,
+      beaconCount: 0,
+      segmentState: null,
+      disrupted: false,
+      boosted: false,
+      ceilingMult: 1,
+      rampMult: 1,
+      driveState: 'off',
+      recoveryBeaconIndex: null,
+      recoveryBeaconPos: null,
+      beaconsActive: 0,
+      trafficActive: 0,
+    };
+    this._recoveryPosScratch = { x: 0, z: 0 };
+    this._driveProfileRef = null;
+    this._driveBaseCeiling = 0;
     this._ambushRequested = new Set();
     this._manufacturedRoutes = [];
     this._manufacturedCache = new Map();
@@ -248,7 +289,15 @@ export const travelLanes = {
         this._beaconIds.clear();
         this._trafficIds.length = 0;
         this._ambushRequested.clear();
-        this._lastSignature = null;
+        this._lastPublishedStatus.laneId = null;
+        this._lastPublishedStatus.inLane = null;
+        this._lastPublishedStatus.segmentIndex = null;
+        this._lastPublishedStatus.segmentState = undefined;
+        this._lastPublishedStatus.boosted = null;
+        this._lastPublishedStatus.disrupted = null;
+        this._lastPublishedStatus.driveState = null;
+        this._driveProfileRef = null;
+        this._driveBaseCeiling = 0;
         this._manufacturedRoutes.length = 0;
         this._manufacturedCache.clear();
         this._manufacturedEntityIds.clear();
@@ -288,7 +337,8 @@ export const travelLanes = {
         this._collectManufactured,
       );
     }
-    for (const route of this._manufacturedRoutes) {
+    for (let i = 0; i < this._manufacturedRoutes.length; i++) {
+      const route = this._manufacturedRoutes[i];
       const fix = resolveLaneSegmentInto(route.geometry, player.pos, route.fixScratch);
       if (!fix.inLane) continue;
       if (!statusFix.inLane || route.lane.ceilingMult > finite(statusLane.ceilingMult, 1)) {
@@ -346,12 +396,24 @@ export const travelLanes = {
     // fabricating one here would make this system a second owner of an axis it does not own.
     if (!drive || typeof drive !== 'object') return;
 
-    let base = 0;
+    let profile = null;
     try {
-      base = resolveTravelCeiling(resolvePropulsionProfile(player, state));
+      profile = resolvePropulsionProfile(player, state);
     } catch {
-      base = 0;
+      profile = null;
     }
+    // Catalogue and refit-derived profiles are immutable and keep identity until the fitting or
+    // lab override changes. `resolveTravelCeiling` defensively normalizes its input, which allocates;
+    // cache that result by the authoritative profile identity instead of cloning it every tick.
+    if (profile !== this._driveProfileRef) {
+      this._driveProfileRef = profile;
+      try {
+        this._driveBaseCeiling = profile ? resolveTravelCeiling(profile) : 0;
+      } catch {
+        this._driveBaseCeiling = 0;
+      }
+    }
+    const base = this._driveBaseCeiling;
     if (!(base > 0)) return;
 
     const ceilingMult = boostLane ? Math.max(1, finite(boostLane.ceilingMult, 1)) : 1;
@@ -467,14 +529,17 @@ export const travelLanes = {
     if (!entities) return;
 
     // Drop bookkeeping for anything that no longer exists (residency sweep, sector change).
-    for (const [index, id] of this._beaconIds) {
-      if (!entities.get || !entities.get(id)) this._beaconIds.delete(index);
+    for (let i = 0; i < this.geometry.beacons.length; i++) {
+      const index = this.geometry.beacons[i].index;
+      const id = this._beaconIds.get(index);
+      if (id != null && (!entities.get || !entities.get(id))) this._beaconIds.delete(index);
     }
     if (this._beaconIds.size >= BEACON_MAX_ACTIVE) return;
 
     const px = finite(player.pos.x);
     const pz = finite(player.pos.z);
-    for (const beacon of this.geometry.beacons) {
+    for (let i = 0; i < this.geometry.beacons.length; i++) {
+      const beacon = this.geometry.beacons[i];
       if (this._beaconIds.has(beacon.index)) continue;
       const dx = beacon.pos.x - px;
       const dz = beacon.pos.z - pz;
@@ -543,21 +608,19 @@ export const travelLanes = {
       const phase = (i / TRAFFIC_COUNT) * length;
       const travelled = (phase + simTime * TRAFFIC_SPEED_WU_S) % length;
       const along = outbound ? travelled : length - travelled;
-      const pos = {
-        x: geometry.from.x + geometry.axis.x * along,
-        z: geometry.from.z + geometry.axis.z * along,
-      };
+      const x = geometry.from.x + geometry.axis.x * along;
+      const z = geometry.from.z + geometry.axis.z * along;
 
-      const dx = pos.x - px;
-      const dz = pos.z - pz;
+      const dx = x - px;
+      const dz = z - pz;
       const near = dx * dx + dz * dz <= TRAFFIC_SPAWN_RANGE_WU * TRAFFIC_SPAWN_RANGE_WU;
 
       const existingId = this._trafficIds[i];
       const existing = existingId != null ? entities.get(existingId) : null;
       if (existing) {
         // Reposition in place. Entities are never destroyed, so density is constant by construction.
-        existing.pos.x = pos.x;
-        existing.pos.z = pos.z;
+        existing.pos.x = x;
+        existing.pos.z = z;
         if (existing.rot != null) {
           existing.rot = Math.atan2(
             outbound ? geometry.axis.z : -geometry.axis.z,
@@ -569,7 +632,7 @@ export const travelLanes = {
       if (!near) continue;
       const ent = spawnEntity({
         type: 'freighter',
-        pos,
+        pos: { x, z },
         vel: { x: 0, z: 0 },
         radius: 12,
         mass: 1e5,
@@ -600,7 +663,8 @@ export const travelLanes = {
     const entities = state.entities;
     if (typeof spawnEntity !== 'function' || !entities || !entities.get) return;
     let spawned = false;
-    for (const route of this._manufacturedRoutes) {
+    for (let i = 0; i < this._manufacturedRoutes.length; i++) {
+      const route = this._manufacturedRoutes[i];
       const infrastructure = route.infrastructure;
       const body = route.body;
       const operational = infrastructure.operational === true;
@@ -703,45 +767,73 @@ export const travelLanes = {
   _publish(state, lane, geometry, fix, disrupted, boosting, infrastructure = null, appliedLane = null) {
     const recovery = disrupted && !lane.manufactured ? nextIntactBeacon(geometry, fix.alongWU) : null;
     const driveBlock = state.input && state.input.travelDrive;
-    const status = {
-      schema: TRAVEL_LANE_SCHEMA,
-      laneId: lane.id,
-      name: lane.name,
-      fromSectorId: lane.fromSectorId,
-      toSectorId: lane.toSectorId,
-      manufactured: lane.manufactured === true,
-      infrastructureStage: infrastructure ? infrastructure.stage : null,
-      infrastructureOperational: infrastructure ? infrastructure.operational === true : null,
-      inLane: fix.inLane,
-      alongWU: fix.alongWU,
-      offAxisWU: fix.offAxisWU,
-      progress: fix.progress,
-      segmentIndex: fix.segmentIndex,
-      segmentCount: geometry.segments.length,
-      beaconCount: geometry.beacons.length,
-      segmentState: fix.segment
-        ? fix.segment.disrupted
-          ? 'disrupted'
-          : infrastructure && !infrastructure.operational
-            ? infrastructure.stage === 'aligning' ? 'aligning' : 'offline'
-            : 'intact'
-        : null,
-      disrupted,
-      boosted: boosting,
-      ceilingMult: boosting && appliedLane ? appliedLane.ceilingMult : 1,
-      rampMult: boosting && appliedLane ? appliedLane.rampMult : 1,
-      driveState: driveBlock && typeof driveBlock.state === 'string' ? driveBlock.state : 'off',
-      recoveryBeaconIndex: recovery ? recovery.index : null,
-      recoveryBeaconPos: recovery ? { x: recovery.pos.x, z: recovery.pos.z } : null,
-      beaconsActive: this._beaconIds.size,
-      trafficActive: this._trafficIds.filter((id) => id != null).length,
-    };
+    const status = this._statusScratch;
+    status.laneId = lane.id;
+    status.name = lane.name;
+    status.fromSectorId = lane.fromSectorId;
+    status.toSectorId = lane.toSectorId;
+    status.manufactured = lane.manufactured === true;
+    status.infrastructureStage = infrastructure ? infrastructure.stage : null;
+    status.infrastructureOperational = infrastructure ? infrastructure.operational === true : null;
+    status.inLane = fix.inLane;
+    status.alongWU = fix.alongWU;
+    status.offAxisWU = fix.offAxisWU;
+    status.progress = fix.progress;
+    status.segmentIndex = fix.segmentIndex;
+    status.segmentCount = geometry.segments.length;
+    status.beaconCount = geometry.beacons.length;
+    status.segmentState = fix.segment
+      ? fix.segment.disrupted
+        ? 'disrupted'
+        : infrastructure && !infrastructure.operational
+          ? infrastructure.stage === 'aligning' ? 'aligning' : 'offline'
+          : 'intact'
+      : null;
+    status.disrupted = disrupted;
+    status.boosted = boosting;
+    status.ceilingMult = boosting && appliedLane ? appliedLane.ceilingMult : 1;
+    status.rampMult = boosting && appliedLane ? appliedLane.rampMult : 1;
+    status.driveState = driveBlock && typeof driveBlock.state === 'string' ? driveBlock.state : 'off';
+    status.recoveryBeaconIndex = recovery ? recovery.index : null;
+    if (recovery) {
+      this._recoveryPosScratch.x = recovery.pos.x;
+      this._recoveryPosScratch.z = recovery.pos.z;
+      status.recoveryBeaconPos = this._recoveryPosScratch;
+    } else {
+      status.recoveryBeaconPos = null;
+    }
+    status.beaconsActive = this._beaconIds.size;
+    let trafficActive = 0;
+    for (let i = 0; i < this._trafficIds.length; i++) {
+      if (this._trafficIds[i] != null) trafficActive += 1;
+    }
+    status.trafficActive = trafficActive;
     state.travelLanes = status;
 
-    const signature = `${status.laneId}|${status.inLane}|${status.segmentIndex}|${status.segmentState}|${status.boosted}|${status.disrupted}|${status.driveState}`;
-    if (signature === this._lastSignature) return;
-    this._lastSignature = signature;
-    this._emit('nav:laneStatus', status);
+    const last = this._lastPublishedStatus;
+    if (status.laneId === last.laneId
+      && status.inLane === last.inLane
+      && status.segmentIndex === last.segmentIndex
+      && status.segmentState === last.segmentState
+      && status.boosted === last.boosted
+      && status.disrupted === last.disrupted
+      && status.driveState === last.driveState) return;
+    last.laneId = status.laneId;
+    last.inLane = status.inLane;
+    last.segmentIndex = status.segmentIndex;
+    last.segmentState = status.segmentState;
+    last.boosted = status.boosted;
+    last.disrupted = status.disrupted;
+    last.driveState = status.driveState;
+
+    // Events are durable transition facts, not live views. Allocate only on a transition so a bus
+    // consumer that retains the payload cannot observe later ticks mutating its historical event.
+    this._emit('nav:laneStatus', {
+      ...status,
+      recoveryBeaconPos: status.recoveryBeaconPos
+        ? { x: status.recoveryBeaconPos.x, z: status.recoveryBeaconPos.z }
+        : null,
+    });
   },
 
   _emit(event, payload) {

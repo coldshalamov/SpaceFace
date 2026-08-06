@@ -175,7 +175,7 @@ reaching the next intact beacon.
 |---|---|---|---|
 | L.1 | A lane exists as real entities on the Helios ↔ Tethys chord, spaced on the lattice quantum | `check:travel-lanes` + `LANE_HELIOS_TETHYS` | **met** |
 | L.2 | Inside a lane with the drive engaged the ship's own ceiling/ramp is multiplied — it is never teleported | `check:travel-lanes`; lane writes only `input.travelDrive.{ceiling,rampMult}` | **met** |
-| L.3 | Lane geometry maths is allocation-sane on the per-tick path | `check:atlas:perf` — `projectOntoLane` 72 B/op, `resolveLaneSegment` 120 B/op (stable to the byte) | **met, with a P3 doctrine conflict** |
+| L.3 | Lane geometry maths is allocation-sane on the per-tick path | The real `travelLanes.update@steady` scenario measured 2,537 → 696 B/op before the final identity-keyed travel-ceiling cache; retained projection/status/traffic storage is on the shipping tick. A predeclared 256 B/op strict ceiling remains for PQ-033 clean-platform evidence. | **production fix met; strict evidence pending PQ-033** |
 | L.4 | A disrupted segment collapses the ceiling and drops the player out at the break, decelerating by momentum decay rather than confiscation | disruption seam is wired (`player.travelDrive.disrupted`) and **nothing triggers it** | **NOT MET** |
 | L.5 | An ambush is present at the dead beacon | not built | **NOT MET** |
 | L.6 | The chart shows segment state in hazard grammar, and the itinerary re-plans over the same edge | not demonstrated | **NOT MET** |
@@ -220,8 +220,10 @@ These are not optional extras. A feature gate that passes while one of these fai
   post-interrupt, and post-arrival** — precisely the states most likely to break.
 
 ### 7.5 Performance
-- No per-frame allocation on sim/render/UI hot paths (`design/PERF_BUDGET.md`). The lane path
-  currently allocates ~7 KB/s while engaged; that is a declared, bounded P3, not a silent violation.
+- No per-frame allocation on sim/render/UI hot paths (`design/PERF_BUDGET.md`). The former lane path
+  built projection/status/signature/traffic containers every tick. Its real steady scenario measured
+  2,537 → 696 B/op before the final immutable-profile ceiling cache; the shipping path now retains
+  all of those values and PQ-033 owns one clean-platform run against the predeclared 256 B/op ceiling.
 - There is **no budget line anywhere** for map render, marker layout, route calculation or lane
   streaming. Marker declutter is measured at 2.1 ms per frame at 400 candidates (~13% of a 16.7 ms
   frame). A budget must be set from the recorded baselines before Continuous Map can be called met.

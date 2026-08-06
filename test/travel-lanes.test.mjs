@@ -510,17 +510,46 @@ test('the lane publishes one stable contract for Atlas and Navigation consumers'
     }
     assert.equal(status.schema, 'travel_lane_v1');
     assert.equal(bus.of('nav:laneStatus').length, 1, 'published on entry');
+    const entryEvent = bus.of('nav:laneStatus')[0].payload;
+    const entryEventSnapshot = JSON.stringify(entryEvent);
 
     // Emitted on CHANGE, not per tick — a per-tick nav event would drown the trace.
     sys.update(1 / 60, state);
     sys.update(1 / 60, state);
+    assert.strictEqual(state.travelLanes, status, 'steady ticks retain one live read-model object');
     assert.equal(bus.of('nav:laneStatus').length, 1, 'no per-tick spam');
 
     const dead = GEOMETRY.segments.find((s) => s.disrupted);
     const player = state.entities.get(1);
     player.pos.x = dead.midpoint.x; player.pos.z = dead.midpoint.z;
     sys.update(1 / 60, state);
+    assert.strictEqual(state.travelLanes, status, 'a transition updates the same live read model');
     assert.equal(bus.of('nav:laneStatus').length, 2, 'republished when the segment state changes');
+    assert.equal(JSON.stringify(entryEvent), entryEventSnapshot,
+      'the earlier event remains a transition snapshot when the live read model changes');
+  });
+});
+
+test('a refit invalidates the retained travel ceiling without changing ordinary flight authority', () => {
+  withFlag(true, () => {
+    const state = makeState(onChord(2048));
+    const player = state.entities.get(1);
+    delete player.propulsion;
+    player.driveId = 'drive_reaction_m';
+    const { sys } = makeHost(state);
+
+    sys.update(1 / 60, state);
+    const medium = state.input.travelDrive.ceiling;
+    const mediumProfile = sys._driveProfileRef;
+    sys.update(1 / 60, state);
+    assert.strictEqual(sys._driveProfileRef, mediumProfile,
+      'unchanged fitting reuses the same authoritative propulsion profile');
+    assert.equal(state.input.travelDrive.ceiling, medium);
+
+    player.driveId = 'drive_reaction_s';
+    sys.update(1 / 60, state);
+    assert.notStrictEqual(sys._driveProfileRef, mediumProfile, 'refit invalidates the cached ceiling');
+    assert.notEqual(state.input.travelDrive.ceiling, medium, 'new drive identity publishes its own ceiling');
   });
 });
 

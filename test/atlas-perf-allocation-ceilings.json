@@ -21,12 +21,18 @@
     "lane/projectOntoLane": {
       "maxBytesPerOp": 160,
       "measuredBytesPerOp": 72,
-      "why": "Called per tick while the travel drive is engaged (travelLanes.update -> resolveLaneSegment -> projectOntoLane). The 72 B is the returned {alongWU, offAxisWU} object, not hidden churn, but design/PERF_BUDGET.md forbids per-frame allocation on hot paths — see the P3 finding filed against this. The ceiling pins it from growing while that is adjudicated."
+      "why": "Public convenience helper. The fixed-step runtime projects into retained output storage, but this ceiling still catches accidental growth for external callers."
     },
     "lane/resolveLaneSegment": {
       "maxBytesPerOp": 256,
-      "measuredBytesPerOp": 120,
-      "why": "The per-tick lane fix, called directly from travelLanes.update (line 197). Includes projectOntoLane's allocation. Same doctrine tension as above."
+      "measuredBytesPerOp": 144,
+      "why": "Public convenience helper. The fixed-step runtime calls resolveLaneSegmentInto with retained output; this ceiling covers non-runtime callers."
+    },
+    "lane/travelLanes.update@steady": {
+      "maxBytesPerOp": 256,
+      "measuredBytesPerOp": 696,
+      "measuredBeforeBytesPerOp": 2537,
+      "why": "The actual fixed-step lane path with resident beacons and six traffic entities. Retained status/traffic storage measured 2537 -> 696 B/op; the remaining measured allocation was traced to resolveTravelCeiling normalizing the same immutable profile, then removed by an identity-keyed cache after the one-after-run budget. The ceiling was fixed before that measurement and remains strict."
     },
     "markerLayout/layoutMapLabels@400": {
       "maxBytesPerOp": 65536,
