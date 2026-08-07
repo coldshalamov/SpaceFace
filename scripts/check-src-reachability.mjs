@@ -3,16 +3,16 @@
 //
 // AGENTS.md §6 already states the invariant — "player-facing work must be reachable on the default
 // route. A local candidate, report, or hidden flag is not completion" — and nothing enforced it. The
-// result is measurable: ~27k LOC of src/ is unreachable from src/main.js. Most of that is legitimate
-// tooling, but it also includes modules named as FEATURES, and src/systems/titles.js says the quiet
-// part out loud in its own header:
+// result was measurable: ~27k LOC of src/ was unreachable from src/main.js. Most of that is
+// legitimate tooling, but it also included modules named as FEATURES. At ratchet landing,
+// src/systems/titles.js said the quiet part out loud in its own header:
 //
 //     "exposes semantic events for future morale, decal, ticker, and ledger integration.
 //      No consumer is required for this reducer to remain deterministic and save-safe."
 //
-// 466 lines, zero importers, deterministic, save-safe, and invisible to the player. That is a system
-// built to satisfy a check rather than to be played, and it is the most expensive recurring mistake in
-// this repository's history.
+// It had zero importers and was invisible to the player. S4 later closed that exact exception through
+// the production manifest, combat producer, morale/news/Ledger consumers, and live hull title stamp;
+// the historical example remains here because preventing another isolated feature is this ratchet's job.
 //
 // This is a RATCHET, not a cleanup mandate. It does not demand that the existing orphans be wired —
 // that is a scheduling decision, not a scripting one. It fails when a NEW orphan appears under the

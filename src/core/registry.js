@@ -33,6 +33,7 @@ import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
+import { titlesSystem } from '../systems/titles.js';
 import { wingMorale } from '../systems/wingMorale.js';
 import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
@@ -196,6 +197,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
     ['uniqueWrecks', uniqueWrecks],
+    ['titles', titlesSystem],
     ['wingMorale', wingMorale],
     ['tetherGameplay', tetherGameplay],
     ['surrenderRecovery', surrenderRecovery],
@@ -368,6 +370,8 @@ export function createRegistry(ctx) {
   // events and live forceFlee flags; it never mutates combat, AI, economy, cargo, or reputation.
   // aftermathWrecks runs after combatOutcome: it observes the same live kill seam, records only
   // named-zone wreck markers, and materializes them as salvageable wreck entities on sector entry.
+  // titles observes durable NPC combat holds and reduces the cross-faction Thunderchild title
+  // before wingMorale reads its nearby-allies aura on the same entity:killed event.
   // wingMorale is the squad-cohesion observer: leader loss marks surviving squadmates to flee,
   // escort loss enrages a ward, and comms/sensor disable blocks that squad's reinforcement hook.
   // surrenderRecovery runs after tetherGameplay mirrors the authoritative player attachment. It

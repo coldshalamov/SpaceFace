@@ -19,7 +19,7 @@ export const PRESENTATION_PLATFORM_IDS = Object.freeze([
 const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
 
 /**
- * Production init order — matches createRegistry SYSTEMS (130 entries) after SF-22
+ * Production init order — matches the createRegistry production system set.
  * baseline. Includes presentation platform IDs so the browser path can materialize an
  * identical full list; Node consumers filter with isNodeSafeSystemId.
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
@@ -31,7 +31,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
-  'uniqueWrecks', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
+  'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
@@ -63,7 +63,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   'collisionConsequences', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'physics', 'combat',
-  'combatOutcome', 'aftermathWrecks', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
+  'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',

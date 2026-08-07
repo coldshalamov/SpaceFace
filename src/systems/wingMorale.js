@@ -4,6 +4,8 @@
 // live AI roster shape already written on entities (`data.ai.squadId` / `preferredRole`) and writes
 // only short-lived morale intent flags on those same AI records.
 
+import { THUNDERCHILD, THUNDERCHILD_TITLE_ID } from '../data/titles.js';
+
 const STATE_VERSION = 1;
 const SCATTER_S = 6;
 const ROLE_LEADER = 'leader';
@@ -125,6 +127,23 @@ function wardFor(state, escort, payload) {
   return null;
 }
 
+function thunderchildHolder(state) {
+  const title = state && state.story && state.story.titles && state.story.titles.byId
+    && state.story.titles.byId[THUNDERCHILD_TITLE_ID];
+  if (!title || title.status !== 'held' || !title.holderKey || !Array.isArray(state.entityList)) return null;
+  return state.entityList.find((entity) => entity && entity.alive !== false && entity.data
+    && entity.data.worldRecordId === title.holderKey) || null;
+}
+
+function thunderchildAuraApplies(state, entity) {
+  const holder = thunderchildHolder(state);
+  if (!holder || !entity || holder.id === entity.id || holder.team == null || holder.team !== entity.team
+    || !holder.pos || !entity.pos) return false;
+  const dx = holder.pos.x - entity.pos.x;
+  const dz = holder.pos.z - entity.pos.z;
+  return dx * dx + dz * dz <= THUNDERCHILD.aura.radius * THUNDERCHILD.aura.radius;
+}
+
 export const wingMorale = {
   name: 'wingMorale',
 
@@ -215,12 +234,20 @@ export const wingMorale = {
     const data = entity.data || (entity.data = {});
     const ai = data.ai || (data.ai = {});
     const intent = data.intent || (data.intent = {});
+    const auraActive = thunderchildAuraApplies(state, entity);
+    const until = rec.t + SCATTER_S * (auraActive ? 1 - THUNDERCHILD.aura.morale : 1);
     ai.forceFlee = true;
     ai.fsm = 'flee';
-    ai._wingMoraleUntil = rec.until;
-    ai._moraleUntil = rec.until;
+    ai._wingMoraleUntil = until;
+    ai._moraleUntil = until;
     ai._scatterFrom = payload && payload.pos ? { x: payload.pos.x || 0, z: payload.pos.z || 0 } : null;
-    ai.wingMorale = { squadId: rec.squadId, reason: rec.reason, leaderId: rec.leaderId, until: rec.until };
+    ai.wingMorale = {
+      squadId: rec.squadId,
+      reason: rec.reason,
+      leaderId: rec.leaderId,
+      until,
+      auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
+    };
     data.morale = 'scattered';
     intent.fire = false;
     intent.fireGroup = null;
@@ -228,14 +255,16 @@ export const wingMorale = {
     own.scatter[entity.id] = {
       squadId: rec.squadId,
       reason: rec.reason,
-      until: rec.until,
+      until,
+      auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
     };
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ai:flee', {
         entityId: entity.id,
         squadId: rec.squadId,
         reason: 'wingMorale:leaderDown',
-        until: rec.until,
+        until,
+        auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
       });
     }
   },

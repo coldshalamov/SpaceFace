@@ -36,6 +36,7 @@ import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
+import { titlesSystem } from '../systems/titles.js';
 import { wingMorale } from '../systems/wingMorale.js';
 import { tetherGameplay } from '../systems/tetherGameplay.js';
 import { masslineTelemetry } from '../systems/masslineTelemetry.js';
@@ -182,6 +183,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
     ['uniqueWrecks', uniqueWrecks],
+    ['titles', titlesSystem],
     ['wingMorale', wingMorale],
     ['tetherGameplay', tetherGameplay],
     ['surrenderRecovery', surrenderRecovery],

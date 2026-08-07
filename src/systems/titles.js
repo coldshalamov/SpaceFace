@@ -1,19 +1,20 @@
-// Thunderchild cross-faction title reducer (Depth Program S4 groundwork).
+// Thunderchild cross-faction title authority (Depth Program S4).
 //
-// This system owns only state.story.titles and state.story.titlesSeen. It consumes explicit
-// title:holdResolved receipts and canonical entity:killed events, then exposes semantic events for
-// future morale, decal, ticker, and ledger integration. No consumer is required for this reducer to
-// remain deterministic and save-safe.
+// This system owns only state.story.titles and state.story.titlesSeen. It observes canonical combat
+// events to produce deterministic title:holdResolved receipts, reduces those receipts, and exposes
+// semantic events plus a small live-entity presentation stamp for morale/decal/news/Ledger readers.
 
 import {
   THUNDERCHILD,
   THUNDERCHILD_TITLE_ID,
+  TITLE_ACTIVE_HOLD_LIMIT,
   TITLE_CANDIDATE_LIMIT,
   TITLE_HISTORY_LIMIT,
   TITLE_PROCESSED_RECEIPT_LIMIT,
   TITLES_SCHEMA_VERSION,
   TITLES_SEEN_LIMIT,
 } from '../data/titles.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 function finiteInteger(value, fallback = 0) {
   const number = Number(value);
@@ -42,9 +43,26 @@ function freshThunderchildState() {
     earnedTick: 0,
     killMarks: 0,
     successionCount: 0,
+    activeHolds: {},
     candidates: [],
     history: [],
     processedReceiptIds: [],
+  };
+}
+
+function normalizeActiveHold(raw, fallbackHolderKey = '') {
+  if (!raw || typeof raw !== 'object') return null;
+  const holderKey = cleanText(raw.holderKey, cleanText(fallbackHolderKey));
+  if (!holderKey) return null;
+  const startedTick = finiteInteger(raw.startedTick);
+  return {
+    holderKey,
+    startedTick,
+    lastCombatTick: Math.max(startedTick, finiteInteger(raw.lastCombatTick, startedTick)),
+    alliedThreat: Math.max(1, finiteInteger(raw.alliedThreat, 1)),
+    hostileThreat: finiteInteger(raw.hostileThreat),
+    hostileOutcomes: finiteInteger(raw.hostileOutcomes),
+    candidateKills: finiteInteger(raw.candidateKills),
   };
 }
 
@@ -88,6 +106,16 @@ function ensureState(state) {
   own.killMarks = Math.min(THUNDERCHILD.maxKillMarks, finiteInteger(own.killMarks));
   own.successionCount = finiteInteger(own.successionCount);
 
+  const activeHolds = Object.entries(own.activeHolds && typeof own.activeHolds === 'object'
+    ? own.activeHolds : {})
+    .map(([holderKey, raw]) => normalizeActiveHold(raw, holderKey))
+    .filter((hold) => hold && hold.holderKey !== own.holderKey)
+    .sort((a, b) => b.lastCombatTick - a.lastCombatTick
+      || a.holderKey.localeCompare(b.holderKey))
+    .slice(0, TITLE_ACTIVE_HOLD_LIMIT)
+    .sort((a, b) => a.holderKey.localeCompare(b.holderKey));
+  own.activeHolds = Object.fromEntries(activeHolds.map((hold) => [hold.holderKey, hold]));
+
   const byHolder = new Map();
   for (const raw of Array.isArray(own.candidates) ? own.candidates : []) {
     const candidate = normalizeCandidate(raw);
@@ -111,6 +139,12 @@ function ensureState(state) {
     }))
     .filter((record) => record.id && record.holderKey);
   return own;
+}
+
+function currentThunderchildState(state) {
+  const own = state && state.story && state.story.titles && state.story.titles.byId
+    && state.story.titles.byId[THUNDERCHILD_TITLE_ID];
+  return own && own.activeHolds && typeof own.activeHolds === 'object' ? own : ensureState(state);
 }
 
 function ratioComparison(a, b) {
@@ -183,6 +217,65 @@ function holderSnapshot(entity) {
   };
 }
 
+function liveEntities(state) {
+  if (Array.isArray(state && state.entityList)) return state.entityList;
+  return state && state.entities && typeof state.entities.values === 'function'
+    ? [...state.entities.values()] : [];
+}
+
+function isDurableNpcShip(state, entity) {
+  return !!entity && entity.alive !== false && entity.type === 'ship'
+    && entity.id !== (state && state.playerId) && !!holderKeyOf(entity)
+    && entity.team != null && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+}
+
+function threatSnapshot(state, candidate) {
+  let alliedThreat = 0;
+  let hostileThreat = 0;
+  const radiusSq = THUNDERCHILD.aura.radius * THUNDERCHILD.aura.radius;
+  for (const entity of liveEntities(state)) {
+    if (!entity || entity.alive === false || entity.type !== 'ship' || entity.team == null
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;
+    const dx = entity.pos.x - candidate.pos.x;
+    const dz = entity.pos.z - candidate.pos.z;
+    if (dx * dx + dz * dz > radiusSq) continue;
+    if (entity.id === candidate.id || entity.team === candidate.team) alliedThreat += 1;
+    else if (isHostileForAI(state, candidate, entity)) hostileThreat += 1;
+  }
+  return { alliedThreat: Math.max(1, alliedThreat), hostileThreat };
+}
+
+function isQualifyingThreat(alliedThreat, hostileThreat) {
+  return BigInt(finiteInteger(hostileThreat)) * BigInt(THUNDERCHILD.threatRatio.hostileMultiplier)
+    >= BigInt(Math.max(1, finiteInteger(alliedThreat))) * BigInt(THUNDERCHILD.threatRatio.alliedMultiplier);
+}
+
+function clearTitleStamp(entity) {
+  const data = entity && entity.data;
+  if (!data || data.titleId !== THUNDERCHILD_TITLE_ID) return;
+  delete data.titleId;
+  delete data.titleName;
+  delete data.titleKillMarks;
+}
+
+function stampTitle(entity, own) {
+  if (!entity) return;
+  const data = entity.data || (entity.data = {});
+  data.titleId = THUNDERCHILD_TITLE_ID;
+  data.titleName = THUNDERCHILD.title;
+  data.titleKillMarks = own.killMarks;
+}
+
+function syncTitleStamp(state, own) {
+  for (const entity of liveEntities(state)) {
+    if (own.status === 'held' && holderKeyOf(entity) === own.holderKey && entity.alive !== false) {
+      stampTitle(entity, own);
+    } else {
+      clearTitleStamp(entity);
+    }
+  }
+}
+
 function normalizedReceipt(payload, entity) {
   const receiptId = cleanText(payload && payload.receiptId);
   const holderKey = holderKeyOf(entity);
@@ -216,7 +309,8 @@ function qualifies(payload, candidate) {
   const hostileSide = BigInt(candidate.hostileThreat) * BigInt(THUNDERCHILD.threatRatio.hostileMultiplier);
   const alliedSide = BigInt(candidate.alliedThreat) * BigInt(THUNDERCHILD.threatRatio.alliedMultiplier);
   if (hostileSide < alliedSide) return false;
-  return candidate.hostileOutcomes >= THUNDERCHILD.minHostileOutcomes;
+  return candidate.hostileOutcomes >= THUNDERCHILD.minHostileOutcomes
+    && candidate.candidateKills >= THUNDERCHILD.minHostileOutcomes;
 }
 
 function appendBounded(array, value, limit) {
@@ -264,12 +358,21 @@ export function createTitlesSystem() {
       this.state = ctx && ctx.state;
       this.bus = ctx && ctx.bus;
       this._holderEntityId = null;
+      this._activeEntityIds = new Map();
       ensureState(this.state);
+      this._onHold = (payload) => this._onHoldResolved(payload || {});
+      this._onDamage = (payload) => this._onCombatDamage(payload || {});
+      this._onKilled = (payload) => this._onEntityKilled(payload || {});
+      this._onSpawned = (payload) => this._onEntitySpawned(payload || {});
+      this._onSaveLoaded = () => this._rebindSilently();
+      this._onNewGame = () => this.newGame();
       if (this.bus && typeof this.bus.on === 'function') {
-        this.bus.on('title:holdResolved', (payload) => this._onHoldResolved(payload || {}));
-        this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {}));
-        this.bus.on('save:loaded', () => this._rebindSilently());
-        this.bus.on('game:newGame', () => this.newGame());
+        this.bus.on('title:holdResolved', this._onHold);
+        this.bus.on('combat:damage', this._onDamage);
+        this.bus.on('entity:killed', this._onKilled);
+        this.bus.on('entity:spawned', this._onSpawned);
+        this.bus.on('save:loaded', this._onSaveLoaded);
+        this.bus.on('game:newGame', this._onNewGame);
       }
       this._rebindSilently();
     },
@@ -283,14 +386,128 @@ export function createTitlesSystem() {
       };
       this.state.story.titlesSeen = [];
       this._holderEntityId = null;
+      this._activeEntityIds.clear();
+      syncTitleStamp(this.state, ensureState(this.state));
     },
 
-    update() {},
+    update(_dt, state = this.state) {
+      if (state) this.state = state;
+      if (!this._activeEntityIds.size) return;
+      const own = currentThunderchildState(this.state);
+      const tick = finiteInteger(this.state && this.state.tick);
+      for (const [holderKey, entityId] of this._activeEntityIds) {
+        const hold = own.activeHolds[holderKey];
+        const entity = entityFor(this.state, entityId);
+        if (!hold) {
+          this._activeEntityIds.delete(holderKey);
+          continue;
+        }
+        if (!entity || entity.alive === false || tick < hold.startedTick
+          || tick - hold.lastCombatTick > THUNDERCHILD.holdContinuityTicks) {
+          delete own.activeHolds[holderKey];
+          this._activeEntityIds.delete(holderKey);
+          continue;
+        }
+        if (tick - hold.startedTick < THUNDERCHILD.minDurationTicks
+          || hold.hostileOutcomes < THUNDERCHILD.minHostileOutcomes
+          || hold.candidateKills < THUNDERCHILD.minHostileOutcomes) continue;
+        delete own.activeHolds[holderKey];
+        this._activeEntityIds.delete(holderKey);
+        emit(this.bus, 'title:holdResolved', {
+          receiptId: `title:natural-hold:${holderKey}:${hold.startedTick}`,
+          entityId: entity.id,
+          startedTick: hold.startedTick,
+          endedTick: tick,
+          alliedThreat: hold.alliedThreat,
+          hostileThreat: hold.hostileThreat,
+          hostileOutcomes: hold.hostileOutcomes,
+          candidateKills: hold.candidateKills,
+          survived: true,
+          source: 'combat_observation',
+        });
+      }
+    },
 
     _rebindSilently() {
       const own = ensureState(this.state);
       const entity = own.status === 'held' ? entityForHolder(this.state, own.holderKey) : null;
       this._holderEntityId = entity ? entity.id : null;
+      this._activeEntityIds.clear();
+      for (const candidate of liveEntities(this.state)) {
+        const holderKey = holderKeyOf(candidate);
+        if (holderKey && own.activeHolds[holderKey] && candidate.alive !== false) {
+          this._activeEntityIds.set(holderKey, candidate.id);
+        }
+      }
+      syncTitleStamp(this.state, own);
+    },
+
+    _onCombatDamage(payload) {
+      const applied = Number(payload.applied != null ? payload.applied : payload.amount);
+      if (!Number.isFinite(applied) || applied <= 0) return null;
+      const attacker = entityFor(this.state, payload.attackerId);
+      const target = entityFor(this.state, payload.targetId);
+      this._observeCombatant(attacker, target);
+      this._observeCombatant(target, attacker);
+      return null;
+    },
+
+    _onEntitySpawned(payload) {
+      const entity = payload.entity || entityFor(this.state, payload.id);
+      if (!entity) return null;
+      const own = currentThunderchildState(this.state);
+      const holderKey = holderKeyOf(entity);
+      if (own.status === 'held' && holderKey === own.holderKey && entity.alive !== false) {
+        this._holderEntityId = entity.id;
+        stampTitle(entity, own);
+      } else {
+        clearTitleStamp(entity);
+      }
+      if (holderKey && own.activeHolds[holderKey] && entity.alive !== false) {
+        this._activeEntityIds.set(holderKey, entity.id);
+      }
+      return entity;
+    },
+
+    _observeCombatant(candidate, opponent) {
+      const own = currentThunderchildState(this.state);
+      if (!isDurableNpcShip(this.state, candidate) || !opponent || opponent.alive === false
+        || opponent.type !== 'ship' || !isHostileForAI(this.state, candidate, opponent)) return null;
+      const holderKey = holderKeyOf(candidate);
+      if (holderKey === own.holderKey) return null;
+      const tick = finiteInteger(this.state && this.state.tick);
+      let hold = own.activeHolds[holderKey];
+      if (hold && tick - hold.lastCombatTick > THUNDERCHILD.holdContinuityTicks) {
+        delete own.activeHolds[holderKey];
+        this._activeEntityIds.delete(holderKey);
+        hold = null;
+      }
+      if (hold) {
+        this._activeEntityIds.set(holderKey, candidate.id);
+        hold.lastCombatTick = tick;
+        return hold;
+      }
+      const threat = threatSnapshot(this.state, candidate);
+      if (!isQualifyingThreat(threat.alliedThreat, threat.hostileThreat)) return null;
+      hold = {
+        holderKey,
+        startedTick: tick,
+        lastCombatTick: tick,
+        alliedThreat: threat.alliedThreat,
+        hostileThreat: threat.hostileThreat,
+        hostileOutcomes: 0,
+        candidateKills: 0,
+      };
+      own.activeHolds[holderKey] = hold;
+      this._activeEntityIds.set(holderKey, candidate.id);
+      const keys = Object.keys(own.activeHolds);
+      if (keys.length > TITLE_ACTIVE_HOLD_LIMIT) {
+        keys.sort((left, right) => own.activeHolds[left].lastCombatTick - own.activeHolds[right].lastCombatTick
+          || right.localeCompare(left));
+        delete own.activeHolds[keys[0]];
+        this._activeEntityIds.delete(keys[0]);
+      }
+      return hold;
     },
 
     _onHoldResolved(payload) {
@@ -300,6 +517,8 @@ export function createTitlesSystem() {
       const entity = entityFor(this.state, payload.entityId);
       const candidate = normalizedReceipt(payload, entity);
       if (!qualifies(payload, candidate)) return null;
+      delete own.activeHolds[candidate.holderKey];
+      this._activeEntityIds.delete(candidate.holderKey);
 
       if (own.status === 'vacant') {
         this._awardVacant(own, candidate, payload.entityId);
@@ -330,6 +549,7 @@ export function createTitlesSystem() {
       }, TITLE_HISTORY_LIMIT);
       appendBounded(this.state.story.titlesSeen, titleSeenRecord(own), TITLES_SEEN_LIMIT);
       this._holderEntityId = transientEntityId;
+      stampTitle(entityFor(this.state, transientEntityId), own);
 
       emit(this.bus, 'title:earned', earnedEvent(own, candidate.receiptId));
       emit(this.bus, 'title:auraChanged', {
@@ -353,18 +573,29 @@ export function createTitlesSystem() {
     },
 
     _onEntityKilled(payload) {
-      const own = ensureState(this.state);
-      if (own.status !== 'held') return null;
+      const own = currentThunderchildState(this.state);
       const victimId = payload.id != null ? payload.id : payload.entityId;
       const victim = entityFor(this.state, victimId);
       const victimKey = holderKeyOf(victim);
+      if (victimKey) {
+        delete own.activeHolds[victimKey];
+        this._activeEntityIds.delete(victimKey);
+      }
+      const killer = entityFor(this.state, payload.killerId);
+      const killerKey = holderKeyOf(killer);
+      const activeHold = killerKey && own.activeHolds[killerKey];
+      if (activeHold && victim && isHostileForAI(this.state, killer, victim)) {
+        activeHold.lastCombatTick = finiteInteger(this.state && this.state.tick);
+        activeHold.hostileOutcomes += 1;
+        activeHold.candidateKills += 1;
+      }
+      if (own.status !== 'held') return null;
       const holderDied = victimKey === own.holderKey
         || (victimKey === '' && victimId != null && victimId === this._holderEntityId);
       if (holderDied) return this._succeedOrVacate(own, payload);
       if (victimKey) own.candidates = own.candidates.filter((candidate) => candidate.holderKey !== victimKey);
 
-      const killer = entityFor(this.state, payload.killerId);
-      if (holderKeyOf(killer) !== own.holderKey) return null;
+      if (killerKey !== own.holderKey) return null;
       const stableVictim = victimKey || `entity:${victimId}`;
       const tick = finiteInteger(this.state && this.state.tick);
       const receiptId = cleanText(payload.receiptId, `title:kill:${tick}:${stableVictim}`);
@@ -379,6 +610,7 @@ export function createTitlesSystem() {
         tick,
         receiptId,
       };
+      stampTitle(killer, own);
       emit(this.bus, 'title:killMarksChanged', event);
       return event;
     },
@@ -406,6 +638,7 @@ export function createTitlesSystem() {
         own.earnedTick = 0;
         this._holderEntityId = null;
       }
+      syncTitleStamp(this.state, own);
 
       const receiptId = `title:succession:${own.successionCount}:${own.holderKey || 'vacant'}`;
       appendBounded(own.history, {
@@ -458,6 +691,19 @@ export function createTitlesSystem() {
         receiptId,
       });
       return succession;
+    },
+
+    destroy() {
+      if (this.bus && typeof this.bus.off === 'function') {
+        if (this._onHold) this.bus.off('title:holdResolved', this._onHold);
+        if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
+        if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
+        if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
+        if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
+        if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
+      }
+      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = null;
+      this._activeEntityIds.clear();
     },
   };
 }

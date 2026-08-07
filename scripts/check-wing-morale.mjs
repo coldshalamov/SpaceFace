@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
 import { wingMorale, wingMoraleState } from '../src/systems/wingMorale.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
@@ -228,8 +232,14 @@ function testPackageAndRegistryWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ wingMorale \} from '\.\.\/systems\/wingMorale\.js';/,
     'registry imports wingMorale');
-  assert.match(registry, /combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay/,
-    'wingMorale registers after combat outcomes/aftermath and before later readers');
+  const initIndex = PRODUCTION_INIT_ORDER.indexOf('wingMorale');
+  const updateIndex = PRODUCTION_UPDATE_ORDER.indexOf('wingMorale');
+  assert.equal(PRODUCTION_INIT_ORDER[initIndex - 1], 'titles',
+    'wingMorale initializes after the title aura authority');
+  assert.equal(PRODUCTION_UPDATE_ORDER[updateIndex - 1], 'titles',
+    'wingMorale updates after the title aura authority');
+  assert.equal(PRODUCTION_UPDATE_ORDER[updateIndex + 1], 'tetherGameplay',
+    'wingMorale remains before later gameplay readers');
 
   const source = readFileSync(new URL('../src/systems/wingMorale.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,

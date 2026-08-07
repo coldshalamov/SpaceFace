@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 
 import {
   THUNDERCHILD,
@@ -14,6 +13,12 @@ import {
   compareThunderchildCandidates,
   createTitlesSystem,
 } from '../src/systems/titles.js';
+import { wingMorale } from '../src/systems/wingMorale.js';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
+import { getNodeSystemFactoryTable } from '../src/runtime/nodeSystemFactoryTable.js';
 
 class TestBus {
   constructor() {
@@ -54,6 +59,8 @@ function entity(id, worldRecordId, overrides = {}) {
     id,
     type: 'ship',
     alive: true,
+    team: 1,
+    pos: { x: id * 10, z: 0 },
     factionId: overrides.factionId || 'faction_scn',
     ...overrides,
     data,
@@ -106,6 +113,7 @@ test('Thunderchild data is frozen, deterministic, and declares the audited earni
   assert.equal(THUNDERCHILD.id, 'title_thunderchild');
   assert.equal(THUNDERCHILD.title, 'Thunderchild');
   assert.equal(THUNDERCHILD.minDurationTicks, 3600);
+  assert.equal(THUNDERCHILD.holdContinuityTicks, 600);
   assert.deepEqual(THUNDERCHILD.threatRatio, { hostileMultiplier: 2, alliedMultiplier: 3 });
   assert.equal(THUNDERCHILD.minHostileOutcomes, 3);
   assert.equal(THUNDERCHILD.maxKillMarks, 12);
@@ -126,6 +134,7 @@ test('only a surviving durable ship that held for 3600 ticks against 3:2 threat 
   resolve(bus, hold('too-short', durable.id, { endedTick: 3699 }));
   resolve(bus, hold('too-safe', durable.id, { alliedThreat: 6, hostileThreat: 8 }));
   resolve(bus, hold('too-few-outcomes', durable.id, { hostileOutcomes: 2 }));
+  resolve(bus, hold('too-few-kills', durable.id, { candidateKills: 2 }));
   resolve(bus, hold('fractional-receipt', durable.id, { hostileOutcomes: 3.5 }));
   assert.equal(title(state).status, 'vacant');
 
@@ -139,6 +148,9 @@ test('only a surviving durable ship that held for 3600 ticks against 3:2 threat 
   assert.equal(title(state).earnedTick, 3700);
   assert.equal(title(state).killMarks, 0);
   assert.equal(title(state).successionCount, 0);
+  assert.equal(durable.data.titleId, THUNDERCHILD_TITLE_ID);
+  assert.equal(durable.data.titleName, THUNDERCHILD.title);
+  assert.equal(durable.data.titleKillMarks, 0);
   assert.deepEqual(state.story.titlesSeen, [{
     id: 'title_thunderchild:0:world:reach:casket:1',
     title: 'Thunderchild',
@@ -221,6 +233,8 @@ test('canonical holder death moves the aura to the best cross-faction successor 
   assert.equal(title(state).candidates.length, 1);
   assert.equal(title(state).candidates[0].holderKey, 'world:weaker');
   assert.equal(state.story.titlesSeen.at(-1).seenAt, 5000);
+  assert.equal(incumbent.data.titleId, undefined);
+  assert.equal(winner.data.titleId, THUNDERCHILD_TITLE_ID);
   assert.deepEqual(bus.emitted('title:succession')[0], {
     titleId: 'title_thunderchild',
     title: 'Thunderchild',
@@ -266,6 +280,8 @@ test('holder kills add one exact-once kill mark while non-holder kills do not', 
   }
 
   assert.equal(title(state).killMarks, THUNDERCHILD.maxKillMarks, 'visible kill marks stop at the decal-ready cap');
+  assert.equal(holder.data.titleKillMarks, THUNDERCHILD.maxKillMarks,
+    'the live hull stamp exposes the capped decal count');
   assert.deepEqual(bus.emitted('title:killMarksChanged')[0], {
     titleId: 'title_thunderchild',
     title: 'Thunderchild',
@@ -343,6 +359,26 @@ test('save-loaded silently rebinds a JSON-roundtripped holder and preserves dete
   restored.bus.emit('entity:killed', { id: restoredIncumbent.id, killerId: 99 });
   assert.equal(title(restored.state).holderKey, 'world:candidate');
   assert.equal(title(restored.state).holder.displayName, 'Second Bell');
+  assert.equal(restoredCandidate.data.titleId, THUNDERCHILD_TITLE_ID);
+
+  restoredCandidate.alive = false;
+  const rematerialized = entity(202, 'world:candidate', { data: { displayName: 'Second Bell' } });
+  const former = entity(203, 'world:incumbent', {
+    data: {
+      titleId: THUNDERCHILD_TITLE_ID,
+      titleName: THUNDERCHILD.title,
+      titleKillMarks: 7,
+    },
+  });
+  for (const live of [rematerialized, former]) {
+    restored.state.entities.set(live.id, live);
+    restored.state.entityList.push(live);
+    restored.bus.emit('entity:spawned', { id: live.id, entity: live });
+  }
+  assert.equal(rematerialized.data.titleId, THUNDERCHILD_TITLE_ID,
+    'the current holder regains its presentation stamp after rematerialization');
+  assert.equal(former.data.titleId, undefined,
+    'a former holder cannot rematerialize with a stale presentation stamp');
 });
 
 test('candidate, history, processed-receipt, and title-sighting collections remain bounded', () => {
@@ -369,20 +405,115 @@ test('candidate, history, processed-receipt, and title-sighting collections rema
   assert.equal(state.story.titlesSeen.length, TITLES_SEEN_LIMIT);
 });
 
-test('S4 groundwork stays isolated from integration, UI, station, render, save, news, and morale owners', async () => {
-  const [dataSource, systemSource] = await Promise.all([
-    readFile(new URL('../src/data/titles.js', import.meta.url), 'utf8'),
-    readFile(new URL('../src/systems/titles.js', import.meta.url), 'utf8'),
-  ]);
-  const source = `${dataSource}\n${systemSource}`;
-  for (const forbidden of [
-    '../core/registry.js', '../core/gameState.js', '../save/', '../ui/', '../render/',
-    'styles/ui.css', 'state.player', 'player.titles', 'wingMorale', 'lossLedger',
-    "bus.on('entity:destroyed'", "bus.on('sector:exit'", 'Math.random(',
-  ]) {
-    assert.equal(source.includes(forbidden), false, `forbidden surface: ${forbidden}`);
+test('idle updates do not renormalize or replace saved title collections', () => {
+  const durable = entity(1, 'world:idle-holder');
+  const { state, system } = setup(durable);
+  const own = title(state);
+  const identities = {
+    activeHolds: own.activeHolds,
+    candidates: own.candidates,
+    history: own.history,
+    processedReceiptIds: own.processedReceiptIds,
+    titlesSeen: state.story.titlesSeen,
+  };
+  for (let tick = 1; tick <= 600; tick++) {
+    state.tick = tick;
+    system.update(1 / 60, state);
   }
-  assert.match(systemSource, /bus\.on\('title:holdResolved'/);
-  assert.match(systemSource, /bus\.on\('entity:killed'/);
-  assert.match(systemSource, /bus\.on\('save:loaded'/);
+  assert.equal(own.activeHolds, identities.activeHolds);
+  assert.equal(own.candidates, identities.candidates);
+  assert.equal(own.history, identities.history);
+  assert.equal(own.processedReceiptIds, identities.processedReceiptIds);
+  assert.equal(state.story.titlesSeen, identities.titlesSeen);
 });
+
+test('ordinary durable NPC combat produces a Thunderchild receipt and live title', () => {
+  const candidate = entity(1, 'world:ironclad:line-holder', { team: 1, pos: { x: 0, z: 0 } });
+  const ally = entity(2, 'world:ironclad:screen', { team: 1, pos: { x: 40, z: 0 } });
+  const hostiles = [
+    entity(10, 'world:raider:one', { team: 3, pos: { x: 80, z: 0 } }),
+    entity(11, 'world:raider:two', { team: 3, pos: { x: 100, z: 0 } }),
+    entity(12, 'world:raider:three', { team: 3, pos: { x: 120, z: 0 } }),
+  ];
+  const { state, bus, system } = setup(candidate, ally, ...hostiles);
+  const timeline = [100, 600, 1100, 1600, 1900, 2400, 2900, 3400, 3700];
+  const killAt = new Map([[100, 0], [1900, 1], [3700, 2]]);
+  for (const tick of timeline) {
+    state.tick = tick;
+    const victimIndex = tick === 100 ? 0 : tick <= 1900 ? 1 : 2;
+    const victim = hostiles[victimIndex];
+    bus.emit('combat:damage', {
+      attackerId: candidate.id,
+      targetId: victim.id,
+      applied: 12,
+    });
+    if (killAt.has(tick)) {
+      victim.alive = false;
+      bus.emit('entity:killed', { id: victim.id, killerId: candidate.id });
+    }
+  }
+  system.update(1 / 60, state);
+
+  assert.equal(title(state).holderKey, 'world:ironclad:line-holder');
+  assert.equal(title(state).earnedTick, 3700);
+  assert.equal(candidate.data.titleId, THUNDERCHILD_TITLE_ID);
+  assert.equal(bus.emitted('title:holdResolved').length, 1);
+  assert.equal(bus.emitted('title:holdResolved')[0].source, 'combat_observation');
+  assert.equal(bus.emitted('title:holdResolved')[0].candidateKills, 3);
+  assert.equal(JSON.stringify(state.story.titles).includes('entityId'), false,
+    'durable combat observations never persist transient entity ids');
+});
+
+test('Thunderchild aura shortens only nearby allied leader-loss panic without steering them', () => {
+  const holder = entity(1, 'world:thunderchild', { team: 1, pos: { x: 0, z: 0 } });
+  const leader = entity(2, 'world:wing:leader', {
+    team: 1,
+    pos: { x: 100, z: 0 },
+    data: { ai: { squadId: 'line-wing', preferredRole: 'leader' } },
+  });
+  const near = entity(3, 'world:wing:near', {
+    team: 1,
+    pos: { x: 200, z: 0 },
+    data: { ai: { squadId: 'line-wing', preferredRole: 'support' }, intent: {} },
+  });
+  const far = entity(4, 'world:wing:far', {
+    team: 1,
+    pos: { x: 1800, z: 0 },
+    data: { ai: { squadId: 'line-wing', preferredRole: 'support' }, intent: {} },
+  });
+  const { state, bus } = setup(holder, leader, near, far);
+  wingMorale.init({ state, bus, helpers: {} });
+  try {
+    resolve(bus, hold('holder-earned', holder.id));
+    state.simTime = 10;
+    state.tick = 600;
+    leader.alive = false;
+    bus.emit('entity:killed', { id: leader.id, killerId: 99, pos: leader.pos });
+
+    const morale = wingMoraleStateForTest(state);
+    assert.ok(Math.abs(morale.scatter[near.id].until - 15.1) < 1e-9);
+    assert.equal(morale.scatter[near.id].auraTitleId, THUNDERCHILD_TITLE_ID);
+    assert.equal(morale.scatter[far.id].until, 16);
+    assert.equal(morale.scatter[far.id].auraTitleId, null);
+    assert.equal(near.data.ai.forceFlee, true, 'the existing panic intent remains player-legible');
+    assert.equal(near.data.intent.thrust, undefined, 'the aura never writes movement or steering intent');
+  } finally {
+    wingMorale.destroy();
+  }
+});
+
+test('production browser and Node manifests register titles before wing morale', () => {
+  const initTitle = PRODUCTION_INIT_ORDER.indexOf('titles');
+  const updateTitle = PRODUCTION_UPDATE_ORDER.indexOf('titles');
+  assert.equal(initTitle, PRODUCTION_INIT_ORDER.indexOf('uniqueWrecks') + 1);
+  assert.equal(initTitle + 1, PRODUCTION_INIT_ORDER.indexOf('wingMorale'));
+  assert.equal(updateTitle, PRODUCTION_UPDATE_ORDER.indexOf('aftermathWrecks') + 1);
+  assert.equal(updateTitle + 1, PRODUCTION_UPDATE_ORDER.indexOf('wingMorale'));
+  assert.equal(getNodeSystemFactoryTable().get('titles').name, 'titles');
+});
+
+function wingMoraleStateForTest(state) {
+  return {
+    scatter: { ...(state.wingMorale && state.wingMorale.scatter || {}) },
+  };
+}
