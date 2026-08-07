@@ -289,8 +289,17 @@ the GPU consumes — comparing components would let a transposition or an axis-o
 both sides holding identical numbers while the ship draws pointing the wrong way. The incumbent side
 uses THREE's own `mesh.updateMatrix()`, so the two sides cannot be wrong together.
 
-**Open:** the renderer does not yet call `projectRenderEntityFrame` in its draw path, so the old
-per-entity route still executes and the incumbent has not been deleted. Socket-attached plume and
+### Adopted on the default route
+
+`renderer.js` now calls `projectRenderEntityFrame` every frame, immediately before
+`endRenderEntityFrame`. It runs on the **default** route rather than behind a flag: a snapshot only
+some players produce is a snapshot nobody can trust, because divergence would surface as a bug report
+instead of a gate. Archetype identity is the (geometry, material) pair — the two things that must
+match for one instanced draw — cached per mesh in a `WeakMap`, so the common case is a single lookup
+with no allocation and a disposed mesh takes its entry with it rather than pinning geometry alive.
+
+**Open:** the per-entity draw path still executes alongside the snapshot. That is the parity window
+running in production, and it is the precondition for deleting the incumbent — not an oversight. Socket-attached plume and
 distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is the seam for GPU upload.
 
 ## Chunk 4 — sim / render / platform separation — **TRANSPORT + DIGESTS MET; thread move open**

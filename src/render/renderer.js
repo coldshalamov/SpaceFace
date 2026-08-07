@@ -36,7 +36,36 @@ import {
   classifyRenderEntity,
   createRenderEntityFrame,
   endRenderEntityFrame,
+  projectRenderEntityFrame,
 } from './renderEntityFrame.js';
+import { createPresentationSnapshot, SNAPSHOT_FLAG } from './presentationSnapshot.js';
+
+/**
+ * Archetype id for the batched path: entities sharing geometry *and* material can be drawn in one
+ * instanced call, so that pair is the identity. Ids are cached per mesh in a WeakMap, keyed by the
+ * mesh itself, so the common case is one lookup and no allocation — and a mesh that is disposed
+ * takes its entry with it rather than pinning the geometry alive.
+ */
+const RENDER_ARCHETYPE_IDS = new WeakMap();
+const RENDER_ARCHETYPE_BY_KEY = new Map();
+let nextRenderArchetypeId = 0;
+
+function renderArchetypeOf(record) {
+  const mesh = record && record.mesh;
+  if (!mesh) return 0;
+  const cached = RENDER_ARCHETYPE_IDS.get(mesh);
+  if (cached !== undefined) return cached;
+  const geometry = mesh.geometry;
+  const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+  const key = `${geometry ? geometry.uuid : 'none'}|${material ? material.uuid : 'none'}`;
+  let id = RENDER_ARCHETYPE_BY_KEY.get(key);
+  if (id === undefined) {
+    id = nextRenderArchetypeId++;
+    RENDER_ARCHETYPE_BY_KEY.set(key, id);
+  }
+  RENDER_ARCHETYPE_IDS.set(mesh, id);
+  return id;
+}
 import {
   createPresentationWorld,
   PRESENTATION_DIRTY,
@@ -2185,6 +2214,22 @@ export const render = {
       }
       world.clearDirty(slot);
     }
+
+    // Publish the dense presentation snapshot for this frame. The classification pass above has
+    // already visited every entity and cached its pose, so this is a linear copy of numbers the
+    // frame already holds — not a second traversal — and it allocates nothing after the first frame.
+    //
+    // It runs on the default route rather than behind a flag because a snapshot only some players
+    // produce is a snapshot nobody can trust: divergence would show up as a bug report, not a gate.
+    // The batched consumer reads this; the per-entity draw path still runs alongside it, which is the
+    // parity window `check:render-path-parity` measures.
+    if (!this._presentationSnapshot) this._presentationSnapshot = createPresentationSnapshot({ capacity: 512 });
+    projectRenderEntityFrame(
+      this._entityFrame,
+      this._presentationSnapshot,
+      renderArchetypeOf,
+      SNAPSHOT_FLAG.VISIBLE,
+    );
 
     endRenderEntityFrame(this._entityFrame);
     const diagnostics = this._entityViewDiagnostics;
