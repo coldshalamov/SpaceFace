@@ -17,6 +17,8 @@ const HUSH_SOURCE_REF = 'planet_hush';
 const HUSH_SECTOR_ID = 'sector_eunomia_gulf';
 const QUIESSENCE_TARGET_REF = 'landmark_c14_quiessence';
 const QUIESSENCE_SECTOR_ID = 'sector_pallas_drift';
+const SHARD_SPHERE_TARGET_REF = 'landmark_c9_shard_sphere';
+const SHARD_SPHERE_POI_ID = 'poi_phoebe_echo';
 
 const ROAMING_PACK = requirePack('roaming_events');
 const HUSH_PACK = requirePack('hush');
@@ -204,6 +206,13 @@ export const v2FlavorRuntime = {
         if (this._presentQuiessence(entity)) return;
         continue;
       }
+      if (data.flavorTargetRef === SHARD_SPHERE_TARGET_REF) {
+        // A materialized POI is also present in scanner's nearby-entity set. Ignore that transient
+        // duplicate and advance only from the stable POI signal whose scan count survives visits.
+        if (signal.sourceId === SHARD_SPHERE_POI_ID
+            && this._presentShardSphereFragment(entity, signal)) return;
+        continue;
+      }
       if (data.flavorTargetRef
           && this._presentLandmarkEntity(entity, data.flavorTargetRef)) return;
     }
@@ -267,6 +276,26 @@ export const v2FlavorRuntime = {
       channel: 'info',
       receipt: `${QUIESSENCE_PACK.id}:${entity.id}:${index}`,
       context: { entityId: entity.id },
+    });
+  },
+
+  _presentShardSphereFragment(entity, signal) {
+    const entry = LANDMARK_BY_TARGET_REF.get(SHARD_SPHERE_TARGET_REF);
+    if (!entry || !entry.lines.length) return false;
+    const fragmentIndex = Math.min(entry.lines.length, Math.max(1, nonnegativeInt(signal.scanCount))) - 1;
+    const source = entry.lines[fragmentIndex];
+    const line = {
+      ...source,
+      text: `SCHISM FRAGMENT ${fragmentIndex + 1}/${entry.lines.length} — ${source.text}`,
+    };
+    return this._say({
+      packId: LANDMARK_PACK.id,
+      sourceRef: SHARD_SPHERE_TARGET_REF,
+      surface: 'scan',
+      line,
+      channel: 'info',
+      receipt: `${LANDMARK_PACK.id}:${SHARD_SPHERE_TARGET_REF}:fragment:${source.id}`,
+      context: { entityId: entity.id, fragmentIndex: fragmentIndex + 1, fragmentTotal: entry.lines.length },
     });
   },
 

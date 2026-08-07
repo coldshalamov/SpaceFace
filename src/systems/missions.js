@@ -584,7 +584,12 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
-    bus.on('signal:scanResults', (p) => this._onLandmarkProbeScan(p || {}));
+    bus.on('signal:scanResults', (p) => {
+      this._onLandmarkProbeScan(p || {});
+      // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
+      // has committed its durable count so the fourth Shard Sphere fragment posts the real offer.
+      this._reconcileLandmarkQuestOffers({ sectorId: p && p.sectorId });
+    });
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
@@ -3538,7 +3543,8 @@ export const missions = {
     const dest = this._destName(m);
     if (m && m.source === LANDMARK_QUEST_SOURCE && p.landmarkProbe) {
       const artifact = p.landmarkProbe.artifact;
-      return `${artifact && artifact.title || 'Return frame'} filed. The probe brought back one image and no telemetry; the shaft remains unexplained.`;
+      return p.landmarkProbe.successText
+        || `${artifact && artifact.title || 'Return frame'} filed. The probe brought back one image and no telemetry; the shaft remains unexplained.`;
     }
     if (m && m.source === 'poiBehavior' && p.poiSignalFollowup) {
       const cause = m.cause && m.cause.line ? ` The original ${m.cause.line.toLowerCase()}` : '';

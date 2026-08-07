@@ -265,8 +265,8 @@ export const NORTH_SECTORS = Object.freeze([
         type: 'research',
         factionId: 'faction_vael',
         size: 'S',
-        services: Object.freeze(['scan_tech', 'repair', 'refuel']),
-        chartNote: 'Vael scan the resonance and sell repairs, not answers. There is no rescue beyond.',
+        services: Object.freeze(['scan_tech', 'missions', 'repair', 'refuel']),
+        chartNote: 'A Vael research module hangs at the center of the Shard Sphere. Repeated active scans recover its broken song one fragment at a time.',
         repGated: true,
       }),
     ]),
@@ -289,7 +289,19 @@ export const NORTH_SECTORS = Object.freeze([
       }),
     ]),
     pois: Object.freeze([
-      Object.freeze({ id: 'poi_phoebe_echo', type: 'anomaly', name: 'Echo Resonance' }),
+      Object.freeze({
+        id: 'poi_phoebe_echo',
+        type: 'anomaly',
+        name: 'The Shard Sphere',
+        factionId: 'faction_vael',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c9_shard_sphere',
+        discoveryPlate: Object.freeze({
+          title: 'The Shard Sphere',
+          body: 'Sixty crystal fragments hold a sphere around the Echo Shrine without visible support. Active scans isolate one remembered note of the Vael schism at a time.',
+        }),
+      }),
       Object.freeze({ id: 'poi_phoebe_vault', type: 'cache', name: 'Silent Vault', hidden: true }),
     ]),
   }),
@@ -437,7 +449,8 @@ export const NORTH_ANCHORS = Object.freeze({
     pois: Object.freeze([
       Object.freeze({
         id: 'poi_phoebe_echo',
-        pos: Object.freeze({ x: 0, z: 0 }),
+        // The dockable research module is the sphere's center, not a second landmark 1,000 WU away.
+        pos: Object.freeze({ x: 280, z: -960 }),
         landmarkGlb: 'place_asteroid_seamed',
         landmark: true,
       }),
