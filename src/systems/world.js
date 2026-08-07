@@ -1314,6 +1314,7 @@ export const world = {
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
           ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
+          ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
           ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
           ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
           ...(poi.survivorPod === true ? { survivorPod: true } : {}),
@@ -1329,6 +1330,7 @@ export const world = {
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden: !!poi.hidden, claimable: !!poi.claimable,
+        requiresActiveScan: poi.requiresActiveScan === true,
         requiresTriangulation: !!triangulation,
         triangulation,
         anomalyTriangulated,
@@ -2554,6 +2556,9 @@ export const world = {
       if (!ent || !ent.alive) continue;
       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
       if (rec.identified) continue;
+      // A concealed layer marked this way is an active-scanner verb, never a proximity freebie.
+      // `signal:investigated` below is the sole path that turns the return into durable discovery.
+      if ((p.requiresActiveScan || ent.data && ent.data.requiresActiveScan) && !rec.investigated) continue;
       if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
       const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);

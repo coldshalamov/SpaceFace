@@ -167,7 +167,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_quiet',
         size: 'M',
         services: Object.freeze(['black_market', 'repair', 'refuel', 'missions']),
-        chartNote: 'Off-book east-run freight changes hands here before the well-mouth choke.',
+        chartNote: 'Positive Quiet standing opens the berth. At the well-mouth, active pulses find what proximity sensors miss.',
         repGated: true,
       }),
     ]),
@@ -187,14 +187,26 @@ export const EAST_SECTORS = Object.freeze([
       Object.freeze({
         id: 'poi_proteus_stash',
         type: 'cache',
-        name: 'Well Stash',
+        name: 'Below-Deck Cache',
         hidden: true,
         factionId: 'faction_quiet',
+        requiresActiveScan: true,
+        discoveryPlate: Object.freeze({
+          title: 'Below-Deck Cache',
+          body: 'An active pulse found Quiet bearer cases sealed beneath the Funnel debris floor. Passive proximity sensors passed over the same return.',
+        }),
       }),
       Object.freeze({
         id: 'poi_proteus_hulk',
         type: 'derelict',
-        name: 'Well-Mouth Hulk',
+        name: 'The Funnel',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c10_funnel',
+        discoveryPlate: Object.freeze({
+          title: 'The Funnel',
+          body: 'The Quiet cut a civilian freighter into a single-file throat. Violet guide strips lead toward a debris floor that returns more mass than the visible hull explains.',
+        }),
       }),
       Object.freeze({
         id: 'poi_proteus_buoy',
@@ -378,7 +390,7 @@ export const EAST_ANCHORS = Object.freeze({
     pois: Object.freeze([
       Object.freeze({
         id: 'poi_proteus_stash',
-        pos: Object.freeze({ x: -1480, z: 280 }),
+        pos: Object.freeze({ x: 1120, z: 935 }),
         landmarkGlb: 'place_debris_chunk',
       }),
       Object.freeze({
