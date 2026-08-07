@@ -222,3 +222,39 @@ field-for-field, across all 26. (5) Regenerate and re-run the 8 scenarios for de
 **Known residual for gate 1:** `configureAuthoredMaterialProfiles` does two `root.traverse()` calls
 and is still on the bind path as designed. Eliminating it means declaring material roles in the
 table and applying them over the primitives list instead of traversing. Counted, not hidden.
+
+#### Mandated measurements (run at commit `ac22c6bc`)
+
+**How to run the 8 scenarios.** The harness had no driver and no npm script, which is why this
+measurement was not reproducible. It is self-driving — the lib guards on its own `argv[1]`:
+
+```
+node scripts/lib/perfCausalScenarios.mjs --twice     # determinism gate
+node scripts/lib/perfCausalScenarios.mjs             # full JSON reports
+```
+
+**Determinism — PASS.** All 8 scenarios byte-identical across two runs: `boot`, `steady-flight`,
+`turning-flight`, `first-encounter`, `dense-combat-vfx`, `dense-asteroid-field`,
+`station-approach-docking`, `sector-transition-admission`.
+
+**`npm run check:baseline` — exactly the four known pre-existing failures**, no new ones:
+`ui-screen-imports`, `pq020-ceres-topology`, `sim` and `sim-v3` (sim actual hash `94f18fcc…`,
+matching the recorded pre-existing value). `render-package-plan` PASSES at its strengthened 731-node
+coverage.
+
+**Counter baseline — the "before" the loader flip is measured against.** Unchanged from Chunk 1's
+close, as expected: this commit adds no shipping-path work.
+
+| counter | station-approach-docking (total / postBoot) | sector-transition-admission (total / postBoot) |
+|---|---|---|
+| `graphNodesCloned` | 0 / 0 | 0 / 0 |
+| `graphTraversals` | 1 / 0 | 1 / 0 |
+| `graphNodesVisited` | 8 / 0 | 8 / 0 |
+| `runtimeSemanticCompiles` | **2** / 0 | **2** / 0 |
+| `planInstantiations` | 2 / 2 | 10 / 10 |
+| `planNodesInstantiated` | 15 / 15 | 75 / 75 |
+
+`runtimeSemanticCompiles = 2` is the Chunk 2 target: one plan compile plus one
+`package-blueprint-compile`. The flip must take it to **1**, and — per the counter trap above — a
+second counter must show the binder's own work as nonzero at load, or a deleted call site is
+indistinguishable from a fixed one.
