@@ -1,0 +1,513 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-pipes",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "3dfb141589014d0538d388b9004b111087a974b2533d01d9822b5a6120ad3da4",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.073300838470459,
+          0.5200510025024414,
+          1.1228110790252686
+        ],
+        "min": [
+          0.22337041795253754,
+          0.055949002504348755,
+          -1.0403598546981812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "33d6450d13258f10c5c7422acdbe9464ee4e49d7b1ea814d0605a2cdb93d4097",
+      "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged.primitive.0",
+      "indexCount": 1680,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_pipes_Material_Accent_Merged",
+      "nodeId": "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 280
+    },
+    {
+      "bounds": {
+        "max": [
+          3.731304883956909,
+          0.43995437026023865,
+          1.0698293447494507
+        ],
+        "min": [
+          -0.10000000149011612,
+          0.12004561722278595,
+          -1.2880946397781372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6701a6084ada0910d472e1c2d5a3fa012211cc603b9bd68be303224f861cfb6",
+      "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged.primitive.0",
+      "indexCount": 1536,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_pipes_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 272
+    },
+    {
+      "bounds": {
+        "max": [
+          3.799999952316284,
+          0.12998290359973907,
+          1.4000853300094604
+        ],
+        "min": [
+          -0.3999999165534973,
+          -0.029982905834913254,
+          -1.4000853300094604
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed1efef99de83f5838d8b6b5b1f85d33d9e3ce9533d5af7e007891c139584aa7",
+      "id": "sf.render.greeble-pipes.mesh.pipe-base.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "materialPipelineKey": "opaque",
+      "meshName": "Pipe_Base",
+      "nodeId": "sf.render.greeble-pipes.mesh.pipe-base",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "id": "material:df9bc1b1b3dc7b78856f78d0",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_pipes_Material_Accent_Merged",
+      "nodeName": "greeble_pipes_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.greeble-pipes.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-pipes.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_pipes_Material_Mechanical_Merged",
+      "nodeName": "greeble_pipes_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.greeble-pipes.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-pipes.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-pipes.mesh.pipe-base",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pipe_Base",
+      "nodeName": "Pipe_Base",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.greeble-pipes.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-pipes.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-pipes.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_pipes",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-pipes.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "79a1275a309e4d62e098158640699d7e303fd8b986ac06d9b1ae0581ae3cf8dd"
+    },
+    "sourceGlb": {
+      "bytes": 410796,
+      "sha256": "014444ada089137b21b740ad0b3d55eddf3f5e5bafd016b6ba358baf272b9a0f",
+      "uri": "greeble_pipes.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 419904,
+    "sha256": "fe0ea4462fd2d36f95cbfd00ea97ad77086725ec361283a419a4690ca2d447c2",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.7000000178813934,
+        0.24503404833376408,
+        0
+      ],
+      "max": [
+        3.799999952316284,
+        0.5200510025024414,
+        1.4000853300094604
+      ],
+      "min": [
+        -0.3999999165534973,
+        -0.029982905834913254,
+        -1.4000853300094604
+      ],
+      "size": [
+        4.1999998688697815,
+        0.5500339083373547,
+        2.800170660018921
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 16,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pipe_Base",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_pipes_Material_Mechanical_Merged",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_pipes_Material_Accent_Merged",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_pipes.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.799999952316284,
+          0.5200510025024414,
+          1.4000853300094604
+        ],
+        "min": [
+          -0.3999999165534973,
+          -0.029982905834913254,
+          -1.4000853300094604
+        ]
+      },
+      "id": "sf.render.greeble-pipes.body",
+      "nodeIds": [
+        "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged",
+        "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged",
+        "sf.render.greeble-pipes.mesh.pipe-base",
+        "sf.render.greeble-pipes.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3213 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.engine-industrial",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "1008b8b6f930ddf62b443c01fa446bf0c135f86f45c26b2dcb7243a074d6314c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.1500000953674316,
+          0.7699893712997437,
+          0.01503952220082283
+        ],
+        "min": [
+          0.7500000596046448,
+          0.6700106859207153,
+          -0.01503952220082283
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95e5b0297f3890658f02526e4ce01f4c65333e6cc5213bc20fd64b59279c30b7",
+      "id": "sf.render.engine-industrial.node.det-belt-hazard-stripe.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "634e62a6432b712b146facd8bc9e32544944d6be649467bb07b73660d2a14496",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.engine-industrial.node.det-belt-hazard-stripe",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.390005499124527,
+          -0.2900000214576721,
+          0.3649992346763611
+        ],
+        "min": [
+          0.20999452471733093,
+          -0.5099999904632568,
+          0.33500075340270996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7c1737e0e7112ae39d6959d7f5733dcafb3a2ea0317cb10f70795cec179123a",
+      "id": "sf.render.engine-industrial.node.det-cinder-spatter.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.engine-industrial.node.det-cinder-spatter",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9000000953674316,
+          0.02999969571828842,
+          0.25
+        ],
+        "min": [
+          2.4000000953674316,
+          -0.02999969571828842,
+          -0.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f6b611dacd4ad759e6f1405025dc9aeb2026ca677dd3f9c230f3f56214a9743",
+      "id": "sf.render.engine-industrial.node.det-exhaust-scorch-band.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.engine-industrial.node.det-exhaust-scorch-band",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2999954223632812,
+          0.375,
+          -0.32999205589294434
+        ],
+        "min": [
+          1.900004506111145,
+          -0.17500001192092896,
+          -0.3700079321861267
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01b932e0030c29b3eec234665715f72d58391f47e6ef15dd6b8b44148ff34f20",
+      "id": "sf.render.engine-industrial.node.det-ore-dust-cake.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.engine-industrial.node.det-ore-dust-cake",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.225000023841858,
+          -0.5100085735321045,
+          0.759991466999054
+        ],
+        "min": [
+          0.7749999761581421,
+          -0.5899914503097534,
+          0.680008590221405
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e62f5ba0864fe871b7f1447e8b02ca502c6cb0794bd8f942fee0e932ad195951",
+      "id": "sf.render.engine-industrial.node.det-pipe-coupling.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.engine-industrial.node.det-pipe-coupling",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7300000190734863,
+          0.32998839020729065,
+          -0.6100021600723267
+        ],
+        "min": [
+          0.3700000047683716,
+          0.17001157999038696,
+          -0.6299978494644165
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c0860edc54d21bbf2a590690b8b48a555a4f133269264f0dd5ec49c39ad9ea54",
+      "id": "sf.render.engine-industrial.node.det-refinery-stencil.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "634e62a6432b712b146facd8bc9e32544944d6be649467bb07b73660d2a14496",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.engine-industrial.node.det-refinery-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          1.340006709098816,
+          0.04999999701976776,
+          0.5050007700920105
+        ],
+        "min": [
+          1.0599933862686157,
+          -0.3500000238418579,
+          0.45499923825263977
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5589ea3cd14e1c8f68807e7547cd4529185463a35f0df74cc0c9df2d6a6ead1",
+      "id": "sf.render.engine-industrial.node.det-rust-bloom-flank.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.engine-industrial.node.det-rust-bloom-flank",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0749999284744263,
+          0.575005292892456,
+          -0.5100085735321045
+        ],
+        "min": [
+          0.7249999642372131,
+          0.32499465346336365,
+          -0.5899914503097534
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b09f2832f9f2a0649e7c21bdf70b73f59beb1790d54a833f0606f8fbfdad1971",
+      "id": "sf.render.engine-industrial.node.det-soot-vent-stack.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.engine-industrial.node.det-soot-vent-stack",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0246708393096924,
+          -1.069792628288269,
+          0.27197039127349854
+        ],
+        "min": [
+          0.6520262360572815,
+          -1.2902073860168457,
+          -0.27197039127349854
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0961df099861893ad18f047d9f746126335c78f7605246e4054f9e403eb83f60",
+      "id": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged.primitive.0",
+      "indexCount": 2160,
+      "indexed": true,
+      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "engine_industrial_Material_Hull_Merged",
+      "nodeId": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 601
+    },
+    {
+      "bounds": {
+        "max": [
+          2.80662202835083,
+          1.4689559936523438,
+          1.3902864456176758
+        ],
+        "min": [
+          -0.10287916660308838,
+          -1.3819414377212524,
+          -1.3902864456176758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "434254201dac323eb4cdf98d35e7332af3a6568a7de90df13d78dbc9b0390286",
+      "id": "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged.primitive.0",
+      "indexCount": 20952,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "engine_industrial_Material_Mechanical_Merged",
+      "nodeId": "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 3571
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06198465824127197,
+          0.6788426041603088,
+          0.6719644665718079
+        ],
+        "min": [
+          -0.12198466062545776,
+          -0.6788426041603088,
+          -0.6719644665718079
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e5aa1c2a4bc7dfff4e546a201cde8bd07fbe286460ad8bf29f836f92aa8091f9",
+      "id": "sf.render.engine-industrial.node.hook-drive-core.primitive.0",
+      "indexCount": 792,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.engine-industrial.node.hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 196
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3609296977519989,
+          0.8608401417732239,
+          0.8783169388771057
+        ],
+        "min": [
+          -0.04092971980571747,
+          -0.8608401417732239,
+          -0.8783169388771057
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2957442e2ae8f81f07de27b5de4d1bc1147f7c406faac8ddb56a2fe1d64d468",
+      "id": "sf.render.engine-industrial.node.hook-drive-fan.primitive.0",
+      "indexCount": 3792,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.engine-industrial.node.hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 965
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.09798474609851837,
+          0.5049616694450378,
+          0.49232491850852966
+        ],
+        "min": [
+          -0.22200988233089447,
+          -0.5049616694450378,
+          -0.49232491850852966
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc6cc01e8513453c9dafc7c12f384bf8570d69f605c086dcf7dab61143edf4da",
+      "id": "sf.render.engine-industrial.node.hook-drive-plume.primitive.0",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_PLUME",
+      "nodeId": "sf.render.engine-industrial.node.hook-drive-plume",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          3.302000045776367,
+          1.4313771724700928,
+          1.4313771724700928
+        ],
+        "min": [
+          -0.0020000000949949026,
+          -1.4313771724700928,
+          -1.4313771724700928
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "888376506aa1182a3722c8fcce0ae54c47c50f6f77cb32f225d4a01306bc396d",
+      "id": "sf.render.engine-industrial.node.lod0-engine-industrial-main.primitive.0",
+      "indexCount": 1296,
+      "indexed": true,
+      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ENGINE_INDUSTRIAL_MAIN",
+      "nodeId": "sf.render.engine-industrial.node.lod0-engine-industrial-main",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
+      "id": "material:124c8e18abd8ffd657dc1982",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_industrial_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_industrial_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "id": "material:48b3546274460f11c608292c",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_industrial_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_industrial_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "634e62a6432b712b146facd8bc9e32544944d6be649467bb07b73660d2a14496",
+      "id": "material:634e62a6432b712b146facd8",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "engine_industrial_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "engine_industrial_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.engine-industrial.node.det-belt-hazard-stripe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_belt_hazard_stripe",
+      "nodeName": "DET_belt_hazard_stripe",
+      "nodePath": [
+        7
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-cinder-spatter",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_cinder_spatter",
+      "nodeName": "DET_cinder_spatter",
+      "nodePath": [
+        8
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-exhaust-scorch-band",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_exhaust_scorch_band",
+      "nodeName": "DET_exhaust_scorch_band",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-ore-dust-cake",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_ore_dust_cake",
+      "nodeName": "DET_ore_dust_cake",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-pipe-coupling",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_pipe_coupling",
+      "nodeName": "DET_pipe_coupling",
+      "nodePath": [
+        6
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-refinery-stencil",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_refinery_stencil",
+      "nodeName": "DET_refinery_stencil",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-rust-bloom-flank",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_rust_bloom_flank",
+      "nodeName": "DET_rust_bloom_flank",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.det-soot-vent-stack",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_soot_vent_stack",
+      "nodeName": "DET_soot_vent_stack",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-heat-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.41999998688697815,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Engine_Heat_Rib_0",
+      "nodeName": "Engine_Heat_Rib_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.41999998688697815,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-heat-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9150000214576721,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Engine_Heat_Rib_1",
+      "nodeName": "Engine_Heat_Rib_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9150000214576721,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-heat-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.409999966621399,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Engine_Heat_Rib_2",
+      "nodeName": "Engine_Heat_Rib_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.409999966621399,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-heat-rib-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9049999713897705,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Engine_Heat_Rib_3",
+      "nodeName": "Engine_Heat_Rib_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.9049999713897705,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial",
+      "nodeName": "engine_industrial",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.305400013923645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_1",
+      "nodeName": "engine_industrial_Bolt_1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.305400013923645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-10",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0,
+        -1.305400013923645,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_10",
+      "nodeName": "engine_industrial_Bolt_10",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0,
+        -1.305400013923645,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-11",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0.6527000069618225,
+        -1.1305099725723267,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_11",
+      "nodeName": "engine_industrial_Bolt_11",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0.6527000069618225,
+        -1.1305099725723267,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-12",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.1305099725723267,
+        -0.6527000069618225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_12",
+      "nodeName": "engine_industrial_Bolt_12",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.1305099725723267,
+        -0.6527000069618225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-13",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        1.340000033378601,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_13",
+      "nodeName": "engine_industrial_Bolt_13",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        1.340000033378601,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-14",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        0,
+        1.340000033378601,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_14",
+      "nodeName": "engine_industrial_Bolt_14",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        0,
+        1.340000033378601,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-15",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        -1.340000033378601,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_15",
+      "nodeName": "engine_industrial_Bolt_15",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        -1.340000033378601,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-16",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        0,
+        -1.340000033378601,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_16",
+      "nodeName": "engine_industrial_Bolt_16",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.11999999731779099,
+        0,
+        -1.340000033378601,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.1305099725723267,
+        0.6527000069618225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_2",
+      "nodeName": "engine_industrial_Bolt_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        1.1305099725723267,
+        0.6527000069618225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0.6527000069618225,
+        1.1305099725723267,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_3",
+      "nodeName": "engine_industrial_Bolt_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0.6527000069618225,
+        1.1305099725723267,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-4",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0,
+        1.305400013923645,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_4",
+      "nodeName": "engine_industrial_Bolt_4",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        0,
+        1.305400013923645,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-5",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -0.6527000069618225,
+        1.1305099725723267,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_5",
+      "nodeName": "engine_industrial_Bolt_5",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -0.6527000069618225,
+        1.1305099725723267,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-6",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.1305099725723267,
+        0.6527000069618225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_6",
+      "nodeName": "engine_industrial_Bolt_6",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.1305099725723267,
+        0.6527000069618225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-7",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.305400013923645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_7",
+      "nodeName": "engine_industrial_Bolt_7",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.305400013923645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-8",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.1305099725723267,
+        -0.6527000069618225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_8",
+      "nodeName": "engine_industrial_Bolt_8",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -1.1305099725723267,
+        -0.6527000069618225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-bolt-9",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -0.6527000069618225,
+        -1.1305099725723267,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "engine_industrial_Bolt_9",
+      "nodeName": "engine_industrial_Bolt_9",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.23999999463558197,
+        -0.6527000069618225,
+        -1.1305099725723267,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "engine_industrial_Material_Hull_Merged",
+      "nodeName": "engine_industrial_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "engine_industrial_Material_Mechanical_Merged",
+      "nodeName": "engine_industrial_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.engine-nozzle-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Engine_Nozzle_Ring",
+      "nodeName": "Engine_Nozzle_Ring",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.019999999552965164,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_CORE",
+      "nodeName": "HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.hook-drive-fan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_FAN",
+      "nodeName": "HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.hook-drive-plume",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_PLUME",
+      "nodeName": "HOOK_DRIVE_PLUME",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-coolant-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0.800000011920929,
+        -0.6600000262260437,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Coolant_A",
+      "nodeName": "Industrial_Coolant_A",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0.800000011920929,
+        -0.6600000262260437,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-coolant-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.625,
+        -0.7300000190734863,
+        0.6800000071525574,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Coolant_B",
+      "nodeName": "Industrial_Coolant_B",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.625,
+        -0.7300000190734863,
+        0.6800000071525574,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-scorch-fin-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        -1.1799999475479126,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Scorch_Fin_0",
+      "nodeName": "Industrial_Scorch_Fin_0",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        -1.1799999475479126,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-scorch-fin-1",
+      "localTransform": [
+        0.9987502601607363,
+        0.04997917278300967,
+        0,
+        0,
+        -0.04997917278300967,
+        0.9987502601607363,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.4199999570846558,
+        -1.1799999475479126,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Scorch_Fin_1",
+      "nodeName": "Industrial_Scorch_Fin_1",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        0.9987502601607363,
+        0.04997917278300967,
+        0,
+        0,
+        -0.04997917278300967,
+        0.9987502601607363,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.4199999570846558,
+        -1.1799999475479126,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-scorch-fin-2",
+      "localTransform": [
+        0.9950041586450594,
+        0.09983348382261337,
+        0,
+        0,
+        -0.09983348382261337,
+        0.9950041586450594,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.840000033378601,
+        -1.1799999475479126,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Scorch_Fin_2",
+      "nodeName": "Industrial_Scorch_Fin_2",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        0.9950041586450594,
+        0.09983348382261337,
+        0,
+        0,
+        -0.09983348382261337,
+        0.9950041586450594,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.840000033378601,
+        -1.1799999475479126,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-scorch-fin-3",
+      "localTransform": [
+        0.9887710825581867,
+        0.14943809998196755,
+        0,
+        0,
+        -0.14943809998196755,
+        0.9887710825581867,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.259999990463257,
+        -1.1799999475479126,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Scorch_Fin_3",
+      "nodeName": "Industrial_Scorch_Fin_3",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        0.9887710825581867,
+        0.14943809998196755,
+        0,
+        0,
+        -0.14943809998196755,
+        0.9887710825581867,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.259999990463257,
+        -1.1799999475479126,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-scorch-fin-4",
+      "localTransform": [
+        0.9800665878405636,
+        0.19866928332437084,
+        0,
+        0,
+        -0.19866928332437084,
+        0.9800665878405636,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.680000066757202,
+        -1.1799999475479126,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Scorch_Fin_4",
+      "nodeName": "Industrial_Scorch_Fin_4",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        0.9800665878405636,
+        0.19866928332437084,
+        0,
+        0,
+        -0.19866928332437084,
+        0.9800665878405636,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.680000066757202,
+        -1.1799999475479126,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.industrial-service-box",
+      "localTransform": [
+        0.9955559645345988,
+        -0.04981935110590252,
+        -0.07991466802906955,
+        0,
+        0.05313096896833558,
+        0.9977916408662841,
+        0.03986153243593574,
+        0,
+        0.07775231216687606,
+        -0.04393032992184562,
+        0.9960043696959249,
+        0,
+        1.75,
+        1.0499999523162842,
+        0.7200000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Industrial_Service_Box",
+      "nodeName": "Industrial_Service_Box",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        0.9955559645345988,
+        -0.04981935110590252,
+        -0.07991466802906955,
+        0,
+        0.05313096896833558,
+        0.9977916408662841,
+        0.03986153243593574,
+        0,
+        0.07775231216687606,
+        -0.04393032992184562,
+        0.9960043696959249,
+        0,
+        1.75,
+        1.0499999523162842,
+        0.7200000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-industrial.node.lod0-engine-industrial-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ENGINE_INDUSTRIAL_MAIN",
+      "nodeName": "LOD0_ENGINE_INDUSTRIAL_MAIN",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.engine-industrial.node.engine-industrial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-industrial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "fc3c89e83aa713c91f3453916b39c2a8b28fdb5d8ad4aea590e8070d26d1c6ee"
+    },
+    "sourceGlb": {
+      "bytes": 349184,
+      "sha256": "b3dff895895c7cb709010f90c5b0e6a7b34af2f58d47c503dc7f09c672b7b102",
+      "uri": "engine_industrial.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 458128,
+    "sha256": "da72c5b5a2756c17cec691ca418df364efbbfedea4608677b036007acd57fd93",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.5399950817227364,
+        0.01878941059112549,
+        0
+      ],
+      "max": [
+        3.302000045776367,
+        1.4689559936523438,
+        1.4313771724700928
+      ],
+      "min": [
+        -0.22200988233089447,
+        -1.4313771724700928,
+        -1.4313771724700928
+      ],
+      "size": [
+        3.5240099281072617,
+        2.9003331661224365,
+        2.8627543449401855
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 5,
+      "mechanical": 7
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 45,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "engine_industrial_Material_Hull_Merged",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "engine_industrial_Material_Mechanical_Merged",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_FAN",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_ENGINE_INDUSTRIAL_MAIN",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_soot_vent_stack",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_rust_bloom_flank",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_ore_dust_cake",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_refinery_stencil",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_exhaust_scorch_band",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_pipe_coupling",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_belt_hazard_stripe",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_cinder_spatter",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "engine",
+    "url": "assets/ships/release/parts/engines/engine_industrial.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.302000045776367,
+          1.4689559936523438,
+          1.4313771724700928
+        ],
+        "min": [
+          -0.22200988233089447,
+          -1.4313771724700928,
+          -1.4313771724700928
+        ]
+      },
+      "id": "sf.render.engine-industrial.body",
+      "nodeIds": [
+        "sf.render.engine-industrial.node.det-belt-hazard-stripe",
+        "sf.render.engine-industrial.node.det-cinder-spatter",
+        "sf.render.engine-industrial.node.det-exhaust-scorch-band",
+        "sf.render.engine-industrial.node.det-ore-dust-cake",
+        "sf.render.engine-industrial.node.det-pipe-coupling",
+        "sf.render.engine-industrial.node.det-refinery-stencil",
+        "sf.render.engine-industrial.node.det-rust-bloom-flank",
+        "sf.render.engine-industrial.node.det-soot-vent-stack",
+        "sf.render.engine-industrial.node.engine-heat-rib-0",
+        "sf.render.engine-industrial.node.engine-heat-rib-1",
+        "sf.render.engine-industrial.node.engine-heat-rib-2",
+        "sf.render.engine-industrial.node.engine-heat-rib-3",
+        "sf.render.engine-industrial.node.engine-industrial",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-1",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-10",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-11",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-12",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-13",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-14",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-15",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-16",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-2",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-3",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-4",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-5",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-6",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-7",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-8",
+        "sf.render.engine-industrial.node.engine-industrial-bolt-9",
+        "sf.render.engine-industrial.node.engine-industrial-material-hull-merged",
+        "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged",
+        "sf.render.engine-industrial.node.engine-nozzle-ring",
+        "sf.render.engine-industrial.node.hook-drive-core",
+        "sf.render.engine-industrial.node.hook-drive-fan",
+        "sf.render.engine-industrial.node.hook-drive-plume",
+        "sf.render.engine-industrial.node.industrial-coolant-a",
+        "sf.render.engine-industrial.node.industrial-coolant-b",
+        "sf.render.engine-industrial.node.industrial-scorch-fin-0",
+        "sf.render.engine-industrial.node.industrial-scorch-fin-1",
+        "sf.render.engine-industrial.node.industrial-scorch-fin-2",
+        "sf.render.engine-industrial.node.industrial-scorch-fin-3",
+        "sf.render.engine-industrial.node.industrial-scorch-fin-4",
+        "sf.render.engine-industrial.node.industrial-service-box",
+        "sf.render.engine-industrial.node.lod0-engine-industrial-main"
+      ]
+    }
+  ]
+}

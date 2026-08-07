@@ -1,0 +1,541 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-delta",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "50fd361492203031eca75cb10b76be49c1d2cff27f080bfd27614d60433440f9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.8076348304748535,
+          0.1979544311761856,
+          5.239253520965576
+        ],
+        "min": [
+          0.19236516952514648,
+          0.12204556912183762,
+          4.4607462882995605
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "792b6ee5776a3eb219cb7aa968ec7bfe6dc1107fdaf41f7152616de47f4374e2",
+      "id": "sf.render.fin-delta.mesh.delta-edge.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Delta_Edge",
+      "nodeId": "sf.render.fin-delta.mesh.delta-edge",
+      "primitiveIndex": 0,
+      "vertexCount": 22
+    },
+    {
+      "bounds": {
+        "max": [
+          5.199940204620361,
+          0.11011078208684921,
+          5.5
+        ],
+        "min": [
+          0.00005942583084106445,
+          -0.11011078208684921,
+          0
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b572385fe2f995361a43879457625ada18dce077643e7c56f5e3d4ef4f9c6c9",
+      "id": "sf.render.fin-delta.mesh.delta-main.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Delta_Main",
+      "nodeId": "sf.render.fin-delta.mesh.delta-main",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0899500846862793,
+          0.3025818169116974,
+          4.288735866546631
+        ],
+        "min": [
+          0.02604977786540985,
+          0.10991820693016052,
+          0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c97433f1826a43c713d94562e2958f624285e1f8bd931f3c5fa74ee6349147f",
+      "id": "sf.render.fin-delta.mesh.fin-delta-material-mechanical-merged.primitive.0",
+      "indexCount": 1524,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_delta_Material_Mechanical_Merged",
+      "nodeId": "sf.render.fin-delta.mesh.fin-delta-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 268
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "id": "material:345a2ca5e0bd4360fdc384bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-delta.mesh.delta-edge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Delta_Edge",
+      "nodeName": "Delta_Edge",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.fin-delta.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-delta.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-delta.mesh.delta-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Delta_Main",
+      "nodeName": "Delta_Main",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.fin-delta.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-delta.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-delta.mesh.fin-delta-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_delta_Material_Mechanical_Merged",
+      "nodeName": "fin_delta_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.fin-delta.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-delta.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-delta.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "fin_delta",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-delta.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "790bd0928c824782a1b63e3dff241f5e9ab708fb59eed309bd8fa67e310f4953"
+    },
+    "sourceGlb": {
+      "bytes": 372488,
+      "sha256": "63bed8f39a6f3b54bb6504561e2991548da69b2a5f8c42156fe9cfaff07df464",
+      "uri": "fin_delta.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 377244,
+    "sha256": "80b81c031f1b764209ba1c059d6eeb70a4f4d08f11d2e914aa19ff47ae80ff93",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.599999815225601,
+        0.09623551741242409,
+        2.75
+      ],
+      "max": [
+        5.199940204620361,
+        0.3025818169116974,
+        5.5
+      ],
+      "min": [
+        0.00005942583084106445,
+        -0.11011078208684921,
+        0
+      ],
+      "size": [
+        5.19988077878952,
+        0.4126925989985466,
+        5.5
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 3,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 12,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Delta_Main",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Delta_Edge",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_delta_Material_Mechanical_Merged",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_delta.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.199940204620361,
+          0.3025818169116974,
+          5.5
+        ],
+        "min": [
+          0.00005942583084106445,
+          -0.11011078208684921,
+          0
+        ]
+      },
+      "id": "sf.render.fin-delta.body",
+      "nodeIds": [
+        "sf.render.fin-delta.mesh.delta-edge",
+        "sf.render.fin-delta.mesh.delta-main",
+        "sf.render.fin-delta.mesh.fin-delta-material-mechanical-merged",
+        "sf.render.fin-delta.root"
+      ]
+    }
+  ]
+}

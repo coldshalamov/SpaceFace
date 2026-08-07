@@ -1,0 +1,1383 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-wedge",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "1105818dfb3bc114fe547f036b961b02faea67c13e0db71d71668ffb324e8a68",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.3523118495941162,
+          -0.0037561156786978245,
+          2.4463517665863037
+        ],
+        "min": [
+          1.052311897277832,
+          -0.10374388843774796,
+          2.2463395595550537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f8829d286c1b364efdedb03750cf832f1e4c76dec860077b3aff199461966837",
+      "id": "sf.render.fin-wedge.node.det-mount-bracket.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.fin-wedge.node.det-mount-bracket",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.002311944961548,
+          0.2712614834308624,
+          1.886337161064148
+        ],
+        "min": [
+          1.4023118019104004,
+          0.12123854458332062,
+          1.8063541650772095
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8cd41668e14931b4d9e956f8544014261be342a7e6dad84fe3e4e74fecb97263",
+      "id": "sf.render.fin-wedge.node.det-radiator-slit.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.fin-wedge.node.det-radiator-slit",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.269223928451538,
+          -0.05354131758213043,
+          2.548274517059326
+        ],
+        "min": [
+          1.1354000568389893,
+          -0.21395866572856903,
+          2.4444169998168945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5803a85d61d2006c310c8209104a75b0843a83a830c5d6a9fbddd568030d4a9",
+      "id": "sf.render.fin-wedge.node.det-root-soot.primitive.0",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Plane",
+      "nodeId": "sf.render.fin-wedge.node.det-root-soot",
+      "primitiveIndex": 0,
+      "vertexCount": 4
+    },
+    {
+      "bounds": {
+        "max": [
+          2.127311944961548,
+          0.16124986112117767,
+          1.7213525772094727
+        ],
+        "min": [
+          1.8773119449615479,
+          0.13125015795230865,
+          1.5713388919830322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "527bac1a192bf3938c13e54073f30ef6d2788c48746873cb53cb52d3a8d8d773",
+      "id": "sf.render.fin-wedge.node.det-wear-patch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.fin-wedge.node.det-wear-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2953901290893555,
+          0.2328285425901413,
+          3.8190805912017822
+        ],
+        "min": [
+          -0.26539015769958496,
+          0.13717147707939148,
+          3.0109190940856934
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca8568174d9d8b09ba216d67d2f6f249f13eb5b31478428854b652dbbc89c93d",
+      "id": "sf.render.fin-wedge.node.wedge-edge-light.primitive.0",
+      "indexCount": 1440,
+      "indexed": true,
+      "materialHash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge_Edge_Light",
+      "nodeId": "sf.render.fin-wedge.node.wedge-edge-light",
+      "primitiveIndex": 0,
+      "vertexCount": 354
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8153786659240723,
+          0.15001174807548523,
+          4.110918045043945
+        ],
+        "min": [
+          -0.410754919052124,
+          -0.13992471992969513,
+          -0.01822628267109394
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27fdc7931487ca03d4f6519731cb66ddab51efe90963c7d01abe2c60eff559eb",
+      "id": "sf.render.fin-wedge.node.wedge-main.primitive.0",
+      "indexCount": 1332,
+      "indexed": true,
+      "materialHash": "12b0f0fef1ed7ede2bc61f1c9409cbf6a242458383b4b527df73bf047e08ff6a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wedge_Main",
+      "nodeId": "sf.render.fin-wedge.node.wedge-main",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "12b0f0fef1ed7ede2bc61f1c9409cbf6a242458383b4b527df73bf047e08ff6a",
+      "id": "material:12b0f0fef1ed7ede2bc61f1c",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fin_wedge_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fin_wedge_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fin_wedge_trim_sheet_1k_normal_slot",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "id": "material:361974a70ee488f5097e2c84",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fin_wedge_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fin_wedge_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fin_wedge_trim_sheet_1k_normal_slot",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
+      "id": "material:b3d13aa8b39edce602930cbe",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fin_wedge_wear_mask_1k",
+          "slot": "baseColor",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-wedge.node.det-mount-bracket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_mount_bracket",
+      "nodeName": "DET_mount_bracket",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.det-radiator-slit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_radiator_slit",
+      "nodeName": "DET_radiator_slit",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.det-root-soot",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_root_soot",
+      "nodeName": "DET_root_soot",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.det-wear-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_wear_patch",
+      "nodeName": "DET_wear_patch",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.fin-wedge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "fin_wedge",
+      "nodeName": "fin_wedge",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.fin-wedge-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3400000035762787,
+        0.3050000071525574,
+        0.7365999817848206,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "fin_wedge_Bolt_1",
+      "nodeName": "fin_wedge_Bolt_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3400000035762787,
+        0.3050000071525574,
+        0.7365999817848206,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.fin-wedge-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.169600009918213,
+        0.3050000071525574,
+        3.164400100708008,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "fin_wedge_Bolt_2",
+      "nodeName": "fin_wedge_Bolt_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.169600009918213,
+        0.3050000071525574,
+        3.164400100708008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.fin-wedge-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.6791999340057373,
+        0.3050000071525574,
+        1.5723999738693237,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "fin_wedge_Bolt_3",
+      "nodeName": "fin_wedge_Bolt_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.6791999340057373,
+        0.3050000071525574,
+        1.5723999738693237,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.hook-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "HOOK_Emissive",
+      "nodeName": "HOOK_Emissive",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.2199999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Armor",
+      "nodeName": "Wedge_Armor",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.2199999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-edge-light",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Wedge_Edge_Light",
+      "nodeName": "Wedge_Edge_Light",
+      "nodePath": [
+        0,
+        4,
+        0
+      ],
+      "parentId": "sf.render.fin-wedge.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Wedge_Main",
+      "nodeName": "Wedge_Main",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.2199999988079071,
+        1.649999976158142,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Rib_0",
+      "nodeName": "Wedge_Rib_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.2199999988079071,
+        1.649999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.1150000095367432,
+        0.2199999988079071,
+        1.8200000524520874,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Rib_1",
+      "nodeName": "Wedge_Rib_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.1150000095367432,
+        0.2199999988079071,
+        1.8200000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5800000429153442,
+        0.2199999988079071,
+        1.9900000095367432,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Rib_2",
+      "nodeName": "Wedge_Rib_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5800000429153442,
+        0.2199999988079071,
+        1.9900000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-rib-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0450000762939453,
+        0.2199999988079071,
+        2.1600000858306885,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Rib_3",
+      "nodeName": "Wedge_Rib_3",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0450000762939453,
+        0.2199999988079071,
+        2.1600000858306885,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-wedge.node.wedge-rib-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.509999990463257,
+        0.2199999988079071,
+        2.3299999237060547,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Wedge_Rib_4",
+      "nodeName": "Wedge_Rib_4",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.fin-wedge.node.fin-wedge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-wedge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.509999990463257,
+        0.2199999988079071,
+        2.3299999237060547,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "41b18e343600c2857d430be2e4ef7bbe6941202038edb69573d3a062f501df15"
+    },
+    "sourceGlb": {
+      "bytes": 4874536,
+      "sha256": "b916552d4b687d9c682ddba1890d0c5fe9ae5c596f17ae2190280955721a05ac",
+      "uri": "fin_wedge.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 4895956,
+    "sha256": "9bced14ce3970b391bdc1bd0c9afaadfcb5a869da28e9d32102924f96bd9c98e",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.7023118734359741,
+        0.028651408851146698,
+        2.0463458811864257
+      ],
+      "max": [
+        3.8153786659240723,
+        0.2712614834308624,
+        4.110918045043945
+      ],
+      "min": [
+        -0.410754919052124,
+        -0.21395866572856903,
+        -0.01822628267109394
+      ],
+      "size": [
+        4.226133584976196,
+        0.48522014915943146,
+        4.129144327715039
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 6,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_Emissive",
+            "recordIds": [
+              "sf.render.fin-wedge.node.hook-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1,
+      "mechanical": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_root_soot",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_Edge_Light",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wedge_Main",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_radiator_slit",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_mount_bracket",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_wear_patch",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_wedge.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.8153786659240723,
+          0.2712614834308624,
+          4.110918045043945
+        ],
+        "min": [
+          -0.410754919052124,
+          -0.21395866572856903,
+          -0.01822628267109394
+        ]
+      },
+      "id": "sf.render.fin-wedge.body",
+      "nodeIds": [
+        "sf.render.fin-wedge.node.det-mount-bracket",
+        "sf.render.fin-wedge.node.det-radiator-slit",
+        "sf.render.fin-wedge.node.det-root-soot",
+        "sf.render.fin-wedge.node.det-wear-patch",
+        "sf.render.fin-wedge.node.fin-wedge",
+        "sf.render.fin-wedge.node.fin-wedge-bolt-1",
+        "sf.render.fin-wedge.node.fin-wedge-bolt-2",
+        "sf.render.fin-wedge.node.fin-wedge-bolt-3",
+        "sf.render.fin-wedge.node.hook-emissive",
+        "sf.render.fin-wedge.node.wedge-armor",
+        "sf.render.fin-wedge.node.wedge-edge-light",
+        "sf.render.fin-wedge.node.wedge-main",
+        "sf.render.fin-wedge.node.wedge-rib-0",
+        "sf.render.fin-wedge.node.wedge-rib-1",
+        "sf.render.fin-wedge.node.wedge-rib-2",
+        "sf.render.fin-wedge.node.wedge-rib-3",
+        "sf.render.fin-wedge.node.wedge-rib-4"
+      ]
+    }
+  ]
+}

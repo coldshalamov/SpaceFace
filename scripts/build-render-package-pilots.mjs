@@ -118,12 +118,13 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
 
   const clusterId = `${pilot.assetId}.body`;
   const rootId = `${pilot.assetId}.root`;
+  const allocId = makeIdAllocator();
   const meshRecords = meshNodes.map((node) => {
     const nodeName = node.getName();
     const dynamic = (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
     const blend = /glass|canopy/i.test(nodeName);
     return {
-      id: `${pilot.assetId}.mesh.${idToken(nodeName)}`,
+      id: allocId(`${pilot.assetId}.mesh.${idToken(nodeName)}`),
       node: nodeName,
       role: dynamic ? 'dynamic' : 'immutable',
       parentId: rootId,
@@ -141,7 +142,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
     .map((node) => {
       assertUniqueNodeName(pilot, node, names);
       return {
-        id: `${pilot.assetId}.anchor.${idToken(node.getName())}`,
+        id: allocId(`${pilot.assetId}.anchor.${idToken(node.getName())}`),
         node: node.getName(),
         kind: 'socket',
         parentNodeId: rootId,
@@ -213,15 +214,10 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
   if (meshNodes.length === 0) throw new Error(`${pilot.key}: package source contains no mesh nodes.`);
 
   const semanticIds = new Map();
-  const usedIds = new Set();
+  const allocId = makeIdAllocator();
   for (const node of descendants) {
     assertUniqueNodeName(pilot, node, names);
-    const id = `${pilot.assetId}.node.${idToken(node.getName())}`;
-    if (usedIds.has(id)) {
-      throw new Error(`${pilot.key}: semantic node names collapse to duplicate ID ${id}.`);
-    }
-    usedIds.add(id);
-    semanticIds.set(node, id);
+    semanticIds.set(node, allocId(`${pilot.assetId}.node.${idToken(node.getName())}`));
   }
 
   const clusterId = `${pilot.assetId}.body`;
@@ -248,7 +244,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
   const anchors = descendants
     .filter((node) => !node.getMesh() && String(node.getName() || '').startsWith('SOCKET_'))
     .map((node) => ({
-      id: `${pilot.assetId}.anchor.${idToken(node.getName())}`,
+      id: allocId(`${pilot.assetId}.anchor.${idToken(node.getName())}`),
       node: node.getName(),
       kind: 'socket',
       parentNodeId: semanticIds.get(node.getParentNode()) || semanticIds.get(node),
@@ -328,6 +324,26 @@ function isDescendantOrSelf(node, ancestor) {
     if (current === ancestor) return true;
   }
   return false;
+}
+
+/**
+ * Allocate collision-free semantic IDs.
+ *
+ * Node names are asserted unique before any ID is minted, so a collision here only ever means two
+ * distinct names slugged to the same token — "Dome_Frame_1.18" and "Dome-Frame-1-18" differ in
+ * punctuation alone. That is an authoring style difference, not a genuine ambiguity, so disambiguate
+ * instead of rejecting an otherwise valid asset. Allocation follows a stable traversal order, so the
+ * suffix is deterministic, and an asset with no collisions receives no suffix at all — which is what
+ * keeps already-compiled packages byte-identical.
+ */
+function makeIdAllocator() {
+  const used = new Set();
+  return (base) => {
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    used.add(id);
+    return id;
+  };
 }
 
 function idToken(value) {

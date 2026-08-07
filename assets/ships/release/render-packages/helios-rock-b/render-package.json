@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "53369791e48034839f67e7dd00c947d44870800ba8e1664193673f3e21bb403d",
+  "contentHash": "a8b8ad4b3043bf27218861ba8db300a22ea96114e2c9386a31da7d2a9987d44e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -630,8 +630,8 @@
       "uri": "place_asteroid_rock_b.glb"
     },
     "sourceManifest": {
-      "bytes": 17993,
-      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
       "uri": "pilots.json"
     }
   },

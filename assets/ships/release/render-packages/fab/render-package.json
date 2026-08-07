@@ -1,0 +1,2281 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.fab.anchor.socket-dock-approach",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        30.959999084472656,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.fab.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        30.959999084472656,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.375,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.fab.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.fab.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.fab",
+  "collisions": [
+    {
+      "id": "sf.render.fab.collision",
+      "nodeId": "sf.render.fab.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "da62fec11a16d282801361473a907bfea8a7195c125688a675cd45e360e67ba6",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          45.179996490478516,
+          26.101179122924805,
+          14.760334968566895
+        ],
+        "min": [
+          -45.179996490478516,
+          -26.101179122924805,
+          -14.760334968566895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50b4c1f4633c4cd40d48326a71b4480b4d27dc24654e24eaba00d34b72380ec5",
+      "id": "sf.render.fab.mesh.collision-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "non-render",
+      "meshName": "Cube.099",
+      "nodeId": "sf.render.fab.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          16.224998474121094,
+          16.180418014526367,
+          7.049952507019043
+        ],
+        "min": [
+          -20.22500228881836,
+          -16.180410385131836,
+          -19.049169540405273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "97c1fa3d931aa47b147dacb1ebb65a3dc7bb83f5d491c90a45d8b77b3971ecba",
+      "id": "sf.render.fab.mesh.lod0-station-material-accent.primitive.0",
+      "indexCount": 16080,
+      "indexed": true,
+      "materialHash": "91c04fe22cf5be038e6c1aea00ac77f429e47573c5d1e88d2036aeb932b7252b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.001",
+      "nodeId": "sf.render.fab.mesh.lod0-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 10752
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.599998474121094,
+          9.325077056884766,
+          -8.7005033493042
+        ],
+        "min": [
+          -57.39999771118164,
+          9.074922561645508,
+          -9.2994966506958
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "04928de1dec7bde17ba4587cce102809bf2e25e207aa1b82b3e20d36e4d0c93a",
+      "id": "sf.render.fab.mesh.lod0-station-material-glass.primitive.0",
+      "indexCount": 5076,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.036",
+      "nodeId": "sf.render.fab.mesh.lod0-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 3456
+    },
+    {
+      "bounds": {
+        "max": [
+          43,
+          20.54819679260254,
+          4.999338626861572
+        ],
+        "min": [
+          -48.5,
+          -20.54819679260254,
+          -18.549339294433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48eff705b00f5bfe87db1008b89bfdfb107465ad30c10d11466365a7bb208de9",
+      "id": "sf.render.fab.mesh.lod0-station-material-hull.primitive.0",
+      "indexCount": 16920,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.fab.mesh.lod0-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 11520
+    },
+    {
+      "bounds": {
+        "max": [
+          40,
+          28.999298095703125,
+          5.002006530761719
+        ],
+        "min": [
+          -32,
+          -28.999298095703125,
+          -22.50200653076172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa0911ef4b2a32dab728cf8adec472a1d3d963d30ae792effde894b931d93191",
+      "id": "sf.render.fab.mesh.lod0-station-material-mechanical.primitive.0",
+      "indexCount": 10296,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.fab.mesh.lod0-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 6528
+    },
+    {
+      "bounds": {
+        "max": [
+          11.300493240356445,
+          13.300002098083496,
+          10.300000190734863
+        ],
+        "min": [
+          8.699506759643555,
+          -13.300002098083496,
+          -16.299999237060547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc66d23504b2a2a98e51b3405431b25139604c7a511e39d7d62a42e441923754",
+      "id": "sf.render.fab.mesh.lod0-station-material-warm.primitive.0",
+      "indexCount": 13824,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus",
+      "nodeId": "sf.render.fab.mesh.lod0-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 9216
+    },
+    {
+      "bounds": {
+        "max": [
+          16.224998474121094,
+          16.187091827392578,
+          7.049450397491455
+        ],
+        "min": [
+          -20.22500228881836,
+          -16.187084197998047,
+          -19.054121017456055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bece2ebdb3ea061d5d549cedb8eb65445f494d516e1267d3f59acfc6197cf14",
+      "id": "sf.render.fab.mesh.lod1-station-material-accent.primitive.0",
+      "indexCount": 6000,
+      "indexed": true,
+      "materialHash": "91c04fe22cf5be038e6c1aea00ac77f429e47573c5d1e88d2036aeb932b7252b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.003",
+      "nodeId": "sf.render.fab.mesh.lod1-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 3928
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.599998474121094,
+          9.325077056884766,
+          -8.7005033493042
+        ],
+        "min": [
+          -57.39999771118164,
+          9.074922561645508,
+          -9.2994966506958
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee2cd508df7817a2d6f29ced9ab692e9c668dc2530dc90dbedf8149e3891f5e7",
+      "id": "sf.render.fab.mesh.lod1-station-material-glass.primitive.0",
+      "indexCount": 2916,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.069",
+      "nodeId": "sf.render.fab.mesh.lod1-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 1944
+    },
+    {
+      "bounds": {
+        "max": [
+          43,
+          20.54819679260254,
+          4.999338626861572
+        ],
+        "min": [
+          -48.5,
+          -20.54819679260254,
+          -18.549339294433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebd7e1f23a3a64541564730ff168809dc1ff8c1dc0139c580db88ffa9a54e573",
+      "id": "sf.render.fab.mesh.lod1-station-material-hull.primitive.0",
+      "indexCount": 5832,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.045",
+      "nodeId": "sf.render.fab.mesh.lod1-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3888
+    },
+    {
+      "bounds": {
+        "max": [
+          40,
+          28.999298095703125,
+          5.002006530761719
+        ],
+        "min": [
+          -32,
+          -28.999298095703125,
+          -22.50200653076172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73d37fcaf46e97f5a6fa42aa11a21f5174c0300148f4d2a4ce0abc2249a645a7",
+      "id": "sf.render.fab.mesh.lod1-station-material-mechanical.primitive.0",
+      "indexCount": 4632,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.046",
+      "nodeId": "sf.render.fab.mesh.lod1-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2896
+    },
+    {
+      "bounds": {
+        "max": [
+          11.268021583557129,
+          13.300002098083496,
+          10.300000190734863
+        ],
+        "min": [
+          8.731978416442871,
+          -13.300002098083496,
+          -16.299999237060547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "000de679f023e0d25e54627af0f5f4f9a40cb46d0d7a24b53252c060bfdd283c",
+      "id": "sf.render.fab.mesh.lod1-station-material-warm.primitive.0",
+      "indexCount": 4704,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.002",
+      "nodeId": "sf.render.fab.mesh.lod1-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 3112
+    },
+    {
+      "bounds": {
+        "max": [
+          10.550919532775879,
+          16.19504165649414,
+          7.050864219665527
+        ],
+        "min": [
+          -20.225921630859375,
+          -16.19502830505371,
+          -19.064224243164062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1ceaa6a110282193578f30d68e1b38f7c7a1776a634e8dc60dd5494553e1713a",
+      "id": "sf.render.fab.mesh.lod2-station-material-accent.primitive.0",
+      "indexCount": 1608,
+      "indexed": true,
+      "materialHash": "91c04fe22cf5be038e6c1aea00ac77f429e47573c5d1e88d2036aeb932b7252b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.005",
+      "nodeId": "sf.render.fab.mesh.lod2-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 1088
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.80000305175781,
+          9.324808120727539,
+          -8.700284004211426
+        ],
+        "min": [
+          -55.19999694824219,
+          9.075191497802734,
+          -9.299715995788574
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "318d5f40f97afbb802c16446f7731e6592cbdc019c7951de3371abcb54e2cc19",
+      "id": "sf.render.fab.mesh.lod2-station-material-glass.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.096",
+      "nodeId": "sf.render.fab.mesh.lod2-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          43,
+          20.54819679260254,
+          4.999338626861572
+        ],
+        "min": [
+          -48.5,
+          -20.54819679260254,
+          -18.549339294433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ce2ad341083c0aa1b107a23420bb69f0f6cffcc16547494bb8642eefab043cf",
+      "id": "sf.render.fab.mesh.lod2-station-material-hull.primitive.0",
+      "indexCount": 1848,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.078",
+      "nodeId": "sf.render.fab.mesh.lod2-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1344
+    },
+    {
+      "bounds": {
+        "max": [
+          40,
+          28.999298095703125,
+          5.002006530761719
+        ],
+        "min": [
+          -32,
+          -28.999298095703125,
+          -22.50200653076172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "136c2364735741fb2012d955c0dada1cb6d4b6a7cc05e22e310a439df716b301",
+      "id": "sf.render.fab.mesh.lod2-station-material-mechanical.primitive.0",
+      "indexCount": 912,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.079",
+      "nodeId": "sf.render.fab.mesh.lod2-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 584
+    },
+    {
+      "bounds": {
+        "max": [
+          11.300493240356445,
+          13.300002098083496,
+          10.300000190734863
+        ],
+        "min": [
+          8.699506759643555,
+          -13.300002098083496,
+          -16.299999237060547
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "16a9ed44a66871bc908f0cd81b723767164077e5dd4e173124f2aecc4b89e07c",
+      "id": "sf.render.fab.mesh.lod2-station-material-warm.primitive.0",
+      "indexCount": 1344,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.004",
+      "nodeId": "sf.render.fab.mesh.lod2-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 896
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "id": "material:0c11502fea9d740108140ae7",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mechanical_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "id": "material:14f398d34f8381a8c902dea8",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "id": "material:50bfb0bc15f570bd617f4a1b",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "91c04fe22cf5be038e6c1aea00ac77f429e47573c5d1e88d2036aeb932b7252b",
+      "id": "material:91c04fe22cf5be038e6c1aea",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "id": "material:ecd2c66c154b2ddeed6f95a9",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fab.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod0-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Accent",
+      "nodeName": "LOD0_Station_Material_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod0-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Station_Material_Glass",
+      "nodeName": "LOD0_Station_Material_Glass",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod0-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Hull",
+      "nodeName": "LOD0_Station_Material_Hull",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod0-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Mechanical",
+      "nodeName": "LOD0_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod0-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Warm",
+      "nodeName": "LOD0_Station_Material_Warm",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod1-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Accent",
+      "nodeName": "LOD1_Station_Material_Accent",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod1-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Station_Material_Glass",
+      "nodeName": "LOD1_Station_Material_Glass",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod1-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Hull",
+      "nodeName": "LOD1_Station_Material_Hull",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod1-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Mechanical",
+      "nodeName": "LOD1_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod1-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Warm",
+      "nodeName": "LOD1_Station_Material_Warm",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod2-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Accent",
+      "nodeName": "LOD2_Station_Material_Accent",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod2-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Station_Material_Glass",
+      "nodeName": "LOD2_Station_Material_Glass",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod2-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Hull",
+      "nodeName": "LOD2_Station_Material_Hull",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod2-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Mechanical",
+      "nodeName": "LOD2_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.mesh.lod2-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Warm",
+      "nodeName": "LOD2_Station_Material_Warm",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.fab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fab.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_STATION_FAB_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "674fefc5ee0049ef7e19dc4a84af4dfbcdaa8d3c152ca65381457a8d469c5fd3"
+    },
+    "sourceGlb": {
+      "bytes": 7233748,
+      "sha256": "cbf20c022012ba956c90cf9fdb7710b59700623c6f1ebfa0b05186b1ec9ef0fa",
+      "uri": "place_station_fab.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 7900760,
+    "sha256": "c54e6a76488d3bac33c965153f907e25a8543a321cbd15635dd9bd8bd4c88ce4",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -6.1100006103515625,
+        0,
+        -3.870835781097412
+      ],
+      "max": [
+        45.179996490478516,
+        28.999298095703125,
+        14.760334968566895
+      ],
+      "min": [
+        -57.39999771118164,
+        -28.999298095703125,
+        -22.50200653076172
+      ],
+      "size": [
+        102.57999420166016,
+        57.99859619140625,
+        37.26234149932861
+      ]
+    },
+    "hidden": [
+      1
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          30.959999084472656,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Dock_Approach",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "dock_approach",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Approach",
+            "recordIds": [
+              "sf.render.fab.anchor.socket-dock-approach"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -12.375,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.fab.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.fab.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Accent",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Glass",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Mechanical",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Warm",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Accent",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Glass",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Mechanical",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Warm",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Accent",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Glass",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_station_fab.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          45.179996490478516,
+          28.999298095703125,
+          14.760334968566895
+        ],
+        "min": [
+          -57.39999771118164,
+          -28.999298095703125,
+          -22.50200653076172
+        ]
+      },
+      "id": "sf.render.fab.body",
+      "nodeIds": [
+        "sf.render.fab.mesh.collision-hull",
+        "sf.render.fab.mesh.lod0-station-material-accent",
+        "sf.render.fab.mesh.lod0-station-material-glass",
+        "sf.render.fab.mesh.lod0-station-material-hull",
+        "sf.render.fab.mesh.lod0-station-material-mechanical",
+        "sf.render.fab.mesh.lod0-station-material-warm",
+        "sf.render.fab.mesh.lod1-station-material-accent",
+        "sf.render.fab.mesh.lod1-station-material-glass",
+        "sf.render.fab.mesh.lod1-station-material-hull",
+        "sf.render.fab.mesh.lod1-station-material-mechanical",
+        "sf.render.fab.mesh.lod1-station-material-warm",
+        "sf.render.fab.mesh.lod2-station-material-accent",
+        "sf.render.fab.mesh.lod2-station-material-glass",
+        "sf.render.fab.mesh.lod2-station-material-hull",
+        "sf.render.fab.mesh.lod2-station-material-mechanical",
+        "sf.render.fab.mesh.lod2-station-material-warm",
+        "sf.render.fab.root"
+      ]
+    }
+  ]
+}

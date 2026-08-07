@@ -1,0 +1,1743 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-corvette.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.hull-corvette.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.hull-corvette.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-corvette",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "1c010371137b3a0b64988120c49fa5f95505aa00ef2152f06d30df80e5bebe38",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.3000364303588867,
+          1.8582737445831299,
+          0.8999999761581421
+        ],
+        "min": [
+          2.0999631881713867,
+          1.3082263469696045,
+          -0.8999999761581421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ecf4b79c63697dacfcff451eb22eb974aa4165cdf43b5f220361c7b2c9d61aa1",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-bridge-super.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "48518a1155626c2bbe198c3fc7154f744c2a74c7af3dd7d761b67bcf6d3c4596",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-bridge-super",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9999998211860657,
+          1.3082143068313599,
+          -1.9749993085861206
+        ],
+        "min": [
+          -0.6000002026557922,
+          0.45828598737716675,
+          -2.025000810623169
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80068e323f4c2d7eb2bce649e90b48f903690b74dca080a80816a98492291ddb",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "1d27a1a05ce8815a1dc53ae60d30619816e6d3d217c223f49a940f6fac5eb6b5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.4000002145767212,
+          0.633207380771637,
+          -1.9199210405349731
+        ],
+        "min": [
+          -4.200000286102295,
+          0.233292818069458,
+          -1.9800790548324585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e35f3818cd4f31c508db456983d9cda4ebda09a6f05f16f1ff558df78d2f2414",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-dock-wear.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-dock-wear",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.750001907348633,
+          1.223293423652649,
+          1.2000000476837158
+        ],
+        "min": [
+          -4.44999885559082,
+          0.9432067275047302,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d0bd4920bd28c855f8d42d20e0b675e0b2a4e87c0b6f2e2661a2ec42d9c856f2",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-engine-vent.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "48518a1155626c2bbe198c3fc7154f744c2a74c7af3dd7d761b67bcf6d3c4596",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-engine-vent",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9499998092651367,
+          2.3181326389312744,
+          0.059877313673496246
+        ],
+        "min": [
+          -2.5500001907348633,
+          2.2483675479888916,
+          -0.059877313673496246
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c945e95c065eebb88cd1e77f6e3ad74d302cecf216ecf33bf5ea37e878982f6",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "1d27a1a05ce8815a1dc53ae60d30619816e6d3d217c223f49a940f6fac5eb6b5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6250002384185791,
+          1.1832653284072876,
+          1.7349742650985718
+        ],
+        "min": [
+          -1.375000238418579,
+          0.6832348108291626,
+          1.6650258302688599
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f9b94c2925aa2769fdcc179da273aebd31141a000d8850da9b12b9f88e507d2",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-field-patch.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-field-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          4.25,
+          1.1332638263702393,
+          0.3000108003616333
+        ],
+        "min": [
+          3.749999761581421,
+          0.8332362771034241,
+          -0.10001077502965927
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "660583debe90c989a8101dbf4b23ba2c974c1f9bea7473d59d7ca05da0f51bc8",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-sensor-array.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "48518a1155626c2bbe198c3fc7154f744c2a74c7af3dd7d761b67bcf6d3c4596",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-sensor-array",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8899998664855957,
+          1.1632522344589233,
+          1.340000033378601
+        ],
+        "min": [
+          1.5099997520446777,
+          1.003247857093811,
+          0.9599999189376831
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ccc5c86ed3b316b0ac22eea6e903c09b4e097ea3a1eafc25f08b7b5165c7e852",
+      "id": "sf.render.hull-corvette.mesh.lod0-det-turret-collar.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "48518a1155626c2bbe198c3fc7154f744c2a74c7af3dd7d761b67bcf6d3c4596",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-det-turret-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          5.949999809265137,
+          2.2117300033569336,
+          2.5250022411346436
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1452298164367676,
+          -2.5250022411346436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f86cb2efc91e7ddbe36261f300b16847d88e42c1d129e95f37efcbe957f3f872",
+      "id": "sf.render.hull-corvette.mesh.lod0-hull-corvette-main.primitive.0",
+      "indexCount": 7128,
+      "indexed": true,
+      "materialHash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_CORVETTE",
+      "nodeId": "sf.render.hull-corvette.mesh.lod0-hull-corvette-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6129
+    },
+    {
+      "bounds": {
+        "max": [
+          5.949999809265137,
+          2.2117300033569336,
+          2.5250022411346436
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1452298164367676,
+          -2.5250022411346436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9e5b410f6b5fdc052e7331f197d632b0f7f9c680aeeafd7d1a4b126435817f2",
+      "id": "sf.render.hull-corvette.mesh.lod1-hull-corvette-silhouette.primitive.0",
+      "indexCount": 3918,
+      "indexed": true,
+      "materialHash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_CORVETTE.001",
+      "nodeId": "sf.render.hull-corvette.mesh.lod1-hull-corvette-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3180
+    },
+    {
+      "bounds": {
+        "max": [
+          5.950285911560059,
+          2.213428258895874,
+          2.5893547534942627
+        ],
+        "min": [
+          -5.499136924743652,
+          -1.089632511138916,
+          -2.585195779800415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f3590b0c13f5e4cc0394da76d4a374f8623f54cf6c33faee9cf61d28baf48ec",
+      "id": "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_CORVETTE.002",
+      "nodeId": "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 150
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1d27a1a05ce8815a1dc53ae60d30619816e6d3d217c223f49a940f6fac5eb6b5",
+      "id": "material:1d27a1a05ce8815a1dc53ae6",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_corvette_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "48518a1155626c2bbe198c3fc7154f744c2a74c7af3dd7d761b67bcf6d3c4596",
+      "id": "material:48518a1155626c2bbe198c3f",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_corvette_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "82399942406fe0d6da5cecfeb990309b2ba8bc37aa4bb95e1e720e4b53ad9890",
+      "id": "material:82399942406fe0d6da5cecfe",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_corvette_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_corvette_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-bridge-super",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_bridge_super",
+      "nodeName": "LOD0_DET_bridge_super",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_corporate_stencil",
+      "nodeName": "LOD0_DET_corporate_stencil",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-dock-wear",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_dock_wear",
+      "nodeName": "LOD0_DET_dock_wear",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-engine-vent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_engine_vent",
+      "nodeName": "LOD0_DET_engine_vent",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_escort_nav_stripe",
+      "nodeName": "LOD0_DET_escort_nav_stripe",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-field-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_field_patch",
+      "nodeName": "LOD0_DET_field_patch",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-sensor-array",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_sensor_array",
+      "nodeName": "LOD0_DET_sensor_array",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-det-turret-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_turret_collar",
+      "nodeName": "LOD0_DET_turret_collar",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod0-hull-corvette-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_CORVETTE_MAIN",
+      "nodeName": "LOD0_HULL_CORVETTE_MAIN",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod1-hull-corvette-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_CORVETTE_SILHOUETTE",
+      "nodeName": "LOD1_HULL_CORVETTE_SILHOUETTE",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_CORVETTE_SILHOUETTE",
+      "nodeName": "LOD2_HULL_CORVETTE_SILHOUETTE",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hull-corvette.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-corvette.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_CORVETTE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-corvette.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "f6305ffdd285e2aeebe280cd8135afeb0406de69a099ddcadf5831d6bdd980c0"
+    },
+    "sourceGlb": {
+      "bytes": 528648,
+      "sha256": "475a113826d288c4cd0b496b2d390c10fed230ea4d68505470ff84d611905abf",
+      "uri": "hull_corvette.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 676364,
+    "sha256": "054f717213449b16c8ba2691b4c6d942399dd7f1b00beca4a6cfeb2097144c3a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.20014286041259766,
+        0.5864514112472534,
+        0.002079486846923828
+      ],
+      "max": [
+        5.950285911560059,
+        2.3181326389312744,
+        2.5893547534942627
+      ],
+      "min": [
+        -5.550000190734863,
+        -1.1452298164367676,
+        -2.585195779800415
+      ],
+      "size": [
+        11.500286102294922,
+        3.463362455368042,
+        5.174550533294678
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.7599999904632568,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 12,
+        "tags": {
+          "mount": "cockpit",
+          "mountKey": "cockpit"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          -0.8159999847412109,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 13,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          0.8159999847412109,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 14,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          -2.2079999446868896,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 15,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          2.2079999446868896,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 16,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.71999979019165,
+          0.03999999910593033,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-corvette.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.71999979019165,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-corvette.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 5,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_bridge_super",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_corporate_stencil",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_dock_wear",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_engine_vent",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_escort_nav_stripe",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_field_patch",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_sensor_array",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_turret_collar",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HULL_CORVETTE_MAIN",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_CORVETTE_SILHOUETTE",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HULL_CORVETTE_SILHOUETTE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_corvette.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.950285911560059,
+          2.3181326389312744,
+          2.5893547534942627
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1452298164367676,
+          -2.585195779800415
+        ]
+      },
+      "id": "sf.render.hull-corvette.body",
+      "nodeIds": [
+        "sf.render.hull-corvette.mesh.lod0-det-bridge-super",
+        "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil",
+        "sf.render.hull-corvette.mesh.lod0-det-dock-wear",
+        "sf.render.hull-corvette.mesh.lod0-det-engine-vent",
+        "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe",
+        "sf.render.hull-corvette.mesh.lod0-det-field-patch",
+        "sf.render.hull-corvette.mesh.lod0-det-sensor-array",
+        "sf.render.hull-corvette.mesh.lod0-det-turret-collar",
+        "sf.render.hull-corvette.mesh.lod0-hull-corvette-main",
+        "sf.render.hull-corvette.mesh.lod1-hull-corvette-silhouette",
+        "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette",
+        "sf.render.hull-corvette.root"
+      ]
+    }
+  ]
+}

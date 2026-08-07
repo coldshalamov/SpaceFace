@@ -1,0 +1,647 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-antennas",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "40dbf39c5cbf97ad9da2e1472d77c40000094ff0eb9e2917f9433730d9b0185f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.159999966621399,
+          3.31000018119812,
+          0.1599999964237213
+        ],
+        "min": [
+          0.8400000333786011,
+          2.990000009536743,
+          -0.1599999964237213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6287aacfa925436a26d6971e6450bd417bfc77f03b9f8bc2f180184d7ea0ecd3",
+      "id": "sf.render.greeble-antennas.mesh.antenna-beacon.primitive.0",
+      "indexCount": 1002,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Antenna_Beacon",
+      "nodeId": "sf.render.greeble-antennas.mesh.antenna-beacon",
+      "primitiveIndex": 0,
+      "vertexCount": 395
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0476092100143433,
+          3.2247447967529297,
+          0.6747449040412903
+        ],
+        "min": [
+          0.9523907899856567,
+          1.8752551078796387,
+          -0.6747449040412903
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ca419028e7c723c3f513597de263beae36532051f84fd8b14b3764162f9c29a",
+      "id": "sf.render.greeble-antennas.mesh.antenna-loop.primitive.0",
+      "indexCount": 2160,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Antenna_Loop",
+      "nodeId": "sf.render.greeble-antennas.mesh.antenna-loop",
+      "primitiveIndex": 0,
+      "vertexCount": 704
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          2.029906988143921,
+          1.2000305652618408
+        ],
+        "min": [
+          -0.4000000059604645,
+          -0.03990708291530609,
+          -1.438636302947998
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73c3a182d392aa789356892398f1ac2c5dead7c743f3f219a79d54e0a9d36c7f",
+      "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-hull-merged.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "a3df7fda7b849ed9fef6894691e5b94d3e81c306ce377c3c2a5c3615a2978e5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_antennas_Material_Hull_Merged",
+      "nodeId": "sf.render.greeble-antennas.mesh.greeble-antennas-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0466132164001465,
+          3,
+          0.9443146586418152
+        ],
+        "min": [
+          -0.04661335051059723,
+          0.23999999463558197,
+          -0.9443146586418152
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2351f842d4a084ddcfd48852887b2da04e480f3d5291935842886b963f50b41d",
+      "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-mechanical-merged.primitive.0",
+      "indexCount": 2784,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_antennas_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-antennas.mesh.greeble-antennas-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 715
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a3df7fda7b849ed9fef6894691e5b94d3e81c306ce377c3c2a5c3615a2978e5a",
+      "id": "material:a3df7fda7b849ed9fef68946",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-antennas.mesh.antenna-beacon",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Antenna_Beacon",
+      "nodeName": "Antenna_Beacon",
+      "nodePath": [
+        0,
+        11,
+        0
+      ],
+      "parentId": "sf.render.greeble-antennas.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-antennas.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-antennas.mesh.antenna-loop",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Antenna_Loop",
+      "nodeName": "Antenna_Loop",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.greeble-antennas.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-antennas.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-hull-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_antennas_Material_Hull_Merged",
+      "nodeName": "greeble_antennas_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.greeble-antennas.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-antennas.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_antennas_Material_Mechanical_Merged",
+      "nodeName": "greeble_antennas_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.greeble-antennas.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-antennas.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-antennas.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_antennas",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-antennas.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "c8c7bc682b8eb5da30733da67e809ead7189e66f22f3aa14582ad359f1fc9a4d"
+    },
+    "sourceGlb": {
+      "bytes": 264464,
+      "sha256": "d10d243145afc63f3fd3a3b741c7298be09f48fbb7e9108bedd8de844a57470b",
+      "uri": "greeble_antennas.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 307048,
+    "sha256": "10c83288c17f67bcc2f9edfaacc3e4044043fcb23191fdb31846972a31569582",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.0000000447034836,
+        1.635046549141407,
+        -0.11930286884307861
+      ],
+      "max": [
+        2.4000000953674316,
+        3.31000018119812,
+        1.2000305652618408
+      ],
+      "min": [
+        -0.4000000059604645,
+        -0.03990708291530609,
+        -1.438636302947998
+      ],
+      "size": [
+        2.800000101327896,
+        3.349907264113426,
+        2.638666868209839
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 12,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 14,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Antenna_Loop",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_antennas_Material_Hull_Merged",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_antennas_Material_Mechanical_Merged",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Antenna_Beacon",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_antennas.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          3.31000018119812,
+          1.2000305652618408
+        ],
+        "min": [
+          -0.4000000059604645,
+          -0.03990708291530609,
+          -1.438636302947998
+        ]
+      },
+      "id": "sf.render.greeble-antennas.body",
+      "nodeIds": [
+        "sf.render.greeble-antennas.mesh.antenna-beacon",
+        "sf.render.greeble-antennas.mesh.antenna-loop",
+        "sf.render.greeble-antennas.mesh.greeble-antennas-material-hull-merged",
+        "sf.render.greeble-antennas.mesh.greeble-antennas-material-mechanical-merged",
+        "sf.render.greeble-antennas.root"
+      ]
+    }
+  ]
+}

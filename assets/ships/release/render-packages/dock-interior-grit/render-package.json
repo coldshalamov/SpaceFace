@@ -1,0 +1,5928 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.dock-interior-grit.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentNodeId": "sf.render.dock-interior-grit.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.dock-interior-grit",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "69ee58a8c45ac4b2d39854032c5b96ed9c6258df3e935a13d7d724b8b274afb0",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          23.774808883666992,
+          7.9996795654296875,
+          8
+        ],
+        "min": [
+          23.425189971923828,
+          -2.9996795654296875,
+          -8
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ba02c4b83b122d8e8d217cd56646a442aa18045c21b580fe6f51bb05fcb8d5b",
+      "id": "sf.render.dock-interior-grit.mesh.bay-glass.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2cbf7012db0edf578aa91fa29acdab6130c5bd34b4e71f11ce3187cfc1e26f8c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Bay_Glass",
+      "nodeId": "sf.render.dock-interior-grit.mesh.bay-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.500247955322266,
+          2.7689473628997803,
+          -6.203152656555176
+        ],
+        "min": [
+          15.499752044677734,
+          -3.7689473628997803,
+          -15.796847343444824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fb75fb451241882c98772d17a54ff6db0b7ed719071e938ecd7347e2ac71d308",
+      "id": "sf.render.dock-interior-grit.mesh.baysil-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BaySil_A",
+      "nodeId": "sf.render.dock-interior-grit.mesh.baysil-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21.749977111816406,
+          2.5224733352661133,
+          15.668614387512207
+        ],
+        "min": [
+          16.250022888183594,
+          -2.5224733352661133,
+          8.331385612487793
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "743c4b0349cb4860a0fe4ae2d174f0b895c108ebf36d9bbdb6e89368f2b1d407",
+      "id": "sf.render.dock-interior-grit.mesh.baysil-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BaySil_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.baysil-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.00006866455078,
+          3.0728511810302734,
+          2.584339141845703
+        ],
+        "min": [
+          17.99993133544922,
+          -0.6728513240814209,
+          -2.584339141845703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c693b4daae5e8dbe2d966092c8f8a3be324c8b8ca0b1151a3ec2250a7eabdf86",
+      "id": "sf.render.dock-interior-grit.mesh.baysil-c.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BaySil_C",
+      "nodeId": "sf.render.dock-interior-grit.mesh.baysil-c",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          24.325815200805664,
+          13.001296997070312,
+          17
+        ],
+        "min": [
+          23.674184799194336,
+          -4.0012969970703125,
+          -17
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ece9319dfa92f3c6a6e7abd29b1c0ad624a96998e2a2e4e6b72fc4b28f95623",
+      "id": "sf.render.dock-interior-grit.mesh.bulkhead-fwd.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Bulkhead_Fwd",
+      "nodeId": "sf.render.dock-interior-grit.mesh.bulkhead-fwd",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10,
+          6.309378623962402,
+          -15.524600982666016
+        ],
+        "min": [
+          -22,
+          6.0906219482421875,
+          -16.07539939880371
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "624433da08ee6cec5b9cb24ae05371d6a9ff728d28abf5fc5b27652da1739f2b",
+      "id": "sf.render.dock-interior-grit.mesh.catwalk.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Catwalk",
+      "nodeId": "sf.render.dock-interior-grit.mesh.catwalk",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.9001662731170654,
+          -0.30012351274490356,
+          -4.75
+        ],
+        "min": [
+          -5.0998334884643555,
+          -2.0998764038085938,
+          -9.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c40b65f1c030dc15cf3c47742ef698b99eef67b39d18ff8cef319c697ab041a8",
+      "id": "sf.render.dock-interior-grit.mesh.clamp-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Clamp_Port",
+      "nodeId": "sf.render.dock-interior-grit.mesh.clamp-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.9001662731170654,
+          -0.30012351274490356,
+          9.25
+        ],
+        "min": [
+          -5.0998334884643555,
+          -2.0998764038085938,
+          4.75
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ca21a844bd38f02d4cab432d955a5c018bcb5d10e3dbd207420a83b0b815b2e",
+      "id": "sf.render.dock-interior-grit.mesh.clamp-stbd.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Clamp_Stbd",
+      "nodeId": "sf.render.dock-interior-grit.mesh.clamp-stbd",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11,
+          12.349944114685059,
+          -5.199804782867432
+        ],
+        "min": [
+          1,
+          11.250056266784668,
+          -6.800195217132568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df9376a9fbbe7c974deffae3d144a3876a5baa91831f51be8c239b6de6234061",
+      "id": "sf.render.dock-interior-grit.mesh.crane-boom.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Crane_Boom",
+      "nodeId": "sf.render.dock-interior-grit.mesh.crane-boom",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.799898147583008,
+          11.449999809265137,
+          -5.20010232925415
+        ],
+        "min": [
+          10.200101852416992,
+          6.949999809265137,
+          -6.79989767074585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c233fca299eab9f7b5949588bb66c1b894c22cd911b06a0f9551ded73161618",
+      "id": "sf.render.dock-interior-grit.mesh.crane-tower.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Crane_Tower",
+      "nodeId": "sf.render.dock-interior-grit.mesh.crane-tower",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          26,
+          -3.974651336669922,
+          18.00091552734375
+        ],
+        "min": [
+          -26,
+          -4.42534875869751,
+          -18.00091552734375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1a6fcc7f893c713c1a4c55d32cad9200ebfa9b6fcc69e15c2ef28684ffed66f",
+      "id": "sf.render.dock-interior-grit.mesh.deck-main.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Deck_Main",
+      "nodeId": "sf.render.dock-interior-grit.mesh.deck-main",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21,
+          12.92555046081543,
+          -8.348856925964355
+        ],
+        "min": [
+          -21,
+          12.07444953918457,
+          -9.651143074035645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "397b4a6b14ebcb28005cfc26094c37fab27c62890b63f2897368c7bf4f909868",
+      "id": "sf.render.dock-interior-grit.mesh.gantry-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Gantry_A",
+      "nodeId": "sf.render.dock-interior-grit.mesh.gantry-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21,
+          12.92555046081543,
+          9.651143074035645
+        ],
+        "min": [
+          -21,
+          12.07444953918457,
+          8.348856925964355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e875b1de8c594277a3c320202cc425a7f7459b99b5052fd1ae7321735a6af96",
+      "id": "sf.render.dock-interior-grit.mesh.gantry-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Gantry_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.gantry-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.3495893478393555,
+          12.92579460144043,
+          16
+        ],
+        "min": [
+          -6.6504106521606445,
+          12.07420539855957,
+          -16
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55a5f0a30b5732b13c898f70c96745477adee22486e3485bcf0b58696a16833b",
+      "id": "sf.render.dock-interior-grit.mesh.gantry-c.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Gantry_C",
+      "nodeId": "sf.render.dock-interior-grit.mesh.gantry-c",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.403352737426758,
+          10.927204132080078,
+          12.174062728881836
+        ],
+        "min": [
+          11.718131065368652,
+          10.598698616027832,
+          11.703083992004395
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b544a6c5e48f3d940d2e0fe3f2e46e4f94276909b03a040453ec3db3c75a1a59",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_0",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.342982292175293,
+          10.518045425415039,
+          6.432610034942627
+        ],
+        "min": [
+          -5.010825157165527,
+          10.078496932983398,
+          6.078418731689453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d4198cb19eeb4f6339870e096a92f47c82d1bfcb824de9de4a33af8cc67495c",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_1",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1498148441314697,
+          4.849127769470215,
+          -2.9074435234069824
+        ],
+        "min": [
+          -2.6238620281219482,
+          4.456525802612305,
+          -3.6225297451019287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66cca562d429ccfed73770d54db2d2e0318b4f14ab7c23402774630cc6158b5d",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_10",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.524235725402832,
+          7.19720458984375,
+          -3.8663241863250732
+        ],
+        "min": [
+          8.923442840576172,
+          7.050062656402588,
+          -4.718761920928955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2282b1f3f6fbf07b1379c67be9e7e7db616c4831939e62fd49372cb48daa7b3",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_11",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.5604829788208,
+          10.151339530944824,
+          10.938620567321777
+        ],
+        "min": [
+          7.491711139678955,
+          9.759507179260254,
+          9.930517196655273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "74850bcaf9ff7573dacd3c69fa15b4e8e27842990d415b98257531509954f1a2",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-12.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_12",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-12",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2062506675720215,
+          6.300255298614502,
+          1.9360696077346802
+        ],
+        "min": [
+          0.6885243654251099,
+          5.9896745681762695,
+          0.9297616481781006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "670d61cc93560473095ca57ef03be6c81f1d262f4b90ca449306eba44b96335f",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-13.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_13",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-13",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.415976047515869,
+          10.960692405700684,
+          -10.110554695129395
+        ],
+        "min": [
+          1.7712833881378174,
+          10.710576057434082,
+          -10.891012191772461
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8100c66aa387455d117f0ba4642fa19563d93e75d218667df155a14b6ec0f4f",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-14.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_14",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-14",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.0636802911758423,
+          10.129566192626953,
+          4.882136821746826
+        ],
+        "min": [
+          -2.016026735305786,
+          9.88807201385498,
+          4.468233585357666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "229a18ef8ed1d0ff9d9867fd79322f5ee204222ed0f80724612a750814dddc17",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-15.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_15",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-15",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.738818168640137,
+          7.418323993682861,
+          -7.412827014923096
+        ],
+        "min": [
+          6.046387672424316,
+          7.182327747344971,
+          -8.41242504119873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e7342de223c671448081875b7bf8a2f6df138fc4b7f6e772d04df3234fff9b92",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-16.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_16",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-16",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.7914481163024902,
+          9.070420265197754,
+          4.996537685394287
+        ],
+        "min": [
+          -1.6126652956008911,
+          8.813155174255371,
+          4.327498912811279
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dcdc23a7537c741e379ff657c0993daee9649f73a35e3c89a81753e252f08760",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-17.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_17",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-17",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.385448455810547,
+          7.061689376831055,
+          -6.894437789916992
+        ],
+        "min": [
+          10.82520866394043,
+          6.592446327209473,
+          -7.675802707672119
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "78d4f7db49e7f3eeda3e80e8689b9010fdc374a1069ebc606492d96f05cad0a0",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-18.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_18",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-18",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.531312942504883,
+          9.833191871643066,
+          0.6415141224861145
+        ],
+        "min": [
+          -14.514538764953613,
+          9.57414436340332,
+          0.19066515564918518
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad26a9542756f6cc33432109dd495fda2c3be233f06224194bea4da7e23424e6",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-19.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_19",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-19",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.570462226867676,
+          5.716678142547607,
+          -9.769430160522461
+        ],
+        "min": [
+          -11.105669975280762,
+          5.395049571990967,
+          -10.372267723083496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0ff8a6fd4a253680b531170bdb269d592727d5263417289070ae359f217debcd",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_2",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          16.93312644958496,
+          2.6822404861450195,
+          -10.558273315429688
+        ],
+        "min": [
+          16.606048583984375,
+          2.296025514602661,
+          -11.18173885345459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03bc131580a4084175022ee03f7dbb0718ee04cfaf240bd9000b4ed9e6efdd10",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-20.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_20",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-20",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.04148292541504,
+          3.9860916137695312,
+          8.023419380187988
+        ],
+        "min": [
+          21.447128295898438,
+          3.4388256072998047,
+          7.236571311950684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3a7916cea9f7d14db365586d3438aefc35f61262764494c37e93bbd44d3f57aa",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-21.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_21",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-21",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.766146183013916,
+          1.3083158731460571,
+          -10.43309211730957
+        ],
+        "min": [
+          -7.176594257354736,
+          0.8526778221130371,
+          -11.190109252929688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ad86df11f753a77c1423ca19e3520a9bb72a4c3ff14a877e292365df6b046ee",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-22.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_22",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-22",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -15.36142349243164,
+          5.363177299499512,
+          -14.186497688293457
+        ],
+        "min": [
+          -15.984838485717773,
+          4.975547790527344,
+          -14.73099422454834
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f3c4f6e7fc72ae24f8b772b4336b39a586b77b22df40f4b213905a1038c3069",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-23.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_23",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-23",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.754996299743652,
+          8.760531425476074,
+          1.4784680604934692
+        ],
+        "min": [
+          -10.601800918579102,
+          8.427023887634277,
+          1.0034180879592896
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5513cbb4046cf85f3ecb0ee6e65dd1b768058b54cebbfb0e3ee469cdbccd475",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_3",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.140375137329102,
+          3.801882028579712,
+          -12.511966705322266
+        ],
+        "min": [
+          10.590700149536133,
+          3.3533284664154053,
+          -13.029902458190918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e16c1d010011ff09254d6edec991891b5d7cef9068d6f40db6fd795bb2428e60",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_4",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21.837425231933594,
+          4.4815449714660645,
+          4.135369300842285
+        ],
+        "min": [
+          20.936994552612305,
+          3.9622318744659424,
+          3.671125650405884
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "408d67e7bad1f2a5f38293a2be8d867754c75dc7bd7ceda503b3a7023ed6f8e3",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_5",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          19.23788070678711,
+          9.585211753845215,
+          13.545620918273926
+        ],
+        "min": [
+          18.704225540161133,
+          9.127840995788574,
+          13.123625755310059
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2edf17e003e3cb1bbb615b63e2b90b2c5e9b0f319e855f3eb99c34e3431182d",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_6",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          17.724498748779297,
+          6.782957077026367,
+          -1.9662965536117554
+        ],
+        "min": [
+          17.082313537597656,
+          6.453403949737549,
+          -2.7925615310668945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be78f818b9617d5eb140860b1e9a43bb0cba7cef491817dc8608494d88049d70",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_7",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.523747444152832,
+          4.4511260986328125,
+          0.15560282766819
+        ],
+        "min": [
+          -7.209354877471924,
+          4.082236289978027,
+          -0.7064906358718872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6ab380795f59493b794e9ead21295313527107a1f4a787ae6a5b856f54d8268",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_8",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.885414123535156,
+          1.352573275566101,
+          1.5805922746658325
+        ],
+        "min": [
+          10.082869529724121,
+          0.9002953767776489,
+          0.8013644814491272
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce275dfafcb218bbd2e5677011779b6b941d31713c2d549eba18068217abd33b",
+      "id": "sf.render.dock-interior-grit.mesh.greeble-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Greeble_9",
+      "nodeId": "sf.render.dock-interior-grit.mesh.greeble-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21,
+          9.08972454071045,
+          -16.3256778717041
+        ],
+        "min": [
+          -21,
+          8.91027545928955,
+          -16.6743221282959
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6eade96dc3912f924c708fd02697d7e8faf60db79ea2a29a04468982d9075778",
+      "id": "sf.render.dock-interior-grit.mesh.light-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Light_Port",
+      "nodeId": "sf.render.dock-interior-grit.mesh.light-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          21,
+          9.08972454071045,
+          16.6743221282959
+        ],
+        "min": [
+          -21,
+          8.91027545928955,
+          16.3256778717041
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1305686caf704848db47f2e07a48e67fd738ec920b9a4bbddd307072087c0ec9",
+      "id": "sf.render.dock-interior-grit.mesh.light-stbd.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Light_Stbd",
+      "nodeId": "sf.render.dock-interior-grit.mesh.light-stbd",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.5,
+          -3.7999396324157715,
+          10.5
+        ],
+        "min": [
+          7.5,
+          -3.920060396194458,
+          7.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e2b577a4ed2fd055fe4936a84ca2a7209f28d8e03a99d1d6ef3b41a5fe52f7d",
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Corner_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-corner-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.5,
+          -3.7999396324157715,
+          -7.5
+        ],
+        "min": [
+          7.5,
+          -3.920060396194458,
+          -10.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb89cf2b9ce08944485ad97e50b56d5a40c9f76600d4d66f14f86fa4985e1615",
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-f.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Corner_F",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-corner-f",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.5,
+          -3.7999396324157715,
+          -7.5
+        ],
+        "min": [
+          -10.5,
+          -3.920060396194458,
+          -10.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bca3ce49b79713f21c8524ba98531f3ae21e50ff6eb2ea43ec285c1248026bf1",
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-l.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Corner_L",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-corner-l",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.5,
+          -3.7999396324157715,
+          10.5
+        ],
+        "min": [
+          -10.5,
+          -3.920060396194458,
+          7.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ac46f93f9ac2ddf2a6271dc131be0f1537147a8281be1ce779cb3e47c0b8040",
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-r.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Corner_R",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-corner-r",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10,
+          -3.8299496173858643,
+          0.25025177001953125
+        ],
+        "min": [
+          -10,
+          -3.9300503730773926,
+          -0.25025177001953125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef1e27a91cc9ce7ef29980515e27960cf18327a48cee30a7eb48e45b1e4e620f",
+      "id": "sf.render.dock-interior-grit.mesh.pad-strip-x.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Strip_X",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-strip-x",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.25025177001953125,
+          -3.8299496173858643,
+          10
+        ],
+        "min": [
+          -0.25025177001953125,
+          -3.9300503730773926,
+          -10
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "da7a913983962d1218fce28e0b1b68057b388c892fd0bd3fd4476c680ace1e18",
+      "id": "sf.render.dock-interior-grit.mesh.pad-strip-z.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pad_Strip_Z",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pad-strip-z",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14,
+          10.999957084655762,
+          -4.800042629241943
+        ],
+        "min": [
+          -14,
+          10.600043296813965,
+          -5.199957370758057
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "13ee30fe69e938e064044a550f942d81423ab66a11795df80b8838a06a0b169d",
+      "id": "sf.render.dock-interior-grit.mesh.pipe-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pipe_A",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pipe-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14,
+          10.999957084655762,
+          5.199957370758057
+        ],
+        "min": [
+          -14,
+          10.600043296813965,
+          4.800042629241943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6b68d027ad38f6318d4f53d0e6d08636e429116c967ddd78f186c811e4d10d96",
+      "id": "sf.render.dock-interior-grit.mesh.pipe-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Pipe_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.pipe-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.399968147277832,
+          6.25,
+          -13.399968147277832
+        ],
+        "min": [
+          -14.600031852722168,
+          3.75,
+          -14.600031852722168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea95adc423b3c54626440163b431d515d3be6d92b1fc1eea0c4b0f9b58075be4",
+      "id": "sf.render.dock-interior-grit.mesh.vent-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Vent_A",
+      "nodeId": "sf.render.dock-interior-grit.mesh.vent-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.399968147277832,
+          6.25,
+          14.600031852722168
+        ],
+        "min": [
+          -14.600031852722168,
+          3.75,
+          13.399968147277832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c9dd19be455a7df394d5d735679aece34a465eb704ea638139a1b02bfd1bd5b",
+      "id": "sf.render.dock-interior-grit.mesh.vent-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Vent_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.vent-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          24,
+          11.000961303710938,
+          -16.674795150756836
+        ],
+        "min": [
+          -24,
+          -4.0009613037109375,
+          -17.325204849243164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07e9751bd583d57a0f4a36ab49b403633ec27165ffc716090af5a199583f029d",
+      "id": "sf.render.dock-interior-grit.mesh.wall-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Wall_Port",
+      "nodeId": "sf.render.dock-interior-grit.mesh.wall-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4,
+          11.000106811523438,
+          17.324716567993164
+        ],
+        "min": [
+          -24,
+          -4.0001068115234375,
+          16.675283432006836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27680a3ac0abd84c69c2997e9d662e53435ba665c810b95cd0a292433f7754fb",
+      "id": "sf.render.dock-interior-grit.mesh.wall-stbd-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Wall_Stbd_A",
+      "nodeId": "sf.render.dock-interior-grit.mesh.wall-stbd-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          23.000106811523438,
+          11,
+          17.325021743774414
+        ],
+        "min": [
+          8.999893188476562,
+          -4,
+          16.674978256225586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ef8361a711284098ce369b8195ccffba59b976f0950157be4c77ff8e4b4915b",
+      "id": "sf.render.dock-interior-grit.mesh.wall-stbd-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Wall_Stbd_B",
+      "nodeId": "sf.render.dock-interior-grit.mesh.wall-stbd-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2496ca1397406418d0e24664327c465b8918c9dc8c7099563186c4d223e70ff9",
+      "id": "material:2496ca1397406418d0e24664",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "249d0b71af4865248cf1473d0825feb2dc12665c0ca3c659ab8516031e8d080c",
+      "id": "material:249d0b71af4865248cf1473d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "tex_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "tex_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "tex_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "tex_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2cbf7012db0edf578aa91fa29acdab6130c5bd34b4e71f11ce3187cfc1e26f8c",
+      "id": "material:2cbf7012db0edf578aa91fa2",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9aee605de517b43b958ff5ca9172c5f2bf541bdea589c8efc400b4fb5bd7eb0e",
+      "id": "material:9aee605de517b43b958ff5ca",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.dock-interior-grit.mesh.bay-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "Bay_Glass",
+      "nodeName": "Bay_Glass",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.baysil-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "BaySil_A",
+      "nodeName": "BaySil_A",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.baysil-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "BaySil_B",
+      "nodeName": "BaySil_B",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.baysil-c",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "BaySil_C",
+      "nodeName": "BaySil_C",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.bulkhead-fwd",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Bulkhead_Fwd",
+      "nodeName": "Bulkhead_Fwd",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.catwalk",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Catwalk",
+      "nodeName": "Catwalk",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.clamp-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Clamp_Port",
+      "nodeName": "Clamp_Port",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.clamp-stbd",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Clamp_Stbd",
+      "nodeName": "Clamp_Stbd",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.crane-boom",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Crane_Boom",
+      "nodeName": "Crane_Boom",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.crane-tower",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Crane_Tower",
+      "nodeName": "Crane_Tower",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.deck-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Deck_Main",
+      "nodeName": "Deck_Main",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.gantry-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gantry_A",
+      "nodeName": "Gantry_A",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.gantry-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gantry_B",
+      "nodeName": "Gantry_B",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.gantry-c",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gantry_C",
+      "nodeName": "Gantry_C",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_0",
+      "nodeName": "Greeble_0",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_1",
+      "nodeName": "Greeble_1",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_10",
+      "nodeName": "Greeble_10",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_11",
+      "nodeName": "Greeble_11",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-12",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_12",
+      "nodeName": "Greeble_12",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-13",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_13",
+      "nodeName": "Greeble_13",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-14",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_14",
+      "nodeName": "Greeble_14",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-15",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_15",
+      "nodeName": "Greeble_15",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-16",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_16",
+      "nodeName": "Greeble_16",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-17",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_17",
+      "nodeName": "Greeble_17",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-18",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_18",
+      "nodeName": "Greeble_18",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-19",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_19",
+      "nodeName": "Greeble_19",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_2",
+      "nodeName": "Greeble_2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-20",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_20",
+      "nodeName": "Greeble_20",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-21",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_21",
+      "nodeName": "Greeble_21",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-22",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_22",
+      "nodeName": "Greeble_22",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-23",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_23",
+      "nodeName": "Greeble_23",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_3",
+      "nodeName": "Greeble_3",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_4",
+      "nodeName": "Greeble_4",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_5",
+      "nodeName": "Greeble_5",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_6",
+      "nodeName": "Greeble_6",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_7",
+      "nodeName": "Greeble_7",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_8",
+      "nodeName": "Greeble_8",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.greeble-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Greeble_9",
+      "nodeName": "Greeble_9",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.light-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Light_Port",
+      "nodeName": "Light_Port",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.light-stbd",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Light_Stbd",
+      "nodeName": "Light_Stbd",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Corner_B",
+      "nodeName": "Pad_Corner_B",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Corner_F",
+      "nodeName": "Pad_Corner_F",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-l",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Corner_L",
+      "nodeName": "Pad_Corner_L",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-corner-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Corner_R",
+      "nodeName": "Pad_Corner_R",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-strip-x",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Strip_X",
+      "nodeName": "Pad_Strip_X",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pad-strip-z",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pad_Strip_Z",
+      "nodeName": "Pad_Strip_Z",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pipe-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pipe_A",
+      "nodeName": "Pipe_A",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.pipe-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Pipe_B",
+      "nodeName": "Pipe_B",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.vent-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Vent_A",
+      "nodeName": "Vent_A",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.vent-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Vent_B",
+      "nodeName": "Vent_B",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.wall-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Wall_Port",
+      "nodeName": "Wall_Port",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.wall-stbd-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Wall_Stbd_A",
+      "nodeName": "Wall_Stbd_A",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.mesh.wall-stbd-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Wall_Stbd_B",
+      "nodeName": "Wall_Stbd_B",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.dock-interior-grit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.dock-interior-grit.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "DockInterior_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.dock-interior-grit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d335e0913a588f79a5e3b91bb28859cafee90b7a19e4a801c86415ce3f3f1453"
+    },
+    "sourceGlb": {
+      "bytes": 72816,
+      "sha256": "2a2a6a5a1c2f170024ee635101eb6737866d3de3b71795ea25eec945f8b500a9",
+      "uri": "place_dock_interior_grit.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 126848,
+    "sha256": "a3220e6ac46fc324c38fe517170fd9edecc93f65d264de59313eb19ecf0df463",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        4.287974119186401,
+        0
+      ],
+      "max": [
+        26,
+        13.001296997070312,
+        18.00091552734375
+      ],
+      "min": [
+        -26,
+        -4.42534875869751,
+        -18.00091552734375
+      ],
+      "size": [
+        52,
+        17.426645755767822,
+        36.0018310546875
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 1,
+        "tags": {},
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 2,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.dock-interior-grit.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 17,
+      "glass": 1,
+      "hull": 5,
+      "mechanical": 30
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 56,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Deck_Main",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Strip_X",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Strip_Z",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Corner_L",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Corner_R",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Corner_F",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pad_Corner_B",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wall_Port",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wall_Stbd_A",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Wall_Stbd_B",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Bulkhead_Fwd",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Bay_Glass",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Gantry_A",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Gantry_B",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Gantry_C",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Crane_Boom",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Crane_Tower",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Clamp_Port",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Clamp_Stbd",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Light_Port",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Light_Stbd",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pipe_A",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Pipe_B",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Catwalk",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "BaySil_A",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "BaySil_B",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "BaySil_C",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Vent_A",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Vent_B",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_0",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_1",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_2",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_3",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_4",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_5",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_6",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_7",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_8",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_9",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_10",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_11",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_12",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_13",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_14",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_15",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_16",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_17",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_18",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_19",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_20",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_21",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_22",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Greeble_23",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_dock_interior_grit.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          26,
+          13.001296997070312,
+          18.00091552734375
+        ],
+        "min": [
+          -26,
+          -4.42534875869751,
+          -18.00091552734375
+        ]
+      },
+      "id": "sf.render.dock-interior-grit.body",
+      "nodeIds": [
+        "sf.render.dock-interior-grit.mesh.bay-glass",
+        "sf.render.dock-interior-grit.mesh.baysil-a",
+        "sf.render.dock-interior-grit.mesh.baysil-b",
+        "sf.render.dock-interior-grit.mesh.baysil-c",
+        "sf.render.dock-interior-grit.mesh.bulkhead-fwd",
+        "sf.render.dock-interior-grit.mesh.catwalk",
+        "sf.render.dock-interior-grit.mesh.clamp-port",
+        "sf.render.dock-interior-grit.mesh.clamp-stbd",
+        "sf.render.dock-interior-grit.mesh.crane-boom",
+        "sf.render.dock-interior-grit.mesh.crane-tower",
+        "sf.render.dock-interior-grit.mesh.deck-main",
+        "sf.render.dock-interior-grit.mesh.gantry-a",
+        "sf.render.dock-interior-grit.mesh.gantry-b",
+        "sf.render.dock-interior-grit.mesh.gantry-c",
+        "sf.render.dock-interior-grit.mesh.greeble-0",
+        "sf.render.dock-interior-grit.mesh.greeble-1",
+        "sf.render.dock-interior-grit.mesh.greeble-10",
+        "sf.render.dock-interior-grit.mesh.greeble-11",
+        "sf.render.dock-interior-grit.mesh.greeble-12",
+        "sf.render.dock-interior-grit.mesh.greeble-13",
+        "sf.render.dock-interior-grit.mesh.greeble-14",
+        "sf.render.dock-interior-grit.mesh.greeble-15",
+        "sf.render.dock-interior-grit.mesh.greeble-16",
+        "sf.render.dock-interior-grit.mesh.greeble-17",
+        "sf.render.dock-interior-grit.mesh.greeble-18",
+        "sf.render.dock-interior-grit.mesh.greeble-19",
+        "sf.render.dock-interior-grit.mesh.greeble-2",
+        "sf.render.dock-interior-grit.mesh.greeble-20",
+        "sf.render.dock-interior-grit.mesh.greeble-21",
+        "sf.render.dock-interior-grit.mesh.greeble-22",
+        "sf.render.dock-interior-grit.mesh.greeble-23",
+        "sf.render.dock-interior-grit.mesh.greeble-3",
+        "sf.render.dock-interior-grit.mesh.greeble-4",
+        "sf.render.dock-interior-grit.mesh.greeble-5",
+        "sf.render.dock-interior-grit.mesh.greeble-6",
+        "sf.render.dock-interior-grit.mesh.greeble-7",
+        "sf.render.dock-interior-grit.mesh.greeble-8",
+        "sf.render.dock-interior-grit.mesh.greeble-9",
+        "sf.render.dock-interior-grit.mesh.light-port",
+        "sf.render.dock-interior-grit.mesh.light-stbd",
+        "sf.render.dock-interior-grit.mesh.pad-corner-b",
+        "sf.render.dock-interior-grit.mesh.pad-corner-f",
+        "sf.render.dock-interior-grit.mesh.pad-corner-l",
+        "sf.render.dock-interior-grit.mesh.pad-corner-r",
+        "sf.render.dock-interior-grit.mesh.pad-strip-x",
+        "sf.render.dock-interior-grit.mesh.pad-strip-z",
+        "sf.render.dock-interior-grit.mesh.pipe-a",
+        "sf.render.dock-interior-grit.mesh.pipe-b",
+        "sf.render.dock-interior-grit.mesh.vent-a",
+        "sf.render.dock-interior-grit.mesh.vent-b",
+        "sf.render.dock-interior-grit.mesh.wall-port",
+        "sf.render.dock-interior-grit.mesh.wall-stbd-a",
+        "sf.render.dock-interior-grit.mesh.wall-stbd-b",
+        "sf.render.dock-interior-grit.root"
+      ]
+    }
+  ]
+}

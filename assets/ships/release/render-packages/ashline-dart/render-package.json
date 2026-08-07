@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c92cc01a03a7e45a3ba4296f43f65c64f98c985a8f4841a2bc5929cce6d72ae6",
+  "contentHash": "cca110c62e8f73939121105dc038bdf4e05d13a255ceae0683f16964c10e6160",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart.mesh.lod0-hook-drive-core.dynamic",
@@ -2389,8 +2389,8 @@
       "uri": "ashline_dart.glb"
     },
     "sourceManifest": {
-      "bytes": 17993,
-      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
       "uri": "pilots.json"
     }
   },

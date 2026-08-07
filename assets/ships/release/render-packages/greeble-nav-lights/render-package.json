@@ -1,0 +1,540 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-nav-lights",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "47f571068d500f7e059a7ed1b1ee69cbf51f903102db068e9b61149de87dd477",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.174999952316284,
+          0.22007690370082855,
+          1.2749115228652954
+        ],
+        "min": [
+          -0.17499999701976776,
+          0.139923095703125,
+          -0.1749114841222763
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e5c828c47bfff3f0e0cfd489d0eb11ee61edef8eef777112ea4bd02d95dbebb",
+      "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_nav_lights_Material_Accent_Merged",
+      "nodeId": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 198
+    },
+    {
+      "bounds": {
+        "max": [
+          2.836444854736328,
+          0.2724205255508423,
+          -0.7057169675827026
+        ],
+        "min": [
+          -0.27562475204467773,
+          0.12007947266101837,
+          -1.0347129106521606
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cfd201cb8a50e334a6aa95cf22f085f3b6e886d77a1037b810ab6aa8f6ed6a52",
+      "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged.primitive.0",
+      "indexCount": 4800,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_nav_lights_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1427
+    },
+    {
+      "bounds": {
+        "max": [
+          3.299999952316284,
+          0.13009491562843323,
+          1.2000731229782104
+        ],
+        "min": [
+          -0.2999999523162842,
+          -0.01009491179138422,
+          -1.2000731229782104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc9b5fc956eb3be3ef3d06f72af2d85d865b6c730c303b5113eed9ef814d9387",
+      "id": "sf.render.greeble-nav-lights.mesh.nav-base.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a3df7fda7b849ed9fef6894691e5b94d3e81c306ce377c3c2a5c3615a2978e5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Nav_Base",
+      "nodeId": "sf.render.greeble-nav-lights.mesh.nav-base",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a3df7fda7b849ed9fef6894691e5b94d3e81c306ce377c3c2a5c3615a2978e5a",
+      "id": "material:a3df7fda7b849ed9fef68946",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_nav_lights_Material_Accent_Merged",
+      "nodeName": "greeble_nav_lights_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.greeble-nav-lights.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-nav-lights.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_nav_lights_Material_Mechanical_Merged",
+      "nodeName": "greeble_nav_lights_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.greeble-nav-lights.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-nav-lights.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-nav-lights.mesh.nav-base",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Nav_Base",
+      "nodeName": "Nav_Base",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.greeble-nav-lights.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-nav-lights.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-nav-lights.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_nav_lights",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-nav-lights.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "79724232f71f3d04e65560841f4aa6c76f67ae4329d2992a400230a38f8f38e8"
+    },
+    "sourceGlb": {
+      "bytes": 253552,
+      "sha256": "3ae9b0fdf7b57ceeec123b7c96b1cd2cf0f8a955b21f8750e4815f7666207fd8",
+      "uri": "greeble_nav_lights.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 289756,
+    "sha256": "72756d5993cbe6af399d039897fb1ae5ae29029e3fbc7a30bcad5cc9860a77c9",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.5,
+        0.13116280687972903,
+        0.03741919994354248
+      ],
+      "max": [
+        3.299999952316284,
+        0.2724205255508423,
+        1.2749115228652954
+      ],
+      "min": [
+        -0.2999999523162842,
+        -0.01009491179138422,
+        -1.2000731229782104
+      ],
+      "size": [
+        3.5999999046325684,
+        0.2825154373422265,
+        2.474984645843506
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 7,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 12,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_nav_lights_Material_Accent_Merged",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "greeble_nav_lights_Material_Mechanical_Merged",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Nav_Base",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.299999952316284,
+          0.2724205255508423,
+          1.2749115228652954
+        ],
+        "min": [
+          -0.2999999523162842,
+          -0.01009491179138422,
+          -1.2000731229782104
+        ]
+      },
+      "id": "sf.render.greeble-nav-lights.body",
+      "nodeIds": [
+        "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged",
+        "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
+        "sf.render.greeble-nav-lights.mesh.nav-base",
+        "sf.render.greeble-nav-lights.root"
+      ]
+    }
+  ]
+}

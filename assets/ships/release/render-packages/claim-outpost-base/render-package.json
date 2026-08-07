@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b4ed0539cde0a7b334099a1692fbf153e476de73b5ad2979674c1ac360f52cb8",
+  "contentHash": "2444e1c08d58dc228763576e4159afbe39e473b0559ea2a0263ce8fc1ac3c51c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1748,8 +1748,8 @@
       "uri": "place_claim_outpost_base.glb"
     },
     "sourceManifest": {
-      "bytes": 17993,
-      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
       "uri": "pilots.json"
     }
   },

@@ -1,0 +1,741 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.weapon-railgun.anchor.socket-muzzle",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Muzzle",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.weapon-railgun.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.weapon-railgun",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "1af577a571181f67be435639da88dae85e4d954d536d4bb419a46b1110f8498b",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          6.100000011920929,
+          0.05998718738555908,
+          0.20001220703125
+        ],
+        "min": [
+          5.499999988079071,
+          -0.05998718738555908,
+          -0.20001220703125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98f8b65218409a5797a9b5da93a540f72a60c40172ff25f045a37476fe3d1106",
+      "id": "sf.render.weapon-railgun.mesh.rail-accent-slit.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Rail_Accent_Slit",
+      "nodeId": "sf.render.weapon-railgun.mesh.rail-accent-slit",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          2,
+          0.4500106871128082,
+          0.4500106871128082
+        ],
+        "min": [
+          -0.20000001788139343,
+          -0.4500106871128082,
+          -0.4500106871128082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6caa27ca0ba279fabc2fcf4bec278ac3be0b76d955a832061061a5535a0ed05",
+      "id": "sf.render.weapon-railgun.mesh.rail-breech.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
+      "materialPipelineKey": "opaque",
+      "meshName": "Rail_Breech",
+      "nodeId": "sf.render.weapon-railgun.mesh.rail-breech",
+      "primitiveIndex": 0,
+      "vertexCount": 130
+    },
+    {
+      "bounds": {
+        "max": [
+          4.543301105499268,
+          0.3699793517589569,
+          0.3699793517589569
+        ],
+        "min": [
+          1.756698727607727,
+          -0.3699793517589569,
+          -0.3699793517589569
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1a65a64a262ee9dd04f38809646fcc424e4a83b939ab31fe3164eb26e56a74c",
+      "id": "sf.render.weapon-railgun.mesh.weapon-railgun-material-accent-merged.primitive.0",
+      "indexCount": 2880,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "weapon_railgun_Material_Accent_Merged",
+      "nodeId": "sf.render.weapon-railgun.mesh.weapon-railgun-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 480
+    },
+    {
+      "bounds": {
+        "max": [
+          5.050000190734863,
+          0.5199767351150513,
+          0.4628043472766876
+        ],
+        "min": [
+          0.1550000011920929,
+          -0.17497676610946655,
+          -0.4628043472766876
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8233eb6b65829342a97b071e2628810cf546d0c56dc2f562fc76e8a546bf5304",
+      "id": "sf.render.weapon-railgun.mesh.weapon-railgun-material-mechanical-merged.primitive.0",
+      "indexCount": 1764,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "weapon_railgun_Material_Mechanical_Merged",
+      "nodeId": "sf.render.weapon-railgun.mesh.weapon-railgun-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 348
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
+      "id": "material:20b7fe243667c6ee80e25834",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.weapon-railgun.mesh.rail-accent-slit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Rail_Accent_Slit",
+      "nodeName": "Rail_Accent_Slit",
+      "nodePath": [
+        0,
+        7,
+        0
+      ],
+      "parentId": "sf.render.weapon-railgun.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-railgun.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.8,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-railgun.mesh.rail-breech",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Rail_Breech",
+      "nodeName": "Rail_Breech",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-railgun.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-railgun.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-railgun.mesh.weapon-railgun-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_railgun_Material_Accent_Merged",
+      "nodeName": "weapon_railgun_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.weapon-railgun.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-railgun.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-railgun.mesh.weapon-railgun-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_railgun_Material_Mechanical_Merged",
+      "nodeName": "weapon_railgun_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.weapon-railgun.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-railgun.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-railgun.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "weapon_railgun",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-railgun.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4c4442e0b2afe164b0dfeb43d48bebf7bbcce6f6b54fd801cd0e0c5e5d8435ad"
+    },
+    "sourceGlb": {
+      "bytes": 396144,
+      "sha256": "a003c6efc15c56b5aa92d06d01ff98e7d6456a2141cd0defa0218c614b334179",
+      "uri": "weapon_railgun.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 411052,
+    "sha256": "014b4975886a1325c87faea4db970bb4bd59d2fee5b3e3177fc125a12ae1430e",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.9499999970197677,
+        0.03498302400112152,
+        0
+      ],
+      "max": [
+        6.100000011920929,
+        0.5199767351150513,
+        0.4628043472766876
+      ],
+      "min": [
+        -0.20000001788139343,
+        -0.4500106871128082,
+        -0.4628043472766876
+      ],
+      "size": [
+        6.300000029802322,
+        0.9699874222278595,
+        0.9256086945533752
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.8,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 8,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Muzzle",
+        "planIndex": 10,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "weapon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Muzzle",
+            "recordIds": [
+              "sf.render.weapon-railgun.anchor.socket-muzzle"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Rail_Breech",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.8,
+          0,
+          0,
+          1
+        ],
+        "name": "Rail_Accent_Slit",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_railgun_Material_Mechanical_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_railgun_Material_Accent_Merged",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "weapon",
+    "url": "assets/ships/release/parts/weapons/weapon_railgun.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.100000011920929,
+          0.5199767351150513,
+          0.4628043472766876
+        ],
+        "min": [
+          -0.20000001788139343,
+          -0.4500106871128082,
+          -0.4628043472766876
+        ]
+      },
+      "id": "sf.render.weapon-railgun.body",
+      "nodeIds": [
+        "sf.render.weapon-railgun.mesh.rail-accent-slit",
+        "sf.render.weapon-railgun.mesh.rail-breech",
+        "sf.render.weapon-railgun.mesh.weapon-railgun-material-accent-merged",
+        "sf.render.weapon-railgun.mesh.weapon-railgun-material-mechanical-merged",
+        "sf.render.weapon-railgun.root"
+      ]
+    }
+  ]
+}

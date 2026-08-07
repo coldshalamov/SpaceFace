@@ -1,0 +1,1183 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-starter.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.199999809265137,
+        0,
+        -0.05000000074505806,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.hull-starter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.199999809265137,
+        0,
+        -0.05000000074505806,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-starter.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        0,
+        -0.10000000149011612,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.hull-starter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.300000190734863,
+        0,
+        -0.10000000149011612,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-starter",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "02be4d9c4363fe8a085a7c692a9bee9ab0cfa86227ae0ce0d52c886982ed5d5d",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.4744272232055664,
+          1.0043256282806396,
+          0.034747086465358734
+        ],
+        "min": [
+          0.3744271397590637,
+          0.9042859673500061,
+          -0.03521355241537094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d719bb8ee2ca42af2cd69d334fc415cdbc8e1d3c100c432e2afb54b3af1bd9f3",
+      "id": "sf.render.hull-starter.mesh.lod0-det-nav-heat-band.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "68be0a8338a3fa6d0b2f6ce903e6ad523d7ee95854c4426d3a7513967ee2aebd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-starter.mesh.lod0-det-nav-heat-band",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.066176414489746,
+          1.5577402114868164
+        ],
+        "min": [
+          -4.373514652252197,
+          -0.5122681260108948,
+          -1.5582066774368286
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6820a0ef6a0f52237ca9dbced2116bebfde4cd5aa76f61be6e9650bdcfd013c",
+      "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.0",
+      "indexCount": 16608,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh",
+      "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6004
+    },
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.0814881324768066,
+          0.6535130739212036
+        ],
+        "min": [
+          -5.584476470947266,
+          -0.27793142199516296,
+          -0.6626340746879578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "412c5fb473d4fde4b0c820d2ccdf449c7b67cf24020c5bfafdc83e8ab591dd61",
+      "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.1",
+      "indexCount": 5751,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh",
+      "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
+      "primitiveIndex": 1,
+      "vertexCount": 2110
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.047806262969971,
+          0.34452566504478455,
+          0.3779011070728302
+        ],
+        "min": [
+          -5.619760036468506,
+          -0.29990047216415405,
+          -0.36771589517593384
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "866646e7b61d7f05da1b8dd0b10e2e218bf14358ea101f786f6c6fd429186aed",
+      "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.2",
+      "indexCount": 6165,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh",
+      "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
+      "primitiveIndex": 2,
+      "vertexCount": 2054
+    },
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.0649296045303345,
+          1.5571378469467163
+        ],
+        "min": [
+          -4.373514652252197,
+          -0.5135149359703064,
+          -1.5601403713226318
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76e70ccce1341101e02db41331625f8b3f36bee3eb045a61dd166eb55a634330",
+      "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.0",
+      "indexCount": 7335,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh.001",
+      "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3453
+    },
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.0789098739624023,
+          0.7228124141693115
+        ],
+        "min": [
+          -5.584476470947266,
+          -0.27784669399261475,
+          -0.7191576361656189
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cca2680261c4e8af3909347b946986fa792297141a1437da5e3a869df50ff547",
+      "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.1",
+      "indexCount": 2538,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh.001",
+      "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
+      "primitiveIndex": 1,
+      "vertexCount": 1203
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.047806262969971,
+          0.344610333442688,
+          0.3779645264148712
+        ],
+        "min": [
+          -5.619760036468506,
+          -0.2998158037662506,
+          -0.3676524758338928
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "847dd155b3da253978c36bfa3ffdfc2b063576cd1ad7ba7af887d44a64fdf965",
+      "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.2",
+      "indexCount": 2103,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh.001",
+      "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
+      "primitiveIndex": 2,
+      "vertexCount": 929
+    },
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.0778191089630127,
+          1.5578739643096924
+        ],
+        "min": [
+          -5.640317916870117,
+          -0.5122713446617126,
+          -1.558609962463379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01ce00169763cea00b8c6b10d617e9ec2aed56f36f7eb60c012e4b58f16567e8",
+      "id": "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette.primitive.0",
+      "indexCount": 3114,
+      "indexed": true,
+      "materialHash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "materialPipelineKey": "opaque",
+      "meshName": "hull_starter_mesh.002",
+      "nodeId": "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 1801
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "68be0a8338a3fa6d0b2f6ce903e6ad523d7ee95854c4426d3a7513967ee2aebd",
+      "id": "material:68be0a8338a3fa6d0b2f6ce9",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_starter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f9de32f363ac2fc3cc0f61b2bf96556ba5eb18b88d8cb345dc7beb54fbe9530c",
+      "id": "material:f9de32f363ac2fc3cc0f61b2",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_starter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_starter_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-starter.mesh.lod0-det-nav-heat-band",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_nav_heat_band",
+      "nodeName": "LOD0_DET_nav_heat_band",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-starter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-starter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_STARTER_MAIN",
+      "nodeName": "LOD0_HULL_STARTER_MAIN",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-starter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-starter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_STARTER_SILHOUETTE",
+      "nodeName": "LOD1_HULL_STARTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-starter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-starter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_STARTER_SILHOUETTE",
+      "nodeName": "LOD2_HULL_STARTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-starter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-starter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-starter.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_STARTER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-starter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "47e6bf09b3d18322805c82eec334c0b4aef88d9269082d229d913ce1fa1a4fba"
+    },
+    "sourceGlb": {
+      "bytes": 664528,
+      "sha256": "17b1e2d621bc3a2175e683084ff72796d4c37206575532a931b899e2fafec2e6",
+      "uri": "hull_starter.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1039316,
+    "sha256": "c5200bf7ea0906d9a8933c526d2329dc22ad23bd8af5f8e2196041d8fda74f91",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.17654967308044434,
+        0.2839865982532501,
+        -0.0011332035064697266
+      ],
+      "max": [
+        5.2872185707092285,
+        1.0814881324768066,
+        1.5578739643096924
+      ],
+      "min": [
+        -5.640317916870117,
+        -0.5135149359703064,
+        -1.5601403713226318
+      ],
+      "size": [
+        10.927536487579346,
+        1.595003068447113,
+        3.118014335632324
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          -0.6600000262260437,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 11,
+        "tags": {
+          "mount": "cockpit",
+          "mountKey": "cockpit"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.699999809265137,
+          -0.6200000047683716,
+          -0.10000000149011612,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 12,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.699999809265137,
+          0.6200000047683716,
+          -0.10000000149011612,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 13,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.800000011920929,
+          -1.7000000476837158,
+          -0.05000000074505806,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 14,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.800000011920929,
+          1.7000000476837158,
+          -0.05000000074505806,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 15,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.199999809265137,
+          0,
+          -0.05000000074505806,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-starter.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.300000190734863,
+          0,
+          -0.10000000149011612,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-starter.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 7
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_nav_heat_band",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh_2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh001",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh001_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_starter_mesh001_2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HULL_STARTER_SILHOUETTE",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_starter.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.2872185707092285,
+          1.0814881324768066,
+          1.5578739643096924
+        ],
+        "min": [
+          -5.640317916870117,
+          -0.5135149359703064,
+          -1.5601403713226318
+        ]
+      },
+      "id": "sf.render.hull-starter.body",
+      "nodeIds": [
+        "sf.render.hull-starter.mesh.lod0-det-nav-heat-band",
+        "sf.render.hull-starter.mesh.lod0-hull-starter-main",
+        "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
+        "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette",
+        "sf.render.hull-starter.root"
+      ]
+    }
+  ]
+}

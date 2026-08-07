@@ -1,0 +1,1743 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-freighter.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.hull-freighter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0.03999999910593033,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.hull-freighter.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-freighter",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "dd991edeaa99aa4130ec7bcdfe1ee21d7ca67d353ec6a7c9b9b0b748e8526ce9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.4249999523162842,
+          2.2029807567596436,
+          0.059987179934978485
+        ],
+        "min": [
+          -3.7749998569488525,
+          2.0230190753936768,
+          -0.059987179934978485
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91829ca8f38198a93e784d5e4b3926c4103fbd584681d8aec33c64d372f65ef6",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "5d9c4bad4c54903f2c13f784e850d11b9b3ee4d1d8b3a51f5b0eca959b115f8a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5,
+          1.8729925155639648,
+          1.2250053882598877
+        ],
+        "min": [
+          1.1500000953674316,
+          1.753007411956787,
+          0.9749947190284729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "727523d8fd4a5e529bb5124c34973c4ceaf6fb10cf0320d7921eb70d1d8e8b1f",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-container-latch.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "5d9c4bad4c54903f2c13f784e850d11b9b3ee4d1d8b3a51f5b0eca959b115f8a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-container-latch",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.625,
+          0.5879626274108887,
+          -1.9700918197631836
+        ],
+        "min": [
+          -4.125,
+          0.23803739249706268,
+          -2.0299081802368164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4eb9e39b8bd6cb62eb52cf11406f005c31a214e9ae4eb227cda9325a2918cff5",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-dock-scrape.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-dock-scrape",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.1750121116638184,
+          0.7880160808563232,
+          1.899999976158142
+        ],
+        "min": [
+          -4.974987506866455,
+          0.5379840135574341,
+          -1.899999976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62615e89de46243cadba32c02437011d4bd7ed69be5aee4ef889443f26959f8a",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.42500001192092896,
+          1.2880237102508545,
+          1.8899915218353271
+        ],
+        "min": [
+          -1.3250000476837158,
+          0.7379763722419739,
+          1.8100085258483887
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fe9d99872b7be986f62d4396af319b1d8694a7d52e261e7db6bfed035fd173cd",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-field-weld.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "5d9c4bad4c54903f2c13f784e850d11b9b3ee4d1d8b3a51f5b0eca959b115f8a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-field-weld",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.32499998807907104,
+          1.3630319833755493,
+          -2.0300042629241943
+        ],
+        "min": [
+          -1.0750000476837158,
+          0.4629679024219513,
+          -2.069995641708374
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ec47febfb40abea901d82254ecc2a8b1867f05d4fd58ffa8739f26be9f318c0",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.875,
+          2.452948808670044,
+          0.06982634961605072
+        ],
+        "min": [
+          -2.625,
+          2.373051404953003,
+          -0.06982634961605072
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3abbc506ba87c65c64ff624c8bf60cf13c1b39feae86015e3aaea6182f265393",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-rust-stripe.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "b829d0168ea572d3266678e9f2234b0099e345c39c6cfd74eb93c13a1a9fc478",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-rust-stripe",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          3.000063180923462,
+          1.9380207061767578,
+          1.2999999523162842
+        ],
+        "min": [
+          2.8499367237091064,
+          1.387979507446289,
+          -1.2999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f1f548f1307e65f1107f5b8a61b203f6e6270458a0997834dbe4fd26e459c695",
+      "id": "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "5d9c4bad4c54903f2c13f784e850d11b9b3ee4d1d8b3a51f5b0eca959b115f8a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          5.800624847412109,
+          2.2752954959869385,
+          2.120166778564453
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1502952575683594,
+          -2.120166778564453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95247216f1febc5b36204e1426212101dc22b35168016efb4d292f130098d9e6",
+      "id": "sf.render.hull-freighter.mesh.lod0-hull-freighter-main.primitive.0",
+      "indexCount": 7152,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FREIGHTER",
+      "nodeId": "sf.render.hull-freighter.mesh.lod0-hull-freighter-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6101
+    },
+    {
+      "bounds": {
+        "max": [
+          5.800624847412109,
+          2.2752954959869385,
+          2.120166778564453
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1502952575683594,
+          -2.120166778564453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77df9468424df58f40ae95e1c63f638b118e3362fcbfbd38132d8e7ce73f4f2c",
+      "id": "sf.render.hull-freighter.mesh.lod1-hull-freighter-silhouette.primitive.0",
+      "indexCount": 3933,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FREIGHTER.003",
+      "nodeId": "sf.render.hull-freighter.mesh.lod1-hull-freighter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3154
+    },
+    {
+      "bounds": {
+        "max": [
+          5.824155807495117,
+          2.2921838760375977,
+          2.1920342445373535
+        ],
+        "min": [
+          -5.501042366027832,
+          -1.0967001914978027,
+          -2.1853463649749756
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a591883e0decb7b54860a74fa4db4d33c5a8d8fe287ada390632386d7d0fbfab",
+      "id": "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette.primitive.0",
+      "indexCount": 186,
+      "indexed": true,
+      "materialHash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_FREIGHTER.004",
+      "nodeId": "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 186
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5d9c4bad4c54903f2c13f784e850d11b9b3ee4d1d8b3a51f5b0eca959b115f8a",
+      "id": "material:5d9c4bad4c54903f2c13f784",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_freighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "660a846e49cbc32fc1cfc2aea4768021cf26036598c4320f1385afbe6bf8a6c5",
+      "id": "material:660a846e49cbc32fc1cfc2ae",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_freighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b829d0168ea572d3266678e9f2234b0099e345c39c6cfd74eb93c13a1a9fc478",
+      "id": "material:b829d0168ea572d3266678e9",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_freighter_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_freighter_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_cargo_bay_rim",
+      "nodeName": "LOD0_DET_cargo_bay_rim",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-container-latch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_container_latch",
+      "nodeName": "LOD0_DET_container_latch",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-dock-scrape",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_dock_scrape",
+      "nodeName": "LOD0_DET_dock_scrape",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_exhaust_soot",
+      "nodeName": "LOD0_DET_exhaust_soot",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-field-weld",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_field_weld",
+      "nodeName": "LOD0_DET_field_weld",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_manifest_stencil",
+      "nodeName": "LOD0_DET_manifest_stencil",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-rust-stripe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_rust_stripe",
+      "nodeName": "LOD0_DET_rust_stripe",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_superstructure_rib",
+      "nodeName": "LOD0_DET_superstructure_rib",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod0-hull-freighter-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_FREIGHTER_MAIN",
+      "nodeName": "LOD0_HULL_FREIGHTER_MAIN",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod1-hull-freighter-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_FREIGHTER_SILHOUETTE",
+      "nodeName": "LOD1_HULL_FREIGHTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_FREIGHTER_SILHOUETTE",
+      "nodeName": "LOD2_HULL_FREIGHTER_SILHOUETTE",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hull-freighter.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-freighter.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_FREIGHTER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-freighter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "43d011ac1beec98bce204df03d3963432fb7cfd5959769cb9df8d3283b0a92c9"
+    },
+    "sourceGlb": {
+      "bytes": 583128,
+      "sha256": "965bae0970416e4ed78582b927b6dde232e8237ff22efb25d7db6b83780df361",
+      "uri": "hull_freighter.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 728864,
+    "sha256": "fa5869989c97b5067b353f7965513cf298bf42f8726b2131d0e72e033cca6eac",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.13707780838012695,
+        0.6513267755508423,
+        0.003343939781188965
+      ],
+      "max": [
+        5.824155807495117,
+        2.452948808670044,
+        2.1920342445373535
+      ],
+      "min": [
+        -5.550000190734863,
+        -1.1502952575683594,
+        -2.1853463649749756
+      ],
+      "size": [
+        11.37415599822998,
+        3.6032440662384033,
+        4.377380609512329
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.7599999904632568,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 12,
+        "tags": {
+          "mount": "cockpit",
+          "mountKey": "cockpit"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          -0.7139999866485596,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 13,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.05999999865889549,
+          0.7139999866485596,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 14,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          -1.9320000410079956,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 15,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          0.03999999910593033,
+          1.9320000410079956,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 16,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.71999979019165,
+          0.03999999910593033,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-freighter.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.71999979019165,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-freighter.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_cargo_bay_rim",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_container_latch",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_dock_scrape",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_exhaust_soot",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_field_weld",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_manifest_stencil",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_rust_stripe",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_superstructure_rib",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HULL_FREIGHTER_MAIN",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_FREIGHTER_SILHOUETTE",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HULL_FREIGHTER_SILHOUETTE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_freighter.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.824155807495117,
+          2.452948808670044,
+          2.1920342445373535
+        ],
+        "min": [
+          -5.550000190734863,
+          -1.1502952575683594,
+          -2.1853463649749756
+        ]
+      },
+      "id": "sf.render.hull-freighter.body",
+      "nodeIds": [
+        "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim",
+        "sf.render.hull-freighter.mesh.lod0-det-container-latch",
+        "sf.render.hull-freighter.mesh.lod0-det-dock-scrape",
+        "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot",
+        "sf.render.hull-freighter.mesh.lod0-det-field-weld",
+        "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil",
+        "sf.render.hull-freighter.mesh.lod0-det-rust-stripe",
+        "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib",
+        "sf.render.hull-freighter.mesh.lod0-hull-freighter-main",
+        "sf.render.hull-freighter.mesh.lod1-hull-freighter-silhouette",
+        "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette",
+        "sf.render.hull-freighter.root"
+      ]
+    }
+  ]
+}

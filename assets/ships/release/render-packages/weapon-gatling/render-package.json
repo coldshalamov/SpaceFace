@@ -1,0 +1,1217 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.weapon-gatling.anchor.socket-muzzle",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Muzzle",
+      "nodePath": [
+        0,
+        5,
+        3
+      ],
+      "parentNodeId": "sf.render.weapon-gatling.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.weapon-gatling",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "d4d28aed05cf2787f4e9e072ed6f525fb9c8b10ae0d56cab97732a5dfe9cd8f9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.5299999713897705,
+          -0.12501905858516693,
+          -0.49998629093170166
+        ],
+        "min": [
+          2.0299999713897705,
+          -0.3749809265136719,
+          -0.8000137209892273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5973ceee70711ba85451b8ceced26b6ffef475ed66752ab33448fd2ccf25d273",
+      "id": "sf.render.weapon-gatling.mesh.det-ammo-feed.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.weapon-gatling.mesh.det-ammo-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          8.899991989135742,
+          0.35000014305114746,
+          0.35000014305114746
+        ],
+        "min": [
+          8.820008277893066,
+          -0.35000014305114746,
+          -0.35000014305114746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59a145bf6eb8f9fc38227450a25e4d5391c063f1bbd7d1e96084febeb10d1a98",
+      "id": "sf.render.weapon-gatling.mesh.det-heat-disc.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "38c2b103a1576f766e9e08ab7fbbf1c8a9756bd1a3d99cff83ae2e3f3a546676",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.weapon-gatling.mesh.det-heat-disc",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.329999923706055,
+          -0.7900311350822449,
+          0.5749229192733765
+        ],
+        "min": [
+          1.8299999237060547,
+          -0.909968912601471,
+          0.42507705092430115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6fa3fe5b0a3a88df96686d5ac0db91d6c7765505e230a8f2f61c49a12baf9642",
+      "id": "sf.render.weapon-gatling.mesh.det-mount-rail.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.weapon-gatling.mesh.det-mount-rail",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9800000190734863,
+          0.2250007688999176,
+          -0.07998475432395935
+        ],
+        "min": [
+          2.5799999237060547,
+          0.17499923706054688,
+          -0.28001531958580017
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6869e3aab1d604bf5c9ae507ceea16be05bac43f80edcdf4cb57d870d0642d5",
+      "id": "sf.render.weapon-gatling.mesh.det-scuff-plate.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.weapon-gatling.mesh.det-scuff-plate",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.5,
+          0.3156834542751312,
+          0.3109225928783417
+        ],
+        "min": [
+          1.5,
+          -0.3156834542751312,
+          -0.3109225928783417
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c1a7c56b33ae5ae9742e61d0395a3c827a228a9ae7003a6f6a4bb32c65e7049",
+      "id": "sf.render.weapon-gatling.mesh.gatling-barrel-cluster.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Gatling_Barrel_Cluster",
+      "nodeId": "sf.render.weapon-gatling.mesh.gatling-barrel-cluster",
+      "primitiveIndex": 0,
+      "vertexCount": 210
+    },
+    {
+      "bounds": {
+        "max": [
+          3.689635753631592,
+          0.28151506185531616,
+          0.27451804280281067
+        ],
+        "min": [
+          1.8103642463684082,
+          -0.28151506185531616,
+          -0.27451804280281067
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f36b169c295bb7ec964429d7daf5372be313025bf4c80854ed583177632fc49c",
+      "id": "sf.render.weapon-gatling.mesh.gatling-coils-merged.primitive.0",
+      "indexCount": 6300,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Gatling_Coils_Merged",
+      "nodeId": "sf.render.weapon-gatling.mesh.gatling-coils-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1280
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7999999523162842,
+          0.5000762939453125,
+          0.5000762939453125
+        ],
+        "min": [
+          -0.19999998807907104,
+          -0.5000762939453125,
+          -0.5000762939453125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "223265272ca6049b84253d2e5f1b26325ac6e52c19a9e54e61c183b925af0b1e",
+      "id": "sf.render.weapon-gatling.mesh.gatling-housing.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Gatling_Housing",
+      "nodeId": "sf.render.weapon-gatling.mesh.gatling-housing",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          4.7599986754357815,
+          0.19848386943340302,
+          0.19848386943340302
+        ],
+        "min": [
+          4.640000943094492,
+          -0.19848386943340302,
+          -0.19848386943340302
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7abf12472e5ca88be2a25f3a137b21e765c65a943d44a63326116da624abe9da",
+      "id": "sf.render.weapon-gatling.mesh.gatling-muzzle.primitive.0",
+      "indexCount": 624,
+      "indexed": true,
+      "materialHash": "38c2b103a1576f766e9e08ab7fbbf1c8a9756bd1a3d99cff83ae2e3f3a546676",
+      "materialPipelineKey": "opaque",
+      "meshName": "Gatling_Muzzle",
+      "nodeId": "sf.render.weapon-gatling.mesh.gatling-muzzle",
+      "primitiveIndex": 0,
+      "vertexCount": 195
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "38c2b103a1576f766e9e08ab7fbbf1c8a9756bd1a3d99cff83ae2e3f3a546676",
+      "id": "material:38c2b103a1576f766e9e08ab",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "weapon_gatling_accent_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_accent_normal_1k",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a740070bfabfcea617bb2bb1af0f6bc076ae1c9b104dd764b631458f6e2dcbe8",
+      "id": "material:a740070bfabfcea617bb2bb1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "weapon_gatling_mechanical_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_mechanical_normal_1k",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "weapon_gatling_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.weapon-gatling.mesh.det-ammo-feed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_ammo_feed",
+      "nodeName": "DET_ammo_feed",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.det-heat-disc",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_heat_disc",
+      "nodeName": "DET_heat_disc",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.det-mount-rail",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_mount_rail",
+      "nodeName": "DET_mount_rail",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.det-scuff-plate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_scuff_plate",
+      "nodeName": "DET_scuff_plate",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.gatling-barrel-cluster",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gatling_Barrel_Cluster",
+      "nodeName": "Gatling_Barrel_Cluster",
+      "nodePath": [
+        0,
+        5,
+        0
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.gatling-coils-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gatling_Coils_Merged",
+      "nodeName": "Gatling_Coils_Merged",
+      "nodePath": [
+        0,
+        5,
+        1
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.gatling-housing",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gatling_Housing",
+      "nodeName": "Gatling_Housing",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.mesh.gatling-muzzle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Gatling_Muzzle",
+      "nodeName": "Gatling_Muzzle",
+      "nodePath": [
+        0,
+        5,
+        2,
+        0
+      ],
+      "parentId": "sf.render.weapon-gatling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.699999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-gatling.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "weapon_gatling",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-gatling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "5b898d1603d292c12065383412da86523be679184a3ea02af936462ca0b4c1aa"
+    },
+    "sourceGlb": {
+      "bytes": 5711308,
+      "sha256": "56fe0abe8bf5251d81fb288fe29fb1dab0f0f2b64005c23722714d92fa45f679",
+      "uri": "weapon_gatling.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 5759992,
+    "sha256": "4279190ba822c7d454600d6134f59c21ef60260c63a7d866d29fa90fb96a173b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        4.349996000528336,
+        -0.20494630932807922,
+        -0.11254540085792542
+      ],
+      "max": [
+        8.899991989135742,
+        0.5000762939453125,
+        0.5749229192733765
+      ],
+      "min": [
+        -0.19999998807907104,
+        -0.909968912601471,
+        -0.8000137209892273
+      ],
+      "size": [
+        9.099991977214813,
+        1.4100452065467834,
+        1.3749366402626038
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Spin",
+        "planIndex": 6,
+        "tags": {},
+        "userData": {
+          "axis": [
+            1,
+            0,
+            0
+          ],
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.699999809265137,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 9,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Muzzle",
+        "planIndex": 11,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "weapon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Muzzle",
+            "recordIds": [
+              "sf.render.weapon-gatling.anchor.socket-muzzle"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "mechanical": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_ammo_feed",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_heat_disc",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_mount_rail",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_scuff_plate",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Gatling_Housing",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          0,
+          0,
+          1
+        ],
+        "name": "Gatling_Barrel_Cluster",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.5,
+          0,
+          0,
+          1
+        ],
+        "name": "Gatling_Coils_Merged",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.699999809265137,
+          0,
+          0,
+          1
+        ],
+        "name": "Gatling_Muzzle",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "weapon",
+    "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.899991989135742,
+          0.5000762939453125,
+          0.5749229192733765
+        ],
+        "min": [
+          -0.19999998807907104,
+          -0.909968912601471,
+          -0.8000137209892273
+        ]
+      },
+      "id": "sf.render.weapon-gatling.body",
+      "nodeIds": [
+        "sf.render.weapon-gatling.mesh.det-ammo-feed",
+        "sf.render.weapon-gatling.mesh.det-heat-disc",
+        "sf.render.weapon-gatling.mesh.det-mount-rail",
+        "sf.render.weapon-gatling.mesh.det-scuff-plate",
+        "sf.render.weapon-gatling.mesh.gatling-barrel-cluster",
+        "sf.render.weapon-gatling.mesh.gatling-coils-merged",
+        "sf.render.weapon-gatling.mesh.gatling-housing",
+        "sf.render.weapon-gatling.mesh.gatling-muzzle",
+        "sf.render.weapon-gatling.root"
+      ]
+    }
+  ]
+}

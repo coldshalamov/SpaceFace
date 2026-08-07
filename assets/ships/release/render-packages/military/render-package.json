@@ -1,0 +1,4039 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.military.anchor.socket-dock-approach",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        23.989999771118164,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentNodeId": "sf.render.military.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        23.989999771118164,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.979999542236328,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentNodeId": "sf.render.military.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.979999542236328,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentNodeId": "sf.render.military.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.military",
+  "collisions": [
+    {
+      "id": "sf.render.military.collision",
+      "nodeId": "sf.render.military.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "43e8c6f9a8e052fcf090fd0c8220d963edd842ae77e90765686bf00e312cacf9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          33.50398254394531,
+          34.50652313232422,
+          14.828527450561523
+        ],
+        "min": [
+          -33.50398254394531,
+          -34.50652313232422,
+          -14.828527450561523
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d522de0fdcf41e398cee04b67b6dc3669cbd6daa38eed3e3482804fa1367ba0",
+      "id": "sf.render.military.mesh.collision-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
+      "materialPipelineKey": "non-render",
+      "meshName": "Cube",
+      "nodeId": "sf.render.military.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          33.2509651184082,
+          38.650001525878906,
+          8.14883041381836
+        ],
+        "min": [
+          -40.80096435546875,
+          -35.875,
+          -16.59882926940918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39950d3885eda656b7c378800ea39a19803210685da4411d14e36d7b26cafeff",
+      "id": "sf.render.military.mesh.lod0-station-material-accent.primitive.0",
+      "indexCount": 17604,
+      "indexed": true,
+      "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Accent",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 4552
+    },
+    {
+      "bounds": {
+        "max": [
+          33.02425003051758,
+          40.781158447265625,
+          11.898526191711426
+        ],
+        "min": [
+          -40.299251556396484,
+          -35.01275634765625,
+          -20.737245559692383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9912cb869e92e7c2bcba5f232eb31edf27cfaf0c77f3e78a0c5bcaa313ab14ba",
+      "id": "sf.render.military.mesh.lod0-station-material-alloy.primitive.0",
+      "indexCount": 55992,
+      "indexed": true,
+      "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Alloy",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 14820
+    },
+    {
+      "bounds": {
+        "max": [
+          25.200000762939453,
+          24.90677261352539,
+          11.09853744506836
+        ],
+        "min": [
+          -35,
+          -30.501773834228516,
+          -15.998537063598633
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4bfb616333fe1b1355c1bb4ea44a4c6af97a6077e637e15eb111c4d5e24cc7c7",
+      "id": "sf.render.military.mesh.lod0-station-material-blast.primitive.0",
+      "indexCount": 27072,
+      "indexed": true,
+      "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Blast",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-blast",
+      "primitiveIndex": 0,
+      "vertexCount": 7243
+    },
+    {
+      "bounds": {
+        "max": [
+          33.45000076293945,
+          11.199798583984375,
+          3.4988954067230225
+        ],
+        "min": [
+          -23.299999237060547,
+          -9.799798011779785,
+          -15.948895454406738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e3b38234478c75efd887954a14bebd230ffd4ae4449b79c3d6796a553af4b58",
+      "id": "sf.render.military.mesh.lod0-station-material-dock.primitive.0",
+      "indexCount": 6204,
+      "indexed": true,
+      "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Dock",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-dock",
+      "primitiveIndex": 0,
+      "vertexCount": 1736
+    },
+    {
+      "bounds": {
+        "max": [
+          5.799356460571289,
+          35.25599670410156,
+          7.425991535186768
+        ],
+        "min": [
+          -30.799354553222656,
+          -4.349999904632568,
+          -15.425992012023926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38e1489b04dc0ae607f6979065551f4579cd1477a861a3f1891ac48e09383d7f",
+      "id": "sf.render.military.mesh.lod0-station-material-glass.primitive.0",
+      "indexCount": 17544,
+      "indexed": true,
+      "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Station_Material_Glass",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 4628
+    },
+    {
+      "bounds": {
+        "max": [
+          33.25,
+          33.00138473510742,
+          11.097994804382324
+        ],
+        "min": [
+          -36,
+          -30.001384735107422,
+          -15.997994422912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf07aacd5f88b17936f62bc7f14d3507503890a02ba50672edb33d3079de17e4",
+      "id": "sf.render.military.mesh.lod0-station-material-hull.primitive.0",
+      "indexCount": 32712,
+      "indexed": true,
+      "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Hull",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 8898
+    },
+    {
+      "bounds": {
+        "max": [
+          31.299999237060547,
+          37.115394592285156,
+          12.100289344787598
+        ],
+        "min": [
+          -41,
+          -19.509714126586914,
+          -20.54029083251953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e81636f82cc5da8c4587b63ac9611a1ef87ff7db6131230151fc7c9fce449a55",
+      "id": "sf.render.military.mesh.lod0-station-material-machinery.primitive.0",
+      "indexCount": 22548,
+      "indexed": true,
+      "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Machinery",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-machinery",
+      "primitiveIndex": 0,
+      "vertexCount": 5923
+    },
+    {
+      "bounds": {
+        "max": [
+          -25.498821258544922,
+          8.092818260192871,
+          9.874220848083496
+        ],
+        "min": [
+          -37.00117874145508,
+          -34.751075744628906,
+          -17.87421989440918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c72ca5266f206ecd9bf2cb80caeb5fb07e0cb2b0935e77eef8b602de9ddf50b7",
+      "id": "sf.render.military.mesh.lod0-station-material-radiator.primitive.0",
+      "indexCount": 2820,
+      "indexed": true,
+      "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Radiator",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-radiator",
+      "primitiveIndex": 0,
+      "vertexCount": 760
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.499094009399414,
+          37.2503662109375,
+          0.6527367830276489
+        ],
+        "min": [
+          -40.40481185913086,
+          -6.5,
+          -18.500648498535156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5e504012b896d253cc5102238e932ec832c263629efe00ac1d60aa58921ae5f",
+      "id": "sf.render.military.mesh.lod0-station-material-warm.primitive.0",
+      "indexCount": 3492,
+      "indexed": true,
+      "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Warm",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 968
+    },
+    {
+      "bounds": {
+        "max": [
+          33.349998474121094,
+          13.349213600158691,
+          8.951323509216309
+        ],
+        "min": [
+          -29.600000381469727,
+          -35.89921569824219,
+          -20.8513240814209
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a45365e2a680f9b70ed873664c663bee0dfde12c1662f74b542bd18e99576f20",
+      "id": "sf.render.military.mesh.lod0-station-material-warning.primitive.0",
+      "indexCount": 9588,
+      "indexed": true,
+      "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Warning",
+      "nodeId": "sf.render.military.mesh.lod0-station-material-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 2588
+    },
+    {
+      "bounds": {
+        "max": [
+          33.2509651184082,
+          38.650001525878906,
+          8.14883041381836
+        ],
+        "min": [
+          -40.80096435546875,
+          -35.875,
+          -16.59882926940918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cac902f7744b544ead671c5d47c2adddf564d746fd0392df424a21de8d2f5954",
+      "id": "sf.render.military.mesh.lod1-station-material-accent.primitive.0",
+      "indexCount": 9504,
+      "indexed": true,
+      "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Accent",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 2672
+    },
+    {
+      "bounds": {
+        "max": [
+          33.02625274658203,
+          40.24756622314453,
+          11.897454261779785
+        ],
+        "min": [
+          -40.30125427246094,
+          -34.55000305175781,
+          -20.747587203979492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8921bdcc89c6245ac9060004c45b121dd46edc0fc2009159cf939776aad764ac",
+      "id": "sf.render.military.mesh.lod1-station-material-alloy.primitive.0",
+      "indexCount": 25134,
+      "indexed": true,
+      "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Alloy",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 7232
+    },
+    {
+      "bounds": {
+        "max": [
+          25.200000762939453,
+          24.90677261352539,
+          11.100117683410645
+        ],
+        "min": [
+          -35,
+          -30.501773834228516,
+          -15.600116729736328
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1277a52becd29ef99ec032005bc288bce01e4be79b5bf9a2212795181c8c38eb",
+      "id": "sf.render.military.mesh.lod1-station-material-blast.primitive.0",
+      "indexCount": 9720,
+      "indexed": true,
+      "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Blast",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-blast",
+      "primitiveIndex": 0,
+      "vertexCount": 2880
+    },
+    {
+      "bounds": {
+        "max": [
+          33.45000076293945,
+          11.199798583984375,
+          3.4988954067230225
+        ],
+        "min": [
+          -23.299999237060547,
+          -9.799798011779785,
+          -15.948895454406738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e7533d1a8b63814ac3feec896761e62fcd13aa87ddb7026169165343bcf7c90",
+      "id": "sf.render.military.mesh.lod1-station-material-dock.primitive.0",
+      "indexCount": 2916,
+      "indexed": true,
+      "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Dock",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-dock",
+      "primitiveIndex": 0,
+      "vertexCount": 864
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6506073474884033,
+          35.25599670410156,
+          7.425991535186768
+        ],
+        "min": [
+          -30.80060577392578,
+          -4.349999904632568,
+          -15.425992012023926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc1fa33c03d01fec80fc97c3cc32dbcebab4e1deabaf03c7de8746e5b5c2d4d4",
+      "id": "sf.render.military.mesh.lod1-station-material-glass.primitive.0",
+      "indexCount": 6264,
+      "indexed": true,
+      "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_Station_Material_Glass",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 1782
+    },
+    {
+      "bounds": {
+        "max": [
+          33.25,
+          33.00138473510742,
+          11.097994804382324
+        ],
+        "min": [
+          -36,
+          -30.001384735107422,
+          -15.997994422912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "deb6e3daaf58c85ce682b4d582855c87467fc9f2bb947519b908ff0a1be62827",
+      "id": "sf.render.military.mesh.lod1-station-material-hull.primitive.0",
+      "indexCount": 9396,
+      "indexed": true,
+      "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Hull",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 2788
+    },
+    {
+      "bounds": {
+        "max": [
+          31.299999237060547,
+          36.91303634643555,
+          12.09001636505127
+        ],
+        "min": [
+          -41,
+          -19.509077072143555,
+          -19.050151824951172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41f5538386a31b668d22ea30d165b907e003a812f615e425f04691ad4d82c5ff",
+      "id": "sf.render.military.mesh.lod1-station-material-machinery.primitive.0",
+      "indexCount": 12000,
+      "indexed": true,
+      "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Machinery",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-machinery",
+      "primitiveIndex": 0,
+      "vertexCount": 3326
+    },
+    {
+      "bounds": {
+        "max": [
+          -26.999805450439453,
+          8.096981048583984,
+          9.878983497619629
+        ],
+        "min": [
+          -37.00019454956055,
+          -7.596981048583984,
+          -17.878982543945312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98239fd252311024253972e375eac5ad6af10aa8bf7acc983aca135cf00712c4",
+      "id": "sf.render.military.mesh.lod1-station-material-radiator.primitive.0",
+      "indexCount": 1296,
+      "indexed": true,
+      "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Radiator",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-radiator",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.499751091003418,
+          37.0636100769043,
+          0.6080591678619385
+        ],
+        "min": [
+          -40.32035446166992,
+          -6.5,
+          -18.50079345703125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62ce241964385dad149329d5a33f560e258cd270d6accc705130cc1b2e99324a",
+      "id": "sf.render.military.mesh.lod1-station-material-warm.primitive.0",
+      "indexCount": 1788,
+      "indexed": true,
+      "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Warm",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 532
+    },
+    {
+      "bounds": {
+        "max": [
+          33.349998474121094,
+          13.349213600158691,
+          8.950484275817871
+        ],
+        "min": [
+          -29.600000381469727,
+          -35.89921569824219,
+          -18.700485229492188
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01d125c9552b3722277dc3702d6605985a592cff296f2bcb513481036c3527bc",
+      "id": "sf.render.military.mesh.lod1-station-material-warning.primitive.0",
+      "indexCount": 3888,
+      "indexed": true,
+      "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Warning",
+      "nodeId": "sf.render.military.mesh.lod1-station-material-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 1152
+    },
+    {
+      "bounds": {
+        "max": [
+          33.2509651184082,
+          38.650001525878906,
+          8.14883041381836
+        ],
+        "min": [
+          -40.80096435546875,
+          -35.875,
+          -16.59882926940918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a3b9d53679191c54833f23c556880e191a7e2ea42263bb5c106ceba8d75ec54d",
+      "id": "sf.render.military.mesh.lod2-station-material-accent.primitive.0",
+      "indexCount": 1992,
+      "indexed": true,
+      "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Accent",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 728
+    },
+    {
+      "bounds": {
+        "max": [
+          33.02625274658203,
+          40.24756622314453,
+          11.901201248168945
+        ],
+        "min": [
+          -40.30125427246094,
+          -34.55000305175781,
+          -20.75296974182129
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa4b0fcde845565dc0314e11c11287e3fb82cc39d460204180e349b436129df1",
+      "id": "sf.render.military.mesh.lod2-station-material-alloy.primitive.0",
+      "indexCount": 5220,
+      "indexed": true,
+      "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Alloy",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 1912
+    },
+    {
+      "bounds": {
+        "max": [
+          25.200000762939453,
+          24.90677261352539,
+          7.601090431213379
+        ],
+        "min": [
+          -35,
+          -30.501773834228516,
+          -15.601089477539062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63f135df31b3f15fc437bcadd71732579a64862df018fa5107ff2da9fd8182d6",
+      "id": "sf.render.military.mesh.lod2-station-material-blast.primitive.0",
+      "indexCount": 1848,
+      "indexed": true,
+      "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Blast",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-blast",
+      "primitiveIndex": 0,
+      "vertexCount": 672
+    },
+    {
+      "bounds": {
+        "max": [
+          33.45000076293945,
+          11.199798583984375,
+          3.4988954067230225
+        ],
+        "min": [
+          -23.299999237060547,
+          -9.799798011779785,
+          -15.948895454406738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "382dd000d9eb320bb94df11b9f7f8a3dffd65684488ac48640889f80b653a746",
+      "id": "sf.render.military.mesh.lod2-station-material-dock.primitive.0",
+      "indexCount": 1188,
+      "indexed": true,
+      "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Dock",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-dock",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5514419674873352,
+          35.25599670410156,
+          7.425991535186768
+        ],
+        "min": [
+          -30.801441192626953,
+          -4.349999904632568,
+          -15.425992012023926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "507667a63ebb8c88a1a086f2727cabdf0b8ce731212bbaae9dccacd2ddaa12a2",
+      "id": "sf.render.military.mesh.lod2-station-material-glass.primitive.0",
+      "indexCount": 1416,
+      "indexed": true,
+      "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_Station_Material_Glass",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 482
+    },
+    {
+      "bounds": {
+        "max": [
+          33.25,
+          33.00138473510742,
+          10.650208473205566
+        ],
+        "min": [
+          -36,
+          -30.001384735107422,
+          -15.000208854675293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba1db25dc56578e3a056029c1db68c4a1c6946dd90746998239ea965c5815085",
+      "id": "sf.render.military.mesh.lod2-station-material-hull.primitive.0",
+      "indexCount": 1320,
+      "indexed": true,
+      "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Hull",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 492
+    },
+    {
+      "bounds": {
+        "max": [
+          7.211752891540527,
+          36.91261672973633,
+          12.089312553405762
+        ],
+        "min": [
+          -39.4991569519043,
+          -19.510000228881836,
+          -16.73931121826172
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b3e94784cdd20322de80e4716a67f6b4c707b240351d2061e9917aa9b71f623f",
+      "id": "sf.render.military.mesh.lod2-station-material-machinery.primitive.0",
+      "indexCount": 2688,
+      "indexed": true,
+      "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Machinery",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-machinery",
+      "primitiveIndex": 0,
+      "vertexCount": 884
+    },
+    {
+      "bounds": {
+        "max": [
+          -27.000164031982422,
+          8.100773811340332,
+          9.882691383361816
+        ],
+        "min": [
+          -36.99983596801758,
+          -7.600773334503174,
+          -17.882692337036133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1568513d7c3779dcff764a77e310402fbca4ac13badf295dcbc32fdddadd3613",
+      "id": "sf.render.military.mesh.lod2-station-material-radiator.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Radiator",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-radiator",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.853084564208984,
+          37.0636100769043,
+          0.6080838441848755
+        ],
+        "min": [
+          -36.79969787597656,
+          5.75,
+          -11.200818061828613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8fbb14aabd6ad88087e84004e75c960e2b42c5265b66f0a1e0d342588cd3a5e",
+      "id": "sf.render.military.mesh.lod2-station-material-warm.primitive.0",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Warm",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          33.349998474121094,
+          13.349213600158691,
+          8.95045280456543
+        ],
+        "min": [
+          -29.600000381469727,
+          -35.89921569824219,
+          -14.95045280456543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be432e4ff248d3af158eab84b66b51518e6bf561347e683af59f99a94c9282ff",
+      "id": "sf.render.military.mesh.lod2-station-material-warning.primitive.0",
+      "indexCount": 1056,
+      "indexed": true,
+      "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Warning",
+      "nodeId": "sf.render.military.mesh.lod2-station-material-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
+      "id": "material:07f878d4abed59935b81d278",
+      "name": "Material_Radiator",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_radiator_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_radiator_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_radiator_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_radiator_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
+      "id": "material:2ab0eb86bd48daaa4d890c47",
+      "name": "Material_Dock",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_dock_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_dock_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_dock_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_dock_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
+      "id": "material:3ee86771eb1eef8adfc50a78",
+      "name": "Material_Machinery",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_machinery_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
+      "id": "material:8fd941ca8f9c7ebb2e51bc79",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
+      "id": "material:a61231590ff206bc25276c8a",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
+      "id": "material:aa85152c8df99ffff26d2990",
+      "name": "Material_Alloy",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
+      "id": "material:c2f9a81645a3f07410d2427a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
+      "id": "material:cc3cb294af1f90b4d7bdb456",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
+      "id": "material:e13ace7e2da26099c8ab887f",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_warning_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warning_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warning_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_warning_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
+      "id": "material:f1db6ce648018e283adf458f",
+      "name": "Material_Blast",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mil_blast_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_blast_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_blast_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mil_blast_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.military.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Accent",
+      "nodeName": "LOD0_Station_Material_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Alloy",
+      "nodeName": "LOD0_Station_Material_Alloy",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-blast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Blast",
+      "nodeName": "LOD0_Station_Material_Blast",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-dock",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Dock",
+      "nodeName": "LOD0_Station_Material_Dock",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Station_Material_Glass",
+      "nodeName": "LOD0_Station_Material_Glass",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Hull",
+      "nodeName": "LOD0_Station_Material_Hull",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-machinery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Machinery",
+      "nodeName": "LOD0_Station_Material_Machinery",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-radiator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Radiator",
+      "nodeName": "LOD0_Station_Material_Radiator",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Warm",
+      "nodeName": "LOD0_Station_Material_Warm",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod0-station-material-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Warning",
+      "nodeName": "LOD0_Station_Material_Warning",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Accent",
+      "nodeName": "LOD1_Station_Material_Accent",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Alloy",
+      "nodeName": "LOD1_Station_Material_Alloy",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-blast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Blast",
+      "nodeName": "LOD1_Station_Material_Blast",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-dock",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Dock",
+      "nodeName": "LOD1_Station_Material_Dock",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Station_Material_Glass",
+      "nodeName": "LOD1_Station_Material_Glass",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Hull",
+      "nodeName": "LOD1_Station_Material_Hull",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-machinery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Machinery",
+      "nodeName": "LOD1_Station_Material_Machinery",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-radiator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Radiator",
+      "nodeName": "LOD1_Station_Material_Radiator",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Warm",
+      "nodeName": "LOD1_Station_Material_Warm",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod1-station-material-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Warning",
+      "nodeName": "LOD1_Station_Material_Warning",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Accent",
+      "nodeName": "LOD2_Station_Material_Accent",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Alloy",
+      "nodeName": "LOD2_Station_Material_Alloy",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-blast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Blast",
+      "nodeName": "LOD2_Station_Material_Blast",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-dock",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Dock",
+      "nodeName": "LOD2_Station_Material_Dock",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Station_Material_Glass",
+      "nodeName": "LOD2_Station_Material_Glass",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Hull",
+      "nodeName": "LOD2_Station_Material_Hull",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-machinery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Machinery",
+      "nodeName": "LOD2_Station_Material_Machinery",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-radiator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Radiator",
+      "nodeName": "LOD2_Station_Material_Radiator",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Warm",
+      "nodeName": "LOD2_Station_Material_Warm",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.mesh.lod2-station-material-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Warning",
+      "nodeName": "LOD2_Station_Material_Warning",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.military.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_STATION_MILITARY_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "eed9c1a0833fb6179913582582b2ff212e81f1ae002a5559f04cbb371ba8719e"
+    },
+    "sourceGlb": {
+      "bytes": 4232420,
+      "sha256": "a92f5c2b53262defcbfea27b22ec07ce8d7798f856dbd8e3fc9b12475ea67806",
+      "uri": "place_station_military.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 5551408,
+    "sha256": "d6333afd5a75a41b50dd466ee82ec223d342edf36a9d667f89981890185f91d2",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -3.7480087280273438,
+        2.4409713745117188,
+        -3.0113983154296875
+      ],
+      "max": [
+        33.50398254394531,
+        40.781158447265625,
+        14.828527450561523
+      ],
+      "min": [
+        -41,
+        -35.89921569824219,
+        -20.8513240814209
+      ],
+      "size": [
+        74.50398254394531,
+        76.68037414550781,
+        35.67985153198242
+      ]
+    },
+    "hidden": [
+      1
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          23.989999771118164,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Dock_Approach",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "dock_approach",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Approach",
+            "recordIds": [
+              "sf.render.military.anchor.socket-dock-approach"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -12.979999542236328,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.military.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.military.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "docking": 3,
+      "glass": 3,
+      "hull": 12,
+      "mechanical": 4,
+      "radiator": 3,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 35,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Accent",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Alloy",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Blast",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Dock",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Glass",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Hull",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Machinery",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Radiator",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Warm",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Warning",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Accent",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Alloy",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Blast",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Dock",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Glass",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Hull",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Machinery",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Radiator",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Warm",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Warning",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Accent",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Alloy",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Blast",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Dock",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Glass",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Hull",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Machinery",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Radiator",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warning",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_station_military.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          33.50398254394531,
+          40.781158447265625,
+          14.828527450561523
+        ],
+        "min": [
+          -41,
+          -35.89921569824219,
+          -20.8513240814209
+        ]
+      },
+      "id": "sf.render.military.body",
+      "nodeIds": [
+        "sf.render.military.mesh.collision-hull",
+        "sf.render.military.mesh.lod0-station-material-accent",
+        "sf.render.military.mesh.lod0-station-material-alloy",
+        "sf.render.military.mesh.lod0-station-material-blast",
+        "sf.render.military.mesh.lod0-station-material-dock",
+        "sf.render.military.mesh.lod0-station-material-glass",
+        "sf.render.military.mesh.lod0-station-material-hull",
+        "sf.render.military.mesh.lod0-station-material-machinery",
+        "sf.render.military.mesh.lod0-station-material-radiator",
+        "sf.render.military.mesh.lod0-station-material-warm",
+        "sf.render.military.mesh.lod0-station-material-warning",
+        "sf.render.military.mesh.lod1-station-material-accent",
+        "sf.render.military.mesh.lod1-station-material-alloy",
+        "sf.render.military.mesh.lod1-station-material-blast",
+        "sf.render.military.mesh.lod1-station-material-dock",
+        "sf.render.military.mesh.lod1-station-material-glass",
+        "sf.render.military.mesh.lod1-station-material-hull",
+        "sf.render.military.mesh.lod1-station-material-machinery",
+        "sf.render.military.mesh.lod1-station-material-radiator",
+        "sf.render.military.mesh.lod1-station-material-warm",
+        "sf.render.military.mesh.lod1-station-material-warning",
+        "sf.render.military.mesh.lod2-station-material-accent",
+        "sf.render.military.mesh.lod2-station-material-alloy",
+        "sf.render.military.mesh.lod2-station-material-blast",
+        "sf.render.military.mesh.lod2-station-material-dock",
+        "sf.render.military.mesh.lod2-station-material-glass",
+        "sf.render.military.mesh.lod2-station-material-hull",
+        "sf.render.military.mesh.lod2-station-material-machinery",
+        "sf.render.military.mesh.lod2-station-material-radiator",
+        "sf.render.military.mesh.lod2-station-material-warm",
+        "sf.render.military.mesh.lod2-station-material-warning",
+        "sf.render.military.root"
+      ]
+    }
+  ]
+}

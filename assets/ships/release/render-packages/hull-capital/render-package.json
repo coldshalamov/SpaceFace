@@ -1,0 +1,1852 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-capital.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0,
+        0.03999999910593033,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.hull-capital.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.71999979019165,
+        0,
+        0.03999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0,
+        0.10000000149011612,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.hull-capital.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.71999979019165,
+        0,
+        0.10000000149011612,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-capital",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "62d9813fc4f4300a1cd759b7a01ab7bfff8e1574d2a2a4b5e070941941a06c53",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.7351996898651123,
+          0.7871000170707703,
+          1.6391249895095825
+        ],
+        "min": [
+          -2.6152002811431885,
+          0.390500009059906,
+          1.4628750085830688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f3d3165b01c00b336daa0481b5c7a6421669c1f036a139b551df182297b86d7",
+      "id": "sf.render.hull-capital.mesh.lod0-det-anomaly-vein.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "b4b0c5e6880aa9a5c5b2e4307eaee2726b2317ef855b7a37f0532df2221fc838",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-anomaly-vein",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8422396183013916,
+          -0.13829994201660156,
+          -0.7049999833106995
+        ],
+        "min": [
+          -3.1091201305389404,
+          -1.3280998468399048,
+          -1.4100000858306885
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad0a2cbc868f4fa347bf86dd1a7eed7fdb4d5689fc902c996e09cdb6c8230a3a",
+      "id": "sf.render.hull-capital.mesh.lod0-det-ashfall-oxidation.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-ashfall-oxidation",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1244797706604004,
+          3.232800006866455,
+          0.6345000267028809
+        ],
+        "min": [
+          -0.004480302333831787,
+          1.9107999801635742,
+          0.07050001621246338
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4aa57e2191de882c5d9e8e9cfc1386c32dd7fd8519cc8e0bba06883c909554d",
+      "id": "sf.render.hull-capital.mesh.lod0-det-boss-signal-spire.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "b4b0c5e6880aa9a5c5b2e4307eaee2726b2317ef855b7a37f0532df2221fc838",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-boss-signal-spire",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          3.523519515991211,
+          1.9768998622894287,
+          1.9387500286102295
+        ],
+        "min": [
+          2.676799774169922,
+          0.5227000117301941,
+          -1.9387500286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c8e8f893f5f7bfd60b476b03d39d29ed2d7796d7776e186fde1ac96e62ffdc6",
+      "id": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib-001.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib-001",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5568002462387085,
+          1.9768998622894287,
+          1.9387500286102295
+        ],
+        "min": [
+          -2.403520107269287,
+          0.5227000117301941,
+          -1.9387500286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f29ddd0740794a964e344306d8024fc0c77c06452d41d1d3f6b25d28058695d",
+      "id": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          1.971199631690979,
+          1.8446999788284302,
+          2.890500068664551
+        ],
+        "min": [
+          -0.8512002229690552,
+          1.1836999654769897,
+          2.0444998741149902
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c274a3dd72261bbd66d997263c8d7b1a3795b8bd7582ff75c5bcaf8c03e8b89b",
+      "id": "sf.render.hull-capital.mesh.lod0-det-dread-panel.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-dread-panel",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          4.7935991287231445,
+          -0.0060999393463134766,
+          1.0575000047683716
+        ],
+        "min": [
+          3.382399320602417,
+          -0.534899890422821,
+          0.07049998641014099
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ace93535786c7572e3bc886dc6b74aa73ff9df84446e35f659c1669f0cc7475",
+      "id": "sf.render.hull-capital.mesh.lod0-det-dungeon-port.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "10065c6051084d98d1d7fe603af45b071467e25ef14480dd4f278dda13cfcea2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-dungeon-port",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          3.029599666595459,
+          -1.3941998481750488,
+          0.28200000524520874
+        ],
+        "min": [
+          -1.9096002578735352,
+          -2.1873998641967773,
+          -0.28200000524520874
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c432f4cd272e9beb450cdff1be7cc40790cb124c2aad9492011d0e32fbd3ed58",
+      "id": "sf.render.hull-capital.mesh.lod0-det-vault-keel.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-vault-keel",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.403520107269287,
+          0.5888000130653381,
+          -0.28200000524520874
+        ],
+        "min": [
+          -4.379199981689453,
+          0.19220004975795746,
+          -0.8460000157356262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82cf2d15f079c284246f548af4fe22f3ca4cd459f3a1aebaaefd46abbab4ce0c",
+      "id": "sf.render.hull-capital.mesh.lod0-det-wreck-scar.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-det-wreck-scar",
+      "primitiveIndex": 0,
+      "vertexCount": 174
+    },
+    {
+      "bounds": {
+        "max": [
+          7.615999698638916,
+          3.365232229232788,
+          3.5248777866363525
+        ],
+        "min": [
+          -6.496000289916992,
+          -3.245232105255127,
+          -3.5248777866363525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f6ea89c14489f4fbe5602806bf2f45c2f36de8f8061e0ad4019d0c4c2f6a557c",
+      "id": "sf.render.hull-capital.mesh.lod0-hull-capital-main.primitive.0",
+      "indexCount": 7488,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP.003",
+      "nodeId": "sf.render.hull-capital.mesh.lod0-hull-capital-main",
+      "primitiveIndex": 0,
+      "vertexCount": 6391
+    },
+    {
+      "bounds": {
+        "max": [
+          7.615999698638916,
+          3.365232229232788,
+          3.5248777866363525
+        ],
+        "min": [
+          -6.496000289916992,
+          -3.245232105255127,
+          -3.5248777866363525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9fb715f1e9e50d255f94b6c01c8d427d3979aac7244c15286f74b5ca5612f13f",
+      "id": "sf.render.hull-capital.mesh.lod1-hull-capital-silhouette.primitive.0",
+      "indexCount": 4116,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP.001",
+      "nodeId": "sf.render.hull-capital.mesh.lod1-hull-capital-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 3258
+    },
+    {
+      "bounds": {
+        "max": [
+          7.65512228012085,
+          3.561140537261963,
+          3.696161985397339
+        ],
+        "min": [
+          -6.614248752593994,
+          -3.279813766479492,
+          -4.012704372406006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4837b1a1b2104f1c3ccf422b3cd84bf788c4605face85ae845492e9876c594a5",
+      "id": "sf.render.hull-capital.mesh.lod2-hull-capital-silhouette.primitive.0",
+      "indexCount": 126,
+      "indexed": true,
+      "materialHash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HULL_GUNSHIP.002",
+      "nodeId": "sf.render.hull-capital.mesh.lod2-hull-capital-silhouette",
+      "primitiveIndex": 0,
+      "vertexCount": 124
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "10065c6051084d98d1d7fe603af45b071467e25ef14480dd4f278dda13cfcea2",
+      "id": "material:10065c6051084d98d1d7fe60",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_capital_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_mechanical_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b4b0c5e6880aa9a5c5b2e4307eaee2726b2317ef855b7a37f0532df2221fc838",
+      "id": "material:b4b0c5e6880aa9a5c5b2e430",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_capital_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e5f424432fce053e792fae32e6219045ef4e4eff95e4a68bbe56c2bf8ba01d59",
+      "id": "material:e5f424432fce053e792fae32",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_capital_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_capital_hull_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-anomaly-vein",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_anomaly_vein",
+      "nodeName": "LOD0_DET_anomaly_vein",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-ashfall-oxidation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_ashfall_oxidation",
+      "nodeName": "LOD0_DET_ashfall_oxidation",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-boss-signal-spire",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_boss_signal_spire",
+      "nodeName": "LOD0_DET_boss_signal_spire",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_cathedral_rib",
+      "nodeName": "LOD0_DET_cathedral_rib",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-cathedral-rib-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_cathedral_rib.001",
+      "nodeName": "LOD0_DET_cathedral_rib.001",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-dread-panel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_dread_panel",
+      "nodeName": "LOD0_DET_dread_panel",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-dungeon-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_dungeon_port",
+      "nodeName": "LOD0_DET_dungeon_port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-vault-keel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_vault_keel",
+      "nodeName": "LOD0_DET_vault_keel",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-det-wreck-scar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_DET_wreck_scar",
+      "nodeName": "LOD0_DET_wreck_scar",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod0-hull-capital-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HULL_CAPITAL_MAIN",
+      "nodeName": "LOD0_HULL_CAPITAL_MAIN",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod1-hull-capital-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HULL_CAPITAL_SILHOUETTE",
+      "nodeName": "LOD1_HULL_CAPITAL_SILHOUETTE",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.mesh.lod2-hull-capital-silhouette",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HULL_CAPITAL_SILHOUETTE",
+      "nodeName": "LOD2_HULL_CAPITAL_SILHOUETTE",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.hull-capital.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-capital.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "HULL_CAPITAL_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-capital.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "27825fc827d7aecf6b12a99964a5b04756894396c7cbe16200a3c78066dbcc50"
+    },
+    "sourceGlb": {
+      "bytes": 371096,
+      "sha256": "574dd0b2fd8164f37caed3d69dbccbefaef11af738b4c2dc3fdd4376c6d424c7",
+      "uri": "hull_capital.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 556680,
+    "sha256": "06a25b1c26abb6c22bb31171ed7d6f1a0656551d6e01c1bc5f21b554b38b02ba",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.5204367637634277,
+        0.14066338539123535,
+        -0.1582711935043335
+      ],
+      "max": [
+        7.65512228012085,
+        3.561140537261963,
+        3.696161985397339
+      ],
+      "min": [
+        -6.614248752593994,
+        -3.279813766479492,
+        -4.012704372406006
+      ],
+      "size": [
+        14.269371032714844,
+        6.840954303741455,
+        7.708866357803345
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.7599999904632568,
+          0,
+          0.550000011920929,
+          1
+        ],
+        "name": "MOUNT_COCKPIT",
+        "planIndex": 13,
+        "tags": {
+          "mount": "cockpit",
+          "mountKey": "cockpit"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          0.8840000033378601,
+          0.05999999865889549,
+          1
+        ],
+        "name": "MOUNT_ENGINE_L",
+        "planIndex": 14,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.059999942779541,
+          -0.8840000033378601,
+          0.05999999865889549,
+          1
+        ],
+        "name": "MOUNT_ENGINE_R",
+        "planIndex": 15,
+        "tags": {
+          "mount": "engine",
+          "mountKey": "engine_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          2.3919999599456787,
+          0.03999999910593033,
+          1
+        ],
+        "name": "MOUNT_FIN_L",
+        "planIndex": 16,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_l"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.8799999952316284,
+          -2.3919999599456787,
+          0.03999999910593033,
+          1
+        ],
+        "name": "MOUNT_FIN_R",
+        "planIndex": 17,
+        "tags": {
+          "mount": "fin",
+          "mountKey": "fin_r"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.71999979019165,
+          0,
+          0.03999999910593033,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.hull-capital.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.71999979019165,
+          0,
+          0.10000000149011612,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.hull-capital.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 9,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_anomaly_vein",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_ashfall_oxidation",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_boss_signal_spire",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_cathedral_rib",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_cathedral_rib001",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_dread_panel",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_dungeon_port",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_vault_keel",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_DET_wreck_scar",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HULL_CAPITAL_MAIN",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_CAPITAL_SILHOUETTE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HULL_CAPITAL_SILHOUETTE",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/hulls/hull_capital.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          7.65512228012085,
+          3.561140537261963,
+          3.696161985397339
+        ],
+        "min": [
+          -6.614248752593994,
+          -3.279813766479492,
+          -4.012704372406006
+        ]
+      },
+      "id": "sf.render.hull-capital.body",
+      "nodeIds": [
+        "sf.render.hull-capital.mesh.lod0-det-anomaly-vein",
+        "sf.render.hull-capital.mesh.lod0-det-ashfall-oxidation",
+        "sf.render.hull-capital.mesh.lod0-det-boss-signal-spire",
+        "sf.render.hull-capital.mesh.lod0-det-cathedral-rib",
+        "sf.render.hull-capital.mesh.lod0-det-cathedral-rib-001",
+        "sf.render.hull-capital.mesh.lod0-det-dread-panel",
+        "sf.render.hull-capital.mesh.lod0-det-dungeon-port",
+        "sf.render.hull-capital.mesh.lod0-det-vault-keel",
+        "sf.render.hull-capital.mesh.lod0-det-wreck-scar",
+        "sf.render.hull-capital.mesh.lod0-hull-capital-main",
+        "sf.render.hull-capital.mesh.lod1-hull-capital-silhouette",
+        "sf.render.hull-capital.mesh.lod2-hull-capital-silhouette",
+        "sf.render.hull-capital.root"
+      ]
+    }
+  ]
+}

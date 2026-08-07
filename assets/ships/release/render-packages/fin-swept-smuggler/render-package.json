@@ -1,0 +1,541 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-swept-smuggler",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5210263a514c1e4310825f875eb36b514283a771ea34c86ebc9af18571577ee1",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.799999952316284,
+          0.19990280270576477,
+          3.15006947517395
+        ],
+        "min": [
+          0.30000001192092896,
+          0.09009720385074615,
+          0.2999306321144104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4c70fbf3d3a8c1b7ca4c07862854ddd6f28dcd61198eb32590c25b09fd98499",
+      "id": "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged.primitive.0",
+      "indexCount": 1524,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_swept_smuggler_Material_Mechanical_Merged",
+      "nodeId": "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 268
+    },
+    {
+      "bounds": {
+        "max": [
+          4.800000190734863,
+          0.09002960473299026,
+          4.0001068115234375
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.09002960473299026,
+          -0.00010694861703086644
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "207ffcaac82c5811b18c7107111ddc2b331306d93ef92dd703ea86f0fda43d52",
+      "id": "sf.render.fin-swept-smuggler.mesh.swept-blade.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Swept_Blade",
+      "nodeId": "sf.render.fin-swept-smuggler.mesh.swept-blade",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3270821571350098,
+          0.1650608479976654,
+          3.842101573944092
+        ],
+        "min": [
+          0.12291774898767471,
+          0.09493914246559143,
+          1.1578983068466187
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5800c2a7039c1813ec090ec2a1146c3bf458f199f363923baeb926a414f0d608",
+      "id": "sf.render.fin-swept-smuggler.mesh.swept-edge.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Swept_Edge",
+      "nodeId": "sf.render.fin-swept-smuggler.mesh.swept-edge",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "id": "material:345a2ca5e0bd4360fdc384bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_swept_smuggler_Material_Mechanical_Merged",
+      "nodeName": "fin_swept_smuggler_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.fin-swept-smuggler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-swept-smuggler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-swept-smuggler.mesh.swept-blade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Swept_Blade",
+      "nodeName": "Swept_Blade",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.fin-swept-smuggler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-swept-smuggler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-swept-smuggler.mesh.swept-edge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Swept_Edge",
+      "nodeName": "Swept_Edge",
+      "nodePath": [
+        0,
+        8,
+        0
+      ],
+      "parentId": "sf.render.fin-swept-smuggler.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-swept-smuggler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-swept-smuggler.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "fin_swept_smuggler",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-swept-smuggler.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e35debd0ead80cd62c70270542e4ee3eafa14eb0f2353d6f51bcf963c42b725a"
+    },
+    "sourceGlb": {
+      "bytes": 372208,
+      "sha256": "3263b0ce4a315ef9734019e24db664d05bb7a34bd64788602ea4279eed399beb",
+      "uri": "fin_swept_smuggler.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 377036,
+    "sha256": "518c0da2257a173a99d3f716f842b8bfc36486e301f616d076e6823fd9eb4be5",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.3000000938773155,
+        0.05493659898638725,
+        1.9999999314532033
+      ],
+      "max": [
+        4.800000190734863,
+        0.19990280270576477,
+        4.0001068115234375
+      ],
+      "min": [
+        -0.20000000298023224,
+        -0.09002960473299026,
+        -0.00010694861703086644
+      ],
+      "size": [
+        5.0000001937150955,
+        0.28993240743875504,
+        4.000213760140468
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 9,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 12,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Swept_Blade",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Swept_Edge",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_swept_smuggler_Material_Mechanical_Merged",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.800000190734863,
+          0.19990280270576477,
+          4.0001068115234375
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.09002960473299026,
+          -0.00010694861703086644
+        ]
+      },
+      "id": "sf.render.fin-swept-smuggler.body",
+      "nodeIds": [
+        "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged",
+        "sf.render.fin-swept-smuggler.mesh.swept-blade",
+        "sf.render.fin-swept-smuggler.mesh.swept-edge",
+        "sf.render.fin-swept-smuggler.root"
+      ]
+    }
+  ]
+}

@@ -31,7 +31,12 @@ test('production package build rejects runtime asset identity drift', async () =
 });
 
 test('production manifest packages every live whole-ship family and admitted authored place', async () => {
-  assert.deepEqual(RENDER_PACKAGE_PILOTS.map((entry) => entry.key), [
+  // Coverage is derived from the release manifest by scripts/generate-render-package-pilots.mjs, so
+  // a frozen key list would defeat the point — it could only prove that someone remembered to add an
+  // asset. Assert instead that the originally-admitted families are all still packaged, and let
+  // `npm run check:render-package-coverage` own the "nothing is missing" half.
+  const keys = new Set(RENDER_PACKAGE_PILOTS.map((entry) => entry.key));
+  for (const key of [
     'kestrel',
     'ashline-dart',
     'ashline-lode',
@@ -50,11 +55,16 @@ test('production manifest packages every live whole-ship family and admitted aut
     'claim-outpost-base',
     'claim-outpost-refinery',
     'claim-outpost-relay',
+    'nav-buoy',
+    'lane-beacon',
+    'station-billboard',
+    'memorial-array',
     'debris-chunk',
     'dead-hulk',
     'dock-interior',
     'wasp',
-  ]);
+  ]) assert.ok(keys.has(key), `${key} is still packaged`);
+  assert.ok(RENDER_PACKAGE_PILOTS.length >= 26, 'coverage never shrinks below the admitted set');
 
   const wasp = renderPackagePilotForSourceUrl(
     'assets/ships/release/parts/wholeships/wasp_production_v1.glb',
@@ -89,6 +99,17 @@ test('production manifest packages every live whole-ship family and admitted aut
       `assets/ships/release/parts/places/${sourceId}.glb`,
     );
     assert.equal(worksite?.runtimeAssetId, runtimeAssetId);
+  }
+  for (const [sourceId, runtimeAssetId] of [
+    ['place_nav_buoy', 'SF_PLACE_HELIOS_NAV_SPIRE'],
+    ['place_lane_beacon', 'SF_PLACE_HELIOS_SUPPORT_GANTRY'],
+    ['place_station_billboard', 'SF_PLACE_HELIOS_SUPPORT_DOCK_ARM'],
+    ['place_memorial_array', 'SF_PLACE_MEMORIAL_ARRAY'],
+  ]) {
+    const marker = renderPackagePilotForSourceUrl(
+      `assets/ships/release/parts/places/${sourceId}.glb`,
+    );
+    assert.equal(marker?.runtimeAssetId, runtimeAssetId);
   }
 
   for (const binding of RENDER_PACKAGE_PILOTS) {

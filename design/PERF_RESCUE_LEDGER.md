@@ -121,9 +121,41 @@ The offline rebuild has no vertex data, so it mirrors exactly that one fact from
 `TEXCOORD_0` accessor declaration. Without it every material resolves as untextured offline and the
 shipped roles disagree with what the runtime would have picked.
 
-**Still open:** gate 2 (fail-closed / dev-only source route), gate 3 (coverage — 60 unpackaged
-assets), gate 5 (residency prewarm + prepare-then-swap). Gate 4 was already in place
-(`build:render-package-pilots --check`, re-verified fresh 26/26 after the change).
+### Gate 3 — coverage — MET
+
+Coverage is now **derived from the release manifest**, not curated.
+`scripts/generate-render-package-pilots.mjs` walks `release_manifest.json`, and
+`npm run check:render-package-coverage` fails if any released GLB has no package. A hand-kept list
+could only ever answer "is every asset someone *remembered* packaged?" — which is how 60 of 86
+assets came to have none.
+
+**26 → 81 packages.** `check:render-package-plan` went from 26/26 (731 nodes, 622 records) to
+**81/81 (1897 nodes, 1409 records)**. Every one of those 55 newly packaged assets previously loaded
+through the source route, recompiling a blueprint at load.
+
+Two assets are excluded, each with a recorded reason rather than silent absence:
+
+| asset | reason |
+|---|---|
+| `fins/fin_crystalline.glb` | two nodes share the name `fin_crystalline_Material_Accent_Merged`; semantic locators resolve by name, so this is a genuine authoring defect to fix in the asset |
+| `kestrel/kestrel_reference.glb` | not under `parts/`, so no slot mapping — it is a reference file, not a runtime asset |
+
+Two derivation fixes were needed along the way, both narrow:
+
+- **Slugged ID collisions.** Node *names* are asserted unique before any ID is minted, so a collision
+  only ever meant two names differing in punctuation alone (`Dome_Frame_1.18` vs `Dome-Frame-1-18`).
+  That is an authoring style difference, not an ambiguity, so `makeIdAllocator` disambiguates
+  deterministically. Assets without collisions get no suffix, so existing packages stay byte-identical.
+- **The generator validates before claiming.** It runs the real `derivePilotSemanticManifest` rather
+  than re-implementing its rules, so a contract-violating asset is reported with the contract's own
+  message instead of entering the manifest and breaking the build later.
+
+`test/render-package-pilots.test.mjs` no longer asserts a frozen 26-key list — that is the same
+curated-list antipattern. It now asserts the originally-admitted families are still packaged and
+lets the coverage check own "nothing is missing".
+
+**Still open:** gate 2 (fail-closed / dev-only source route) and gate 5 (residency prewarm +
+prepare-then-swap). Gate 4 was already in place (`build:render-package-pilots --check`).
 
 **Exit gates**
 

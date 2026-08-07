@@ -1,0 +1,1193 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.engine-plasma-ring",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "863080b80ea71fe770994fe3695a6eec313c8cc47b97ea4305b3e705446f935e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.20003052055835724,
+          0.41200000047683716,
+          -0.4850093126296997
+        ],
+        "min": [
+          -0.20003052055835724,
+          -0.3880000114440918,
+          -0.5149906873703003
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad1becf5abc7262f68c807bd01b7158f4e4ce51c7deca8f4630ecc55a152a30c",
+      "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2800000011920929,
+          0.33438840508461,
+          0.2800000011920929
+        ],
+        "min": [
+          -0.2800000011920929,
+          0.28961166739463806,
+          -0.2800000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0261c1f145308df3302a757cf35aefcf30f5bcd79317de25b3731a644313e8f",
+      "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.18999145925045013,
+          0.41200000047683716,
+          0.2399914562702179
+        ],
+        "min": [
+          0.11000855267047882,
+          -0.18800000846385956,
+          0.16000854969024658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a51d80aeb1eda618dcc5e65acf1a04181e88932dd6d4debe8f0f4321089a4a4",
+      "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5350401401519775,
+          1.0399999618530273,
+          0.9843928217887878
+        ],
+        "min": [
+          0.46495988965034485,
+          -1.0399999618530273,
+          -0.9843928217887878
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "740889677da8cfdbaba3905519879cf95e0270096002f7416f5ca7d6c2e1116d",
+      "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged.primitive.0",
+      "indexCount": 2400,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "engine_plasma_ring_Material_Mechanical_Merged",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 720
+    },
+    {
+      "bounds": {
+        "max": [
+          0.26999998092651367,
+          0.3199999928474426,
+          0.31199193000793457
+        ],
+        "min": [
+          -0.3700000047683716,
+          -0.3199999928474426,
+          -0.31199193000793457
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53e4be013329990215a3d7d171d3a1f30c7346831ce0ce480753d2f8afa51075",
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_CORE.001",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 135
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3192928731441498,
+          0.6299999952316284,
+          0.6299999952316284
+        ],
+        "min": [
+          0.18070711195468903,
+          -0.6299999952316284,
+          -0.6299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5fcdfa8add2f3cc0bda1985b9f601998476854072ceb4280e064dc8766581e6b",
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_FAN.001",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.17000289261341095,
+          0.3400000035762787,
+          0.3400000035762787
+        ],
+        "min": [
+          -0.29999709129333496,
+          -0.3400000035762787,
+          -0.3400000035762787
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "749bbc7ca276c3bf2e28b390440c2a83dc5dfa637ead5c75dbaba4c7b0f004e3",
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-plume.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_PLUME.001",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.hook-drive-plume",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          0.9483322501182556,
+          0.9483322501182556
+        ],
+        "min": [
+          0,
+          -0.9483322501182556,
+          -0.9483322501182556
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6df4200df95c71c0fda76b2d522fed17e50c92393f1bb1efcd72d1f8a5d05b2",
+      "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main.primitive.0",
+      "indexCount": 960,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_ENGINE_PLASMA_RING_MAIN",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4685460031032562,
+          1.0386087894439697,
+          1.0386087894439697
+        ],
+        "min": [
+          0.23145398497581482,
+          -1.0386087894439697,
+          -1.0386087894439697
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b36bea34d3b9a800f52ce1e67c579a79b3484d81d47dc117f4a2f61500c654a",
+      "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer.primitive.0",
+      "indexCount": 4032,
+      "indexed": true,
+      "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Plasma_Ring_Outer",
+      "nodeId": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer",
+      "primitiveIndex": 0,
+      "vertexCount": 780
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
+      "id": "material:891439b8a477a06f92362cce",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "spaceface_neutral_baseColor_1024",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_corporate_polish_band",
+      "nodeName": "DET_corporate_polish_band",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_fusion_coil_ring",
+      "nodeName": "DET_fusion_coil_ring",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_lattice_strut_a",
+      "nodeName": "DET_lattice_strut_a",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "engine_plasma_ring_Material_Mechanical_Merged",
+      "nodeName": "engine_plasma_ring_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_CORE",
+      "nodeName": "HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_FAN",
+      "nodeName": "HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.hook-drive-plume",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_PLUME",
+      "nodeName": "HOOK_DRIVE_PLUME",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ENGINE_PLASMA_RING_MAIN",
+      "nodeName": "LOD0_ENGINE_PLASMA_RING_MAIN",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Plasma_Ring_Outer",
+      "nodeName": "Plasma_Ring_Outer",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.engine-plasma-ring.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-plasma-ring.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "engine_plasma_ring",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-plasma-ring.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "fb28c9933925e4e7f6b401c37df28cc0a1d5f81e5152472f3f978d2d9bf781bf"
+    },
+    "sourceGlb": {
+      "bytes": 59752,
+      "sha256": "d95e8d93c4a80fe05d01aed7787f38c1870058d7bc6fedc0f120462656cd8633",
+      "uri": "engine_plasma_ring.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 118856,
+    "sha256": "01c6f08ab45bea53db183cf0de523c99018b052f0f7b8be94f50e8fe5c288ccb",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.01500004529953,
+        0,
+        0
+      ],
+      "max": [
+        2.4000000953674316,
+        1.0399999618530273,
+        1.0386087894439697
+      ],
+      "min": [
+        -0.3700000047683716,
+        -1.0399999618530273,
+        -1.0386087894439697
+      ],
+      "size": [
+        2.7700001001358032,
+        2.0799999237060547,
+        2.0772175788879395
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_corporate_polish_band",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_fusion_coil_ring",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_lattice_strut_a",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "engine_plasma_ring_Material_Mechanical_Merged",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_FAN",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_ENGINE_PLASMA_RING_MAIN",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Plasma_Ring_Outer",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "engine",
+    "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          1.0399999618530273,
+          1.0386087894439697
+        ],
+        "min": [
+          -0.3700000047683716,
+          -1.0399999618530273,
+          -1.0386087894439697
+        ]
+      },
+      "id": "sf.render.engine-plasma-ring.body",
+      "nodeIds": [
+        "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
+        "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
+        "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
+        "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged",
+        "sf.render.engine-plasma-ring.mesh.hook-drive-core",
+        "sf.render.engine-plasma-ring.mesh.hook-drive-fan",
+        "sf.render.engine-plasma-ring.mesh.hook-drive-plume",
+        "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main",
+        "sf.render.engine-plasma-ring.mesh.plasma-ring-outer",
+        "sf.render.engine-plasma-ring.root"
+      ]
+    }
+  ]
+}

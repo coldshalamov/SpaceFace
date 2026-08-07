@@ -1,0 +1,768 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.mining-drone.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4,
+        0.45,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.mining-drone.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4,
+        0.45,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.mining-drone",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "199f0c99cc5ab9f82f13b882ccd37b7edc7ef240bde5a4750c75f666b5fb6736",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.3099999994039537,
+          0.5599999994039535,
+          0.10999999940395355
+        ],
+        "min": [
+          3.0900000005960466,
+          0.34000000059604646,
+          -0.10999999940395355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c4bd490c42b831b5e0fe476668618c5b4ba2afe201b7d3c8b1ed59d0400ae1b",
+      "id": "sf.render.mining-drone.mesh.drone-beam-head.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drone_Beam_Head",
+      "nodeId": "sf.render.mining-drone.mesh.drone-beam-head",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          1.1500670909881592,
+          1.1999390125274658
+        ],
+        "min": [
+          -0.40000003576278687,
+          -0.050067149102687836,
+          -1.1999390125274658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fce0754ce01c15be5c761511e0b412348da970874f87baa6e8ebb0b82f1afcdf",
+      "id": "sf.render.mining-drone.mesh.drone-body.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "4376776b1c160c072567ef6c2f421a459d2dfffb7feb1cb293002fe94246da76",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drone_Body",
+      "nodeId": "sf.render.mining-drone.mesh.drone-body",
+      "primitiveIndex": 0,
+      "vertexCount": 130
+    },
+    {
+      "bounds": {
+        "max": [
+          4.599999952316284,
+          0.629961547255516,
+          0.17996154725551605
+        ],
+        "min": [
+          2.8,
+          0.27003845274448396,
+          -0.17996154725551605
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c45c04877aff545e7d1a543ca04ca6cbfebd31b7dcfc24ce83f29ce041d2db33",
+      "id": "sf.render.mining-drone.mesh.drone-drill.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Drone_Drill",
+      "nodeId": "sf.render.mining-drone.mesh.drone-drill",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          3.200000047683716,
+          1.2773809432983398,
+          0.8999626040458679
+        ],
+        "min": [
+          -0.37400001287460327,
+          0.8751190900802612,
+          -0.8999626040458679
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d705dede00ee2486efa359875948811d95ef9b08a02fd3014d6723eade67f5a0",
+      "id": "sf.render.mining-drone.mesh.place-mining-drone-material-mechanical-merged.primitive.0",
+      "indexCount": 804,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "place_mining_drone_Material_Mechanical_Merged",
+      "nodeId": "sf.render.mining-drone.mesh.place-mining-drone-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4376776b1c160c072567ef6c2f421a459d2dfffb7feb1cb293002fe94246da76",
+      "id": "material:4376776b1c160c072567ef6c",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.mining-drone.mesh.drone-beam-head",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Drone_Beam_Head",
+      "nodeName": "Drone_Beam_Head",
+      "nodePath": [
+        0,
+        3,
+        0
+      ],
+      "parentId": "sf.render.mining-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2,
+        0.45,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.mesh.drone-body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Drone_Body",
+      "nodeName": "Drone_Body",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.mining-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.mesh.drone-drill",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Drone_Drill",
+      "nodeName": "Drone_Drill",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.mining-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.8,
+        0.45,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.mesh.place-mining-drone-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "place_mining_drone_Material_Mechanical_Merged",
+      "nodeName": "place_mining_drone_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.mining-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining-drone.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_mining_drone",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "08e6e723ed3c863df1d6fbce9424f7f5277360dc1d79193d63df82ad5b4de8e5"
+    },
+    "sourceGlb": {
+      "bytes": 369212,
+      "sha256": "fb620e782299be6a3d1e459d36f4c31897a5e46723e0718ec1c81b2e994be5ae",
+      "uri": "place_mining_drone.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 375020,
+    "sha256": "99f3d859a696d04bc9b386f13766c76cdfa84e7f9db13f09ff0fc22ed2c23e14",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.0999999582767486,
+        0.613656897097826,
+        0
+      ],
+      "max": [
+        4.599999952316284,
+        1.2773809432983398,
+        1.1999390125274658
+      ],
+      "min": [
+        -0.40000003576278687,
+        -0.050067149102687836,
+        -1.1999390125274658
+      ],
+      "size": [
+        4.999999988079071,
+        1.3274480924010277,
+        2.3998780250549316
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.8,
+          0.45,
+          0,
+          1
+        ],
+        "name": "HOOK_Spin",
+        "planIndex": 3,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.2,
+          0.45,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 5,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.4,
+          0.45,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "mining",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.mining-drone.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 11,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Drone_Body",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.8,
+          0.45,
+          0,
+          1
+        ],
+        "name": "Drone_Drill",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.2,
+          0.45,
+          0,
+          1
+        ],
+        "name": "Drone_Beam_Head",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "place_mining_drone_Material_Mechanical_Merged",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_mining_drone.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.599999952316284,
+          1.2773809432983398,
+          1.1999390125274658
+        ],
+        "min": [
+          -0.40000003576278687,
+          -0.050067149102687836,
+          -1.1999390125274658
+        ]
+      },
+      "id": "sf.render.mining-drone.body",
+      "nodeIds": [
+        "sf.render.mining-drone.mesh.drone-beam-head",
+        "sf.render.mining-drone.mesh.drone-body",
+        "sf.render.mining-drone.mesh.drone-drill",
+        "sf.render.mining-drone.mesh.place-mining-drone-material-mechanical-merged",
+        "sf.render.mining-drone.root"
+      ]
+    }
+  ]
+}

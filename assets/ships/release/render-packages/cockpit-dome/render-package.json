@@ -1,0 +1,2069 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.cockpit-dome",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "81de1a6348c8498b220c8f372dc2ce702d373b1c61ef197eaba493a1a3162614",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.9298902750015259,
+          2.109999895095825,
+          1.6299999952316284
+        ],
+        "min": [
+          0.5401096940040588,
+          -1.1500000953674316,
+          -1.6299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "75d4459de84301123e4d53d3ade3f546d210f9d441fa7b26ee5c5b222ef79ca2",
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged.primitive.0",
+      "indexCount": 1776,
+      "indexed": true,
+      "materialHash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
+      "materialPipelineKey": "opaque",
+      "meshName": "cockpit_dome_Material_Accent_Merged",
+      "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 490
+    },
+    {
+      "bounds": {
+        "max": [
+          2.86612606048584,
+          1.1136912107467651,
+          1.243972659111023
+        ],
+        "min": [
+          -0.6549999713897705,
+          0.2901214063167572,
+          -1.5322439670562744
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f3ebbe614b2c345e4363567b784f7992c316c32ded961137f6193f452ddaeda",
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged.primitive.0",
+      "indexCount": 1572,
+      "indexed": true,
+      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialPipelineKey": "opaque",
+      "meshName": "cockpit_dome_Material_Mechanical_Merged",
+      "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 506
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8000001907348633,
+          -0.29003721475601196,
+          0.5800790786743164
+        ],
+        "min": [
+          -0.3999999761581421,
+          -0.4099627733230591,
+          0.5199209451675415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f841e678187e8c511c297a06e3a0c917261e359ebdac62ce9c92d2ad3daf6dfb",
+      "id": "sf.render.cockpit-dome.node.det-collar-seam.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.cockpit-dome.node.det-collar-seam",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.75,
+          0.23002104461193085,
+          1.0700079202651978
+        ],
+        "min": [
+          0.6500000357627869,
+          -0.13002105057239532,
+          1.0299919843673706
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ebf93310639e208cda0ba21944b594e33910cce4d7a0d9b2f091d0bb0b7e86d",
+      "id": "sf.render.cockpit-dome.node.det-core-stencil.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.cockpit-dome.node.det-core-stencil",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6299645900726318,
+          0.7000000476837158,
+          0.6999710202217102
+        ],
+        "min": [
+          0.4700354039669037,
+          -0.4000000059604645,
+          0.000028962711439817213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e01ef8438943c1d22e186421ab5a86a11a6665b7d91449ef43a2ffa3c224610",
+      "id": "sf.render.cockpit-dome.node.det-frame-rib-l.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-l",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9299646615982056,
+          0.7000000476837158,
+          0.6999710202217102
+        ],
+        "min": [
+          1.7700353860855103,
+          -0.4000000059604645,
+          0.000028962711439817213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9888cbaf5c8fe04e7bd2facf5aab0d5ba03f9a55fef2612f6557988ebeb47761",
+      "id": "sf.render.cockpit-dome.node.det-frame-rib-r.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-r",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7999999523162842,
+          1.1000213623046875,
+          0.1599978655576706
+        ],
+        "min": [
+          0.9000000357627869,
+          0.3999786972999573,
+          0.14000214636325836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52a681727e12f0482737e374da3ad714ba861f5f89575632adf99e14009d5ad8",
+      "id": "sf.render.cockpit-dome.node.det-glass-scratch.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.cockpit-dome.node.det-glass-scratch",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          2.109999895095825,
+          -0.15999756753444672,
+          0.8100000023841858
+        ],
+        "min": [
+          1.9900000095367432,
+          -0.24000243842601776,
+          0.6899999976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8650e0b8ae740b36fb357cc48b614993d72d2859a0c5bef874cc682421ac1a68",
+      "id": "sf.render.cockpit-dome.node.det-mount-bolt-001.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt-001",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4099999964237213,
+          -0.15999756753444672,
+          0.8100000023841858
+        ],
+        "min": [
+          0.28999999165534973,
+          -0.24000243842601776,
+          0.6899999976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53ed89b9e9fc8b9d132c170aea6dd68e7a8bf8f832d36b0cd34b63c4dfa2fafe",
+      "id": "sf.render.cockpit-dome.node.det-mount-bolt.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5,
+          1.7299244403839111,
+          1.6000702381134033
+        ],
+        "min": [
+          -1,
+          0.3800755441188812,
+          -1.6000702381134033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9373e51018b3c9c706d9e54727b97924a6067da272361850e4b967e6fe690849",
+      "id": "sf.render.cockpit-dome.node.dome-glass.primitive.0",
+      "indexCount": 3450,
+      "indexed": true,
+      "materialHash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
+      "materialPipelineKey": "blend",
+      "meshName": "Dome_Glass",
+      "nodeId": "sf.render.cockpit-dome.node.dome-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 800
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          0.3899063169956207,
+          1.6001006364822388
+        ],
+        "min": [
+          -1.0999999046325684,
+          -0.02990630455315113,
+          -1.6001006364822388
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2dba05c29ea658fb60131a7d983397d9762cd892d8312820bed444eac44b2c2c",
+      "id": "sf.render.cockpit-dome.node.dome-mount-collar.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
+      "materialPipelineKey": "opaque",
+      "meshName": "Dome_Mount_Collar",
+      "nodeId": "sf.render.cockpit-dome.node.dome-mount-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 148
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
+      "id": "material:db6bc38792b1aa8e3650f9f5",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
+      "id": "material:deef36cbe6980ef38f5da3eb",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "id": "material:eb0947764550c5f0571fb24b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
+      "id": "material:edc0a6b05e51ffa8e859178f",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "cockpit_dome",
+      "nodeName": "cockpit_dome",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.6000000238418579,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "cockpit_dome_Bolt_1",
+      "nodeName": "cockpit_dome_Bolt_1",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.6000000238418579,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "cockpit_dome_Bolt_2",
+      "nodeName": "cockpit_dome_Bolt_2",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "cockpit_dome_Bolt_3",
+      "nodeName": "cockpit_dome_Bolt_3",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-bolt-4",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7999999523162842,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "cockpit_dome_Bolt_4",
+      "nodeName": "cockpit_dome_Bolt_4",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7999999523162842,
+        0.41999998688697815,
+        -1.4800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cockpit_dome_Material_Accent_Merged",
+      "nodeName": "cockpit_dome_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cockpit_dome_Material_Mechanical_Merged",
+      "nodeName": "cockpit_dome_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-collar-seam",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_collar_seam",
+      "nodeName": "DET_collar_seam",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-core-stencil",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_core_stencil",
+      "nodeName": "DET_core_stencil",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-frame-rib-l",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_frame_rib_L",
+      "nodeName": "DET_frame_rib_L",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-frame-rib-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_frame_rib_R",
+      "nodeName": "DET_frame_rib_R",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-glass-scratch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "DET_glass_scratch",
+      "nodeName": "DET_glass_scratch",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-mount-bolt",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_mount_bolt",
+      "nodeName": "DET_mount_bolt",
+      "nodePath": [
+        6
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.det-mount-bolt-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_mount_bolt.001",
+      "nodeName": "DET_mount_bolt.001",
+      "nodePath": [
+        7
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-base-frame",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.47999998927116394,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Base_Frame",
+      "nodeName": "Dome_Base_Frame",
+      "nodePath": [
+        0,
+        11,
+        0
+      ],
+      "parentId": "sf.render.cockpit-dome.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.47999998927116394,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-console-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Console_0",
+      "nodeName": "Dome_Console_0",
+      "nodePath": [
+        0,
+        11,
+        2
+      ],
+      "parentId": "sf.render.cockpit-dome.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-console-0-72",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        -0.7200000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Console_-0.72",
+      "nodeName": "Dome_Console_-0.72",
+      "nodePath": [
+        0,
+        11,
+        1
+      ],
+      "parentId": "sf.render.cockpit-dome.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        -0.7200000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-console-0-72-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        0.7200000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Console_0.72",
+      "nodeName": "Dome_Console_0.72",
+      "nodePath": [
+        0,
+        11,
+        3
+      ],
+      "parentId": "sf.render.cockpit-dome.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7200000286102295,
+        0.5799999833106995,
+        0.7200000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-frame-1-18",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.3250000476837158,
+        0.75,
+        -0.9144999980926514,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Frame_-1.18",
+      "nodeName": "Dome_Frame_-1.18",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.3250000476837158,
+        0.75,
+        -0.9144999980926514,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-frame-1-18-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.3250000476837158,
+        0.75,
+        0.9144999980926514,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Frame_1.18",
+      "nodeName": "Dome_Frame_1.18",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.3250000476837158,
+        0.75,
+        0.9144999980926514,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "Dome_Glass",
+      "nodeName": "Dome_Glass",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-interior-deck",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0499999523162842,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Dome_Interior_Deck",
+      "nodeName": "Dome_Interior_Deck",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0499999523162842,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.dome-mount-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Dome_Mount_Collar",
+      "nodeName": "Dome_Mount_Collar",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cockpit-dome.node.hook-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "HOOK_Emissive",
+      "nodeName": "HOOK_Emissive",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.cockpit-dome.node.cockpit-dome",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cockpit-dome.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "25e762159b3b4c72b169aea1baa03072cb03e6179a6bd56ab0f87c59b61246e7"
+    },
+    "sourceGlb": {
+      "bytes": 136524,
+      "sha256": "e5b940e287a63b0bddf82cdf24b8c756f3c82846da65f71464cb4bf0cec3ebe6",
+      "uri": "cockpit_dome.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 207116,
+    "sha256": "6fea871eac04dfb4fc7d54744a9a381bbb1ef3ef168a897b8db43de68c144f4c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.2000000476837158,
+        0.4799998998641968,
+        0
+      ],
+      "max": [
+        3.5,
+        2.109999895095825,
+        1.6299999952316284
+      ],
+      "min": [
+        -1.0999999046325684,
+        -1.1500000953674316,
+        -1.6299999952316284
+      ],
+      "size": [
+        4.599999904632568,
+        3.259999990463257,
+        3.259999990463257
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 13,
+        "tags": {},
+        "userData": {
+          "spacefaceHook": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_Emissive",
+            "recordIds": [
+              "sf.render.cockpit-dome.node.hook-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "glass": 2,
+      "hull": 2,
+      "mechanical": 5
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 25,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cockpit_dome_Material_Accent_Merged",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cockpit_dome_Material_Mechanical_Merged",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Dome_Glass",
+        "planIndex": 10,
+        "tags": {
+          "canopy": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Dome_Mount_Collar",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_frame_rib_L",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_frame_rib_R",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_core_stencil",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_collar_seam",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_glass_scratch",
+        "planIndex": 22,
+        "tags": {
+          "canopy": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_mount_bolt",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_mount_bolt001",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "cockpit",
+    "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.5,
+          2.109999895095825,
+          1.6299999952316284
+        ],
+        "min": [
+          -1.0999999046325684,
+          -1.1500000953674316,
+          -1.6299999952316284
+        ]
+      },
+      "id": "sf.render.cockpit-dome.body",
+      "nodeIds": [
+        "sf.render.cockpit-dome.node.cockpit-dome",
+        "sf.render.cockpit-dome.node.cockpit-dome-bolt-1",
+        "sf.render.cockpit-dome.node.cockpit-dome-bolt-2",
+        "sf.render.cockpit-dome.node.cockpit-dome-bolt-3",
+        "sf.render.cockpit-dome.node.cockpit-dome-bolt-4",
+        "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged",
+        "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged",
+        "sf.render.cockpit-dome.node.det-collar-seam",
+        "sf.render.cockpit-dome.node.det-core-stencil",
+        "sf.render.cockpit-dome.node.det-frame-rib-l",
+        "sf.render.cockpit-dome.node.det-frame-rib-r",
+        "sf.render.cockpit-dome.node.det-glass-scratch",
+        "sf.render.cockpit-dome.node.det-mount-bolt",
+        "sf.render.cockpit-dome.node.det-mount-bolt-001",
+        "sf.render.cockpit-dome.node.dome-base-frame",
+        "sf.render.cockpit-dome.node.dome-console-0",
+        "sf.render.cockpit-dome.node.dome-console-0-72",
+        "sf.render.cockpit-dome.node.dome-console-0-72-2",
+        "sf.render.cockpit-dome.node.dome-frame-1-18",
+        "sf.render.cockpit-dome.node.dome-frame-1-18-2",
+        "sf.render.cockpit-dome.node.dome-glass",
+        "sf.render.cockpit-dome.node.dome-interior-deck",
+        "sf.render.cockpit-dome.node.dome-mount-collar",
+        "sf.render.cockpit-dome.node.hook-emissive"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2281 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.blackmarket.anchor.socket-dock-approach",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40.162193298339844,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.blackmarket.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        40.162193298339844,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -10.349527359008789,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.blackmarket.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -10.349527359008789,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.blackmarket.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.blackmarket",
+  "collisions": [
+    {
+      "id": "sf.render.blackmarket.collision",
+      "nodeId": "sf.render.blackmarket.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "32408bf3b97d6de742fe1a452a1b337e77a55e1d7c90fcdb40feed55ac636e90",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          56.12887191772461,
+          58.25519561767578,
+          15.696741104125977
+        ],
+        "min": [
+          -56.12887191772461,
+          -58.25519561767578,
+          -15.696741104125977
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eb4fec902181b15f3d8e40e50a86d23b6ec36d0b694d42feabef9909d8cceecd",
+      "id": "sf.render.blackmarket.mesh.collision-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "non-render",
+      "meshName": "Cube.092",
+      "nodeId": "sf.render.blackmarket.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          31.549999237060547,
+          22.550077438354492,
+          -10.649696350097656
+        ],
+        "min": [
+          -10.350000381469727,
+          -15.35007381439209,
+          -15.350296974182129
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41a8a52999fa0ec5e75cf5c7eddf3a4c7b8fa7cb898f29ba5e366647989b3a2d",
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-accent.primitive.0",
+      "indexCount": 69120,
+      "indexed": true,
+      "materialHash": "ac12d1472d616684add648eec3406c72a10b3317bd68cef78a63cc1c96a551d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus",
+      "nodeId": "sf.render.blackmarket.mesh.lod0-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 46080
+    },
+    {
+      "bounds": {
+        "max": [
+          -47.45000076293945,
+          -20.87526512145996,
+          0.22468337416648865
+        ],
+        "min": [
+          -60.54999923706055,
+          -21.12473487854004,
+          -0.22468337416648865
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9317c7523aac2a773d77d59a5411bc9c16dfaba6502e4c78b1773ca76174588",
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-glass.primitive.0",
+      "indexCount": 3948,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.blackmarket.mesh.lod0-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 2688
+    },
+    {
+      "bounds": {
+        "max": [
+          40.83592224121094,
+          26.681856155395508,
+          14.19336223602295
+        ],
+        "min": [
+          -53.698707580566406,
+          -28.024572372436523,
+          -18.814563751220703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "306e6b2469305f4c6e39a3d6bc4a43a873675d598728475ced8e9738c1fbeabe",
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-hull.primitive.0",
+      "indexCount": 15924,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Icosphere",
+      "nodeId": "sf.render.blackmarket.mesh.lod0-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 15710
+    },
+    {
+      "bounds": {
+        "max": [
+          39.10080337524414,
+          35.157161712646484,
+          12.722012519836426
+        ],
+        "min": [
+          -65.72481536865234,
+          -37.5280876159668,
+          -14.460257530212402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "05cf3f68d7fe4bbeecba6a1fddf37e1192f3b5b2ffeef8e62acf27f636c6ef89",
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-mechanical.primitive.0",
+      "indexCount": 16356,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.blackmarket.mesh.lod0-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 11136
+    },
+    {
+      "bounds": {
+        "max": [
+          39.00013732910156,
+          14.466562271118164,
+          12.72164535522461
+        ],
+        "min": [
+          -23.803298950195312,
+          -21.499113082885742,
+          -13.00123405456543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a4e25465290d6a2a7269ac24b857751f73ebeb7cc4c1094842b790e570c22fd",
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-warm.primitive.0",
+      "indexCount": 5640,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.blackmarket.mesh.lod0-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 3840
+    },
+    {
+      "bounds": {
+        "max": [
+          15.950000762939453,
+          8.949917793273926,
+          -10.659507751464844
+        ],
+        "min": [
+          -10.350000381469727,
+          -15.349915504455566,
+          -15.34048843383789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a6a43b97c0fc0b1c9069b9e1c13c7e337cc9e8799cc1a04a1ce6a1a27686e94",
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-accent.primitive.0",
+      "indexCount": 14112,
+      "indexed": true,
+      "materialHash": "ac12d1472d616684add648eec3406c72a10b3317bd68cef78a63cc1c96a551d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.005",
+      "nodeId": "sf.render.blackmarket.mesh.lod1-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 9192
+    },
+    {
+      "bounds": {
+        "max": [
+          -47.45000076293945,
+          -20.87526512145996,
+          0.22468337416648865
+        ],
+        "min": [
+          -60.54999923706055,
+          -21.12473487854004,
+          -0.22468337416648865
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f953cdfb40b6d07dba7b68836b0d1d5b77dfbe92a346d1a07c024dde785b16df",
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-glass.primitive.0",
+      "indexCount": 2268,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.060",
+      "nodeId": "sf.render.blackmarket.mesh.lod1-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 1512
+    },
+    {
+      "bounds": {
+        "max": [
+          40.50125503540039,
+          25.756357192993164,
+          12.774213790893555
+        ],
+        "min": [
+          -53.777862548828125,
+          -27.812435150146484,
+          -18.5217227935791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f04d38771ddb69ec45103e07936e9c4296f4760a98877694f16c404e72675a1d",
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-hull.primitive.0",
+      "indexCount": 4164,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Icosphere.004",
+      "nodeId": "sf.render.blackmarket.mesh.lod1-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 4044
+    },
+    {
+      "bounds": {
+        "max": [
+          39.10398483276367,
+          29.036962509155273,
+          12.72432804107666
+        ],
+        "min": [
+          -65.74901580810547,
+          -37.551727294921875,
+          -14.474343299865723
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de8c29a41e2678433ba5678e3da5d4ef8dba5f384e21a341ac7795b227a27b81",
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-mechanical.primitive.0",
+      "indexCount": 5184,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.048",
+      "nodeId": "sf.render.blackmarket.mesh.lod1-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3456
+    },
+    {
+      "bounds": {
+        "max": [
+          39.000308990478516,
+          10.984740257263184,
+          12.727635383605957
+        ],
+        "min": [
+          -23.83354377746582,
+          -21.500093460083008,
+          -13.001534461975098
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c49a8a9d6ea46ea601e99fcb87e26fafbff33c98156b52c1d5a1aa0ec9a8059",
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-warm.primitive.0",
+      "indexCount": 1944,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.047",
+      "nodeId": "sf.render.blackmarket.mesh.lod1-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 1296
+    },
+    {
+      "bounds": {
+        "max": [
+          8.149999618530273,
+          2.1497726440429688,
+          -10.649883270263672
+        ],
+        "min": [
+          -10.350000381469727,
+          -15.349771499633789,
+          -15.350115776062012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c39b1bde8276f1bb4670d815f98b63c9545a31874d2d67ffeb73104383919e8f",
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-accent.primitive.0",
+      "indexCount": 2688,
+      "indexed": true,
+      "materialHash": "ac12d1472d616684add648eec3406c72a10b3317bd68cef78a63cc1c96a551d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Torus.008",
+      "nodeId": "sf.render.blackmarket.mesh.lod2-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 1792
+    },
+    {
+      "bounds": {
+        "max": [
+          -50.45000076293945,
+          -20.87519073486328,
+          0.22491532564163208
+        ],
+        "min": [
+          -57.54999923706055,
+          -21.12480926513672,
+          -0.22491532564163208
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4726a76742bfb43eaee8226b9625a04f2c08e74d8622035c55a35f25b865620b",
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-glass.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.085",
+      "nodeId": "sf.render.blackmarket.mesh.lod2-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          38.927024841308594,
+          18.577470779418945,
+          12.757616996765137
+        ],
+        "min": [
+          -53.84619903564453,
+          -27.688812255859375,
+          -16.634113311767578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93ebf68021b45a13026dedf9e1abe43a9b559f0d364bfaa1f615ff17900280fd",
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-hull.primitive.0",
+      "indexCount": 852,
+      "indexed": true,
+      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialPipelineKey": "opaque",
+      "meshName": "Icosphere.008",
+      "nodeId": "sf.render.blackmarket.mesh.lod2-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 814
+    },
+    {
+      "bounds": {
+        "max": [
+          32.60504913330078,
+          28.42164421081543,
+          12.731569290161133
+        ],
+        "min": [
+          -65.78852844238281,
+          -37.59282302856445,
+          -10.55659008026123
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c98606a6c81a9dd39ca1c0ee135c1068276e45d096ff165259b4dbf6911c2e10",
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-mechanical.primitive.0",
+      "indexCount": 1056,
+      "indexed": true,
+      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.078",
+      "nodeId": "sf.render.blackmarket.mesh.lod2-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 768
+    },
+    {
+      "bounds": {
+        "max": [
+          39.000282287597656,
+          2.5007517337799072,
+          12.731106758117676
+        ],
+        "min": [
+          -23.849191665649414,
+          -21.500751495361328,
+          -13.001261711120605
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0944188b6177703b36b0a0c260478b1121c1a152060734aca2ad746a256dcf9e",
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-warm.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.077",
+      "nodeId": "sf.render.blackmarket.mesh.lod2-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "id": "material:0c11502fea9d740108140ae7",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mechanical_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "id": "material:14f398d34f8381a8c902dea8",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "id": "material:50bfb0bc15f570bd617f4a1b",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac12d1472d616684add648eec3406c72a10b3317bd68cef78a63cc1c96a551d6",
+      "id": "material:ac12d1472d616684add648ee",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "id": "material:ecd2c66c154b2ddeed6f95a9",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.blackmarket.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Accent",
+      "nodeName": "LOD0_Station_Material_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Station_Material_Glass",
+      "nodeName": "LOD0_Station_Material_Glass",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Hull",
+      "nodeName": "LOD0_Station_Material_Hull",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Mechanical",
+      "nodeName": "LOD0_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod0-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Warm",
+      "nodeName": "LOD0_Station_Material_Warm",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Accent",
+      "nodeName": "LOD1_Station_Material_Accent",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Station_Material_Glass",
+      "nodeName": "LOD1_Station_Material_Glass",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Hull",
+      "nodeName": "LOD1_Station_Material_Hull",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Mechanical",
+      "nodeName": "LOD1_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod1-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Warm",
+      "nodeName": "LOD1_Station_Material_Warm",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Accent",
+      "nodeName": "LOD2_Station_Material_Accent",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Station_Material_Glass",
+      "nodeName": "LOD2_Station_Material_Glass",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Hull",
+      "nodeName": "LOD2_Station_Material_Hull",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Mechanical",
+      "nodeName": "LOD2_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.mesh.lod2-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Warm",
+      "nodeName": "LOD2_Station_Material_Warm",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.blackmarket.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.blackmarket.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_STATION_BLACKMARKET_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.blackmarket.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "8cf5b5ed98008f34e016192ce101d929808ac0bd6df5a4049bd37f54e18efd1e"
+    },
+    "sourceGlb": {
+      "bytes": 7632344,
+      "sha256": "18b91187afbbaf3a01149bb079ee646a95c519478726d621d8e149f761c44e9f",
+      "uri": "place_station_blackmarket.glb"
+    },
+    "sourceManifest": {
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 8741400,
+    "sha256": "493874ac9c925b97e3bf9414ba6cc60829464a84ea98e24fa185ab049b9b541c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -4.829828262329102,
+        0,
+        -1.5589113235473633
+      ],
+      "max": [
+        56.12887191772461,
+        58.25519561767578,
+        15.696741104125977
+      ],
+      "min": [
+        -65.78852844238281,
+        -58.25519561767578,
+        -18.814563751220703
+      ],
+      "size": [
+        121.91740036010742,
+        116.51039123535156,
+        34.51130485534668
+      ]
+    },
+    "hidden": [
+      1
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          40.162193298339844,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Dock_Approach",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "dock_approach",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Approach",
+            "recordIds": [
+              "sf.render.blackmarket.anchor.socket-dock-approach"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -10.349527359008789,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.blackmarket.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "spaceface.socketRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.blackmarket.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Accent",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Glass",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Mechanical",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Warm",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Accent",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Glass",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Mechanical",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Warm",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Accent",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Glass",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          56.12887191772461,
+          58.25519561767578,
+          15.696741104125977
+        ],
+        "min": [
+          -65.78852844238281,
+          -58.25519561767578,
+          -18.814563751220703
+        ]
+      },
+      "id": "sf.render.blackmarket.body",
+      "nodeIds": [
+        "sf.render.blackmarket.mesh.collision-hull",
+        "sf.render.blackmarket.mesh.lod0-station-material-accent",
+        "sf.render.blackmarket.mesh.lod0-station-material-glass",
+        "sf.render.blackmarket.mesh.lod0-station-material-hull",
+        "sf.render.blackmarket.mesh.lod0-station-material-mechanical",
+        "sf.render.blackmarket.mesh.lod0-station-material-warm",
+        "sf.render.blackmarket.mesh.lod1-station-material-accent",
+        "sf.render.blackmarket.mesh.lod1-station-material-glass",
+        "sf.render.blackmarket.mesh.lod1-station-material-hull",
+        "sf.render.blackmarket.mesh.lod1-station-material-mechanical",
+        "sf.render.blackmarket.mesh.lod1-station-material-warm",
+        "sf.render.blackmarket.mesh.lod2-station-material-accent",
+        "sf.render.blackmarket.mesh.lod2-station-material-glass",
+        "sf.render.blackmarket.mesh.lod2-station-material-hull",
+        "sf.render.blackmarket.mesh.lod2-station-material-mechanical",
+        "sf.render.blackmarket.mesh.lod2-station-material-warm",
+        "sf.render.blackmarket.root"
+      ]
+    }
+  ]
+}
