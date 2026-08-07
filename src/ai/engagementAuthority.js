@@ -187,12 +187,17 @@ export function isHostileForAI(state, self, other) {
 
   const selfIsPlayer = !!(state && self.id === state.playerId);
   const otherIsPlayer = !!(state && other.id === state.playerId);
+  // Team 0 is the player flight (player + wingmen). Lawful WANTED gating must cover the whole
+  // flight — wingmen share the player's team but not the playerId, so id-only checks left them
+  // exposed to team-mismatch hostility while the clean player was ignored.
+  const selfIsPlayerSide = selfIsPlayer || self.team === 0;
+  const otherIsPlayerSide = otherIsPlayer || other.team === 0;
   if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
   if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
 
   if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;
-  if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);
-  if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);
+  if (selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
+  if (otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
   return self.team !== other.team;
 }
 

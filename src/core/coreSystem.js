@@ -109,11 +109,27 @@ export const core = {
     this._presentationJournalUnsubscribes.push(
       bus.on('ship:appearanceChanged', ({ id }) => markEntityVisualChanged(id)),
       bus.on('save:restoring', () => requestPresentationRebuild('save-restoring')),
-      bus.on('save:loaded', () => requestPresentationRebuild('save-loaded')),
+      // Continue restores simTime without reconstructing core. Re-anchor the day boundary so the
+      // first preStep cannot invent a multi-day day:tick from _lastDay still sitting at 0.
+      bus.on('save:loaded', () => {
+        this.syncDayBoundaryFromSimTime(state);
+        requestPresentationRebuild('save-loaded');
+      }),
       bus.on('game:new', () => requestPresentationRebuild('game-new')),
       bus.on('game:newGame', () => requestPresentationRebuild('game-new')),
       bus.on('game:started', () => requestPresentationRebuild('game-started')),
     );
+  },
+
+  /**
+   * Align the day-boundary cursor with the authoritative sim clock.
+   * Used after Continue/load so restored simTime does not look like N days of elapsed time.
+   */
+  syncDayBoundaryFromSimTime(state = this.state) {
+    if (!state) return;
+    const day = Math.max(0, Math.floor((Number(state.simTime) || 0) / DAY_SECONDS));
+    this._lastDay = day;
+    state.days = day;
   },
 
   destroy() {
@@ -147,8 +163,13 @@ export const core = {
     const day = Math.floor(state.simTime / DAY_SECONDS);
     if (day !== this._lastDay) {
       const elapsed = day - this._lastDay;
-      this._lastDay = day; state.days = day;
-      this.bus.emit('day:tick', { days: day, elapsed });
+      this._lastDay = day;
+      state.days = day;
+      // Forward boundaries notify consumers. A backward jump means the clock was reset (New Game)
+      // while core kept the prior cursor — adopt silently instead of emitting a negative/zero catch-up.
+      if (elapsed > 0) {
+        this.bus.emit('day:tick', { days: day, elapsed });
+      }
     }
   },
 

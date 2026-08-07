@@ -4754,6 +4754,40 @@
       "blocker": null
     },
     {
+      "id": "PQ-037.navigation-marker-render-packages",
+      "parentId": "PQ-037",
+      "priority": 249,
+      "title": "Package repeated navigation and arrival markers",
+      "kind": "implementation",
+      "state": "done",
+      "owner": "released",
+      "claimBase": "12f77be5a81cc28bbf34540aa8cb4b6a444181a0",
+      "dependsOn": [
+        "PQ-037.resource-worksite-render-packages"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "renderer"
+      ],
+      "paths": [
+        "assets/ships/render-packages/pilots.json",
+        "assets/ships/release/render-packages/",
+        "src/render/renderPackageManifest.js",
+        "test/render-package-pilots.test.mjs",
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md",
+        "design/program/roadmap/program-queue.json"
+      ],
+      "checks": [
+        "node --test test/render-package-pilots.test.mjs",
+        "npm run check:render-package-pilots"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-037-render-compiler-REPORT.md"
+      ],
+      "brief": "The exact accepted navigation buoy, lane beacon, station billboard, and memorial array now have rebuildable immutable packages. All 57 marker geometries remain indexed and preserve authored hierarchy/anchors while repeated travel and arrival-marker source-URL admission bypasses runtime geometry clone, transform, merge, normalization, and de-index preparation. Focused tests passed 3/3 and all 26 packages rebuilt byte-identically with no source-asset, art, gameplay, placement, default, or visual change.",
+      "blocker": null
+    },
+    {
       "id": "PQ-038.native-acceptance",
       "parentId": "PQ-038",
       "priority": 223,

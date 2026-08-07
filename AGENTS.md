@@ -27,6 +27,7 @@ workflow; it does not replace original plans.
 | Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |
 | Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 | Search/archaeology | `docs/SEARCH_CONTEXT.md` |
+| Leftover `sf-*` / agent worktree cleanup, residual integrate-or-drop triage | **`_recovery/worktree-triage/AGENTS.md`** (local, gitignored — on this machine only). Do not delete `claude/*` `codex/*` `archive/*` branches until that playbook’s decisions are done. |
 
 Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary code task.
 

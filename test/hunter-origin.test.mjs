@@ -327,6 +327,7 @@ function testAcceptedWritStampsExactMissionTargetHostile() {
         reason: 'combat_doctrine:interceptor_flyby:strike',
       },
     },
+    action: { actionId: 'action_burst' },
     combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
   }, state);
   assert.equal(rook.data.intent.fire, true, 'accepted Rook warrant reaches live firing intent');
@@ -350,6 +351,7 @@ function testAcceptedWritStampsExactMissionTargetHostile() {
         reason: 'combat_doctrine:interceptor_flyby:strike',
       },
     },
+    action: { actionId: 'action_burst' },
     combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
   }, state);
   assert.equal(unaccepted.data.intent?.fire, false, 'unaccepted Helios Wasp remains a no-spawn-attack counterexample');

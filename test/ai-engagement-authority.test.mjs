@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   authorizeAIEngagement,
   inspectFirstSessionAttackerOwnership,
+  isHostileForAI,
   isOffensiveActionDef,
   maintainFirstSessionAttackerOwnership,
   protectedStationAt,
@@ -469,4 +470,38 @@ test('passive and hold-fire transitions clear stale weapon intent in the live AI
   hold.entities.get(2).data.intent.fire = true;
   assert.equal(clearIneligibleAIFiringIntents(hold), 1);
   assert.equal(hold.entities.get(2).data.intent.fire, false);
+});
+
+test('lawful AI applies WANTED gating to wingmen the same way as the clean player', () => {
+  const clean = stateWith(authorizedAI({
+    lawful: true,
+    motive: 'law_enforcement',
+    engagementTrigger: 'wanted_status',
+  }), { wanted: false });
+  const patrol = clean.entities.get(2);
+  const player = clean.entities.get(1);
+  const wingman = ship('wing_1', 0, { x: 1410, z: 0 });
+  clean.entities.set('wing_1', wingman);
+  clean.entityList.push(wingman);
+
+  assert.equal(isHostileForAI(clean, patrol, player), false);
+  assert.equal(isHostileForAI(clean, patrol, wingman), false,
+    'clean player flight must not read as hostile to lawful patrols');
+
+  const wanted = stateWith(authorizedAI({
+    lawful: true,
+    motive: 'law_enforcement',
+    engagementTrigger: 'wanted_status',
+  }), { wanted: true });
+  const wantedPatrol = wanted.entities.get(2);
+  const wantedWing = ship('wing_2', 0, { x: 1410, z: 0 });
+  assert.equal(isHostileForAI(wanted, wantedPatrol, wanted.entities.get(1)), true);
+  assert.equal(isHostileForAI(wanted, wantedPatrol, wantedWing), true,
+    'WANTED heat still marks the whole player flight hostile');
+
+  const raider = stateWith(authorizedAI({ lawful: false }));
+  const raiderShip = raider.entities.get(2);
+  const raiderWing = ship('wing_3', 0, { x: 1410, z: 0 });
+  assert.equal(isHostileForAI(raider, raiderShip, raiderWing), true,
+    'non-lawful hostiles still treat wingmen as opposing team');
 });

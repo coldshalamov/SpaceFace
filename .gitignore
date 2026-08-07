@@ -36,3 +36,9 @@ dist/
 tools/art/blender/batch_*.log
 **/__pycache__/
 /assets/ships/m4_helios_hub/evidence/pre_promote_backups/
+
+# Local worktree recovery / triage (do not commit bulky exports)
+_recovery/
+
+# Cursor editor hook state — per-machine mutable bookkeeping (session ids, timestamps).
+.cursor/

@@ -295,3 +295,21 @@ retain their authored hierarchy and socket records.
 saves, authored density, and default quality did not change. The mining drone was not admitted by this
 unit: its accepted GLB declares no internal `assetId`, so the asset-metadata owner must add that identity
 before the fail-closed compiler can package it; the compiler check was not weakened or bypassed.
+
+## Navigation-marker production expansion 2026-08-06
+
+Four repeated travel/arrival markers now use immutable production packages: navigation buoy, lane
+beacon, station billboard, and memorial array. The exact accepted releases contribute 6.49 MB of
+prepared render data and 57 indexed geometry records; each retains its authored root and anchor record.
+
+| Package | Accepted source SHA-256 | Package content hash | Indexed geometry |
+|---|---|---|---:|
+| Navigation buoy | `5f7c43a66b4563d40e4a6df1fe35698c11489263f81746b55a86b7eabcc886e6` | `2ca909ea127743a15f343f7c193337e8a1cfc72a16cfe0a2283a9d46bb21b432` | 15 / 15 |
+| Lane beacon | `72bb0fabefed2b1b81c8cd4d70a3b3ef7abbad1f09010dde14c5f0fe15d1cbbe` | `bb929c9350ee3508ebf6c27bdec14d90abf63b10fff5526755058cbd9ccda9f3` | 12 / 12 |
+| Station billboard | `1a780be072b47a1ba38dbd977fdcfb16c5d1a7318213c1edc167cd5025b5d0c5` | `f454262997dccbc9949100cf2560cbe106bf735a5c9327c8c561bd1b0d248981` | 15 / 15 |
+| Memorial array | `7bb0c7709a33e7b3972d5a32226037605792666b439c94b934dc04d15b238667` | `ef12b916806e58598e0f1ee0f1310c8ce5ebedf5467cac37b3e94798af1bb750` | 15 / 15 |
+
+`test/render-package-pilots.test.mjs` passed 3/3 and the single rebuild comparison reported all
+26 production packages fresh. The source/release GLBs, materials, placement, art, gameplay, controls,
+saves, density, and default quality remain byte-for-byte or behaviorally unchanged; only deterministic
+package outputs, provenance hashes, and the generated runtime trust binding changed.
