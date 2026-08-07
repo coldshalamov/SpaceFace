@@ -9,6 +9,7 @@
 // state.story + the pure-data narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { createShipLedgerPanel } from './shipLedger.js';
 
 const STYLE_ID = 'sf-codex-style';
@@ -109,7 +110,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Comms', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Comms', 'Discoveries', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -306,6 +307,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('story:beatAdvanced', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('comms:popup', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
 
     this._render(ctx);
   },
@@ -354,6 +356,7 @@ export const codexScreen = {
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
+      case 'Discoveries': this._renderDiscoveries(ctx); break;
       case 'Graffiti': this._renderGraffiti(ctx); break;
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
@@ -407,6 +410,23 @@ export const codexScreen = {
     }
     this._body.appendChild(this._ledgerPanel.el);
     this._ledgerPanel.onShow();
+  },
+
+  _renderDiscoveries(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
+    const plates = explorationDiscoveryPlates(ctx && ctx.state);
+    if (!plates.length) {
+      this._body.appendChild(el('div', 'sf-codex-empty', 'No physical discoveries logged yet. Earn a fix, then fly down the source.'));
+      return;
+    }
+    for (const plate of plates) {
+      const entry = el('div', 'sf-codex-entry');
+      entry.appendChild(el('h3', null, plate.title));
+      entry.appendChild(el('div', 'sf-codex-meta', plate.meta));
+      entry.appendChild(el('div', 'sf-codex-body', plate.body));
+      entry.appendChild(el('div', 'sf-codex-note', plate.note));
+      this._body.appendChild(entry);
+    }
   },
 
   _renderStatus(ctx) {

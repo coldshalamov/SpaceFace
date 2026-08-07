@@ -226,6 +226,7 @@ export const world = {
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
+    bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
@@ -2423,8 +2424,25 @@ export const world = {
       if (dist <= sr) {
         if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
         if (dist <= sr * 0.5) {
+          const newlyIdentified = !rec.identified;
           rec.identified = true;
-          this.bus.emit('poi:identified', { poiId: p.poiId, type: p.type, reward: (ent.data && ent.data.reward) || null });
+          rec.type = p.type || rec.type || null;
+          rec.name = ent.data && ent.data.name || rec.name || p.poiId;
+          rec.identifiedAt = Number(state.simTime) || 0;
+          this.bus.emit('poi:identified', {
+            poiId: p.poiId,
+            type: p.type,
+            name: rec.name,
+            sectorId: state.world.currentSectorId,
+            reward: (ent.data && ent.data.reward) || null,
+          });
+          if (newlyIdentified) {
+            this.bus.emit('discovery:plateUnlocked', {
+              sectorId: state.world.currentSectorId,
+              poiId: p.poiId,
+              type: p.type,
+            });
+          }
           this.bus.emit('toast', { text: `POI identified: ${(ent.data && ent.data.name) || p.poiId}`, kind: 'info', ttl: 4 });
         }
       }
@@ -2544,6 +2562,8 @@ export const world = {
     rec.discovered = true;
     rec.triangulated = true;
     rec.triangulatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
+    rec.triangulationSampleCount = Math.max(1, Math.floor(Number(payload.sampleCount) || 3));
+    rec.type = 'anomaly';
     const active = this.state.world.activeSector;
     if (active && active.id === sectorId) {
       const row = (active.pois || []).find((poi) => poi && poi.poiId === poiId);
@@ -2554,6 +2574,28 @@ export const world = {
       }
     }
     if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: 'anomaly', sectorId });
+    return true;
+  },
+
+  _onSignalInvestigated(payload) {
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    const poiId = payload.sourceId;
+    if (!sectorId || !poiId) return false;
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    if (!poi) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    const newlyFound = !rec.investigated && !rec.identified && !rec.defeated;
+    rec.discovered = true;
+    rec.identified = true;
+    rec.investigated = true;
+    rec.investigatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
+    rec.type = poi.type || payload.sourceKind || rec.type || null;
+    rec.name = poi.name || rec.name || poiId;
+    if (newlyFound) {
+      this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
+    }
     return true;
   },
 

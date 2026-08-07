@@ -37,6 +37,7 @@ import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
+import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -6312,6 +6313,7 @@ export const galaxyMapScreen = {
     const charted = record ? isSectorCharted(state, record) : false;
     const confidence = record ? mapConfidenceForSector(state, record) : null;
     const disc = discoveryForSector(state, sectorId);
+    const exploration = sectorExplorationProgress(state, record || sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
       <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
@@ -6328,6 +6330,7 @@ export const galaxyMapScreen = {
         <div class="gm-ins-row"><span>Charted</span><span class="gm-ins-row-val">${charted ? 'Yes' : 'No'}</span></div>
         <div class="gm-ins-row"><span>Confidence</span><span class="gm-ins-row-val">${pct == null ? 'Unknown' : `${pct}%`}${confidence && confidence.band ? ` · ${escapeMapHtml(String(confidence.band))}` : ''}</span></div>
         <div class="gm-ins-row"><span>Scanned</span><span class="gm-ins-row-val">${disc && disc.scanned ? 'Yes' : 'No'}</span></div>
+        <div class="gm-ins-row"><span>Exploration</span><span class="gm-ins-row-val">${exploration.percent == null ? 'No authored sites' : `${exploration.percent}% · ${exploration.found}/${exploration.total} sites`}</span></div>
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
