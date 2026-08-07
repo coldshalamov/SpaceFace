@@ -435,6 +435,7 @@ export async function loadAuthoredPart(url, options = {}) {
   if (renderPackagePilot) {
     return loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options);
   }
+  assertSourceRouteAdmitted(url);
 
   const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
@@ -1009,6 +1010,40 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
  * transcoding anything.
  */
 export const AUTHORED_RUNTIME_TABLE_SCHEMA = 'spaceface.renderPackageRuntime.v1';
+
+/**
+ * Released assets that deliberately have no render package, each with the reason it cannot have one.
+ *
+ * This list is the difference between "excluded" and "forgotten". Coverage is derived from the
+ * release manifest, so anything released is packaged; an entry here is an explicit, reviewable
+ * exception rather than an asset that silently slipped back onto the source route.
+ */
+const SOURCE_ROUTE_ALLOWLIST = new Map([
+  ['assets/ships/release/parts/fins/fin_crystalline.glb',
+    'two nodes share the name fin_crystalline_Material_Accent_Merged; semantic locators resolve by '
+    + 'name, so the asset must be re-authored before it can be packaged'],
+]);
+
+/**
+ * Fail closed: a released part with no package must not quietly fall back to compiling its blueprint
+ * from source at load. That fallback is what let package coverage rot unnoticed — the game looked
+ * fine while paying full derivation cost on every load.
+ *
+ * The source route stays reachable for development (set `globalThis.__SF_DEV_SOURCE_ASSETS__`), and
+ * for assets outside `release/parts/`, which are tooling and reference files rather than runtime
+ * content.
+ */
+function assertSourceRouteAdmitted(url) {
+  const path = String(url || '').split('?')[0].replace(/\\/g, '/');
+  if (!path.includes('assets/ships/release/parts/')) return;
+  if (globalThis.__SF_DEV_SOURCE_ASSETS__ === true) return;
+  const reason = SOURCE_ROUTE_ALLOWLIST.get(path.replace(/^.*?(assets\/ships\/release\/parts\/)/, '$1'));
+  if (reason) return;
+  throw new AssetContractError(url, [
+    'released part has no render package, and the source route is development-only. '
+    + 'Run: node scripts/generate-render-package-pilots.mjs && node scripts/build-render-package-pilots.mjs',
+  ]);
+}
 
 /**
  * Build a runtime blueprint by binding a package's precompiled runtime table to a decoded scene.

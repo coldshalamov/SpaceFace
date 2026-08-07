@@ -154,8 +154,21 @@ Two derivation fixes were needed along the way, both narrow:
 curated-list antipattern. It now asserts the originally-admitted families are still packaged and
 lets the coverage check own "nothing is missing".
 
-**Still open:** gate 2 (fail-closed / dev-only source route) and gate 5 (residency prewarm +
-prepare-then-swap). Gate 4 was already in place (`build:render-package-pilots --check`).
+### Gate 2 — fail closed — MET
+
+A released part under `assets/ships/release/parts/` with no render package now throws
+(`assertSourceRouteAdmitted`) instead of quietly compiling its blueprint from source at load. That
+silent fallback is precisely what let coverage rot unnoticed: the game looked correct while paying
+full derivation cost on every load, and nothing ever said so.
+
+The source route remains reachable for development via `globalThis.__SF_DEV_SOURCE_ASSETS__`, and
+assets outside `release/parts/` are unaffected — they are tooling and reference files, not runtime
+content. `SOURCE_ROUTE_ALLOWLIST` carries the one asset that genuinely cannot be packaged
+(`fin_crystalline.glb`) together with its reason, so the exception is reviewable rather than
+invisible. That list is the difference between *excluded* and *forgotten*.
+
+**Still open:** gate 5 (residency prewarm + prepare-then-swap). Gate 4 was already in place
+(`build:render-package-pilots --check`).
 
 **Exit gates**
 
