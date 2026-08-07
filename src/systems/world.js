@@ -1619,6 +1619,9 @@ export const world = {
         spec.data.ai.formation = intent.formation;
         spec.data.ai.zoneId = intent.zoneId;
         spec.data.ai.zoneName = intent.zoneName;
+        if (Number.isFinite(intent.standingHostileBelow)) {
+          spec.data.ai.standingHostileBelow = intent.standingHostileBelow;
+        }
         tagAiSpawnContext(spec, sector, sec, intent.context);
         const ent = this.helpers.spawnEntity(spec);
         this._stampHomeSector(ent, sector.id);

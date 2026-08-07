@@ -311,6 +311,9 @@ export function planZoneSpawns(sectorId, budget, enemyLevel, rng) {
   for (const { zone, p, count } of plans) {
     const n = Math.max(0, count | 0);
     const factionId = p.factionId || zone.factionId;
+    const spawnCenter = p.spawnCenter && Number.isFinite(p.spawnCenter.x) && Number.isFinite(p.spawnCenter.z)
+      ? p.spawnCenter
+      : zone.center;
     const clusterR = Math.min(zone.radius || 260, 260); // tight cluster so the roster forms one squad
     for (let i = 0; i < n; i++) {
       if (out.length >= budget) break;
@@ -318,13 +321,16 @@ export function planZoneSpawns(sectorId, budget, enemyLevel, rng) {
       const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
       const ang = rng() * Math.PI * 2;
       const r = Math.sqrt(rng()) * clusterR;
-      const pos = { x: zone.center.x + Math.cos(ang) * r, z: zone.center.z + Math.sin(ang) * r };
+      const pos = { x: spawnCenter.x + Math.cos(ang) * r, z: spawnCenter.z + Math.sin(ang) * r };
       out.push({
         archetypeId, level, pos, factionId,
         squadId: zone.id,                     // one squad per zone → coherent formation on the zone
         doctrine: p.doctrine || 'balanced',
         formation: p.formation || 'wedge',
         context: p.context || 'zone_hostile',
+        standingHostileBelow: Number.isFinite(p.standingHostileBelow)
+          ? Number(p.standingHostileBelow)
+          : null,
         zoneId: zone.id, zoneName: zone.name,
       });
     }

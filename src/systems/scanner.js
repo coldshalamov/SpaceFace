@@ -1301,6 +1301,15 @@ export function isHostileToPlayer(e, playerTeam, state) {
   if (intent && intent.fire && targetsPlayer) return true;
   if (ai && (ai.forcePlayerTarget || ai.huntPlayer)) return true;
   if (data.encounter) return true;
+  // A few authored outlaw markets field armed local guards rather than unconditional encounter
+  // enemies. Explicit targeting/retaliation above still wins, while live standing decides whether
+  // an otherwise ambient guard treats the player as a customer or an intruder.
+  const standingHostileBelow = ai && ai.standingHostileBelow;
+  if (Number.isFinite(standingHostileBelow) && e.factionId) {
+    const standing = state && state.factions && state.factions[e.factionId];
+    const rep = standing && Number.isFinite(Number(standing.rep)) ? Number(standing.rep) : 0;
+    if (rep >= standingHostileBelow) return false;
+  }
   const context = String((ai && (ai.spawnContext || ai.context)) || '');
   if (PLAYER_DANGER_CONTEXTS.has(context)) return true;
   const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role)) || data.role || data.scenarioRole || '').toLowerCase();

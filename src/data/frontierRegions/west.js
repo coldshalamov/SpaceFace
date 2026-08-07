@@ -406,7 +406,7 @@ const REGION_KEPLER = freezeRegion({
         factionId: 'faction_reach',
         size: 'M',
         services: ['black_market', 'repair', 'refuel', 'missions'],
-        chartNote: 'Reach rules apply: stolen cargo in, repairs out, and every favor has a price.',
+        chartNote: 'The Bazaar shelters under the capsized Void-Reach: stolen cargo in, carrier surplus out, and every favor has a price.',
         repGated: true,
       },
     ],
@@ -419,7 +419,17 @@ const REGION_KEPLER = freezeRegion({
       { type: 'debris', center: { x: -700, z: 500 }, radius: 700, intensity: 0.5 },
     ],
     pois: [
-      { id: 'poi_kepler_hulk', type: 'derelict', name: 'Scarred Battlegroup' },
+      {
+        id: 'poi_kepler_hulk',
+        type: 'derelict',
+        name: 'The Flight Deck',
+        scannerSignalKind: 'archive',
+        flavorTargetRef: 'landmark_c8_flight_deck',
+        discoveryPlate: {
+          title: 'The Flight Deck',
+          body: 'The carrier Void-Reach died upside-down. Reach stalls now crowd its upturned belly while launch rails hang over the market like teeth.',
+        },
+      },
       { id: 'poi_kepler_stash', type: 'cache', name: 'Raider Stash', hidden: true },
     ],
   },
@@ -444,7 +454,9 @@ const REGION_KEPLER = freezeRegion({
     pois: [
       {
         id: 'poi_kepler_hulk',
-        pos: { x: 1240, z: 860 },
+        // The station grew around this hull. Keep the two physical carriers distinct, but close
+        // enough that arriving at either reveals one market-under-a-dead-carrier composition.
+        pos: { x: 40, z: 720 },
         landmarkGlb: 'place_dead_hulk',
         landmark: true,
       },
@@ -473,6 +485,11 @@ const REGION_KEPLER = freezeRegion({
         formation: 'wedge',
         context: 'zone_hostile',
         hostile: true,
+        // The Bazaar is Reach territory, not a perpetual ambush. Neutral visitors may dock;
+        // negative standing (or direct provocation) turns the same local squad hostile.
+        standingHostileBelow: 0,
+        // Patrol the outer approach rather than spawning inside the station's berth safety bubble.
+        spawnCenter: { x: -520, z: -650 },
       },
     },
     {
