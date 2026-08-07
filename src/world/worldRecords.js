@@ -135,6 +135,15 @@ export function normalizeRecord(raw, fallbackId) {
     trafficRole: raw.trafficRole || null,
     trafficLabel: raw.trafficLabel || null,
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? clonePlain(raw.itinerary) : null,
+    // A convoy's cargo is part of its durable identity: sector residency may replace the live
+    // entity id, but it must never reroll what the player already scanned or reuse a delivered leg.
+    cargoManifest: raw.cargoManifest && typeof raw.cargoManifest === 'object'
+      && !Array.isArray(raw.cargoManifest)
+      ? clonePlain(raw.cargoManifest)
+      : null,
+    freightDockSeq: Number.isFinite(raw.freightDockSeq)
+      ? Math.max(0, Math.floor(raw.freightDockSeq))
+      : null,
     wreckClass: raw.wreckClass || null,
     markerId: raw.markerId || null,
     victimClass: raw.victimClass || null,
@@ -329,6 +338,8 @@ export function captureEntityRecord(entity, opts = {}) {
     trafficRole: d.trafficRole || null,
     trafficLabel: d.trafficLabel || null,
     itinerary: d.itinerary || (opts.itinerary || null),
+    cargoManifest: d.cargoManifest || null,
+    freightDockSeq: Number.isFinite(d.freightDockSeq) ? d.freightDockSeq : null,
     wreckClass: d.wreckClass || null,
     markerId: d.markerId || null,
     victimClass: d.victimClass || null,
@@ -475,6 +486,8 @@ export function spawnSpecFromRecord(record) {
       trafficRole: rec.trafficRole,
       trafficLabel: rec.trafficLabel,
       itinerary: rec.itinerary,
+      cargoManifest: rec.cargoManifest,
+      freightDockSeq: rec.freightDockSeq,
       ai: rec.ai || { archetype: 'passive', passive: true },
       isBoss: rec.isBoss,
       bossPoiId: rec.bossPoiId,
@@ -550,6 +563,8 @@ export function bindEntityToRecord(entity, record) {
   if (record.trafficRole) {
     entity.data.trafficRole = record.trafficRole;
     if (record.trafficLabel) entity.data.trafficLabel = record.trafficLabel;
+    if (record.cargoManifest) entity.data.cargoManifest = clonePlain(record.cargoManifest);
+    if (Number.isFinite(record.freightDockSeq)) entity.data.freightDockSeq = record.freightDockSeq;
   }
   if (record.recordSource) entity.data.recordSource = record.recordSource;
   if (record.recipeKey) entity.data.recipeKey = record.recipeKey;

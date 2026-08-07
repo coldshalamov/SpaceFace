@@ -18,6 +18,7 @@ import { WORLD_SITE_MANIFESTS } from '../src/data/worldSiteManifests.js';
 import {
   RECORD_KIND,
   WORLD_RECORDS_SCHEMA_ID,
+  captureEntityRecord,
   createEmptyRecordsBag,
   deserializeRecordsBag,
   entityHasDurableMarkers,
@@ -27,6 +28,7 @@ import {
   normalizeRecordsBag,
   recordsForSector,
   serializeRecordsBag,
+  spawnSpecFromRecord,
   stableRecordId,
 } from '../src/world/worldRecords.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
@@ -668,6 +670,55 @@ test('deserializeRecordsBag round-trip preserves global poses', () => {
   const bag = deserializeRecordsBag(ser);
   assert.equal(bag.byId.wr_x.pos.x, o.x + 1);
   assert.equal(bag.byId.wr_x.trafficRole, 'courier');
+});
+
+test('durable convoy records preserve scanned cargo and the next delivery sequence', () => {
+  const manifest = {
+    schemaId: 'spaceface.freightCausality.v1',
+    schemaVersion: 1,
+    manifestId: 'fm_fixture_ore',
+    freighterKey: 'wr_freight_fixture',
+    role: 'hauler',
+    lines: [{ commodityId: 'cmdty_ore_iron', qty: 8 }],
+    totalQty: 8,
+  };
+  const entity = {
+    id: 77,
+    type: 'ship',
+    alive: true,
+    team: 2,
+    pos: { x: 120, z: -80 },
+    vel: { x: 3, z: 1 },
+    rot: 0.25,
+    data: {
+      worldRecordId: 'wr_freight_fixture',
+      defId: 'ship_mule',
+      trafficRole: 'hauler',
+      trafficLabel: 'Cargo Hauler',
+      cargoManifest: manifest,
+      freightDockSeq: 19,
+    },
+  };
+  const captured = captureEntityRecord(entity, {
+    seed: 44,
+    sectorId: TETHYS,
+    kind: RECORD_KIND.CONVOY,
+    tick: 100,
+  });
+  assert.deepEqual(captured.cargoManifest, manifest);
+  assert.notEqual(captured.cargoManifest, manifest, 'record owns a detached cargo snapshot');
+  assert.equal(captured.freightDockSeq, 19);
+
+  const restored = deserializeRecordsBag(serializeRecordsBag({
+    byId: { [captured.recordId]: captured },
+  })).byId[captured.recordId];
+  const spec = spawnSpecFromRecord(restored);
+  assert.deepEqual(spec.data.cargoManifest, manifest);
+  assert.equal(spec.data.freightDockSeq, 19);
+
+  spec.data.cargoManifest.lines[0].qty = 999;
+  assert.equal(restored.cargoManifest.lines[0].qty, 8,
+    'rematerialized cargo cannot mutate the durable record through aliasing');
 });
 // ── adversarial: traffic / mission pre-demotion identity + Continue adoption ────────────────
 
