@@ -40,6 +40,11 @@ export function createRenderPackageLoader(options = {}) {
   const prepareDecoded = typeof options.prepareDecoded === 'function'
     ? options.prepareDecoded
     : null;
+  // Tier-1 causal counter sink (default null). All counting is guarded by the counter set's own
+  // enabled flag, so a present-but-disabled set costs one boolean read per recorded unit of work.
+  const counters = options.counters && typeof options.counters.isEnabled === 'function'
+    ? options.counters
+    : null;
   const cache = new Map();
   let ownerSequence = 0;
   let disposed = false;
@@ -115,7 +120,10 @@ export function createRenderPackageLoader(options = {}) {
       role: 'render-package-cache',
     });
     entry.promise = Promise.resolve()
-      .then(() => decodeGlb(renderUrl, metadata))
+      .then(() => {
+        if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
+        return decodeGlb(renderUrl, metadata);
+      })
       .then(async (decoded) => {
         let prepared = null;
         try {
@@ -131,7 +139,7 @@ export function createRenderPackageLoader(options = {}) {
           entry,
           createOwner,
           releasePackageOwner,
-        }, prepared);
+        }, prepared, counters);
         entry.loaded = loaded;
         try {
           residency.registerAsset(entry.key, loaded.resources, {
@@ -246,7 +254,7 @@ export function createRenderPackageLoader(options = {}) {
   });
 }
 
-function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared = null) {
+function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared = null, counters = null) {
   const template = decoded?.scene || decoded;
   if (
     !template
@@ -256,9 +264,17 @@ function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared =
   ) {
     throw new Error(`Render package ${metadata.assetId} decoder did not return a Three.js scene root.`);
   }
-  const resources = collectImmutableResources(template);
+  const counting = counters && counters.isEnabled() ? counters : null;
+  const resourceStats = { nodes: 0 };
+  const resources = collectImmutableResources(template, resourceStats);
+  if (counting) counting.countGraphTraversal(resourceStats.nodes, 'package-resource-index');
   try {
-    indexSemanticNodes(template, metadata);
+    const semanticStats = { nodes: 0 };
+    indexSemanticNodes(template, metadata, semanticStats);
+    if (counting) {
+      counting.countRuntimeSemanticCompile('package-load-semantic-index', semanticStats.nodes);
+      counting.countGraphTraversal(semanticStats.nodes, 'package-load-semantic-index');
+    }
     return new LoadedRenderPackage(
       metadata,
       template,
@@ -266,6 +282,7 @@ function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared =
       resources,
       lifecycle,
       prepared,
+      counters,
     );
   } catch (error) {
     disposeUnregisteredResources(resources);
@@ -276,8 +293,9 @@ function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared =
 class LoadedRenderPackage {
   #template;
   #lifecycle;
+  #counters;
 
-  constructor(metadata, template, renderUrl, resources, lifecycle, prepared) {
+  constructor(metadata, template, renderUrl, resources, lifecycle, prepared, counters = null) {
     Object.defineProperties(this, {
       assetId: { value: metadata.assetId, enumerable: true },
       contentHash: { value: metadata.contentHash, enumerable: true },
@@ -289,6 +307,7 @@ class LoadedRenderPackage {
     });
     this.#template = template;
     this.#lifecycle = lifecycle;
+    this.#counters = counters;
     this.released = false;
     this.evicted = false;
   }
@@ -335,6 +354,7 @@ class LoadedRenderPackage {
 
     try {
       const { metadata } = this;
+      const counters = this.#counters && this.#counters.isEnabled() ? this.#counters : null;
       const root = cloneObjectGraph(this.#template);
       if (instanceOptions.name != null) root.name = String(instanceOptions.name);
       root.userData = {
@@ -346,7 +366,14 @@ class LoadedRenderPackage {
         },
       };
 
-      const semanticObjects = indexSemanticNodes(root, metadata);
+      const semanticStats = { nodes: 0 };
+      const semanticObjects = indexSemanticNodes(root, metadata, semanticStats);
+      if (counters) {
+        // The recursive clone reconstructed every node the re-index just visited.
+        counters.countGraphClone(semanticStats.nodes, 'package-instance');
+        counters.countRuntimeSemanticCompile('package-instance-reindex', semanticStats.nodes);
+        counters.countGraphTraversal(semanticStats.nodes, 'package-instance-reindex');
+      }
       const nodes = new Map(
         metadata.nodes.map((record) => [record.id, semanticObjects.get(record.id)]),
       );
@@ -447,13 +474,14 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   };
 }
 
-function indexSemanticNodes(root, metadata) {
+function indexSemanticNodes(root, metadata, stats = null) {
   const records = new Map(
     [...metadata.nodes, ...metadata.anchors].map((record) => [record.id, record]),
   );
   const objects = new Map();
 
   root.traverse((object) => {
+    if (stats) stats.nodes++;
     const payload = object.userData?.[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY];
     if (payload == null) return;
     if (!isPlainObject(payload)) {
@@ -503,9 +531,10 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function collectImmutableResources(root) {
+function collectImmutableResources(root, stats = null) {
   const resources = new Set();
   root.traverse((object) => {
+    if (stats) stats.nodes++;
     if (object.geometry) markImmutableResource(object.geometry, resources);
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
     for (const material of materials) {

@@ -155,6 +155,10 @@ export const core = {
   // End-of-step: TTL/despawn, sweep dead entities, recycle ids, flush deferred events.
   lifetimeSweep(dt, state) {
     const list = state.entityList;
+    // Tier-1 causal count: the sweep visits every entity once per tick. One hoisted boolean per
+    // tick; the visit count itself is a length read, not a per-entity call.
+    const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+    if (tier1 && tier1.isEnabled()) tier1.countEntityVisits(list.length, 'lifetime-sweep');
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       if (e.alive && e.ttl !== Infinity) { e.ttl -= dt; if (e.ttl <= 0) e.alive = false; }

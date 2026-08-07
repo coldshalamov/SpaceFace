@@ -11,6 +11,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
+import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { createRenderPackageLoader } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
@@ -451,14 +452,19 @@ export async function loadAuthoredPart(url, options = {}) {
 
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     loadGltfDocument(url, runtime.gltf)
-      .then((gltf) => compileBlueprint(url, gltf, slot, {
-        cacheKey,
-        residency,
-        onEvict() {
-          runtime.assets.delete(cacheKey);
-          runtime.failures.delete(cacheKey);
-        },
-      }))
+      .then((gltf) => {
+        // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
+        const tier1 = tier1CountersForRenderer(renderer);
+        if (tier1) tier1.countRuntimeSemanticCompile('source-blueprint-compile', 0);
+        return compileBlueprint(url, gltf, slot, {
+          cacheKey,
+          residency,
+          onEvict() {
+            runtime.assets.delete(cacheKey);
+            runtime.failures.delete(cacheKey);
+          },
+        });
+      })
       .catch((error) => {
         if (!runtime.retiring) {
           runtime.failures.set(cacheKey, error);
@@ -582,6 +588,14 @@ function runtimeFor(renderer) {
   return authoredAssetRuntimeRegistry.get(renderer);
 }
 
+/** Tier-1 causal counter sink for this renderer's state, or null when counting is off. */
+function tier1CountersForRenderer(renderer) {
+  const state = renderer && renderer.state;
+  if (!state) return null;
+  const tier1 = ensurePerfRuntime(state).tier1;
+  return tier1 && tier1.isEnabled() ? tier1 : null;
+}
+
 async function createRuntime(renderer) {
   const decoders = { gltf: false, ktx2: false, draco: false, meshopt: false };
   const paths = { ...ASSET_RUNTIME_DECODER_CONTRACT };
@@ -607,19 +621,14 @@ async function createRuntime(renderer) {
   const residency = getAssetResidency(renderer);
   const renderPackages = createRenderPackageLoader({
     residency,
+    counters: renderer && renderer.state ? ensurePerfRuntime(renderer.state).tier1 : null,
     configureGltfLoader: async (loader) => {
       await attachRuntimeDecoders(loader, renderer, decoders, disposableDecoders);
     },
-    prepareDecoded(decoded, packageMetadata) {
+    prepareDecoded(decoded, packageMetadata, renderUrl, plan) {
       const pilot = renderPackagePilotForAssetId(packageMetadata.assetId);
       if (!pilot) throw new Error(`Unknown production render package ${packageMetadata.assetId}.`);
-      const blueprint = compileBlueprint(pilot.sourceUrl, decoded, pilot.slot);
-      if (blueprint.assetId !== pilot.runtimeAssetId) {
-        throw new Error(
-          `Render package ${pilot.assetId} decoded runtime asset ${blueprint.assetId} instead of ${pilot.runtimeAssetId}.`,
-        );
-      }
-      return blueprint;
+      return prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, { renderer, plan });
     },
   });
 
@@ -639,6 +648,66 @@ async function createRuntime(renderer) {
   };
 }
 
+/**
+ * Prepare the runtime blueprint for one decoded render package.
+ *
+ * Extracted from the inline `prepareDecoded` closure so the shipping preparation step is reachable
+ * from headless harnesses and tests without standing up a renderer. Behaviour is unchanged.
+ *
+ * `plan` is the loader's flat instance plan for this package (see renderPackageLoader). It is the
+ * seam through which package-carried semantics replace source recompilation; while v1 metadata
+ * carries no primitives/markers/bounds, this still compiles the blueprint from the decoded graph
+ * ONCE per package load, and the Tier-1 counter below is what keeps that visible.
+ */
+export function prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, options = {}) {
+  const renderer = options.renderer || null;
+  // Tier-1 causal count: the shipping package path still recompiles blueprint semantics from the
+  // decoded graph once per package load. Removing it needs the package format to carry primitives,
+  // markers, tags and bounds — that is the render-package v2 work, not an instance-path change.
+  const tier1 = tier1CountersForRenderer(renderer);
+  if (tier1) tier1.countRuntimeSemanticCompile('package-blueprint-compile', 0);
+  const blueprint = compileBlueprint(pilot.sourceUrl, decoded, pilot.slot);
+  if (blueprint.assetId !== pilot.runtimeAssetId) {
+    throw new Error(
+      `Render package ${pilot.assetId} decoded runtime asset ${blueprint.assetId} instead of ${pilot.runtimeAssetId}.`,
+    );
+  }
+  return blueprint;
+}
+
+/**
+ * Bind a loaded render package to its prepared blueprint, producing the authored-part record the
+ * parts library consumes. Extracted from `loadAuthoredRenderPackagePilot` unchanged.
+ */
+export function assembleRenderPackageRecord(renderPackage, url, assetLabel = null) {
+  const blueprint = renderPackage.prepared;
+  if (!blueprint || blueprint.url !== url) {
+    throw new Error(`Render package ${assetLabel || renderPackage.assetId} has no prepared blueprint for ${url}.`);
+  }
+  const residency = {};
+  Object.defineProperties(residency, {
+    key: { value: renderPackage.residencyKey, enumerable: true },
+    generation: { value: renderPackage.contentHash, enumerable: true },
+    state: {
+      enumerable: true,
+      get() { return renderPackage.evicted ? 'evicted' : 'resident'; },
+    },
+  });
+  return Object.freeze({
+    ...blueprint,
+    renderPackage,
+    residency: Object.freeze(residency),
+    report: Object.freeze({
+      ...blueprint.report,
+      renderPackage: Object.freeze({
+        route: 'render-package',
+        assetId: renderPackage.assetId,
+        contentHash: renderPackage.contentHash,
+      }),
+    }),
+  });
+}
+
 async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const slot = options.slot || null;
   const optional = options.optional === true;
@@ -646,40 +715,14 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     runtime.renderPackages.load(pilot.metadataUrl, {
       expectedContentHash: pilot.expectedContentHash,
-    }).then((renderPackage) => {
-      const blueprint = renderPackage.prepared;
-      if (!blueprint || blueprint.url !== url) {
-        throw new Error(`Render package ${pilot.assetId} has no prepared blueprint for ${url}.`);
-      }
-      const residency = {};
-      Object.defineProperties(residency, {
-        key: { value: renderPackage.residencyKey, enumerable: true },
-        generation: { value: renderPackage.contentHash, enumerable: true },
-        state: {
-          enumerable: true,
-          get() { return renderPackage.evicted ? 'evicted' : 'resident'; },
-        },
-      });
-      return Object.freeze({
-        ...blueprint,
-        renderPackage,
-        residency: Object.freeze(residency),
-        report: Object.freeze({
-          ...blueprint.report,
-          renderPackage: Object.freeze({
-            route: 'render-package',
-            assetId: renderPackage.assetId,
-            contentHash: renderPackage.contentHash,
-          }),
-        }),
-      });
-    }).catch((error) => {
-      if (!runtime.retiring) {
-        runtime.failures.set(cacheKey, error);
-        if (!optional) warnOnce(cacheKey, `[assetLoader] production render package failed for ${url}`, error);
-      }
-      return null;
-    })
+    }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId))
+      .catch((error) => {
+        if (!runtime.retiring) {
+          runtime.failures.set(cacheKey, error);
+          if (!optional) warnOnce(cacheKey, `[assetLoader] production render package failed for ${url}`, error);
+        }
+        return null;
+      })
   ));
   if (!task) return null;
 

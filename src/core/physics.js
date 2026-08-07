@@ -101,6 +101,7 @@ export const physics = {
       this.collectPickups(state);
       this.sweepProjectiles(dt, state);
       this.updateDockRange(state);
+      this._countCollisionPairWork(state);
       this._diag.tickMs = Math.max(0, nowMs() - t0);
       this._publishRuntime(state);
       return;
@@ -116,21 +117,50 @@ export const physics = {
     this.collide(dt, state);
     this._syncOptionalBackend(dt, state);
     this.updateDockRange(state);
+    this._countCollisionPairWork(state);
     this._diag.tickMs = Math.max(0, nowMs() - t0);
     this._publishRuntime(state);
+  },
+
+  /** Tier-1 causal mirror of the pair-evaluation work this tick's solve already measured. */
+  _countCollisionPairWork(state) {
+    const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+    if (!tier1 || !tier1.isEnabled()) return;
+    if (this._diag.rapierContacts > 0) {
+      tier1.countCollisionPairs(this._diag.rapierContacts, 'sg02-contact-pairs');
+    }
+    if (this._diag.sweptShipContacts > 0) {
+      tier1.countCollisionPairs(this._diag.sweptShipContacts, 'swept-ship-contacts');
+    }
+    if (this._diag.sweptProjectileHits > 0) {
+      tier1.countCollisionPairs(this._diag.sweptProjectileHits, 'swept-projectile-hits');
+    }
+    if (this._diag.pickupPairChecks > 0) {
+      tier1.countCollisionPairs(this._diag.pickupPairChecks, 'pickup-pair-checks');
+    }
   },
 
   _rebuildSpatialHash(state) {
     const hash = state.spatialHash;
     if (!hash) return;
+    // Tier-1 causal count: the broad-phase membership walk visits each listed collider once.
+    const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+    const countVisits = tier1 && tier1.isEnabled() ? tier1 : null;
     const index = state.entityIndex;
     if (index && index.__spacefaceEntityIndexV1 && index.ready &&
       typeof hash.rebuildLayers === 'function' &&
       Array.isArray(index.spatialStatics) &&
       Array.isArray(index.spatialDynamics)) {
+      if (countVisits) {
+        countVisits.countEntityVisits(
+          index.spatialStatics.length + index.spatialDynamics.length,
+          'spatial-rebuild-layers',
+        );
+      }
       hash.rebuildLayers(index.spatialStatics, index.spatialDynamics, index.spatialStaticVersion || 0);
       return;
     }
+    if (countVisits) countVisits.countEntityVisits(state.entityList.length, 'spatial-rebuild');
     hash.rebuild(state.entityList);
   },
 

@@ -2144,6 +2144,18 @@ function authoredRuntimeState() {
 }
 
 /**
+ * Tier-1 causal counter sink for composition/admission work. Follows the same window.SF seam as
+ * recordAdmissionSlice: probes and the deterministic harness expose state there; production bundles
+ * without window.SF simply never count. Counters themselves still default to disabled.
+ */
+function tier1CausalCounters() {
+  const live = authoredRuntimeState();
+  const perf = live && live.perfRuntime;
+  const tier1 = perf && perf.tier1;
+  return tier1 && typeof tier1.isEnabled === 'function' && tier1.isEnabled() ? tier1 : null;
+}
+
+/**
  * First-render is a useful demand signal for isolated previews, but the main scene is rendered and
  * precompiled while a run is still loading. Main-scene auto-demand is therefore limited to startup
  * invariants while loading, and to genuinely focused/onscreen entities in flight. Renderer-owned
@@ -2616,6 +2628,12 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
+  const tier1 = tier1CausalCounters();
+  if (tier1) {
+    tier1.countPipelinePreparation('material-policies', 1);
+    if (typeof preparePipelines === 'function') tier1.countPipelinePreparation('compile-pipelines', 1);
+    if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
+  }
   const pipelines = typeof preparePipelines === 'function'
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };
@@ -2650,6 +2668,8 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       authored = buildComposedShip(entity, library, scene, boundary, options);
     } finally {
       recordAdmissionSlice(compositionStartedAtMs);
+      const tier1 = tier1CausalCounters();
+      if (tier1) tier1.countAuthoredAdmissionJob('composition');
     }
     if (!authored) {
       boundary.userData.authoredAssetState = 'unavailable';
@@ -2666,6 +2686,8 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         pipelineReady = prepareAuthoredVisualPipelines(authored.root, options);
       } finally {
         recordAdmissionSlice(pipelineStartedAtMs);
+        const tier1 = tier1CausalCounters();
+        if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
       await pipelineReady;
       const commitStartedAtMs = monotonicNow();
@@ -2675,6 +2697,8 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         );
       } finally {
         recordAdmissionSlice(commitStartedAtMs);
+        const tier1 = tier1CausalCounters();
+        if (tier1) tier1.countAuthoredAdmissionJob('commit');
       }
       if (!swapped) releaseBoundaryResidency(renderer, boundary, 'authored-swap-not-committed');
       return swapped;
@@ -3620,6 +3644,7 @@ function compositionPrimitives(record) {
     bucket.primitives.push(primitive);
   }
 
+  const tier1Geometry = tier1CausalCounters();
   for (const bucket of buckets.values()) {
     if (bucket.primitives.length <= 1) {
       output.push(bucket.first);
@@ -3627,6 +3652,7 @@ function compositionPrimitives(record) {
     }
     const geometries = bucket.primitives.map((primitive) => {
       const geometry = primitive.geometry.clone();
+      if (tier1Geometry) tier1Geometry.countGeometryConstructed(1, 'composition-batch-clone');
       promoteStaticPositionToFloat(geometry);
       if (bucket.anchorMatrix) {
         BATCH_INVERSE.copy(bucket.anchorMatrix).invert();
@@ -3635,12 +3661,18 @@ function compositionPrimitives(record) {
       } else {
         geometry.applyMatrix4(primitive.matrix);
       }
+      if (tier1Geometry) tier1Geometry.countGeometryTransform('composition-batch');
       return geometry;
     });
     const normalized = normalizeStaticBatchGeometries(geometries);
+    if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'composition-batch');
     const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, false) : null;
+    if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'composition-batch');
     for (const geometry of normalized) {
-      if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
+      if (geometry && typeof geometry.dispose === 'function') {
+        if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'composition-batch');
+        geometry.dispose();
+      }
     }
     if (!merged) {
       output.push(...bucket.primitives);
@@ -3859,8 +3891,13 @@ function flushStaticBatch(parent, bindings, bucket, options = {}) {
   const material = resolveCanonicalHullMaterial(bucket.material);
   const merged = buildStaticBatchGeometry(bucket, options);
   if (!merged) {
+    const tier1Geometry = tier1CausalCounters();
     for (const entry of bucket.entries) {
       const geometry = entry.primitive.geometry.clone();
+      if (tier1Geometry) {
+        tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
+        tier1Geometry.countGeometryTransform('static-batch');
+      }
       promoteStaticPositionToFloat(geometry);
       geometry.applyMatrix4(entry.primitive.matrix);
       geometry.applyMatrix4(entry.partMatrix);
@@ -3897,10 +3934,16 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     for (const url of bucket.urls) urls.add(url);
   }
 
+  const tier1Geometry = tier1CausalCounters();
   const normalized = normalizeStaticBatchGeometries(geometries, options);
+  if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch-group');
   const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
+  if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'static-batch-group');
   for (const geometry of normalized) {
-    if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
+    if (geometry && typeof geometry.dispose === 'function') {
+      if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-group');
+      geometry.dispose();
+    }
   }
   if (!merged) {
     for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
@@ -3910,16 +3953,26 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
+  const tier1Geometry = tier1CausalCounters();
   const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
     const geometry = entry.primitive.geometry.clone();
+    if (tier1Geometry) {
+      tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
+      tier1Geometry.countGeometryTransform('static-batch');
+    }
     promoteStaticPositionToFloat(geometry);
     geometry.applyMatrix4(entry.primitive.matrix);
     geometry.applyMatrix4(entry.partMatrix);
     return geometry;
   }), options);
+  if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch');
   const merged = canMergeStaticBatchGeometries(geometries) ? mergeGeometries(geometries, false) : null;
+  if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(geometries.length, 'static-batch');
   for (const geometry of geometries) {
-    if (geometry && typeof geometry.dispose === 'function') geometry.dispose();
+    if (geometry && typeof geometry.dispose === 'function') {
+      if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch');
+      geometry.dispose();
+    }
   }
   return merged || null;
 }
@@ -3952,12 +4005,17 @@ function normalizeStaticBatchGeometries(geometries, options = {}) {
   const preserveIndexedGeometry = options.preserveIndexedGeometry === true
     && available.length > 0
     && available.every((geometry) => !!geometry.index);
+  const tier1Geometry = tier1CausalCounters();
   const normalized = available.map((geometry) => {
     if (!geometry) return geometry;
     let next = geometry;
     if (!preserveIndexedGeometry && next.index && typeof next.toNonIndexed === 'function') {
       next = next.toNonIndexed();
-      if (next !== geometry && typeof geometry.dispose === 'function') geometry.dispose();
+      if (tier1Geometry) tier1Geometry.countGeometryDeindex('static-batch');
+      if (next !== geometry && typeof geometry.dispose === 'function') {
+        if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-deindex');
+        geometry.dispose();
+      }
     }
     if (!next.getAttribute('normal') && typeof next.computeVertexNormals === 'function') {
       next.computeVertexNormals();
@@ -4260,7 +4318,9 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
     ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
   ]);
 
+  let specializationVisits = 0;
   packageRoot.traverse((object) => {
+    specializationVisits++;
     if (object === packageRoot) return;
     const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
     object.userData = {
@@ -4301,6 +4361,8 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
     object.visible = !tags.lod || tags.lod === 'lod0';
     registerBinding(object, tags, bindings);
   });
+  const tier1 = tier1CausalCounters();
+  if (tier1) tier1.countGraphTraversal(specializationVisits, 'package-instance-specialize');
   return partRoot;
 }
 

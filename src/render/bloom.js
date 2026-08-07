@@ -666,11 +666,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
     const prevAutoClear = renderer.autoClear;
 
+    // Tier-1 causal pixel accounting: one hoisted enabled-check per frame, then pass-target area
+    // per pass. Counts the rasterized pixel load; allocation stays with the GL wrappers.
+    const tier1Perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
+    const tier1 = tier1Perf && tier1Perf.tier1 && tier1Perf.tier1.isEnabled() ? tier1Perf.tier1 : null;
+
     // pass 0 — scene into HDR buffer (renderer applies its own tone-mapping here)
     timePassGroup('bloomScene', () => {
       renderer.setRenderTarget(rtScene);
       renderer.clear();
       renderer.render(scene, camera);
+      if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
     });
 
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
@@ -688,6 +694,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         downsampleMat.uniforms.uThreshold.value = threshold;
         downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
         blit(downsampleMat, down[i]);
+        if (tier1) tier1.countRenderPassPixels(down[i].width * down[i].height, 'bloom-downsample');
         src = down[i].texture;
       }
     });
@@ -709,6 +716,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
       compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
       blit(compositeMat, null);
+      if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
     });
 
     renderer.autoClear = prevAutoClear;

@@ -210,6 +210,28 @@ test('a disabled counter set records nothing, no matter how hard it is called', 
     counters.countDomMutation('childList');
     counters.countLayoutRead();
     counters.countLongTask();
+    counters.countSystemInvocation('physics');
+    counters.countEntityVisits(120, 'spatial-dynamic-sync');
+    counters.countQueryCandidates(30);
+    counters.countCollisionPairs(7, 'rapier-contacts');
+    counters.countPackageDecode('sf.render.kestrel');
+    counters.countRuntimeSemanticCompile('package-instance-reindex', 31);
+    counters.countGraphClone(31, 'package-instance');
+    counters.countGraphTraversal(31, 'package-instance-specialize');
+    counters.countGeometryTransform('static-batch');
+    counters.countGeometryMerge(4, 'static-batch');
+    counters.countGeometryNormalization('static-batch');
+    counters.countGeometryDeindex('static-batch');
+    counters.countGeometryConstructed(2, 'static-batch');
+    counters.countMaterialConstructed(1, 'canopy');
+    counters.countObject3dConstructed(31, 'package-instance');
+    counters.countResourcesDisposed(3, 'package-evict');
+    counters.countVfxEmissions(12, 'particle');
+    counters.countVfxPoolGrowth('particle', 4096);
+    counters.countSaveSnapshot(29);
+    counters.countAuthoredAdmissionJob('composition');
+    counters.countPipelinePreparation('compileObjectPipelines', 3);
+    counters.countRenderPassPixels(1920 * 1080, 'bloom-bright');
     counters.recordStepsThisFrame(3);
     counters.sampleHeap(1_000_000 + i);
     counters.recordEvent('synthetic', { i });
@@ -226,6 +248,7 @@ test('a disabled counter set records nothing, no matter how hard it is called', 
   assert.equal(snapshot.events.length, 0, 'no event may be allocated while disabled');
   assert.equal(snapshot.eventsDropped, 0, 'a disabled counter must not even reach the drop path');
   assert.deepEqual(snapshot.stepsPerFrameHistogram, {}, 'no histogram bucket while disabled');
+  assert.deepEqual(snapshot.causes, {}, 'no cause map may be allocated while disabled');
   assert.equal(snapshot.framesObserved, 0, 'endFrame must not advance the frame index while disabled');
   assert.equal(snapshot.nondeterministic.allocation.samples, 0, 'no heap sample while disabled');
 
@@ -303,6 +326,28 @@ test('an enabled counter set records every family — the vacuity guard', () => 
   counters.countDomMutation('attributes');
   counters.countLayoutRead();
   counters.countLongTask();
+  counters.countSystemInvocation('flight');
+  counters.countEntityVisits(50, 'lifetime-sweep');
+  counters.countQueryCandidates(12);
+  counters.countCollisionPairs(3, 'rapier-contacts');
+  counters.countPackageDecode('sf.render.fixture');
+  counters.countRuntimeSemanticCompile('package-load-plan', 20);
+  counters.countGraphClone(20, 'package-instance');
+  counters.countGraphTraversal(20, 'package-instance-specialize');
+  counters.countGeometryTransform('static-batch');
+  counters.countGeometryMerge(3, 'static-batch');
+  counters.countGeometryNormalization('static-batch');
+  counters.countGeometryDeindex('static-batch');
+  counters.countGeometryConstructed(2, 'static-batch');
+  counters.countMaterialConstructed(1, 'canopy');
+  counters.countObject3dConstructed(20, 'package-instance');
+  counters.countResourcesDisposed(2, 'package-evict');
+  counters.countVfxEmissions(8, 'sprite');
+  counters.countVfxPoolGrowth('sprite', 512);
+  counters.countSaveSnapshot(29);
+  counters.countAuthoredAdmissionJob('pipeline');
+  counters.countPipelinePreparation('compileObjectPipelines', 4);
+  counters.countRenderPassPixels(1024, 'bloom-blur');
   counters.recordStepsThisFrame(2);
   counters.endFrame();
 
@@ -326,8 +371,61 @@ test('an enabled counter set records every family — the vacuity guard', () => 
   assert.equal(snapshot.totals.domAttributeMutations, 1);
   assert.equal(snapshot.totals.layoutReads, 1);
   assert.equal(snapshot.totals.longTasks, 1);
+  // The causal families (J-P) each move independently — no weighted composite score.
+  assert.equal(snapshot.totals.systemInvocations, 1);
+  assert.equal(snapshot.totals.entityVisits, 50);
+  assert.equal(snapshot.totals.queryCandidates, 12);
+  assert.equal(snapshot.totals.collisionPairs, 3);
+  assert.equal(snapshot.totals.packageDecodes, 1);
+  assert.equal(snapshot.totals.runtimeSemanticCompiles, 1);
+  assert.equal(snapshot.totals.graphCloneOperations, 1);
+  assert.equal(snapshot.totals.graphNodesCloned, 20);
+  assert.equal(snapshot.totals.graphTraversals, 1);
+  assert.equal(snapshot.totals.graphNodesVisited, 20, 'only the traversal adds node visits');
+  assert.equal(snapshot.totals.geometryTransforms, 1);
+  assert.equal(snapshot.totals.geometryMerges, 3);
+  assert.equal(snapshot.totals.geometryNormalizations, 1);
+  assert.equal(snapshot.totals.geometryDeindexOperations, 1);
+  assert.equal(snapshot.totals.geometryConstructed, 2);
+  assert.equal(snapshot.totals.materialsConstructed, 1);
+  assert.equal(snapshot.totals.object3dConstructed, 20);
+  assert.equal(snapshot.totals.resourcesDisposed, 2);
+  assert.equal(snapshot.totals.vfxEmissions, 8);
+  assert.equal(snapshot.totals.vfxPoolGrowth, 1);
+  assert.equal(snapshot.totals.saveSnapshots, 1);
+  assert.equal(snapshot.totals.authoredAdmissionJobs, 1);
+  assert.equal(snapshot.totals.pipelinePreparationWork, 4);
+  assert.equal(snapshot.totals.renderPassPixels, 1024);
+  assert.deepEqual(snapshot.causes.systemInvocations, { flight: 1 });
+  assert.deepEqual(snapshot.causes.entityVisits, { 'lifetime-sweep': 50 });
+  assert.deepEqual(snapshot.causes.vfxEmissions, { sprite: 8 });
   assert.deepEqual(snapshot.stepsPerFrameHistogram, { 2: 1 });
   assert.equal(snapshot.framesObserved, 1);
+});
+
+test('cause attribution accumulates per cause, survives frames, and resets cleanly', () => {
+  const counters = createPerfCounters();
+  counters.setEnabled(true);
+
+  counters.beginFrame();
+  counters.countSystemInvocation('physics');
+  counters.countSystemInvocation('flight');
+  counters.endFrame();
+  counters.beginFrame();
+  counters.countSystemInvocation('physics');
+  counters.endFrame();
+
+  const snapshot = counters.snapshot();
+  assert.equal(snapshot.totals.systemInvocations, 3);
+  assert.deepEqual(snapshot.causes.systemInvocations, { flight: 1, physics: 2 },
+    'cause keys are sorted for byte-identical serialization');
+  assert.equal(snapshot.nonZeroFrames.systemInvocations, 2);
+  assert.equal(snapshot.peakPerFrame.systemInvocations, 2);
+
+  counters.reset();
+  const cleared = counters.snapshot();
+  assert.equal(cleared.totals.systemInvocations, 0);
+  assert.deepEqual(cleared.causes, {}, 'reset must clear cause maps');
 });
 
 test('counts are per-frame: beginFrame clears, totals and peak accumulate', () => {

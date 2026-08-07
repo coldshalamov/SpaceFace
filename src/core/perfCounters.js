@@ -64,6 +64,67 @@ export const COUNTER_FIELDS = Object.freeze([
   'domCharacterDataMutations',
   'layoutReads',
   'longTasks',
+  // J — sim-core causal work. Per-tick loop costs, counted where the loop runs.
+  'systemInvocations',
+  'entityVisits',
+  'queryCandidates',
+  'collisionPairs',
+  // K — package decode and scene-graph work. The render-package route's stall class.
+  'packageDecodes',
+  'runtimeSemanticCompiles',
+  'graphCloneOperations',
+  'graphNodesCloned',
+  'graphTraversals',
+  'graphNodesVisited',
+  // L — runtime geometry preparation (transform bake, merge, normalization, de-index).
+  'geometryTransforms',
+  'geometryMerges',
+  'geometryNormalizations',
+  'geometryDeindexOperations',
+  // M — resource construction and disposal.
+  'geometryConstructed',
+  'materialsConstructed',
+  'object3dConstructed',
+  'resourcesDisposed',
+  // N — VFX pool work.
+  'vfxEmissions',
+  'vfxPoolGrowth',
+  // O — save, authored admission, and pipeline preparation.
+  'saveSnapshots',
+  'authoredAdmissionJobs',
+  'pipelinePreparationWork',
+  // P — render-target pixel work (pass rasterization load, not allocation).
+  'renderPassPixels',
+]);
+
+// The causal families added for the deterministic scenario harness (families J-P above). Kept as
+// one list so the harness can declare exactly which totals its byte-identity gate covers. These are
+// workload-driven counts — the same scripted run must produce the same integers on any host.
+export const CAUSAL_COUNTER_FIELDS = Object.freeze([
+  'systemInvocations',
+  'entityVisits',
+  'queryCandidates',
+  'collisionPairs',
+  'packageDecodes',
+  'runtimeSemanticCompiles',
+  'graphCloneOperations',
+  'graphNodesCloned',
+  'graphTraversals',
+  'graphNodesVisited',
+  'geometryTransforms',
+  'geometryMerges',
+  'geometryNormalizations',
+  'geometryDeindexOperations',
+  'geometryConstructed',
+  'materialsConstructed',
+  'object3dConstructed',
+  'resourcesDisposed',
+  'vfxEmissions',
+  'vfxPoolGrowth',
+  'saveSnapshots',
+  'authoredAdmissionJobs',
+  'pipelinePreparationWork',
+  'renderPassPixels',
 ]);
 
 // The subset the equivalence gate may assert byte-identity on. Everything omitted here is still
@@ -171,7 +232,13 @@ export function createPerfCounters() {
 
   const events = [];
   let eventsDropped = 0;
+  // Monotonic "work was recorded" tick. Harness-facing only; see api.recordedUnits().
+  let recordedUnits = 0;
   const stepsPerFrameHistogram = Object.create(null);
+  // Cause breakdowns live OUTSIDE the field bags: they are per-cause detail, not per-frame data.
+  // Lazily allocated per field on first enabled count; cleared on reset. Keys are bounded label
+  // sets owned by the producers (system names, loop labels, emission kinds), never entity names.
+  const causeMaps = new Map();
 
   // Nondeterministic by construction (G). Kept apart from the field bags so it cannot be mistaken
   // for a Tier-1 signal or accidentally swept into the equivalence gate.
@@ -226,19 +293,36 @@ export function createPerfCounters() {
    * the per-frame derivatives (peak, nonZeroFrames), which are the only figures that are genuinely
    * per-frame.
    */
-  function record(field, amount) {
+  function record(field, amount, cause) {
     // The single boolean read that the whole zero-cost claim rests on.
     if (!enabled) return;
+    recordedUnits++;
     totals[field] += amount;
     if (afterBootBoundary) postBoot[field] += amount;
     if (insideFrame) frame[field] += amount;
     else offFrame[field] += amount;
+    if (cause !== undefined) {
+      // Per-family cause attribution. One Map per field, one entry per cause label; both are
+      // created at most once per enabled session, so hot paths pay a lookup, not an allocation.
+      let causes = causeMaps.get(field);
+      if (!causes) {
+        causes = new Map();
+        causeMaps.set(field, causes);
+      }
+      causes.set(cause, (causes.get(cause) || 0) + amount);
+    }
   }
 
   const api = {
     schema: PERF_COUNTERS_SCHEMA,
 
     isEnabled() { return enabled === true; },
+    /**
+     * Monotonic count of recorded work units this capture. Not a Tier-1 signal and never
+     * serialized — it exists so a harness can cheaply ask "did anything get counted since I last
+     * looked?" without allocating a snapshot. Reset clears it with everything else.
+     */
+    recordedUnits() { return recordedUnits; },
     setEnabled(on) {
       const next = !!on;
       // Re-enabling mid-capture without a reset would blend two windows into one report, and the
@@ -333,6 +417,82 @@ export function createPerfCounters() {
       else if (type === 'characterData') record('domCharacterDataMutations', 1);
     },
 
+    // --- Causal work families (J-P) -----------------------------------------------------------
+    // Same zero-cost contract: one boolean read when off. Causes are short bounded labels owned by
+    // the producer; they answer "which loop/system/phase did the work", not just how much.
+
+    // J — sim core. `countSystemInvocation` runs once per system update; the name is the cause.
+    countSystemInvocation(name) { record('systemInvocations', 1, name); },
+    countEntityVisits(count, cause) { record('entityVisits', count, cause); },
+    countQueryCandidates(count) { record('queryCandidates', count); },
+    countCollisionPairs(count, cause) { record('collisionPairs', count, cause); },
+
+    // K — package decode and scene-graph work.
+    countPackageDecode(assetId) {
+      if (!enabled) return;
+      record('packageDecodes', 1, 'decode');
+      api.recordEvent('packageDecode', { assetId: String(assetId || '') });
+    },
+    countRuntimeSemanticCompile(cause, nodeCount = 0) {
+      if (!enabled) return;
+      record('runtimeSemanticCompiles', 1, cause);
+      api.recordEvent('runtimeSemanticCompile', { cause, nodeCount });
+    },
+    /** A recursive object-graph clone (SkeletonUtils-style). `nodeCount` is nodes reconstructed. */
+    countGraphClone(nodeCount, cause) {
+      if (!enabled) return;
+      record('graphCloneOperations', 1, cause);
+      if (nodeCount > 0) record('graphNodesCloned', nodeCount, cause);
+      api.recordEvent('graphClone', { cause, nodeCount });
+    },
+    /** One traversal of a scene graph, visiting `nodeCount` nodes. */
+    countGraphTraversal(nodeCount, cause) {
+      if (!enabled) return;
+      record('graphTraversals', 1, cause);
+      if (nodeCount > 0) record('graphNodesVisited', nodeCount, cause);
+      api.recordEvent('graphTraversal', { cause, nodeCount });
+    },
+
+    // L — runtime geometry preparation.
+    countGeometryTransform(cause) { record('geometryTransforms', 1, cause); },
+    countGeometryMerge(geometryCount, cause) {
+      record('geometryMerges', geometryCount > 0 ? geometryCount : 1, cause);
+    },
+    countGeometryNormalization(cause) { record('geometryNormalizations', 1, cause); },
+    countGeometryDeindex(cause) { record('geometryDeindexOperations', 1, cause); },
+
+    // M — resource construction and disposal.
+    countGeometryConstructed(count = 1, cause) { record('geometryConstructed', count, cause); },
+    countMaterialConstructed(count = 1, cause) { record('materialsConstructed', count, cause); },
+    countObject3dConstructed(count = 1, cause) { record('object3dConstructed', count, cause); },
+    countResourcesDisposed(count = 1, cause) { record('resourcesDisposed', count, cause); },
+
+    // N — VFX. Emissions are high-frequency: cause breakdown only, no per-spawn event.
+    countVfxEmissions(count, kind) { record('vfxEmissions', count, kind); },
+    countVfxPoolGrowth(kind, capacity) {
+      if (!enabled) return;
+      record('vfxPoolGrowth', 1, kind);
+      api.recordEvent('vfxPoolGrowth', { kind, capacity });
+    },
+
+    // O — save, admission, pipeline preparation.
+    countSaveSnapshot(serializerCount = 0) {
+      if (!enabled) return;
+      record('saveSnapshots', 1, 'snapshot');
+      api.recordEvent('saveSnapshot', { serializerCount });
+    },
+    countAuthoredAdmissionJob(phase) {
+      record('authoredAdmissionJobs', 1, phase);
+    },
+    countPipelinePreparation(kind, workCount = 1) {
+      if (!enabled) return;
+      record('pipelinePreparationWork', workCount, kind);
+      api.recordEvent('pipelinePreparation', { kind, workCount });
+    },
+
+    // P — rasterized pass pixels (bloom/composite passes; not target allocation).
+    countRenderPassPixels(pixels, cause) { record('renderPassPixels', pixels, cause); },
+
     /** Steps-per-frame DISTRIBUTION (I). perfRuntime keeps a max and a multi-step count; a
      *  histogram is what actually distinguishes "occasionally 2" from "routinely 4". */
     recordStepsThisFrame(steps) {
@@ -414,6 +574,8 @@ export function createPerfCounters() {
       events.length = 0;
       eventsDropped = 0;
       for (const key of Object.keys(stepsPerFrameHistogram)) delete stepsPerFrameHistogram[key];
+      causeMaps.clear();
+      recordedUnits = 0;
       allocation.heapBytesDeltaTotal = 0;
       allocation.collectionsDetected = 0;
       allocation.samples = 0;
@@ -446,6 +608,14 @@ export function createPerfCounters() {
         offFrame: { ...offFrame },
         nonZeroFrames: { ...nonZeroFrames },
         stepsPerFrameHistogram: { ...stepsPerFrameHistogram },
+        // Cause attribution per family. Keys are sorted so two identical runs serialize
+        // byte-identically (Map insertion order would also be stable, but sorted is robust
+        // against a producer reordering its first calls).
+        causes: Object.fromEntries([...causeMaps.entries()]
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([field, causes]) => [field, Object.fromEntries(
+            [...causes.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+          )])),
         // Segregated, and labelled, so no reader mistakes it for a bisectable counter.
         nondeterministic: {
           allocation: { ...allocation },

@@ -582,8 +582,10 @@ export const vfx = {
     this._trailFrameIndex = 0;
     this._trailBudgetDiag = emptyTrailBudgetDiag();
     this._trailSpawnScratch = { particles: 0, streaks: 0 };
-    this._trailScreenScratch = new THREE.Vector3();
     this._vfxSubsystemLast = emptyVfxSubsystemDiag();
+    // Tier-1 causal counter sink, refreshed per update frame. Null while counters are disabled, so
+    // the spawn hot paths pay one null check and nothing else (perfCounters zero-cost contract).
+    this._tier1Spawn = null;
     this._cadenceSeam = 0;
     this._cadenceRibbon = 0;
     this._cadenceProjectileTrail = 0;
@@ -953,6 +955,14 @@ export const vfx = {
     // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
     // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
     this._flameMaterial = null;
+
+    // Tier-1 pool-capacity events: initial pool construction is the baseline "active capacity".
+    const tier1Init = state.perfRuntime && state.perfRuntime.tier1;
+    if (tier1Init && tier1Init.isEnabled()) {
+      tier1Init.countVfxPoolGrowth('particle-pool-init', cap);
+      tier1Init.countVfxPoolGrowth('sprite-pool-init', SPRITE_CAP);
+      tier1Init.countVfxPoolGrowth('trail-streak-pool-init', TRAIL_STREAK_CAP);
+    }
   },
 
   _bindParticleDynamicBuffers() {
@@ -1085,6 +1095,9 @@ export const vfx = {
       this._points.count = keep;
     }
     if (oldGeo && oldGeo !== geo && typeof oldGeo.dispose === 'function') oldGeo.dispose();
+    // Tier-1 pool-capacity event: the particle cloud migrated to a new capacity.
+    const tier1Grow = this.state && this.state.perfRuntime && this.state.perfRuntime.tier1;
+    if (tier1Grow && tier1Grow.isEnabled()) tier1Grow.countVfxPoolGrowth('particle-pool-grow', nextCap);
     return true;
   },
 
@@ -1277,6 +1290,7 @@ export const vfx = {
       this._pPackedParticleSlots[packedIndex] = -1;
     }
     this._alive[i] = 1;
+    if (this._tier1Spawn) this._tier1Spawn.countVfxEmissions(1, 'particle');
   },
 
   _spawnSprite(kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null) {
@@ -1319,6 +1333,7 @@ export const vfx = {
     st.r = this._ctmp.r;
     st.g = this._ctmp.g;
     st.b = this._ctmp.b;
+    if (this._tier1Spawn) this._tier1Spawn.countVfxEmissions(1, 'sprite');
     return st;
   },
 
@@ -1358,6 +1373,7 @@ export const vfx = {
     if (!wasAlive) this._activateTrailStreak(i);
     this._writeTrailStreakInstance(i, this._activeTrailStreakPos[i], baseSize, op0);
     this._commitTrailStreakInstances();
+    if (this._tier1Spawn) this._tier1Spawn.countVfxEmissions(1, 'trail-streak');
     return st;
   },
 
@@ -6478,6 +6494,10 @@ export const vfx = {
   },
 
   update(frameDt) {
+    // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
+    const tier1Perf = this.state && this.state.perfRuntime;
+    const tier1Counter = tier1Perf && tier1Perf.tier1;
+    this._tier1Spawn = tier1Counter && tier1Counter.isEnabled() ? tier1Counter : null;
     if (!this._scene) {
       // render may have come up after vfx.init (defensive) — try once to attach pools
       if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }

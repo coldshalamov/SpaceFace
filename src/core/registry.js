@@ -547,17 +547,30 @@ export function createRegistry(ctx) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       const stepStart = perfNow();
+      // Tier-1 causal counting: one hoisted boolean per step; per-system work is a branch + an
+      // integer increment. Counts are workload facts, never durations, so they stay valid under
+      // host contention (see perfCounters.js header).
+      const tier1 = perf.tier1;
+      const countSystems = !!tier1 && tier1.isEnabled();
       const measureSystems = perf.shouldMeasureSystemsThisStep(state.tick);
       if (!measureSystems) {
         try {
+          if (countSystems) tier1.countSystemInvocation('core.preStep');
           core.preStep(dt, state);
-          if (input.update) input.update(dt, state);
+          if (input.update) {
+            if (countSystems) tier1.countSystemInvocation(input.name || 'input');
+            input.update(dt, state);
+          }
           if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
             tickBoundary.publishInputCommand(state.input, state.tick);
           }
           for (const s of POST_INPUT_UPDATE_ORDER) {
-            if (s.update) s.update(dt, state);
+            if (s.update) {
+              if (countSystems) tier1.countSystemInvocation(s.name);
+              s.update(dt, state);
+            }
           }
+          if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
           core.lifetimeSweep(dt, state);
         } finally {
           perf.recordStepTotal(perfNow() - stepStart);
@@ -566,9 +579,11 @@ export function createRegistry(ctx) {
       }
 
       let t = perfNow();
+      if (countSystems) tier1.countSystemInvocation('core.preStep');
       try { core.preStep(dt, state); }
       finally { perf.recordSystem('core.preStep', perfNow() - t); }
       if (input.update) {
+        if (countSystems) tier1.countSystemInvocation(input.name || 'input');
         t = perfNow();
         try { input.update(dt, state); }
         finally { perf.recordSystem(input.name, perfNow() - t); }
@@ -578,11 +593,13 @@ export function createRegistry(ctx) {
       }
       for (const s of POST_INPUT_UPDATE_ORDER) {
         if (!s.update) continue;
+        if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();
         try { s.update(dt, state); }
         finally { perf.recordSystem(s.name, perfNow() - t); }
       }
       t = perfNow();
+      if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
       try { core.lifetimeSweep(dt, state); }
       finally {
         perf.recordSystem('core.lifetimeSweep', perfNow() - t);

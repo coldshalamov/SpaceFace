@@ -159,10 +159,26 @@ export function createSimulation(options = {}) {
       if (stepping) throw new Error('Simulation step is not re-entrant');
       if (!(Number.isFinite(dt) && dt > 0)) throw new RangeError('Simulation dt must be finite and > 0');
       stepping = true;
+      // Tier-1 causal counting, mirroring createRegistry's production step. This registry is a
+      // separate implementation, so without this the sim-side families read zero on every harness
+      // that drives createSimulation — a counter that fails toward good news. One hoisted boolean
+      // per step; counts never touch state, rng or ordering, so goldens are unaffected.
+      const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+      const countSystems = !!tier1 && tier1.isEnabled();
       try {
-        if (core.preStep) core.preStep(dt, state);
-        for (const system of updates) if (system.update) system.update(dt, state);
-        if (core.lifetimeSweep) core.lifetimeSweep(dt, state);
+        if (core.preStep) {
+          if (countSystems) tier1.countSystemInvocation('core.preStep');
+          core.preStep(dt, state);
+        }
+        for (const system of updates) {
+          if (!system.update) continue;
+          if (countSystems) tier1.countSystemInvocation(system.name);
+          system.update(dt, state);
+        }
+        if (core.lifetimeSweep) {
+          if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
+          core.lifetimeSweep(dt, state);
+        }
       } finally {
         stepping = false;
       }

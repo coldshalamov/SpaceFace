@@ -746,6 +746,9 @@ export function ensurePerfRuntime(state) {
       counters.spatialHash.dynamicUnchanged += dynamicUnchanged | 0;
       counters.spatialHash.queries += queries | 0;
       counters.spatialHash.candidates += candidates | 0;
+      // Tier-1 causal mirror: query candidates are the broad-phase work unit. Disabled = one
+      // boolean read inside the counter; no allocation crosses the boundary either way.
+      if (candidates > 0 && tier1Counters.isEnabled()) tier1Counters.countQueryCandidates(candidates | 0);
     },
     recordVfxTrails(stats = {}) {
       const dst = counters.vfxTrails;
@@ -773,6 +776,12 @@ export function ensurePerfRuntime(state) {
       const totalMs = Number(timing.totalMs);
       const autosave = !!timing.autosave;
       const ok = timing.ok !== false;
+      // Tier-1 causal mirror: one snapshot event per completed save with the serializer count.
+      if (tier1Counters.isEnabled()) {
+        tier1Counters.countSaveSnapshot(
+          Array.isArray(timing.serializerTimings) ? timing.serializerTimings.length : 0,
+        );
+      }
       saveStats.count++;
       if (autosave) saveStats.autosaveCount++;
       if (!ok) saveStats.errorCount++;
