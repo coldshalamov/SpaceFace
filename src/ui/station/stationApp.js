@@ -77,6 +77,7 @@ const ACTIONS = [
   { id: 'repair', label: 'Repair', icon: 'repair', title: 'Repair hull' },
   { id: 'refuel', label: 'Refuel', icon: 'refuel', title: 'Refuel to full' },
   { id: 'resupply', label: 'Resupply', icon: 'resupply', title: 'Rearm munitions' },
+  { id: 'wash', label: 'Wash', icon: 'spark', title: 'Clear hull grime; preserve its history' },
   { id: 'undock', label: 'Undock', icon: 'undock', title: 'Leave the station' },
 ];
 
@@ -98,16 +99,22 @@ function meterTone(frac, kind) {
 }
 
 function resolveStation(ctx) {
-  if (ctx && ctx.station) return ctx.station;
+  if (ctx && ctx.station) {
+    return {
+      ...ctx.station,
+      services: Array.isArray(ctx.station.services) ? ctx.station.services.slice() : [],
+    };
+  }
   const id = ctx && ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
   const rec = id && STATION_REC.get(id);
-  if (!rec) return { name: 'Station', typeLabel: 'Orbital Berth', factionName: '' };
+  if (!rec) return { name: 'Station', typeLabel: 'Orbital Berth', factionName: '', services: [] };
   const s = rec.station;
   const fac = FACTION_REC.get(s.factionId);
   return {
     name: s.name || String(id),
     typeLabel: titleCaseWords(s.type || 'berth') + (s.size ? ' · Class ' + s.size : ''),
     factionName: fac ? fac.name : '',
+    services: Array.isArray(s.services) ? s.services.slice() : [],
   };
 }
 
@@ -608,6 +615,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       repair: 'HULL REPAIRED',
       refuel: 'FUEL RESTORED',
       ammo: 'MUNITIONS LOADED',
+      hull_wash: 'HULL WASHED',
     }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
@@ -632,7 +640,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };
       const q = (t) => { try { return sq(t, s, playerEntity(s)); } catch (_) { return null; } };
-      return { repair: toCost(q('repair'), 'repair'), refuel: toCost(q('refuel'), 'refuel'), resupply: toCost(q('ammo'), 'ammo'), undock };
+      const washAvailable = resolveStation(ctx).services.includes('repair');
+      return {
+        repair: toCost(q('repair'), 'repair'),
+        refuel: toCost(q('refuel'), 'refuel'),
+        resupply: toCost(q('ammo'), 'ammo'),
+        wash: washAvailable
+          ? toCost(q('hull_wash'), 'hull_wash')
+          : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
+        undock,
+      };
     }
     const hp = playerEntity(s);
     const hullMissing = hp && hp.hullMax > 0 ? Math.max(0, hp.hullMax - (hp.hull || 0)) : 0;
@@ -642,6 +659,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       repair: hullMissing > 0 ? { text: fmtCr(Math.ceil(hullMissing * 6)) + ' cr', tone: 'warn' } : { text: 'Hull OK', disabled: true, tone: 'gain' },
       refuel: fuelMissing > 0 ? { text: fmtCr(Math.ceil(fuelMissing * 3)) + ' cr', tone: 'warn' } : { text: 'Fuel OK', disabled: true, tone: 'gain' },
       resupply: { text: 'Rearm', tone: '' },
+      wash: { text: 'Offline', disabled: true, title: 'Hull wash quote unavailable' },
       undock,
     };
   }
@@ -658,9 +676,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash' };
     const type = typeMap[id];
     if (type && bus) {
+      if (type === 'hull_wash' && !resolveStation(ctx).services.includes('repair')) return false;
       let quote = null;
       if (typeof opts.serviceQuote === 'function') {
         try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }

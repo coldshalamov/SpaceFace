@@ -40,6 +40,7 @@ import {
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState } from './factions.js';
+import { livingHullGrimeAt } from '../core/livingHull.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -89,14 +90,16 @@ export const ECONOMY_PRICE_TUNING = Object.freeze({
   spreadHi: SPREAD_HI,
 });
 
-// service prices (per unit) — used by ui:service refuel/repair/ammo
+// service prices — used by ui:service refuel/repair/ammo/hull_wash
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
+const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
 export const SERVICE_PRICES = Object.freeze({
   fuelCrPerUnit: FUEL_UNIT_CR,
   repairCrPerHp: REPAIR_HP_CR,
   ammoCrPerUnit: AMMO_UNIT_CR,
+  hullWashCr: HULL_WASH_CR,
 });
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -114,6 +117,7 @@ for (const sec of SECTORS) {
     STATION_INFO.set(st.id, {
       type: st.type, size: st.size || 'M', factionId: st.factionId,
       sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
+      services: Array.isArray(st.services) ? st.services.slice() : [],
       marketEquilibriumFactors: st.marketEquilibriumFactors || null,
     });
   }
@@ -129,6 +133,7 @@ function stationInfo(state, stationId) {
         if (st.id === stationId) {
           return { type: st.type, size: st.size || 'M', factionId: st.factionId,
                    sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
+                   services: Array.isArray(st.services) ? st.services.slice() : [],
                    marketEquilibriumFactors: st.marketEquilibriumFactors || null };
         }
       }
@@ -1266,7 +1271,7 @@ export const economy = {
   },
 
   // -------------------------------------------------------------------------------------------
-  // SERVICES — refuel / repair / ammo (ui:service {type, amount}).
+  // SERVICES — refuel / repair / ammo / hull wash (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
   handleService(p) {
     const state = this.state;
@@ -1288,17 +1293,25 @@ export const economy = {
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
       if (!e) return;
+      const beforeHull = Number(e.hull) || 0;
+      const beforeArmor = Number(e.armorHp) || 0;
+      const hullMax = Number(e.hullMax) || 0;
+      const armorMax = Number(e.armorMax) || 0;
+      const totalMax = hullMax + armorMax;
+      const beforeProtection = totalMax > 0 ? (beforeHull + beforeArmor) / totalMax : 1;
       const missHull = Math.max(0, (e.hullMax || 0) - (e.hull || 0));
       const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
       const cost = round(totalMiss * REPAIR_HP_CR);
       const credits = state.player.credits | 0;
+      let actualCost = cost;
       if (credits < cost) {
         // partial repair up to what the player can afford
         const frac = cost > 0 ? credits / cost : 0;
         e.hull = Math.min(e.hullMax, (e.hull || 0) + missHull * frac);
         e.armorHp = Math.min(e.armorMax, (e.armorHp || 0) + missArmor * frac);
+        actualCost = credits;
         this.chargeCredits(credits, 'service:repair');
         this.bus.emit('toast', { text: 'Partial repair (out of credits)', kind: 'warn', ttl: 2 });
       } else {
@@ -1306,6 +1319,45 @@ export const economy = {
         this.chargeCredits(cost, 'service:repair');
         this.bus.emit('toast', { text: `Repaired (${cost}cr)`, kind: 'success', ttl: 2 });
       }
+      this.bus.emit('service:completed', {
+        type: 'repair',
+        cost: actualCost,
+        restoredHull: Math.max(0, (Number(e.hull) || 0) - beforeHull),
+        restoredArmor: Math.max(0, (Number(e.armorHp) || 0) - beforeArmor),
+        hullMax,
+        armorMax,
+        beforeProtection,
+        stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
+        atT: Number(state.simTime) || 0,
+      });
+    } else if (type === 'hull_wash') {
+      const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      const info = stationInfo(state, stationId);
+      if (!stationId || !info || !Array.isArray(info.services) || !info.services.includes('repair')) {
+        this.bus.emit('toast', { text: 'Hull wash requires a repair berth', kind: 'error', ttl: 2 });
+        return;
+      }
+      const player = state.player || {};
+      const index = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+      const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+      const grime = livingHullGrimeAt(owned && owned.livingHull, state.simTime || 0);
+      if (grime <= 0.001) {
+        this.bus.emit('toast', { text: 'Hull finish already clean', kind: 'info', ttl: 2 });
+        return;
+      }
+      if ((player.credits | 0) < HULL_WASH_CR) {
+        this.bus.emit('toast', { text: 'Insufficient credits for hull wash', kind: 'error', ttl: 2 });
+        return;
+      }
+      this.chargeCredits(HULL_WASH_CR, 'service:hull_wash');
+      this.bus.emit('service:completed', {
+        type: 'hull_wash',
+        cost: HULL_WASH_CR,
+        grimeBefore: grime,
+        stationId,
+        atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR}cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'ammo') {
       const units = Math.max(0, Math.floor(p.amount || 0));
       if (units <= 0) return;

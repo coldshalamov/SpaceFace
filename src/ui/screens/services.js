@@ -3,6 +3,7 @@
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
+import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { confirm } from '../confirm.js';
 
 export function factionPresenceServiceRows(state, stationId) {
@@ -61,6 +62,7 @@ const PROTECTION_BAD_FRAC = 0.35;
 const SERVICE_ROWS = Object.freeze([
   { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
   { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
+  { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
   { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
 ]);
@@ -290,6 +292,38 @@ export function serviceQuote(type, state, entity) {
       chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, afterCreditsChip(credits, cost)],
     };
   }
+  if (type === 'hull_wash') {
+    const index = Math.max(0, Math.floor(Number(p.activeShipIndex) || 0));
+    const owned = Array.isArray(p.ownedShips) ? p.ownedShips[index] : null;
+    const now = Number(state && state.simTime) || 0;
+    const cycles = livingHullCyclesSinceWash(owned && owned.livingHull, now);
+    const grime = livingHullGrimeAt(owned && owned.livingHull, now);
+    const cost = SERVICE_PRICES.hullWashCr;
+    const historyNote = 'tallies, patches, scorch, and marks stay';
+    if (grime <= 0.001) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Surface grime 0% · hull history untouched',
+        buttonLabel: 'Clean',
+        disabled: true,
+        chips: [{ text: 'clean', kind: 'ok' }],
+      };
+    }
+    const disabled = credits < cost;
+    return {
+      amount: 1,
+      cost,
+      detail: 'Surface grime ' + Math.round(grime * 100) + '% · ' + cycles + ' cycle' + (cycles === 1 ? '' : 's') + ' since wash · ' + historyNote,
+      buttonLabel: 'Wash Hull',
+      disabled,
+      disabledReason: disabled ? 'need ' + fmtCr(cost) + ' cr' : '',
+      chips: [
+        { text: fmtCr(cost) + ' cr', kind: 'cost' },
+        ...(disabled ? [{ text: 'need credits', kind: 'bad' }] : [afterCreditsChip(credits, cost)]),
+      ],
+    };
+  }
   if (type === 'ammo') {
     const vol = MUNITIONS.volPerU > 0 ? MUNITIONS.volPerU : 1;
     const holdUnits = Math.max(0, Math.floor(cargoFreeVolume(state) / vol));
@@ -398,7 +432,7 @@ export function createServicesPanel(ctx) {
     } else if (type === 'insurance') {
       amount = state.player.insurance && state.player.insurance.insuredModules ? 0 : 1; // toggle intent
     }
-    if ((type === 'refuel' || type === 'repair' || type === 'ammo') && amount <= 0) {
+    if ((type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
       return;
@@ -415,13 +449,13 @@ export function createServicesPanel(ctx) {
         ctx.bus.emit('audio:cue', { id: 'ui_deny' });
         return;
       }
-    } else if (type === 'refuel' || type === 'repair' || type === 'ammo') {
+    } else if (type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') {
       // Quote → confirm for paid berth verbs (Station OS control grammar).
       const e = state.entities && state.entities.get(state.playerId);
       const quote = serviceQuote(type, state, e);
       if (quote && quote.cost > 0) {
         const ok = await confirm({
-          title: quote.buttonLabel || (type === 'refuel' ? 'Refuel' : type === 'repair' ? 'Repair' : 'Buy munitions'),
+          title: quote.buttonLabel || (type === 'refuel' ? 'Refuel' : type === 'repair' ? 'Repair' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
           body: (quote.detail || type) + ' · ' + fmtCr(quote.cost) + ' cr',
           confirmLabel: 'Confirm · ' + fmtCr(quote.cost) + ' cr',
           cancelLabel: 'Cancel',

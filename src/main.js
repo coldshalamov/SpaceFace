@@ -275,7 +275,10 @@ function bootstrapScene(state, helpers, bus, registry) {
   const shipId = (owned && owned.defId) || NEW_GAME.shipId || 'ship_kestrel';
   const fittings = (owned && owned.fittings) || [];
   const playerSpec = makeShipEntitySpec(shipId, {
-    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings, pos: { x: 0, z: 0 },
+    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings,
+    appearance: owned && owned.appearance,
+    livingHull: owned && owned.livingHull,
+    pos: { x: 0, z: 0 },
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;

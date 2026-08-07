@@ -27,6 +27,16 @@ import {
   normalizeShipAppearance,
   shipAppearanceSignature,
 } from '../core/shipAppearance.js';
+import {
+  defaultLivingHull,
+  livingHullAfterWash,
+  livingHullWithGraffiti,
+  livingHullWithKill,
+  livingHullWithRepair,
+  livingHullWithVent,
+  normalizeLivingHull,
+  sameLivingHull,
+} from '../core/livingHull.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -578,7 +588,7 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
  * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
  * copied onto the top level AND a full data block per the shared shape (§3.4.1).
  */
-export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
   const weapons = buildWeaponList(shipDef, fittings, isPlayer);
@@ -613,6 +623,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       // fallback weapons are still backfilled here so old saves show the barrel they can fire.
       fittings: fittingsForView(shipDef, fittings, weapons),
       appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
+      livingHull: isPlayer ? normalizeLivingHull(livingHull, 0) : null,
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
       ai,
@@ -642,6 +653,7 @@ export const ships = {
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
       this.flushCargoMassRefresh();
+      this.reconcileLivingHull({ announce: true });
       // Role identity is derived from the restored active hull. Publish once per Continue so the
       // presentation adapter can surface a one-time briefing without serializing lattice copy.
       this.publishActiveRoleContext({ source: 'save_loaded', announce: true });
@@ -655,6 +667,32 @@ export const ships = {
     bus.on('ui:unfitModule', (p) => this.unfitModule(p || {}));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
+    // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
+    // rare in-place update event; none of these events requests a ship rebuild or asset admission.
+    bus.on('lossLedger:recorded', (p) => {
+      if (p && p.kind === 'ship' && p.killedByPlayer === true) {
+        this._reduceLivingHull((hull, now) => livingHullWithKill(hull, now), 'player_kill');
+      }
+    });
+    bus.on('service:completed', (p) => {
+      if (!p) return;
+      if (p.type === 'repair') {
+        this._reduceLivingHull((hull, now) => livingHullWithRepair(hull, p, now), 'heavy_repair');
+      } else if (p.type === 'hull_wash') {
+        this._reduceLivingHull((hull, now) => livingHullAfterWash(hull, now), 'hull_wash');
+      }
+    });
+    bus.on('weapons:vent', (p) => {
+      if (p && p.phase === 'start' && p.ownerId === this.state.playerId) {
+        this._reduceLivingHull((hull, now) => livingHullWithVent(hull, now), 'weapon_vent');
+      }
+    });
+    bus.on('graffiti:show', (p) => {
+      if (p && p.where === 'bulkhead' && p.line) {
+        this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
+      }
+    });
+    bus.on('game:started', () => this.reconcileLivingHull({ announce: false }));
   },
 
   // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
@@ -672,6 +710,49 @@ export const ships = {
     const p = this.state.player;
     const i = (index == null) ? p.activeShipIndex : index;
     return p.ownedShips[i] || null;
+  },
+
+  reconcileLivingHull({ announce = false } = {}) {
+    const player = this.state && this.state.player;
+    if (!player || !Array.isArray(player.ownedShips)) return null;
+    const now = Number(this.state.simTime) || 0;
+    for (const owned of player.ownedShips) {
+      if (owned) owned.livingHull = normalizeLivingHull(owned.livingHull, now);
+    }
+    const owned = this.ownedShip();
+    const entity = this.activeShipEntity();
+    if (!owned) return null;
+    if (entity && entity.data) entity.data.livingHull = owned.livingHull;
+    if (announce && entity) {
+      this.bus.emit('ship:livingHullChanged', {
+        id: entity.id,
+        shipIndex: player.activeShipIndex,
+        defId: owned.defId,
+        source: 'reconciled',
+        livingHull: owned.livingHull,
+      });
+    }
+    return owned.livingHull;
+  },
+
+  _reduceLivingHull(reducer, source) {
+    const owned = this.ownedShip();
+    if (!owned || typeof reducer !== 'function') return false;
+    const now = Number(this.state.simTime) || 0;
+    const before = normalizeLivingHull(owned.livingHull, now);
+    const after = normalizeLivingHull(reducer(before, now), now);
+    if (sameLivingHull(before, after)) return false;
+    owned.livingHull = after;
+    const entity = this.activeShipEntity();
+    if (entity && entity.data) entity.data.livingHull = after;
+    this.bus.emit('ship:livingHullChanged', {
+      id: entity && entity.id,
+      shipIndex: this.state.player.activeShipIndex,
+      defId: owned.defId,
+      source,
+      livingHull: after,
+    });
+    return true;
   },
 
   /**
@@ -949,6 +1030,7 @@ export const ships = {
       defId,
       fittings: new Array(slots.length).fill(null),
       appearance: defaultShipAppearance(defId),
+      livingHull: defaultLivingHull(this.state.simTime || 0),
     });
     const newIndex = p.ownedShips.length - 1;
     this.bus.emit('ship:purchased', { defId, price: grant ? 0 : (def.price || 0) });
@@ -994,6 +1076,7 @@ export const ships = {
     if (e) {
       e.data.defId = owned.defId;
       e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
+      e.data.livingHull = normalizeLivingHull(owned.livingHull, this.state.simTime || 0);
       this.recomputeEntity(e.id, owned.fittings);
     }
     if (isTransition) {
@@ -1155,6 +1238,7 @@ export const ships = {
       defId: NEW_GAME.shipId,
       fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
       appearance: defaultShipAppearance(NEW_GAME.shipId),
+      livingHull: defaultLivingHull(this.state.simTime || 0),
     }];
     p.activeShipIndex = 0;
     p.moduleInventory = [];
