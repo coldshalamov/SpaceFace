@@ -1,0 +1,1966 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.memorial-array.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.memorial-array.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.memorial-array",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "ef12b916806e58598e0f1ee0f1310c8ce5ebedf5467cac37b3e94798af1bb750",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          11.41200065612793,
+          1.5918079614639282,
+          0.6371590495109558
+        ],
+        "min": [
+          0.2879999876022339,
+          -0.041807953268289566,
+          0.5828409790992737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e533eb1d3122e81dddf65d6da38cb8be3eca5bc4a2bbe73820aa3f9f5aa4981",
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-candle-optic.primitive.0",
+      "indexCount": 2016,
+      "indexed": true,
+      "materialHash": "a762798b9b2cbda45eb6cf79d989b11d5a4b3b762d31b368762e57bfc54584a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Memorial_Candle_Optic_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod0-memorial-candle-optic",
+      "primitiveIndex": 0,
+      "vertexCount": 1152
+    },
+    {
+      "bounds": {
+        "max": [
+          12.475000381469727,
+          1.8501126766204834,
+          0.3399884104728699
+        ],
+        "min": [
+          -0.6749997138977051,
+          -0.4101126194000244,
+          -0.13998839259147644
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19186cb46f203b8b5f445364b3875a5ff5e6bbd621e108b39a440e3ff84e822d",
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-frame-coat.primitive.0",
+      "indexCount": 2916,
+      "indexed": true,
+      "materialHash": "54a6c90c6c62d012a99e0f9b6043d0e4a6dd731ec71bbf87549ba415c4d4cdc9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Memorial_Frame_Coat_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod0-memorial-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 2376
+    },
+    {
+      "bounds": {
+        "max": [
+          11.600000381469727,
+          1.5477010011672974,
+          1.3852216005325317
+        ],
+        "min": [
+          0.20000028610229492,
+          -0.9002009630203247,
+          0.4597783088684082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e711b60770f0ff735467795ff80a44843bc5559386c66f1a81f6695ab9af7a76",
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-inscribed-bronze.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "35a73ae1395f1b6989bbef891a3afed784c4a111a59a507ccabcd62514c6d8ab",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Memorial_Inscribed_Bronze_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod0-memorial-inscribed-bronze",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          -0.17960843443870544,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.2003916501998901,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "542e04b68fab924ab5d46065b73a4f8af5c3abb753fdcf7732ada8e413c006b1",
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-recovered-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "be24d19eeedc8d028fbaa8ef5c546a7b360b289c7df9c8809a4a9ad30e00fc09",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Memorial_Recovered_Hull_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod0-memorial-recovered-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          11.46500015258789,
+          1.644830584526062,
+          0.5801264643669128
+        ],
+        "min": [
+          0.23499999940395355,
+          -0.09483062475919724,
+          -0.6701264977455139
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0910994a2f863d34fd8fdddb8b800582358e61316fa980ce003fbd1fb34ddbd9",
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-service-alloy.primitive.0",
+      "indexCount": 2988,
+      "indexed": true,
+      "materialHash": "54dd4c9cd0ce1fccfffc73ff7987be98bb81b19720462c2f5b33c559e2485420",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Memorial_Service_Alloy_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod0-memorial-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 1944
+    },
+    {
+      "bounds": {
+        "max": [
+          11.390000343322754,
+          1.5696409940719604,
+          0.5649999976158142
+        ],
+        "min": [
+          0.3100000023841858,
+          -0.0196409672498703,
+          0.5649999976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad74db16fe414fd680f6e025acc1716e899215018df2b545e155358c0e064bf5",
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-candle-optic.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "a762798b9b2cbda45eb6cf79d989b11d5a4b3b762d31b368762e57bfc54584a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Memorial_Candle_Optic_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod1-memorial-candle-optic",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          12.475000381469727,
+          1.8501126766204834,
+          0.3399884104728699
+        ],
+        "min": [
+          -0.6749997138977051,
+          -0.4101126194000244,
+          -0.13998839259147644
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76c5dd5aadfcc1d473567472818f4bfb14bf8ae28498754b4c869db98d935692",
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-frame-coat.primitive.0",
+      "indexCount": 1188,
+      "indexed": true,
+      "materialHash": "54a6c90c6c62d012a99e0f9b6043d0e4a6dd731ec71bbf87549ba415c4d4cdc9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Memorial_Frame_Coat_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod1-memorial-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 864
+    },
+    {
+      "bounds": {
+        "max": [
+          11.600000381469727,
+          1.5477010011672974,
+          1.3852216005325317
+        ],
+        "min": [
+          0.20000028610229492,
+          -0.9002009630203247,
+          0.4597783088684082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a531e70ba0cced7d327767e6f855ca84a7a2d7b5c62c05ba75e69b148fb1d065",
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-inscribed-bronze.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "35a73ae1395f1b6989bbef891a3afed784c4a111a59a507ccabcd62514c6d8ab",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Memorial_Inscribed_Bronze_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod1-memorial-inscribed-bronze",
+      "primitiveIndex": 0,
+      "vertexCount": 148
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          -0.17960843443870544,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.2003916501998901,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "542e04b68fab924ab5d46065b73a4f8af5c3abb753fdcf7732ada8e413c006b1",
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-recovered-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "be24d19eeedc8d028fbaa8ef5c546a7b360b289c7df9c8809a4a9ad30e00fc09",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Memorial_Recovered_Hull_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod1-memorial-recovered-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          11.440000534057617,
+          1.6198036670684814,
+          0.5500601530075073
+        ],
+        "min": [
+          0.25999999046325684,
+          -0.06980369240045547,
+          -0.6700601577758789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "186e0478465544dca1b5a3381efc2a09b2da0995a0b0a2786d6d44d9da45306f",
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-service-alloy.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "54dd4c9cd0ce1fccfffc73ff7987be98bb81b19720462c2f5b33c559e2485420",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Memorial_Service_Alloy_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod1-memorial-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 768
+    },
+    {
+      "bounds": {
+        "max": [
+          11.380000114440918,
+          1.560105800628662,
+          0.38999998569488525
+        ],
+        "min": [
+          0.3199999928474426,
+          -0.010105803608894348,
+          0.38999998569488525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d229adcb416d7076fa7b7fc533f7b9757351f01983203fc8e1c559c90b440b1a",
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-candle-optic.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "a762798b9b2cbda45eb6cf79d989b11d5a4b3b762d31b368762e57bfc54584a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Memorial_Candle_Optic_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod2-memorial-candle-optic",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          12.475000381469727,
+          1.8501126766204834,
+          0.3399884104728699
+        ],
+        "min": [
+          -0.6749997138977051,
+          -0.4101126194000244,
+          -0.13998839259147644
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8d0a181199788a51d1e366086661b8996cc1a2df10752d6d1606af88050e5fc",
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-frame-coat.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "54a6c90c6c62d012a99e0f9b6043d0e4a6dd731ec71bbf87549ba415c4d4cdc9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Memorial_Frame_Coat_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod2-memorial-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          11.600000381469727,
+          1.5474315881729126,
+          0.41009920835494995
+        ],
+        "min": [
+          0.20000028610229492,
+          -0.20743153989315033,
+          0.30990082025527954
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "835b5ae6751417a966bd270dded3ff4374de799335d9d5b62d82f20b1c8d364c",
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-inscribed-bronze.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "35a73ae1395f1b6989bbef891a3afed784c4a111a59a507ccabcd62514c6d8ab",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Memorial_Inscribed_Bronze_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod2-memorial-inscribed-bronze",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          -0.17960843443870544,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.2003916501998901,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f71b40fd8dbac9334767cfd314aad6c5a7d4dd91ad53c06ab47b3cc03fc5c1c2",
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-recovered-hull.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "be24d19eeedc8d028fbaa8ef5c546a7b360b289c7df9c8809a4a9ad30e00fc09",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Memorial_Recovered_Hull_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod2-memorial-recovered-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          6.0700154304504395,
+          1.3450000286102295,
+          -0.10998991131782532
+        ],
+        "min": [
+          5.729984760284424,
+          -0.10500001907348633,
+          -0.3300100564956665
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "429038eaeb86e910250b312fe7aeed801d4cd2c1266b35c137c78b2f933e90d8",
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-service-alloy.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "54dd4c9cd0ce1fccfffc73ff7987be98bb81b19720462c2f5b33c559e2485420",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Memorial_Service_Alloy_Mesh",
+      "nodeId": "sf.render.memorial-array.mesh.lod2-memorial-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "35a73ae1395f1b6989bbef891a3afed784c4a111a59a507ccabcd62514c6d8ab",
+      "id": "material:35a73ae1395f1b6989bbef89",
+      "name": "Memorial_Inscribed_Bronze",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "aged_registry_bronze_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "aged_registry_bronze_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "aged_registry_bronze_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "aged_registry_bronze_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "54a6c90c6c62d012a99e0f9b6043d0e4a6dd731ec71bbf87549ba415c4d4cdc9",
+      "id": "material:54a6c90c6c62d012a99e0f9b",
+      "name": "Memorial_Frame_Coat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "maintained_memorial_frame_coat_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "maintained_memorial_frame_coat_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "maintained_memorial_frame_coat_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "maintained_memorial_frame_coat_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "54dd4c9cd0ce1fccfffc73ff7987be98bb81b19720462c2f5b33c559e2485420",
+      "id": "material:54dd4c9cd0ce1fccfffc73ff",
+      "name": "Memorial_Service_Alloy",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "machined_power_service_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_power_service_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_power_service_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_power_service_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a762798b9b2cbda45eb6cf79d989b11d5a4b3b762d31b368762e57bfc54584a5",
+      "id": "material:a762798b9b2cbda45eb6cf79",
+      "name": "Memorial_Candle_Optic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_recessed_candle_optic_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_recessed_candle_optic_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_recessed_candle_optic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_recessed_candle_optic_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "be24d19eeedc8d028fbaa8ef5c546a7b360b289c7df9c8809a4a9ad30e00fc09",
+      "id": "material:be24d19eeedc8d028fbaa8ef",
+      "name": "Memorial_Recovered_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "dark_recovered_convoy_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "dark_recovered_convoy_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-candle-optic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Memorial_Candle_Optic",
+      "nodeName": "LOD0_Memorial_Candle_Optic",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Memorial_Frame_Coat",
+      "nodeName": "LOD0_Memorial_Frame_Coat",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-inscribed-bronze",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Memorial_Inscribed_Bronze",
+      "nodeName": "LOD0_Memorial_Inscribed_Bronze",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-recovered-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Memorial_Recovered_Hull",
+      "nodeName": "LOD0_Memorial_Recovered_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod0-memorial-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Memorial_Service_Alloy",
+      "nodeName": "LOD0_Memorial_Service_Alloy",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-candle-optic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Memorial_Candle_Optic",
+      "nodeName": "LOD1_Memorial_Candle_Optic",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Memorial_Frame_Coat",
+      "nodeName": "LOD1_Memorial_Frame_Coat",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-inscribed-bronze",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Memorial_Inscribed_Bronze",
+      "nodeName": "LOD1_Memorial_Inscribed_Bronze",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-recovered-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Memorial_Recovered_Hull",
+      "nodeName": "LOD1_Memorial_Recovered_Hull",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod1-memorial-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Memorial_Service_Alloy",
+      "nodeName": "LOD1_Memorial_Service_Alloy",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-candle-optic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Memorial_Candle_Optic",
+      "nodeName": "LOD2_Memorial_Candle_Optic",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Memorial_Frame_Coat",
+      "nodeName": "LOD2_Memorial_Frame_Coat",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-inscribed-bronze",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Memorial_Inscribed_Bronze",
+      "nodeName": "LOD2_Memorial_Inscribed_Bronze",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-recovered-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Memorial_Recovered_Hull",
+      "nodeName": "LOD2_Memorial_Recovered_Hull",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.mesh.lod2-memorial-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Memorial_Service_Alloy",
+      "nodeName": "LOD2_Memorial_Service_Alloy",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.memorial-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.memorial-array.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_MEMORIAL_ARRAY_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.memorial-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6e8965f63555d53e61689522b6178481202693fc7a8b1e0189da81d5310170bd"
+    },
+    "sourceGlb": {
+      "bytes": 238788,
+      "sha256": "7bb0c7709a33e7b3972d5a32226037605792666b439c94b934dc04d15b238667",
+      "uri": "place_memorial_array.glb"
+    },
+    "sourceManifest": {
+      "bytes": 17993,
+      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 338100,
+    "sha256": "8dad56888186bee04e9718bb6b432bb0ccf90b7bd06d1346d16bfd59c4c66557",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        5.900000095367432,
+        0.32486051321029663,
+        0
+      ],
+      "max": [
+        13.300000190734863,
+        1.8501126766204834,
+        1.4995574951171875
+      ],
+      "min": [
+        -1.5,
+        -1.2003916501998901,
+        -1.4995574951171875
+      ],
+      "size": [
+        14.800000190734863,
+        3.0505043268203735,
+        2.999114990234375
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "structure"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "structure",
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "structure",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.memorial-array.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Memorial_Candle_Optic",
+        "planIndex": 2,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Memorial_Frame_Coat",
+        "planIndex": 3,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Memorial_Inscribed_Bronze",
+        "planIndex": 4,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Memorial_Recovered_Hull",
+        "planIndex": 5,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Memorial_Service_Alloy",
+        "planIndex": 6,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Memorial_Candle_Optic",
+        "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Memorial_Frame_Coat",
+        "planIndex": 8,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Memorial_Inscribed_Bronze",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Memorial_Recovered_Hull",
+        "planIndex": 10,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Memorial_Service_Alloy",
+        "planIndex": 11,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Candle_Optic",
+        "planIndex": 12,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Frame_Coat",
+        "planIndex": 13,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Inscribed_Bronze",
+        "planIndex": 14,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Recovered_Hull",
+        "planIndex": 15,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Service_Alloy",
+        "planIndex": 16,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_memorial_array.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          1.8501126766204834,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.2003916501998901,
+          -1.4995574951171875
+        ]
+      },
+      "id": "sf.render.memorial-array.body",
+      "nodeIds": [
+        "sf.render.memorial-array.mesh.lod0-memorial-candle-optic",
+        "sf.render.memorial-array.mesh.lod0-memorial-frame-coat",
+        "sf.render.memorial-array.mesh.lod0-memorial-inscribed-bronze",
+        "sf.render.memorial-array.mesh.lod0-memorial-recovered-hull",
+        "sf.render.memorial-array.mesh.lod0-memorial-service-alloy",
+        "sf.render.memorial-array.mesh.lod1-memorial-candle-optic",
+        "sf.render.memorial-array.mesh.lod1-memorial-frame-coat",
+        "sf.render.memorial-array.mesh.lod1-memorial-inscribed-bronze",
+        "sf.render.memorial-array.mesh.lod1-memorial-recovered-hull",
+        "sf.render.memorial-array.mesh.lod1-memorial-service-alloy",
+        "sf.render.memorial-array.mesh.lod2-memorial-candle-optic",
+        "sf.render.memorial-array.mesh.lod2-memorial-frame-coat",
+        "sf.render.memorial-array.mesh.lod2-memorial-inscribed-bronze",
+        "sf.render.memorial-array.mesh.lod2-memorial-recovered-hull",
+        "sf.render.memorial-array.mesh.lod2-memorial-service-alloy",
+        "sf.render.memorial-array.root"
+      ]
+    }
+  ]
+}

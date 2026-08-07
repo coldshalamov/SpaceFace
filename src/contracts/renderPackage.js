@@ -23,6 +23,10 @@ const PACKAGE_KEYS = new Set([
   'schema', 'assetId', 'kind', 'compiler', 'contentHash', 'render', 'provenance',
   'nodes', 'anchors', 'dynamicGroups', 'geometry', 'materials', 'lods', 'hlods',
   'collisions', 'spatialClusters',
+  // Optional v2 runtime table: the precompiled blueprint the shipping loader binds instead of
+  // recompiling from the decoded graph. Deliberately outside renderPackageContentIdentity, so a
+  // package gains it without disturbing contentHash or any expectedContentHash binding.
+  'runtime',
 ]);
 const COMPILER_KEYS = new Set(['name', 'version']);
 const RENDER_KEYS = new Set(['uri', 'sha256', 'bytes']);

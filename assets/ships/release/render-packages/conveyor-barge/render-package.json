@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a7440840278704949f52a238e288dcac77eaf3748868cb6addcacb79e6da198c",
+  "contentHash": "f573c81642c5ff52197b4effb5d738507f8ad3cafdafaf76895d7ff65dcd0a31",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -590,8 +590,8 @@
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 15265,
-      "sha256": "499c2d4f47d9ac7942de1cfdc4db6ec0093b0be6f5c1d35c1d23db35ef091121",
+      "bytes": 17993,
+      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
       "uri": "pilots.json"
     }
   },
@@ -599,6 +599,393 @@
     "bytes": 239592,
     "sha256": "9dbd00781e5885bb4f0ccd3d9620c47777f1db9407a5caba59b7eb5fb1868f95",
     "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        33.83764003876058,
+        3.000772476196289,
+        0
+      ],
+      "max": [
+        70.17520141601562,
+        8.000690460205078,
+        8.998870849609375
+      ],
+      "min": [
+        -2.4999213384944596,
+        -1.9991455078125,
+        -8.998870849609375
+      ],
+      "size": [
+        72.67512275451008,
+        9.999835968017578,
+        17.99774169921875
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME",
+        "planIndex": 6,
+        "tags": {
+          "drive": "plume"
+        },
+        "userData": {
+          "spacefaceHook": true,
+          "spaceface_hook": "HOOK_DRIVE_PLUME"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          26,
+          6.199999809265137,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "emissive"
+        },
+        "userData": {
+          "damageRole": "navLight",
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "emissive",
+          "spacefaceHook": true,
+          "spaceface_hook": "HOOK_Emissive"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          70,
+          6.199999809265137,
+          -7.5,
+          1
+        ],
+        "name": "Barge_Status_-75",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          70,
+          6.199999809265137,
+          7.5,
+          1
+        ],
+        "name": "Barge_Status_75",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight"
+        },
+        "userData": {}
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "role": "vfx",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "nodeCount": 15,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Barge_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "Barge_Drive_Core",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -2.5,
+            2.200000047683716,
+            0,
+            1
+          ],
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "Barge_Drive_Nozzle",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -2.5,
+            2.200000047683716,
+            0,
+            1
+          ],
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "place_conveyor_barge_Material_Accent_Merged",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "place_conveyor_barge_Material_Mechanical_Merged",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [

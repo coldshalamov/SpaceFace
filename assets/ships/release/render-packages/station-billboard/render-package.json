@@ -1,0 +1,1966 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.station-billboard.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.station-billboard.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.station-billboard",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f454262997dccbc9949100cf2560cbe106bf735a5c9327c8c561bd1b0d248981",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          12.649999618530273,
+          1.4803036451339722,
+          0.06982389837503433
+        ],
+        "min": [
+          -0.8499999046325684,
+          -0.8203035593032837,
+          -0.5498238801956177
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a16ab983522a8cc1270e59cf9a39c18fc2ad33cfaa569bf72921564ca71424dd",
+      "id": "sf.render.station-billboard.mesh.lod0-display-backplate.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "e8a504c66a2984374da220f311f35ff3104ed981bd9c11a8ddaf658d398a4ad1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Display_Backplate_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod0-display-backplate",
+      "primitiveIndex": 0,
+      "vertexCount": 264
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          1.8498512506484985,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.1998512744903564,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f56db8abdd809ac2f0bf0c087a3b971509dbd1bbd815d09ff0434f54ba0967b8",
+      "id": "sf.render.station-billboard.mesh.lod0-display-frame-coat.primitive.0",
+      "indexCount": 1944,
+      "indexed": true,
+      "materialHash": "bf68c57ff6dd1b378b6b9c83e61b8ffbd1d9a2328cc6457aa0ef6c8c9050d83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Display_Frame_Coat_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod0-display-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 1584
+    },
+    {
+      "bounds": {
+        "max": [
+          11.34510612487793,
+          -0.33029410243034363,
+          0.8398235440254211
+        ],
+        "min": [
+          0.45489436388015747,
+          -0.5297059416770935,
+          0.7201763987541199
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f8002e6f485d9d81563e67e49a742f666354adb6a29ce90806e7ce6a34e43dfa",
+      "id": "sf.render.station-billboard.mesh.lod0-display-safety-marking.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "df868565e884196d6ba4b2fb31fd743527a7d84e11ba219a06f69388ceaddddc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Display_Safety_Marking_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod0-display-safety-marking",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          12.154999732971191,
+          1.3298568725585938,
+          0.6699545383453369
+        ],
+        "min": [
+          -0.35500001907348633,
+          -0.3698568344116211,
+          0.45004546642303467
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48bec51493ba02df093eae58b61f7c343e18b7816734859ca773aff4a30b3afe",
+      "id": "sf.render.station-billboard.mesh.lod0-display-screen-glass.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "b424455a210d9d4331832a348cd796d1d3a017037a7fb8207a4974d58aba830e",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Display_Screen_Glass_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod0-display-screen-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 528
+    },
+    {
+      "bounds": {
+        "max": [
+          11.210000038146973,
+          1.5398741960525513,
+          0.6596615314483643
+        ],
+        "min": [
+          0.7250000238418579,
+          -0.6398743391036987,
+          -1.0273077487945557
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f3da593ae71d7e8a8b18fe5729a57c78804c235751b25f42eed0e993870a282",
+      "id": "sf.render.station-billboard.mesh.lod0-display-service-alloy.primitive.0",
+      "indexCount": 2940,
+      "indexed": true,
+      "materialHash": "958346e33df12c6d439846e7533de2adfa8a120fbfd1db6a44b11b2944cd6726",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Display_Service_Alloy_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod0-display-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 2412
+    },
+    {
+      "bounds": {
+        "max": [
+          12.649999618530273,
+          1.4803036451339722,
+          0.06982389837503433
+        ],
+        "min": [
+          -0.8499999046325684,
+          -0.8203035593032837,
+          -0.5498238801956177
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c61056ea573f9575369fff9bdd74e74f4406a061e844418ef353df0064da4f99",
+      "id": "sf.render.station-billboard.mesh.lod1-display-backplate.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e8a504c66a2984374da220f311f35ff3104ed981bd9c11a8ddaf658d398a4ad1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Display_Backplate_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod1-display-backplate",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          1.8498512506484985,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.1998512744903564,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d3e99087818a1522c8cdf99b9654ecd8c124eed4fdf46b7f1b2db2baaec01c0",
+      "id": "sf.render.station-billboard.mesh.lod1-display-frame-coat.primitive.0",
+      "indexCount": 792,
+      "indexed": true,
+      "materialHash": "bf68c57ff6dd1b378b6b9c83e61b8ffbd1d9a2328cc6457aa0ef6c8c9050d83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Display_Frame_Coat_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod1-display-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 576
+    },
+    {
+      "bounds": {
+        "max": [
+          11.336602210998535,
+          -0.32978615164756775,
+          0.8397300839424133
+        ],
+        "min": [
+          0.46339747309684753,
+          -0.5302138924598694,
+          0.7202698588371277
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d93f835fa0552e75dffd0d62284717539afcfa1c368058ec9be348fd9f1878f",
+      "id": "sf.render.station-billboard.mesh.lod1-display-safety-marking.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "df868565e884196d6ba4b2fb31fd743527a7d84e11ba219a06f69388ceaddddc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Display_Safety_Marking_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod1-display-safety-marking",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          12.154999732971191,
+          1.3298568725585938,
+          0.6699545383453369
+        ],
+        "min": [
+          -0.35500001907348633,
+          -0.3698568344116211,
+          0.45004546642303467
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fe782de6c68722278f44744c8b48160a3cdf800ceba6b9fb4332a428494971f1",
+      "id": "sf.render.station-billboard.mesh.lod1-display-screen-glass.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "b424455a210d9d4331832a348cd796d1d3a017037a7fb8207a4974d58aba830e",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_Display_Screen_Glass_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod1-display-screen-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          11.210000038146973,
+          1.5398741960525513,
+          0.6599738597869873
+        ],
+        "min": [
+          0.7250000238418579,
+          -0.6398743391036987,
+          -1.0205955505371094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2418766d62e147676b9e3ff95ac9e787691d19c821400679f5ae9bae9c9e1979",
+      "id": "sf.render.station-billboard.mesh.lod1-display-service-alloy.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "958346e33df12c6d439846e7533de2adfa8a120fbfd1db6a44b11b2944cd6726",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Display_Service_Alloy_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod1-display-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 676
+    },
+    {
+      "bounds": {
+        "max": [
+          12.649999618530273,
+          1.4803036451339722,
+          0.06982389837503433
+        ],
+        "min": [
+          -0.8499999046325684,
+          -0.8203035593032837,
+          -0.5498238801956177
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50f50b174621e80d92ce81318c678665292821b2bfe247eb81d7100e2249e857",
+      "id": "sf.render.station-billboard.mesh.lod2-display-backplate.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e8a504c66a2984374da220f311f35ff3104ed981bd9c11a8ddaf658d398a4ad1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Display_Backplate_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod2-display-backplate",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          1.8498512506484985,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.1998512744903564,
+          -1.4995574951171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b429b8d0c1dc9060538fba1bc2029165dad1b2bf5dd1194f97e3fb4e321df7bf",
+      "id": "sf.render.station-billboard.mesh.lod2-display-frame-coat.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "bf68c57ff6dd1b378b6b9c83e61b8ffbd1d9a2328cc6457aa0ef6c8c9050d83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Display_Frame_Coat_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod2-display-frame-coat",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          9.90999984741211,
+          -0.33992889523506165,
+          0.7200000286102295
+        ],
+        "min": [
+          1.8899999856948853,
+          -0.5200710892677307,
+          0.7200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52ab4d7389449e3e172ed58584e2e332cb557a4e26ef8a22682d80d776c7b4d6",
+      "id": "sf.render.station-billboard.mesh.lod2-display-safety-marking.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "df868565e884196d6ba4b2fb31fd743527a7d84e11ba219a06f69388ceaddddc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Display_Safety_Marking_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod2-display-safety-marking",
+      "primitiveIndex": 0,
+      "vertexCount": 8
+    },
+    {
+      "bounds": {
+        "max": [
+          12.154999732971191,
+          1.3298568725585938,
+          0.6699545383453369
+        ],
+        "min": [
+          -0.35500001907348633,
+          -0.3698568344116211,
+          0.45004546642303467
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b08e53014cdc24935fc01b800ad2822933edba5b5aed37b8bf98716874aed385",
+      "id": "sf.render.station-billboard.mesh.lod2-display-screen-glass.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "b424455a210d9d4331832a348cd796d1d3a017037a7fb8207a4974d58aba830e",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_Display_Screen_Glass_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod2-display-screen-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          6.450006484985352,
+          1.5399999618530273,
+          0.6599813103675842
+        ],
+        "min": [
+          5.349993705749512,
+          -0.64000004529953,
+          -0.7899812459945679
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b859090e0bbf99457a24bc7c34763d9fed5a153ceffe7fe61630a2cbf1bdc6c9",
+      "id": "sf.render.station-billboard.mesh.lod2-display-service-alloy.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "958346e33df12c6d439846e7533de2adfa8a120fbfd1db6a44b11b2944cd6726",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Display_Service_Alloy_Mesh",
+      "nodeId": "sf.render.station-billboard.mesh.lod2-display-service-alloy",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "958346e33df12c6d439846e7533de2adfa8a120fbfd1db6a44b11b2944cd6726",
+      "id": "material:958346e33df12c6d439846e7",
+      "name": "Display_Service_Alloy",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "machined_service_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_service_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_service_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "machined_service_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b424455a210d9d4331832a348cd796d1d3a017037a7fb8207a4974d58aba830e",
+      "id": "material:b424455a210d9d4331832a34",
+      "name": "Display_Screen_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "smoked_information_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "smoked_information_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "smoked_information_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "smoked_information_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bf68c57ff6dd1b378b6b9c83e61b8ffbd1d9a2328cc6457aa0ef6c8c9050d83a",
+      "id": "material:bf68c57ff6dd1b378b6b9c83",
+      "name": "Display_Frame_Coat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "formed_neutral_frame_coat_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "formed_neutral_frame_coat_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "formed_neutral_frame_coat_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "formed_neutral_frame_coat_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "df868565e884196d6ba4b2fb31fd743527a7d84e11ba219a06f69388ceaddddc",
+      "id": "material:df868565e884196d6ba4b2fb",
+      "name": "Display_Safety_Marking",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "finite_amber_status_marking_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "finite_amber_status_marking_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "finite_amber_status_marking_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "finite_amber_status_marking_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e8a504c66a2984374da220f311f35ff3104ed981bd9c11a8ddaf658d398a4ad1",
+      "id": "material:e8a504c66a2984374da220f3",
+      "name": "Display_Backplate",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "folded_dark_backplate_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "folded_dark_backplate_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "folded_dark_backplate_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "folded_dark_backplate_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.station-billboard.mesh.lod0-display-backplate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Display_Backplate",
+      "nodeName": "LOD0_Display_Backplate",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod0-display-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Display_Frame_Coat",
+      "nodeName": "LOD0_Display_Frame_Coat",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod0-display-safety-marking",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Display_Safety_Marking",
+      "nodeName": "LOD0_Display_Safety_Marking",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod0-display-screen-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Display_Screen_Glass",
+      "nodeName": "LOD0_Display_Screen_Glass",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod0-display-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Display_Service_Alloy",
+      "nodeName": "LOD0_Display_Service_Alloy",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod1-display-backplate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Display_Backplate",
+      "nodeName": "LOD1_Display_Backplate",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod1-display-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Display_Frame_Coat",
+      "nodeName": "LOD1_Display_Frame_Coat",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod1-display-safety-marking",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Display_Safety_Marking",
+      "nodeName": "LOD1_Display_Safety_Marking",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod1-display-screen-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Display_Screen_Glass",
+      "nodeName": "LOD1_Display_Screen_Glass",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod1-display-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Display_Service_Alloy",
+      "nodeName": "LOD1_Display_Service_Alloy",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod2-display-backplate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Display_Backplate",
+      "nodeName": "LOD2_Display_Backplate",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod2-display-frame-coat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Display_Frame_Coat",
+      "nodeName": "LOD2_Display_Frame_Coat",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod2-display-safety-marking",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Display_Safety_Marking",
+      "nodeName": "LOD2_Display_Safety_Marking",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod2-display-screen-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Display_Screen_Glass",
+      "nodeName": "LOD2_Display_Screen_Glass",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.mesh.lod2-display-service-alloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Display_Service_Alloy",
+      "nodeName": "LOD2_Display_Service_Alloy",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.station-billboard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.station-billboard.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_M4_HELIOS_DOCK_ARM_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.station-billboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6c2431415aa080e8a9df4af9a1455b250927f845b7042c8a171d812a9a36eeb4"
+    },
+    "sourceGlb": {
+      "bytes": 193736,
+      "sha256": "1a780be072b47a1ba38dbd977fdcfb16c5d1a7318213c1edc167cd5025b5d0c5",
+      "uri": "place_station_billboard.glb"
+    },
+    "sourceManifest": {
+      "bytes": 17993,
+      "sha256": "dcec582347a48c5bac2fcb6b95340ae83954a307c377a8d534445cde21e47f41",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 280944,
+    "sha256": "25be18e8371168690ad582ee60309cf66c7f1a0fef80114287351c2015d1b885",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        5.900000095367432,
+        0.32499998807907104,
+        0
+      ],
+      "max": [
+        13.300000190734863,
+        1.8498512506484985,
+        1.4995574951171875
+      ],
+      "min": [
+        -1.5,
+        -1.1998512744903564,
+        -1.4995574951171875
+      ],
+      "size": [
+        14.800000190734863,
+        3.049702525138855,
+        2.999114990234375
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "structure"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "role": "structure",
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "structure",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.station-billboard.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Display_Backplate",
+        "planIndex": 2,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Display_Frame_Coat",
+        "planIndex": 3,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Display_Safety_Marking",
+        "planIndex": 4,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Display_Screen_Glass",
+        "planIndex": 5,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Display_Service_Alloy",
+        "planIndex": 6,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Display_Backplate",
+        "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Display_Frame_Coat",
+        "planIndex": 8,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Display_Safety_Marking",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Display_Screen_Glass",
+        "planIndex": 10,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Display_Service_Alloy",
+        "planIndex": 11,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Display_Backplate",
+        "planIndex": 12,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Display_Frame_Coat",
+        "planIndex": 13,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Display_Safety_Marking",
+        "planIndex": 14,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Display_Screen_Glass",
+        "planIndex": 15,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Display_Service_Alloy",
+        "planIndex": 16,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_station_billboard.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.300000190734863,
+          1.8498512506484985,
+          1.4995574951171875
+        ],
+        "min": [
+          -1.5,
+          -1.1998512744903564,
+          -1.4995574951171875
+        ]
+      },
+      "id": "sf.render.station-billboard.body",
+      "nodeIds": [
+        "sf.render.station-billboard.mesh.lod0-display-backplate",
+        "sf.render.station-billboard.mesh.lod0-display-frame-coat",
+        "sf.render.station-billboard.mesh.lod0-display-safety-marking",
+        "sf.render.station-billboard.mesh.lod0-display-screen-glass",
+        "sf.render.station-billboard.mesh.lod0-display-service-alloy",
+        "sf.render.station-billboard.mesh.lod1-display-backplate",
+        "sf.render.station-billboard.mesh.lod1-display-frame-coat",
+        "sf.render.station-billboard.mesh.lod1-display-safety-marking",
+        "sf.render.station-billboard.mesh.lod1-display-screen-glass",
+        "sf.render.station-billboard.mesh.lod1-display-service-alloy",
+        "sf.render.station-billboard.mesh.lod2-display-backplate",
+        "sf.render.station-billboard.mesh.lod2-display-frame-coat",
+        "sf.render.station-billboard.mesh.lod2-display-safety-marking",
+        "sf.render.station-billboard.mesh.lod2-display-screen-glass",
+        "sf.render.station-billboard.mesh.lod2-display-service-alloy",
+        "sf.render.station-billboard.root"
+      ]
+    }
+  ]
+}

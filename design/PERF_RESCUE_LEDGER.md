@@ -85,9 +85,31 @@ skeleton-rebinding machinery was wasted work. The larger hidden cost was per-ins
 
 ---
 
-## Chunk 2 — render-package v2 + residency/admission — **IN PROGRESS**
+## Chunk 2 — render-package v2 + residency/admission — **GATE 1 MET; gates 2/3/5 open**
 
-Status: opened this session. See "Session log" below.
+**Gate 1 is met on the shipping package route.** `compileBlueprint` no longer runs when a package
+carries a runtime table; the loader binds precompiled data by flat-plan index.
+
+**Measured before/after** (`station-approach-docking` and `sector-transition-admission` are the two
+package-bearing scenarios; both show the same result):
+
+| | before | after |
+|---|---|---|
+| `runtimeSemanticCompiles` cause map | `package-blueprint-compile: 1`, `package-plan-compile: 1` | `package-runtime-bind: 1`, `package-plan-compile: 1` |
+| `graphTraversals` / `graphNodesVisited` | 1 / 8 | 1 / 8 |
+| post-boot `runtimeSemanticCompiles` | 0 | 0 |
+
+The total deliberately stays at **2**. Driving the field to zero would have been indistinguishable
+from deleting the call site — the counter-fails-toward-good-news trap this ledger names. Instead the
+same field keeps counting, and the **cause** changes, which is a positive signal that the bind path
+ran rather than an absence of evidence.
+
+Determinism: all 8 scenarios byte-identical across two runs. `check:baseline`: exactly the four known
+pre-existing failures. `check:render-package-plan`: 26/26, 731 nodes. Focused tests: 68/68.
+
+**Still open:** gate 2 (fail-closed / dev-only source route), gate 3 (coverage — 60 unpackaged
+assets), gate 5 (residency prewarm + prepare-then-swap). Gate 4 was already in place
+(`build:render-package-pilots --check`, re-verified fresh 26/26 after the change).
 
 **Exit gates**
 

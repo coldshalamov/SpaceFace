@@ -661,10 +661,26 @@ async function createRuntime(renderer) {
  */
 export function prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, options = {}) {
   const renderer = options.renderer || null;
-  // Tier-1 causal count: the shipping package path still recompiles blueprint semantics from the
-  // decoded graph once per package load. Removing it needs the package format to carry primitives,
-  // markers, tags and bounds — that is the render-package v2 work, not an instance-path change.
   const tier1 = tier1CountersForRenderer(renderer);
+  const table = packageMetadata && packageMetadata.runtime;
+
+  // The shipping route binds the package's precompiled runtime table: no scene traversal, no
+  // name-based discovery, no bounds computation. The counter deliberately keeps the same field and
+  // changes only its cause and magnitude — a field that simply went to zero would be
+  // indistinguishable from a deleted call site, which is exactly how a counter fails toward good news.
+  if (table && options.plan) {
+    if (tier1) tier1.countRuntimeSemanticCompile('package-runtime-bind', table.primitives.length);
+    const bound = bindAuthoredRuntimeTable(pilot.sourceUrl, decoded, pilot.slot, table, options.plan);
+    if (bound.assetId !== pilot.runtimeAssetId) {
+      throw new Error(
+        `Render package ${pilot.assetId} decoded runtime asset ${bound.assetId} instead of ${pilot.runtimeAssetId}.`,
+      );
+    }
+    return bound;
+  }
+
+  // Fallback: a package compiled before the runtime table existed. Counted separately so the
+  // remaining derivation stays visible rather than blending into the bind path.
   if (tier1) tier1.countRuntimeSemanticCompile('package-blueprint-compile', 0);
   const blueprint = compileBlueprint(pilot.sourceUrl, decoded, pilot.slot);
   if (blueprint.assetId !== pilot.runtimeAssetId) {
@@ -993,6 +1009,110 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
  * transcoding anything.
  */
 export const AUTHORED_RUNTIME_TABLE_SCHEMA = 'spaceface.renderPackageRuntime.v1';
+
+/**
+ * Build a runtime blueprint by binding a package's precompiled runtime table to a decoded scene.
+ *
+ * This is the shipping counterpart to `deriveAuthoredRuntimeTable`. It performs no traversal, no
+ * name matching, no transform recomputation and no bounds computation — every entry is an array
+ * subscript into the flat instance plan. The declared `name` is asserted against the plan so a stale
+ * table fails loudly at load instead of binding the wrong node and shipping a wrong-looking model.
+ *
+ * Material *construction* remains: canopies become MeshPhysicalMaterial and authored material roles
+ * are applied. Both are declared by the table rather than derived from names, but they still allocate.
+ * That is deliberate — baking them into the GLB would rewrite every package and every content hash.
+ */
+export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
+  const scene = gltf && gltf.scene;
+  if (!scene || !scene.isObject3D) throw new AssetContractError(url, ['GLB has no default scene']);
+  const nodes = plan.entries;
+  if (!Array.isArray(nodes)) throw new AssetContractError(url, ['instance plan exposed no entries']);
+
+  const metadata = readAssetMetadata(gltf, scene, expectedSlot);
+  const nodeAt = (entry, kind) => {
+    const planEntry = nodes[entry.planIndex];
+    if (!planEntry) {
+      throw new AssetContractError(url, [`runtime table ${kind} references plan index ${entry.planIndex}, which the decoded scene does not have`]);
+    }
+    const object = planEntry.source;
+    if ((object.name || '') !== entry.name) {
+      throw new AssetContractError(url, [`runtime table ${kind} at plan index ${entry.planIndex} expected node "${entry.name}" but the decoded scene has "${object.name || ''}"`]);
+    }
+    return object;
+  };
+
+  for (const index of table.hidden || []) {
+    const planEntry = nodes[index];
+    if (planEntry) planEntry.source.visible = false;
+  }
+
+  const primitives = (table.primitives || []).map((entry) => {
+    const node = nodeAt(entry, 'primitive');
+    const material = entry.canopy ? makeCanopyMaterial(node.material) : node.material;
+    if (entry.canopy) node.material = material;
+    const tags = Object.freeze(reviveRuntimeTags(entry.tags));
+    node.userData = { ...(node.userData || {}), spacefacePartUrl: url, spacefaceTags: tags };
+    return Object.freeze({
+      key: `${url}#${node.uuid}`,
+      name: entry.name,
+      geometry: node.geometry,
+      material,
+      matrix: new THREE.Matrix4().fromArray(entry.matrix),
+      tags,
+    });
+  });
+
+  const markers = (table.markers || []).map((entry) => {
+    const node = nodeAt(entry, 'marker');
+    const tags = Object.freeze(reviveRuntimeTags(entry.tags));
+    node.userData = { ...(node.userData || {}), ...entry.userData, spacefacePartUrl: url, spacefaceTags: tags };
+    return Object.freeze({
+      name: entry.name,
+      matrix: new THREE.Matrix4().fromArray(entry.matrix),
+      tags,
+      userData: Object.freeze({ ...node.userData }),
+    });
+  });
+
+  const materialProfile = configureAuthoredMaterialProfiles(scene, {
+    assetId: metadata.assetId || fileStem(url),
+  });
+
+  return Object.freeze({
+    url,
+    assetId: metadata.assetId || fileStem(url),
+    slot: expectedSlot || metadata.slot || null,
+    metadata: Object.freeze({ ...metadata }),
+    primitives: Object.freeze(primitives),
+    markers: Object.freeze(markers),
+    bounds: Object.freeze({
+      min: Object.freeze([...table.bounds.min]),
+      max: Object.freeze([...table.bounds.max]),
+      size: Object.freeze([...table.bounds.size]),
+      center: Object.freeze([...table.bounds.center]),
+    }),
+    report: Object.freeze({
+      warnings: Object.freeze([]),
+      primitiveCount: primitives.length,
+      markerCount: markers.length,
+      ktx2TextureCount: 0,
+      materialProfile: Object.freeze({
+        materials: materialProfile.materials,
+        roles: Object.freeze({ ...materialProfile.roles }),
+      }),
+    }),
+    residency: { key: `${url}::${expectedSlot || '*'}`, generation: null, state: 'resident' },
+  });
+}
+
+/** `driveAnchorMatrix` is serialized as a 16-number array; everything else round-trips as-is. */
+function reviveRuntimeTags(tags) {
+  const out = { ...(tags || {}) };
+  if (Array.isArray(out.driveAnchorMatrix) && out.driveAnchorMatrix.length === 16) {
+    out.driveAnchorMatrix = new THREE.Matrix4().fromArray(out.driveAnchorMatrix);
+  }
+  return out;
+}
 
 export function deriveAuthoredRuntimeTable(scene, options = {}) {
   if (!scene || !scene.isObject3D) throw new Error('deriveAuthoredRuntimeTable requires a scene root');

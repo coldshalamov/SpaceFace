@@ -41,6 +41,7 @@ import {
 import { createRenderPackageLoader } from '../../src/render/renderPackageLoader.js';
 import {
   assembleRenderPackageRecord,
+  deriveAuthoredRuntimeTable,
   prepareRenderPackageBlueprint,
 } from '../../src/render/assetLoader.js';
 import {
@@ -355,6 +356,14 @@ function semanticLocator(rawNodeName, recordIds) {
   };
 }
 
+/** The fixture template's scene root, whichever shape buildFixtureTemplate returns it in. */
+function fixtureSceneRoot() {
+  const built = buildFixtureTemplate();
+  const root = built && built.isObject3D ? built : built && built.scene;
+  if (!root || !root.isObject3D) throw new Error('fixture template exposed no scene root');
+  return root;
+}
+
 function buildFixtureTemplate() {
   const root = new THREE.Group();
   root.name = 'CausalFixtureRoot';
@@ -502,6 +511,13 @@ async function buildFixtureMetadata() {
       ],
       bounds: null,
     }],
+    // The v2 runtime table, derived from the same deterministic template the loader decodes. Without
+    // it the fixture silently takes the pre-v2 fallback and every scenario measures a blueprint
+    // recompile that no shipping package performs — the harness would report the old world as fixed.
+    runtime: deriveAuthoredRuntimeTable(fixtureSceneRoot(), {
+      url: FIXTURE_PILOT.sourceUrl,
+      slot: FIXTURE_PILOT.slot,
+    }),
   };
   metadata.contentHash = await computeRenderPackageContentHash(metadata);
   return metadata;

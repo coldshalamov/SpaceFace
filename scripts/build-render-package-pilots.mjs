@@ -13,6 +13,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { compileRenderPackage } from './lib/renderPackageCompiler.mjs';
+import { buildRuntimeTableForRenderGlb } from './lib/renderPackageRuntimeTable.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const DEFAULT_MANIFEST = 'assets/ships/render-packages/pilots.json';
@@ -59,6 +60,7 @@ export async function buildRenderPackagePilots(options = {}) {
         semanticManifest,
         outputDir,
       });
+      await attachRuntimeTable(outputDir, pilot, result.package);
       if (check) await assertPackageMatches(outputDir, resolve(repoRoot, pilot.outputDir), pilot.key);
 
       bindings.push({
@@ -374,6 +376,57 @@ function renderRuntimeManifest(bindings) {
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+/**
+ * Append the v2 runtime table to a freshly compiled package.
+ *
+ * This is what lets the shipping loader stop calling `compileBlueprint`: every per-node tag, contract
+ * marker, canopy classification and root-relative transform is resolved here, once, and written as
+ * data addressed by flat-plan index.
+ *
+ * It is appended after compilation rather than emitted by `compileRenderPackage` because the table is
+ * derived from the *compiled* render.glb — merge groups have already rewritten the node graph by then,
+ * so deriving earlier would describe a graph that never ships. `runtime` is deliberately outside
+ * `renderPackageContentIdentity`, so adding it leaves `contentHash` and every `expectedContentHash`
+ * binding untouched.
+ *
+ * Bounds come from the compiler's accessor-derived per-primitive bounds, not from the derivation pass:
+ * the offline graph rebuild carries placeholder geometry with no vertices, so its own bounds are
+ * meaningless. Deriving them from real accessors is the only correct source.
+ */
+async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
+  const metadataPath = join(outputDir, 'render-package.json');
+  const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+  const table = await buildRuntimeTableForRenderGlb(join(outputDir, 'render.glb'), {
+    url: pilot.sourceUrl,
+    slot: pilot.slot,
+    boundsOverride: unionGeometryBounds(compiledPackage.geometry),
+  });
+  metadata.runtime = table;
+  await writeFile(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);
+}
+
+function unionGeometryBounds(geometry) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const entry of geometry || []) {
+    const bounds = entry && entry.bounds;
+    if (!bounds || !Array.isArray(bounds.min) || !Array.isArray(bounds.max)) continue;
+    for (let axis = 0; axis < 3; axis++) {
+      if (bounds.min[axis] < min[axis]) min[axis] = bounds.min[axis];
+      if (bounds.max[axis] > max[axis]) max[axis] = bounds.max[axis];
+    }
+  }
+  if (!min.every(Number.isFinite) || !max.every(Number.isFinite)) {
+    throw new Error('render package geometry carries no finite bounds; cannot derive scene bounds');
+  }
+  return {
+    min,
+    max,
+    size: [max[0] - min[0], max[1] - min[1], max[2] - min[2]],
+    center: [(max[0] + min[0]) / 2, (max[1] + min[1]) / 2, (max[2] + min[2]) / 2],
+  };
 }
 
 function parseArgs(argv) {
