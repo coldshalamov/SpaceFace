@@ -130,6 +130,15 @@ const LINKS = [
     why: 'Determinism of the V3 controller across a mid-run save/reload.',
   },
   {
+    id: 'render-package-plan',
+    costHintMs: 2000,
+    script: 'check:render-package-plan',
+    why: 'Every shipping render package must build a load-time instance plan. Semantic-locator '
+      + 'validation and dynamic-group resolution moved from per-instance to load, so a package '
+      + 'that used to fail on first instantiation now fails the whole load; fixture tests cannot '
+      + 'see it.',
+  },
+  {
     id: 'sim-compare',
     costHintMs: 3000,
     script: 'check:sim:compare',
