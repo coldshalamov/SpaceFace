@@ -499,6 +499,62 @@ export async function preloadAuthoredParts(requests, renderer) {
   return Promise.all((requests || []).map((request) => loadAuthoredPart(request.url, { ...request, renderer })));
 }
 
+/**
+ * Make a sector's spawnable archetypes resident and shader-warm, then swap to it.
+ *
+ * `rotateSector` alone is a swap, not a prepare-then-swap: it warms the sector being *left* and then
+ * switches, which leaves the sector being *entered* to demand-load its archetypes while the player
+ * is already flying in it. Every one of those loads is a decode plus a GPU upload plus a first-draw
+ * shader compile, arriving exactly when the frame budget is least able to absorb them.
+ *
+ * So prepare first. Every archetype is retained under an owner scoped to the incoming sector, the
+ * result is checked for completeness, shaders are warmed while nothing is being drawn — and only
+ * then does the swap happen. Rotating before the set is resident would defeat the whole point, which
+ * is why the rotate is the last statement and why an incomplete set throws instead of degrading.
+ *
+ * `warmShaders` is injected rather than imported so the residency contract does not depend on the
+ * precompile pipeline; callers that have a renderer pass `precompile`'s warm entry point.
+ */
+export async function prepareSectorEntry(renderer, sectorId, urls, options = {}) {
+  const exactSectorId = sectorId == null ? null : String(sectorId);
+  if (!exactSectorId) throw new Error('prepareSectorEntry requires a sector id');
+  const requested = [...new Set(urls || [])];
+  const owner = Object.freeze({ type: 'asset-incoming-sector', sectorId: exactSectorId });
+
+  // `loadPart` and `residency` are injectable so the ordering contract can be exercised for real
+  // headlessly. A check that re-implemented this body would only prove itself consistent.
+  const loadPart = options.loadPart || loadAuthoredPart;
+  const records = await Promise.all(requested.map((url) => loadPart(url, {
+    renderer,
+    sectorId: exactSectorId,
+    residencyOwner: owner,
+    residencyRole: 'sector-prewarm',
+  })));
+
+  const missing = requested.filter((_, index) => !records[index]);
+  if (missing.length) {
+    throw new AssetContractError(`sector:${exactSectorId}`, [
+      `${missing.length} of ${requested.length} spawnable archetypes did not become resident before `
+      + `scene publish: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`,
+    ]);
+  }
+
+  if (typeof options.warmShaders === 'function') {
+    await options.warmShaders(records.filter(Boolean), exactSectorId);
+  }
+
+  // Swap last. Everything above is the "prepare"; this single call is the "then swap".
+  const residency = options.residency || getAssetResidency(renderer);
+  const rotated = residency ? residency.rotateSector(exactSectorId) : false;
+  return Object.freeze({
+    schema: 'spaceface.sectorPrepare.v1',
+    sectorId: exactSectorId,
+    resident: records.length,
+    rotated,
+    owner,
+  });
+}
+
 export async function getAuthoredAssetDiagnostic(renderer, url, slot = null) {
   if (!renderer) return null;
   try {

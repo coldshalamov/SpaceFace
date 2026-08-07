@@ -167,8 +167,33 @@ content. `SOURCE_ROUTE_ALLOWLIST` carries the one asset that genuinely cannot be
 (`fin_crystalline.glb`) together with its reason, so the exception is reviewable rather than
 invisible. That list is the difference between *excluded* and *forgotten*.
 
-**Still open:** gate 5 (residency prewarm + prepare-then-swap). Gate 4 was already in place
-(`build:render-package-pilots --check`).
+### Gate 5 — residency prewarm + prepare-then-swap — contract MET, call site outstanding
+
+`preloadAuthoredParts` existed in `assetLoader.js` with **zero call sites** — the prewarm mechanism
+had been written and never wired. And `rotateSector` alone is a swap, not a prepare-then-swap: it
+warms the sector being *left*, then switches, leaving the sector being *entered* to demand-load its
+archetypes while the player is already flying in it. Each of those loads is a decode plus a GPU
+upload plus a first-draw shader compile, arriving in the frame least able to absorb it.
+
+`prepareSectorEntry(renderer, sectorId, urls, options)` closes that: it retains every archetype under
+an `asset-incoming-sector` owner, verifies the set is complete, warms shaders while nothing is being
+drawn, and only then rotates. The rotate is deliberately the last statement, and an incomplete set
+throws rather than degrading — entering a sector whose assets are still loading is the exact failure
+being prevented.
+
+`npm run check:sector-prewarm` gates the **ordering**, not just the outcome: a check that only
+asserted "everything ended up resident" would pass either way. It drives the real function through
+injection seams (`loadPart`, `residency`) and asserts against the journal — 7/7:
+
+- every archetype resident, scoped to the incoming sector with role `sector-prewarm`
+- the swap happens strictly after the last retain
+- shaders warm before the swap
+- an incomplete set aborts entry, never rotates, and names the missing archetype
+
+**Outstanding:** `prepareSectorEntry` has no production caller yet. The remaining work is to derive a
+sector's spawnable archetype set and invoke it from the sector transition path (`sector:enter` is
+emitted at `src/balance/hunterPublicRoute.js:177`; `renderer.js:1493` already handles `sector:exit`).
+The mechanism and its ordering guarantee are proven; what is missing is the archetype-set query.
 
 **Exit gates**
 
