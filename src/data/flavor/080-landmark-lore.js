@@ -76,7 +76,8 @@ export default defineFlavorPack({
     },
     {
       id: 'lung_of_charon', programSlot: 'C7', targetRef: 'landmark_c7_lung_of_charon',
-      displayName: 'The Lung-of-Charon', location: { sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_colony' },
+      displayName: 'The Lung-of-Charon',
+      location: { sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_colony', poiId: 'poi_charon_tether_wreck' },
       lines: [
         { id: 'c7_01', text: "Birth records begin three generations after the barge's scheduled arrival." },
         { id: 'c7_02', text: 'Destination field: GARDEN WORLD. Navigation answer: NO MATCH.' },

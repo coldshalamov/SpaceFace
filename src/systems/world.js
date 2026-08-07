@@ -1307,6 +1307,8 @@ export const world = {
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
           ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
+          ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
+          ...(poi.survivorPod === true ? { survivorPod: true } : {}),
           ...(finitePositive(poi.bandProximityRadius)
             ? { bandProximityRadius: Number(poi.bandProximityRadius) }
             : {}),

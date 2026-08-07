@@ -265,7 +265,11 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' },
       { id: 'poi_charon_lung_marker', type: 'beacon', name: 'Lung Marker', factionId: 'faction_dmc' },
-      { id: 'poi_charon_tether_wreck', type: 'wreck', name: 'Snapped-Tether Hull' },
+      {
+        id: 'poi_charon_tether_wreck', type: 'wreck', name: 'Snapped-Tether Hab-Pod',
+        scannerSignalKind: 'distress', survivorPod: true, recoveryEncounter: true,
+        flavorTargetRef: 'landmark_c7_lung_of_charon',
+      },
     ],
   },
   {

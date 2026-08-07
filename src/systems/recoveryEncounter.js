@@ -145,6 +145,12 @@ function sourcePointId(payload, wreck) {
   return String(data.salvagePointId || payload.sourceId || payload.signalId || payload.id || 'unknown');
 }
 
+function entityForSalvagePoint(state, salvagePointId) {
+  if (!salvagePointId) return null;
+  return (state.entityList || []).find((entity) => entity && entity.alive !== false
+    && entity.data && String(entity.data.salvagePointId || '') === String(salvagePointId)) || null;
+}
+
 function recoveryIdFor(pointId) {
   return `recovery:${String(pointId).replace(/[^a-zA-Z0-9:_-]/g, '_')}`;
 }
@@ -508,6 +514,12 @@ export const recoveryEncounter = {
   _materialize(record) {
     let wreck = this._wreck(record);
     if (wreck) return wreck;
+    wreck = entityForSalvagePoint(this.state, record.salvagePointId);
+    if (wreck) {
+      record.entityId = wreck.id;
+      record.pos = positionOf(wreck.pos);
+      return wreck;
+    }
     const point = this._claimSalvagePoint(record);
     if (point && point.entityId != null) wreck = this.state.entities && this.state.entities.get && this.state.entities.get(point.entityId);
     if (wreck) {
@@ -537,8 +549,13 @@ export const recoveryEncounter = {
   },
 
   _onEntitySpawned(entity) {
-    const id = entity && entity.data && entity.data.recoveryEncounterId;
-    const record = id && ensureState(this.state).records[id];
+    const data = entity && entity.data || {};
+    const own = ensureState(this.state);
+    const id = data.recoveryEncounterId;
+    const record = id && own.records[id]
+      || Object.values(own.records).find((candidate) => candidate
+        && data.salvagePointId && String(candidate.salvagePointId) === String(data.salvagePointId));
+    if (record) record.entityId = entity.id;
     if (record) this._applyRecordToWreck(record, entity);
   },
 
