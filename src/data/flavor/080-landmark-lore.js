@@ -23,7 +23,8 @@ export default defineFlavorPack({
     },
     {
       id: 'resonance_obelisk', programSlot: 'C2', targetRef: 'landmark_c2_resonance_obelisk',
-      displayName: 'The Resonance Obelisk', location: { sectorId: 'sector_veil_nebula', zoneId: 'zone_veil_anomaly' },
+      displayName: 'The Resonance Obelisk',
+      location: { sectorId: 'sector_veil_nebula', zoneId: 'zone_veil_anomaly', poiId: 'poi_anomaly' },
       lines: [
         { id: 'c2_01', text: 'Material analysis returns nothing recognized as matter.' },
         { id: 'c2_02', text: 'Pulse interval is shorter than your previous scan record.' },

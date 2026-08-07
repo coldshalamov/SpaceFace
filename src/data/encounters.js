@@ -204,6 +204,11 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'CONCORD: marking traffic. Observe lane limits.',
     'CONCORD: enforcement on station. No irregular thrust.',
   ]),
+  resonance_obelisk_patrol_hail: Object.freeze([
+    'VAEL: the counted pulse shortens. Leave the dark companion unread.',
+    'VAEL: another reading, another watch. Withdraw from the old door.',
+    'VAEL: the obelisk records you. Our ring closes with its count.',
+  ]),
   // salvage
   salvage_ping: Object.freeze([
     'Salvage transponder, faint. Derelict field marked.',

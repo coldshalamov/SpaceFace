@@ -47,6 +47,11 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import {
+  isResonanceObeliskSignal,
+  RESONANCE_OBELISK,
+  resonanceObeliskResponse,
+} from '../data/resonanceObelisk.js';
 import { removeCargo } from './cargo.js';
 import {
   effectiveRegionalSecurity,
@@ -133,6 +138,7 @@ export const encounterDirector = {
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
+      this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
     }
   },
 
@@ -1133,6 +1139,59 @@ export const encounterDirector = {
     if (!p || p.minerId == null || p.minerId !== this.state.playerId) return;
     const dir = ensureDirectorState(this.state);
     dir.noise.mining = Math.min(3, dir.noise.mining + (p.qty || 1) * 0.06);
+  },
+
+  _onResonanceScan(payload) {
+    const sectorId = payload && payload.sectorId;
+    const poiId = payload && payload.poiId;
+    if (!isResonanceObeliskSignal(sectorId, poiId) || this._currentSectorId() !== sectorId) return false;
+    const shape = ENCOUNTERS[RESONANCE_OBELISK.patrolShapeId];
+    const zone = zonesForSector(sectorId).find((entry) => entry.id === RESONANCE_OBELISK.zoneId);
+    if (!shape || !zone || !encounterScriptFor(shape)) return false;
+
+    const response = resonanceObeliskResponse(payload.scanCount);
+    const dir = ensureDirectorState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    const live = Object.values(dir.live).find((entry) => entry && entry.shapeId === shape.id);
+    if (live) return false; // one physical watch at a time; scans never multiply an active squad
+
+    const dueAt = now + response.patrolIntervalS;
+    const pending = dir.pending.find((entry) => entry && entry.shapeId === shape.id);
+    if (pending) {
+      pending.dueAt = Math.min(Number(pending.dueAt) || dueAt, dueAt);
+      pending.data = { ...(pending.data || {}), ...response };
+      return true;
+    }
+
+    const rng = mulberry32(hash32(
+      this.state.meta && this.state.meta.seed || 0,
+      sectorId,
+      response.scanCount,
+      'resonance-obelisk-patrol',
+    ));
+    const item = resolveEncounter(
+      shape,
+      zone,
+      sectorId,
+      Math.floor(now / DAY_SECONDS),
+      response.scanCount,
+      rng,
+    );
+    if (!item || !item.ships.length) return false;
+    item.encounterId = `resonance-patrol:${sectorId}:${response.scanCount}`;
+    item.squadId = item.encounterId;
+    item.dueAt = dueAt;
+    item.defers = 0;
+    item.data = { ...response, poiId };
+    dir.pending.push(item);
+    this.emit('resonance:patrolQueued', {
+      encounterId: item.encounterId,
+      sectorId,
+      zoneId: zone.id,
+      dueAt,
+      ...response,
+    });
+    return true;
   },
 
   _currentSectorId() {

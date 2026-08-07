@@ -306,8 +306,10 @@ const CORE_SECTORS = [
     ],
     pois: [
       {
-        id: 'poi_anomaly', type: 'anomaly', name: 'Anomaly Signal', hidden: true,
+        id: 'poi_anomaly', type: 'anomaly', name: 'The Resonance Obelisk', hidden: true,
         triangulation: { requiredPings: 3, minBaselineWu: 350, minBearingDeltaDeg: 8 },
+        flavorTargetRef: 'landmark_c2_resonance_obelisk',
+        resonanceScanResponse: true,
       },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey' },
     ],

@@ -12,6 +12,10 @@ import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
 import { claimSensorPostActive } from '../data/claimableBodies.js';
 import {
+  isResonanceObeliskSignal,
+  resonanceObeliskResponse,
+} from '../data/resonanceObelisk.js';
+import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   contactHailAvailability,
@@ -539,6 +543,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       requiresTriangulation: poi.requiresTriangulation === true || entityData.requiresTriangulation === true,
       triangulated: poi.anomalyTriangulated === true || entityData.anomalyTriangulated === true,
       triangulation: poi.triangulation || entityData.triangulation || null,
+      resonanceScanResponse: entityData.resonanceScanResponse === true,
     });
   }
 
@@ -872,7 +877,9 @@ export const scanner = {
     const raw = collectSignalCandidates(state, sectorId, origin, candidates, profile);
     const rows = [];
     for (const candidate of raw) {
-      if (own.completed[candidate.id]) continue;
+      const resonanceSignal = candidate.resonanceScanResponse === true
+        && isResonanceObeliskSignal(sectorId, candidate.sourceId);
+      if (own.completed[candidate.id] && !resonanceSignal) continue;
       const previous = own.records[candidate.id] || null;
       if (candidate.kind === 'anomaly' && candidate.requiresTriangulation && !candidate.triangulated) {
         const config = candidate.triangulation && typeof candidate.triangulation === 'object'
@@ -975,6 +982,29 @@ export const scanner = {
         ),
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
       };
+      if (resonanceSignal) {
+        const response = resonanceObeliskResponse(scanCount);
+        record.classification = 'RESONANCE OBELISK';
+        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${scanCount} scan${scanCount === 1 ? '' : 's'} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
+        record.resonance = response;
+        if (own.completed[candidate.id]) {
+          record.status = 'investigated';
+          record.trackable = false;
+        }
+        const entity = candidate.entityId && state.entities && state.entities.get
+          && state.entities.get(candidate.entityId);
+        if (entity && entity.data) {
+          entity.data.resonanceScanCount = scanCount;
+          entity.data.resonancePulseIntervalS = response.pulseIntervalS;
+        }
+        this.bus.emit('resonance:scanCompleted', {
+          sectorId,
+          zoneId: 'zone_veil_anomaly',
+          poiId: candidate.sourceId,
+          entityId: candidate.entityId || null,
+          ...response,
+        });
+      }
       own.records[record.id] = record;
       rows.push(record);
     }

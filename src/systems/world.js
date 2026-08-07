@@ -1306,6 +1306,7 @@ export const world = {
           ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
           ...(finitePositive(poi.bandProximityRadius)
             ? { bandProximityRadius: Number(poi.bandProximityRadius) }
             : {}),

@@ -664,7 +664,7 @@ const patrolBeat = {
     if (!ids.length) return d.abort(live, 'no_budget');
     live.phase = 'window';
     live.deadlineAt = d.now() + (live.shape.beatS || 120);
-    d.say(live, 'info', 'patrol_beat_hail', null, { primary: true });
+    d.say(live, 'info', live.shape.bark || 'patrol_beat_hail', null, { primary: true });
   },
   tick(d, live, state, now) {
     if (d.aliveCount(live) === 0) return d.resolve(live, 'completed', { speak: false });

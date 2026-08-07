@@ -44,6 +44,7 @@ import * as encounter040 from './328-pattern-refrain.js';
 import * as encounter041 from './329-curtain-convoy.js';
 import * as encounter042 from './330-unique-wreck-nestbreaker-admirers.js';
 import * as encounter043 from './331-pd-screen-wall.js';
+import * as encounter044 from './332-resonance-obelisk-patrol.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -89,5 +90,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter041,
   encounter042,
   encounter043,
+  encounter044,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
