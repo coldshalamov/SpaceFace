@@ -22,6 +22,7 @@ import {
 } from '../ai/combatDoctrine.js';
 import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
+import { sampleFactionBehavior } from '../data/factionDoctrines.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -47,6 +48,17 @@ const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   pirate: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
   miniboss_capital: Object.freeze(['disable', 'ranged', 'screen']),
 });
+
+function factionBehaviorForCombatSpawn(factionId, opts = {}) {
+  const seedBase = Number.isFinite(opts.doctrineSeed)
+    ? opts.doctrineSeed
+    : (Number.isFinite(opts.startedTick) ? opts.startedTick : 0);
+  return sampleFactionBehavior(
+    factionId,
+    hash32(seedBase, factionId, 'combat-spawn-doctrine'),
+    1,
+  )[0] || null;
+}
 
 /** Scale an enemy archetype's base stats by encounter level. */
 export function scaleCombatant(def, level) {
@@ -94,6 +106,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   //   caller override (a zone's owning faction) > archetype's own faction > lawful/hostile fallback.
   // The old code tagged EVERY hostile as faction_vael, so a Crimson Reach pirate read as a green alien.
   const factionId = opts.factionId || def.factionId || (def.factionLawful ? 'faction_scn' : 'faction_reach');
+  const factionBehavior = factionBehaviorForCombatSpawn(factionId, opts);
   const spec = makeShipEntitySpec(def.shipId, { team: 1, factionId, pos, ai: { archetype: def.aiArchetype } });
   spec.hull = spec.hullMax = s.hull;
   spec.armorHp = spec.armorMax = s.armor;
@@ -136,6 +149,10 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   spec.data.miningBeam = null;
   spec.data.ai = {
     archetype: def.aiArchetype,
+    // D1: faction identity is now behavior identity too. The sampled profile drives pursuit,
+    // preferred range, formation, retreat, and nonlethal finish rules in the production AI stack.
+    // The enemy archetype keeps owning its close tactical verb below (ram/flyby/tether/ranged).
+    factionPresenceDoctrine: factionBehavior,
     combatDoctrineId: normalizeCombatDoctrineId(def.combatDoctrineId),
     lawful: !!def.factionLawful,
     capabilities: tacticalCapabilitiesFor(def),

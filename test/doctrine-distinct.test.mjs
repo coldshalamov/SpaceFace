@@ -7,8 +7,10 @@ import test from 'node:test';
 import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../src/ai/factionBehavior.js';
 import { SquadCommander } from '../src/ai/squad.js';
+import { hash32 } from '../src/core/rng.js';
 import { sampleFactionBehavior } from '../src/data/factionDoctrines.js';
 import { FACTION_KITS } from '../src/data/factions/index.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 
 const SEED = 0xd1_47a;
 const SAMPLE_COUNT = 64;
@@ -86,6 +88,49 @@ test('the production squad and combat-doctrine consumers expose each sampled pro
     assert.equal(combat.preferredRange, profile.preferredRange,
       `${kit.id} preferred range must reach the combat doctrine runtime`);
   }
+});
+
+test('ordinary combat spawns carry their owning faction doctrine without replacing their tactical verb', () => {
+  const startedTick = 101;
+  const expected = sampleFactionBehavior(
+    'faction_dmc',
+    hash32(startedTick, 'faction_dmc', 'combat-spawn-doctrine'),
+    1,
+  )[0];
+  const first = makeEnemySpawnSpec('reaver_pirate', 3, { x: 200, z: -80 }, {
+    factionId: 'faction_dmc',
+    startedTick,
+  });
+  const squadMate = makeEnemySpawnSpec('reaver_pirate', 3, { x: 260, z: -20 }, {
+    factionId: 'faction_dmc',
+    startedTick,
+  });
+
+  assert.deepEqual(first.data.ai.factionPresenceDoctrine, expected,
+    'the faction selected at the natural spawn boundary must reach the tactical profile');
+  assert.deepEqual(squadMate.data.ai.factionPresenceDoctrine, expected,
+    'same-tick members of one faction must receive one coherent doctrine sample');
+  assert.equal(first.data.ai.combatDoctrineId, 'tether_control_raider',
+    'the Reaver archetype must keep its direct tactical verb');
+  assert.equal(first.data.ai.motive, 'assigned_interdiction');
+  assert.equal(first.data.ai.engagementTrigger, 'authorized_hostile_spawn');
+});
+
+test('lawful natural spawns gain Concord behavior without widening their hostility contract', () => {
+  const startedTick = 202;
+  const patrol = makeEnemySpawnSpec('patrol_lawman', 3, { x: 180, z: 0 }, { startedTick });
+  const expected = sampleFactionBehavior(
+    'faction_scn',
+    hash32(startedTick, 'faction_scn', 'combat-spawn-doctrine'),
+    1,
+  )[0];
+
+  assert.deepEqual(patrol.data.ai.factionPresenceDoctrine, expected);
+  assert.equal(patrol.data.ai.lawful, true);
+  assert.equal(patrol.data.ai.motive, 'law_enforcement');
+  assert.equal(patrol.data.ai.engagementTrigger, 'wanted_status');
+  assert.equal(patrol.data.ai.factionPresenceDoctrine.firstFire, false,
+    'Concord doctrine may not invent first fire against a clean player');
 });
 
 test('the doctrine audit writes byte-identical durable evidence for the same seed', () => {
