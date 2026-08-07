@@ -239,10 +239,37 @@ Capacity grows by doubling and never shrinks: shrinking would trade a steady-sta
 for repeated reallocation whenever population oscillates around a threshold, which is the exact hitch
 this contract exists to remove.
 
-**Open:** the batched instance renderer does not consume the snapshot yet, so the old per-entity path
-is still the one running, and the bounded parity window plus deletion has not happened. Socket-attached
-plume and distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is the input for
-the batching side.
+### Batched instance renderer — MET (`npm run check:batched-instances`, 7/7)
+
+`src/render/batchedInstanceRenderer.js` consumes the snapshot columns directly and emits **one draw
+per archetype**. The per-entity path issues one draw per entity, each carrying a pipeline/uniform
+binding whether or not anything changed — and ordinary entities are overwhelmingly a few archetypes
+repeated, so nearly every one of those bindings is redundant.
+
+| population 400 → 2000, 6 archetypes | |
+|---|---:|
+| per-entity draw calls | 400 → **2000** |
+| batched draw calls | 6 → **6** |
+| reduction at 5× population | **333×** |
+| buffer reallocations, 60 settled frames | **0** |
+
+Two properties are gated together because either alone misleads. Draw calls must stop tracking
+population — the scaling claim. And the matrices must equal what the per-entity path produced —
+**parity is checked against THREE's own `Matrix4.compose`**, not a second copy of the inline math, so
+the two sides cannot be wrong together. Worst element delta `< 1e-5`, which is single-precision
+epsilon for Float32 storage against THREE's Float64 arithmetic. A batcher that is fast and wrong is
+worse than the path it replaces, because the error surfaces as subtly misplaced geometry rather than
+a crash.
+
+TRS composition is written inline rather than through `Matrix4.compose` so no `Matrix4`, `Vector3` or
+`Quaternion` is allocated per entity per frame — routing through object wrappers would hand back
+exactly the allocation the dense snapshot exists to remove. A fully culled frame issues **0** draws,
+so the metric stays sensitive to culling rather than counting empty archetypes.
+
+**Open:** neither the snapshot nor the batcher is wired into the running renderer, so the old
+per-entity path is still what executes; the bounded parity window and deletion have not happened.
+Socket-attached plume and distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is
+the seam for GPU upload.
 
 ## Chunk 4 — sim / render / platform separation — NOT STARTED
 
