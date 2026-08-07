@@ -1,5 +1,3 @@
-import { clone as cloneObjectGraph } from 'three/addons/utils/SkeletonUtils.js';
-
 import {
   assertValidRenderPackage,
   computeRenderPackageContentHash,
@@ -125,13 +123,25 @@ export function createRenderPackageLoader(options = {}) {
         return decodeGlb(renderUrl, metadata);
       })
       .then(async (decoded) => {
+        // The instance plan is compiled BEFORE prepareDecoded so the preparation step can be handed
+        // the plan: it is the seam through which package-carried semantics eventually replace
+        // source recompilation (render-package v2). Compiling it first also means a structurally
+        // invalid package fails before any blueprint work is spent on it.
+        const template = decoded?.scene || decoded;
+        let plan = null;
+        try {
+          plan = buildInstancePlan(template, metadata, counters);
+        } catch (error) {
+          disposeDecodedResources(decoded);
+          throw error;
+        }
         let prepared = null;
         try {
           prepared = prepareDecoded
-            ? await prepareDecoded(decoded, metadata, renderUrl)
+            ? await prepareDecoded(decoded, metadata, renderUrl, plan)
             : null;
         } catch (error) {
-          disposeDecodedResources(decoded);
+          disposeUnregisteredResources(plan.resources);
           throw error;
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
@@ -139,7 +149,7 @@ export function createRenderPackageLoader(options = {}) {
           entry,
           createOwner,
           releasePackageOwner,
-        }, prepared, counters);
+        }, prepared, counters, plan);
         entry.loaded = loaded;
         try {
           residency.registerAsset(entry.key, loaded.resources, {
@@ -254,8 +264,127 @@ export function createRenderPackageLoader(options = {}) {
   });
 }
 
-function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared = null, counters = null) {
+function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared = null, counters = null, plan = null) {
   const template = decoded?.scene || decoded;
+  assertSceneRoot(template, metadata);
+  const instancePlan = plan || buildInstancePlan(template, metadata, counters);
+  try {
+    return new LoadedRenderPackage(
+      metadata,
+      template,
+      renderUrl,
+      instancePlan.resources,
+      lifecycle,
+      prepared,
+      counters,
+      instancePlan,
+    );
+  } catch (error) {
+    disposeUnregisteredResources(instancePlan.resources);
+    throw error;
+  }
+}
+
+/**
+ * Compile the decoded package template into a FLAT instance plan, in exactly one traversal.
+ *
+ * This is the load-time half of removing per-instance scene-graph work. The traversal does, once:
+ *
+ *   - assigns every node a plan index in depth-first pre-order and records its parent's index, so
+ *     an instance can be rebuilt by iterating an array instead of recursing a graph;
+ *   - marks and collects the immutable geometry/material/texture resources (previously its own
+ *     separate full traversal);
+ *   - validates every semantic locator payload and resolves it to a plan index (previously redone
+ *     from scratch on every single instance);
+ *   - resolves the dynamic-group records to plan indices, so a bad package fails here rather than
+ *     once per instance forever;
+ *   - rejects node kinds a rigid flat plan cannot faithfully reconstruct.
+ *
+ * Rejecting rather than falling back is deliberate. Silently reverting to a recursive clone for
+ * skinned content would reintroduce exactly the per-instance cost this exists to remove, and would
+ * do it invisibly. All 26 shipping packages are rigid (no skins, animations, cameras or lights),
+ * so anything else is a pipeline change that should announce itself.
+ */
+function buildInstancePlan(template, metadata, counters = null) {
+  assertSceneRoot(template, metadata);
+  const counting = counters && counters.isEnabled() ? counters : null;
+  const records = new Map(
+    [...metadata.nodes, ...metadata.anchors].map((record) => [record.id, record]),
+  );
+  const entries = [];
+  const resources = new Set();
+  const indexByRecordId = new Map();
+  const seenTextures = new Set();
+
+  const visit = (object, parentIndex) => {
+    assertRigidPlanNode(object, metadata);
+    const planIndex = entries.length;
+    entries.push({
+      source: object,
+      parentIndex,
+      name: object.name || '',
+      isMesh: object.isMesh === true,
+      recordIds: null,
+    });
+
+    if (object.geometry) markImmutableResource(object.geometry, resources);
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      markImmutableResource(material, resources);
+      collectTextures(material, resources, seenTextures);
+    }
+
+    const recordIds = readSemanticRecordIds(object, records, indexByRecordId, planIndex);
+    if (recordIds) entries[planIndex].recordIds = recordIds;
+
+    for (const child of object.children) visit(child, planIndex);
+  };
+  visit(template, -1);
+
+  for (const recordId of records.keys()) {
+    if (!indexByRecordId.has(recordId)) {
+      throw new Error(`Render package semantic locator ${recordId} is missing from decoded render.glb.`);
+    }
+  }
+
+  // Resolve the three lookup tables to plan indices once. createInstance then materialises them
+  // by array index with no name matching, no userData reads and no validation.
+  const nodePlanIndices = metadata.nodes.map((record) => indexByRecordId.get(record.id));
+  const anchorPlanIndices = metadata.anchors.map((record) => indexByRecordId.get(record.id));
+  const dynamicGroupPlanIndices = metadata.dynamicGroups.map((record) => {
+    const planIndex = indexByRecordId.get(record.nodeId);
+    if (planIndex === undefined) {
+      throw new Error(`Render package ${metadata.assetId} dynamic group ${record.id} has no instance node.`);
+    }
+    return planIndex;
+  });
+
+  if (counting) {
+    // One traversal, one semantic compile, for the whole package. Both are load-time by
+    // construction now; the per-instance path records neither.
+    counting.countGraphTraversal(entries.length, 'package-plan-compile');
+    counting.countRuntimeSemanticCompile('package-plan-compile', entries.length);
+  }
+
+  return Object.freeze({
+    entries,
+    resources,
+    nodePlanIndices,
+    anchorPlanIndices,
+    dynamicGroupPlanIndices,
+    nodeCount: entries.length,
+  });
+}
+
+/**
+ * A flat rigid plan reconstructs nodes with `source.clone(false)`, which copies the transform,
+ * visibility, shadow flags, layers and userData but shares geometry and materials. That is exact
+ * for Object3D/Group/Mesh and wrong for anything carrying rebindable structure (skeletons, LOD
+ * level tables, per-instance matrices) or scene-level state (lights, cameras).
+ */
+function assertSceneRoot(template, metadata) {
   if (
     !template
     || typeof template.clone !== 'function'
@@ -264,30 +393,62 @@ function createLoadedPackage(metadata, decoded, renderUrl, lifecycle, prepared =
   ) {
     throw new Error(`Render package ${metadata.assetId} decoder did not return a Three.js scene root.`);
   }
-  const counting = counters && counters.isEnabled() ? counters : null;
-  const resourceStats = { nodes: 0 };
-  const resources = collectImmutableResources(template, resourceStats);
-  if (counting) counting.countGraphTraversal(resourceStats.nodes, 'package-resource-index');
-  try {
-    const semanticStats = { nodes: 0 };
-    indexSemanticNodes(template, metadata, semanticStats);
-    if (counting) {
-      counting.countRuntimeSemanticCompile('package-load-semantic-index', semanticStats.nodes);
-      counting.countGraphTraversal(semanticStats.nodes, 'package-load-semantic-index');
-    }
-    return new LoadedRenderPackage(
-      metadata,
-      template,
-      renderUrl,
-      resources,
-      lifecycle,
-      prepared,
-      counters,
+}
+
+function assertRigidPlanNode(object, metadata) {
+  const unsupported = object.isSkinnedMesh ? 'a skinned mesh'
+    : object.isBone ? 'a bone'
+      : object.isInstancedMesh ? 'an instanced mesh'
+        : object.isLOD ? 'an LOD group'
+          : object.isLight ? 'a light'
+            : object.isCamera ? 'a camera'
+              : null;
+  if (unsupported) {
+    throw new Error(
+      `Render package ${metadata.assetId} node ${object.name || '(unnamed)'} is ${unsupported}; `
+      + 'render packages must contain only rigid Object3D/Group/Mesh nodes.',
     );
-  } catch (error) {
-    disposeUnregisteredResources(resources);
-    throw error;
   }
+}
+
+/** Validate one node's semantic locator payload and bind its record ids to this plan index. */
+function readSemanticRecordIds(object, records, indexByRecordId, planIndex) {
+  const payload = object.userData?.[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY];
+  if (payload == null) return null;
+  if (!isPlainObject(payload)) {
+    throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} must be an object.`);
+  }
+  const unknownKeys = Object.keys(payload).filter(
+    (key) => !['schema', 'recordIds', 'rawNodeName'].includes(key),
+  );
+  if (unknownKeys.length > 0 || payload.schema !== RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA) {
+    throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has an unsupported schema.`);
+  }
+  if (!Array.isArray(payload.recordIds) || payload.recordIds.length === 0) {
+    throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has no record IDs.`);
+  }
+  if (typeof payload.rawNodeName !== 'string') {
+    throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has no raw node name.`);
+  }
+
+  const localIds = new Set();
+  for (const recordId of payload.recordIds) {
+    if (typeof recordId !== 'string' || !records.has(recordId)) {
+      throw new Error(`Render package semantic locator references unknown record ${String(recordId)}.`);
+    }
+    if (localIds.has(recordId) || indexByRecordId.has(recordId)) {
+      throw new Error(`Render package semantic locator ${recordId} is duplicated in decoded render.glb.`);
+    }
+    localIds.add(recordId);
+    const record = records.get(recordId);
+    if (payload.rawNodeName !== record.nodeName) {
+      throw new Error(
+        `Render package semantic locator ${recordId} names ${payload.rawNodeName || '(unnamed)'} instead of ${record.nodeName}.`,
+      );
+    }
+    indexByRecordId.set(recordId, planIndex);
+  }
+  return [...localIds];
 }
 
 class LoadedRenderPackage {
@@ -295,7 +456,9 @@ class LoadedRenderPackage {
   #lifecycle;
   #counters;
 
-  constructor(metadata, template, renderUrl, resources, lifecycle, prepared, counters = null) {
+  #plan;
+
+  constructor(metadata, template, renderUrl, resources, lifecycle, prepared, counters = null, plan = null) {
     Object.defineProperties(this, {
       assetId: { value: metadata.assetId, enumerable: true },
       contentHash: { value: metadata.contentHash, enumerable: true },
@@ -304,10 +467,13 @@ class LoadedRenderPackage {
       residencyKey: { value: lifecycle.entry.key, enumerable: true },
       resources: { value: Object.freeze([...resources]), enumerable: true },
       prepared: { value: prepared, enumerable: true },
+      /** Node count of the load-time instance plan; the per-instance work is exactly this many. */
+      planNodeCount: { value: plan ? plan.nodeCount : 0, enumerable: true },
     });
     this.#template = template;
     this.#lifecycle = lifecycle;
     this.#counters = counters;
+    this.#plan = plan;
     this.released = false;
     this.evicted = false;
   }
@@ -355,7 +521,27 @@ class LoadedRenderPackage {
     try {
       const { metadata } = this;
       const counters = this.#counters && this.#counters.isEnabled() ? this.#counters : null;
-      const root = cloneObjectGraph(this.#template);
+      const plan = this.#plan;
+      const { entries } = plan;
+      const count = entries.length;
+
+      // ONE flat pass. Every node is reconstructed rigidly with clone(false) — transform,
+      // visibility, shadow flags, layers and userData copied; geometry and materials SHARED with
+      // the template — and attached by its recorded parent index. Depth-first pre-order means a
+      // parent is always built before its children, so no fixup pass is needed.
+      //
+      // This replaces a recursive SkeletonUtils graph clone plus a full re-traversal that
+      // revalidated every semantic locator payload from scratch, per instance. The validation and
+      // the record->node resolution now happened once, at load, in buildInstancePlan.
+      const objects = new Array(count);
+      for (let i = 0; i < count; i++) {
+        const entry = entries[i];
+        const object = entry.source.clone(false);
+        objects[i] = object;
+        if (entry.parentIndex >= 0) objects[entry.parentIndex].add(object);
+      }
+
+      const root = objects[0];
       if (instanceOptions.name != null) root.name = String(instanceOptions.name);
       root.userData = {
         ...(root.userData || {}),
@@ -366,25 +552,30 @@ class LoadedRenderPackage {
         },
       };
 
-      const semanticStats = { nodes: 0 };
-      const semanticObjects = indexSemanticNodes(root, metadata, semanticStats);
       if (counters) {
-        // The recursive clone reconstructed every node the re-index just visited.
-        counters.countGraphClone(semanticStats.nodes, 'package-instance');
-        counters.countRuntimeSemanticCompile('package-instance-reindex', semanticStats.nodes);
-        counters.countGraphTraversal(semanticStats.nodes, 'package-instance-reindex');
+        // Honest accounting for what replaced the clone+traverse: a flat plan iteration over
+        // `count` nodes. Recording it as its own family is the point — a silent drop of
+        // graphClone/graphTraversal to zero would read as elimination when it was relabelling.
+        counters.countPlanInstantiation(count, 'package-instance');
+        counters.countObject3dConstructed(count, 'package-instance-plan');
       }
-      const nodes = new Map(
-        metadata.nodes.map((record) => [record.id, semanticObjects.get(record.id)]),
-      );
-      const anchors = new Map(
-        metadata.anchors.map((record) => [record.id, semanticObjects.get(record.id)]),
-      );
+
+      // Semantic maps are materialised by array index: no name matching, no userData reads, no
+      // validation, and no Map built from a spread of the metadata record arrays.
+      const nodes = new Map();
+      const metaNodes = metadata.nodes;
+      for (let i = 0; i < metaNodes.length; i++) {
+        nodes.set(metaNodes[i].id, objects[plan.nodePlanIndices[i]]);
+      }
+      const anchors = new Map();
+      const metaAnchors = metadata.anchors;
+      for (let i = 0; i < metaAnchors.length; i++) {
+        anchors.set(metaAnchors[i].id, objects[plan.anchorPlanIndices[i]]);
+      }
       const dynamicGroups = new Map();
-      for (const record of metadata.dynamicGroups) {
-        const node = nodes.get(record.nodeId);
-        if (!node) throw new Error(`Render package ${metadata.assetId} dynamic group ${record.id} has no instance node.`);
-        dynamicGroups.set(record.id, node);
+      const metaGroups = metadata.dynamicGroups;
+      for (let i = 0; i < metaGroups.length; i++) {
+        dynamicGroups.set(metaGroups[i].id, objects[plan.dynamicGroupPlanIndices[i]]);
       }
 
       let disposed = false;
@@ -396,6 +587,13 @@ class LoadedRenderPackage {
         nodes,
         anchors,
         dynamicGroups,
+        /**
+         * The instance's nodes in plan order, root first. Consumers that need to touch every node
+         * (partsLibrary's tag/material specialisation) iterate this instead of calling
+         * root.traverse(), which is what keeps per-instance recursive traversal at zero.
+         */
+        planNodes: objects,
+        planEntries: entries,
         get disposed() {
           return disposed;
         },
@@ -472,59 +670,6 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
     return loader.parseAsync(bytes.buffer, resourceBaseUrl(url));
   };
-}
-
-function indexSemanticNodes(root, metadata, stats = null) {
-  const records = new Map(
-    [...metadata.nodes, ...metadata.anchors].map((record) => [record.id, record]),
-  );
-  const objects = new Map();
-
-  root.traverse((object) => {
-    if (stats) stats.nodes++;
-    const payload = object.userData?.[RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY];
-    if (payload == null) return;
-    if (!isPlainObject(payload)) {
-      throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} must be an object.`);
-    }
-    const unknownKeys = Object.keys(payload).filter(
-      (key) => !['schema', 'recordIds', 'rawNodeName'].includes(key),
-    );
-    if (unknownKeys.length > 0 || payload.schema !== RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA) {
-      throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has an unsupported schema.`);
-    }
-    if (!Array.isArray(payload.recordIds) || payload.recordIds.length === 0) {
-      throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has no record IDs.`);
-    }
-    if (typeof payload.rawNodeName !== 'string') {
-      throw new Error(`Render package semantic locator on ${object.name || '(unnamed)'} has no raw node name.`);
-    }
-
-    const localIds = new Set();
-    for (const recordId of payload.recordIds) {
-      if (typeof recordId !== 'string' || !records.has(recordId)) {
-        throw new Error(`Render package semantic locator references unknown record ${String(recordId)}.`);
-      }
-      if (localIds.has(recordId) || objects.has(recordId)) {
-        throw new Error(`Render package semantic locator ${recordId} is duplicated in decoded render.glb.`);
-      }
-      localIds.add(recordId);
-      const record = records.get(recordId);
-      if (payload.rawNodeName !== record.nodeName) {
-        throw new Error(
-          `Render package semantic locator ${recordId} names ${payload.rawNodeName || '(unnamed)'} instead of ${record.nodeName}.`,
-        );
-      }
-      objects.set(recordId, object);
-    }
-  });
-
-  for (const recordId of records.keys()) {
-    if (!objects.has(recordId)) {
-      throw new Error(`Render package semantic locator ${recordId} is missing from decoded render.glb.`);
-    }
-  }
-  return objects;
 }
 
 function isPlainObject(value) {

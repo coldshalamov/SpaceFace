@@ -510,3 +510,142 @@ test('loader resolves relative render URLs from the final redirected metadata re
   const loaded = await loader.load('https://assets.example/releases/latest/render-package.json');
   assert.equal(loaded.assetId, 'fixture.ship');
 });
+
+test('flat-plan instances are structurally identical to a recursive SkeletonUtils clone', async () => {
+  // The flat instance plan replaced `SkeletonUtils.clone()` + a semantic re-traversal. The bar for
+  // that swap is not "it runs" but "the resulting graph is indistinguishable". Build one instance
+  // through the loader and one through the old recursive route from the SAME template, walk both
+  // depth-first, and compare every property an instance is allowed to differ in.
+  const { clone: cloneObjectGraph } = await import('three/addons/utils/SkeletonUtils.js');
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const instance = loaded.createInstance();
+
+  const legacyRoot = cloneObjectGraph(decoded.scene);
+
+  const walk = (object, out, parentName) => {
+    out.push({
+      name: object.name,
+      ctor: object.constructor.name,
+      parentName,
+      isMesh: object.isMesh === true,
+      matrix: [...object.matrix.elements],
+      position: object.position.toArray(),
+      quaternion: object.quaternion.toArray(),
+      scale: object.scale.toArray(),
+      visible: object.visible,
+      castShadow: object.castShadow,
+      receiveShadow: object.receiveShadow,
+      frustumCulled: object.frustumCulled,
+      renderOrder: object.renderOrder,
+      layers: object.layers.mask,
+      geometry: object.geometry || null,
+      material: object.material || null,
+      userData: JSON.stringify(object.userData),
+    });
+    for (const child of object.children) walk(child, out, object.name);
+    return out;
+  };
+
+  const fromPlan = walk(instance.root, [], null);
+  const fromClone = walk(legacyRoot, [], null);
+
+  assert.equal(fromPlan.length, fromClone.length, 'same node count');
+  for (let i = 0; i < fromPlan.length; i++) {
+    const a = fromPlan[i];
+    const b = fromClone[i];
+    // The root's name and userData are deliberately rewritten by createInstance (instance name and
+    // the spacefaceRenderPackage stamp), so those two fields are compared for every node but the
+    // root. Everything else must match exactly, including traversal ORDER.
+    assert.equal(a.ctor, b.ctor, `node ${i} constructor`);
+    assert.equal(a.parentName, b.parentName, `node ${i} parent`);
+    assert.equal(a.isMesh, b.isMesh, `node ${i} isMesh`);
+    assert.deepEqual(a.matrix, b.matrix, `node ${i} matrix`);
+    assert.deepEqual(a.position, b.position, `node ${i} position`);
+    assert.deepEqual(a.quaternion, b.quaternion, `node ${i} quaternion`);
+    assert.deepEqual(a.scale, b.scale, `node ${i} scale`);
+    assert.equal(a.visible, b.visible, `node ${i} visible`);
+    assert.equal(a.castShadow, b.castShadow, `node ${i} castShadow`);
+    assert.equal(a.receiveShadow, b.receiveShadow, `node ${i} receiveShadow`);
+    assert.equal(a.frustumCulled, b.frustumCulled, `node ${i} frustumCulled`);
+    assert.equal(a.renderOrder, b.renderOrder, `node ${i} renderOrder`);
+    assert.equal(a.layers, b.layers, `node ${i} layers`);
+    if (i > 0) {
+      assert.equal(a.name, b.name, `node ${i} name`);
+      assert.equal(a.userData, b.userData, `node ${i} userData`);
+    }
+    // Immutable resources must be SHARED with the template, not copied, on both routes.
+    assert.equal(a.geometry, b.geometry, `node ${i} shares geometry`);
+    assert.equal(a.material, b.material, `node ${i} shares material`);
+  }
+
+  // planNodes is the same set, in the same depth-first pre-order, as walking the graph.
+  assert.deepEqual(
+    instance.planNodes.map((object) => object.name),
+    fromPlan.map((entry) => entry.name),
+    'planNodes matches depth-first pre-order',
+  );
+
+  // Semantic maps resolve to the same objects the graph walk found.
+  assert.equal(instance.nodes.get('fixture.body').name, 'Hull');
+  assert.equal(instance.nodes.get('fixture.turret').name, 'Turret');
+  assert.equal(instance.anchors.get('fixture.trail.left').name, 'FX_Trail_Left');
+  assert.equal(instance.dynamicGroups.get('fixture.turret.group'), instance.nodes.get('fixture.turret'));
+  // …and they are this instance's objects, never the shared template's.
+  assert.notEqual(instance.nodes.get('fixture.body'), decoded.scene.children[0]);
+
+  instance.dispose();
+  loader.dispose();
+});
+
+test('two instances of one package are independent in transform and shared in resources', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const a = loaded.createInstance();
+  const b = loaded.createInstance();
+
+  assert.notEqual(a.root, b.root);
+  assert.notEqual(a.nodes.get('fixture.turret'), b.nodes.get('fixture.turret'));
+
+  a.nodes.get('fixture.turret').position.set(5, 6, 7);
+  assert.deepEqual(b.nodes.get('fixture.turret').position.toArray(), [0, 0, 0],
+    'moving one instance must not move another');
+  assert.deepEqual(decoded.scene.children[1].position.toArray(), [0, 0, 0],
+    'moving an instance must not move the template');
+
+  assert.equal(a.nodes.get('fixture.body').geometry, b.nodes.get('fixture.body').geometry,
+    'geometry stays shared across instances');
+  assert.equal(a.nodes.get('fixture.body').material, b.nodes.get('fixture.body').material,
+    'material stays shared across instances');
+
+  a.dispose();
+  b.dispose();
+  loader.dispose();
+});
+
+test('a package containing skinned content is rejected rather than silently deep-cloned', async () => {
+  // Falling back to a recursive clone for skinned content would reintroduce the exact per-instance
+  // cost the flat plan removes, and would do it invisibly. Fail loudly instead.
+  const decoded = decodedFixture();
+  const skinned = new THREE.SkinnedMesh(decoded.geometry, decoded.material);
+  skinned.name = 'SkinnedIntruder';
+  decoded.scene.add(skinned);
+
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  await assert.rejects(
+    loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' }),
+    /is a skinned mesh; render packages must contain only rigid/,
+  );
+  loader.dispose();
+});

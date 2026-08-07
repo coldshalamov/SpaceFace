@@ -4318,10 +4318,19 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
     ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
   ]);
 
-  let specializationVisits = 0;
-  packageRoot.traverse((object) => {
-    specializationVisits++;
-    if (object === packageRoot) return;
+  // Specialisation walks the loader's FLAT instance plan, not packageRoot.traverse(). The plan is
+  // in depth-first pre-order with the root at index 0, so this visits exactly the same nodes in
+  // exactly the same order as the traversal it replaces — without the recursive descent or the
+  // per-node callback. Index 0 is skipped for the same reason the traversal skipped packageRoot.
+  const planNodes = instance.planNodes;
+  if (!Array.isArray(planNodes) || planNodes[0] !== packageRoot) {
+    throw new Error(
+      `Render package ${record.renderPackage.assetId || record.assetId} instance exposed no flat plan; `
+      + 'the loader must publish planNodes for package instantiation.',
+    );
+  }
+  for (let i = 1; i < planNodes.length; i++) {
+    const object = planNodes[i];
     const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
     object.userData = {
       ...(object.userData || {}),
@@ -4331,8 +4340,10 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
       spacefacePartNormalization: scale,
     };
 
+    // NOTE: `continue`, not `return` — this body used to be a traverse() callback, where `return`
+    // meant "skip this node". In the flat loop the same word would abandon the whole instance.
     if (object.isMesh) {
-      if (object.visible === false) return;
+      if (object.visible === false) continue;
       const primitive = { material: object.material, tags };
       object.material = requiresPerShipMesh(primitive)
         ? dedicatedMaterialFor(
@@ -4345,13 +4356,13 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
       object.receiveShadow = materials.some((material) => material && !material.transparent);
       object.visible = !tags.lod || tags.lod === 'lod0';
       registerBinding(object, tags, bindings);
-      return;
+      continue;
     }
 
     if (tags.socket) {
       if (bindings.socketNames.has(object.name)) {
         object.visible = false;
-        return;
+        continue;
       }
       bindings.socketNames.add(object.name);
       object.userData.spacefaceSocket = true;
@@ -4360,9 +4371,9 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
     }
     object.visible = !tags.lod || tags.lod === 'lod0';
     registerBinding(object, tags, bindings);
-  });
+  }
   const tier1 = tier1CausalCounters();
-  if (tier1) tier1.countGraphTraversal(specializationVisits, 'package-instance-specialize');
+  if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
   return partRoot;
 }
 

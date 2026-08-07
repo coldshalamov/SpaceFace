@@ -76,6 +76,10 @@ export const COUNTER_FIELDS = Object.freeze([
   'graphNodesCloned',
   'graphTraversals',
   'graphNodesVisited',
+  // K2 — the flat instance plan that REPLACES clone+traverse. Counted as its own family so
+  // a report shows elimination rather than a silent relabelling of the same work.
+  'planInstantiations',
+  'planNodesInstantiated',
   // L — runtime geometry preparation (transform bake, merge, normalization, de-index).
   'geometryTransforms',
   'geometryMerges',
@@ -111,6 +115,8 @@ export const CAUSAL_COUNTER_FIELDS = Object.freeze([
   'graphNodesCloned',
   'graphTraversals',
   'graphNodesVisited',
+  'planInstantiations',
+  'planNodesInstantiated',
   'geometryTransforms',
   'geometryMerges',
   'geometryNormalizations',
@@ -451,6 +457,17 @@ export function createPerfCounters() {
       record('graphTraversals', 1, cause);
       if (nodeCount > 0) record('graphNodesVisited', nodeCount, cause);
       api.recordEvent('graphTraversal', { cause, nodeCount });
+    },
+
+    /**
+     * One flat instance-plan iteration reconstructing `nodeCount` rigid nodes. This is the
+     * sanctioned replacement for a recursive clone plus a semantic re-traversal, counted as
+     * its own family precisely so "graphClone went to zero" cannot hide work moving sideways.
+     */
+    countPlanInstantiation(nodeCount, cause) {
+      if (!enabled) return;
+      record('planInstantiations', 1, cause);
+      if (nodeCount > 0) record('planNodesInstantiated', nodeCount, cause);
     },
 
     // L — runtime geometry preparation.

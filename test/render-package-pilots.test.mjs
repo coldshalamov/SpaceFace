@@ -165,7 +165,11 @@ test('production render-package instances bypass runtime geometry preparation on
         mesh.name = 'LOD0_Debris_Material_Hull';
         mesh.userData.spacefaceTags = tags;
         root.add(mesh);
-        return { root, dispose() { return true; } };
+        // planNodes is part of the loader's instance contract: the flat instance plan in
+        // depth-first pre-order with the root at index 0. partsLibrary specialises by iterating
+        // this instead of root.traverse(), which is what keeps per-instance recursive traversal at
+        // zero, so a stub that omits it is not a faithful stand-in for a real package instance.
+        return { root, planNodes: [root, mesh], dispose() { return true; } };
       },
     },
   };
