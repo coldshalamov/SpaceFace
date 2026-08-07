@@ -235,6 +235,10 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    // A working hauler is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
+    // its own dock-arrival branch. Consume the kernel's materialized unload intent here and keep
+    // economy authority on the existing stock-only freight seam.
+    this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
     this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyWorldSiteTrafficHooks(sectorId);
@@ -547,7 +551,12 @@ export const traffic = {
           { id: 'origin:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Origin' },
           { id: 'dest:' + stationIdentity(dest), pos: { x: dest.pos.x, z: dest.pos.z }, label: 'Destination' },
         ],
-        payload: { commodity: 'cmdty_ore_iron', units: 40 },
+        // The manifest was deterministically stamped by _assignManifest before job assignment.
+        // Carry that exact detached descriptor through the job kernel instead of inventing a
+        // hard-coded commodity that can disagree with the visible hull and destination market.
+        payload: ent && ent.data && ent.data.cargoManifest
+          ? { manifest: ent.data.cargoManifest }
+          : null,
       };
     }
     if (role === 'surveyor') {
@@ -1311,17 +1320,20 @@ export const traffic = {
    * Owner-safe arrival: emit aiTrader:requestTrade per manifest line (economy stock-only path).
    * Idempotent per freighter dockSeq. Never writes credits/cargo/stock/rep/heat here.
    */
-  _emitArrival(entity, rec, station) {
+  _emitArrival(entity, rec, station, options = null) {
     const stationId = station && station.data && station.data.stationId;
-    if (!stationId || !rec) return;
+    if (!stationId || !rec) return false;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const freighterKey = (entity && entity.data && entity.data.worldRecordId)
       || String(rec.id);
     const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
     const role = rec.role || 'hauler';
-    if (!FREIGHT_TRADING_ROLES.includes(role)) return;
+    if (!FREIGHT_TRADING_ROLES.includes(role)) return false;
 
-    let manifest = rec.manifest
+    const suppliedManifest = options && options.manifest;
+    let manifest = suppliedManifest && Array.isArray(suppliedManifest.lines) && suppliedManifest.lines.length
+      ? suppliedManifest
+      : rec.manifest
       || (entity && entity.data && entity.data.cargoManifest)
       || null;
     if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) {
@@ -1340,7 +1352,10 @@ export const traffic = {
       liveVolume: liveVol || manifest.totalQty || 0,
     });
 
-    const dockSeq = rec.dockSeq | 0;
+    const suppliedDockSeq = options && Number.isSafeInteger(options.dockSeq) && options.dockSeq >= 0
+      ? options.dockSeq
+      : null;
+    const dockSeq = suppliedDockSeq == null ? (rec.dockSeq | 0) : suppliedDockSeq;
     const intent = buildArrivalIntent({
       seed,
       freighterKey,
@@ -1355,8 +1370,11 @@ export const traffic = {
     const t = this.state.traffic;
     const fresh = filterNewFreightIntents([intent], t.appliedArrivalIds);
     if (!fresh.length) {
-      rec.dockSeq = dockSeq + 1;
-      return; // already applied this dock intent
+      // A replayed job intent names its original sequence even after this hull has moved to its
+      // next ambient leg. Preserve that newer manifest and only keep the sequence floor monotonic.
+      rec.dockSeq = Math.max(rec.dockSeq | 0, dockSeq + 1);
+      if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
+      return false; // already applied this dock intent
     }
 
     for (const trade of intent.trades) {
@@ -1373,7 +1391,7 @@ export const traffic = {
     }
     this.bus.emit('freight:arrival', intent);
     t.appliedArrivalIds = mergeAppliedFreightIds(t.appliedArrivalIds, fresh);
-    rec.dockSeq = dockSeq + 1;
+    rec.dockSeq = Math.max(rec.dockSeq | 0, dockSeq + 1);
     if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
 
     // After delivery, refresh manifest for the next leg (still deterministic per dockSeq key).
@@ -1387,6 +1405,37 @@ export const traffic = {
     });
     rec.manifest = nextManifest;
     if (entity && entity.data) entity.data.cargoManifest = nextManifest;
+    return true;
+  },
+
+  /**
+   * Bridge a materialized one-shot hauler job into the existing freight/economy authority.
+   * Historical offscreen catch-up deliberately has no intent sink, so this can only represent an
+   * unload the live job actually surfaced. The job's monotonic seq makes replays idempotent.
+   */
+  _onNpcJobUnload(intent) {
+    if (!intent || intent.kind !== 'hauler' || intent.completed !== true) return false;
+    const jobId = typeof intent.jobId === 'string' ? intent.jobId : '';
+    if (!jobId.startsWith('job:') || jobId.length <= 4) return false;
+    const worldRecordId = jobId.slice(4);
+    const entity = entityWithWorldRecord(this.state, worldRecordId);
+    if (!entity || !entity.data || entity.data.jobId !== jobId) return false;
+
+    this._ensureState();
+    const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id);
+    if (!rec || rec.role !== 'hauler') return false;
+
+    const destination = typeof intent.destination === 'string' ? intent.destination : '';
+    if (!destination.startsWith('dest:') || destination.length <= 5) return false;
+    const stationId = destination.slice(5);
+    const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === stationId);
+    if (!station) return false;
+
+    const manifest = intent.payload && intent.payload.manifest;
+    return this._emitArrival(entity, rec, station, {
+      dockSeq: Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : undefined,
+      manifest,
+    });
   },
 
   /**
