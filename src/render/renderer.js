@@ -39,6 +39,13 @@ import {
   projectRenderEntityFrame,
 } from './renderEntityFrame.js';
 import { createPresentationSnapshot, SNAPSHOT_FLAG } from './presentationSnapshot.js';
+import {
+  createSimTransport,
+  digestSnapshot,
+  packSnapshot,
+  unpackSnapshot,
+  TRANSPORT_MESSAGE,
+} from '../core/simTransport.js';
 
 /**
  * Archetype id for the batched path: entities sharing geometry *and* material can be drawn in one
@@ -49,6 +56,49 @@ import { createPresentationSnapshot, SNAPSHOT_FLAG } from './presentationSnapsho
 const RENDER_ARCHETYPE_IDS = new WeakMap();
 const RENDER_ARCHETYPE_BY_KEY = new Map();
 let nextRenderArchetypeId = 0;
+
+/**
+ * How often the default route round-trips a snapshot through the sim/render transport.
+ *
+ * The audit is O(entities): it packs a copy, ships it across the boundary and hashes both sides.
+ * Doing that every frame would spend real budget on a diagnostic, and the violation it looks for —
+ * the renderer mutating what the sim owns — is a structural bug, not a transient one. If it exists
+ * it will be caught within a couple of seconds either way, so sample rather than saturate.
+ */
+const PRESENTATION_OWNERSHIP_AUDIT_INTERVAL = 30;
+
+/**
+ * Round-trip this frame's snapshot through the sim/render transport and prove both sides agree.
+ *
+ * This is what makes the default route actually use separated owners rather than merely being able
+ * to. The renderer publishes a copy across the boundary and hashes what comes back against what it
+ * holds; a mismatch means the two sides disagree about state the sim owns, which is precisely the
+ * bug that a real Worker would otherwise surface as a rendering artifact with no stack.
+ *
+ * It runs on a cadence because the check is O(entities) and the fault it hunts is structural, not
+ * transient — a violation shows up within a second or two either way, and spending frame budget on a
+ * diagnostic every frame would be paying for certainty nobody asked for.
+ *
+ * Divergence is recorded, never thrown. A renderer that hard-fails mid-flight over an audit is worse
+ * than one that reports the disagreement and keeps drawing.
+ */
+function auditPresentationOwnership(renderer) {
+  const snapshot = renderer._presentationSnapshot;
+  if (!snapshot || snapshot.count === 0) return;
+  if ((snapshot.generation % PRESENTATION_OWNERSHIP_AUDIT_INTERVAL) !== 0) return;
+  if (!renderer._simTransport) {
+    renderer._simTransport = createSimTransport();
+    renderer._ownershipAudit = { checks: 0, divergences: 0, lastDigest: 0 };
+    renderer._simTransport.onRender((message) => {
+      if (message.kind !== TRANSPORT_MESSAGE.SNAPSHOT) return;
+      const audit = renderer._ownershipAudit;
+      audit.checks++;
+      if (digestSnapshot(unpackSnapshot(message.payload)) !== audit.lastDigest) audit.divergences++;
+    });
+  }
+  renderer._ownershipAudit.lastDigest = digestSnapshot(snapshot);
+  renderer._simTransport.publish(TRANSPORT_MESSAGE.SNAPSHOT, packSnapshot(snapshot));
+}
 
 function renderArchetypeOf(record) {
   const mesh = record && record.mesh;
@@ -2230,6 +2280,7 @@ export const render = {
       renderArchetypeOf,
       SNAPSHOT_FLAG.VISIBLE,
     );
+    auditPresentationOwnership(this);
 
     endRenderEntityFrame(this._entityFrame);
     const diagnostics = this._entityViewDiagnostics;

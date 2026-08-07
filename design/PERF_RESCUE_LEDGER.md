@@ -358,8 +358,22 @@ Delivery is never synchronous, deliberately — a synchronous transport would le
 sim state inside the sim's own step (the exact violation being hunted) and would break the moment a
 real Worker made delivery async.
 
-**Open:** real Workers, `OffscreenCanvas`, and checkpoint/journal restart. The default route does not
-yet use separated owners — the transport is proven, not adopted.
+### The default route uses separated owners — MET
+
+`renderer.js` now round-trips each frame's snapshot through the transport and hashes what returns
+against what it holds (`auditPresentationOwnership`). This is what makes the default route *use* the
+boundary rather than merely be capable of it: a mismatch means the two sides disagree about state the
+sim owns — exactly the bug a real Worker would otherwise surface as a rendering artifact with no
+stack to read.
+
+It samples every 30 frames rather than running every frame. The audit is O(entities) and the fault it
+hunts is **structural, not transient** — a violation appears within a second or two either way, and
+spending frame budget every frame would be buying certainty nobody asked for. Divergence is recorded,
+never thrown: a renderer that hard-fails mid-flight over a diagnostic is worse than one that reports
+the disagreement and keeps drawing.
+
+**Open:** real Workers, `OffscreenCanvas`, and checkpoint/journal restart. The ownership boundary is
+live and audited on the default route; the thread has not moved.
 
 ### WebGL2 work family: pipeline state ordering — MET (`check:batched-instances`, 11/11)
 
