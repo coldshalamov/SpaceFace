@@ -70,6 +70,7 @@ import {
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
+import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -768,6 +769,8 @@ export const render = {
     parallaxLayers.init(scene, state, bus, state.render.sectorPalette || SECTOR_PALETTE_CLASSES.core);
     state.render.spaceBg = spaceBg;
     const vf = createVisualFactory();
+    if (this._livingHullPresentation) this._livingHullPresentation.dispose();
+    this._livingHullPresentation = createLivingHullPresentation();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
@@ -775,12 +778,20 @@ export const render = {
       // Live play mounts a zero-draw admission substrate and publishes the authored GLB as the first
       // visible identity. Preview-only factories may still opt into hidden diagnostic geometry.
       directAuthoredMount: true,
-      onAuthoredAssetSwap: ({ boundary, root } = {}) => {
+      onAuthoredAssetSwap: ({ boundary, root, entity } = {}) => {
         const target = boundary || root;
         if (target) {
           invalidateShadowCasterPolicy(target);
           syncShadowCasterPolicy(target, target.userData && target.userData.lod
             ? target.userData.lod.level : null);
+        }
+        if (target && entity && entity.id === state.playerId && this._livingHullPresentation) {
+          this._livingHullPresentation.attach(target);
+          this._livingHullPresentation.sync(
+            entity.data && entity.data.livingHull,
+            state.simTime,
+            entity,
+          );
         }
         this._shadowReceiversDirty = true;
       },
@@ -1301,53 +1312,60 @@ export const render = {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication.
       await this.rockSurfaceLibraryReady;
-      const roots = [];
-      for (const [id, mesh] of this._meshes) {
-        const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
-        if (isInitialAuthoredCompositionEntity(entity, state)) roots.push(mesh);
-      }
-      const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
-        ? state.render.collectVfxGpuResidencyRoots()
-        : [];
-      const vfxTextures = collectStartupTextures(vfxRoots);
-      const result = await prepareStartupGpuResidency(renderer, [...roots, ...vfxRoots], {
-        yieldToMain: yieldToBrowser,
-        onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-      });
-      result.openingCompositionRoots = roots.length;
-      result.vfxRoots = vfxRoots.length;
-      result.vfxTextures = vfxTextures.length;
-      if (this.bloom && typeof this.bloom.prepareResources === 'function') {
-        result.post = await this.bloom.prepareResources(yieldToBrowser);
-      }
-      // Submit the exact, deliberately small opening composition while the loading shell still
-      // covers the canvas. Textures and targets are resident by this point, and loading-mode mesh
-      // scope excludes the rest of the sector. This moves unavoidable first-driver work before the
-      // handoff instead of presenting a black/frozen flight canvas after mode changes.
-      await yieldToBrowser();
-      const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const video = state.settings && state.settings.video || {};
-      const dynamicBufferEpoch = dynamicBuffers.arm();
+      const restoreLivingHullWarmup = this._livingHullPresentation
+        ? this._livingHullPresentation.beginGpuWarmup()
+        : null;
       try {
-        if (video.renderGraph && this._ensureRenderGraph()) {
-          this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
-        } else if (this.bloom && video.bloom !== false) {
-          this.bloom.render(scene, cam.obj);
-        } else {
-          renderer.setRenderTarget(null);
-          renderer.render(scene, cam.obj);
+        const roots = [];
+        for (const [id, mesh] of this._meshes) {
+          const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
+          if (isInitialAuthoredCompositionEntity(entity, state)) roots.push(mesh);
         }
+        const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
+          ? state.render.collectVfxGpuResidencyRoots()
+          : [];
+        const vfxTextures = collectStartupTextures(vfxRoots);
+        const result = await prepareStartupGpuResidency(renderer, [...roots, ...vfxRoots], {
+          yieldToMain: yieldToBrowser,
+          onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+        });
+        result.openingCompositionRoots = roots.length;
+        result.vfxRoots = vfxRoots.length;
+        result.vfxTextures = vfxTextures.length;
+        if (this.bloom && typeof this.bloom.prepareResources === 'function') {
+          result.post = await this.bloom.prepareResources(yieldToBrowser);
+        }
+        // Submit the exact, deliberately small opening composition while the loading shell still
+        // covers the canvas. Textures and targets are resident by this point, and loading-mode mesh
+        // scope excludes the rest of the sector. This moves unavoidable first-driver work before the
+        // handoff instead of presenting a black/frozen flight canvas after mode changes.
+        await yieldToBrowser();
+        const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const video = state.settings && state.settings.video || {};
+        const dynamicBufferEpoch = dynamicBuffers.arm();
+        try {
+          if (video.renderGraph && this._ensureRenderGraph()) {
+            this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
+          } else if (this.bloom && video.bloom !== false) {
+            this.bloom.render(scene, cam.obj);
+          } else {
+            renderer.setRenderTarget(null);
+            renderer.render(scene, cam.obj);
+          }
+        } finally {
+          dynamicBuffers.disarm(dynamicBufferEpoch);
+        }
+        result.openingFrame = {
+          durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
+            - openingFrameStarted,
+          roots: roots.length,
+        };
+        await yieldToBrowser();
+        state.render.startupGpuResidency = result;
+        return result;
       } finally {
-        dynamicBuffers.disarm(dynamicBufferEpoch);
+        if (typeof restoreLivingHullWarmup === 'function') restoreLivingHullWarmup();
       }
-      result.openingFrame = {
-        durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
-          - openingFrameStarted,
-        roots: roots.length,
-      };
-      await yieldToBrowser();
-      state.render.startupGpuResidency = result;
-      return result;
     };
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
@@ -1390,6 +1408,18 @@ export const render = {
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
     // build new, re-seat from the entity's live transform.
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
+    bus.on('ship:livingHullChanged', ({ id, livingHull } = {}) => {
+      if (id !== state.playerId || !this._livingHullPresentation) return;
+      const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
+      const mesh = this._meshes && this._meshes.get ? this._meshes.get(id) : null;
+      if (!entity || !mesh) return;
+      this._livingHullPresentation.attach(mesh);
+      this._livingHullPresentation.sync(
+        livingHull || entity.data && entity.data.livingHull,
+        state.simTime,
+        entity,
+      );
+    });
     // One chokepoint for all 13 camera:shake emitters. A payload carrying `position` is describing a
     // WORLD event and gets a distance falloff against the player; a payload without one is already
     // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
@@ -1684,7 +1714,16 @@ export const render = {
 
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
-    if (!world || !entity || !mesh) return false;
+    if (!entity || !mesh) return false;
+    if (entity.id === this.state.playerId && this._livingHullPresentation) {
+      this._livingHullPresentation.attach(mesh);
+      this._livingHullPresentation.sync(
+        entity.data && entity.data.livingHull,
+        this.state.simTime,
+        entity,
+      );
+    }
+    if (!world) return false;
     const handle = world.handleForEntityId(entity.id, this._presentationHandleScratch);
     if (!handle) return false;
     if (!mesh.userData) mesh.userData = {};
@@ -1693,6 +1732,10 @@ export const render = {
   },
 
   _unbindPresentationMesh(entityId, mesh = null) {
+    if (this._livingHullPresentation) {
+      if (mesh) this._livingHullPresentation.detach(mesh);
+      else if (entityId === this.state.playerId) this._livingHullPresentation.detach();
+    }
     const world = this._presentationWorld;
     if (!world) return false;
     const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
@@ -2094,6 +2137,13 @@ export const render = {
 
       // Visible interactive and hero roots retain their authored per-frame presentation closures.
       if (userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      if (entity.id === this.state.playerId && this._livingHullPresentation) {
+        this._livingHullPresentation.sync(
+          entity.data && entity.data.livingHull,
+          this.state.simTime,
+          entity,
+        );
+      }
       if (userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
