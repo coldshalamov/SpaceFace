@@ -21,7 +21,7 @@
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
 import { NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
-import { REACH_CULTURE_ACES } from '../data/namedAces.js';
+import { aceById } from '../data/namedAces.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
@@ -737,22 +737,22 @@ const namedHunter = {
   fire(d, live, state) {
     const named = d.namedState();
     const rng = d.stream(live, 'captain');
-    const cultureAce = live.data && REACH_CULTURE_ACES[live.data.aceId] || null;
-    const culture = cultureAce && reachCultureDoctrineById(cultureAce.cultureId);
+    const authoredAce = live.data && aceById(live.data.aceId) || null;
+    const culture = authoredAce && reachCultureDoctrineById(authoredAce.cultureId);
     const cultureProfile = culture && culture.factionPresenceDoctrine || null;
     let cap;
-    if (cultureAce && cultureProfile) {
+    if (authoredAce) {
       cap = {
-        ...cultureAce,
-        archetype: cultureAce.returnArchetype,
-        combatDoctrineId: cultureProfile.combatDoctrineId,
+        ...authoredAce,
+        archetype: authoredAce.returnArchetype,
+        combatDoctrineId: cultureProfile && cultureProfile.combatDoctrineId,
         levelBonus: 2,
         bountyCr: 500,
         escort: {
-          archetypes: [cultureAce.escortArchetype],
+          archetypes: [authoredAce.escortArchetype],
           size: [1, 1],
           doctrine: 'scavenger',
-          formation: cultureProfile.liveFormation,
+          formation: cultureProfile ? cultureProfile.liveFormation : 'wedge',
         },
       };
     } else {
@@ -785,7 +785,7 @@ const namedHunter = {
       formation: cultureProfile ? cultureProfile.liveFormation : 'wedge',
       factionPresenceDoctrine: cultureProfile,
       cultureId: culture && culture.id,
-      namedAceId: cultureAce && cultureAce.id,
+      namedAceId: authoredAce && authoredAce.id,
       role: 'boss',
       passive: true,                                    // the entrance: silhouette first, guns later
       bossName: cap.name,
@@ -805,7 +805,7 @@ const namedHunter = {
         formation: esc.formation || 'wedge',
         factionPresenceDoctrine: cultureProfile,
         cultureId: culture && culture.id,
-        namedAceId: cultureAce && cultureAce.id,
+        namedAceId: authoredAce && authoredAce.id,
         role: 'escort',
         passive: true,
       });
@@ -816,18 +816,20 @@ const namedHunter = {
     live.data.engageAt = d.now() + (live.shape.entranceS || 8);
     live.data.engaged = false;
     live.deadlineAt = d.now() + 300;
-    if (cultureAce && culture) {
+    if (authoredAce) {
       d.say(
         live,
         'alert',
-        `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`,
+        culture
+          ? `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`
+          : (cap.signatureBark || `${cap.name}: this lane has your name on it.`),
         live.vars,
         { primary: true, literal: true },
       );
       d.emit('namedAce:appeared', {
-        aceId: cultureAce.id,
-        aceName: cultureAce.name,
-        cultureId: culture.id,
+        aceId: authoredAce.id,
+        aceName: authoredAce.name,
+        cultureId: culture && culture.id,
         encounterId: live.id,
         sectorId: live.sectorId,
         zoneId: live.zoneId,

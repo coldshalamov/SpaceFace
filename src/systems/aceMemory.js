@@ -16,15 +16,17 @@ import {
 } from '../data/namedAces.js';
 import { barkFor } from '../data/barks.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
+import { planetStatesForSector } from '../data/planetStates.js';
 import { hash32 } from '../core/rng.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 2;
 
-const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros']);
+const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges']);
 const RETURN_CHECK_S = 0.5;
 const CULTURE_INTRO_RETRY_S = 10;
+const PLANET_CHALLENGE_RETRY_S = 10;
 const CULTURE_INTRO_ROUTES = Object.freeze([
   Object.freeze({
     aceId: 'ace_maw_rake_veyra', sectorId: 'sector_sker_haven', zoneId: 'zone_sker_gatecamp',
@@ -55,9 +57,18 @@ export const aceMemory = {
     this._listen('namedAce:fled', (p) => this._transition('fled', p));
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
-    this._listen('encounter:resolved', (p) => this._introResolved(p));
-    this._listen('sector:enter', (p) => this._scheduleCultureIntro(p));
-    this._listen('save:loaded', () => this._rearmCultureIntroAfterLoad());
+    this._listen('encounter:resolved', (p) => {
+      this._introResolved(p);
+      this._planetChallengeResolved(p);
+    });
+    this._listen('sector:enter', (p) => {
+      this._scheduleCultureIntro(p);
+      this._schedulePlanetChallenges(p);
+    });
+    this._listen('save:loaded', () => {
+      this._rearmCultureIntroAfterLoad();
+      this._rearmPlanetChallengesAfterLoad();
+    });
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
   },
@@ -110,6 +121,7 @@ export const aceMemory = {
     if (this._returnAccum < RETURN_CHECK_S) return;
     this._returnAccum = 0;
     this._processCultureIntros(state);
+    this._processPlanetChallenges(state);
     this._processReturns(state);
   },
 
@@ -137,6 +149,7 @@ export const aceMemory = {
     rec.encounterCount = (rec.encounterCount | 0) + 1;
     rec.lastSeenAt = nowOf(this.state, payload);
     rec.lastSectorId = sectorOf(this.state, payload);
+    this._completePlanetChallenge(ace.id, 'appeared', payload);
     if (first) this._emitTransition('encountered', ace, rec);
     if (payload && payload.signatureSpoken === true) rec.signatureSpoken = true;
     if (!rec.signatureSpoken) {
@@ -281,6 +294,113 @@ export const aceMemory = {
   _suppressCultureIntro(aceId) {
     const memory = this.state && this.state.aceMemory;
     if (memory && memory.cultureIntros) delete memory.cultureIntros[aceId];
+  },
+
+  // ── W1 Reach Scrawl named challenges ─────────────────────────────────────────────────────
+
+  _schedulePlanetChallenges(payload, options = {}) {
+    const sectorId = payload && typeof payload === 'object'
+      ? payload.sectorId
+      : (payload || sectorOf(this.state));
+    if (!sectorId) return;
+    const assignments = planetStatesForSector(sectorId);
+    if (!assignments.length) return;
+    const memory = ensureMemory(this.state);
+    const now = nowOf(this.state);
+    for (const assignment of assignments) {
+      const challenge = assignment && assignment.challenge;
+      if (!challenge || challenge.trigger !== 'sector:enter') continue;
+      const ace = aceById(challenge.aceId);
+      if (!ace || !planetChallengeEligible(memory, ace.id)) continue;
+      const existing = memory.planetChallenges[ace.id];
+      if (existing && existing.sectorId === sectorId && Number.isFinite(existing.dueAt)) {
+        if (existing.status === 'pending') continue;
+        if (existing.status === 'live' && options.rearmLive !== true) continue;
+        if (existing.status === 'complete') continue;
+      }
+      const record = {
+        aceId: ace.id,
+        bodyId: assignment.bodyId,
+        stateId: assignment.stateId,
+        sectorId,
+        encounterId: `planetChallenge:${assignment.bodyId}:${ace.id}`,
+        dueAt: now + planetChallengeDelay(seedOf(this.state), assignment, ace.id),
+        status: 'pending',
+        attempts: existing && Number.isFinite(existing.attempts) ? existing.attempts : 0,
+      };
+      memory.planetChallenges[ace.id] = record;
+      emit(this.bus, 'planetChallenge:scheduled', { ...record });
+    }
+  },
+
+  _rearmPlanetChallengesAfterLoad() {
+    this._schedulePlanetChallenges({ sectorId: sectorOf(this.state) }, { rearmLive: true });
+  },
+
+  _processPlanetChallenges(state) {
+    const memory = ensureMemory(state);
+    const now = state.simTime || 0;
+    const sectorId = sectorOf(state);
+    const director = this.registry && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return;
+    for (const [aceId, challenge] of Object.entries(memory.planetChallenges)) {
+      if (!challenge || challenge.status !== 'pending' || challenge.sectorId !== sectorId) continue;
+      if (!planetChallengeEligible(memory, aceId)) {
+        challenge.status = 'complete';
+        challenge.completedAt = now;
+        challenge.outcome = 'already_encountered';
+        continue;
+      }
+      if (!Number.isFinite(challenge.dueAt) || challenge.dueAt > now) continue;
+      const result = director.requestAuthoredEncounter({
+        shapeId: 'named_hunter',
+        encounterId: challenge.encounterId,
+        sectorId: challenge.sectorId,
+        force: true,
+        respectPacing: true,
+        data: {
+          aceId,
+          planetBodyId: challenge.bodyId,
+          planetStateId: challenge.stateId,
+          challengeSource: 'reach_scrawl',
+        },
+      });
+      const current = ensureMemory(state).planetChallenges[aceId];
+      if (!current) continue;
+      if (result && result.ok) {
+        // The encounter director emits namedAce:appeared synchronously. That
+        // transition may already have completed the challenge.
+        if (current.status !== 'complete') {
+          current.status = 'live';
+          current.firedAt = now;
+          emit(this.bus, 'planetChallenge:fired', { ...current });
+        }
+      } else {
+        current.status = 'pending';
+        current.attempts = (current.attempts | 0) + 1;
+        current.lastRejectReason = result && result.reason || 'unavailable';
+        current.dueAt = Math.ceil(now) + PLANET_CHALLENGE_RETRY_S;
+      }
+    }
+  },
+
+  _planetChallengeResolved(payload) {
+    if (!payload || !String(payload.encounterId || '').startsWith('planetChallenge:')) return;
+    const memory = ensureMemory(this.state);
+    const challenge = Object.values(memory.planetChallenges)
+      .find((candidate) => candidate && candidate.encounterId === payload.encounterId);
+    if (!challenge) return;
+    this._completePlanetChallenge(challenge.aceId, payload.outcome || 'resolved', payload);
+  },
+
+  _completePlanetChallenge(aceId, outcome, payload = {}) {
+    const memory = this.state && ensureMemory(this.state);
+    const challenge = memory && memory.planetChallenges && memory.planetChallenges[aceId];
+    if (!challenge || challenge.status === 'complete') return;
+    challenge.status = 'complete';
+    challenge.completedAt = nowOf(this.state, payload);
+    challenge.outcome = String(outcome || 'resolved');
+    emit(this.bus, 'planetChallenge:completed', { ...challenge });
   },
 
   _flung(payload) {
@@ -550,7 +670,13 @@ function resolveAceFromEntity(entity) {
 }
 
 function freshMemory() {
-  return { schemaVersion: ACE_MEMORY_VERSION, news: {}, activeReturns: {}, cultureIntros: {} };
+  return {
+    schemaVersion: ACE_MEMORY_VERSION,
+    news: {},
+    activeReturns: {},
+    cultureIntros: {},
+    planetChallenges: {},
+  };
 }
 
 function ensureMemory(state) {
@@ -565,6 +691,7 @@ function normalizeMemory(input) {
   out.news = clonePlain(input.news || {});
   out.activeReturns = clonePlain(input.activeReturns || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
+  out.planetChallenges = clonePlain(input.planetChallenges || {});
   if (input.aces && typeof input.aces === 'object') {
     for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
   }
@@ -614,6 +741,22 @@ function cultureIntroEligible(memory, aceId) {
 
 function cultureIntroDelay(seed, route) {
   return 60 + (hash32(seed, route.aceId, route.sectorId, 'culture-intro') % 31);
+}
+
+function planetChallengeEligible(memory, aceId) {
+  const ace = aceById(aceId);
+  if (!ace) return false;
+  const rec = memory && memory[aceId];
+  if (!rec || typeof rec !== 'object') return true;
+  return rec.encountered !== true
+    && rec.fled !== true
+    && rec.defeated !== true
+    && rec.returnScheduled !== true
+    && rec.returned !== true;
+}
+
+function planetChallengeDelay(seed, assignment, aceId) {
+  return 8 + (hash32(seed, assignment.seed, aceId, 'planet-challenge') % 5);
 }
 
 function seedOf(state) {

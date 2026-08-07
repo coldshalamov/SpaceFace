@@ -3,8 +3,14 @@ import { existsSync } from 'node:fs';
 import test from 'node:test';
 
 import { hash32 } from '../src/core/rng.js';
+import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { aceById } from '../src/data/namedAces.js';
+import { PLANET_STATE_ASSIGNMENTS } from '../src/data/planetStates.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { aceMemory } from '../src/systems/aceMemory.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
 
 const MODULE_URL = new URL('../src/data/planetStates.js', import.meta.url);
 
@@ -90,9 +96,7 @@ test('W1 declares six stable placements with scanner contracts and deterministic
   assertDeepFrozen(PLANET_STATE_ASSIGNMENTS, 'PLANET_STATE_ASSIGNMENTS');
 });
 
-test('Scrawl placements reference a real stable named ace without emitting runtime state', async () => {
-  const { PLANET_STATE_ASSIGNMENTS } = await import(MODULE_URL);
-  assert.ok(PLANET_STATE_ASSIGNMENTS, 'PLANET_STATE_ASSIGNMENTS export is required');
+test('Scrawl placements reference a real stable named ace', () => {
   const scrawls = PLANET_STATE_ASSIGNMENTS.filter((row) => row.stateId === 'planet_state_reach_scrawl');
 
   assert.equal(scrawls.length, 2);
@@ -100,6 +104,78 @@ test('Scrawl placements reference a real stable named ace without emitting runti
     assert.equal(row.challenge.trigger, 'sector:enter');
     assert.ok(aceById(row.challenge.aceId), `${row.challenge.aceId} must resolve in namedAces`);
   }
+});
+
+test('Reach Scrawl sector entry schedules and fires its exact named ace once', () => {
+  const scrawls = PLANET_STATE_ASSIGNMENTS.filter((row) => row.stateId === 'planet_state_reach_scrawl');
+  for (const assignment of scrawls) {
+    const first = bootPlanetChallenge(assignment, 0x57a11);
+    const second = bootPlanetChallenge(assignment, 0x57a11);
+    const scheduled = first.state.aceMemory.planetChallenges[assignment.challenge.aceId];
+    assert.ok(scheduled, `${assignment.bodyId} schedules its challenge`);
+    assert.deepEqual(second.state.aceMemory.planetChallenges[assignment.challenge.aceId], scheduled,
+      `${assignment.bodyId} scheduling is seed-stable`);
+    assert.equal(scheduled.bodyId, assignment.bodyId);
+    assert.equal(scheduled.stateId, assignment.stateId);
+    assert.equal(scheduled.sectorId, assignment.sectorId);
+    assert.equal(scheduled.encounterId,
+      `planetChallenge:${assignment.bodyId}:${assignment.challenge.aceId}`);
+    assert.ok(scheduled.dueAt >= 8 && scheduled.dueAt <= 12,
+      'the challenge has a short deterministic warning window');
+
+    first.state.simTime = scheduled.dueAt - 1;
+    first.sim.runTicks(Math.ceil(0.55 / SIM_DT));
+    assert.equal(first.appeared.length, 0, 'the named ace cannot spawn before the warning expires');
+
+    first.state.simTime = scheduled.dueAt;
+    first.state.encounterDirector.pressure.combat = 140;
+    first.state.encounterDirector.lastMeaningfulAt = -1e9;
+    first.state.encounterDirector.lastMajorAt = -1e9;
+    first.sim.runTicks(Math.ceil(1.05 / SIM_DT));
+    assert.equal(first.appeared.length, 1, `${assignment.challenge.aceId} appears once`);
+    assert.equal(first.appeared[0].aceId, assignment.challenge.aceId);
+    const boss = first.state.entities.get(first.appeared[0].spawnedIds[0]);
+    assert.equal(boss?.data?.ai?.namedAceId, assignment.challenge.aceId,
+      'the physical boss keeps the declared Scrawl identity');
+    assert.equal(boss?.data?.ai?.name, aceById(assignment.challenge.aceId).name);
+    const completed = first.state.aceMemory.planetChallenges[assignment.challenge.aceId];
+    assert.equal(completed.status, 'complete');
+    assert.equal(completed.outcome, 'appeared');
+
+    first.bus.emit('sector:enter', { sectorId: assignment.sectorId });
+    first.state.simTime += 30;
+    first.sim.runTicks(Math.ceil(1.05 / SIM_DT));
+    assert.equal(first.appeared.length, 1, 're-entry cannot duplicate a completed challenge');
+  }
+});
+
+test('pending Reach Scrawl challenges survive save normalization and retry after load', () => {
+  const assignment = PLANET_STATE_ASSIGNMENTS.find((row) => row.bodyId === 'planet_reach_scrawl_ashfall');
+  const h = bootPlanetChallenge(assignment, 0x5a9e, { emitSectorEnter: false });
+  const system = h.registry.get('aceMemory');
+  system.deserialize({
+    schemaVersion: 1,
+    news: { legacy: true },
+    planetChallenges: {
+      [assignment.challenge.aceId]: {
+        aceId: assignment.challenge.aceId,
+        bodyId: assignment.bodyId,
+        stateId: assignment.stateId,
+        sectorId: assignment.sectorId,
+        encounterId: `planetChallenge:${assignment.bodyId}:${assignment.challenge.aceId}`,
+        dueAt: 4,
+        status: 'live',
+        attempts: 1,
+      },
+    },
+  });
+  h.state.simTime = 20;
+  h.bus.emit('save:loaded', {});
+  const rearmed = h.state.aceMemory.planetChallenges[assignment.challenge.aceId];
+  assert.equal(rearmed.status, 'pending');
+  assert.ok(rearmed.dueAt >= 28 && rearmed.dueAt <= 32);
+  assert.equal(rearmed.attempts, 1);
+  assert.equal(h.state.aceMemory.news.legacy, true);
 });
 
 test('planetStatesForSector is stable, frozen, and independent of query order', async () => {
@@ -164,3 +240,22 @@ test('live SECTORS exposes six additive W1 assignments without changing sector s
     );
   }
 });
+
+function bootPlanetChallenge(assignment, seed, options = {}) {
+  const sim = createSimulation({
+    seed,
+    systems: [aceMemory, spawnBudget, encounterDirector, aiPorts],
+  });
+  const { state, bus, registry } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = assignment.sectorId;
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 10,
+  });
+  state.playerId = player.id;
+  const appeared = [];
+  bus.on('namedAce:appeared', (payload) => appeared.push(structuredClone(payload)));
+  if (options.emitSectorEnter !== false) bus.emit('sector:enter', { sectorId: assignment.sectorId });
+  return { sim, state, bus, registry, appeared };
+}
