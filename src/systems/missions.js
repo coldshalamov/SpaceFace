@@ -88,6 +88,11 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
+  LANDMARK_QUEST_SOURCE,
+  buildLandmarkQuestOffers,
+  validateLandmarkQuestOffer,
+} from '../data/landmarkMissions.js';
+import {
   SET_PIECE_MISSION_SOURCE,
   advanceSetPieceMission,
   buildSetPieceMissionOffers,
@@ -366,6 +371,12 @@ function setPieceCauseOf(value) {
     && value.cause.chainId ? value.cause : null;
 }
 
+function isFingerprintBoardSource(source) {
+  return source === 'poiBehavior'
+    || source === SET_PIECE_MISSION_SOURCE
+    || source === LANDMARK_QUEST_SOURCE;
+}
+
 function setPieceEventFields(value, transition = null) {
   const cause = setPieceCauseOf(value);
   if (!cause) return {};
@@ -466,6 +477,9 @@ function missionNavReason(m, station, sector) {
       ? `Mine ${p.sampleQty || 1}u ${sample ? sample.name : 'sample'} from the scanned seam`
       : `Scan an asteroid field in ${sectorName}`;
   }
+  if (m.type === 'recon_scan' && p.landmarkProbe) {
+    return `Fire one close scanner pulse at ${p.landmarkProbe.poiLabel || 'the Caved Shaft'}`;
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -512,7 +526,10 @@ export const missions = {
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
-    bus.on('save:loaded', () => this._restoreNavigationAfterLoad());
+    bus.on('save:loaded', () => {
+      this._restoreNavigationAfterLoad();
+      this._reconcileLandmarkQuestOffers();
+    });
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
@@ -522,6 +539,7 @@ export const missions = {
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
     bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
+    bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {}));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
     bus.on('dock:docked', (p) => {
@@ -566,6 +584,7 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
+    bus.on('signal:scanResults', (p) => this._onLandmarkProbeScan(p || {}));
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
@@ -1258,11 +1277,13 @@ export const missions = {
       || rawOffer.source === 'careerContract'
       || rawOffer.source === 'postEndingReplay'
       || rawOffer.source === 'poiBehavior'
+      || rawOffer.source === LANDMARK_QUEST_SOURCE
       || rawOffer.source === 'uniqueWreck'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
+    if (rawOffer.source === LANDMARK_QUEST_SOURCE && !validateLandmarkQuestOffer(rawOffer)) return false;
     if (rawOffer.source === SET_PIECE_MISSION_SOURCE && !setPieceCauseOf(rawOffer)) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
     const info = STATION_INFO.get(rawOffer.stationId);
@@ -1271,11 +1292,11 @@ export const missions = {
     if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
     if ((this.state.missions.active || []).some((m) => m && (
       m.id === rawOffer.id || m.sourceOfferId === rawOffer.id
-      || ((rawOffer.source === 'poiBehavior' || rawOffer.source === SET_PIECE_MISSION_SOURCE)
+      || (isFingerprintBoardSource(rawOffer.source)
         && m.cause && rawOffer.cause
         && m.cause.fingerprint === rawOffer.cause.fingerprint)
     ))) return false;
-    if ((rawOffer.source === 'poiBehavior' || rawOffer.source === SET_PIECE_MISSION_SOURCE)
+    if (isFingerprintBoardSource(rawOffer.source)
       && (this.state.missions.receipts || []).some((receipt) => (
       receipt && (receipt.sourceOfferId === rawOffer.id
         || receipt.causeFingerprint === rawOffer.cause.fingerprint)
@@ -1284,14 +1305,10 @@ export const missions = {
     const board = this.ensureBoard(rawOffer.stationId);
     if (!board || !Array.isArray(board.slots)) return false;
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
-    if (rawOffer.source !== 'poiBehavior' && rawOffer.source !== SET_PIECE_MISSION_SOURCE
+    if (!isFingerprintBoardSource(rawOffer.source)
       && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
-    if (rawOffer.source === 'poiBehavior' && board.slots.some((offer) => (
-      offer && offer.source === 'poiBehavior' && offer.cause && rawOffer.cause
-      && offer.cause.fingerprint === rawOffer.cause.fingerprint
-    ))) return false;
-    if (rawOffer.source === SET_PIECE_MISSION_SOURCE && board.slots.some((offer) => (
-      offer && offer.source === SET_PIECE_MISSION_SOURCE && offer.cause && rawOffer.cause
+    if (isFingerprintBoardSource(rawOffer.source) && board.slots.some((offer) => (
+      offer && offer.source === rawOffer.source && offer.cause && rawOffer.cause
       && offer.cause.fingerprint === rawOffer.cause.fingerprint
     ))) return false;
 
@@ -2006,6 +2023,14 @@ export const missions = {
     return true;
   },
 
+  _reconcileLandmarkQuestOffers(filters = {}) {
+    let boarded = 0;
+    for (const offer of buildLandmarkQuestOffers(this.state, filters)) {
+      if (this._onExternalBoardOffer(offer)) boarded++;
+    }
+    return boarded;
+  },
+
   /** Hand the B4 marker from the completed flight lesson to its newly tracked real contract. */
   releaseOnboardingNavigation(missionId) {
     const mission = (this.state.missions.active || []).find((candidate) => (
@@ -2368,6 +2393,25 @@ export const missions = {
       };
     }
 
+    if (m.type === 'recon_scan' && m.params && m.params.landmarkProbe) {
+      const probe = m.params.landmarkProbe;
+      const target = this._livePoiEntity(probe.sectorId, probe.poiId);
+      const fallback = probe.targetLocalPos
+        ? sectorLocalToGlobalForSector(probe.targetLocalPos, probe.sectorId)
+        : null;
+      return {
+        ...base,
+        label: probe.poiLabel || 'The Caved Shaft',
+        stationId: null,
+        sectorId: probe.sectorId,
+        pos: target && target.pos
+          ? { x: target.pos.x, z: target.pos.z }
+          : fallback && { x: fallback.x, z: fallback.z },
+        presentationEntityId: target && target.id || null,
+        reason: missionNavReason(m, station, sector),
+      };
+    }
+
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
       if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
@@ -2428,6 +2472,16 @@ export const missions = {
       if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
     }
     return null;
+  },
+
+  _livePoiEntity(sectorId, poiId) {
+    const active = this.state.world && this.state.world.activeSector;
+    if (!active || active.id !== sectorId || !Array.isArray(active.pois)) return null;
+    const row = active.pois.find((poi) => poi && poi.poiId === poiId && poi.id != null);
+    if (!row || !this.state.entities || typeof this.state.entities.get !== 'function') return null;
+    const entity = this.state.entities.get(row.id);
+    if (!entity || entity.alive === false || !entity.data || entity.data.poiId !== poiId) return null;
+    return entity;
   },
 
   _nearestAsteroid() {
@@ -2778,6 +2832,9 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
       if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
+      // Authored landmark probes settle only from scanner's exact physical signal result below.
+      // A generic sector pulse must never finish a job aimed at one named hull.
+      if (m.params && m.params.landmarkProbe) continue;
       // POI causal recon is not a pulse counter. Scanner must first classify, then track, then
       // physically investigate the exact durable mission entity via signal:investigated.
       if (m.params && m.params.poiSignalFollowup) continue;
@@ -2804,6 +2861,50 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _onLandmarkProbeScan(payload) {
+    if (!payload || !Array.isArray(payload.signals) || !payload.sectorId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const probe = mission && mission.params && mission.params.landmarkProbe;
+      if (!mission || mission.status !== 'active' || mission.type !== 'recon_scan' || !probe) continue;
+      if (payload.sectorId !== mission.destSectorId || probe.sectorId !== mission.destSectorId) continue;
+      if (this.state.world.currentSectorId !== probe.sectorId) continue;
+
+      const target = this._livePoiEntity(probe.sectorId, probe.poiId);
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (!target || !player || !target.pos || !player.pos) continue;
+      const maxRangeWu = Math.max(1, Math.min(300, Number(probe.maxRangeWu) || 300));
+      if (distSq(target.pos, player.pos) > maxRangeWu * maxRangeWu) continue;
+      const signal = payload.signals.find((row) => row
+        && String(row.entityId) === String(target.id)
+        && row.sourceKind === 'archive'
+        && Number(row.stage) >= 3
+        && Number(row.distance) <= maxRangeWu);
+      if (!signal) continue;
+
+      const artifact = probe.artifact;
+      if (!artifact || !artifact.id || !artifact.title || !artifact.body) return false;
+      const returnedAt = Number(this.state.simTime) || 0;
+      probe.returned = true;
+      probe.returnedAt = returnedAt;
+      probe.signalId = signal.id || null;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this.bus.emit('landmark:artifactRecovered', {
+        questId: probe.questId || mission.sourceOfferId,
+        missionId: mission.id,
+        sectorId: probe.sectorId,
+        poiId: probe.poiId,
+        targetRef: probe.targetRef || null,
+        signalId: signal.id || null,
+        artifact: { ...artifact },
+        returnedAt,
+      });
+      this._completeMission(mission, i);
+      return true;
+    }
+    return false;
   },
 
   _startLongReadObjective(mission) {
@@ -3435,6 +3536,10 @@ export const missions = {
     const p = (m && m.params) || {};
     const cargo = this._cmdtyName(p.cmdtyId);
     const dest = this._destName(m);
+    if (m && m.source === LANDMARK_QUEST_SOURCE && p.landmarkProbe) {
+      const artifact = p.landmarkProbe.artifact;
+      return `${artifact && artifact.title || 'Return frame'} filed. The probe brought back one image and no telemetry; the shaft remains unexplained.`;
+    }
     if (m && m.source === 'poiBehavior' && p.poiSignalFollowup) {
       const cause = m.cause && m.cause.line ? ` The original ${m.cause.line.toLowerCase()}` : '';
       return `Linked signal confirmed in ${dest}. The registry now connects both sites.${cause}`;
@@ -4171,6 +4276,7 @@ export const missions = {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
     this.spawnTargetsForSector(sectorId);
+    this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
     this._refreshNavigation({ preferStory: true });
     this._storyTrigger('sector', { sectorId });

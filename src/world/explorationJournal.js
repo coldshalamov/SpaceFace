@@ -60,6 +60,9 @@ function sensorDenialPhrase(sector) {
 }
 
 function plateBody(sector, poi, record) {
+  if (record.landmarkArtifact && record.landmarkArtifact.body) {
+    return `${record.landmarkArtifact.title || 'Recovered artifact'} — ${record.landmarkArtifact.body}`;
+  }
   if (poi.discoveryPlate && typeof poi.discoveryPlate.body === 'string') {
     return poi.discoveryPlate.body.trim();
   }
@@ -96,9 +99,11 @@ export function explorationDiscoveryPlates(state) {
           : (poi.name || record.name || poi.id),
         meta: `${sector.name} · ${record.investigated ? 'SOURCE INVESTIGATED' : (record.defeated ? 'SITE RESOLVED' : 'PHYSICALLY IDENTIFIED')}`,
         body: plateBody(sector, poi, record),
-        note: progress.total > 0
-          ? `${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
-          : 'No additional authored sites are charted in this sector.',
+        note: record.landmarkArtifact && record.landmarkArtifact.id
+          ? `Recovered ${record.landmarkArtifact.id} · ${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
+          : progress.total > 0
+            ? `${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
+            : 'No additional authored sites are charted in this sector.',
         completedAt,
       });
     }

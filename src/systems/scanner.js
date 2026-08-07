@@ -520,6 +520,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       entityId: entity.id,
       pos: entity.pos,
       range: profile.nearRadius,
+      repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
     });
   }
 
@@ -544,6 +545,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       triangulated: poi.anomalyTriangulated === true || entityData.anomalyTriangulated === true,
       triangulation: poi.triangulation || entityData.triangulation || null,
       resonanceScanResponse: entityData.resonanceScanResponse === true,
+      repeatableScannerSignal: entityData.repeatableScannerSignal === true,
     });
   }
 
@@ -879,7 +881,8 @@ export const scanner = {
     for (const candidate of raw) {
       const resonanceSignal = candidate.resonanceScanResponse === true
         && isResonanceObeliskSignal(sectorId, candidate.sourceId);
-      if (own.completed[candidate.id] && !resonanceSignal) continue;
+      const repeatableSignal = resonanceSignal || candidate.repeatableScannerSignal === true;
+      if (own.completed[candidate.id] && !repeatableSignal) continue;
       const previous = own.records[candidate.id] || null;
       if (candidate.kind === 'anomaly' && candidate.requiresTriangulation && !candidate.triangulated) {
         const config = candidate.triangulation && typeof candidate.triangulation === 'object'
@@ -1004,6 +1007,10 @@ export const scanner = {
           entityId: candidate.entityId || null,
           ...response,
         });
+      }
+      if (own.completed[candidate.id]) {
+        record.status = 'investigated';
+        record.trackable = false;
       }
       own.records[record.id] = record;
       rows.push(record);

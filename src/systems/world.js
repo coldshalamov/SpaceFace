@@ -234,6 +234,7 @@ export const world = {
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('landmark:artifactRecovered', (p) => this._onLandmarkArtifactRecovered(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     bus.on('ui:purchaseFrontierRumor', (p) => this._onPurchaseFrontierRumor(p || {}));
@@ -1306,6 +1307,7 @@ export const world = {
           ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
           ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
           ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
           ...(poi.survivorPod === true ? { survivorPod: true } : {}),
@@ -2730,6 +2732,40 @@ export const world = {
     if (newlyFound) {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
     }
+    return true;
+  },
+
+  _onLandmarkArtifactRecovered(payload) {
+    const sectorId = payload && payload.sectorId;
+    const poiId = payload && payload.poiId;
+    const artifact = payload && payload.artifact;
+    if (!sectorId || !poiId || !artifact || !artifact.id || !artifact.title || !artifact.body) return false;
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    if (!poi) return false;
+    if (payload.targetRef && poi.flavorTargetRef && payload.targetRef !== poi.flavorTargetRef) return false;
+    const disc = this._discoveryFor(sectorId);
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
+    if (rec.landmarkArtifact && rec.landmarkArtifact.id === artifact.id) return false;
+    const returnedAt = Math.max(0, Number(payload.returnedAt) || Number(this.state.simTime) || 0);
+    rec.discovered = true;
+    rec.identified = true;
+    rec.investigated = true;
+    rec.investigatedAt = returnedAt;
+    rec.landmarkArtifact = {
+      id: String(artifact.id),
+      title: String(artifact.title),
+      body: String(artifact.body),
+      sourceRef: payload.targetRef ? String(payload.targetRef) : null,
+      signalId: payload.signalId ? String(payload.signalId) : null,
+      returnedAt,
+    };
+    this.bus.emit('discovery:plateUnlocked', {
+      sectorId,
+      poiId,
+      type: poi.type || rec.type || null,
+      artifactId: rec.landmarkArtifact.id,
+    });
     return true;
   },
 

@@ -289,7 +289,18 @@ const REGION_HYPERION = freezeRegion({
       { type: 'dense_asteroid', center: { x: 600, z: -420 }, radius: 720, intensity: 0.55 },
     ],
     pois: [
-      { id: 'poi_hyperion_driller', type: 'derelict', name: 'Collapsed Drill Rig' },
+      {
+        id: 'poi_hyperion_driller',
+        type: 'derelict',
+        name: 'The Caved Shaft',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c6_caved_shaft',
+        discoveryPlate: {
+          title: 'The Caved Shaft',
+          body: 'The drill mast fell inward through a hollow asteroid. Ordinary probes return without telemetry; the snapped auger is folded against something harder than drill-steel.',
+        },
+      },
       { id: 'poi_hyperion_beacon', type: 'beacon', name: 'Cut Lane Beacon' },
     ],
   },
