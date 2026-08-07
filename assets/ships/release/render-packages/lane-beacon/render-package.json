@@ -1233,6 +1233,73 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 6,
+      "mechanical": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      }
+    ],
     "nodeCount": 15,
     "primitives": [
       {

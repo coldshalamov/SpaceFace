@@ -1485,6 +1485,87 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "hull": 12,
+      "service": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "service"
+      }
+    ],
     "nodeCount": 18,
     "primitives": [
       {

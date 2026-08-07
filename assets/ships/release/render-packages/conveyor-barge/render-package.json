@@ -797,6 +797,38 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1,
+      "mechanical": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      }
+    ],
     "nodeCount": 15,
     "primitives": [
       {

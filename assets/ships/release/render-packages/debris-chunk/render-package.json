@@ -1836,6 +1836,109 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "hull": 3,
+      "mechanical": 10,
+      "radiator": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "radiator"
+      }
+    ],
     "nodeCount": 26,
     "primitives": [
       {

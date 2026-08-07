@@ -1822,6 +1822,56 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "drive": 1,
+      "glass": 1,
+      "hull": 3,
+      "mechanical": 1,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "warning"
+      }
+    ],
     "nodeCount": 20,
     "primitives": [
       {

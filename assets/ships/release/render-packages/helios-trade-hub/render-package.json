@@ -4953,6 +4953,593 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "docking": 4,
+      "glass": 4,
+      "hull": 12,
+      "mechanical": 32,
+      "radiator": 3,
+      "service": 28,
+      "signal": 6,
+      "warning": 26
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 74,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 75,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 79,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 80,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 82,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 83,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 84,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 86,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 87,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 88,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 90,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 91,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 92,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 94,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 95,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 96,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 101,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 102,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 103,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 104,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 105,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 106,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 107,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 108,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 109,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 110,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 111,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 113,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 115,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 116,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 117,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 118,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 119,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 120,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 121,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 123,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 124,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 125,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 126,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 127,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 128,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 129,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 130,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 131,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 132,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 133,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 134,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 136,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 137,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 138,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 139,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 140,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 141,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 142,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 143,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 144,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 145,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 146,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 147,
+        "role": "radiator"
+      }
+    ],
     "nodeCount": 148,
     "primitives": [
       {

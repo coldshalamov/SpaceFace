@@ -107,6 +107,20 @@ ran rather than an absence of evidence.
 Determinism: all 8 scenarios byte-identical across two runs. `check:baseline`: exactly the four known
 pre-existing failures. `check:render-package-plan`: 26/26, 731 nodes. Focused tests: 68/68.
 
+**Material profiles are now declared, not derived.** `configureAuthoredMaterialProfiles` ran two
+`root.traverse()` passes on the bind path and inferred each material's role from its name, userData
+and assetId — name-based discovery on a shipping load path. The offline derivation now records what
+it resolved (via a new optional `record` observer) and ships it as `runtime.materialProfiles`, which
+the binder applies by plan index. **524 profile entries across 26 packages, none empty** — e.g.
+kestrel 18, helios-trade-hub 115, wasp 8, with real role spreads (hull/mechanical/glass/signal/
+warning/radiator/drive/service/docking). An empty array would have silently applied nothing, the same
+failure class as a counter dropping to zero, so the count is checked rather than assumed.
+
+One subtlety worth keeping: material roles gate texture-bearing profiles on `geometry.getAttribute('uv')`.
+The offline rebuild has no vertex data, so it mirrors exactly that one fact from the glTF
+`TEXCOORD_0` accessor declaration. Without it every material resolves as untextured offline and the
+shipped roles disagree with what the runtime would have picked.
+
 **Still open:** gate 2 (fail-closed / dev-only source route), gate 3 (coverage — 60 unpackaged
 assets), gate 5 (residency prewarm + prepare-then-swap). Gate 4 was already in place
 (`build:render-package-pilots --check`, re-verified fresh 26/26 after the change).

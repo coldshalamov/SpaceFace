@@ -517,6 +517,7 @@ async function buildFixtureMetadata() {
     runtime: deriveAuthoredRuntimeTable(fixtureSceneRoot(), {
       url: FIXTURE_PILOT.sourceUrl,
       slot: FIXTURE_PILOT.slot,
+      assetId: FIXTURE_PILOT.runtimeAssetId,
     }),
   };
   metadata.contentHash = await computeRenderPackageContentHash(metadata);

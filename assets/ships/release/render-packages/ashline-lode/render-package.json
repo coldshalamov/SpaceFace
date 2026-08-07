@@ -2932,6 +2932,128 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "glass": 3,
+      "hull": 11,
+      "mechanical": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      }
+    ],
     "nodeCount": 33,
     "primitives": [
       {

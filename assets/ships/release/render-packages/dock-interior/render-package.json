@@ -1282,6 +1282,66 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "glass": 1,
+      "hull": 5,
+      "mechanical": 1,
+      "radiator": 1,
+      "rubber": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "rubber"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      }
+    ],
     "nodeCount": 13,
     "primitives": [
       {

@@ -725,6 +725,41 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "geology": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      }
+    ],
     "nodeCount": 9,
     "primitives": [
       {

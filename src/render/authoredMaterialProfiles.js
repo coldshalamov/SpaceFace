@@ -256,7 +256,13 @@ export function inspectAuthoredPbrCoverage(material) {
   return Object.freeze(coverage);
 }
 
-export function configureAuthoredMaterialProfiles(root, { assetId = null } = {}) {
+/**
+ * `record` is an optional observer, called `(material, role, allowTextures)` for each material this
+ * pass configures. It exists so the offline render-package compiler can capture the resolved roles
+ * and ship them as data, letting the shipping loader apply profiles by declaration instead of
+ * re-running the two scene traversals and the name-based role inference below.
+ */
+export function configureAuthoredMaterialProfiles(root, { assetId = null, record = null } = {}) {
   const configured = new Set();
   const uvMaterials = new Set();
   const roles = {};
@@ -276,6 +282,7 @@ export function configureAuthoredMaterialProfiles(root, { assetId = null } = {})
       if (correctionRole) {
         configured.add(material);
         roles[correctionRole] = (roles[correctionRole] || 0) + 1;
+        if (record) record(material, correctionRole, uvMaterials.has(material));
         continue;
       }
       // GLTFLoader exposes glTF material extras through userData. Preserve a Blender-authored
@@ -289,6 +296,7 @@ export function configureAuthoredMaterialProfiles(root, { assetId = null } = {})
       })) continue;
       configured.add(material);
       roles[role] = (roles[role] || 0) + 1;
+      if (record) record(material, role, uvMaterials.has(material));
     }
   });
   return { materials: configured.size, roles };

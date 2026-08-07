@@ -1711,6 +1711,94 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      }
+    ],
     "nodeCount": 20,
     "primitives": [
       {

@@ -1883,6 +1883,103 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "glass": 2,
+      "hull": 14,
+      "service": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      }
+    ],
     "nodeCount": 24,
     "primitives": [
       {

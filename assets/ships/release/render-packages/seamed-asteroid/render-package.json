@@ -2248,6 +2248,138 @@
         }
       }
     ],
+    "materialProfileRoles": {
+      "geology": 12,
+      "mechanical": 11,
+      "warning": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      }
+    ],
     "nodeCount": 34,
     "primitives": [
       {

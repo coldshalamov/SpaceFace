@@ -6,7 +6,7 @@
 // renderer is available. Required authored entities remain unpublished until their blueprint is
 // ready; a temporary procedural body must never impersonate the final ship, station, or place.
 import * as THREE from 'three';
-import { configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
+import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
 import {
   disposeAssetResidency,
   getAssetResidency,
@@ -1074,13 +1074,29 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     });
   });
 
-  const materialProfile = configureAuthoredMaterialProfiles(scene, {
-    assetId: metadata.assetId || fileStem(url),
-  });
+  // Declared, not derived: the package already resolved which material carries which authored role,
+  // so apply them by plan index. This is what keeps the two `root.traverse()` calls and the
+  // name-based role inference inside configureAuthoredMaterialProfiles off the shipping load path.
+  const assetId = metadata.assetId || fileStem(url);
+  const profiledRoles = {};
+  const profiled = new Set();
+  for (const entry of table.materialProfiles || []) {
+    const planEntry = nodes[entry.planIndex];
+    if (!planEntry) continue;
+    const object = planEntry.source;
+    const materials = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+    for (const material of materials) {
+      if (!material || profiled.has(material)) continue;
+      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, allowTextures: entry.allowTextures })) continue;
+      profiled.add(material);
+      profiledRoles[entry.role] = (profiledRoles[entry.role] || 0) + 1;
+    }
+  }
+  const materialProfile = { materials: profiled.size, roles: profiledRoles };
 
   return Object.freeze({
     url,
-    assetId: metadata.assetId || fileStem(url),
+    assetId,
     slot: expectedSlot || metadata.slot || null,
     metadata: Object.freeze({ ...metadata }),
     primitives: Object.freeze(primitives),
@@ -1176,12 +1192,35 @@ export function deriveAuthoredRuntimeTable(scene, options = {}) {
   _bounds.getSize(_boundsSize);
   _bounds.getCenter(_boundsCenter);
 
+  // Resolve authored material roles here so the loader can apply them by declaration. The role
+  // itself is inferred from material names, userData and assetId — name-based discovery that has no
+  // business running on a shipping load path. Recording it against a plan index turns it into data.
+  const roleByMaterial = new Map();
+  const materialProfile = configureAuthoredMaterialProfiles(scene, {
+    assetId: options.assetId || null,
+    record(material, role, allowTextures) { roleByMaterial.set(material, { role, allowTextures }); },
+  });
+  const materialProfiles = [];
+  let profileIndex = -1;
+  scene.traverse((node) => {
+    profileIndex++;
+    const materials = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of materials) {
+      const resolved = roleByMaterial.get(material);
+      if (!resolved) continue;
+      roleByMaterial.delete(material);
+      materialProfiles.push({ planIndex: profileIndex, role: resolved.role, allowTextures: resolved.allowTextures });
+    }
+  });
+
   return {
     schema: AUTHORED_RUNTIME_TABLE_SCHEMA,
     url,
     slot,
     legacyPart,
     nodeCount: planIndex + 1,
+    materialProfiles,
+    materialProfileRoles: { ...materialProfile.roles },
     bounds: {
       min: sceneBoundsArray(_bounds.min),
       max: sceneBoundsArray(_bounds.max),

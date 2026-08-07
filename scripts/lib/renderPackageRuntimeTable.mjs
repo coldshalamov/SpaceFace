@@ -45,7 +45,18 @@ export function sceneFromGlbJson(json) {
   const nodes = json.nodes || [];
   const meshes = json.meshes || [];
   const materials = json.materials || [];
-  const geometry = new THREE.BufferGeometry();
+
+  // Material profiles gate texture-bearing roles on whether the mesh actually has UVs
+  // (`geometry.getAttribute('uv')`). The placeholder geometry carries no vertex data, so mirror only
+  // that one fact from the glTF accessor declaration — otherwise every material would resolve as
+  // untextured offline and the shipped roles would disagree with what the runtime would have chosen.
+  const geometryFor = (primitive) => {
+    const geometry = new THREE.BufferGeometry();
+    if (primitive.attributes && primitive.attributes.TEXCOORD_0 !== undefined) {
+      geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(0), 2));
+    }
+    return geometry;
+  };
 
   const materialFor = (primitive) => {
     const source = primitive.material === undefined ? null : materials[primitive.material];
@@ -95,7 +106,7 @@ export function sceneFromGlbJson(json) {
     const primitives = meshDef.primitives || [];
     const single = primitives.length === 1;
     const built = primitives.map((primitive) => {
-      const mesh = new THREE.Mesh(geometry, materialFor(primitive));
+      const mesh = new THREE.Mesh(geometryFor(primitive), materialFor(primitive));
       // A single-primitive mesh *becomes* the node and is renamed to the node's name, so its own
       // name never reaches the runtime and must not consume a slot the node already took. Only
       // multi-primitive siblings — and an unnamed node's lone mesh — keep mesh-derived names.
@@ -159,6 +170,9 @@ export async function buildRuntimeTableForRenderGlb(renderGlbPath, options = {})
     url: options.url || '',
     slot: options.slot || null,
     legacyPart: (assetExtras.spacefaceAsset?.legacyPart ?? assetExtras.legacyPart) === true,
+    // Material-role inference is assetId-sensitive, and the rebuilt scene root carries node extras
+    // rather than the glTF asset extras readAssetMetadata would consult, so pass it explicitly.
+    assetId: options.assetId || assetExtras.spacefaceAsset?.assetId || assetExtras.assetId || null,
   });
   if (options.boundsOverride) table.bounds = options.boundsOverride;
   return table;

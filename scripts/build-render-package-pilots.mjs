@@ -401,6 +401,7 @@ async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
   const table = await buildRuntimeTableForRenderGlb(join(outputDir, 'render.glb'), {
     url: pilot.sourceUrl,
     slot: pilot.slot,
+    assetId: pilot.runtimeAssetId,
     boundsOverride: unionGeometryBounds(compiledPackage.geometry),
   });
   metadata.runtime = table;
