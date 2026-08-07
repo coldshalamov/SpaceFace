@@ -14,6 +14,7 @@ import { BINDINGS } from './bindings.js';
 import { DEFAULTS as INPUT_DEFAULTS, selectedWorldSiteTarget } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveDockDeny } from './dockDenyBanner.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -74,8 +75,13 @@ export function createUiInput(ctx, screenManager) {
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
     if (isUiInteractionFenced(state) || !dockInRange || state.ui.docked) return;
+    const attempt = { stationId: dockStationId };
+    // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
+    // a refusal. The same pure selector is the command gate; a banner can never be the authority.
+    bus.emit('dock:attempt', attempt);
+    if (resolveDockDeny(state, dockStationId)) return;
     state.ui.activeStationTab = state.ui.activeStationTab || 'market';
-    bus.emit('dock:docked', { stationId: dockStationId });
+    bus.emit('dock:docked', attempt);
     bus.emit('audio:cue', { id: 'ui_dock' });
   }
 
