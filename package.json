@@ -453,6 +453,7 @@
     "check:sector-prewarm": "node scripts/check-sector-prewarm.mjs",
     "check:presentation-snapshot": "node scripts/check-presentation-snapshot.mjs",
     "check:batched-instances": "node scripts/check-batched-instance-renderer.mjs",
+    "check:sim-transport": "node scripts/check-sim-transport.mjs",
     "capture:m0:blender-fixture": "node scripts/capture-blender-fixture-evidence.mjs",
     "check:art": "npm run check:asset-pipeline-contract && npm run check:graphics:asset-receipts && npm run check:kestrel:wholeship && node test/kestrel-wholeship-routing.test.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-parts-manifest.mjs && node scripts/check-sg04-release-assets.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs && npm run check:station-archetype-wiring && npm run check:station-archetype-glb-load && npm run check:authored-place-runtime && npm run check:opening-place-remaster && npm run check:shipworks:dock-composition && npm run check:assets:live && npm run check:visual-stability && npm run check:47a:visuals && npm run check:asset-classifications",
     "check:kestrel:wholeship": "node scripts/check-kestrel-wholeship-runtime.mjs",

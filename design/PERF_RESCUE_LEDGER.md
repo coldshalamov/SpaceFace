@@ -271,10 +271,36 @@ per-entity path is still what executes; the bounded parity window and deletion h
 Socket-attached plume and distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is
 the seam for GPU upload.
 
-## Chunk 4 — sim / render / platform separation — NOT STARTED
+## Chunk 4 — sim / render / platform separation — **TRANSPORT + DIGESTS MET; thread move open**
 
-Build the transport on an in-process `MessageChannel` and prove digests **first**, then move to real
-Workers, then `OffscreenCanvas`. Exit gate: the default route actually uses separated owners.
+### In-process boundary with digest equality — MET (`npm run check:sim-transport`, 6/6)
+
+`src/core/simTransport.js` runs both owners in one process over a real `MessageChannel` — the same
+asynchronous, copy-only, ordered-delivery semantics a Worker has, minus the thread.
+
+Moving the boundary and the thread together is the expensive mistake: if the result diverges there is
+no way to tell a genuine ownership violation (the renderer quietly mutating sim state) from a
+transfer artifact (a structured clone dropping a field, a detached buffer, a reordered message) — and
+you find out across a thread boundary with no shared stack. Moving the boundary first makes every
+divergence synchronously debuggable.
+
+**The gate is digest equality**, not "it looks right": what the renderer receives across the transport
+hashes identically to a direct single-threaded read, **40/40 frames at 300 entities**. Also gated:
+a real `MessageChannel` backs it (not the fallback shim, or the proven path would differ from the
+production one), delivery is ordered, the published payload is a **copy** so the renderer cannot
+mutate sim state through it, and — critically — **the digest is proven able to fail**: nudging one
+position by 0.01 changes the hash. A digest that cannot fail makes every other assertion worthless.
+
+The digest quantises before hashing. Raw float bits can differ harmlessly across a structured-clone
+round-trip, and a digest tripping on that noise would cry wolf every frame; the grid is fine enough
+that any difference a player could see still changes the hash.
+
+Delivery is never synchronous, deliberately — a synchronous transport would let the renderer observe
+sim state inside the sim's own step (the exact violation being hunted) and would break the moment a
+real Worker made delivery async.
+
+**Open:** real Workers, `OffscreenCanvas`, and checkpoint/journal restart. The default route does not
+yet use separated owners — the transport is proven, not adopted.
 
 ## Chunk 5 — backend optimization + certification — NOT STARTED
 
