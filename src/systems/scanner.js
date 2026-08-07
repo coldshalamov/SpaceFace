@@ -399,6 +399,7 @@ export function signalClassificationStage(scanCount, distance) {
 
 export function signalClassLabel(kind, stage = 1) {
   const s = Math.max(1, Math.min(3, stage | 0));
+  if (kind === 'archive') return s >= 3 ? 'ARCHIVE TELEMETRY' : s >= 2 ? 'ARCHIVE SIGNAL' : 'RECORDED CARRIER';
   if (kind === 'distress') return s >= 3 ? 'DISTRESS COMMUNICATOR' : s >= 2 ? 'DISTRESS SIGNAL' : 'MODULATED SIGNAL';
   if (kind === 'salvage') return s >= 3 ? 'DERELICT SALVAGE' : s >= 2 ? 'SALVAGE SIGNATURE' : 'METALLIC RETURN';
   if (kind === 'anomaly') return s >= 3 ? 'ANOMALOUS PHENOMENON' : s >= 2 ? 'ANOMALY SIGNATURE' : 'ENERGY RETURN';
@@ -408,6 +409,9 @@ export function signalClassLabel(kind, stage = 1) {
 }
 
 function signalDetail(kind, stage) {
+  if (kind === 'archive') return stage >= 3
+    ? 'Historical telemetry isolated. Track the source or inspect its discovery plate.'
+    : 'Recorded carrier unresolved. Close range or pulse again.';
   if (kind === 'ambush') return stage >= 3
     ? 'Several drives, intent unresolved. Track or hold clear.'
     : 'Traffic pattern unresolved. Close range or pulse again.';
@@ -446,6 +450,7 @@ function ensureSignalState(state) {
 const SIGNAL_KIND_PRIORITY = Object.freeze({
   distress: 100,
   anomaly: 90,
+  archive: 85,
   salvage: 80,
   ambush: 70,
   ship: 60,
@@ -455,6 +460,8 @@ const SIGNAL_KIND_PRIORITY = Object.freeze({
 function signalKindForEntity(entity) {
   if (!entity) return null;
   const data = entity.data || {};
+  const explicitKind = String(data.scannerSignalKind || '').trim().toLowerCase();
+  if (Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind)) return explicitKind;
   const label = String(data.scanLabel || data.label || data.name || '').toLowerCase();
   if (isAnomalyLike(entity)) return 'anomaly';
   if (isWreckLike(entity)) {

@@ -1305,6 +1305,7 @@ export const world = {
           homeSectorId: sector.id,
           ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
+          ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
           ...(finitePositive(poi.bandProximityRadius)
             ? { bandProximityRadius: Number(poi.bandProximityRadius) }
             : {}),

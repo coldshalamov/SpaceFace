@@ -60,6 +60,9 @@ function sensorDenialPhrase(sector) {
 }
 
 function plateBody(sector, poi, record) {
+  if (poi.discoveryPlate && typeof poi.discoveryPlate.body === 'string') {
+    return poi.discoveryPlate.body.trim();
+  }
   if (poi.type === 'anomaly' && record.triangulated) {
     const bearings = Math.max(1, Math.floor(Number(record.triangulationSampleCount) || 3));
     return `Triangulated in ${sector.name} from ${bearings} distinct bearings, then flown down to the source${sensorDenialPhrase(sector)}.`;
@@ -88,7 +91,9 @@ export function explorationDiscoveryPlates(state) {
         id: `${sector.id}:${poi.id}`,
         sectorId: sector.id,
         poiId: poi.id,
-        title: poi.name || record.name || poi.id,
+        title: poi.discoveryPlate && typeof poi.discoveryPlate.title === 'string'
+          ? poi.discoveryPlate.title.trim()
+          : (poi.name || record.name || poi.id),
         meta: `${sector.name} · ${record.investigated ? 'SOURCE INVESTIGATED' : (record.defeated ? 'SITE RESOLVED' : 'PHYSICALLY IDENTIFIED')}`,
         body: plateBody(sector, poi, record),
         note: progress.total > 0

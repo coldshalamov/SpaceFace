@@ -9,6 +9,7 @@ import { scanner } from '../src/systems/scanner.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { v2FlavorRuntime } from '../src/systems/v2FlavorRuntime.js';
 import { world } from '../src/systems/world.js';
+import { explorationDiscoveryPlates } from '../src/world/explorationJournal.js';
 
 function boot(seed) {
   const sim = createSimulation({
@@ -60,6 +61,43 @@ function pulseScanner(sim, state, player, target) {
   state.input.actions.scanPulse = true;
   sim.registry.get('scanner').update(1 / 60, state);
 }
+
+test('Helios Candle Fleet turns a plinth scan into authored lore and a durable Pit discovery', () => {
+  const { sim, state, player } = boot(93);
+  const messages = installVoice(sim);
+  sim.registry.get('world').enterSector('sector_helios_prime');
+
+  const memorials = entitiesWith(state, (entity) => entity.data?.poiId === 'poi_memorial');
+  assert.equal(memorials.length, 1);
+  const memorial = memorials[0];
+  assert.equal(memorial.data.flavorTargetRef, 'landmark_c3_candle_fleet');
+  assert.equal(memorial.data.scannerSignalKind, 'archive');
+
+  pulseScanner(sim, state, player, memorial);
+  const candleFleet = FLAVOR_PACKS.landmark_lore.entries.find((entry) => entry.programSlot === 'C3');
+  assert.ok(candleFleet.lines.some((line) => line.text === messages[0]?.text),
+    'the ordinary scanner must surface one authored Candle Fleet line');
+  const archiveSignal = state.signalInvestigation.records[`signal:entity:${memorial.id}`];
+  assert.equal(archiveSignal.sourceKind, 'archive');
+  assert.equal(archiveSignal.classification, 'ARCHIVE TELEMETRY');
+
+  sim.registry.get('world')._tickPOIScan(state);
+  const plate = explorationDiscoveryPlates(state)
+    .find((entry) => entry.poiId === 'poi_memorial');
+  assert.equal(plate?.title, 'What Was the Pit?');
+  assert.match(plate?.body || '', /twenty-fifth plinth/i);
+  assert.match(plate?.body || '', /telemetry smear/i);
+
+  const restored = {
+    ...state,
+    world: { ...state.world, discovery: JSON.parse(JSON.stringify(state.world.discovery)) },
+  };
+  assert.deepEqual(
+    explorationDiscoveryPlates(restored).find((entry) => entry.poiId === 'poi_memorial'),
+    plate,
+    'the Pit discovery must survive the save-shaped JSON boundary',
+  );
+});
 
 test('Pallas Drift materializes one buoy and seventeen sector-owned Quiessence scan carriers', () => {
   const { sim, state, bus, player } = boot(91);

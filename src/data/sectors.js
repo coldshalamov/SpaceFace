@@ -75,7 +75,17 @@ const CORE_SECTORS = [
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
-      { id: 'poi_memorial', type: 'beacon', name: 'Memorial Array' },
+      {
+        id: 'poi_memorial',
+        type: 'beacon',
+        name: 'The Candle Fleet',
+        scannerSignalKind: 'archive',
+        flavorTargetRef: 'landmark_c3_candle_fleet',
+        discoveryPlate: {
+          title: 'What Was the Pit?',
+          body: "Twenty-four candles burn around a deliberately dark twenty-fifth plinth. Its black-box record carries one telemetry smear on the Pit convoy's final course.",
+        },
+      },
       { id: 'poi_helios_yard', type: 'derelict', name: 'Outer Yard Derelict' },
       // Lane furniture (design/fiction/LANE_FURNITURE.md). Deliberately placed ON the corridor a
       // new pilot actually flies — spawn, tutorial beacon, starter seam — because the camera can
