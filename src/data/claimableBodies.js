@@ -59,6 +59,13 @@ export const BODY_MODULES = [
     corridorRadiusWU: 240,
   },
   {
+    id: 'mod_sensor_post', name: 'Sensor Post',
+    desc: 'Extends discovery pulses to hidden POIs across this claim’s sector and files one free local rumor card per sector-day. It does not reveal exact positions or widen combat contact scans.',
+    cost: 11000, techReq: 'tech_long_range_survey',
+    slots: 1,
+    effect: 'sensor_post',
+  },
+  {
     id: 'mod_defense', name: 'Defense Battery', desc: 'Automated turret that protects the body from raids. Required on dangerous frontier claims.',
     cost: 8000, techReq: 'tech_outpost_charter',
     slots: 1,
@@ -195,3 +202,13 @@ export const BODY_SLOTS_BY_SIZE = { S: 2, M: 3, L: 4 };
 export const CLAIM_COST = 15000;
 
 export const BODY_MODULE_BY_ID = new Map(BODY_MODULES.map((m) => [m.id, m]));
+
+export function claimSensorPostActive(state, sectorId = null) {
+  const wantedSector = sectorId || (state && state.world && state.world.currentSectorId);
+  if (!wantedSector) return false;
+  const bodies = state && state.claims && state.claims.bodies;
+  return Array.isArray(bodies) && bodies.some((body) => body && body.owned !== false
+    && body.sectorId === wantedSector
+    && Array.isArray(body.modules)
+    && body.modules.includes('mod_sensor_post'));
+}

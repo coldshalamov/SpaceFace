@@ -16,7 +16,7 @@ import { confirm, isConfirmOpen } from '../confirm.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
-const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_refinery', 'mod_throughline_sling', 'mod_defense', 'mod_teleporter'];
+const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_refinery', 'mod_sensor_post', 'mod_throughline_sling', 'mod_defense', 'mod_teleporter'];
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;

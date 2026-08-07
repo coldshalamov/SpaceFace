@@ -26,6 +26,7 @@ import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
   normalizeFrontierRumorState,
+  sensorPostRumorOffer,
 } from '../data/frontierRumors.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
@@ -236,6 +237,7 @@ export const world = {
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     bus.on('ui:purchaseFrontierRumor', (p) => this._onPurchaseFrontierRumor(p || {}));
+    bus.on('claim:sensorPostRumor', (p) => this._onSensorPostRumor(p || {}));
     bus.on('poi:discovered', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
@@ -1900,26 +1902,51 @@ export const world = {
       this.bus.emit('toast', { text: 'That rumor card is no longer available', kind: 'warn', ttl: 3 });
       return false;
     }
+    return this._acquireFrontierRumor(offer, { charge: true });
+  },
+
+  _onSensorPostRumor({ bodyId }) {
+    const bodies = this.state.claims && this.state.claims.bodies;
+    const body = Array.isArray(bodies)
+      ? bodies.find((row) => row && row.id === bodyId && row.owned !== false
+        && Array.isArray(row.modules) && row.modules.includes('mod_sensor_post'))
+      : null;
+    if (!body) return false;
+    return this._acquireFrontierRumor(sensorPostRumorOffer(this.state, body), { charge: false });
+  },
+
+  _acquireFrontierRumor(offer, { charge = false } = {}) {
+    if (!offer) return false;
     const own = this._frontierRumorState();
     if (own.byId[offer.id]) return true;
-    const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
-    if (credits < offer.price) {
-      this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
-      return false;
+    if (charge) {
+      const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
+      if (credits < offer.price) {
+        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+        return false;
+      }
+      this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });
     }
 
-    this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });
     const record = {
       ...offer,
       heardAt: Math.max(0, Number(this.state.simTime) || 0),
       phase: 'rumored',
     };
     own.byId[record.id] = record;
-    const receipt = { type: 'purchased', rumorId: record.id, kind: record.kind, sectorId: record.sectorId, t: record.heardAt };
+    const receipt = {
+      type: charge ? 'purchased' : 'generated',
+      rumorId: record.id,
+      kind: record.kind,
+      sectorId: record.sectorId,
+      source: record.source,
+      t: record.heardAt,
+    };
     own.receipts.push(receipt);
     while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
     this.bus.emit('frontierRumor:acquired', { ...record, bearingCenter: { ...record.bearingCenter } });
-    this.bus.emit('toast', { text: `${record.kindLabel} added · approximate search only`, kind: 'info', ttl: 4 });
+    const sourceLabel = record.source === 'sensor_post' ? 'Sensor Post intel' : record.kindLabel;
+    this.bus.emit('toast', { text: `${sourceLabel} added · approximate search only`, kind: 'info', ttl: 4 });
     return true;
   },
 

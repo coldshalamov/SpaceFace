@@ -15,6 +15,8 @@
 //   - BUILD THROUGHLINE: an Industrial Refinery consumes carried industrial goods to align one
 //     permanent acceleration ring + nav relay toward a real station. Claims owns the durable
 //     construction receipt; travelLanes and traffic consume it without becoming save writers.
+//   - SENSOR POST: once per sector-day, emits one owned local-intel request. World validates and
+//     records the fuzzy rumor; scanner only consumes the post's presence for non-combat POI range.
 //
 // Specialization behavior ticks in update():
 //   - REFINERY converts delivered ore into refined goods (REFINE_MAP truth, 2:1) into an output
@@ -81,6 +83,7 @@ const SLING_BODY_CLEARANCE_WU = 160;
 const SLING_STATION_CLEARANCE_WU = 180;
 const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
+const CLAIM_DAY_SECONDS = 600;
 
 function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
@@ -299,6 +302,11 @@ export const claims = {
       });
       this.bus.emit('toast', {
         text: 'Throughline fabricated — ring and relay aligning to ' + (this._stationName(body.infrastructure.stationId) || 'station'),
+        kind: 'good', ttl: 5,
+      });
+    } else if (mod.effect === 'sensor_post') {
+      this.bus.emit('toast', {
+        text: 'Sensor Post online — sector POI coverage and one local rumor per day',
         kind: 'good', ttl: 5,
       });
     } else {
@@ -772,6 +780,7 @@ export const claims = {
     if (!bodies || !bodies.length) return;
     let anySpec = false;
     for (const body of bodies) {
+      this._tickSensorPost(body, state);
       if (body.spec) {
         anySpec = true;
         this._tickSpec(body, dt, state);
@@ -795,6 +804,15 @@ export const claims = {
       meta.raidAccum -= SPEC_RAID_EVERY_S;
       this._rollRaids(bodies, state);
     }
+  },
+
+  _tickSensorPost(body, state) {
+    if (!body || !Array.isArray(body.modules) || !body.modules.includes('mod_sensor_post')) return false;
+    const dayIndex = Math.max(0, Math.floor((Number(state.simTime) || 0) / CLAIM_DAY_SECONDS));
+    if (body.sensorPostLastRumorDay === dayIndex) return false;
+    body.sensorPostLastRumorDay = dayIndex;
+    this.bus.emit('claim:sensorPostRumor', { bodyId: body.id, sectorId: body.sectorId, dayIndex });
+    return true;
   },
 
   _tickSpec(body, dt, state) {
@@ -1416,6 +1434,7 @@ export const claims = {
       e.data.claimPlayerVerb = def ? def.playerVerb : 'Open the Base interface to build this claim.';
       e.data.claimTravelInfrastructureId = infrastructure ? infrastructure.id : null;
       e.data.claimTravelInfrastructureOperational = infrastructure ? infrastructure.operational === true : false;
+      e.data.claimSensorPostActive = Array.isArray(body.modules) && body.modules.includes('mod_sensor_post');
     }
   },
 

@@ -10,6 +10,7 @@ import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
+import { claimSensorPostActive } from '../data/claimableBodies.js';
 import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
@@ -24,6 +25,9 @@ export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
 const HIDDEN_POI_RADIUS = 2000;
+// Existing authored sectors top out at 5,500 WU from center. Twelve thousand covers the full
+// diameter from one navigable edge to the other without becoming an unbounded/global scan.
+export const SENSOR_POST_POI_RANGE = 12000;
 const ASTEROID_HIGHLIGHT_S = 20;
 const PINGED_S = 45;
 const SIGNAL_RECORD_CAP = 64;
@@ -55,11 +59,15 @@ export function scannerProfileForState(state) {
     maxFittedModuleMod(state, 'scanRangeMult', 1),
   );
   const pingPersistMult = Math.max(0.05, maxFittedModuleMod(state, 'pingPersistMult', 1));
+  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult;
+  const sensorPostActive = claimSensorPostActive(state, state && state.world && state.world.currentSectorId);
   return {
     radiusMult,
     pingPersistMult,
     nearRadius: NEAR_SCAN_RADIUS * radiusMult,
-    hiddenPoiRadius: HIDDEN_POI_RADIUS * radiusMult,
+    hiddenPoiRadius,
+    poiRadius: sensorPostActive ? Math.max(hiddenPoiRadius, SENSOR_POST_POI_RANGE) : hiddenPoiRadius,
+    sensorPostActive,
     pingPersistS: PINGED_S * pingPersistMult,
   };
 }
@@ -520,7 +528,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       sourceId,
       entityId: entity && entity.id || null,
       pos,
-      range: profile.hiddenPoiRadius,
+      range: profile.poiRadius || profile.hiddenPoiRadius,
       requiresTriangulation: poi.requiresTriangulation === true || entityData.requiresTriangulation === true,
       triangulated: poi.anomalyTriangulated === true || entityData.anomalyTriangulated === true,
       triangulation: poi.triangulation || entityData.triangulation || null,
@@ -824,7 +832,7 @@ export const scanner = {
       }
     }
 
-    if (sectorId) this._pingHiddenPois(state, sectorId, origin, profile.hiddenPoiRadius);
+    if (sectorId) this._pingHiddenPois(state, sectorId, origin, profile.poiRadius);
     const signals = this._scanSignals(state, sectorId, origin, now, candidates, profile);
     this.bus.emit('scan:completed', { targetId: null, sectorId, found, signalCount: signals.length });
     if (signals.length) this.bus.emit('signal:scanResults', {

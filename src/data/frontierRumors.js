@@ -214,26 +214,21 @@ export function frontierRumorOwned(state, rumorId) {
   return !!(byId && byId[String(rumorId || '')]);
 }
 
-/**
- * Build the one bar rumor available at a station for the current 10-minute sector-day.
- * The selection is stable and never mutates state. Purchased cards return null until the next day.
- */
-export function frontierRumorOffer(state, stationId) {
-  const source = sourceForStation(stationId);
-  if (!source) return null;
+function buildRumorOffer(state, source) {
   const dayIndex = dayIndexFor(state);
   const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
-  const regional = regionalSectors(source.sector.id, 2);
-  const firstKind = hash32(seed, stationId, dayIndex, 'frontier-rumor-kind') % FRONTIER_RUMOR_KINDS.length;
+  const regional = regionalSectors(source.sourceSectorId, source.hops);
+  const firstKind = hash32(seed, source.sourceKey, dayIndex, 'frontier-rumor-kind') % FRONTIER_RUMOR_KINDS.length;
   let kindDef = null;
   let candidates = [];
   for (let step = 0; step < FRONTIER_RUMOR_KINDS.length; step++) {
     const proposed = FRONTIER_RUMOR_KINDS[(firstKind + step) % FRONTIER_RUMOR_KINDS.length];
     const regionalCandidates = candidatesForKind(proposed.id, regional, seed)
       .filter((candidate) => candidateStillUnknown(state, candidate));
-    const fallback = regionalCandidates.length
+    const fallback = regionalCandidates.length || !source.allowGlobalFallback
       ? regionalCandidates
-      : candidatesForKind(proposed.id, SECTORS, seed).filter((candidate) => candidateStillUnknown(state, candidate));
+      : candidatesForKind(proposed.id, SECTORS, seed)
+        .filter((candidate) => candidateStillUnknown(state, candidate));
     if (!fallback.length) continue;
     kindDef = proposed;
     candidates = fallback;
@@ -241,27 +236,28 @@ export function frontierRumorOffer(state, stationId) {
   }
   if (!kindDef || !candidates.length) return null;
 
-  const pick = hash32(seed, stationId, dayIndex, kindDef.id, 'frontier-rumor-target') % candidates.length;
+  const pick = hash32(seed, source.sourceKey, dayIndex, kindDef.id, 'frontier-rumor-target') % candidates.length;
   const candidate = candidates[pick];
   const targetGlobal = sectorLocalToGlobalForSector(candidate.localPos, candidate.sector.id);
-  const offsetAngle = (hash32(seed, stationId, dayIndex, candidate.targetId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
-  const offsetDistance = 120 + (hash32(seed, stationId, dayIndex, candidate.targetId, 'bearing-offset-distance') % 221);
+  const offsetAngle = (hash32(seed, source.sourceKey, dayIndex, candidate.targetId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 120 + (hash32(seed, source.sourceKey, dayIndex, candidate.targetId, 'bearing-offset-distance') % 221);
   const bearingCenter = {
     x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
     z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
   };
   const radius = Math.ceil((Math.max(360, candidate.targetRadius + offsetDistance + 120)) / 20) * 20;
-  const id = `frontier-rumor:${stationId}:${dayIndex}:${kindDef.id}:${candidate.targetId}`;
+  const id = `${source.idPrefix}:${dayIndex}:${kindDef.id}:${candidate.targetId}`;
   if (frontierRumorOwned(state, id)) return null;
 
   const tier = Math.max(0, finite(candidate.sector.tier, 0));
-  const price = kindDef.price + tier * 35;
+  const price = source.free ? 0 : kindDef.price + tier * 35;
   return {
     id,
     schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
-    source: 'bar',
-    sourceStationId: source.station.id,
-    sourceSectorId: source.sector.id,
+    source: source.source,
+    sourceStationId: source.sourceStationId || null,
+    sourceBodyId: source.sourceBodyId || null,
+    sourceSectorId: source.sourceSectorId,
     dayIndex,
     kind: kindDef.id,
     kindLabel: kindDef.label,
@@ -277,6 +273,41 @@ export function frontierRumorOffer(state, stationId) {
     phase: 'rumored',
     text: offerCopy(candidate, radius),
   };
+}
+
+/**
+ * Build the one bar rumor available at a station for the current 10-minute sector-day.
+ * The selection is stable and never mutates state. Purchased cards return null until the next day.
+ */
+export function frontierRumorOffer(state, stationId) {
+  const stationSource = sourceForStation(stationId);
+  if (!stationSource) return null;
+  return buildRumorOffer(state, {
+    source: 'bar',
+    sourceKey: stationSource.station.id,
+    sourceStationId: stationSource.station.id,
+    sourceSectorId: stationSource.sector.id,
+    hops: 2,
+    allowGlobalFallback: true,
+    free: false,
+    idPrefix: `frontier-rumor:${stationSource.station.id}`,
+  });
+}
+
+/** One free, strictly local card for an owned Sensor Post. */
+export function sensorPostRumorOffer(state, body) {
+  if (!body || body.owned === false || !body.id || !body.sectorId
+    || !Array.isArray(body.modules) || !body.modules.includes('mod_sensor_post')) return null;
+  return buildRumorOffer(state, {
+    source: 'sensor_post',
+    sourceKey: body.id,
+    sourceBodyId: body.id,
+    sourceSectorId: body.sectorId,
+    hops: 0,
+    allowGlobalFallback: false,
+    free: true,
+    idPrefix: `frontier-rumor:sensor-post:${body.id}`,
+  });
 }
 
 export default frontierRumorOffer;

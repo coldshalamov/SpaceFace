@@ -117,7 +117,7 @@ export const TECH_NODES = [
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 60000, rp: 90 },
-    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l'], flags: ['wormhole_access'] },
+    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l', 'mod_sensor_post'], flags: ['wormhole_access'] },
   },
   {
     id: 'tech_advanced_navigation', name: 'Advanced Navigation', branch: 'drives', prereqs: ['tech_long_range_survey'],
