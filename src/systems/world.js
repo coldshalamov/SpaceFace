@@ -22,6 +22,11 @@
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import {
+  FRONTIER_RUMOR_RECEIPT_LIMIT,
+  frontierRumorOffer,
+  normalizeFrontierRumorState,
+} from '../data/frontierRumors.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
@@ -187,6 +192,7 @@ export const world = {
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
     if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
+    state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
@@ -229,6 +235,10 @@ export const world = {
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
+    bus.on('ui:purchaseFrontierRumor', (p) => this._onPurchaseFrontierRumor(p || {}));
+    bus.on('poi:discovered', (p) => this._onFrontierRumorPoi(p || {}));
+    bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
+    bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
     bus.on('entity:killed', (p) => {
@@ -1878,6 +1888,81 @@ export const world = {
     return true;
   },
 
+  _frontierRumorState() {
+    const normalized = normalizeFrontierRumorState(this.state.world.frontierRumors);
+    this.state.world.frontierRumors = normalized;
+    return normalized;
+  },
+
+  _onPurchaseFrontierRumor({ rumorId, stationId }) {
+    const offer = frontierRumorOffer(this.state, stationId);
+    if (!offer || offer.id !== rumorId) {
+      this.bus.emit('toast', { text: 'That rumor card is no longer available', kind: 'warn', ttl: 3 });
+      return false;
+    }
+    const own = this._frontierRumorState();
+    if (own.byId[offer.id]) return true;
+    const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
+    if (credits < offer.price) {
+      this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+      return false;
+    }
+
+    this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });
+    const record = {
+      ...offer,
+      heardAt: Math.max(0, Number(this.state.simTime) || 0),
+      phase: 'rumored',
+    };
+    own.byId[record.id] = record;
+    const receipt = { type: 'purchased', rumorId: record.id, kind: record.kind, sectorId: record.sectorId, t: record.heardAt };
+    own.receipts.push(receipt);
+    while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+    this.bus.emit('frontierRumor:acquired', { ...record, bearingCenter: { ...record.bearingCenter } });
+    this.bus.emit('toast', { text: `${record.kindLabel} added · approximate search only`, kind: 'info', ttl: 4 });
+    return true;
+  },
+
+  _resolveFrontierRumors(predicate, reason) {
+    const own = this._frontierRumorState();
+    let resolved = 0;
+    for (const record of Object.values(own.byId)) {
+      if (!record || record.phase !== 'rumored' || !predicate(record)) continue;
+      record.phase = 'resolved';
+      record.resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+      record.resolution = reason;
+      const receipt = { type: 'resolved', rumorId: record.id, kind: record.kind, sectorId: record.sectorId, reason, t: record.resolvedAt };
+      own.receipts.push(receipt);
+      while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+      this.bus.emit('frontierRumor:resolved', { ...receipt });
+      this.bus.emit('toast', { text: `Rumor confirmed · ${record.kindLabel}`, kind: 'good', ttl: 3.5 });
+      resolved++;
+    }
+    return resolved;
+  },
+
+  _onFrontierRumorPoi(payload) {
+    const poiId = String(payload.poiId || '').trim();
+    if (!poiId) return 0;
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    return this._resolveFrontierRumors(
+      (record) => (record.kind === 'anomaly' || record.kind === 'cache')
+        && record.targetId === poiId
+        && (!sectorId || record.sectorId === sectorId),
+      'poi_found',
+    );
+  },
+
+  _onFrontierRumorEncounter(payload) {
+    if (payload.kind !== 'bounty_hunter' && payload.kind !== 'named_hunter') return 0;
+    const sectorId = payload.sectorId || this.state.world.currentSectorId;
+    if (!sectorId) return 0;
+    return this._resolveFrontierRumors(
+      (record) => record.kind === 'hunter' && record.sectorId === sectorId,
+      'hunter_contact',
+    );
+  },
+
   // =========================================================================================
   // per-tick update: jump state machine, fuel, hazards, POI scan, cooldown
   // =========================================================================================
@@ -2560,6 +2645,14 @@ export const world = {
     if (!fieldId) return;
     const disc = this._discoveryFor(this.state.world.currentSectorId);
     disc.fieldsDepleted[fieldId] = clamp(depleted == null ? 1 : depleted, 0, 1);
+    if (depleted == null || Number(depleted) > 0) {
+      const sectorId = this.state.world.currentSectorId;
+      this._resolveFrontierRumors(
+        (record) => record.kind === 'vein' && record.targetId === fieldId
+          && (!sectorId || record.sectorId === sectorId),
+        'vein_worked',
+      );
+    }
   },
 
   _onAnomalyTriangulated(payload) {
@@ -2673,6 +2766,7 @@ export const world = {
       discovery: cloneSaveTree(state.world.discovery || {}),
       scanPings: cloneSaveTree(state.world.scanPings || {}),
       pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
+      frontierRumors: cloneSaveTree(this._frontierRumorState()),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
@@ -2708,6 +2802,7 @@ export const world = {
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
+    state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
@@ -2760,6 +2855,7 @@ export const world = {
     state.world.discovery = {};
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
+    state.world.frontierRumors = normalizeFrontierRumorState(null);
     state.world.records = createEmptyRecordsBag();
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};

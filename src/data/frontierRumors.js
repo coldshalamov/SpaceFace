@@ -1,0 +1,282 @@
+// Deterministic frontier rumor cards.
+//
+// A card is knowledge, not navigation authority: it names a real regional target but exposes only
+// an approximate global_v1 search circle. World owns purchased/resolved records; bar and map code
+// consume the pure offer/read helpers here.
+
+import { hash32 } from '../core/rng.js';
+import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { SECTORS } from './sectors.js';
+
+export const FRONTIER_RUMOR_DAY_SECONDS = 600;
+export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
+export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
+
+export const FRONTIER_RUMOR_KINDS = Object.freeze([
+  Object.freeze({ id: 'hunter', label: 'Hunter Location', price: 260 }),
+  Object.freeze({ id: 'vein', label: 'Vein Whisper', price: 220 }),
+  Object.freeze({ id: 'anomaly', label: 'Anomaly Bearing', price: 320 }),
+  Object.freeze({ id: 'cache', label: 'Cache Coordinate', price: 280 }),
+]);
+
+const KIND_BY_ID = new Map(FRONTIER_RUMOR_KINDS.map((row) => [row.id, row]));
+const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
+const STATION_SOURCE = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_SOURCE.set(station.id, { station, sector });
+  }
+}
+
+const FIELD_LABELS = Object.freeze({
+  ast_common_rock: 'common-rock',
+  ast_metallic: 'metallic',
+  ast_crystalline: 'crystalline',
+  ast_icy: 'ice',
+  ast_rare_exotic: 'exotic',
+  ast_gas_cloud: 'gas-cloud',
+});
+
+function clonePlain(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function finitePoint(value) {
+  if (!value || !Number.isFinite(Number(value.x)) || !Number.isFinite(Number(value.z))) return null;
+  return { x: Number(value.x), z: Number(value.z) };
+}
+
+function dayIndexFor(state) {
+  return Math.max(0, Math.floor(finite(state && state.simTime, 0) / FRONTIER_RUMOR_DAY_SECONDS));
+}
+
+function regionalSectors(sourceSectorId, hops = 2) {
+  const source = SECTOR_BY_ID.get(sourceSectorId);
+  if (!source) return [];
+  const seen = new Set([source.id]);
+  let frontier = [source.id];
+  for (let depth = 0; depth < hops; depth++) {
+    const next = [];
+    for (const sectorId of frontier) {
+      const sector = SECTOR_BY_ID.get(sectorId);
+      for (const neighborId of sector && sector.neighbors || []) {
+        if (seen.has(neighborId) || !SECTOR_BY_ID.has(neighborId)) continue;
+        seen.add(neighborId);
+        next.push(neighborId);
+      }
+    }
+    frontier = next;
+  }
+  return Array.from(seen, (id) => SECTOR_BY_ID.get(id)).filter(Boolean);
+}
+
+function pseudoHunterPos(seed, sectorId) {
+  const angle = (hash32(seed, sectorId, 'hunter-angle') / 0x100000000) * Math.PI * 2;
+  const radius = 720 + (hash32(seed, sectorId, 'hunter-radius') % 780);
+  return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+}
+
+function candidatesForKind(kind, sectors, seed) {
+  const candidates = [];
+  for (const sector of sectors) {
+    if (kind === 'hunter') {
+      if (finite(sector.security, 1) >= 0.7) continue;
+      candidates.push({
+        kind,
+        sector,
+        targetId: `hunter:${sector.id}`,
+        targetName: 'hunter patrol',
+        localPos: pseudoHunterPos(seed, sector.id),
+        targetRadius: 260,
+      });
+      continue;
+    }
+    if (kind === 'vein') {
+      for (const field of sector.fields || []) {
+        const localPos = finitePoint(field.center);
+        if (!field || !field.id || !localPos) continue;
+        candidates.push({
+          kind,
+          sector,
+          targetId: field.id,
+          targetName: `${FIELD_LABELS[field.type] || 'ore'} vein`,
+          localPos,
+          targetRadius: Math.max(120, finite(field.clusterRadius, 260)),
+          fieldType: field.type || null,
+        });
+      }
+      continue;
+    }
+    const wantedType = kind === 'anomaly' ? 'anomaly' : 'cache';
+    for (const poi of sector.pois || []) {
+      const localPos = finitePoint(poi && poi.pos);
+      if (!poi || poi.type !== wantedType || !poi.id || !localPos) continue;
+      candidates.push({
+        kind,
+        sector,
+        targetId: poi.id,
+        targetName: poi.name || (kind === 'anomaly' ? 'anomaly return' : 'unregistered cache'),
+        localPos,
+        targetRadius: kind === 'anomaly' ? 300 : 220,
+      });
+    }
+  }
+  return candidates;
+}
+
+function candidateStillUnknown(state, candidate) {
+  const discovery = state && state.world && state.world.discovery;
+  const sector = discovery && discovery[candidate.sector.id];
+  if (!sector) return true;
+  if (candidate.kind === 'vein') {
+    return !(sector.fieldsDepleted && finite(sector.fieldsDepleted[candidate.targetId], 0) > 0);
+  }
+  if (candidate.kind === 'anomaly' || candidate.kind === 'cache') {
+    const poi = sector.pois && sector.pois[candidate.targetId];
+    return !(poi && (poi.discovered || poi.identified || poi.investigated || poi.defeated));
+  }
+  return true;
+}
+
+function octantFor(point) {
+  const angle = Math.atan2(-finite(point && point.z), finite(point && point.x));
+  const names = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
+  return names[(Math.round(angle / (Math.PI / 4)) + 8) % 8];
+}
+
+function offerCopy(candidate, radius) {
+  const sectorName = candidate.sector.name || candidate.sector.id;
+  const bearing = octantFor(candidate.localPos);
+  if (candidate.kind === 'hunter') {
+    return `A contract hunter's drive was logged ${bearing} of ${sectorName}. The card marks a ${radius} WU patrol search, not a live transponder.`;
+  }
+  if (candidate.kind === 'vein') {
+    return `Shift crews are whispering about a ${candidate.targetName} ${bearing} of ${sectorName}. The card marks the working patch, not a rock lock.`;
+  }
+  if (candidate.kind === 'anomaly') {
+    return `An unstable return is bending traffic ${bearing} of ${sectorName}. The card carries only a coarse bearing; pulse from inside the ring.`;
+  }
+  return `A cargo tally points to an unclaimed cache ${bearing} of ${sectorName}. The coordinate is deliberately blurred until you search it in person.`;
+}
+
+function sourceForStation(stationId) {
+  return STATION_SOURCE.get(String(stationId || '')) || null;
+}
+
+export function createFrontierRumorState() {
+  return { schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION, byId: {}, receipts: [] };
+}
+
+export function normalizeFrontierRumorState(value) {
+  const input = value && typeof value === 'object' ? value : {};
+  const out = createFrontierRumorState();
+  const rows = input.byId && typeof input.byId === 'object' ? input.byId : {};
+  for (const [key, row] of Object.entries(rows)) {
+    if (!row || typeof row !== 'object') continue;
+    const id = String(row.id || key || '').trim();
+    const kind = String(row.kind || '').trim();
+    const sectorId = String(row.sectorId || '').trim();
+    const center = finitePoint(row.bearingCenter);
+    const radius = finite(row.radius, 0);
+    if (!id || !KIND_BY_ID.has(kind) || !SECTOR_BY_ID.has(sectorId) || !center || radius <= 0) continue;
+    out.byId[id] = {
+      ...clonePlain(row),
+      id,
+      kind,
+      sectorId,
+      bearingCenter: center,
+      radius,
+      phase: row.phase === 'resolved' ? 'resolved' : 'rumored',
+    };
+  }
+  if (Array.isArray(input.receipts)) {
+    out.receipts = input.receipts.slice(-FRONTIER_RUMOR_RECEIPT_LIMIT).map(clonePlain);
+  }
+  return out;
+}
+
+export function frontierRumorRecords(state, sectorId = null) {
+  const byId = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId;
+  if (!byId || typeof byId !== 'object') return [];
+  const wanted = sectorId == null ? null : String(sectorId);
+  return Object.values(byId)
+    .filter((row) => row && (!wanted || row.sectorId === wanted))
+    .map(clonePlain)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+export function frontierRumorOwned(state, rumorId) {
+  const byId = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId;
+  return !!(byId && byId[String(rumorId || '')]);
+}
+
+/**
+ * Build the one bar rumor available at a station for the current 10-minute sector-day.
+ * The selection is stable and never mutates state. Purchased cards return null until the next day.
+ */
+export function frontierRumorOffer(state, stationId) {
+  const source = sourceForStation(stationId);
+  if (!source) return null;
+  const dayIndex = dayIndexFor(state);
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const regional = regionalSectors(source.sector.id, 2);
+  const firstKind = hash32(seed, stationId, dayIndex, 'frontier-rumor-kind') % FRONTIER_RUMOR_KINDS.length;
+  let kindDef = null;
+  let candidates = [];
+  for (let step = 0; step < FRONTIER_RUMOR_KINDS.length; step++) {
+    const proposed = FRONTIER_RUMOR_KINDS[(firstKind + step) % FRONTIER_RUMOR_KINDS.length];
+    const regionalCandidates = candidatesForKind(proposed.id, regional, seed)
+      .filter((candidate) => candidateStillUnknown(state, candidate));
+    const fallback = regionalCandidates.length
+      ? regionalCandidates
+      : candidatesForKind(proposed.id, SECTORS, seed).filter((candidate) => candidateStillUnknown(state, candidate));
+    if (!fallback.length) continue;
+    kindDef = proposed;
+    candidates = fallback;
+    break;
+  }
+  if (!kindDef || !candidates.length) return null;
+
+  const pick = hash32(seed, stationId, dayIndex, kindDef.id, 'frontier-rumor-target') % candidates.length;
+  const candidate = candidates[pick];
+  const targetGlobal = sectorLocalToGlobalForSector(candidate.localPos, candidate.sector.id);
+  const offsetAngle = (hash32(seed, stationId, dayIndex, candidate.targetId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 120 + (hash32(seed, stationId, dayIndex, candidate.targetId, 'bearing-offset-distance') % 221);
+  const bearingCenter = {
+    x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+    z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+  };
+  const radius = Math.ceil((Math.max(360, candidate.targetRadius + offsetDistance + 120)) / 20) * 20;
+  const id = `frontier-rumor:${stationId}:${dayIndex}:${kindDef.id}:${candidate.targetId}`;
+  if (frontierRumorOwned(state, id)) return null;
+
+  const tier = Math.max(0, finite(candidate.sector.tier, 0));
+  const price = kindDef.price + tier * 35;
+  return {
+    id,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: source.station.id,
+    sourceSectorId: source.sector.id,
+    dayIndex,
+    kind: kindDef.id,
+    kindLabel: kindDef.label,
+    targetId: candidate.targetId,
+    targetName: candidate.targetName,
+    sectorId: candidate.sector.id,
+    sectorName: candidate.sector.name || candidate.sector.id,
+    fieldType: candidate.fieldType || null,
+    coordSpace: 'global_v1',
+    bearingCenter,
+    radius,
+    price,
+    phase: 'rumored',
+    text: offerCopy(candidate, radius),
+  };
+}
+
+export default frontierRumorOffer;

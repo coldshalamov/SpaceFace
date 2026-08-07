@@ -150,7 +150,8 @@ export function createGameState(seed) {
     world: {
       sectors: {}, currentSectorId: null,
       activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] },
-      discovery: {}, scanPings: {}, entryPoint: { x: 0, z: 0, heading: 0 },
+      discovery: {}, scanPings: {}, frontierRumors: { schemaVersion: 1, byId: {}, receipts: [] },
+      entryPoint: { x: 0, z: 0, heading: 0 },
       coordinateSchema: 'global_v1', frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 0,
     },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },

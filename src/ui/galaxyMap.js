@@ -36,6 +36,7 @@ import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
+import { frontierRumorMapReadouts } from './frontierRumorMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
@@ -1129,6 +1130,13 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
   };
 }
 
+function discoveryBearingReadouts(state, sectorId = null) {
+  return [
+    ...uniqueWreckMapReadouts(state, sectorId),
+    ...frontierRumorMapReadouts(state, sectorId),
+  ].sort((a, b) => String(a.wreckId || '').localeCompare(String(b.wreckId || '')));
+}
+
 /** Public identity printed beside the ship's own chart fix. Choice B is driven by its applied,
  * saved consequence flag; merely previewing or selecting that ending cannot change the map. */
 export function mapOperatorLabel(state) {
@@ -1265,7 +1273,7 @@ export function buildGalaxyModel(state) {
     const pos = s.position || { x: 0, y: 0 };
     const charted = isSectorCharted(state, s);
     const confidence = mapConfidenceForSector(state, s);
-    const bearingCount = uniqueWreckMapReadouts(state, s.id).length;
+    const bearingCount = discoveryBearingReadouts(state, s.id).length;
     const presence = charted ? (presenceBySector.get(s.id) || []) : [];
     const liveOwner = state && state.world && state.world.sectors && state.world.sectors[s.id];
     const node = {
@@ -1397,7 +1405,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
   const sectorName = (record && record.name) || sid || 'System';
   const confidence = mapConfidenceForSector(state, record || { id: sid });
   const ownership = buildClaimOwnershipMarkers(state, sid, options.claimsSystem || null);
-  const bearings = uniqueWreckMapReadouts(state, sid).map((readout) => ({
+  const bearings = discoveryBearingReadouts(state, sid).map((readout) => ({
     ...readout,
     drawCenter: globalToSectorLocalForSector(readout.center, sid),
     drawFixedPos: readout.fixedPos
@@ -1692,7 +1700,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts,
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
-    bearings: uniqueWreckMapReadouts(state, sectorId),
+    bearings: discoveryBearingReadouts(state, sectorId),
   };
 }
 
@@ -6314,6 +6322,7 @@ export const galaxyMapScreen = {
     const confidence = record ? mapConfidenceForSector(state, record) : null;
     const disc = discoveryForSector(state, sectorId);
     const exploration = sectorExplorationProgress(state, record || sectorId);
+    const rumorCards = frontierRumorMapReadouts(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
       <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
@@ -6323,6 +6332,13 @@ export const galaxyMapScreen = {
         <span>${escapeMapHtml(marker.name)}</span>
         <span class="gm-ins-row-val">${escapeMapHtml(marker.stageLabel)}</span>
       </button>`).join('');
+    const rumorRows = rumorCards.map((rumor) => `
+      <div class="gm-ins-section">
+        <div class="gm-ins-kind">${escapeMapHtml(rumor.statusLabel)}</div>
+        <div class="gm-ins-title">${escapeMapHtml(rumor.name)}</div>
+        <div class="gm-ins-note">${escapeMapHtml(rumor.detail)}</div>
+        <div class="gm-ins-note">${escapeMapHtml(rumor.objective)}</div>
+      </div>`).join('');
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6335,6 +6351,7 @@ export const galaxyMapScreen = {
       <div class="gm-ins-section">
         <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
       </div>
+      ${rumorRows}
       ${siteButtons ? `<div class="gm-ins-section"><div class="gm-ins-title">World Sites</div>${siteButtons}</div>` : ''}`;
   },
 

@@ -18,6 +18,7 @@ import { escapeHtml } from '../../comms.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import { icon } from '../icons.js';
+import { frontierRumorOffer, frontierRumorOwned } from '../../../data/frontierRumors.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const roleLabel = (r) => String(r || 'contact').replace(/_/g, ' ');
@@ -41,6 +42,7 @@ export function createBarScreen(ctx) {
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
   let pendingMissionOffer = null;
+  let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
 
@@ -90,6 +92,20 @@ export function createBarScreen(ctx) {
       (preflight.warning ? `<p class="sx-bar-offer__warning">${escapeHtml(preflight.warning)}</p>` : '') +
       (unmet ? `<p class="sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
       `<button type="button" class="sx-btn-primary" data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}>ACCEPT + TRACK</button>` +
+    `</section>`;
+  }
+
+  function frontierRumorOfferHtml() {
+    const offer = pendingFrontierRumorOffer;
+    if (!offer) return '';
+    return `<section class="sx-bar-offer" aria-label="Frontier rumor card">` +
+      `<div class="sx-bar-offer__chips">` +
+        `<span class="sx-bar-offer__chip is-warn">${escapeHtml(offer.kindLabel)}</span>` +
+        `<span class="sx-bar-offer__chip is-info">${escapeHtml(offer.sectorName)} search area</span>` +
+        `<span class="sx-bar-offer__chip is-info">${fmt(offer.price)} cr</span>` +
+      `</div>` +
+      `<p class="sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
+      `<button type="button" class="sx-btn-primary" data-buy-frontier-rumor="${escapeHtml(offer.id)}">BUY RUMOR CARD · ${fmt(offer.price)} CR</button>` +
     `</section>`;
   }
 
@@ -144,7 +160,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
             : `<p class="sx-muted">They have nothing to say.</p>`) +
-        `</div>` + missionOfferHtml(state) +
+        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() +
       `</div>`;
 
     const big = stageEl.querySelector('[data-bigpic]');
@@ -197,13 +213,42 @@ export function createBarScreen(ctx) {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     const id = b.getAttribute('data-contact');
     if (id === selectedId) return;
-    selectedId = id; saidText = null; pendingMissionOffer = null; acceptedMissionId = null;
+    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   });
 
   stageEl.addEventListener('click', (ev) => {
+    const rumorButton = ev.target.closest('[data-buy-frontier-rumor]');
+    if (rumorButton && !rumorButton.disabled) {
+      const rumorId = rumorButton.getAttribute('data-buy-frontier-rumor');
+      const offer = frontierRumorOffer(ctx.state || {}, sid());
+      if (!offer || offer.id !== rumorId) {
+        pendingFrontierRumorOffer = null;
+        saidText = 'That rumor card is no longer available.';
+        renderStage(ctx.state || {});
+        return;
+      }
+      const credits = Math.max(0, Math.floor(Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0));
+      if (credits < offer.price) {
+        saidText = `You need ${fmt(offer.price)} cr for that rumor card.`;
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Insufficient credits for rumor card', kind: 'warn', ttl: 3 });
+        renderStage(ctx.state || {});
+        return;
+      }
+      if (ctx.bus) {
+        ctx.bus.emit('ui:purchaseFrontierRumor', { rumorId, stationId: sid() });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      if (frontierRumorOwned(ctx.state || {}, rumorId)) {
+        pendingFrontierRumorOffer = null;
+        saidText = `${offer.kindLabel} added as an approximate amber search area. You still have to find it.`;
+      }
+      renderStage(ctx.state || {});
+      renderLeads(ctx.state || {});
+      return;
+    }
     const accept = ev.target.closest('[data-accept-mission]');
     if (accept && !accept.disabled) {
       const missionId = accept.getAttribute('data-accept-mission');
@@ -252,6 +297,7 @@ export function createBarScreen(ctx) {
     }
     saidText = (result && result.text) || 'They shrug.';
     pendingMissionOffer = result && result.missionOffer || null;
+    pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     renderStage(ctx.state || {});
     renderLeads(ctx.state || {});

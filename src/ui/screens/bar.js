@@ -19,6 +19,7 @@ import {
   stationContactStanding,
 } from '../../data/stationContacts.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
+import { frontierRumorOffer, frontierRumorOwned } from '../../data/frontierRumors.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
@@ -690,6 +691,13 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     /* ── BARKEEP ───────────────────────────────────────── */
     case 'barkeep': {
       if (choiceId === 'rumors') {
+        const rumor = frontierRumorOffer(state, stationId);
+        if (rumor) {
+          return {
+            text: rumor.text,
+            frontierRumorOffer: rumor,
+          };
+        }
         const survey = availableSurveyOffer(state, stationId);
         if (survey) {
           return {
@@ -1019,6 +1027,43 @@ export function createBarPanel(ctx) {
       return;
     }
 
+    const rumorBtn = ev.target.closest('[data-buy-frontier-rumor]');
+    if (rumorBtn) {
+      const rumorId = rumorBtn.getAttribute('data-buy-frontier-rumor');
+      const offer = frontierRumorOffer(ctx.state || {}, currentStationId);
+      const card = rumorBtn.closest('.st-bar-card');
+      const replyEl = card && card.querySelector('.st-bar-reply');
+      if (!offer || offer.id !== rumorId) {
+        if (replyEl) {
+          replyEl.textContent = 'That rumor card is no longer available.';
+          replyEl.classList.add('show');
+        }
+        rumorBtn.disabled = true;
+        rumorBtn.textContent = 'No Longer Available';
+        return;
+      }
+      const credits = Math.max(0, Math.floor(Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0));
+      if (credits < offer.price) {
+        if (replyEl) {
+          replyEl.textContent = 'You need ' + offer.price.toLocaleString('en-US') + ' cr for this rumor card.';
+          replyEl.classList.add('show');
+        }
+        ctx.bus.emit('toast', { text: 'Insufficient credits for rumor card', kind: 'warn', ttl: 3 });
+        return;
+      }
+      ctx.bus.emit('ui:purchaseFrontierRumor', { rumorId, stationId: currentStationId });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      if (frontierRumorOwned(ctx.state || {}, rumorId)) {
+        if (replyEl) {
+          replyEl.textContent = offer.kindLabel + ' added as an approximate amber search area. You still have to find it.';
+          replyEl.classList.add('show');
+        }
+        rumorBtn.disabled = true;
+        rumorBtn.textContent = 'Rumor Added';
+      }
+      return;
+    }
+
     const surveyBtn = ev.target.closest('[data-buy-survey]');
     if (surveyBtn) {
       const sectorId = surveyBtn.getAttribute('data-buy-survey');
@@ -1190,6 +1235,29 @@ export function createBarPanel(ctx) {
       }
       acceptButton.setAttribute('aria-label', acceptButton.title);
       offerWrap.appendChild(acceptButton);
+      reply.after(offerWrap);
+    } else if (result.frontierRumorOffer) {
+      const offer = result.frontierRumorOffer;
+      const offerWrap = document.createElement('div');
+      offerWrap.className = 'st-bar-offer';
+      const chips = document.createElement('div');
+      chips.className = 'st-mission-preflight st-bar-offer-preflight';
+      chips.innerHTML =
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--warn">' + escapeHtml(offer.kindLabel) + '</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">' + escapeHtml(offer.sectorName) + ' search area</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">' + escapeHtml(offer.price.toLocaleString('en-US')) + ' cr</span>';
+      offerWrap.appendChild(chips);
+      const warning = document.createElement('div');
+      warning.className = 'st-mission-preflight-warn st-bar-offer-warn';
+      warning.textContent = 'Approximate bearing only — no waypoint or automatic discovery.';
+      offerWrap.appendChild(warning);
+      const buyButton = document.createElement('button');
+      buyButton.className = 'st-bar-accept-btn';
+      buyButton.setAttribute('data-buy-frontier-rumor', offer.id);
+      buyButton.textContent = 'BUY RUMOR CARD - ' + offer.price.toLocaleString('en-US') + ' CR';
+      buyButton.title = 'Add an approximate amber search area to the Discovery map.';
+      buyButton.setAttribute('aria-label', buyButton.title);
+      offerWrap.appendChild(buyButton);
       reply.after(offerWrap);
     } else if (result.surveyOffer) {
       const offer = result.surveyOffer;
