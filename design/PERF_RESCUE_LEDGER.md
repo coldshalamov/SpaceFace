@@ -302,10 +302,34 @@ real Worker made delivery async.
 **Open:** real Workers, `OffscreenCanvas`, and checkpoint/journal restart. The default route does not
 yet use separated owners — the transport is proven, not adopted.
 
-## Chunk 5 — backend optimization + certification — NOT STARTED
+## Chunk 5 — backend optimization + certification — **DECISION RULES MET; measurement open**
 
-WebGL2 work-family optimization, a WebGPU parity slice (decide from evidence, do not assume),
-quiet-machine player-corridor certification, hard native trigger.
+### Evidence-driven backend + native decisions — MET (`npm run check:backend-decision`, 15/15)
+
+"Should we move to WebGPU?" and "is it time to go native?" are the two questions most likely to be
+settled by taste, vendor enthusiasm, or whoever argued last. Both are decidable from numbers, so
+`src/render/backendDecision.js` makes them functions with explicit thresholds. Disagreeing with a
+verdict now means disagreeing with a number.
+
+**It refuses rather than defaults.** Missing or partial evidence returns `insufficient-evidence` and
+names the missing fields. A default would be an assumption wearing a verdict's clothes.
+
+| threshold | value | why |
+|---|---|---|
+| `minFrameTimeGainRatio` | 1.25× | under a quarter is inside driver/machine noise — indistinguishable from a good afternoon |
+| `maxParityRegressions` | 0 | a backend that renders differently is not a faster backend, it is a different game |
+| `minSampleFrames` | 600 | fewer cannot see the tail |
+| `p99CeilingMs` | 50 | p99, not average — 60 fps average with a 90 ms tail is worse than a steady 50 |
+| `requiresWorkFamiliesExhausted` | true | otherwise "go native" becomes a way to skip an unfinished optimization |
+
+The gate drives both functions across every threshold in **both** directions, because a decision
+function that always says yes is just an opinion with a return type. Notably: a p99 of 120 ms with
+structural work unfinished returns **stay-browser**, and only flips to **go-native** once the work
+families are exhausted.
+
+**Open:** the WebGL2 work-family optimization itself, the WebGPU parity slice that would feed this
+evidence, and quiet-machine corridor certification runs. The rules are in place and gated; the
+measurements that feed them are not yet collected.
 
 ---
 
