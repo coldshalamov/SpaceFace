@@ -22,19 +22,25 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import * as THREE from 'three';
-
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
+import { readGlbJson as readGlbJsonChunk, sceneFromGlbJson as buildDecodedScene } from './lib/renderPackageRuntimeTable.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGE_DIR = resolve(ROOT, 'assets/ships/release/render-packages');
 
-/** Read a .glb container's JSON chunk without decoding any binary payload. */
+/**
+ * Read a .glb container's JSON chunk without decoding any binary payload.
+ *
+ * The graph rebuild is shared with the render-package runtime-table compiler so both agree on what
+ * GLTFLoader would actually produce. That matters: an earlier local copy of this rebuild treated
+ * every glTF node as at most one Mesh, which understates any node whose mesh carries multiple
+ * primitives — GLTFLoader wraps those in a Group of Meshes. `helios-trade-hub` decodes to 147 plan
+ * nodes, not the 33 the naive rebuild reported, and this gate silently agreed with itself because
+ * both sides of its comparison used the same wrong rebuild.
+ */
 function readGlbJson(path) {
-  const buffer = readFileSync(path);
-  if (buffer.readUInt32LE(0) !== 0x46546c67) throw new Error(`${path} is not a GLB container`);
-  return JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)).toString('utf8'));
+  return readGlbJsonChunk(readFileSync(path));
 }
 
 /**
@@ -43,36 +49,10 @@ function readGlbJson(path) {
  * geometry/material so the plan's resource collection has something real to mark.
  */
 function sceneFromGlbJson(json) {
-  const nodes = json.nodes || [];
-  const geometry = new THREE.BufferGeometry();
-  const material = new THREE.MeshStandardMaterial();
-
-  const build = (index) => {
-    const record = nodes[index];
-    const object = record.mesh === undefined ? new THREE.Object3D() : new THREE.Mesh(geometry, material);
-    object.name = record.name || '';
-    if (record.extras) object.userData = { ...record.extras };
-    for (const child of record.children || []) object.add(build(child));
-    return object;
-  };
-
-  const sceneRecord = (json.scenes || [])[json.scene ?? 0];
-  const roots = (sceneRecord && sceneRecord.nodes) || [];
-  if (roots.length === 1) return { scene: build(roots[0]), nodeCount: countReachable(nodes, roots) };
-  const scene = new THREE.Group();
-  scene.name = (sceneRecord && sceneRecord.name) || 'Scene';
-  for (const root of roots) scene.add(build(root));
-  return { scene, nodeCount: countReachable(nodes, roots) + 1 };
-}
-
-function countReachable(nodes, roots) {
-  let total = 0;
-  const walk = (index) => {
-    total++;
-    for (const child of nodes[index].children || []) walk(child);
-  };
-  for (const root of roots) walk(root);
-  return total;
+  const scene = buildDecodedScene(json);
+  let nodeCount = 0;
+  scene.traverse(() => { nodeCount++; });
+  return { scene, nodeCount };
 }
 
 async function checkPackage(id) {

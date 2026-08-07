@@ -963,6 +963,145 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   return blueprint;
 }
 
+/**
+ * Serializable runtime table for one authored scene — the render-package v2 payload.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * `compileBlueprint` fuses two jobs: it *validates* an authored GLB against the asset contract, and
+ * it *derives* the runtime semantics (per-node tags, contract markers, canopy classification,
+ * root-relative transforms, scene bounds). Validation belongs offline — it is a build-time question
+ * about authored source. Derivation is what the shipping loader was still paying for on every
+ * package load, and residency's `onEvict` path means an evict-then-reload runs it mid-flight.
+ *
+ * This function performs the derivation half alone and returns plain JSON. The offline compiler
+ * calls it once and writes the result into `render-package.json`; the shipping loader then binds it
+ * with `bindAuthoredRuntimeTable` and derives nothing.
+ *
+ * ORDERING CONTRACT — the whole design rests on this
+ * --------------------------------------------------
+ * Every entry is addressed by `planIndex`, the node's position in the loader's flat instance plan.
+ * `Object3D.traverse()` visits `this` and then each child's subtree in order; the plan's `visit()`
+ * pushes the node and then recurses over `children` in order. They are the same depth-first
+ * pre-order, so a counter incremented once per visited node IS the plan index — no lookup table and
+ * no name matching. Each entry also carries its `name`, which the binder asserts against the plan.
+ * That is a checksum, not discovery: it converts a silent mis-binding into a loud failure.
+ *
+ * Derivation reads only node names, `userData`, the parent chain, slot, and material *names*. It
+ * touches no geometry buffers and no textures, which is what lets the offline compiler run this
+ * exact code against a graph reconstructed from the GLB's JSON chunk without decoding or
+ * transcoding anything.
+ */
+export const AUTHORED_RUNTIME_TABLE_SCHEMA = 'spaceface.renderPackageRuntime.v1';
+
+export function deriveAuthoredRuntimeTable(scene, options = {}) {
+  if (!scene || !scene.isObject3D) throw new Error('deriveAuthoredRuntimeTable requires a scene root');
+  const url = options.url || '';
+  const slot = options.slot || null;
+  const legacyPart = options.legacyPart === true;
+
+  scene.updateMatrixWorld(true);
+  _inverseRoot.copy(scene.matrixWorld).invert();
+
+  const primitives = [];
+  const markers = [];
+  const hidden = [];
+  let planIndex = -1;
+
+  scene.traverse((node) => {
+    planIndex++;
+    if (node === scene) return;
+    const tags = collectTags(node, scene, slot, legacyPart);
+    _relative.multiplyMatrices(_inverseRoot, node.matrixWorld);
+
+    // Contract violations are the offline validator's business. Derivation only has to agree with
+    // compileBlueprint about which nodes contribute runtime entries, so mirror its skips exactly.
+    if (node.isLight || node.isCamera || node.isLine || node.isPoints) return;
+
+    const normalizedName = String(node.name || '').toUpperCase().replace(/[\s-]+/g, '_');
+    const nonRenderHelper = normalizedName === 'COLLISION_HULL'
+      || node.userData?.nonRender === true
+      || node.userData?.spaceface?.nonRender === true;
+    if (node.isMesh && nonRenderHelper) {
+      hidden.push(planIndex);
+      return;
+    }
+
+    if (node.isMesh) {
+      if (!node.geometry || !node.material || Array.isArray(node.material)) return;
+      const canopy = !!(tags.canopy || isCanopy(node, slot));
+      primitives.push({
+        planIndex,
+        name: node.name || `Primitive_${primitives.length}`,
+        canopy,
+        matrix: _relative.toArray(),
+        tags: serializeRuntimeTags(buildPrimitiveTags(tags, { legacyPart }, canopy)),
+      });
+    } else if (isContractMarker(node, tags)) {
+      const markerTags = {
+        ...cleanRuntimeTags(tags),
+        lod: tags.lod || (legacyPart ? 'lod0' : undefined),
+      };
+      markers.push({
+        planIndex,
+        name: node.name || `Marker_${markers.length}`,
+        matrix: _relative.toArray(),
+        tags: serializeRuntimeTags(markerTags),
+        userData: serializeRuntimeUserData(node.userData),
+      });
+    }
+  });
+
+  _bounds.setFromObject(scene);
+  _bounds.getSize(_boundsSize);
+  _bounds.getCenter(_boundsCenter);
+
+  return {
+    schema: AUTHORED_RUNTIME_TABLE_SCHEMA,
+    url,
+    slot,
+    legacyPart,
+    nodeCount: planIndex + 1,
+    bounds: {
+      min: sceneBoundsArray(_bounds.min),
+      max: sceneBoundsArray(_bounds.max),
+      size: sceneBoundsArray(_boundsSize),
+      center: sceneBoundsArray(_boundsCenter),
+    },
+    primitives,
+    markers,
+    hidden,
+  };
+}
+
+/**
+ * `driveAnchorMatrix` is the only Matrix4 that survives into runtime tags; everything else is a
+ * string, boolean, number or number array. `undefined` values are dropped so the serialized table
+ * round-trips through JSON without inventing explicit nulls that would not compare equal.
+ */
+function serializeRuntimeTags(tags) {
+  const out = {};
+  for (const [key, value] of Object.entries(tags || {})) {
+    if (value === undefined) continue;
+    if (key === 'driveAnchorObject') continue;
+    out[key] = value && value.isMatrix4 ? value.toArray() : value;
+  }
+  return out;
+}
+
+function serializeRuntimeUserData(userData) {
+  const out = {};
+  for (const [key, value] of Object.entries(userData || {})) {
+    if (value === undefined || typeof value === 'function') continue;
+    if (key === 'spacefaceTags' || key === 'spacefacePartUrl') continue;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      out[key] = JSON.parse(JSON.stringify(value));
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
 
 function validateRootTransform(scene, errors) {
   const eps = 1e-6;
