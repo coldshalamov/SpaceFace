@@ -298,8 +298,36 @@ instead of a gate. Archetype identity is the (geometry, material) pair — the t
 match for one instanced draw — cached per mesh in a `WeakMap`, so the common case is a single lookup
 with no allocation and a disposed mesh takes its entry with it rather than pinning geometry alive.
 
+#### Verified in a real browser (2026-08-07)
+
+The Browser pane is not displayed in this environment, so the page never composites: rAF is
+throttled, `fps` reads 0 and no run can be entered by clicking. Driving the registry directly works
+around it — `SF.registry.get('render')` exposes the live render system.
+
+Observed on the running game:
+
+| | |
+|---|---|
+| `_presentationSnapshot` present on the live renderer | yes |
+| `generation` after natural frames | 1 → **2** (the projection executes in the real draw path) |
+| `grows` across those frames | **1**, unchanged |
+
+`grows` staying at 1 while `generation` advances is the property that matters: the projection
+reserves once and never reallocates per frame. Had the reserve logic been wrong, `grows` would climb
+with `generation`.
+
+A `TypeError: post-target frame origin requires display/render IDs and sim tick` is thrown by
+`registry.step` when pumped without an active run. It is a pre-existing guard, not this change —
+`renderUpdate` still advanced the snapshot past it.
+
+**Not yet observed:** a populated frame. `count` is 0 because no run was active, so the projection
+has not been watched handling real entities in game.
+
 **Open:** the per-entity draw path still executes alongside the snapshot. That is the parity window
-running in production, and it is the precondition for deleting the incumbent — not an oversight. Socket-attached plume and
+running in production. Deleting the incumbent is deliberately **not** done yet: the parity evidence
+covers synthetic records and an empty live frame, and the incumbent is the only reference able to
+prove the replacement right on a populated scene. Deleting it before observing one populated frame
+would remove the fallback and the evidence at the same time. Socket-attached plume and
 distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is the seam for GPU upload.
 
 ## Chunk 4 — sim / render / platform separation — **TRANSPORT + DIGESTS MET; thread move open**
