@@ -2032,7 +2032,7 @@ export const world = {
     jump._unfiledConfirmed = false;
   },
 
-  _spawnAmbush(sector, count, origin = null) {
+  _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null) {
     if (!sector || count <= 0) return;
     const player = this.state.entities.get(this.state.playerId);
     const active = this.state.world.activeSector || null;
@@ -2044,19 +2044,28 @@ export const world = {
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
     const placed = [];
     for (let i = 0; i < count; i++) {
-      const typeId = pool[Math.floor(rng() * pool.length)];
+      const typeId = enemyTypeId || pool[Math.floor(rng() * pool.length)];
       const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
       const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
       if (!pos) continue;
       const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
       tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
+      if (requestMeta && requestMeta.refId) spec.data.spawnRefId = requestMeta.refId;
+      if (requestMeta && requestMeta.tags && requestMeta.tags.length) spec.data.spawnTags = [...requestMeta.tags];
       const ent = this.helpers.spawnEntity(spec);
       this._stampHomeSector(ent, sector.id);
       placed.push(ent.id);
     }
     if (!placed.length) return;
     if (this.state.world.activeSector) this.state.world.activeSector.enemies.push(...placed);
-    this.bus.emit('interdiction:triggered', { sectorId: sector.id, ambushCount: placed.length, spawnPos: { x: px, z: pz } });
+    this.bus.emit('interdiction:triggered', {
+      sectorId: sector.id,
+      ambushCount: placed.length,
+      spawnPos: { x: px, z: pz },
+      entityIds: placed,
+      refId: requestMeta && requestMeta.refId || null,
+      tags: requestMeta && requestMeta.tags ? [...requestMeta.tags] : [],
+    });
   },
 
   _onSpawnRequest(p) {
@@ -2088,6 +2097,7 @@ export const world = {
       position: pos,
       tags,
       refId: p.refId || null,
+      enemyTypeId: typeof p.enemyTypeId === 'string' && p.enemyTypeId ? p.enemyTypeId : null,
       count: clamp(Math.floor(rawCount) || 1, 1, 6),
     };
   },
@@ -2112,7 +2122,7 @@ export const world = {
 
   _spawnFromRequest(req, sector) {
     if (!req || req.entityType !== 'pirate') return;
-    this._spawnAmbush(sector, req.count || 1, req.position || null);
+    this._spawnAmbush(sector, req.count || 1, req.position || null, req.enemyTypeId || null, req);
   },
 
   // =========================================================================================

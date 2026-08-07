@@ -5,8 +5,9 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { hash32 } from '../src/core/rng.js';
 import { cargo } from '../src/systems/cargo.js';
-import { recoveryEncounter } from '../src/systems/recoveryEncounter.js';
+import { recoveryEncounter, recoveryPowerSurprise } from '../src/systems/recoveryEncounter.js';
 import { salvageActions } from '../src/systems/salvageActions.js';
+import { recoveryStabilizationText } from '../src/ui/recoveryEncounterPrompt.js';
 
 function boot({ seed = 4401, sourceKind = 'salvage', parentType = 'ship', cargoCap = 30, pointId = 'point-1' } = {}) {
   const sim = createSimulation({ seed, systems: [cargo, salvageActions, recoveryEncounter] });
@@ -25,8 +26,9 @@ function boot({ seed = 4401, sourceKind = 'salvage', parentType = 'ship', cargoC
   const events = [];
   const watched = [
     'recovery:started', 'recovery:identified', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable',
-    'recovery:hazardCleared', 'recovery:completed', 'recovery:receipt', 'economy:grantCredits',
+    'recovery:defenseAwake', 'recovery:hazardCleared', 'recovery:completed', 'recovery:receipt', 'economy:grantCredits',
     'faction:repDelta', 'combat:hit', 'salvage:reactorBurst',
+    'spawn:request',
   ];
   for (const name of watched) bus.on(name, (payload) => events.push({ name, payload }));
   bus.emit('signal:investigated', {
@@ -150,12 +152,48 @@ test('distress rescue and restricted stripping have intentional, distinct factio
   assert.equal(events(strip, 'recovery:receipt')[0].payload.outcome, 'strip');
 });
 
+test('still-powered derelicts use the deterministic 10 percent and 60/40 trust contract', () => {
+  const id = 'recovery:powered-1';
+  let survivorSeed = null;
+  let defenseSeed = null;
+  let poweredCount = 0;
+  for (let seed = 1; seed <= 2000; seed++) {
+    const kind = recoveryPowerSurprise(seed, id);
+    if (kind) poweredCount++;
+    if (kind === 'survivor' && survivorSeed == null) survivorSeed = seed;
+    if (kind === 'defense_drone' && defenseSeed == null) defenseSeed = seed;
+  }
+  assert.ok(poweredCount > 150 && poweredCount < 250, 'the deterministic deck stays near its exact 1-in-10 admission');
+  assert.ok(survivorSeed != null && defenseSeed != null, 'both trust outcomes are reachable');
+
+  const survivor = boot({ seed: survivorSeed, pointId: 'powered-1' });
+  const survivorRecord = identify(survivor);
+  assert.equal(survivorRecord.poweredSurprise, 'survivor');
+  assert.equal(survivorRecord.hasSurvivor, true);
+  assert.equal(events(survivor, 'spawn:request').length, 0);
+
+  const defense = boot({ seed: defenseSeed, pointId: 'powered-1' });
+  const defenseRecord = identify(defense);
+  assert.equal(defenseRecord.poweredSurprise, 'defense_drone');
+  assert.equal(defenseRecord.conditionLabel, 'POWERED DEFENSE · DRONE WAKE');
+  const requests = events(defense, 'spawn:request');
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].payload.enemyTypeId, 'wasp_swarmer');
+  assert.deepEqual(requests[0].payload.tags, ['derelict_defense', 'still_powered']);
+  const awake = events(defense, 'recovery:defenseAwake');
+  assert.equal(awake.length, 1);
+  assert.match(recoveryStabilizationText(awake[0].payload), /helm control remains yours/);
+  defense.bus.emit('scan:pulse', { pos: { ...defense.player.pos } });
+  assert.equal(events(defense, 'spawn:request').length, 1, 'repeated pulses never duplicate the defense request');
+  assert.equal(defense.system.serialize().records[defenseRecord.id].defenseTriggered, true);
+});
+
 test('telegraphed reactor hazard can fail durably without spawning an instant hostile', () => {
   const id = 'recovery:hazard-1';
   let seed = 1;
   while (seed < 5000) {
     const roll = hash32(seed, id, 'recovery-condition');
-    if (roll % 5 !== 1 && roll % 4 === 0) break;
+    if (!recoveryPowerSurprise(seed, id) && roll % 5 !== 1 && roll % 4 === 0) break;
     seed++;
   }
   const t = boot({ seed, pointId: 'hazard-1' });
@@ -205,5 +243,9 @@ test('save and registry wiring preserve semantic sidecars before world rebuild',
   assert.match(saveSource, /this\._callDeserialize\('recoveryEncounter',\s*data\.recoveryEncounters\)/);
   assert.match(salvageSource, /bus\.on\('save:restoring'/);
   assert.doesNotMatch(salvageSource, /bus\.on\('save:loaded'[\s\S]{0,180}salvage\.points\s*=\s*\[\]/);
-  assert.match(registrySource, /salvageActions, survivorPod, recoveryEncounter, factions/);
+  const registryOrder = ['salvageActions', 'survivorPod', 'recoveryEncounter', 'factions']
+    .map((name) => registrySource.indexOf(`['${name}', ${name}]`));
+  assert.equal(registryOrder.every((index) => index >= 0), true, 'all recovery authorities are registered');
+  assert.deepEqual([...registryOrder].sort((a, b) => a - b), registryOrder,
+    'recovery authorities retain salvage -> survivor -> encounter -> faction settlement order');
 });

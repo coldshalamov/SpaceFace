@@ -15,6 +15,15 @@ export function recoveryOutcomeText(receipt) {
   return `RECOVERY ${outcome.replace(/_/g, ' ').toUpperCase()}`;
 }
 
+export function recoveryStabilizationText(readout) {
+  if (readout && readout.poweredSurprise === 'defense_drone') {
+    return 'Defense drone awake. Fight, withdraw, or stabilize under fire; helm control remains yours.';
+  }
+  if (readout && readout.stabilizationMode === 'massline') return 'Massline holding. Keep the wreck settled.';
+  if (readout && readout.stabilizationMode === 'station_keeping') return 'Relative motion matched. Hold position.';
+  return 'Tether the wreck, or hold within 90 WU at matched speed.';
+}
+
 function money(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
 }
@@ -105,7 +114,8 @@ export function createRecoveryEncounterPrompt(ctx) {
   function render(readout) {
     if (!canSurface() || !readout || !readout.recoveryId) return false;
     active = { ...readout, mode: 'encounter', hideAt: Infinity };
-    root.className = readout.phase === 'hazard' ? 'sf-recovery--hazard' : '';
+    root.className = readout.phase === 'hazard' || readout.poweredSurprise === 'defense_drone'
+      ? 'sf-recovery--hazard' : '';
     text(el.flag, 'DERELICT RECOVERY');
     text(el.headline, readout.conditionLabel || 'UNIDENTIFIED DERELICT');
     const ownership = readout.ownership || 'CLAIM UNKNOWN';
@@ -122,11 +132,7 @@ export function createRecoveryEncounterPrompt(ctx) {
     } else if (readout.phase === 'stabilizing') {
       const pct = Math.round((Number(readout.stabilization) || 0) * 100);
       text(el.status, `STABILIZE ${pct}%`);
-      text(el.detail, readout.stabilizationMode === 'massline'
-        ? 'Massline holding. Keep the wreck settled.'
-        : readout.stabilizationMode === 'station_keeping'
-          ? 'Relative motion matched. Hold position.'
-          : 'Tether the wreck, or hold within 90 WU at matched speed.');
+      text(el.detail, recoveryStabilizationText(readout));
       el.meter.hidden = false;
       el.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, Number(readout.stabilization) || 0))})`;
     } else if (readout.phase === 'decision') {
@@ -240,7 +246,7 @@ export function createRecoveryEncounterPrompt(ctx) {
   }
 
   root.addEventListener('click', onClick);
-  for (const event of ['recovery:started', 'recovery:identified', 'recovery:hazardCleared', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable']) {
+  for (const event of ['recovery:started', 'recovery:identified', 'recovery:defenseAwake', 'recovery:hazardCleared', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable']) {
     bus.on(event, render);
   }
   bus.on('recovery:completed', showReceipt);

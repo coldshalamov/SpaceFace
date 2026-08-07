@@ -4,7 +4,8 @@
 // condition and ownership. The player then resolves any telegraphed reactor hazard, stabilizes the
 // wreck with a massline or a careful station-keeping hold, and chooses rescue / black box / strip.
 // This system owns only state.recoveryEncounters and wreck recovery annotations. Cargo, credits and
-// reputation stay behind their canonical authorities. No branch spawns a hostile.
+// reputation stay behind their canonical authorities. The only hostile branch is the authored,
+// post-scan 10% still-powered surprise; it requests one defense drone through world spawn authority.
 
 import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
@@ -127,6 +128,7 @@ function publicReadout(record, state) {
     ownership: record.scanned ? record.ownership : null,
     legalStatus: record.scanned ? record.legalStatus : null,
     hasSurvivor: record.scanned ? !!record.hasSurvivor : null,
+    poweredSurprise: record.scanned ? record.poweredSurprise || null : null,
     hazard: record.scanned ? record.hazard : null,
     hazardRemaining_s: record.phase === 'hazard'
       ? Math.max(0, Number((record.hazardDueAt - Number(state.simTime || 0)).toFixed(1))) : null,
@@ -152,24 +154,40 @@ function sectorFaction(sectorId) {
   return sector && sector.factionId || null;
 }
 
+export function recoveryPowerSurprise(seed, recoveryId) {
+  const powered = hash32(seed || 1, recoveryId, 'recovery-powered-surprise') % 10 === 0;
+  if (!powered) return null;
+  const trustRoll = hash32(seed || 1, recoveryId, 'recovery-powered-trust') % 10;
+  return trustRoll < 6 ? 'survivor' : 'defense_drone';
+}
+
 function classifyRecord(state, record, wreck) {
   const data = wreck && wreck.data || {};
   const roll = hash32(state.meta && state.meta.seed || 1, record.id, 'recovery-condition');
   const parentType = String(data.parentType || '').toLowerCase();
   const claimedFaction = data.factionId || wreck && wreck.factionId || sectorFaction(record.sectorId);
   const military = parentType === 'military' || data.restrictedSalvage === true;
-  const hasSurvivor = record.sourceKind === 'distress' || parentType === 'survivor_pod' || !!data.survivorPod || roll % 5 === 1;
-  const hazard = !hasSurvivor && roll % 4 === 0 ? 'reactor_leak' : null;
+  const explicitSurvivor = record.sourceKind === 'distress' || parentType === 'survivor_pod' || !!data.survivorPod;
+  const poweredSurprise = explicitSurvivor ? null
+    : recoveryPowerSurprise(state.meta && state.meta.seed || 1, record.id);
+  const hasSurvivor = explicitSurvivor || poweredSurprise === 'survivor'
+    || (!poweredSurprise && roll % 5 === 1);
+  const hazard = !hasSurvivor && !poweredSurprise && roll % 4 === 0 ? 'reactor_leak' : null;
   const legalStatus = military ? 'restricted' : (claimedFaction && roll % 3 === 0 ? 'claimed' : 'open');
-  const condition = hasSurvivor ? 'life_support' : hazard ? 'unstable' : (roll % 2 ? 'fractured' : 'stable');
+  const condition = poweredSurprise === 'defense_drone' ? 'defense_online'
+    : hasSurvivor ? 'life_support' : hazard ? 'unstable' : (roll % 2 ? 'fractured' : 'stable');
   return {
     hasSurvivor,
+    poweredSurprise,
     hazard,
     legalStatus,
     claimantFactionId: claimedFaction || null,
     ownership: legalStatus === 'open' ? 'OPEN SALVAGE' : legalStatus === 'restricted' ? 'RESTRICTED RECOVERY' : 'REGISTERED CLAIM',
     condition,
-    conditionLabel: hasSurvivor ? 'LIFE SIGNS · POD INTACT' : hazard ? 'REACTOR LEAK · CORE LIVE' : condition === 'fractured' ? 'FRACTURED HULL · LOAD SHIFT' : 'STABLE HULK · SYSTEMS COLD',
+    conditionLabel: poweredSurprise === 'defense_drone' ? 'POWERED DEFENSE · DRONE WAKE'
+      : hasSurvivor ? 'LIFE SIGNS · POD INTACT'
+        : hazard ? 'REACTOR LEAK · CORE LIVE'
+          : condition === 'fractured' ? 'FRACTURED HULL · LOAD SHIFT' : 'STABLE HULK · SYSTEMS COLD',
   };
 }
 
@@ -274,6 +292,8 @@ export const recoveryEncounter = {
         condition: null,
         conditionLabel: null,
         hasSurvivor: false,
+        poweredSurprise: null,
+        defenseTriggered: false,
         hazard: null,
         hazardDueAt: null,
         hazardResolution: null,
@@ -314,8 +334,25 @@ export const recoveryEncounter = {
     record.scannedAt = Number(state.simTime) || 0;
     record.phase = record.hazard ? 'hazard' : 'stabilizing';
     if (record.hazard) this._armHazard(record, wreck);
+    else if (record.poweredSurprise === 'defense_drone') this._triggerDefense(record, wreck);
     this._applyRecordToWreck(record, wreck);
     this._emit('recovery:identified', publicReadout(record, state));
+    return true;
+  },
+
+  _triggerDefense(record, wreck) {
+    if (record.defenseTriggered) return false;
+    record.defenseTriggered = true;
+    this._emit('spawn:request', {
+      entityType: 'pirate',
+      enemyTypeId: 'wasp_swarmer',
+      sectorId: record.sectorId,
+      position: positionOf(wreck && wreck.pos || record.pos),
+      count: 1,
+      tags: ['derelict_defense', 'still_powered'],
+      refId: record.id,
+    });
+    this._emit('recovery:defenseAwake', publicReadout(record, this.state));
     return true;
   },
 
