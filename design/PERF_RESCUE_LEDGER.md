@@ -266,10 +266,32 @@ TRS composition is written inline rather than through `Matrix4.compose` so no `M
 exactly the allocation the dense snapshot exists to remove. A fully culled frame issues **0** draws,
 so the metric stays sensitive to culling rather than counting empty archetypes.
 
-**Open:** neither the snapshot nor the batcher is wired into the running renderer, so the old
-per-entity path is still what executes; the bounded parity window and deletion have not happened.
-Socket-attached plume and distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is
-the seam for GPU upload.
+### Parity window against the incumbent — MET (`npm run check:render-path-parity`, 4/4)
+
+`projectRenderEntityFrame` in `src/render/renderEntityFrame.js` is the wiring seam: the render frame
+has already visited every entity and cached its pose, so projecting into the dense snapshot is a
+linear pass over `frame.records` rather than a second traversal of `state.entityList`. Euler→quaternion
+conversion is written inline so no `Quaternion` or `Euler` is allocated per entity per frame —
+allocating one would hand back exactly the cost the snapshot removes.
+
+The parity check runs **both paths over the same classified frame** and compares. This is the bounded
+parity window the chunk requires before deletion: removing the incumbent on the strength of the
+challenger's own unit check would delete the only reference able to prove the challenger right.
+
+| 300 entities, 256 visible, 5 archetypes | |
+|---|---:|
+| per-entity draw calls | 256 |
+| batched draw calls | **5** |
+| worst world-matrix delta | **1.9e-6** |
+
+Parity is asserted on the **composed world matrix**, not the intermediate fields, because that is what
+the GPU consumes — comparing components would let a transposition or an axis-order mistake pass with
+both sides holding identical numbers while the ship draws pointing the wrong way. The incumbent side
+uses THREE's own `mesh.updateMatrix()`, so the two sides cannot be wrong together.
+
+**Open:** the renderer does not yet call `projectRenderEntityFrame` in its draw path, so the old
+per-entity route still executes and the incumbent has not been deleted. Socket-attached plume and
+distance-sampled wake are untouched. `src/render/dynamicBufferRanges.js` is the seam for GPU upload.
 
 ## Chunk 4 — sim / render / platform separation — **TRANSPORT + DIGESTS MET; thread move open**
 

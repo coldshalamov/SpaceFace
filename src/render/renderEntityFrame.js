@@ -94,6 +94,50 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
   return record;
 }
 
+/**
+ * Project this frame's classified records into a dense presentation snapshot.
+ *
+ * This is the seam between the existing per-entity classification and the batched path: the frame
+ * has already visited every entity and cached its pose, so the projection is a linear pass over
+ * `frame.records` rather than a second traversal of `state.entityList`. Nothing here reads sim state
+ * or touches a Three.js object — it copies numbers the frame already holds.
+ *
+ * Rotations are stored as Euler XYZ in the record and as a quaternion in the snapshot, so the
+ * conversion happens here, written inline so no Quaternion or Euler is allocated per entity per
+ * frame. Allocating one would hand back the cost the dense snapshot exists to remove.
+ *
+ * `archetypeOf` maps a record to the batch it belongs in; entities sharing geometry and material
+ * share an archetype, which is what lets the batcher collapse them into one draw.
+ */
+export function projectRenderEntityFrame(frame, snapshot, archetypeOf, visibleFlag = 1) {
+  if (!frame || !snapshot) return 0;
+  const records = frame.records;
+  snapshot.beginFrame(records.length);
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    // Euler XYZ -> quaternion. Culled entities still occupy a slot so indices stay stable across
+    // frames; visibility is carried in the flag, which is what the batcher filters on.
+    const hx = record.rx * 0.5, hy = record.ry * 0.5, hz = record.rz * 0.5;
+    const cx = Math.cos(hx), sx = Math.sin(hx);
+    const cy = Math.cos(hy), sy = Math.sin(hy);
+    const cz = Math.cos(hz), sz = Math.sin(hz);
+    const qx = sx * cy * cz + cx * sy * sz;
+    const qy = cx * sy * cz - sx * cy * sz;
+    const qz = cx * cy * sz + sx * sy * cz;
+    const qw = cx * cy * cz - sx * sy * sz;
+    const visible = record.visible && !record.viewCulled;
+    snapshot.write(
+      record.id >>> 0,
+      archetypeOf ? archetypeOf(record) >>> 0 : 0,
+      record.x, record.y, record.z,
+      qx, qy, qz, qw,
+      record.sx, record.sy, record.sz,
+      visible ? visibleFlag : 0,
+    );
+  }
+  return records.length;
+}
+
 export function endRenderEntityFrame(frame) {
   if (!frame) return null;
   for (const [id, record] of frame.byId) {
