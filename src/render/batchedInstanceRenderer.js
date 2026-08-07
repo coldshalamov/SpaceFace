@@ -62,6 +62,9 @@ function composeInto(out, offset, px, py, pz, qx, qy, qz, qw, sx, sy, sz) {
 export function createBatchedInstanceRenderer(options = {}) {
   const visibleFlag = options.visibleFlag ?? 1;
   const batches = new Map();
+  // Retained across frames so ordering a frame's draws allocates nothing.
+  const order = [];
+  const unsorted = [];
   let drawCalls = 0;
   let instancesWritten = 0;
   let bufferGrows = 0;
@@ -133,6 +136,53 @@ export function createBatchedInstanceRenderer(options = {}) {
       drawCalls = 0;
       for (const batch of batches.values()) if (batch.count > 0) drawCalls++;
       return drawCalls;
+    },
+
+    /**
+     * Order this frame's draws to minimise pipeline state changes.
+     *
+     * Map iteration order is archetype-creation order, which is effectively the order entities
+     * happened to spawn — so consecutive draws routinely toggle between blend modes and shader
+     * programs for no reason. Every one of those toggles is a pipeline rebind, and on tiled GPUs a
+     * blend-state change is among the most expensive things a frame can do repeatedly.
+     *
+     * Sorting by pipeline key groups every draw that shares state into one run, so the number of
+     * transitions falls to the number of distinct pipelines rather than tracking the number of
+     * draws. This is pure ordering: the same draws, the same instances, the same pixels — which is
+     * why it is a legitimate optimization rather than a quality trade.
+     *
+     * The order array is retained and re-sorted in place, so building it allocates nothing per frame.
+     */
+    drawOrder(pipelineKeyOf) {
+      order.length = 0;
+      for (const batch of batches.values()) if (batch.count > 0) order.push(batch);
+      // Ties break on archetype so the order is stable frame to frame. An unstable order would make
+      // the transition count jitter and turn this metric into noise.
+      order.sort((a, b) => {
+        const ka = pipelineKeyOf ? pipelineKeyOf(a.archetype) : 0;
+        const kb = pipelineKeyOf ? pipelineKeyOf(b.archetype) : 0;
+        return ka === kb ? a.archetype - b.archetype : (ka < kb ? -1 : 1);
+      });
+      return order;
+    },
+
+    /** Count pipeline transitions across a draw list — the metric the ordering optimises. */
+    countStateTransitions(list, pipelineKeyOf) {
+      let transitions = 0;
+      let previous;
+      for (const batch of list) {
+        const key = pipelineKeyOf ? pipelineKeyOf(batch.archetype) : 0;
+        if (previous === undefined || key !== previous) transitions++;
+        previous = key;
+      }
+      return transitions;
+    },
+
+    /** Unsorted draw list, in archetype-creation order — the shape being improved on. */
+    unsortedDraws() {
+      unsorted.length = 0;
+      for (const batch of batches.values()) if (batch.count > 0) unsorted.push(batch);
+      return unsorted;
     },
 
     resetCounters() {

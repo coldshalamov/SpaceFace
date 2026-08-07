@@ -361,6 +361,25 @@ real Worker made delivery async.
 **Open:** real Workers, `OffscreenCanvas`, and checkpoint/journal restart. The default route does not
 yet use separated owners — the transport is proven, not adopted.
 
+### WebGL2 work family: pipeline state ordering — MET (`check:batched-instances`, 11/11)
+
+Map iteration order is archetype-creation order — effectively the order entities happened to spawn.
+Consecutive draws therefore toggle between blend modes and shader programs for no reason, and each
+toggle is a pipeline rebind. On tiled GPUs a repeatedly changing blend state is among the most
+expensive things a frame can do.
+
+`drawOrder(pipelineKeyOf)` sorts by pipeline key, collapsing transitions to the number of distinct
+pipelines rather than tracking the number of draws. Measured at 600 entities across 6 archetypes and
+3 pipelines: **6 transitions -> 3**, which is the theoretical minimum.
+
+This is pure ordering — same draws, same instances, same pixels — so it is a legitimate optimization
+rather than a quality trade, and the quality contract explicitly admits state ordering. Gated
+alongside it: the sort preserves the **exact** draw set (ordering must not drop or duplicate a
+batch), and the order is **stable** frame to frame — an order that jitters would turn the transition
+count into noise. Ties break on archetype for that reason. The order array is retained and sorted in
+place, so building it allocates nothing per frame.
+
+
 ## Chunk 5 — backend optimization + certification — **DECISION RULES MET; measurement open**
 
 ### Evidence-driven backend + native decisions — MET (`npm run check:backend-decision`, 15/15)

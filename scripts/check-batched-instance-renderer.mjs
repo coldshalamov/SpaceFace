@@ -130,5 +130,48 @@ function fill(snapshot, population, { hideEvery = 0 } = {}) {
   check('a fully culled frame issues no draws', batcher.drawCalls === 0, String(batcher.drawCalls));
 }
 
+
+// --- WebGL2 work family: pipeline state ordering -------------------------------------------------
+//
+// Map iteration order is archetype-creation order, i.e. whatever order entities happened to spawn.
+// Consecutive draws then toggle between blend modes and shader programs for no reason, and each
+// toggle is a pipeline rebind — on tiled GPUs a repeated blend-state change is among the most
+// expensive things a frame can do. Sorting by pipeline key collapses transitions to the number of
+// distinct pipelines instead of tracking the number of draws.
+//
+// This is pure ordering: same draws, same instances, same pixels. Nothing is dropped or downgraded.
+{
+  const PIPELINES = 3;
+  // Interleave pipelines across archetypes so creation order is deliberately the worst case — the
+  // shape that actually occurs when mixed entity types spawn together.
+  const pipelineKeyOf = (archetype) => `pipe${archetype % PIPELINES}`;
+
+  const batcher = createBatchedInstanceRenderer({ visibleFlag: SNAPSHOT_FLAG.VISIBLE });
+  const snapshot = createPresentationSnapshot({ capacity: 1024 });
+  batcher.build(fill(snapshot, 600));
+
+  const before = batcher.countStateTransitions(batcher.unsortedDraws(), pipelineKeyOf);
+  const after = batcher.countStateTransitions(batcher.drawOrder(pipelineKeyOf), pipelineKeyOf);
+
+  check('sorted order reaches the theoretical minimum transitions', after === PIPELINES,
+    `${after} transitions across ${PIPELINES} pipelines`);
+  check('ordering reduces pipeline state changes', after < before, `${before} -> ${after}`);
+
+  // Same draws, same instances -- ordering must not drop or duplicate a batch.
+  const sorted = batcher.drawOrder(pipelineKeyOf);
+  const unsortedIds = batcher.unsortedDraws().map((b) => b.archetype).sort((a, b) => a - b);
+  const sortedIds = sorted.map((b) => b.archetype).sort((a, b) => a - b);
+  check('ordering preserves the exact draw set', unsortedIds.join(',') === sortedIds.join(','),
+    `${unsortedIds.join(',')} vs ${sortedIds.join(',')}`);
+
+  // Stability: an order that jitters frame to frame turns the metric into noise.
+  const firstPass = batcher.drawOrder(pipelineKeyOf).map((b) => b.archetype).join(',');
+  const secondPass = batcher.drawOrder(pipelineKeyOf).map((b) => b.archetype).join(',');
+  check('draw order is stable across frames', firstPass === secondPass, `${firstPass} vs ${secondPass}`);
+
+  console.log(`\n  pipeline transitions : ${before} -> ${after} (minimum ${PIPELINES})`);
+}
+
+
 console.log(`\n${failures === 0 ? 'batched instance renderer: parity and scaling hold' : `${failures} assertion(s) failed`}`);
 if (failures > 0) process.exit(1);
