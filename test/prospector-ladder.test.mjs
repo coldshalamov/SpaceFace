@@ -221,6 +221,9 @@ function liveFieldDepletion(opts = {}) {
     extractedU: opts.extractedU != null ? opts.extractedU : 12,
     destroyedCount: opts.destroyedCount != null ? opts.destroyedCount : 1,
     reason: opts.reason || 'asteroid_destroyed',
+    source: opts.source || null,
+    minerId: opts.minerId == null ? null : opts.minerId,
+    jobId: opts.jobId || null,
   };
 }
 
@@ -898,6 +901,24 @@ test('P4-fieldDepletion:changed records telemetry only (no refined)', () => {
   assert.equal(p.fieldExtractedU, 12);
   assert.equal(p.refineProduced, undefined);
   assert.equal(getProspectorLeaf(h.state).status, LADDER_STATUS.ACTIVE);
+});
+
+test('P4 ignores NPC field depletion as player telemetry', () => {
+  const h = makeHarness();
+  activateAtStep(h, 0);
+  for (let i = 0; i < 4; i++) completeProspectorLadderStep(h.state, h.bus);
+
+  applyProspectorLadderEvent(
+    h.state, h.bus, 'fieldDepletion:changed',
+    liveFieldDepletion({
+      fieldId: 'f_npc', depleted: 0.2, extractedU: 8,
+      source: 'traffic_npc_job', minerId: 77,
+    }),
+  );
+  const p = getProspectorLeaf(h.state).steps.refinery_sector_consequence.payload;
+  assert.equal(p.fieldTouched, undefined);
+  assert.equal(p.fieldId, undefined);
+  assert.equal(p.fieldExtractedU, undefined);
 });
 
 // ── Idempotent rewards ────────────────────────────────────────────────────────

@@ -118,16 +118,17 @@ export function recordFieldExtraction(state, payload = {}) {
   const simTime = round6(payload.simTime != null ? payload.simTime : state && state.simTime);
   const extractedU = Math.max(0, Number(payload.extractedU != null ? payload.extractedU : payload.yieldU) || 0);
   const delta = depletionDeltaForYield(extractedU);
+  const destroyed = payload.destroyed !== false;
   const rec = fieldRecord(own, fieldId, sectorId);
   rec.sectorId = rec.sectorId || sectorId;
   rec.extractedU = round6(rec.extractedU + extractedU);
-  rec.destroyedCount += 1;
+  if (destroyed) rec.destroyedCount += 1;
   rec.depletion = clamp01(round6(rec.depletion + delta));
   rec.richnessMult = richnessMultiplierForDepletion(rec.depletion);
   rec.lastChangedT = simTime;
 
   const receipt = {
-    event: 'asteroid_destroyed',
+    event: payload.event || (destroyed ? 'asteroid_destroyed' : 'field_extraction'),
     fieldId,
     sectorId: rec.sectorId,
     extractedU: round6(extractedU),
@@ -135,6 +136,8 @@ export function recordFieldExtraction(state, payload = {}) {
     depleted: rec.depletion,
     richnessMult: rec.richnessMult,
     asteroidId: payload.asteroidId == null ? null : payload.asteroidId,
+    source: payload.source || null,
+    jobId: payload.jobId || null,
     tick: Math.max(0, Math.floor(Number(payload.tick) || (state && state.tick) || 0)),
     t: simTime,
   };
@@ -177,9 +180,11 @@ export const fieldDepletion = {
     this._recoveryAccum = 0;
     ensureFieldDepletionState(this.state);
     this._onDestroyed = (payload) => this._onAsteroidDestroyed(payload || {});
+    this._onNpcExtraction = (payload) => this._onNpcMinerExtraction(payload || {});
     this._onNewGame = () => this.newGame();
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('asteroid:destroyed', this._onDestroyed);
+      this.bus.on('mining:npcExtraction', this._onNpcExtraction);
       this.bus.on('game:newGame', this._onNewGame);
     }
   },
@@ -221,7 +226,31 @@ export const fieldDepletion = {
     return rec;
   },
 
-  _emitChanged(rec, reason) {
+  _onNpcMinerExtraction(payload) {
+    const fieldId = fieldIdOf(payload.fieldId);
+    const extractedU = Math.max(0, Number(payload.extractedU) || 0);
+    if (!fieldId || extractedU <= 0) return null;
+    const rec = recordFieldExtraction(this.state, {
+      fieldId,
+      sectorId: payload.sectorId || sectorIdOf(this.state, payload),
+      extractedU,
+      asteroidId: payload.asteroidId,
+      simTime: this.state && this.state.simTime,
+      tick: this.state && this.state.tick,
+      destroyed: false,
+      event: 'npc_mining',
+      source: 'traffic_npc_job',
+      jobId: payload.jobId || null,
+    });
+    if (rec) this._emitChanged(rec, 'npc_mining', {
+      source: 'traffic_npc_job',
+      minerId: payload.minerId == null ? null : payload.minerId,
+      jobId: payload.jobId || null,
+    });
+    return rec;
+  },
+
+  _emitChanged(rec, reason, context = null) {
     if (!this.bus || typeof this.bus.emit !== 'function') return false;
     const payload = {
       fieldId: rec.fieldId,
@@ -231,6 +260,9 @@ export const fieldDepletion = {
       extractedU: rec.extractedU,
       destroyedCount: rec.destroyedCount,
       reason,
+      source: context && context.source || null,
+      minerId: context && context.minerId != null ? context.minerId : null,
+      jobId: context && context.jobId || null,
     };
     this.bus.emit('fieldDepletion:changed', payload);
     this.bus.emit('field:depletedChanged', payload);
@@ -268,9 +300,10 @@ export const fieldDepletion = {
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onDestroyed) this.bus.off('asteroid:destroyed', this._onDestroyed);
+      if (this._onNpcExtraction) this.bus.off('mining:npcExtraction', this._onNpcExtraction);
       if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
     }
-    this._onDestroyed = this._onNewGame = null;
+    this._onDestroyed = this._onNpcExtraction = this._onNewGame = null;
   },
 };
 

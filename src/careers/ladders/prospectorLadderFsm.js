@@ -729,6 +729,9 @@ function handleRefinery(state, bus, own, event, payload) {
   if (event === 'fieldDepletion:changed') {
     // Live: { fieldId, sectorId, depleted, richnessMult, extractedU, destroyedCount, reason }
     // No `refined` field — never invent one. Telemetry only; not a success gate alone.
+    // NPC barges change the shared field for everyone, but their cut is not the player's skill
+    // proof. Keep world/presentation consumers informed while leaving this personal log untouched.
+    if (payload && payload.source === 'traffic_npc_job') return;
     p.fieldTouched = true;
     if (payload && payload.fieldId != null) p.fieldId = payload.fieldId;
     if (payload && payload.extractedU != null) {

@@ -39,6 +39,7 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { pickNamedLaneContact } from '../data/laneContacts.js';
+import { ASTEROIDS } from '../data/mining.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   regionalTrafficDensityMultiplier,
@@ -63,6 +64,12 @@ const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station
 // on purpose: the point is that a shift works ONE seam together, close enough that the barges share
 // a frame with each other and with anything passing. See _pickWorkableAsteroidNear.
 const MINER_FIELD_SPREAD_CAP = 4;
+// One visible 30-second work stop cuts a bounded parcel smaller than the economy's 15u live-arrival
+// ceiling. This is enough for one or two barges to contend a recovering field without strip-mining
+// it faster than the player can participate.
+const NPC_MINER_WORK_BATCH_U = 8;
+const NPC_MINER_WORK_LEDGER_CAP = 512;
+const ASTEROID_BY_ID = new Map(ASTEROIDS.map((def) => [def.id, def]));
 
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
 // skin. The hull + speed + archetype encode the role's identity; the update loop encodes its
@@ -235,9 +242,10 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
-    // A working hauler is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
-    // its own dock-arrival branch. Consume the kernel's materialized unload intent here and keep
-    // economy authority on the existing stock-only freight seam.
+    // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
+    // its own work/dock branches. Consume only materialized kernel intents here and keep field and
+    // economy authority on their existing event seams.
+    this.bus.on('npcjobs:work', (p) => this._onNpcJobWork(p || {}));
     this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
     this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
@@ -513,7 +521,14 @@ export const traffic = {
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
     if (ent.data.worldSiteTrafficHookId || ent.data.claimTravelTrafficHookId) return; // infrastructure owns this slot
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
-    if (spec) assign(ent, spec);
+    if (!spec) return;
+    const jobId = assign(ent, spec);
+    if (jobId && role === 'miner') {
+      // A commissioned barge departs empty. Its real cargo is created only when a materialized work
+      // stop completes, so scanners never show a miner carrying random market goods outbound.
+      const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === ent.id);
+      this._setTrafficManifest(ent, rec, this._buildMinerManifest(ent, 0, null, 0));
+    }
   },
 
   _buildJobSpec(role, ent, originStation, target, stations, sectorId) {
@@ -1413,29 +1428,118 @@ export const traffic = {
    * Historical offscreen catch-up deliberately has no intent sink, so this can only represent an
    * unload the live job actually surfaced. The job's monotonic seq makes replays idempotent.
    */
-  _onNpcJobUnload(intent) {
-    if (!intent || intent.kind !== 'hauler' || intent.completed !== true) return false;
+  _jobTrafficContext(intent, expectedRole) {
+    if (!intent || intent.kind !== expectedRole) return null;
     const jobId = typeof intent.jobId === 'string' ? intent.jobId : '';
-    if (!jobId.startsWith('job:') || jobId.length <= 4) return false;
+    if (!jobId.startsWith('job:') || jobId.length <= 4) return null;
     const worldRecordId = jobId.slice(4);
     const entity = entityWithWorldRecord(this.state, worldRecordId);
-    if (!entity || !entity.data || entity.data.jobId !== jobId) return false;
+    if (!entity || !entity.data || entity.data.jobId !== jobId) return null;
 
     this._ensureState();
     const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id);
-    if (!rec || rec.role !== 'hauler') return false;
+    if (!rec || rec.role !== expectedRole) return null;
+    return { jobId, worldRecordId, entity, rec };
+  },
+
+  _buildMinerManifest(entity, workSeq, commodityId, qty) {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = entity && entity.data && entity.data.worldRecordId
+      || entity && entity.id
+      || 'npc-miner';
+    const amount = Math.max(0, Math.floor(Number(qty) || 0));
+    const manifest = buildCargoManifest({
+      seed,
+      freighterKey: `${freighterKey}:work:${Math.max(0, workSeq | 0)}`,
+      role: 'miner',
+      marketKeys: commodityId ? [commodityId] : FREIGHT_MARKET_KEYS_FALLBACK,
+      capacity: amount,
+    });
+    if (amount > 0 && commodityId) {
+      manifest.lines = [{ commodityId, qty: amount }];
+      manifest.totalQty = amount;
+    }
+    return manifest;
+  },
+
+  _setTrafficManifest(entity, rec, manifest) {
+    if (!manifest) return false;
+    if (rec) rec.manifest = manifest;
+    if (entity && entity.data) entity.data.cargoManifest = manifest;
+    return true;
+  },
+
+  _onNpcJobWork(intent) {
+    if (!intent || intent.kind !== 'miner' || intent.completed !== true) return false;
+    const context = this._jobTrafficContext(intent, 'miner');
+    if (!context) return false;
+    const fieldWaypoint = typeof intent.field === 'string' ? intent.field : '';
+    if (!fieldWaypoint.startsWith('field:') || fieldWaypoint.length <= 6) return false;
+    const rawAsteroidId = fieldWaypoint.slice(6);
+    const numericAsteroidId = Number(rawAsteroidId);
+    const asteroid = this.state.entities && this.state.entities.get
+      ? (this.state.entities.get(rawAsteroidId)
+        || (Number.isFinite(numericAsteroidId) ? this.state.entities.get(numericAsteroidId) : null))
+      : null;
+    if (!asteroid || asteroid.alive === false || asteroid.type !== 'asteroid') return false;
+    const fieldId = asteroid.data && asteroid.data.fieldId;
+    if (!fieldId) return false;
+
+    const seq = Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : 0;
+    const workId = `npc-miner-work:${context.worldRecordId}:${seq}`;
+    if (this.state.traffic.appliedMinerWorkIds.includes(workId)) return false;
+
+    const commodityId = dominantAsteroidCommodity(asteroid);
+    const authoredYield = Math.max(1, Math.floor(Number(asteroid.data && asteroid.data.yieldU) || NPC_MINER_WORK_BATCH_U));
+    const extractedU = Math.min(NPC_MINER_WORK_BATCH_U, authoredYield);
+    const manifest = this._buildMinerManifest(context.entity, seq, commodityId, extractedU);
+    this._setTrafficManifest(context.entity, context.rec, manifest);
+    this.bus.emit('mining:npcExtraction', {
+      jobId: context.jobId,
+      workId,
+      minerId: context.entity.id,
+      asteroidId: asteroid.id,
+      fieldId: String(fieldId),
+      sectorId: (this.state.world && this.state.world.currentSectorId) || null,
+      commodityId,
+      extractedU,
+      seq,
+    });
+    this.state.traffic.appliedMinerWorkIds.push(workId);
+    if (this.state.traffic.appliedMinerWorkIds.length > NPC_MINER_WORK_LEDGER_CAP) {
+      this.state.traffic.appliedMinerWorkIds.splice(
+        0,
+        this.state.traffic.appliedMinerWorkIds.length - NPC_MINER_WORK_LEDGER_CAP,
+      );
+    }
+    return true;
+  },
+
+  _onNpcJobUnload(intent) {
+    if (!intent || intent.completed !== true || (intent.kind !== 'hauler' && intent.kind !== 'miner')) return false;
+    const context = this._jobTrafficContext(intent, intent.kind);
+    if (!context) return false;
 
     const destination = typeof intent.destination === 'string' ? intent.destination : '';
-    if (!destination.startsWith('dest:') || destination.length <= 5) return false;
-    const stationId = destination.slice(5);
+    const prefix = intent.kind === 'miner' ? 'home:' : 'dest:';
+    if (!destination.startsWith(prefix) || destination.length <= prefix.length) return false;
+    const stationId = destination.slice(prefix.length);
     const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === stationId);
     if (!station) return false;
 
-    const manifest = intent.payload && intent.payload.manifest;
-    return this._emitArrival(entity, rec, station, {
+    const manifest = intent.kind === 'hauler' && intent.payload && intent.payload.manifest;
+    const applied = this._emitArrival(context.entity, context.rec, station, {
       dockSeq: Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : undefined,
       manifest,
     });
+    if (applied && intent.kind === 'miner') {
+      this._setTrafficManifest(
+        context.entity,
+        context.rec,
+        this._buildMinerManifest(context.entity, intent.seq, null, 0),
+      );
+    }
+    return applied;
   },
 
   /**
@@ -1557,6 +1661,7 @@ export const traffic = {
     if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
     if (!Array.isArray(this.state.traffic.appliedArrivalIds)) this.state.traffic.appliedArrivalIds = [];
     if (!Array.isArray(this.state.traffic.appliedLossIds)) this.state.traffic.appliedLossIds = [];
+    if (!Array.isArray(this.state.traffic.appliedMinerWorkIds)) this.state.traffic.appliedMinerWorkIds = [];
     if (!Number.isFinite(this.state.traffic.rngSeed) || (this.state.traffic.rngSeed >>> 0) === 0) {
       this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', this.state.world && this.state.world.currentSectorId);
     }
@@ -1578,6 +1683,7 @@ export const traffic = {
       freighters: [],
       appliedArrivalIds: [],
       appliedLossIds: [],
+      appliedMinerWorkIds: [],
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },
@@ -1599,6 +1705,15 @@ function stationIdentity(station) {
   const data = station.data || {};
   const id = data.stationId || data.id || station.id;
   return id == null ? null : String(id);
+}
+
+function dominantAsteroidCommodity(asteroid) {
+  const data = asteroid && asteroid.data || {};
+  if (typeof data.commodityId === 'string' && data.commodityId) return data.commodityId;
+  const def = ASTEROID_BY_ID.get(data.typeId) || ASTEROID_BY_ID.get('ast_common_rock');
+  const entries = Object.entries(def && def.oreTable || {});
+  entries.sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0) || a[0].localeCompare(b[0]));
+  return entries[0] && entries[0][0] || 'cmdty_silicate';
 }
 
 function entityWithWorldRecord(state, worldRecordId) {
