@@ -161,6 +161,47 @@ function collisionHarness() {
   return { harness, calls };
 }
 
+function captureCollisionRungs(normal, reduced = false) {
+  const low = collisionHarness();
+  low.harness.state.settings.video.motionReduce = reduced;
+  low.harness.state.settings.accessibility.flashReduce = reduced;
+  low.harness._onPhysicsImpact({
+    backend: 'rapier-dynamic', consequenceKernelVersion: 1, tick: 40,
+    aId: 1, bId: 2, dp: 240, pos: { x: 2, z: 0 }, normal,
+  });
+
+  const medium = collisionHarness();
+  medium.harness.state.settings.video.motionReduce = reduced;
+  medium.harness.state.settings.accessibility.flashReduce = reduced;
+  medium.harness._onCollisionConsequence({
+    tick: 41, targetId: 1, otherId: 2, pos: { x: 2, z: 0 }, normal,
+    control: 'tumble', impactDamage: 6, deltaV: 18, surface: 'terrain',
+  });
+  medium.harness._onCollisionDebris({
+    tick: 41, targetId: 1, otherId: 2, pos: { x: 2, z: 0 }, normal,
+    count: 8, surface: 'terrain',
+  });
+  return { low: low.calls, medium: medium.calls };
+}
+
+test('unoriented SG-02 contact normals are sign-invariant and bilateral in normal and reduced modes', () => {
+  for (const reduced of [false, true]) {
+    const positive = captureCollisionRungs({ x: 1, z: 0 }, reduced);
+    const negative = captureCollisionRungs({ x: -1, z: 0 }, reduced);
+    assert.deepEqual(negative, positive,
+      `normal sign cannot reverse ${reduced ? 'reduced' : 'normal'} contact presentation`);
+
+    const lowAxes = positive.low.filter((call) => call.type === 'streak')
+      .map((call) => [call.args[10], call.args[11]]);
+    assert.ok(lowAxes.some(([, z]) => z > 0.9) && lowAxes.some(([, z]) => z < -0.9),
+      'low contact retains both tangent halves');
+    const mediumAxes = positive.medium.filter((call) => call.type === 'streak')
+      .map((call) => [call.args[10], call.args[11]]);
+    assert.ok(mediumAxes.some(([x]) => x > 0.9) && mediumAxes.some(([x]) => x < -0.9),
+      'medium compression retains both contact-axis halves');
+  }
+});
+
 test('collision rungs keep low contact, real medium consequence, and catastrophic kill ownership separate', () => {
   const { harness, calls } = collisionHarness();
   const impact = {

@@ -2972,7 +2972,14 @@ export const vfx = {
     }
     const length = Math.hypot(nx, nz);
     if (!(length > 1e-8)) return 0;
-    return Math.atan2(nz / length, nx / length);
+    nx /= length;
+    nz /= length;
+    // SG-02 contact normals are axes, not signed outward directions. Canonicalize the axis so
+    // swapping either collider (and therefore normal sign) cannot reverse presentation grammar.
+    if (nx < -1e-8 || (Math.abs(nx) <= 1e-8 && nz < 0)) { nx = -nx; nz = -nz; }
+    if (Math.abs(nx) < 1e-12) nx = 0;
+    if (Math.abs(nz) < 1e-12) nz = 0;
+    return Math.atan2(nz, nx);
   },
 
   _collisionPatternSerial(p) {
@@ -2997,28 +3004,37 @@ export const vfx = {
     const tx = -nz;
     const tz = nx;
     const serial = this._collisionPatternSerial(p);
-    const count = reduced ? 2 : 4;
+    const pairCount = reduced ? 1 : 2;
     this._c0.set('#fff4dc');
     this._c1.set('#8b6b4b');
-    for (let k = 0; k < count; k++) {
-      const side = k % 2 === 0 ? -1 : 1;
-      const angle = base + Math.PI + side * (0.22 + Math.floor(k / 2) * 0.18)
-        + explosionPatternSigned(serial, 'terrain-spall', k, 21) * 0.06;
-      const speed = (reduced ? 9 : 14) + explosionPattern01(serial, 'terrain-spall', k, 22) * (reduced ? 5 : 12);
-      this._spawnParticle(p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
-        reduced ? 0.20 : 0.30, reduced ? 0.65 : 0.9, 0,
-        this._c0, this._c1, 2.6, 0, 0, angle, reduced ? 1.8 : 2.6);
+    for (let pair = 0; pair < pairCount; pair++) {
+      const angleOffset = 0.22 + pair * 0.18
+        + explosionPatternSigned(serial, 'terrain-spall', pair, 21) * 0.06;
+      const speed = (reduced ? 9 : 14)
+        + explosionPattern01(serial, 'terrain-spall', pair, 22) * (reduced ? 5 : 12);
+      for (let half = 0; half < 2; half++) {
+        const angle = base + angleOffset + half * Math.PI;
+        this._spawnParticle(p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
+          reduced ? 0.20 : 0.30, reduced ? 0.65 : 0.9, 0,
+          this._c0, this._c1, 2.6, 0, 0, angle, reduced ? 1.8 : 2.6);
+      }
     }
-    // A short tangent scar and one local dust tongue keep the contact direction readable without
-    // escalating a routine solver contact into damage, control, or destruction presentation.
-    this._spawnProjectileTrailStreak(p.pos.x, 0.16, p.pos.z,
-      reduced ? 0.20 : 0.28, 0.05, reduced ? 1.1 : 1.8,
-      (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
-      '#ead6b8', 0, 0, tx, tz);
-    this._spawnSprite(SPR_PUFF, p.pos.x - nx * 0.12, 0.04, p.pos.z - nz * 0.12,
-      reduced ? 0.36 : 0.52, 0.45, reduced ? 1.1 : 1.8,
-      (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
-      '#786a5b', nx * 1.2, nz * 1.2, 2.2, base);
+    // Opposed tangent scars and dust tongues keep the contact axis readable without inventing an
+    // outward half-space or escalating a routine solver contact into damage/control/destruction.
+    for (const side of [-1, 1]) {
+      this._spawnProjectileTrailStreak(
+        p.pos.x + nx * side * 0.06, 0.16, p.pos.z + nz * side * 0.06,
+        reduced ? 0.20 : 0.28, 0.05, reduced ? 1.1 : 1.8,
+        (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
+        '#ead6b8', 0, 0, tx * side, tz * side,
+      );
+      this._spawnSprite(SPR_PUFF,
+        p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
+        reduced ? 0.36 : 0.52, 0.45, reduced ? 1.1 : 1.8,
+        (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
+        '#786a5b', nx * side * 1.2, nz * side * 1.2, 2.2, base,
+      );
+    }
     return true;
   },
 
@@ -5805,33 +5821,41 @@ export const vfx = {
     const magnitude = Math.max(0.6, Math.min(2.4, dv / 14));
     const scale = magnitude * acc.flashSizeScale;
     const op = acc.flashOpacityScale;
-    const nx = Number(p.normal && p.normal.x) || 0;
-    const nz = Number(p.normal && p.normal.z) || 0;
-    const nlen = Math.hypot(nx, nz) || 1;
-    const ox = -nx / nlen, oz = -nz / nlen;        // outward from the struck surface
-    const tx = -oz, tz = ox;                        // tangent along the surface
+    const axisAngle = this._collisionContactAxis(p);
+    const axisX = Math.cos(axisAngle), axisZ = Math.sin(axisAngle);
+    const tx = -axisZ, tz = axisX;
     const terrain = p.surface === 'terrain';
-    // Compression punch: a tight, brief flash driven outward along the contact, not a soft disc.
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 1.1 * scale, 3.4 * scale, 0.9 * op, 0.0,
-      terrain ? '#ffe9c4' : '#dfefff', ox * 6, oz * 6);
-    // Dust / spall skimming the surface, thrown outward + fanned along the tangent.
-    const puffs = reduced ? (hard ? 2 : 1) : (hard ? 5 : 3);
-    for (let k = 0; k < puffs; k++) {
-      const spread = (k - (puffs - 1) * 0.5) * 0.5;
-      const vx = ox * (10 + dv * 0.4) + tx * spread * 14;
-      const vz = oz * (10 + dv * 0.4) + tz * spread * 14;
-      this._spawnSprite(SPR_PUFF, pos.x, 0.05, pos.z, 0.5 + 0.2 * scale, 1.6 * scale, 4.2 * scale,
-        0.42 * op, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz);
+    // No signed causal direction exists at this rung. Opposed compression bars and tangent fans
+    // present the receipted contact axis without pretending either normal half is outward.
+    const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
+    for (const side of [-1, 1]) {
+      this._spawnSprite(SPR_FLASH,
+        pos.x + axisX * side * 0.08 * scale, 0, pos.z + axisZ * side * 0.08 * scale,
+        0.10, 1.1 * scale, 3.4 * scale, 0.9 * op, 0.0,
+        terrain ? '#ffe9c4' : '#dfefff', axisX * side * 6, axisZ * side * 6,
+        2.6, axisAngle);
+      for (let k = 0; k < puffsPerSide; k++) {
+        const spread = (k - (puffsPerSide - 1) * 0.5) * 0.5;
+        const vx = axisX * side * (10 + dv * 0.4) + tx * spread * 14;
+        const vz = axisZ * side * (10 + dv * 0.4) + tz * spread * 14;
+        this._spawnSprite(SPR_PUFF,
+          pos.x + axisX * side * 0.10, 0.05, pos.z + axisZ * side * 0.10,
+          0.5 + 0.2 * scale, 1.6 * scale, 4.2 * scale,
+          0.42 * op, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz,
+          1.8, Math.atan2(vz, vx));
+      }
+      // Reduced settings shorten travel/count/opacity but retain both explicit axis halves.
+      this._spawnProjectileTrailStreak(
+        pos.x + axisX * side * 0.06, 0.18, pos.z + axisZ * side * 0.06,
+        reduced ? 0.24 : (hard ? 0.44 : 0.34),
+        (reduced ? 0.07 : 0.10) * scale,
+        (reduced ? 1.8 : (hard ? 4.8 : 3.4)) * scale,
+        (reduced ? 0.28 : 0.60) * op,
+        terrain ? '#f0d0a0' : '#d4e6f5',
+        axisX * side * (reduced ? 4 : 10), axisZ * side * (reduced ? 4 : 10),
+        axisX * side, axisZ * side,
+      );
     }
-    // The medium rung always retains one normal-locked compression bar. Reduced settings shorten
-    // travel/count/opacity but never erase the contact direction or substitute a circular flash.
-    this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z,
-      reduced ? 0.24 : (hard ? 0.44 : 0.34),
-      (reduced ? 0.07 : 0.10) * scale,
-      (reduced ? 1.8 : (hard ? 4.8 : 3.4)) * scale,
-      (reduced ? 0.28 : 0.60) * op,
-      terrain ? '#f0d0a0' : '#d4e6f5',
-      ox * (reduced ? 4 : 10), oz * (reduced ? 4 : 10), ox, oz);
     const lightPeak = 2.6 * magnitude * acc.eventLightPeakScale;
     if (lightPeak > 0.01) {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff', lightPeak, 9, 120 + dv * 3);
@@ -5839,31 +5863,31 @@ export const vfx = {
     return true;
   },
 
-  // Deterministic debris count from the receipt → directional fragments flung off the contact along
-  // the surface normal. Pooled particle substrate (discrete event, no per-frame allocation) and the
-  // receipt's normal/count are consumed directly — never a spatial-hash query.
+  // Deterministic paired debris from the receipt. SG-02 supplies an unoriented contact axis, so
+  // fragments leave in opposed pairs; choosing one normal half would fabricate causality.
   _onCollisionDebris(p) {
     if (!this._scene || !p || !p.pos || !this._consumeMediumCollision(p)) return false;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const count = Math.max(0, Math.min(18, Math.round(Number(p.count) || 0)));
     if (count <= 0) return false;
     const pos = p.pos;
-    const nx = Number(p.normal && p.normal.x) || 0;
-    const nz = Number(p.normal && p.normal.z) || 0;
-    const nlen = Math.hypot(nx, nz) || 1;
-    const baseAng = Math.atan2(-nz / nlen, -nx / nlen); // outward from the surface
+    const baseAng = this._collisionContactAxis(p);
     const terrain = p.surface === 'terrain';
     this._c0.set(terrain ? '#d8c090' : '#c4d8ec');
     this._c1.set(terrain ? '#6a4a28' : '#33506e');
-    const emit = Math.max(1, Math.round(count * (acc.flashOpacityScale < 1 ? 0.5 : 1)));
+    const scaledCount = Math.max(1, Math.round(count * (acc.flashOpacityScale < 1 ? 0.5 : 1)));
+    const emit = Math.min(18, Math.max(2, Math.ceil(scaledCount / 2) * 2));
     const serial = this._collisionPatternSerial(p);
-    for (let k = 0; k < emit; k++) {
-      const a = baseAng + explosionPatternSigned(serial, 'terrain-spall', k, 23) * 0.7;
-      const v = 24 + explosionPattern01(serial, 'terrain-spall', k, 24) * 60;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.3 + explosionPattern01(serial, 'terrain-spall', k, 25) * 0.35,
-        1.2, 0.0, this._c0, this._c1, 2.2, 0, 0, a,
-        acc.flashOpacityScale < 1 ? 1.8 : 2.8);
+    for (let pair = 0; pair < emit / 2; pair++) {
+      const offset = explosionPatternSigned(serial, 'terrain-spall', pair, 23) * 0.7;
+      const speed = 24 + explosionPattern01(serial, 'terrain-spall', pair, 24) * 60;
+      const life = 0.3 + explosionPattern01(serial, 'terrain-spall', pair, 25) * 0.35;
+      for (let half = 0; half < 2; half++) {
+        const angle = baseAng + offset + half * Math.PI;
+        this._spawnParticle(pos.x, pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
+          life, 1.2, 0.0, this._c0, this._c1, 2.2, 0, 0, angle,
+          acc.flashOpacityScale < 1 ? 1.8 : 2.8);
+      }
     }
     return true;
   },
