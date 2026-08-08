@@ -168,6 +168,97 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
   }
 });
 
+test('selected-target projections retain exact per-HUD center and radius records at high refresh', () => {
+  const identitiesFromPriorHud = new Set();
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const inputIdentities = new Set();
+    const outputIdentities = new Set();
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained target projection output`);
+      inputIdentities.add(point);
+      outputIdentities.add(out);
+      out.x = 100 + point.x;
+      out.y = 200 + point.z;
+      out.onScreen = true;
+      calls.push({
+        input: { x: point.x, y: point.y, z: point.z },
+        output: { x: out.x, y: out.y, onScreen: out.onScreen },
+      });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen });
+    try {
+      const target = fixture.contacts[0];
+      fixture.player.vel.x = 0;
+      fixture.player.vel.z = 0;
+      const frames = fps;
+      for (let frame = 0; frame < frames; frame += 1) {
+        const progress = (frame + 1) / frames;
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        target.pos.x = 300 + 20 * progress;
+        target.pos.z = 40 * progress;
+        target.radius = 10 + 4 * progress;
+        fixture.hud.frame(1 / fps);
+      }
+
+      assert.equal(calls.length, frames * 5,
+        `${fps} FPS preserves lock, center, and three radius projections per selected-target frame`);
+      assert.equal(inputIdentities.size, 2, `${fps} FPS retains one center and one radius world record`);
+      assert.equal(outputIdentities.size, 2, `${fps} FPS retains one center and one radius screen record`);
+      for (const identity of [...inputIdentities, ...outputIdentities]) {
+        assert.equal(identitiesFromPriorHud.has(identity), false,
+          `${fps} FPS target scratch belongs only to its mounted HUD instance`);
+        identitiesFromPriorHud.add(identity);
+      }
+      assert.deepEqual(calls.slice(-5), [
+        { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
+        { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
+        { input: { x: 346, y: 0, z: 40 }, output: { x: 446, y: 240, onScreen: true } },
+        { input: { x: 343, y: 0, z: 40 }, output: { x: 443, y: 240, onScreen: true } },
+        { input: { x: 340, y: 0, z: 40 }, output: { x: 440, y: 240, onScreen: true } },
+      ], `${fps} FPS republishes exact moved/resized center and radius coordinates in shipped order`);
+
+      const lockDiamond = fixture.document.querySelector('.sf-lockdiamond');
+      const targetArcs = fixture.document.querySelector('.sf-target-arcs');
+      const svg = targetArcs.querySelector('svg');
+      assert.equal(lockDiamond.style.transform,
+        'translate3d(420.0px,240.0px,0) translate(-50%,-50%)');
+      assert.equal(targetArcs.style.transform,
+        'translate3d(420.0px,240.0px,0) translate(-50%,-50%)');
+      assert.equal(targetArcs.style.width, '62px');
+      assert.equal(targetArcs.style.height, '62px');
+      assert.equal(svg.getAttribute('viewBox'), '0 0 62 62');
+      assert.deepEqual(
+        ['.sf-arc-shield', '.sf-arc-armor', '.sf-arc-hull']
+          .map((selector) => targetArcs.querySelector(selector).getAttribute('r')),
+        ['26', '23', '20'],
+      );
+    } finally {
+      fixture.restore();
+    }
+  }
+
+  let calls = 0;
+  const fixture = mountHudFixture({
+    worldToScreen(point) {
+      calls += 1;
+      return { x: 100 + point.x, y: 200 + point.z, onScreen: true };
+    },
+  });
+  try {
+    fixture.player.vel.x = 0;
+    fixture.player.vel.z = 0;
+    fixture.hud.frame(1 / 60);
+    assert.equal(calls, 5, 'legacy helpers that ignore the output record remain supported');
+    assert.match(fixture.document.querySelector('.sf-lockdiamond').style.transform, /^translate3d\(/);
+    assert.match(fixture.document.querySelector('.sf-target-arcs').style.transform, /^translate3d\(/);
+  } finally {
+    fixture.restore();
+  }
+});
+
 function mountHudFixture({
   worldToScreen = () => ({ x: 960, y: 540, onScreen: true }),
   targetId = 'selected',

@@ -1448,6 +1448,30 @@ export function createHud(ctx, alerts) {
   lockDiamond.className = 'sf-lockdiamond';
   lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
   root.appendChild(lockDiamond);
+  // A selected target is projected five times per visible frame: once for the lock diamond, once
+  // for the arc center, and once for each of the three arc radii. Keep one center pair and one edge
+  // pair per mounted HUD so the renderer can fill them in place without changing call order or
+  // aliasing the center result while the edge projections are sampled.
+  const targetProjectionWorld = { x: 0, y: 0, z: 0 };
+  const targetProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const targetRadiusWorld = { x: 0, y: 0, z: 0 };
+  const targetRadiusScreen = { x: 0, y: 0, onScreen: false };
+
+  function projectTargetCenter(pos) {
+    targetProjectionWorld.x = pos.x;
+    targetProjectionWorld.y = 0;
+    targetProjectionWorld.z = pos.z;
+    return helpers.worldToScreen(targetProjectionWorld, targetProjectionScreen);
+  }
+
+  function targetPixelRadius(pos, worldRadius, center) {
+    targetRadiusWorld.x = pos.x + worldRadius;
+    targetRadiusWorld.y = 0;
+    targetRadiusWorld.z = pos.z;
+    const edge = helpers.worldToScreen(targetRadiusWorld, targetRadiusScreen);
+    if (!edge.onScreen) return worldRadius * 3;
+    return Math.max(1, Math.abs(edge.x - center.x));
+  }
 
   // Gravity Mark is a simulation state, not target selection. A fixed DOM pool follows every live
   // player-authored mark (bounded to six) so retargeting cannot make the state disappear or jump.
@@ -3199,7 +3223,7 @@ export function createHud(ctx, alerts) {
     const tid = (state.player || {}).targetId;
     const tgt = tid != null ? state.entities.get(tid) : null;
     if (tgt && tgt.alive && helpers.worldToScreen) {
-      const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
+      const proj = projectTargetCenter(tgt.pos);
       if (proj.onScreen) {
         setClass(lockDiamond, 'visible', true);
         setHudScreenTransform(lockDiamond, proj.x, proj.y);
@@ -3696,22 +3720,16 @@ export function createHud(ctx, alerts) {
       return;
     }
     
-    const center = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
+    const center = projectTargetCenter(tgt.pos);
     if (!center.onScreen) {
       setDisplay(targetArcs, false);
       setClass(targetArcs, 'visible', false);
       return;
     }
     
-    function getPixelRadius(pos, worldRadius) {
-      const edge = helpers.worldToScreen({ x: pos.x + worldRadius, y: 0, z: pos.z });
-      if (!edge.onScreen) return worldRadius * 3;
-      return Math.max(1, Math.abs(edge.x - center.x));
-    }
-    
-    const rShield = getPixelRadius(tgt.pos, tgt.radius + 12);
-    const rArmor = getPixelRadius(tgt.pos, tgt.radius + 9);
-    const rHull = getPixelRadius(tgt.pos, tgt.radius + 6);
+    const rShield = targetPixelRadius(tgt.pos, tgt.radius + 12, center);
+    const rArmor = targetPixelRadius(tgt.pos, tgt.radius + 9, center);
+    const rHull = targetPixelRadius(tgt.pos, tgt.radius + 6, center);
     
     if (rShield <= 0) {
       setDisplay(targetArcs, false);
