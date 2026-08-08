@@ -633,7 +633,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   // Measurement-only: CPU pass times require perfRuntime.renderWorkEnabled (default OFF).
   // GPU begin/end only runs when the timer set is enabled (default OFF).
-  function timePassGroup(label, fn) {
+  function timePassGroup(label, fn, arg0 = null, arg1 = null, arg2 = null) {
     const perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
     const gpu = instrument && typeof instrument.getGpuTimers === 'function' ? instrument.getGpuTimers() : null;
     const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
@@ -644,11 +644,53 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const t0 = useCpu ? performance.now() : 0;
     const gpuQueryBegan = !!(useGpu && gpu.begin(label, gpuOrigin));
     try {
-      return fn();
+      return fn(arg0, arg1, arg2);
     } finally {
       if (gpuQueryBegan) gpu.end();
       if (useCpu) perf.recordRenderWork(label, performance.now() - t0);
     }
+  }
+
+  // These pass bodies live for the bloom instance rather than being recreated as three arrow
+  // closures every display frame. Explicit arguments preserve timePassGroup's local/finally
+  // semantics without retaining mutable per-frame scene or camera state between renders.
+  function renderScenePass(scene, camera, tier1) {
+    renderer.setRenderTarget(rtScene);
+    renderer.clear();
+    renderer.render(scene, camera);
+    if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
+  }
+
+  function renderDownsamplePass(tier1) {
+    let src = rtScene.texture;
+    for (let i = 0; i < levels; i++) {
+      const sw = i === 0 ? W : Math.max(1, W >> i);
+      const sh = i === 0 ? H : Math.max(1, H >> i);
+      downsampleMat.uniforms.tDiffuse.value = src;
+      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+      blit(downsampleMat, down[i]);
+      if (tier1) tier1.countRenderPassPixels(down[i].width * down[i].height, 'bloom-downsample');
+      src = down[i].texture;
+    }
+  }
+
+  function renderCompositePass(tier1) {
+    const fine = down[0].texture;
+    const coarse = levels > 1 ? down[levels - 1].texture : fine;
+    compositeMat.uniforms.tScene.value = rtScene.texture;
+    compositeMat.uniforms.tBloom0.value = fine;
+    compositeMat.uniforms.tBloom1.value = coarse;
+    compositeMat.uniforms.uBloomW0.value = 1.0;
+    compositeMat.uniforms.uBloomW1.value = levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
+    compositeMat.uniforms.uStrength.value = strength;
+    compositeMat.uniforms.uExposure.value = exposure;
+    compositeMat.uniforms.uAces.value = aces;
+    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
+    blit(compositeMat, null);
+    if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
   }
 
   function setInstrumentation(next) {
@@ -672,52 +714,19 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const tier1 = tier1Perf && tier1Perf.tier1 && tier1Perf.tier1.isEnabled() ? tier1Perf.tier1 : null;
 
     // pass 0 — scene into HDR buffer (renderer applies its own tone-mapping here)
-    timePassGroup('bloomScene', () => {
-      renderer.setRenderTarget(rtScene);
-      renderer.clear();
-      renderer.render(scene, camera);
-      if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
-    });
+    timePassGroup('bloomScene', renderScenePass, scene, camera, tier1);
 
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
 
     // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
-    timePassGroup('bloomDownsample', () => {
-      let src = rtScene.texture;
-      for (let i = 0; i < levels; i++) {
-        const sw = i === 0 ? W : Math.max(1, W >> i);
-        const sh = i === 0 ? H : Math.max(1, H >> i);
-        downsampleMat.uniforms.tDiffuse.value = src;
-        downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
-        downsampleMat.uniforms.uThreshold.value = threshold;
-        downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
-        blit(downsampleMat, down[i]);
-        if (tier1) tier1.countRenderPassPixels(down[i].width * down[i].height, 'bloom-downsample');
-        src = down[i].texture;
-      }
-    });
+    timePassGroup('bloomDownsample', renderDownsamplePass, tier1);
 
     // Multi-scale composite — no upsample RT or pass. Fine + coarse pyramid levels are sampled
     // directly; coarser levels contribute the wide halo via hardware bilinear (weight matches the
     // retired upsample chain so perceptual strength stays in family).
-    timePassGroup('bloomComposite', () => {
-      const fine = down[0].texture;
-      const coarse = levels > 1 ? down[levels - 1].texture : fine;
-      compositeMat.uniforms.tScene.value = rtScene.texture;
-      compositeMat.uniforms.tBloom0.value = fine;
-      compositeMat.uniforms.tBloom1.value = coarse;
-      compositeMat.uniforms.uBloomW0.value = 1.0;
-      compositeMat.uniforms.uBloomW1.value = levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
-      compositeMat.uniforms.uStrength.value = strength;
-      compositeMat.uniforms.uExposure.value = exposure;
-      compositeMat.uniforms.uAces.value = aces;
-      const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-      compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
-      blit(compositeMat, null);
-      if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
-    });
+    timePassGroup('bloomComposite', renderCompositePass, tier1);
 
     renderer.autoClear = prevAutoClear;
     renderer.setRenderTarget(null);
