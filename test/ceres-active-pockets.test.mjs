@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import {
+  expandProxyPrimitives,
+  resolveCollisionProxyManifest,
+} from '../src/data/collisionProxyManifests.js';
 import {
   CERES_ACTIVITY_BANDS,
   CERES_ACTIVITY_POCKET_ORDER,
@@ -13,6 +18,7 @@ import {
   ceresActivityPocket,
   distanceFromPocketAnchor,
 } from '../src/data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import {
   CERES_THROUGHLINE_BEACON_LOCAL_POS,
   CERES_WRECK_CATHEDRAL_LOCAL_POS,
@@ -33,13 +39,23 @@ import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { planFactionPresence } from '../src/data/factionPresence.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
+import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { buildSlotList, fits, ships } from '../src/systems/ships.js';
+import { world } from '../src/systems/world.js';
 
 const EXPECTED_POCKETS = Object.freeze([
   'ceres_refinery_pocket',
   'ceres_working_seam',
   'ceres_ambush_run',
   'ceres_cathedral_grave',
+]);
+
+const EXPECTED_OBJECT_SLOTS = Object.freeze([
+  'ceres_refinery_cargo_pod',
+  'ceres_seam_ore_clast',
+  'ceres_ambush_distress_beacon',
+  'ceres_ambush_bait_wreck',
+  'ceres_cathedral_grave_shard',
 ]);
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
@@ -160,13 +176,10 @@ test('R5A positions and inert routes use the named-anchor camera bands', () => {
 });
 
 test('R5A companion objects are logical world slots, not a second place registry', () => {
-  assert.deepEqual(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots.map((slot) => slot.id)), [
-    'ceres_refinery_cargo_pod',
-    'ceres_seam_ore_clast',
-    'ceres_ambush_distress_beacon',
-    'ceres_ambush_bait_wreck',
-    'ceres_cathedral_grave_shard',
-  ]);
+  assert.deepEqual(
+    CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots.map((slot) => slot.id)),
+    EXPECTED_OBJECT_SLOTS,
+  );
   for (const pocket of CERES_ACTIVITY_POCKETS) {
     for (const slot of pocket.objectSlots) {
       assert.equal(slot.inert, true);
@@ -178,6 +191,99 @@ test('R5A companion objects are logical world slots, not a second place registry
         `${slot.id} remains in the ordinary-camera immediate band`);
     }
   }
+});
+
+test('R5B materializes five inert object slots inside the existing Ceres budget', () => {
+  const first = materializeCeresActivityObjects(47);
+  const repeat = materializeCeresActivityObjects(47);
+
+  assert.deepEqual(first.fullCeresSignature, first.sameSectorReentrySignature,
+    'same-sector entry must not create, replace, or reorder Ceres entities');
+  assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
+    'same-seed rebuild must retain the complete live Ceres entity signature');
+  assert.deepEqual(first.census, {
+    total: 129,
+    byType: { asteroid: 90, fx: 13, ship: 2, station: 6, wreck: 18 },
+    collidable: 107,
+    colliders: 107,
+  }, 'R5B must add no entity, type, or collider cost to the current full Ceres world');
+
+  assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
+  assert.equal(new Set(first.activity.map((row) => row.slotId)).size, EXPECTED_OBJECT_SLOTS.length);
+  assert.equal(first.activity.length, EXPECTED_OBJECT_SLOTS.length);
+
+  const expectedPlaceBySlot = new Map([
+    ['ceres_refinery_cargo_pod', 'place_conveyor_barge'],
+    ['ceres_ambush_distress_beacon', 'place_nav_buoy'],
+    ['ceres_ambush_bait_wreck', 'place_dead_hulk'],
+    ['ceres_cathedral_grave_shard', 'place_debris_chunk'],
+  ]);
+  for (const row of first.activity) {
+    const descriptor = objectSlot(row.slotId);
+    const pocket = ceresActivityPocket(descriptor.pocketId);
+    const expectedPos = sectorLocalToGlobalForSector({
+      x: pocket.activityAnchor.localPos.x + descriptor.offset.x,
+      z: pocket.activityAnchor.localPos.z + descriptor.offset.z,
+    }, pocket.sectorId);
+    assert.deepEqual(row.pos, { x: expectedPos.x, z: expectedPos.z }, `${row.slotId} uses its R5A offset`);
+    assert.equal(row.data.activityObjectSlotId, descriptor.id);
+    for (const forbidden of [
+      'worldRecordId', 'durable', 'persistent', 'persistenceOwner', 'missionId', 'trafficHookId',
+    ]) {
+      assert.equal(Object.prototype.hasOwnProperty.call(row.data, forbidden), false,
+        `${row.slotId} must not gain durable/runtime ownership through ${forbidden}`);
+    }
+
+    if (row.slotId === 'ceres_seam_ore_clast') {
+      assert.equal(row.type, 'asteroid');
+      assert.equal(row.collides, true);
+      assert.equal(row.data.fieldId, 'f_ceres_1');
+      assert.equal(row.data.typeId, 'ast_metallic');
+      assert.equal(row.data.authoredGeologySkin, undefined,
+        'the nonzero activity index must leave index-0 geology ownership intact');
+      assert.ok(row.data.oreHP > 0 && row.data.yieldU > 0 && row.data.size > 0);
+      assert.ok(Array.isArray(row.data.seams) && row.data.seams.length > 0);
+    } else {
+      assert.equal(row.type, 'fx');
+      assert.equal(row.placeId, expectedPlaceBySlot.get(row.slotId));
+      assert.equal(row.collides, false);
+      assert.equal(row.mass, 0);
+      assert.equal(row.ttl, Infinity);
+      assert.equal(row.noInterp, true);
+      assert.equal(row.data.worldDressing, true);
+    }
+  }
+
+  assert.deepEqual(first.fieldAsteroidIds.map((row) => row.length), [32, 32, 26]);
+  assert.equal(first.fieldAsteroidIds[0][0], 4);
+  assert.equal(first.fieldAsteroidIds[0][1], first.activityBySlot.ceres_seam_ore_clast.id);
+  assert.equal(first.entityById[4].data.authoredGeologySkin, true);
+  assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
+
+  assert.deepEqual(first.dressing.map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  assert.deepEqual(first.dressing.map((row) => row.placeId), [
+    'place_nav_buoy',
+    'place_mining_drone',
+    'place_nav_buoy',
+    'place_dead_hulk',
+    'place_nav_buoy',
+    'place_debris_chunk',
+    'place_conveyor_barge',
+  ]);
+  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 105, 107, 108]);
+  assert.equal(first.ceresRngDraws, 495,
+    'Ceres materialization must retain the complete pre-R5B content-stream draw count');
+
+  assert.deepEqual(first.unaffectedRngSignature, [
+    [103, -11757.625074, 7279.286646],
+    [104, -12930.087603, 8742.364164],
+    [106, -11393.591553, 9264.164417],
+  ], 'unaffected tail positions fingerprint the original asteroid/dressing RNG cadence');
+  assert.deepEqual(first.numericTail, [
+    [109, 'ship', 'sector_ceres_belt'],
+    [110, 'ship', 'sector_ceres_belt'],
+    [111, 'station', 'sector_helios_prime'],
+  ], 'the first entities after Ceres dressing retain their numeric IDs and order');
 });
 
 test('R5A acceptance entry names the legal Hornet physics toolkit without wiring it', () => {
@@ -238,4 +344,154 @@ function actor(id) {
   const found = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots).find((slot) => slot.id === id);
   assert.ok(found, `missing actor slot ${id}`);
   return found;
+}
+
+function objectSlot(id) {
+  const found = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots).find((slot) => slot.id === id);
+  assert.ok(found, `missing object slot ${id}`);
+  return found;
+}
+
+function materializeCeresActivityObjects(seed) {
+  const sim = createSimulation({ seed, systems: [world, asteroidSites] });
+  const { state } = sim;
+  let originalMulberry32 = null;
+  try {
+    state.mode = 'flight';
+    const player = sim.spawn({
+      type: 'ship',
+      team: 0,
+      pos: sectorLocalToGlobalForSector({ x: 0, z: 0 }, 'sector_ceres_belt'),
+      vel: { x: 0, z: 0 },
+      radius: 10,
+      mass: 1,
+      collides: false,
+      data: { ceresActivityHarnessPlayer: true },
+    });
+    state.playerId = player.id;
+    const worldSystem = sim.registry.get('world');
+    const drawCounts = new Map();
+    originalMulberry32 = worldSystem.helpers.mulberry32;
+    worldSystem.helpers.mulberry32 = (rngSeed) => {
+      const next = originalMulberry32(rngSeed);
+      return () => {
+        drawCounts.set(rngSeed, (drawCounts.get(rngSeed) || 0) + 1);
+        return next();
+      };
+    };
+    const ceresContentSeed = worldSystem.helpers.hash32(seed, 'sector_ceres_belt', 0);
+    worldSystem.enterSector('sector_ceres_belt', {
+      continuous: true,
+      noTeleport: true,
+      placePlayer: false,
+    });
+    sim.step(SIM_DT);
+    const first = captureCeresActivityState(state);
+
+    worldSystem.enterSector('sector_ceres_belt', {
+      continuous: true,
+      noTeleport: true,
+      placePlayer: false,
+    });
+    const reentry = captureCeresActivityState(state);
+    return {
+      ...first,
+      ceresRngDraws: drawCounts.get(ceresContentSeed) || 0,
+      sameSectorReentrySignature: reentry.fullCeresSignature,
+    };
+  } finally {
+    if (originalMulberry32) sim.registry.get('world').helpers.mulberry32 = originalMulberry32;
+    sim.dispose();
+  }
+}
+
+function captureCeresActivityState(state) {
+  const all = [...state.entities.values()];
+  const entities = all.filter((entity) => {
+    if (!entity || entity.alive === false || entity.data?.ceresActivityHarnessPlayer) return false;
+    const sectorId = entity.homeSectorId || entity.data?.homeSectorId || entity.data?.sectorId || null;
+    const recordId = String(entity.data?.worldRecordId || '');
+    return sectorId === 'sector_ceres_belt' || recordId.startsWith('world_site_wreck_cathedral/');
+  });
+  const byType = {};
+  for (const entity of entities) byType[entity.type] = (byType[entity.type] || 0) + 1;
+  const sortedByType = Object.fromEntries(
+    Object.entries(byType).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  const collidable = entities.filter((entity) => entity.collides === true);
+  const colliders = collidable.reduce((sum, entity) => {
+    const manifest = resolveCollisionProxyManifest(entity);
+    return sum + (manifest ? expandProxyPrimitives(manifest, { entity }).length : 1);
+  }, 0);
+  const activity = entities
+    .filter((entity) => typeof entity.data?.activityObjectSlotId === 'string')
+    .map((entity) => ({
+      id: entity.id,
+      slotId: entity.data.activityObjectSlotId,
+      type: entity.type,
+      placeId: entity.data.placeId,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      mass: entity.mass,
+      collides: entity.collides === true,
+      ttl: entity.ttl,
+      noInterp: entity.flags?.noInterp === true,
+      data: cloneJson(entity.data),
+    }))
+    .sort((left, right) => left.id - right.id);
+  const activityBySlot = Object.fromEntries(activity.map((row) => [row.slotId, row]));
+  const active = state.world.activeSector;
+  const entityById = Object.fromEntries([4].map((id) => {
+    const entity = state.entities.get(id);
+    return [id, entity ? { id, type: entity.type, data: cloneJson(entity.data) } : null];
+  }));
+  const pointSignature = (id) => {
+    const entity = state.entities.get(id);
+    return [id, round6(entity?.pos?.x), round6(entity?.pos?.z)];
+  };
+  return {
+    census: {
+      total: entities.length,
+      byType: sortedByType,
+      collidable: collidable.length,
+      colliders,
+    },
+    activity,
+    activityBySlot,
+    entityById,
+    fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
+    dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
+    unaffectedRngSignature: [103, 104, 106].map(pointSignature),
+    numericTail: [109, 110, 111].map((id) => {
+      const entity = state.entities.get(id);
+      return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];
+    }),
+    fullCeresSignature: entities
+      .map((entity) => ({
+        id: entity.id,
+        type: entity.type,
+        team: entity.team,
+        factionId: entity.factionId,
+        pos: { x: entity.pos.x, y: entity.pos.y, z: entity.pos.z },
+        vel: { x: entity.vel.x, y: entity.vel.y, z: entity.vel.z },
+        rot: entity.rot,
+        angVel: entity.angVel,
+        radius: entity.radius,
+        mass: entity.mass,
+        hull: entity.hull,
+        hullMax: entity.hullMax,
+        collides: entity.collides === true,
+        ttl: Number.isFinite(entity.ttl) ? entity.ttl : 'Infinity',
+        flags: cloneJson(entity.flags),
+        data: cloneJson(entity.data),
+      }))
+      .sort((left, right) => left.id - right.id),
+  };
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value || {}));
+}
+
+function round6(value) {
+  return Number(Number(value).toFixed(6));
 }

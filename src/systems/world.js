@@ -34,6 +34,10 @@ import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regio
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -167,6 +171,22 @@ function authoredGeologyPlaceForField(fieldDef) {
   if (!fieldDef) return null;
   const asteroidDef = AST_BY_ID.get(fieldDef.type);
   return asteroidDef && asteroidDef.authoredPlaceId || null;
+}
+
+const CERES_ACTIVITY_OBJECT_SLOTS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.objectSlots.map((slot) => [slot.id, Object.freeze({ pocket, slot })])
+)));
+
+function ceresActivityObjectBinding(id, toGlobal) {
+  const binding = CERES_ACTIVITY_OBJECT_SLOTS.get(id);
+  if (!binding) throw new Error(`Missing Ceres activity object slot: ${id}`);
+  return {
+    id: binding.slot.id,
+    pos: toGlobal({
+      x: binding.pocket.activityAnchor.localPos.x + binding.slot.offset.x,
+      z: binding.pocket.activityAnchor.localPos.z + binding.slot.offset.z,
+    }),
+  };
 }
 
 export const world = {
@@ -1145,6 +1165,14 @@ export const world = {
       const astIds = [];
       const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
+        const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
+          && fdef.id === 'f_ceres_1'
+          && i === 1
+          ? ceresActivityObjectBinding(
+            'ceres_seam_ore_clast',
+            (localPos) => this._toGlobal(localPos, sector.id),
+          )
+          : null;
         const a = this._spawnAsteroid(
           fdef,
           params,
@@ -1152,6 +1180,7 @@ export const world = {
           clusterR,
           rng,
           i === 0 ? authoredGeologyPlaceId : null,
+          activityBinding,
         );
         if (a) {
           this._stampHomeSector(a, sector.id);
@@ -1162,12 +1191,20 @@ export const world = {
     }
   },
 
-  _spawnAsteroid(fdef, params, center, clusterR, rng, authoredGeologyPlaceId = null) {
+  _spawnAsteroid(
+    fdef,
+    params,
+    center,
+    clusterR,
+    rng,
+    authoredGeologyPlaceId = null,
+    activityBinding = null,
+  ) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
     // disc-uniform scatter inside the cluster (center is already galactic-global)
     const ang = rng() * Math.PI * 2;
     const r = clusterR * Math.sqrt(rng());
-    const pos = { x: center.x + Math.cos(ang) * r, z: center.z + Math.sin(ang) * r };
+    const scatteredPos = { x: center.x + Math.cos(ang) * r, z: center.z + Math.sin(ang) * r };
 
     const [hpLo, hpHi] = def.hp || [120, 520];
     const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
@@ -1182,10 +1219,16 @@ export const world = {
       || 1;
     const yieldU = Math.max(1, Math.round(baseYieldU * ecologyYield));
     const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
+    const angVel = (rng() - 0.5) * 0.35;
+    // Activity binding substitutes an existing-budget slot only after consuming every original
+    // asteroid draw. It must not alter count, spawn order, geology index 0, or the later stream.
+    const pos = activityBinding && activityBinding.pos
+      ? { x: activityBinding.pos.x, z: activityBinding.pos.z }
+      : scatteredPos;
 
     const ent = this.helpers.spawnEntity({
       type: 'asteroid', pos,
-      radius: size, mass: 200 + size * 40, angVel: (rng() - 0.5) * 0.35,
+      radius: size, mass: 200 + size * 40, angVel,
       hull: oreHP, hullMax: oreHP, collides: true,
       data: {
         typeId: def.id, tier: def.tierCap, tierCap,
@@ -1200,6 +1243,9 @@ export const world = {
           placeId: authoredGeologyPlaceId,
           placeTargetRadius: size,
         } : {}),
+        ...(activityBinding && activityBinding.id
+          ? { activityObjectSlotId: activityBinding.id }
+          : {}),
       },
     });
     // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
@@ -1435,31 +1481,61 @@ export const world = {
   _spawnBeltDressing(sector, active, rng, paletteClass) {
     const fields = active.fields || [];
     const stations = active.stations || [];
+    const ceresActivity = sector.id === CERES_ACTIVITY_SECTOR_ID;
+    const activityBinding = (id) => ceresActivity
+      ? ceresActivityObjectBinding(id, (localPos) => this._toGlobal(localPos, sector.id))
+      : null;
     for (let i = 0; i < Math.min(3, fields.length); i++) {
       const field = fields[i];
       if (!field || !field.center) continue;
       const ang = rng() * Math.PI * 2;
       const dist = 210 + rng() * 170;
-      this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(field.center, ang, dist), {
-        paletteClass,
-        rot: ang + Math.PI * 0.5,
-        name: 'Belt Survey Buoy',
-        placeScale: 1,
-      });
-      this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(field.center, ang + 1.9, 120 + rng() * 130), {
-        paletteClass,
-        rot: ang,
-        name: 'Prospecting Drone',
-        placeScale: 1,
-      });
+      const originalNavPos = polarOffset(field.center, ang, dist);
+      const navBinding = i === 0 ? activityBinding('ceres_ambush_distress_beacon') : null;
+      const droneBinding = i === 1
+        ? activityBinding('ceres_ambush_bait_wreck')
+        : (i === 2 ? activityBinding('ceres_cathedral_grave_shard') : null);
+      this._spawnPlaceProp(
+        active,
+        sector,
+        'place_nav_buoy',
+        navBinding ? navBinding.pos : originalNavPos,
+        {
+          paletteClass,
+          rot: ang + Math.PI * 0.5,
+          name: navBinding ? 'Throughline Distress Beacon' : 'Belt Survey Buoy',
+          placeScale: 1,
+          activityObjectSlotId: navBinding && navBinding.id,
+        },
+      );
+      const originalDronePos = polarOffset(field.center, ang + 1.9, 120 + rng() * 130);
+      this._spawnPlaceProp(
+        active,
+        sector,
+        droneBinding && droneBinding.id === 'ceres_ambush_bait_wreck'
+          ? 'place_dead_hulk'
+          : (droneBinding ? 'place_debris_chunk' : 'place_mining_drone'),
+        droneBinding ? droneBinding.pos : originalDronePos,
+        {
+          paletteClass,
+          rot: ang,
+          name: droneBinding && droneBinding.id === 'ceres_ambush_bait_wreck'
+            ? 'Throughline Bait Wreck'
+            : (droneBinding ? 'Cathedral Grave Shard' : 'Prospecting Drone'),
+          placeScale: 1,
+          activityObjectSlotId: droneBinding && droneBinding.id,
+        },
+      );
     }
     if (stations[0] && fields[0] && fields[0].center) {
-      const pos = midpoint(stations[0].pos, fields[0].center, 0.58);
-      this._spawnPlaceProp(active, sector, 'place_conveyor_barge', pos, {
+      const originalPos = midpoint(stations[0].pos, fields[0].center, 0.58);
+      const cargoBinding = activityBinding('ceres_refinery_cargo_pod');
+      this._spawnPlaceProp(active, sector, 'place_conveyor_barge', cargoBinding ? cargoBinding.pos : originalPos, {
         paletteClass,
         rot: bearingToward(fields[0].center, stations[0].pos),
-        name: 'Ore Conveyor',
+        name: cargoBinding ? 'Refinery Cargo Staging Pod' : 'Ore Conveyor',
         placeScale: 1,
+        activityObjectSlotId: cargoBinding && cargoBinding.id,
       });
     }
   },
@@ -1556,6 +1632,9 @@ export const world = {
         name: options.name || placeId,
         visualRadius: radius,
         placeRadius: radius,
+        ...(typeof options.activityObjectSlotId === 'string' && options.activityObjectSlotId.length > 0
+          ? { activityObjectSlotId: options.activityObjectSlotId }
+          : {}),
       },
     });
     this._stampHomeSector(ent, sector.id);
