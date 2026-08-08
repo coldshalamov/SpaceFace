@@ -38,6 +38,7 @@ import {
   FREIGHT_MARKET_KEYS_FALLBACK,
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
+import { FACTION_KITS } from '../data/factions.js';
 import { pickNamedLaneContact } from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -77,6 +78,36 @@ const ASTEROID_BY_ID = new Map(ASTEROIDS.map((def) => [def.id, def]));
 // context — industrial sectors get more miners/haulers, hostile sectors get suspicious traffic,
 // secure faction sectors get patrols/escorts. team 2 = neutral/civilian traffic (gold); actual red
 // hostiles must come from combat/world/mission spawns, not passive scenery.
+// ── Faction fleets ────────────────────────────────────────────────────────────────────────────
+// TRAFFIC_ROLES below names one hull per role, so every raider in the game was the same Hornet and
+// every hauler the same Mule regardless of who controlled the sector. Faction kits already author
+// what a faction actually flies (`shipRoles`, each a weighted group of interchangeable hullIds),
+// but nothing read them.
+//
+// The role's authored hull is the class anchor, not a fixed answer: a faction group that contains
+// that hull is the group covering that job, and any hull in it is an equivalent substitution. The
+// Understory's rot-frigate group is wasp/hornet/bastion, so an Understory raider flies one of three
+// frames while remaining a raider. This deliberately does not invent a mapping from faction-specific
+// role names ("spore-tender") onto traffic roles — hull class is the honest join.
+//
+// Determinism: a faction with no authored fleet, or whose fleet has no group containing the anchor
+// hull, returns the anchor unchanged AND never draws from the RNG, so its traffic stream is
+// byte-identical to before. Nine of the fourteen factions are in that state today.
+const FLEET_BY_FACTION = new Map();
+for (const kit of FACTION_KITS) {
+  const groups = (Array.isArray(kit.shipRoles) ? kit.shipRoles : [])
+    .filter((entry) => Array.isArray(entry.hullIds) && entry.hullIds.length > 0);
+  if (groups.length) FLEET_BY_FACTION.set(kit.id, groups);
+}
+
+function factionHullFor(anchorHull, factionId, rng) {
+  const groups = FLEET_BY_FACTION.get(factionId);
+  if (!groups) return anchorHull;
+  const group = groups.find((entry) => entry.hullIds.includes(anchorHull));
+  if (!group || group.hullIds.length < 2) return anchorHull;
+  return group.hullIds[Math.floor(rng() * group.hullIds.length)] || anchorHull;
+}
+
 const TRAFFIC_ROLES = {
   hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
               label: 'Cargo Hauler', docks: true, trades: true },
@@ -340,9 +371,10 @@ export const traffic = {
       } else {
         aiSpec.spawnContext = 'convoy_civilian';
       }
-      const spec = makeShipEntitySpec(def.ship, {
+      const controllingFaction = sector.factionId || 'faction_free';
+      const spec = makeShipEntitySpec(factionHullFor(def.ship, controllingFaction, () => this._rng()), {
         team: def.team,                    // 2 neutral civilian
-        factionId: sector.factionId || 'faction_free',
+        factionId: controllingFaction,
         pos,
         ai: aiSpec,
       });
@@ -686,12 +718,18 @@ export const traffic = {
         spawnContext: (role === 'patrol' || role === 'escort') ? 'patrol' : 'convoy_civilian',
       };
       if (role === 'patrol' || role === 'escort') aiSpec.lawful = true;
-      const spec = makeShipEntitySpec(contact.ship || def.ship, {
-        team: def.team,
-        factionId: (sector && sector.factionId) || 'faction_free',
-        pos,
-        ai: aiSpec,
-      });
+      // A named lane contact names its own hull; that identity outranks the faction fleet, so only
+      // an unnamed contact falling back to the role default is eligible for substitution.
+      const laneFaction = (sector && sector.factionId) || 'faction_free';
+      const spec = makeShipEntitySpec(
+        contact.ship || factionHullFor(def.ship, laneFaction, () => this._rng()),
+        {
+          team: def.team,
+          factionId: laneFaction,
+          pos,
+          ai: aiSpec,
+        },
+      );
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
