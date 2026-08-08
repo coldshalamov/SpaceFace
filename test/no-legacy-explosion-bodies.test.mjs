@@ -6,6 +6,39 @@ import { EXPLOSION_SCHEDULES } from '../src/render/combat/phasedExplosions.js';
 
 const source = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
+function spriteKind(name) {
+  const match = source.match(new RegExp(`const ${name} = (\\d+);`));
+  assert.ok(match, `${name} numeric kind must remain inspectable`);
+  return Number(match[1]);
+}
+
+const SPR_FLASH_KIND = spriteKind('SPR_FLASH');
+const SPR_RING_KIND = spriteKind('SPR_RING');
+
+function captureExplosionLifecycle({ dirX, dirZ, reduced = false, serial = 41 }) {
+  const calls = [];
+  let phaseLabel = null;
+  const harness = Object.create(vfx);
+  harness._burst = 1;
+  harness.state = {
+    settings: { video: { motionReduce: reduced }, accessibility: { flashReduce: reduced } },
+  };
+  harness.bus = { emit: () => {} };
+  harness._spawnSprite = (...args) => calls.push({ type: 'sprite', phase: phaseLabel, args });
+  harness._spawnProjectileTrailStreak = (...args) => calls.push({ type: 'streak', phase: phaseLabel, args });
+  harness._impactParticleCone = (...args) => calls.push({ type: 'cone', phase: phaseLabel, args });
+  harness._flashLight = (...args) => calls.push({ type: 'light', phase: phaseLabel, args });
+  for (const [classId, scheduleDef] of Object.entries(EXPLOSION_SCHEDULES)) {
+    for (const event of scheduleDef.events) {
+      phaseLabel = `${classId}:${event.phase}`;
+      harness._emitExplosionPhase(event.phase, {
+        classId, serial, x: 0, z: 0, radius: classId === 'capital' ? 60 : 8, dirX, dirZ,
+      });
+    }
+  }
+  return calls;
+}
+
 test('the phased lifecycle is the only executable explosion implementation', () => {
   assert.doesNotMatch(source, /\n\s*_explodeSmall\s*\(/,
     'remove the unreachable legacy small-ship ring explosion body');
@@ -55,28 +88,50 @@ test('primary rupture and pressure remain non-ring while bright cores stay direc
   assert.match(body, /explosionPattern(?:01|Signed)/,
     'irregular placement comes from the deterministic presentation mixer');
 
-  const harness = Object.create(vfx);
-  harness._burst = 1;
-  harness.state = { settings: { video: { motionReduce: false }, accessibility: { flashReduce: false } } };
-  harness.bus = { emit: () => {} };
-  harness._flashLight = () => {};
-  harness._spawnProjectileTrailStreak = () => {};
-  harness._impactParticleCone = () => {};
-  const heatCores = [];
-  harness._spawnSprite = (...args) => { if (args[0] === 0) heatCores.push(args); };
-  for (const reduced of [false, true]) {
-    harness.state.settings.video.motionReduce = reduced;
-    harness.state.settings.accessibility.flashReduce = reduced;
-    for (const [classId, scheduleDef] of Object.entries(EXPLOSION_SCHEDULES)) {
-      for (const event of scheduleDef.events) {
-        harness._emitExplosionPhase(event.phase, {
-          classId, serial: 41, x: 0, z: 0, radius: classId === 'capital' ? 60 : 8,
-          dirX: 0.8, dirZ: 0.6,
-        });
-      }
-    }
-  }
+  const normal = captureExplosionLifecycle({ dirX: 1, dirZ: 0 });
+  const normalReplay = captureExplosionLifecycle({ dirX: 1, dirZ: 0 });
+  const reduced = captureExplosionLifecycle({ dirX: 1, dirZ: 0, reduced: true });
+  const reducedReplay = captureExplosionLifecycle({ dirX: 1, dirZ: 0, reduced: true });
+  assert.deepEqual(normalReplay, normal,
+    'identical normal receipts must replay identical structural calls');
+  assert.deepEqual(reducedReplay, reduced,
+    'identical reduced receipts must replay identical structural calls');
+
+  const allCalls = [...normal, ...reduced];
+  const heatCores = allCalls.filter((call) => (
+    call.type === 'sprite' && call.args[0] === SPR_FLASH_KIND
+  ));
   assert.ok(heatCores.length > 0);
-  assert.ok(heatCores.every((args) => Number(args[12]) > 1 && Number.isFinite(args[13])),
+  assert.ok(heatCores.every((call) => Number(call.args[12]) > 1 && Number.isFinite(call.args[13])),
     'normal and reduced bright cores must use explicit aspect and direction, never circular fallback');
+  assert.equal(allCalls.filter((call) => (
+    call.type === 'sprite'
+    && call.args[0] === SPR_RING_KIND
+    && /:(?:rupture|pressure)$/.test(call.phase)
+  )).length, 0, 'runtime rupture and pressure must never emit SPR_RING');
+
+  const rotated = captureExplosionLifecycle({ dirX: 0, dirZ: 1 });
+  const normalFlashes = normal.filter((call) => call.type === 'sprite' && call.args[0] === SPR_FLASH_KIND);
+  const rotatedFlashes = rotated.filter((call) => call.type === 'sprite' && call.args[0] === SPR_FLASH_KIND);
+  assert.equal(rotatedFlashes.length, normalFlashes.length);
+  for (let i = 0; i < normalFlashes.length; i++) {
+    const delta = Math.atan2(
+      Math.sin(rotatedFlashes[i].args[13] - normalFlashes[i].args[13]),
+      Math.cos(rotatedFlashes[i].args[13] - normalFlashes[i].args[13]),
+    );
+    assert.ok(Math.abs(delta - Math.PI / 2) < 1e-9,
+      `heat-core roll ${i} must rotate with the receipt direction`);
+  }
+  const explicitAxes = (calls) => calls.filter((call) => (
+    call.type === 'streak' && Number.isFinite(call.args[10]) && Number.isFinite(call.args[11])
+  ));
+  const normalAxes = explicitAxes(normal);
+  const rotatedAxes = explicitAxes(rotated);
+  assert.ok(normalAxes.length > 0);
+  assert.equal(rotatedAxes.length, normalAxes.length);
+  for (let i = 0; i < normalAxes.length; i++) {
+    assert.ok(Math.abs(rotatedAxes[i].args[10] + normalAxes[i].args[11]) < 1e-9
+      && Math.abs(rotatedAxes[i].args[11] - normalAxes[i].args[10]) < 1e-9,
+    `streak axis ${i} must rotate with the receipt direction`);
+  }
 });

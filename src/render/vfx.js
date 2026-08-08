@@ -4440,7 +4440,12 @@ export const vfx = {
       wasActive: false,
       lastSourceId: null,
       lastTargetId: null,
+      lastAttachmentId: null,
       lastRemote: false,
+      endpointScratch: {
+        ax: 0, az: 0, bx: 0, bz: 0,
+        dirX: 1, dirZ: 0, chord: 0, targetRadius: 4,
+      },
       latchAge: 999,      // seconds since latch (drives the whip wave)
       snapAge: 999,       // seconds since break (drives the violent recoil whip)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
@@ -4566,14 +4571,18 @@ export const vfx = {
     const live = active && target && target.alive;
     const sourceId = live ? source.id : null;
     const targetId = live ? target.id : null;
+    const attachmentId = live && tether.attachmentId != null ? tether.attachmentId : null;
     const identityChanged = live && (cable.lastSourceId !== sourceId
-      || cable.lastTargetId !== targetId || cable.lastRemote !== remote);
+      || cable.lastTargetId !== targetId
+      || cable.lastAttachmentId !== attachmentId
+      || cable.lastRemote !== remote);
 
     if (live && (!cable.wasActive || identityChanged)) {
       cable.latchAge = 0; cable.snapAge = 999; cable.fade = 1;
       cable.fadeRate = TETHER_RELEASE_FADE_RATE;
       cable.lastSourceId = sourceId;
       cable.lastTargetId = targetId;
+      cable.lastAttachmentId = attachmentId;
       cable.lastRemote = remote;
     }
     cable.wasActive = live;
@@ -4596,37 +4605,28 @@ export const vfx = {
     // Stations use a small collision radius so docking feels sane, but their visible body/ring is
     // much larger. Using the collision radius made lines attach to empty space in station centers.
     // Chord math stays galactic-global; mesh buffer writes are frame-local.
-    let axG;
-    let azG;
-    if (cable.lastRemote) {
-      const sourceDx = anchorEnt.pos.x - sourceEnt.pos.x;
-      const sourceDz = anchorEnt.pos.z - sourceEnt.pos.z;
-      const sourceDistance = Math.hypot(sourceDx, sourceDz) || 1;
-      const sr = tetherVisualRadius(sourceEnt);
-      axG = sourceEnt.pos.x + (sourceDx / sourceDistance) * sr * 0.88;
-      azG = sourceEnt.pos.z + (sourceDz / sourceDistance) * sr * 0.88;
-    } else {
-      const cf = Math.cos(sourceEnt.rot), sf = Math.sin(sourceEnt.rot);
-      const noseR = (sourceEnt.radius || 6);
-      axG = sourceEnt.pos.x + cf * noseR;
-      azG = sourceEnt.pos.z + sf * noseR;
+    const endpoints = cable.endpointScratch;
+    if (!writeTetherVisualEndpoints(sourceEnt, anchorEnt, cable.lastRemote, endpoints)) {
+      setTetherCableVisible(cable, false);
+      return;
     }
-    let dxG = anchorEnt.pos.x - axG, dzG = anchorEnt.pos.z - azG;
-    const dist = Math.hypot(dxG, dzG) || 1;
-    const tr = tetherVisualRadius(anchorEnt);
-    const bxG = anchorEnt.pos.x - (dxG / dist) * tr * 0.88, bzG = anchorEnt.pos.z - (dzG / dist) * tr * 0.88;
+    const axG = endpoints.ax;
+    const azG = endpoints.az;
+    const bxG = endpoints.bx;
+    const bzG = endpoints.bz;
+    const tr = endpoints.targetRadius;
     // The cable chord remains slightly inset for a firm latch, while the attachment markers sit
     // just outside the target surface. This bounded offset clears coplanar skin without pulling
     // the markers through unrelated foreground geometry.
-    const mxG = anchorEnt.pos.x - (dxG / dist) * (tr + TETHER_MARKER_SURFACE_EPS);
-    const mzG = anchorEnt.pos.z - (dzG / dist) * (tr + TETHER_MARKER_SURFACE_EPS);
+    const mxG = anchorEnt.pos.x - endpoints.dirX * (tr + TETHER_MARKER_SURFACE_EPS);
+    const mzG = anchorEnt.pos.z - endpoints.dirZ * (tr + TETHER_MARKER_SURFACE_EPS);
     let dx = bxG - axG; let dz = bzG - azG;
-    const chord = Math.hypot(dx, dz) || 1;
+    const chord = endpoints.chord;
     const aLocal = this._toLocalXZ(axG, azG, this._spawnLocalXZ);
     const bLocal = this._toLocalXZ(bxG, bzG, this._entityLocalXZ);
+    const bx = bLocal.x, bz = bLocal.z;
     const mLocal = this._toLocalXZ(mxG, mzG, this._entityLocalXZ);
     const ax = aLocal.x, az = aLocal.z;
-    const bx = bLocal.x, bz = bLocal.z;
     const mx = mLocal.x, mz = mLocal.z;
     const visualTime = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime
@@ -4961,10 +4961,36 @@ export const vfx = {
 
   // Snap burst at both cable ends when the line breaks under load (tether:broken).
   // Top-50 rank-2 massline pack: louder break — dual-end sparks + white-hot flash + longer scatter.
+  _tetherBreakMatchesCable(p, cable = this._tetherCable) {
+    if (!p || !cable || !(cable.wasActive || cable.fade > 0.001)) return false;
+    if (cable.lastSourceId == null || cable.lastTargetId == null) return false;
+    if (p.targetId != null && !sameTetherIdentity(p.targetId, cable.lastTargetId)) return false;
+    // actorId names the controller that cut the attachment; it is not necessarily the rendered
+    // remote source. Only an explicitly published source/owner id may constrain that endpoint.
+    const receiptSourceId = p.sourceId != null ? p.sourceId : (p.ownerId != null ? p.ownerId : null);
+    if (receiptSourceId != null && !sameTetherIdentity(receiptSourceId, cable.lastSourceId)) return false;
+
+    const receiptAttachmentId = p.attachmentId;
+    const retainedAttachmentId = cable.lastAttachmentId;
+    if (receiptAttachmentId != null || retainedAttachmentId != null) {
+      return receiptAttachmentId != null && retainedAttachmentId != null
+        && sameTetherIdentity(receiptAttachmentId, retainedAttachmentId);
+    }
+    // Legacy presentation receipts did not carry attachmentId. Target identity is the narrowest
+    // safe fallback; a receipt without either identity cannot claim the retained cable.
+    return p.targetId != null && sameTetherIdentity(p.targetId, cable.lastTargetId);
+  },
+
   _onTetherSnap(p) {
-    this._emitJuiceCue('presentation.tether.break', p, 1.5);
     const cable = this._tetherCable;
-    if (!cable || !this._scene) return;
+    if (!cable || !this._scene || !this._tetherBreakMatchesCable(p, cable)) return false;
+    const source = this._ent(cable.lastSourceId);
+    const target = this._ent(cable.lastTargetId);
+    if (!source || !target) return false;
+    const endpoints = cable.endpointScratch || (cable.endpointScratch = {});
+    const hasEndpoints = writeTetherVisualEndpoints(source, target, cable.lastRemote, endpoints);
+
+    this._emitJuiceCue('presentation.tether.break', p, 1.5);
     // Do NOT hide the cable. A break is the most violent thing the massline ever does and it used
     // to be the only event in the game with no line on screen at all: the ribbon was hidden on the
     // same frame the sparks appeared. Hold it, whip it, and let it burn out.
@@ -4976,86 +5002,62 @@ export const vfx = {
     cable.latchAge = 999;
     cable.fadeRate = TETHER_SNAP_FADE_RATE;
     cable.wasActive = false;
-    if (p && p.targetId != null) cable.lastTargetId = p.targetId;
     if (cable.fade < 1) cable.fade = 1;
-
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    const target = p && p.targetId != null ? this._ent(p.targetId) : null;
+    // A valid receipt can still describe overlapping endpoints (for example, a source embedded in
+    // a despawning target). Keep the retained line's fade state, but do not stack two identical
+    // bursts or divide a zero-length recoil chord.
+    if (!hasEndpoints) return true;
 
     // Trailing streak: the recoiling line reads as light dragged through space. Anisotropic sprites
     // stretched ALONG the broken chord (the instanced pool already carries aspect + roll), laid down
     // from each end toward the middle so both halves visibly snap back.
-    if (player && player.pos && target && target.pos) {
-      const dx = target.pos.x - player.pos.x;
-      const dz = target.pos.z - player.pos.z;
-      const chord = Math.hypot(dx, dz) || 1;
-      const ux = dx / chord, uz = dz / chord;
-      const roll = Math.atan2(uz, ux);
-      const px = -uz, pz = ux;
-      const lash = Math.max(4, Math.round(9 * (this._burst || 1)));
-      for (let k = 0; k < lash; k++) {
-        const f = (k + 0.5) / lash;
-        // Recoil is fastest at the ends and slowest mid-span, like a real parting cable.
-        const endBias = Math.abs(f - 0.5) * 2;
-        const recoil = (28 + 120 * endBias) * (f < 0.5 ? -1 : 1);
-        const lateral = (Math.random() - 0.5) * 46;
-        this._spawnSprite(
-          SPR_FLASH,
-          player.pos.x + dx * f, 1.5, player.pos.z + dz * f,
-          0.16 + Math.random() * 0.14,
-          Math.min(14, chord * 0.16), 1.2,
-          0.95, 0.0,
-          k % 3 === 0 ? '#ffffff' : '#ffb35c',
-          ux * recoil + px * lateral, uz * recoil + pz * lateral,
-          3.5, roll,
-        );
-      }
+    const dx = endpoints.bx - endpoints.ax;
+    const dz = endpoints.bz - endpoints.az;
+    const chord = endpoints.chord;
+    const ux = dx / chord, uz = dz / chord;
+    const roll = Math.atan2(uz, ux);
+    const px = -uz, pz = ux;
+    const lash = Math.max(4, Math.round(9 * (this._burst || 1)));
+    for (let k = 0; k < lash; k++) {
+      const f = (k + 0.5) / lash;
+      // Recoil is fastest at the ends and slowest mid-span, like a real parting cable.
+      const endBias = Math.abs(f - 0.5) * 2;
+      const recoil = (28 + 120 * endBias) * (f < 0.5 ? -1 : 1);
+      const lateral = (Math.random() - 0.5) * 46;
+      this._spawnSprite(
+        SPR_FLASH,
+        endpoints.ax + dx * f, 1.5, endpoints.az + dz * f,
+        0.16 + Math.random() * 0.14,
+        Math.min(14, chord * 0.16), 1.2,
+        0.95, 0.0,
+        k % 3 === 0 ? '#ffffff' : '#ffb35c',
+        ux * recoil + px * lateral, uz * recoil + pz * lateral,
+        3.5, roll,
+      );
     }
 
     // Spark exactly at the two visible cable endpoints. The prior 34-per-end burst could consume 68
     // particle slots before the recoil ribbon and lights were admitted; preserve the dual-end read
     // with a quality-scaled 14..22 budget instead.
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
-    const snapEnds = [];
-    if (player && player.pos) {
-      const playerForwardX = Math.cos(player.rot || 0);
-      const playerForwardZ = Math.sin(player.rot || 0);
-      const playerNose = player.radius || 6;
-      snapEnds.push({
-        x: player.pos.x + playerForwardX * playerNose,
-        z: player.pos.z + playerForwardZ * playerNose,
-      });
-    }
-    if (target && target.pos) {
-      const sourceEnd = snapEnds[0];
-      if (sourceEnd) {
-        const targetDx = target.pos.x - sourceEnd.x;
-        const targetDz = target.pos.z - sourceEnd.z;
-        const targetDistance = Math.hypot(targetDx, targetDz) || 1;
-        const targetRadius = tetherVisualRadius(target);
-        snapEnds.push({
-          x: target.pos.x - (targetDx / targetDistance) * targetRadius * 0.88,
-          z: target.pos.z - (targetDz / targetDistance) * targetRadius * 0.88,
-        });
-      } else {
-        snapEnds.push(target.pos);
-      }
-    }
-    for (const pos of snapEnds) {
+    for (let end = 0; end < 2; end++) {
+      const endX = end === 0 ? endpoints.ax : endpoints.bx;
+      const endZ = end === 0 ? endpoints.az : endpoints.bz;
       const n = Math.min(22, Math.max(14, Math.round(22 * (this._burst || 1))));
       for (let k = 0; k < n; k++) {
         const a = Math.random() * Math.PI * 2;
         const v = 34 + Math.random() * 110;
         // Spark trails inherit their own direction so they streak instead of dotting.
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
+        this._spawnParticle(endX, endZ, Math.cos(a) * v, Math.sin(a) * v,
           0.24 + Math.random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, 0.85);
       }
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
+      this._spawnSprite(SPR_FLASH, endX, 0, endZ, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
       // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
       // whole ship in a flat orange donut for a third of a second.
-      this._spawnSprite(SPR_RING, pos.x, 0.9, pos.z, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
-      this._flashLight({ x: pos.x, z: pos.z }, '#ffb0a0', 5.4, 12, 200);
+      this._spawnSprite(SPR_RING, endX, 0.9, endZ, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
+      this._flashLight({ x: endX, z: endZ }, '#ffb0a0', 5.4, 12, 200);
     }
+    return true;
   },
 
   // Latch spark at BOTH ends when a tether attaches (tether:attached).
@@ -9051,6 +9053,65 @@ function setTetherCableVisible(cable, visible) {
   if (cable.anchor) cable.anchor.visible = visible;
   if (cable.anchorCore) cable.anchorCore.visible = visible;
   if (cable.targetHalo) cable.targetHalo.visible = visible && cable.targetHaloActive === true;
+}
+
+function sameTetherIdentity(a, b) {
+  return a === b || (a != null && b != null && String(a) === String(b));
+}
+
+// Writes the exact galactic-global cable endpoints used by both the live mesh and break VFX.
+// The caller owns `out`; the frame update therefore stays allocation-free.
+function writeTetherVisualEndpoints(source, target, remote, out) {
+  if (!source || !target || !out || !source.pos || !target.pos) return false;
+  const sourceX = Number(source.pos.x);
+  const sourceZ = Number(source.pos.z);
+  const targetX = Number(target.pos.x);
+  const targetZ = Number(target.pos.z);
+  if (!Number.isFinite(sourceX) || !Number.isFinite(sourceZ)
+    || !Number.isFinite(targetX) || !Number.isFinite(targetZ)) return false;
+
+  let ax;
+  let az;
+  if (remote) {
+    const sourceDx = targetX - sourceX;
+    const sourceDz = targetZ - sourceZ;
+    const sourceDistance = Math.hypot(sourceDx, sourceDz);
+    if (!(sourceDistance > 1e-6)) return false;
+    const sourceRadius = tetherVisualRadius(source);
+    ax = sourceX + (sourceDx / sourceDistance) * sourceRadius * 0.88;
+    az = sourceZ + (sourceDz / sourceDistance) * sourceRadius * 0.88;
+  } else {
+    const rot = Number.isFinite(source.rot) ? source.rot : 0;
+    const noseRadius = Number.isFinite(source.radius) && source.radius > 0 ? source.radius : 6;
+    ax = sourceX + Math.cos(rot) * noseRadius;
+    az = sourceZ + Math.sin(rot) * noseRadius;
+  }
+
+  const targetDx = targetX - ax;
+  const targetDz = targetZ - az;
+  const targetDistance = Math.hypot(targetDx, targetDz);
+  if (!(targetDistance > 1e-6)) return false;
+  const dirX = targetDx / targetDistance;
+  const dirZ = targetDz / targetDistance;
+  const targetRadius = tetherVisualRadius(target);
+  const bx = targetX - dirX * targetRadius * 0.88;
+  const bz = targetZ - dirZ * targetRadius * 0.88;
+  const chordX = bx - ax;
+  const chordZ = bz - az;
+  const chord = Math.hypot(chordX, chordZ);
+  // Overlapping visual radii can reverse the surface chord even though its magnitude is non-zero.
+  // Treat that as degenerate so the break cannot emit two stacked or inverted endpoint bursts.
+  if (!(chord > 1e-6) || chordX * dirX + chordZ * dirZ <= 1e-6) return false;
+
+  out.ax = ax;
+  out.az = az;
+  out.bx = bx;
+  out.bz = bz;
+  out.dirX = dirX;
+  out.dirZ = dirZ;
+  out.chord = chord;
+  out.targetRadius = targetRadius;
+  return true;
 }
 
 function tetherVisualRadius(entity) {
