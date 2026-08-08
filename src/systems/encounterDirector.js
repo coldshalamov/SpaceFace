@@ -1335,7 +1335,21 @@ export const encounterDirector = {
       live.ids.push(entity.id);
       live.roles[entity.id] = 'squad';
       const ai = entity.data && entity.data.ai;
-      if (ai) ai[CERES_ACTIVITY_AMBUSH_MARKER] = phase;
+      if (ai) {
+        const restore = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+        if (restore && typeof restore === 'object' && !Array.isArray(restore)
+          && !Object.prototype.hasOwnProperty.call(restore, 'moraleImmune')) {
+          // Pre-repair saves already carry this restore object but not the morale field. At the
+          // precise moment live adoption first claims morale ownership, the actor still carries its
+          // authoritative absent/false/true value, so migrate that value before overwriting it.
+          restore.moraleImmune = ownSnapshot(ai, 'moraleImmune');
+        }
+        // This exemption belongs only to the live authored encounter. Merely parked world actors
+        // retain their prior morale contract; adoption/resume claims it until the existing restore
+        // handoff returns the cohort to world ownership.
+        ai.moraleImmune = true;
+        ai[CERES_ACTIVITY_AMBUSH_MARKER] = phase;
+      }
     }
     live.data.initialCount = live.ids.length;
     return live.ids.slice();
@@ -1517,6 +1531,7 @@ function parkCeresActivityAmbushEntity(entity, sampler, now) {
       passive: ownSnapshot(ai, 'passive'),
       roe: ownSnapshot(ai, 'roe'),
       activity: ownSnapshot(ai, 'activity'),
+      moraleImmune: ownSnapshot(ai, 'moraleImmune'),
       intentFire: data.intent ? ownSnapshot(data.intent, 'fire') : null,
       intentMoveX: data.intent ? ownSnapshot(data.intent, 'moveX') : null,
       intentMoveZ: data.intent ? ownSnapshot(data.intent, 'moveZ') : null,
@@ -1553,6 +1568,9 @@ function restoreCeresActivityAmbushEntities(state, holder) {
       restoreSnapshot(ai, 'passive', snapshot.passive);
       restoreSnapshot(ai, 'roe', snapshot.roe);
       restoreSnapshot(ai, 'activity', snapshot.activity);
+      if (Object.prototype.hasOwnProperty.call(snapshot, 'moraleImmune')) {
+        restoreSnapshot(ai, 'moraleImmune', snapshot.moraleImmune);
+      }
       if (entity.data.intent && snapshot.intentFire) {
         restoreSnapshot(entity.data.intent, 'fire', snapshot.intentFire);
       }

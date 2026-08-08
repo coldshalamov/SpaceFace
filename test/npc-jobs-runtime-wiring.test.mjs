@@ -19,6 +19,7 @@ import { traffic } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
 import { NPC_JOB_PHASE, NPC_JOB_KIND } from '../src/systems/npcJobs.js';
+import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
 
 const DT = 1 / 60;
 
@@ -103,7 +104,12 @@ test('materialized: the job advances phases and writes the civilian transit inte
   assert.equal(job.phase, NPC_JOB_PHASE.TRANSIT, 'reached transit');
   sim.step(DT);
   assert.ok(e.data.intent, 'runtime wrote an intent');
-  assert.equal(e.data.intent.moveZ, 1, 'thrust forward while transiting');
+  const profile = resolvePropulsionProfile(e, sim.state);
+  const expectedSpeedCommand = SHORT.speed / profile.combatSpeed;
+  assert.equal(Number.isFinite(e.data.intent.moveZ), true, 'transit speed command is finite');
+  assert.ok(Math.abs(e.data.intent.moveZ - expectedSpeedCommand) <= Number.EPSILON,
+    `authored ${SHORT.speed} WU/s maps through the assisted ${profile.combatSpeed} WU/s envelope`);
+  assert.equal(e.data.intent.brake, false, 'ordinary transit starts outside the bounded end-of-leg brake');
   assert.equal(e.data.intent.fire, false, 'civilian job hull never fires');
   assert.ok(Math.abs(e.data.intent.aimAngle) < 0.2, `aim toward field at +x (got ${e.data.intent.aimAngle})`);
 });

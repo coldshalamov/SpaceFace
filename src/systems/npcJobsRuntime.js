@@ -54,6 +54,8 @@ import {
   NPC_JOB_PHASE,
 } from './npcJobs.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
+import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -64,9 +66,28 @@ const RESUME_RADIUS = 760; // hysteresis so a job does not chatter flee/resume o
 // gap (e.g. a job left virtual for a very long absence) so the catch-up cost stays finite. Advancing
 // an away job across a CLOSED-GAME gap (wall-clock) is intentionally NOT modeled here — see REPORT.
 const MAX_CATCHUP_S = 3600;
+// The kernel remains the route clock. The live hull follows that clock through Flight V3's
+// assisted speed command, with a short planned end-of-leg brake so a slow authored route does not
+// coast through its pocket while the kernel enters a stationary phase.
+const ROUTE_BRAKE_WINDOW_S = 0.75;
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function clamp(value, low, high) {
+  return Math.max(low, Math.min(high, value));
+}
+
+function clearRouteBrake(entity) {
+  const intent = entity && entity.data && entity.data.intent;
+  if (intent) intent.brake = false;
+}
+
+function eligibleActiveHostile(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  return !(ai && (ai.passive === true
+    || normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE));
 }
 
 function cleanClaimId(value) {
@@ -122,6 +143,7 @@ export const npcJobsRuntime = {
       entityType: 'ship',
       team: 1,
       fallbackIndex: 'ships',
+      eligible: eligibleActiveHostile,
     });
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
@@ -250,6 +272,7 @@ export const npcJobsRuntime = {
     const entry = byId[jobId];
     if (!entry) return false;
     const ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+    clearRouteBrake(ent);
     if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
     delete byId[jobId];
     return true;
@@ -301,6 +324,8 @@ export const npcJobsRuntime = {
       claimedPhase: entry.job.phase,
       claimedEntityId: entity.id,
     };
+    // A controller inherits the hull, not a retained route-brake command from this owner.
+    clearRouteBrake(entity);
     // Any flee state belongs to the job's own reflex, which is suspended for the duration.
     entry.threatId = null;
     return { granted: true, claim: entry.control };
@@ -370,6 +395,7 @@ export const npcJobsRuntime = {
         entityType: 'ship',
         team: 1,
         fallbackIndex: 'ships',
+        eligible: eligibleActiveHostile,
       }));
     threatQueries.setState(this.state).begin();
     if (this.state.mode !== 'flight') {
@@ -460,13 +486,14 @@ export const npcJobsRuntime = {
   },
 
   // ── movement: replicate traffic's civilian intent write (single writer for job hulls) ─────────
-  _writeIntent(entity, moveX, moveZ, boost, aimAngle) {
+  _writeIntent(entity, moveX, moveZ, boost, aimAngle, brake = false) {
     const data = entity.data || (entity.data = {});
     const intent = data.intent
       || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
     intent.moveX = moveX;
     intent.moveZ = moveZ;
     intent.boost = boost;
+    intent.brake = brake === true;
     intent.fire = false;       // civilian job hulls NEVER open fire (hold_fire)
     intent.fireGroup = null;
     intent.aimAngle = aimAngle;
@@ -490,10 +517,61 @@ export const npcJobsRuntime = {
     }
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
+      const planned = routePosition(job);
       const target = this._targetWaypointPos(job);
-      if (target) {
-        const aim = Math.atan2(target.z - entity.pos.z, target.x - entity.pos.x);
-        this._writeIntent(entity, 0, 1, false, aim); // face target, thrust forward (moveZ=1)
+      if (planned && target) {
+        const dx = target.x - planned.x;
+        const dz = target.z - planned.z;
+        const remaining = Math.hypot(dx, dz);
+        const speed = Math.max(0, finite(job.speed, 0));
+        const profile = resolvePropulsionProfile(entity, this.state);
+        const aim = remaining > 0.0001
+          ? Math.atan2(dz, dx)
+          : finite(job.heading, entity.rot || 0);
+
+        if (profile && profile.family === DRIVE_FAMILIES.SAIL) {
+          // A field sail's positive throttle is environmental acceleration along the field vector,
+          // not a speed command and not necessarily aligned with this authored route. Its negative
+          // throttle is the family-authored local trim thruster. Fly a deterministic planned
+          // trapezoid with that trim: pre-align opposite the leg, accelerate no longer than
+          // job.speed / trimAccel, coast, rotate without thrust, then apply the symmetric
+          // counter-trim. This bounds peak physical speed without consulting or mutating the live
+          // pose/velocity, and leaves the kernel as the only route progress/clock owner.
+          const progress = clamp(finite(job.progress, 0), 0, 1);
+          const totalDistance = progress < 1 - 1e-9
+            ? remaining / Math.max(1e-9, 1 - progress)
+            : remaining;
+          const durationS = speed > 0 ? totalDistance / speed : 0;
+          const elapsedS = durationS * progress;
+          const remainingS = Math.max(0, durationS - elapsedS);
+          const trimAccel = Math.max(0.001, finite(profile.trimAccel, 0));
+          const yawRate = Math.max(0.001, finite(profile.maxYawRate, 0));
+          const yawAccel = Math.max(0.001, finite(profile.yawAccel, 0));
+          const turnS = Math.min(durationS * 0.25,
+            Math.PI / yawRate + yawRate / yawAccel);
+          const burnS = Math.min(speed / trimAccel,
+            Math.max(0, durationS * 0.5 - turnS));
+          const accelerating = burnS > 0
+            && elapsedS >= turnS
+            && elapsedS < turnS + burnS;
+          const braking = burnS > 0 && remainingS <= burnS;
+          const turningToBrake = !braking && remainingS <= turnS + burnS;
+          const trim = accelerating || braking ? -1 : 0;
+          const trimAim = turningToBrake || braking ? aim : aim + Math.PI;
+          this._writeIntent(entity, 0, trim, false, trimAim, false);
+          return;
+        }
+
+        const governedSpeed = Math.max(1, finite(profile && profile.combatSpeed, 1));
+        const deadInput = Math.max(0, finite(profile && profile.assist && profile.assist.deadInput, 0.025));
+        // Assisted Flight V3 treats forward throttle as a speed command. Keep the command just above
+        // its authored dead zone for unusually slow routes; otherwise job.speed maps directly to the
+        // drive's combat-speed envelope. No physical pose/velocity participates in route authority.
+        const throttle = speed > 0
+          ? clamp(Math.max(speed / governedSpeed, deadInput + 0.001), 0, 1)
+          : 0;
+        const brake = speed > 0 && remaining <= speed * ROUTE_BRAKE_WINDOW_S;
+        this._writeIntent(entity, 0, brake ? 0 : throttle, false, aim, brake);
         return;
       }
     }
@@ -544,6 +622,7 @@ export const npcJobsRuntime = {
       // Keep the record; drop the live link. lastAdvanceSimT already holds the last live-advance time,
       // which is (to within a tick) the exit time — the anchor the re-entry catch-up measures from.
       const ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+      clearRouteBrake(ent);
       if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
       virtualize(entry.job);
       entry.entityId = null;
@@ -586,6 +665,7 @@ export const npcJobsRuntime = {
     entry.lastAdvanceSimT = simT;
     if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) {
       // A hauler that finished its run while away: no live job to resume; hand the hull back.
+      clearRouteBrake(entity);
       if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
       delete this._byId()['job:' + entry.worldRecordId];
       return true;
@@ -593,6 +673,7 @@ export const npcJobsRuntime = {
     materialize(entry.job);
     entry.entityId = entity.id;
     entry.threatId = null;
+    clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
     return true;
   },
@@ -651,6 +732,7 @@ export const npcJobsRuntime = {
     for (const entity of this.state.entityList || []) {
       if (entity && entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
+        clearRouteBrake(entity);
         delete entity.data.jobId;
       }
     }

@@ -60,6 +60,77 @@ function createHostileService(state, options = {}) {
   });
 }
 
+function activeHostile(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  return !(ai && (ai.passive === true || ai.roe === 'hold_fire'));
+}
+
+test('eligibility is identical across spatial, fallback, spawn, shadow, and stable ties', () => {
+  const owner = entity(100, 0, 0);
+  const passiveNear = entity(1, 2, 0, { team: 1 });
+  passiveNear.data.ai = { passive: true, roe: 'hold_fire' };
+  const holdFireNear = entity(2, 3, 0, { team: 1 });
+  holdFireNear.data.ai = { passive: false, roe: 'hold_fire' };
+  const highTie = entity(9, 8, 0, { team: 1 });
+  highTie.data.ai = { passive: false, roe: 'weapons_free' };
+  const lowTie = entity(3, -8, 0, { team: 1 });
+  lowTie.data.ai = { passive: false, roe: 'weapons_free' };
+  const state = stateFor([owner, passiveNear, holdFireNear, highTie, lowTie]);
+  const service = createHostileService(state, { eligible: activeHostile, shadow: true });
+
+  service.begin();
+  const spatial = service.request('spatial', owner.id, 0, 0, 20);
+  service.execute();
+  assert.equal(spatial.resultId, lowTie.id,
+    'ineligible nearer hulls do not hide the lower-id active hostile in a stable tie');
+  assert.equal(findNearestEntityIdFullScan(state, spatial, {
+    entityType: 'ship', team: 1, eligible: activeHostile,
+  }), lowTie.id, 'the shadow oracle applies the same eligibility predicate');
+
+  state.spatialHash.deactivate();
+  service.begin();
+  const fallback = service.request('fallback', owner.id, 0, 0, 20);
+  service.execute();
+  assert.equal(fallback.resultId, lowTie.id, 'inactive-hash fallback applies eligibility identically');
+
+  state.spatialHash.rebuildLayers([], [owner], 2);
+  const spawnedPassive = entity(4, 1, 0, { team: 1 });
+  spawnedPassive.data.ai = { passive: true, roe: 'hold_fire' };
+  const spawnedActive = entity(5, 4, 0, { team: 1 });
+  spawnedActive.data.ai = { passive: false, roe: 'weapons_free' };
+  for (const candidate of [spawnedPassive, spawnedActive]) {
+    state.entityList.push(candidate);
+    state.entities.set(candidate.id, candidate);
+    service.recordSpawn({ id: candidate.id, entity: candidate });
+  }
+  service.begin();
+  const spawned = service.request('spawned', owner.id, 0, 0, 20);
+  service.execute();
+  assert.equal(spawned.resultId, spawnedActive.id,
+    'same-tick spawn supplements reject passive hulls and retain the active one');
+  assert.equal(service.getDiagnostics().shadowMismatches, 0);
+
+  state.spatialHash.rebuildLayers([], state.entityList.filter((value) => value.collides), 3);
+  const unfiltered = createHostileService(state);
+  unfiltered.begin();
+  const legacy = unfiltered.request('legacy-default', owner.id, 0, 0, 20);
+  unfiltered.execute();
+  assert.equal(legacy.resultId, spawnedPassive.id,
+    'omitting eligibility preserves the prior nearest-team-member behavior');
+
+  const diagnosticsState = stateFor([owner, passiveNear, holdFireNear, highTie, lowTie]);
+  const diagnosticsFiltered = createHostileService(diagnosticsState, { eligible: activeHostile, shadow: true });
+  diagnosticsFiltered.begin();
+  diagnosticsFiltered.request('diagnostics-filtered', owner.id, 0, 0, 20);
+  diagnosticsFiltered.execute();
+  const diagnosticsDefault = createHostileService(diagnosticsState, { shadow: true });
+  diagnosticsDefault.begin();
+  diagnosticsDefault.request('diagnostics-default', owner.id, 0, 0, 20);
+  diagnosticsDefault.execute();
+  assert.deepEqual(diagnosticsFiltered.getDiagnostics(), diagnosticsDefault.getDiagnostics(),
+    'eligibility changes selection, not default candidate-visit diagnostics or scratch shape');
+});
+
 test('nearest hostile batch preserves strict radius, live identity, and stable-id ties', () => {
   const owner = entity(100, 0, 0);
   const highTie = entity(9, 5, 0, { team: 1 });
@@ -327,4 +398,34 @@ test('npcJobsRuntime batches eligible hostile queries and excludes controlled hu
   ownerFacts.queryBatches = 999;
   assert.equal(runtime.threatQueryDiagnostics().queryBatches, 1,
     'the owner publishes a detached snapshot rather than mutable retained counters');
+});
+
+test('npcJobsRuntime ignores nearer passive and hold-fire team-1 hulls for flee', () => {
+  const owner = entity(100, 0, 0);
+  const passiveNear = entity(1, 2, 0, { team: 1 });
+  passiveNear.data.ai = { passive: true, roe: 'hold_fire' };
+  const holdFireNear = entity(2, 3, 0, { team: 1 });
+  holdFireNear.data.ai = { passive: false, roe: 'hold_fire' };
+  const activeFar = entity(5, 5, 0, { team: 1 });
+  activeFar.data.ai = { passive: false, roe: 'weapons_free' };
+  const state = stateFor([owner, passiveNear, holdFireNear, activeFar]);
+  state.npcJobs.byId = {
+    'job:owner': {
+      job: { phase: NPC_JOB_PHASE.TRANSIT, corrupt: false },
+      entityId: owner.id,
+      lastAdvanceSimT: 0,
+      threatId: null,
+    },
+  };
+  const bus = { on() {}, emit() {} };
+  const runtime = Object.create(npcJobsRuntime);
+  runtime.init({ state, bus, helpers: {}, registry: {} });
+  runtime._sink = () => {};
+  runtime._drive = () => {};
+
+  runtime.update(0, state);
+
+  assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, activeFar.id,
+    'the farther active hostile remains visible behind nearer ineligible hulls');
 });
