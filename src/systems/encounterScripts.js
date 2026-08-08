@@ -383,6 +383,17 @@ const patrolScan = {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 const ambush = {
   fire(d, live, state) {
+    if (live.data && live.data.ceresActivityAmbush === true) {
+      const ids = d.adoptCeresActivityAmbush(live, 'offer');
+      if (!ids.length) return d.abort(live, 'adopted_squad_missing');
+      live.phase = 'offer';
+      live.data.springAt = d.now() + 4;
+      live.data.snared = false;
+      live.deadlineAt = d.now() + 300;
+      d.setPassive(live, true);
+      d.say(live, 'bark', 'ambush_tele', null, { primary: true });
+      return;
+    }
     const ships = live.plan.ships.map((sh) => ({ ...sh, passive: true }));
     const ids = d.spawnShips(live, ships);
     if (!ids.length) return d.abort(live, 'no_budget');
@@ -452,6 +463,19 @@ const ambush = {
       live.phase = 'conflict';
       d.say(live, 'alert', 'ambush_spring');
     }
+  },
+
+  resume(d, live, state, phase) {
+    if (!(live.data && live.data.ceresActivityAmbush === true)) return false;
+    const normalizedPhase = phase === 'conflict' ? 'conflict' : 'offer';
+    const ids = d.adoptCeresActivityAmbush(live, normalizedPhase);
+    if (!ids.length) return d.abort(live, 'adopted_squad_missing');
+    live.phase = normalizedPhase;
+    live.data.springAt = d.now();
+    live.data.snared = false;
+    live.deadlineAt = d.now() + 300;
+    d.setPassive(live, normalizedPhase !== 'conflict');
+    return true;
   },
 };
 

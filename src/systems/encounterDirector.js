@@ -36,6 +36,7 @@
 
 import { hash32, mulberry32 } from '../core/rng.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
+import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
@@ -58,7 +59,13 @@ import {
   regionalEcologyReadout,
   regionalEncounterWeight,
 } from './regionalEcology.js';
-import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  activityForEncounterSpawn,
+  roeForActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
 import {
   nextMoralDebt,
   rememberAceMemoryTransition,
@@ -99,6 +106,14 @@ const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert'
 const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
 const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
 
+const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
+const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
+const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
+const CERES_ACTIVITY_AMBUSH_INNER_R = 125;
+const CERES_ACTIVITY_AMBUSH_OUTER_R = 165;
+const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
+const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
+
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const CIVIL_ZONE_TYPES = new Set(['civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint', 'refinery_approach', 'colony']);
@@ -110,6 +125,7 @@ export const encounterDirector = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
+    this._saveRestoring = false;
     ensureDirectorState(this.state);
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -117,7 +133,9 @@ export const encounterDirector = {
       this.bus.on('day:tick', () => this._planSector(this._currentSectorId()));
       this.bus.on('sector:exit', (p) => this._onSectorExit(p));
       // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
+      this.bus.on('save:restoring', () => { this._saveRestoring = true; });
       this.bus.on('save:loaded', () => this._onSaveLoaded());
+      this.bus.on('save:error', () => { this._saveRestoring = false; });
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
@@ -143,6 +161,7 @@ export const encounterDirector = {
   },
 
   newGame() {
+    this._saveRestoring = false;
     this.state.encounterDirector = freshState();
     ensureNamed(this.state.encounterDirector);
   },
@@ -150,6 +169,7 @@ export const encounterDirector = {
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
     const dir = ensureDirectorState(state);
+    this._sampleCeresActivityAmbush(dir, state);
     dir._accum = (dir._accum || 0) + dt;
     if (dir._accum < 1) return;                        // director runs at 1 Hz — no per-frame work
     const step = dir._accum;
@@ -163,13 +183,20 @@ export const encounterDirector = {
   // ═══ SCHEDULING ═══════════════════════════════════════════════════════════════════════════════
 
   _onSectorEnter(p) {
+    // saveSystem rematerializes the target sector before it installs the incoming director bag.
+    // Ignore that early event rather than applying the outgoing timeline's one-shot phase to the
+    // incoming durable actors; save:loaded below seeds once the saved stats are authoritative.
+    if (this._saveRestoring) return;
     // Continuous free-flight membership is a soft handoff (M2-C1). Soft exit preserves
     // live/pending/pressure/active; continuous enter must NOT reseed grace pressure, clear the
     // pacing window, or replan (which wipes pending for a new sector-day key). Intentional
     // jump / load / boot enters still get the entry breath and planner.
-    if (p && (p.continuous || p.noTeleport)) return;
-
     const sectorId = p && typeof p === 'object' ? p.sectorId : p;
+    if (p && (p.continuous || p.noTeleport)) {
+      this._seedCeresActivityAmbush(sectorId, { continuous: true });
+      return;
+    }
+
     const state = this.state;
     const dir = ensureDirectorState(state);
     const now = state.simTime || 0;
@@ -180,13 +207,16 @@ export const encounterDirector = {
     dir.lastMeaningfulAt = now;                        // sector entry breathes ≥30 s before beats
     dir.lastAmbientAt = now - AMBIENT_GAP_S;
     this._planSector(sectorId);
+    this._seedCeresActivityAmbush(sectorId);
   },
 
   _onSectorExit(p) {
     // Continuous free-flight membership is a soft handoff — preserve live encounters, pending
     // beats, and active spawn ledger so fights can cross Voronoi edges (M2-C1). Hard teardown
     // only for intentional jump / load / non-continuous boundaries.
+    const sectorId = p && typeof p === 'object' ? p.sectorId : p;
     if (p && (p.continuous || p.noTeleport)) return;
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._leaveCeresActivityAmbush();
 
     const dir = ensureDirectorState(this.state);
     // Live encounters in the sector we left resolve as abandoned (named grudges still book).
@@ -206,6 +236,7 @@ export const encounterDirector = {
   },
 
   _onSaveLoaded() {
+    this._saveRestoring = false;
     const state = this.state;
     const prev = state.encounterDirector;
     const fresh = freshState();
@@ -224,6 +255,7 @@ export const encounterDirector = {
       const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
     }
+    this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
   },
 
   // Build the deterministic schedule for a sector-day. Pure aside from writing dir.pending.
@@ -235,7 +267,13 @@ export const encounterDirector = {
     const key = `${sectorId}#${dayIndex}`;
     if (dir.plannedKey === key) return;
     dir.plannedKey = key;
-    dir.pending = [];                                  // stale items from other sector-days drop
+    // Ordinary sector-day rows are transient and replan from the new day seed. The one authored
+    // Ceres crossing is durable once queued, so carry that exact item across the replan rather than
+    // silently erasing the player's physical trigger. Collapse any malformed duplicate fail-closed.
+    const queuedCeresActivityAmbush = sectorId === CERES_ACTIVITY_SECTOR_ID
+      ? dir.pending.find((item) => isCeresActivityAmbushItem(item))
+      : null;
+    dir.pending = queuedCeresActivityAmbush ? [queuedCeresActivityAmbush] : [];
 
     const zones = zonesForSector(sectorId);
     if (!zones.length) return;                         // no zones → schedule nothing (additive)
@@ -243,6 +281,11 @@ export const encounterDirector = {
     const schedule = planEncounters(state.meta && state.meta.seed, sectorId, dayIndex, zones, state);
     const now = state.simTime || 0;
     for (const s of schedule) {
+      if (sectorId === CERES_ACTIVITY_SECTOR_ID
+        && s.shapeId === 'ambush_snare'
+        && s.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID) {
+        continue;
+      }
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
     }
     dir.lastPlanned = { sectorId, dayIndex, count: schedule.length };
@@ -303,13 +346,20 @@ export const encounterDirector = {
 
     if (encounterPacingBlockReason(dir, state, shape, now)) return defer();
 
-    if (!this._gatesPass(shape, state)) return gateDefer();
+    const ceresActivityAmbush = isCeresActivityAmbushItem(item);
+    // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
+    // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
+    // other current/future authored gate remains enforced through the same fail-closed evaluator.
+    if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
     if (shape.proximity && !this._playerNearItemZone(item)) return gateDefer();
+    if (ceresActivityAmbush && !this._ceresActivityAmbushCohort().length) {
+      return defer();
+    }
     dir.pending.splice(dueIdx, 1);
     this._fire(dir, state, item, shape, now);
   },
 
-  _gatesPass(shape, state) {
+  _gatesPass(shape, state, options = {}) {
     const g = shape.gates || {};
     if (g.externalOnly) return false;
     const sectorId = this._currentSectorId();
@@ -320,7 +370,9 @@ export const encounterDirector = {
     if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
     if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
     if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
-    if (Number.isFinite(g.minSectorTier) && (!sector || (sector.tier | 0) < g.minSectorTier)) return false;
+    if (!options.ignoreMinSectorTier
+      && Number.isFinite(g.minSectorTier)
+      && (!sector || (sector.tier | 0) < g.minSectorTier)) return false;
     if (g.requiredTech && !(state.player && Array.isArray(state.player.researchedNodes)
       && state.player.researchedNodes.includes(g.requiredTech))) return false;
     if (g.requiredPoiDiscovered) {
@@ -501,47 +553,12 @@ export const encounterDirector = {
     else dir.lastMeaningfulAt = now;
     if (shape.tier === 'major') dir.lastMajorAt = now;
 
-    const live = {
-      id: item.encounterId,
-      shapeId: shape.id,
-      script: shape.script,
-      shape,
-      plan: item,
-      tier: shape.tier,
-      deck: shape.deck,
-      sectorId: item.sectorId,
-      zoneId: item.zoneId,
-      zoneName: item.zoneName,
-      factionId: item.factionId || shape.factionId || null,
-      squadId: item.squadId,
-      anchor: item.zoneCenter ? { x: item.zoneCenter.x, z: item.zoneCenter.z } : null,
-      zoneRadius: item.zoneRadius || 400,
-      phase: 'telegraph',
-      startedAt: now,
-      deadlineAt: 0,
-      ids: [],
-      roles: {},
-      vars: {},
-      data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
-      outcome: null,
-      primarySaid: false,
-      lastBarkAt: -1e9,
-    };
-    live.causality = buildEncounterCausality({
-      seed: state.meta && state.meta.seed,
-      encounterId: live.id,
-      shapeId: live.shapeId,
-      variantKind: item.variantKind || live.shapeId,
-      sectorId: live.sectorId,
-      zoneId: live.zoneId,
-      zoneName: live.zoneName,
-      factionId: live.factionId,
-      doctrineId: item.ships && item.ships[0] && (item.ships[0].combatDoctrineId || item.ships[0].doctrine),
-      zoneType: item.zoneType,
-      script: live.script,
-    });
+    const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
     dir.stats.fired++;
+    if (live.data.ceresActivityAmbush === true) {
+      dir.stats.ceresActivityAmbush = { phase: 'revealed' };
+    }
     this.emit('encounter:telegraph', {
       encounterId: live.id, kind: live.shapeId, tier: live.tier, deck: live.deck,
       sectorId: live.sectorId, zoneId: live.zoneId, zoneName: live.zoneName,
@@ -822,10 +839,14 @@ export const encounterDirector = {
           passive: !!passive,
         }, { now: this.now(), passive: !!passive }),
       });
+      if (live.data && live.data.ceresActivityAmbush === true) {
+        ai[CERES_ACTIVITY_AMBUSH_MARKER] = passive ? 'offer' : 'conflict';
+      }
       if (!passive && e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.fire = false; }
     }
   },
   despawnAll(live, afterS, role) {
+    if (live && live.data && live.data.adoptedWorldActors === true) return;
     const now = this.now();
     let i = 0;
     for (const e of this.entsOf(live, role || undefined)) {
@@ -939,9 +960,15 @@ export const encounterDirector = {
     dir.cooldowns[live.shapeId] = now + (live.shape.cooldownS || 300);
     dir.lastEndAt = now;
     dir.stats.resolved++;
-    // Stragglers give up rather than chain-hunting the player past the encounter's end.
-    for (const e of this.entsOf(live)) {
-      if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
+    // Stragglers spawned by the director give up rather than chain-hunting the player past the
+    // encounter's end. Adopted durable world actors return to world ownership instead.
+    if (live.data && live.data.adoptedWorldActors === true) {
+      restoreCeresActivityAmbushEntities(this.state, live.data);
+      dir.stats.ceresActivityAmbush = { phase: 'done', outcome };
+    } else {
+      for (const e of this.entsOf(live)) {
+        if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
+      }
     }
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
@@ -985,7 +1012,12 @@ export const encounterDirector = {
     dir.stats.fizzled++;
     dir.cooldowns[live.shapeId] = Math.max(dir.cooldowns[live.shapeId] || 0, now + 60);
     dir.pressure[live.deck] = Math.min(POOL_MAX, dir.pressure[live.deck] + (live.shape.pressureCost || 0)); // it never happened
-    this.despawnAll(live, 4);
+    if (live.data && live.data.adoptedWorldActors === true) {
+      restoreCeresActivityAmbushEntities(this.state, live.data);
+      dir.stats.ceresActivityAmbush = { phase: 'done', outcome: live.outcome };
+    } else {
+      this.despawnAll(live, 4);
+    }
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: live.shapeId, outcome: live.outcome,
       sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
@@ -1194,11 +1226,367 @@ export const encounterDirector = {
     return true;
   },
 
+  _ceresActivityAmbushCohort() {
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list)) return [];
+    return list.filter((entity) => {
+      if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+      const data = entity.data;
+      const ai = data && data.ai;
+      return !!(ai
+        && ai.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+        && ai.squadId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+        && typeof data.worldRecordId === 'string'
+        && data.worldRecordId.length > 0);
+    });
+  },
+
+  _seedCeresActivityAmbush(sectorId, options = {}) {
+    const dir = ensureDirectorState(this.state);
+    if (sectorId !== CERES_ACTIVITY_SECTOR_ID) {
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+    const cohort = this._ceresActivityAmbushCohort();
+    if (!cohort.length) {
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+
+    // The durable zone squad replaces only the same-zone generic ambush candidate. Other Ceres
+    // ambushes and every non-Ceres planner row retain their ordinary seeded schedule.
+    dir.pending = dir.pending.filter((item) => !(item
+      && item.shapeId === 'ambush_snare'
+      && item.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+      && !(item.data && item.data.ceresActivityAmbush === true)));
+
+    const durable = dir.stats.ceresActivityAmbush;
+    const phase = durable && durable.phase;
+    if (phase === 'done') {
+      for (const entity of cohort) clearCeresActivityAmbushMarker(entity);
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+    if (phase === 'revealed') {
+      const marked = cohort.filter((entity) => {
+        const marker = entity.data && entity.data.ai && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER];
+        return marker === 'offer' || marker === 'conflict';
+      });
+      if (marked.length) return this._resumeCeresActivityAmbush(marked);
+      dir._ceresActivityAmbush = null;
+      return false;
+    }
+
+    const player = this.player();
+    const sampler = {
+      lastPos: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      restoreByRecordId: Object.create(null),
+    };
+    dir._ceresActivityAmbush = sampler;
+    for (const entity of cohort) parkCeresActivityAmbushEntity(entity, sampler, this.now());
+
+    if (phase === 'queued') this._queueCeresActivityAmbush({ preservePhase: true });
+    return true;
+  },
+
+  _sampleCeresActivityAmbush(dir, state) {
+    if (this._currentSectorId() !== CERES_ACTIVITY_SECTOR_ID) return;
+    const durable = dir.stats.ceresActivityAmbush;
+    if (durable && durable.phase) return;
+    const sampler = dir._ceresActivityAmbush;
+    const player = this.player();
+    if (!sampler || !player || !player.pos) return;
+    const current = { x: player.pos.x, z: player.pos.z };
+    if (!sampler.lastPos) {
+      sampler.lastPos = current;
+      return;
+    }
+    const previous = sampler.lastPos;
+    sampler.lastPos = current;
+    if (previous.x === current.x && previous.z === current.z) return;
+    const anchor = ceresActivityAmbushAnchorGlobal();
+    if (!segmentCrossesCeresAmbushBand(previous, current, anchor)) return;
+    this._queueCeresActivityAmbush();
+  },
+
+  _queueCeresActivityAmbush(options = {}) {
+    const dir = ensureDirectorState(this.state);
+    if (dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID]) return true;
+    if (dir.pending.some((item) => item && item.encounterId === CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID)) return true;
+    if (!this._ceresActivityAmbushCohort().length) return false;
+    const item = makeCeresActivityAmbushItem(this.state, this.now());
+    if (!item) return false;
+    dir.pending.push(item);
+    if (!options.preservePhase) dir.stats.ceresActivityAmbush = { phase: 'queued' };
+    return true;
+  },
+
+  adoptCeresActivityAmbush(live, phase = 'offer') {
+    if (!live || !(live.data && live.data.ceresActivityAmbush === true)) return [];
+    const cohort = this._ceresActivityAmbushCohort();
+    const sampler = ensureDirectorState(this.state)._ceresActivityAmbush;
+    live.data.adoptedWorldActors = true;
+    live.data.restoreByRecordId = sampler && sampler.restoreByRecordId
+      ? sampler.restoreByRecordId
+      : Object.create(null);
+    live.ids = [];
+    live.roles = {};
+    for (const entity of cohort) {
+      live.ids.push(entity.id);
+      live.roles[entity.id] = 'squad';
+      const ai = entity.data && entity.data.ai;
+      if (ai) ai[CERES_ACTIVITY_AMBUSH_MARKER] = phase;
+    }
+    live.data.initialCount = live.ids.length;
+    return live.ids.slice();
+  },
+
+  _resumeCeresActivityAmbush(cohort) {
+    const dir = ensureDirectorState(this.state);
+    if (dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID]) return true;
+    const item = makeCeresActivityAmbushItem(this.state, this.now());
+    const shape = ENCOUNTERS.ambush_snare;
+    if (!item || !shape) return false;
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    live.data.restored = true;
+    dir.live[live.id] = live;
+    const marker = cohort.some((entity) => (
+      entity.data && entity.data.ai
+      && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER] === 'conflict'
+    )) ? 'conflict' : 'offer';
+    const script = encounterScriptFor(live);
+    if (!script || typeof script.resume !== 'function') {
+      delete dir.live[live.id];
+      return false;
+    }
+    script.resume(this, live, this.state, marker);
+    return !!dir.live[live.id];
+  },
+
+  _leaveCeresActivityAmbush() {
+    const dir = ensureDirectorState(this.state);
+    const live = dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+    if (live) this.abort(live, 'sector_exit');
+    else restoreCeresActivityAmbushEntities(this.state, dir._ceresActivityAmbush);
+    dir.pending = dir.pending.filter((item) => item && item.encounterId !== CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID);
+    dir._ceresActivityAmbush = null;
+  },
+
   _currentSectorId() {
     const w = this.state && this.state.world;
     return (w && w.currentSectorId) || null;
   },
 };
+
+function ceresActivityAmbushAnchorGlobal() {
+  return sectorLocalToGlobalForSector(ZONE_CERES_THROUGHLINE.center, CERES_ACTIVITY_SECTOR_ID);
+}
+
+function isCeresActivityAmbushItem(item) {
+  return !!(item
+    && item.encounterId === CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID
+    && item.sectorId === CERES_ACTIVITY_SECTOR_ID
+    && item.shapeId === 'ambush_snare'
+    && item.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+    && item.data
+    && item.data.ceresActivityAmbush === true);
+}
+
+function ceresAmbushRangeBand(pos, anchor) {
+  const distance = Math.hypot(pos.x - anchor.x, pos.z - anchor.z);
+  if (distance <= CERES_ACTIVITY_AMBUSH_INNER_R) return 'inner';
+  if (distance <= CERES_ACTIVITY_AMBUSH_OUTER_R) return 'band';
+  return 'outer';
+}
+
+function segmentCrossesCeresAmbushBand(previous, current, anchor) {
+  if (ceresAmbushRangeBand(previous, anchor) !== ceresAmbushRangeBand(current, anchor)) return true;
+  return segmentCrossesCircle(previous, current, anchor, CERES_ACTIVITY_AMBUSH_INNER_R)
+    || segmentCrossesCircle(previous, current, anchor, CERES_ACTIVITY_AMBUSH_OUTER_R);
+}
+
+function segmentCrossesCircle(previous, current, center, radius) {
+  const dx = current.x - previous.x;
+  const dz = current.z - previous.z;
+  const a = dx * dx + dz * dz;
+  if (!(a > 0)) return false;
+  const fx = previous.x - center.x;
+  const fz = previous.z - center.z;
+  const b = 2 * (fx * dx + fz * dz);
+  const c = fx * fx + fz * fz - radius * radius;
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  const root = Math.sqrt(Math.max(0, discriminant));
+  const t0 = (-b - root) / (2 * a);
+  const t1 = (-b + root) / (2 * a);
+  return (t0 > 0 && t0 <= 1) || (t1 > 0 && t1 <= 1);
+}
+
+function makeCeresActivityAmbushItem(state, now) {
+  const shape = ENCOUNTERS.ambush_snare;
+  const sourceZone = zonesForSector(CERES_ACTIVITY_SECTOR_ID)
+    .find((zone) => zone && zone.id === CERES_ACTIVITY_AMBUSH_ZONE_ID);
+  if (!shape || !sourceZone) return null;
+  const seed = state && state.meta && state.meta.seed || 0;
+  const rng = mulberry32(hash32(seed, CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID, 'r5-authored-ambush'));
+  const zone = {
+    ...sourceZone,
+    center: { x: ZONE_CERES_THROUGHLINE.center.x, z: ZONE_CERES_THROUGHLINE.center.z },
+    radius: CERES_ACTIVITY_AMBUSH_OUTER_R,
+  };
+  const item = resolveEncounter(
+    shape,
+    zone,
+    CERES_ACTIVITY_SECTOR_ID,
+    Math.floor((now || 0) / DAY_SECONDS),
+    0,
+    rng,
+  );
+  if (!item) return null;
+  item.encounterId = CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID;
+  item.squadId = CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID;
+  item.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  item.ships = []; // durable zone actors are adopted; the director must never spawn a substitute
+  item.dueAt = now || 0;
+  item.defers = 0;
+  item.data = { ceresActivityAmbush: true };
+  return item;
+}
+
+function makeEncounterLiveRecord(state, item, shape, now) {
+  const live = {
+    id: item.encounterId,
+    shapeId: shape.id,
+    script: shape.script,
+    shape,
+    plan: item,
+    tier: shape.tier,
+    deck: shape.deck,
+    sectorId: item.sectorId,
+    zoneId: item.zoneId,
+    zoneName: item.zoneName,
+    factionId: item.factionId || shape.factionId || null,
+    squadId: item.squadId,
+    anchor: item.zoneCenter ? { x: item.zoneCenter.x, z: item.zoneCenter.z } : null,
+    zoneRadius: item.zoneRadius || 400,
+    phase: 'telegraph',
+    startedAt: now,
+    deadlineAt: 0,
+    ids: [],
+    roles: {},
+    vars: {},
+    data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
+    outcome: null,
+    primarySaid: false,
+    lastBarkAt: -1e9,
+  };
+  live.causality = buildEncounterCausality({
+    seed: state.meta && state.meta.seed,
+    encounterId: live.id,
+    shapeId: live.shapeId,
+    variantKind: item.variantKind || live.shapeId,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+    zoneName: live.zoneName,
+    factionId: live.factionId,
+    doctrineId: item.ships && item.ships[0] && (item.ships[0].combatDoctrineId || item.ships[0].doctrine),
+    zoneType: item.zoneType,
+    script: live.script,
+  });
+  return live;
+}
+
+function ownSnapshot(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key)
+    ? { had: true, value: object[key] }
+    : { had: false, value: undefined };
+}
+
+function restoreSnapshot(object, key, snapshot) {
+  if (snapshot && snapshot.had) object[key] = snapshot.value;
+  else delete object[key];
+}
+
+function parkCeresActivityAmbushEntity(entity, sampler, now) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  const recordId = data.worldRecordId;
+  let snapshot = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    snapshot = {
+      passive: ownSnapshot(ai, 'passive'),
+      roe: ownSnapshot(ai, 'roe'),
+      activity: ownSnapshot(ai, 'activity'),
+      intentFire: data.intent ? ownSnapshot(data.intent, 'fire') : null,
+      intentMoveX: data.intent ? ownSnapshot(data.intent, 'moveX') : null,
+      intentMoveZ: data.intent ? ownSnapshot(data.intent, 'moveZ') : null,
+    };
+    ai[CERES_ACTIVITY_AMBUSH_RESTORE] = snapshot;
+  }
+  if (recordId && !sampler.restoreByRecordId[recordId]) sampler.restoreByRecordId[recordId] = snapshot;
+  ai.passive = true;
+  setEntityDoctrine(entity, {
+    activity: {
+      kind: ActivityKind.LOITER,
+      reason: 'ceres_activity_ambush:armed',
+      anchor: entity.pos,
+      startedTick: Math.round((now || 0) * 60),
+      routeId: CERES_ACTIVITY_AMBUSH_ZONE_ID,
+    },
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+  ai[CERES_ACTIVITY_AMBUSH_MARKER] = 'armed';
+  if (data.intent) data.intent.fire = false;
+}
+
+function restoreCeresActivityAmbushEntities(state, holder) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return;
+  const restoreByRecordId = holder && holder.restoreByRecordId || Object.create(null);
+  for (const entity of list) {
+    if (!entity || !entity.data || !entity.data.ai) continue;
+    const ai = entity.data.ai;
+    if (!ai[CERES_ACTIVITY_AMBUSH_MARKER]) continue;
+    const snapshot = restoreByRecordId[entity.data.worldRecordId]
+      || ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+    if (snapshot) {
+      restoreSnapshot(ai, 'passive', snapshot.passive);
+      restoreSnapshot(ai, 'roe', snapshot.roe);
+      restoreSnapshot(ai, 'activity', snapshot.activity);
+      if (entity.data.intent && snapshot.intentFire) {
+        restoreSnapshot(entity.data.intent, 'fire', snapshot.intentFire);
+      }
+      if (entity.data.intent && snapshot.intentMoveX) {
+        restoreSnapshot(entity.data.intent, 'moveX', snapshot.intentMoveX);
+      }
+      if (entity.data.intent && snapshot.intentMoveZ) {
+        restoreSnapshot(entity.data.intent, 'moveZ', snapshot.intentMoveZ);
+      }
+    } else {
+      ai.passive = false;
+      setEntityDoctrine(entity, {
+        activity: {
+          ...(ai.activity || {}),
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'zone_hostile:restored',
+          anchor: entity.pos,
+          encounterId: null,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
+    }
+    delete ai[CERES_ACTIVITY_AMBUSH_MARKER];
+    delete ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  }
+}
+
+function clearCeresActivityAmbushMarker(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  if (ai) {
+    delete ai[CERES_ACTIVITY_AMBUSH_MARKER];
+    delete ai[CERES_ACTIVITY_AMBUSH_RESTORE];
+  }
+}
 
 // ═══ PURE PLANNER (headless-testable; no Three/DOM, no bus, no Math.random) ═══════════════════════
 

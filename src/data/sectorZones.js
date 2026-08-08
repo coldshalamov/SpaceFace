@@ -1,7 +1,7 @@
 // src/data/sectorZones.js — NAMED ZONES per sector (the "why does this exist here" layer).
 
 import { FRONTIER_ZONES } from './frontierRegions/index.js';
-import { appendAuthoredZones } from './authoredPlaces.js';
+import { appendAuthoredZones, ZONE_CERES_THROUGHLINE } from './authoredPlaces.js';
 //
 // Problem this solves: content used to be scattered on random radial rings, so a sector read as a
 // flat disc of unrelated dots — "a test room." This module gives every sector a set of NAMED zones,
@@ -103,7 +103,12 @@ const CORE_SECTOR_ZONES = {
       center: { x: -1100, z: 620 }, radius: 720, presence: P.patrol([1, 2]) },
     { id: 'zone_ceres_ambush', name: 'Belt-Shadow Ambush', type: 'ambush_lane', factionId: 'faction_reach',
       reason: 'Crimson Reach skiffs lurk in the asteroid shadow, waiting for loaded ore haulers.',
-      center: { x: -400, z: -2400 }, radius: 640, presence: P.pirates([1, 2]) },
+      center: { x: -400, z: -2400 }, radius: 640,
+      presence: {
+        ...P.pirates([1, 2]),
+        spawnCenter: { x: ZONE_CERES_THROUGHLINE.center.x + 145, z: ZONE_CERES_THROUGHLINE.center.z },
+        clusterRadius: 18,
+      } },
     { id: 'zone_ceres_derelict', name: 'The Abandoned Driller', type: 'derelict_field', factionId: 'faction_reach',
       reason: 'A refinery hauler gutted in a raid; scavengers still pick at the hull.',
       center: { x: 240, z: -1180 }, radius: 420, presence: P.scavengers([1, 2]) },
@@ -314,7 +319,9 @@ export function planZoneSpawns(sectorId, budget, enemyLevel, rng) {
     const spawnCenter = p.spawnCenter && Number.isFinite(p.spawnCenter.x) && Number.isFinite(p.spawnCenter.z)
       ? p.spawnCenter
       : zone.center;
-    const clusterR = Math.min(zone.radius || 260, 260); // tight cluster so the roster forms one squad
+    const clusterR = Number.isFinite(p.clusterRadius) && p.clusterRadius > 0
+      ? Math.min(p.clusterRadius, zone.radius || p.clusterRadius, 260)
+      : Math.min(zone.radius || 260, 260); // tight cluster so the roster forms one squad
     for (let i = 0; i < n; i++) {
       if (out.length >= budget) break;
       const archetypeId = p.archetypes[Math.floor(rng() * p.archetypes.length) % p.archetypes.length];
