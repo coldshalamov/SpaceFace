@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { vfx } from '../src/render/vfx.js';
-import { EXPLOSION_SCHEDULES } from '../src/render/combat/phasedExplosions.js';
+import {
+  EXPLOSION_CAUSE_SCHEDULES,
+  EXPLOSION_SCHEDULES,
+  explosionScheduleFor,
+} from '../src/render/combat/phasedExplosions.js';
 
 const source = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
@@ -133,5 +137,30 @@ test('primary rupture and pressure remain non-ring while bright cores stay direc
     assert.ok(Math.abs(rotatedAxes[i].args[10] + normalAxes[i].args[11]) < 1e-9
       && Math.abs(rotatedAxes[i].args[11] - normalAxes[i].args[10]) < 1e-9,
     `streak axis ${i} must rotate with the receipt direction`);
+  }
+});
+
+test('causal destruction profiles retain pooled non-ring structural language', () => {
+  for (const cause of Object.keys(EXPLOSION_CAUSE_SCHEDULES)) {
+    if (cause === 'generic') continue;
+    const calls = [];
+    const harness = Object.create(vfx);
+    harness._burst = 1;
+    harness.state = { settings: { video: {}, accessibility: {} } };
+    harness.bus = { emit() {} };
+    harness._spawnSprite = (...args) => calls.push({ type: 'sprite', args });
+    harness._spawnProjectileTrailStreak = (...args) => calls.push({ type: 'streak', args });
+    harness._flashLight = (...args) => calls.push({ type: 'light', args });
+    const entry = {
+      cause, classId: 'ordinary', serial: 9, x: 0, z: 0, radius: 8,
+      dirX: 1, dirZ: 0, hasNormal: true, normalX: 0, normalZ: 1,
+      targetVelocityX: 4, targetVelocityZ: -2,
+    };
+    for (const event of explosionScheduleFor('ordinary', cause).events) {
+      harness._emitExplosionPhase(event.phase, entry);
+    }
+    assert.ok(calls.some((call) => call.type === 'streak'), `${cause} retains structural streaks`);
+    assert.equal(calls.some((call) => call.type === 'sprite' && call.args[0] === SPR_RING_KIND), false,
+      `${cause} must not regain a circular primary ring`);
   }
 });

@@ -61,6 +61,12 @@ function spawnSprite(system, priority) {
   );
 }
 
+function spawnStructuralStreak(system, priority) {
+  return system._spawnProjectileTrailStreak(
+    0, 0, 0, 30, 0.1, 2, 0.8, '#ffffff', 0, 0, 1, 0, priority,
+  );
+}
+
 test('presentation adapters preserve causal priority components and order hero work above ambient work', () => {
   const state = makeState();
   const bus = createBus();
@@ -302,6 +308,31 @@ test('saturated sprite pool uses priority then age and keeps generic callers com
   assert.equal(generic.admissionPriority, DEFAULT_VFX_ADMISSION_PRIORITY);
 });
 
+test('saturated structural streak pool evicts weakest-oldest, rejects weaker work, and drains metadata', () => {
+  const { system } = makeVfxHarness();
+  for (let i = 0; i < system._ts.length; i++) assert.ok(spawnStructuralStreak(system, 0.12));
+  const oldest = system._activeTrailStreaks[0];
+  const hero = spawnStructuralStreak(system, 0.94);
+  assert.equal(hero, system._ts[oldest]);
+  assert.equal(hero.admissionPriority, 0.94);
+  const heroSerial = hero.admissionSerial;
+  assert.equal(spawnStructuralStreak(system, 0.01), null);
+  assert.equal(hero.admissionSerial, heroSerial, 'rejection must not mutate the winning resident');
+
+  system._collisionContactTicks.set('stale-contact', 12);
+  system._collisionMediumTicks.set('stale-medium', 12);
+  system.bus.emit('save:loaded');
+  assert.equal(system._liveTrailStreakCount, 0);
+  assert.equal(system._freeTrailStreakCount, system._ts.length);
+  assert.ok(system._ts.every((slot) => slot.admissionPriority === DEFAULT_VFX_ADMISSION_PRIORITY));
+  assert.ok(system._ts.every((slot) => slot.admissionSerial === -1));
+  assert.equal(system._collisionContactTicks.size, 0);
+  assert.equal(system._collisionMediumTicks.size, 0);
+  const generic = spawnStructuralStreak(system, undefined);
+  assert.ok(generic);
+  assert.equal(generic.admissionPriority, DEFAULT_VFX_ADMISSION_PRIORITY);
+});
+
 test('event-light saturation preserves hero lights and rejects weaker ambient replacement', () => {
   const { system } = makeVfxHarness();
   for (let i = 0; i < system._lights.length; i++) {
@@ -344,6 +375,8 @@ test('explosion phase emission carries resident priority into particles, sprites
     (slot) => system._particleAdmissionPriority[slot]).every((priority) => priority === 0.93));
   assert.ok(system._lights.filter((slot) => slot.active)
     .every((slot) => slot.admissionPriority === 0.93));
+  assert.ok(Array.from(system._activeTrailStreaks.slice(0, system._liveTrailStreakCount),
+    (slot) => system._ts[slot].admissionPriority).every((priority) => priority === 0.93));
 });
 
 test('phased explosions admit by priority then age, default old callers, and drain cleanly', () => {

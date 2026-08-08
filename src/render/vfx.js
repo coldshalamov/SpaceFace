@@ -226,6 +226,8 @@ const PARTICLE_BUFFER_BINDINGS = Object.freeze([
 const SPRITE_CAP = 256;
 // Dedicated procedural streak-mesh pool (ShaderMaterial planes) — not the additive sprite pool.
 const TRAIL_STREAK_CAP = 96;
+const CONTACT_SPARK_COOLDOWN_TICKS = 6;
+const COLLISION_PRESENTATION_CACHE_CAP = 128;
 
 // Sprite "kinds" — drive how a pooled sprite ages (scale/opacity curve).
 const SPR_FLASH = 0;   // punch-out flash (muzzle, impact, explosion core): scale grows, opacity fades
@@ -573,6 +575,8 @@ export const vfx = {
     this._combatBeamLocalizer = (x, z, out) => this._toLocalXZ(x, z, out);
     this._beamDamageCueNext = new Map();
     this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
+    this._collisionContactTicks = new Map();
+    this._collisionMediumTicks = new Map();
     this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
     this._admissionSerial = 0;
     this._explosionEmitter = (phase, entry) => {
@@ -935,6 +939,7 @@ export const vfx = {
       this._ts.push({
         alive: false, age: 0, life: 1, size0: 1, size1: 1, op0: 1,
         x: 0, y: 0, z: 0, vx: 0, vz: 0, ax: 1, az: 0, stretch: 3.2, r: 1, g: 1, b: 1,
+        admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY, admissionSerial: -1,
       });
     }
     this._trailStreakColor = new THREE.Color();
@@ -1185,6 +1190,7 @@ export const vfx = {
     add('combat:beamStop', (p) => this._onBeamStop(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
+    add('physics:impact', (p) => this._onPhysicsImpact(p));
     add('collision', (p) => this._onCollision(p));
     // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
     // cannon's kill move) had no renderer. Wire the wall-impact payoff on pooled substrates: consumes
@@ -1196,9 +1202,10 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => this._clearStationSideEvents());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1470,14 +1477,45 @@ export const vfx = {
     return st;
   },
 
-  _spawnTrailStreak(x, y, z, life, size0, size1, op0, color, vx, vz) {
+  _lowestPriorityTrailStreakSlot() {
+    if (this._liveTrailStreakCount <= 0) return -1;
+    const active = this._activeTrailStreaks;
+    let weakest = active[0];
+    for (let cursor = 1; cursor < this._liveTrailStreakCount; cursor++) {
+      const candidateIndex = active[cursor];
+      const candidate = this._ts[candidateIndex];
+      const resident = this._ts[weakest];
+      if (candidate.admissionPriority < resident.admissionPriority
+        || (candidate.admissionPriority === resident.admissionPriority
+          && candidate.admissionSerial < resident.admissionSerial)) weakest = candidateIndex;
+    }
+    return weakest;
+  },
+
+  _claimTrailStreak(admissionPriority) {
+    const priority = normalizeVfxAdmissionPriority(
+      admissionPriority,
+      this._spawnAdmissionPriority,
+    );
+    let index;
+    if (this._freeTrailStreakCount > 0) {
+      index = this._freeTrailStreaks[--this._freeTrailStreakCount];
+    } else {
+      index = this._lowestPriorityTrailStreakSlot();
+      if (index < 0 || priority < this._ts[index].admissionPriority) return -1;
+    }
+    this._tsHead = (index + 1) % TRAIL_STREAK_CAP;
+    const slot = this._ts[index];
+    slot.admissionPriority = priority;
+    slot.admissionSerial = this._admissionSerial++;
+    return index;
+  },
+
+  _spawnTrailStreak(x, y, z, life, size0, size1, op0, color, vx, vz, admissionPriority) {
     if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return null;
     if (!this._scene || !this._trailStreakPool) return null;
-    const n = TRAIL_STREAK_CAP;
-    let i;
-    if (this._freeTrailStreakCount > 0) i = this._freeTrailStreaks[--this._freeTrailStreakCount];
-    else i = this._tsHead;
-    this._tsHead = (i + 1) % n;
+    const i = this._claimTrailStreak(admissionPriority);
+    if (i < 0) return null;
     const st = this._ts[i];
     const wasAlive = st.alive;
     const width = Math.max(0.04, size0);
@@ -1513,13 +1551,11 @@ export const vfx = {
   // Projectile rail wisps — thin constant-width streak; not gated on engineTrails setting.
   _spawnProjectileTrailStreak(
     x, y, z, life, width, length, op0, color, vx, vz, axisX = null, axisZ = null,
+    admissionPriority,
   ) {
     if (!this._scene || !this._trailStreakPool) return null;
-    const n = TRAIL_STREAK_CAP;
-    let i;
-    if (this._freeTrailStreakCount > 0) i = this._freeTrailStreaks[--this._freeTrailStreakCount];
-    else i = this._tsHead;
-    this._tsHead = (i + 1) % n;
+    const i = this._claimTrailStreak(admissionPriority);
+    if (i < 0) return null;
     const st = this._ts[i];
     const wasAlive = st.alive;
     const w = Math.max(0.04, width);
@@ -1560,6 +1596,8 @@ export const vfx = {
     const st = this._ts[i];
     if (!st || !st.alive) return;
     st.alive = false;
+    st.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+    st.admissionSerial = -1;
     const pos = this._activeTrailStreakPos[i];
     if (pos >= 0) {
       const lastPos = --this._liveTrailStreakCount;
@@ -1571,6 +1609,16 @@ export const vfx = {
       this._activeTrailStreakPos[i] = -1;
     }
     this._freeTrailStreaks[this._freeTrailStreakCount++] = i;
+  },
+
+  _clearTrailStreaks() {
+    if (!this._ts || !this._activeTrailStreaks) return false;
+    while (this._liveTrailStreakCount > 0) {
+      this._retireTrailStreak(this._activeTrailStreaks[this._liveTrailStreakCount - 1]);
+    }
+    this._tsHead = 0;
+    if (this._trailStreakPool) this._commitTrailStreakInstances();
+    return true;
   },
 
   _writeTrailStreakInstance(i, packedIndex, scale, opacity) {
@@ -2861,10 +2909,129 @@ export const vfx = {
     return presentationStyle('#ffffff', '#b060ff', SPR_RING, { radial: true, lightPeak: 3.2, lightDistance: 150, speed0: 18, speedJitter: 32 });
   },
 
+  _collisionPairKey(aId, bId) {
+    const a = String(aId);
+    const b = String(bId);
+    return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+  },
+
+  _boundedCollisionTickWrite(map, key, tick) {
+    if (!map) return;
+    if (!map.has(key) && map.size >= COLLISION_PRESENTATION_CACHE_CAP) {
+      const oldest = map.keys().next();
+      if (!oldest.done) map.delete(oldest.value);
+    }
+    map.set(key, tick);
+  },
+
+  _admitLowCollisionContact(p) {
+    if (!this._collisionContactTicks) this._collisionContactTicks = new Map();
+    const tick = Number.isFinite(p && p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    const key = this._collisionPairKey(p && p.aId, p && p.bId);
+    const previous = this._collisionContactTicks.get(key);
+    if (Number.isFinite(previous) && tick - previous < CONTACT_SPARK_COOLDOWN_TICKS) return false;
+    this._boundedCollisionTickWrite(this._collisionContactTicks, key, tick);
+    return true;
+  },
+
+  _rememberMediumCollision(p) {
+    if (!this._collisionMediumTicks) this._collisionMediumTicks = new Map();
+    const tick = Number.isFinite(p && p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    const key = this._collisionPairKey(p && p.targetId, p && p.otherId);
+    this._boundedCollisionTickWrite(this._collisionMediumTicks, key, tick);
+  },
+
+  _consumeMediumCollision(p) {
+    if (!this._collisionMediumTicks) return false;
+    const tick = Number.isFinite(p && p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    const key = this._collisionPairKey(p && p.targetId, p && p.otherId);
+    if (this._collisionMediumTicks.get(key) !== tick) return false;
+    this._collisionMediumTicks.delete(key);
+    return true;
+  },
+
+  _resetCollisionPresentation() {
+    if (this._collisionContactTicks) this._collisionContactTicks.clear();
+    if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
+  },
+
+  _collisionContactAxis(p) {
+    let nx = Number(p && p.normal && p.normal.x);
+    let nz = Number(p && p.normal && p.normal.z);
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-8) {
+      const a = this.state && this.state.entities && this.state.entities.get(p && p.aId);
+      const b = this.state && this.state.entities && this.state.entities.get(p && p.bId);
+      nx = Number(a && a.pos && a.pos.x) - Number(b && b.pos && b.pos.x);
+      nz = Number(a && a.pos && a.pos.z) - Number(b && b.pos && b.pos.z);
+    }
+    const length = Math.hypot(nx, nz);
+    if (!(length > 1e-8)) return 0;
+    return Math.atan2(nz / length, nx / length);
+  },
+
+  _collisionPatternSerial(p) {
+    let hash = Math.trunc(Number(p && p.tick) || Number(this.state && this.state.tick) || 0);
+    for (let channel = 0; channel < 2; channel++) {
+      const value = channel === 0
+        ? p && (p.aId ?? p.targetId)
+        : p && (p.bId ?? p.otherId);
+      const text = String(value);
+      for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    }
+    return hash | 0;
+  },
+
+  _emitLowCollisionContact(p) {
+    if (!this._scene || !p || !p.pos) return false;
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = accessibility.flashOpacityScale < 1;
+    const base = this._collisionContactAxis(p);
+    const nx = Math.cos(base);
+    const nz = Math.sin(base);
+    const tx = -nz;
+    const tz = nx;
+    const serial = this._collisionPatternSerial(p);
+    const count = reduced ? 2 : 4;
+    this._c0.set('#fff4dc');
+    this._c1.set('#8b6b4b');
+    for (let k = 0; k < count; k++) {
+      const side = k % 2 === 0 ? -1 : 1;
+      const angle = base + Math.PI + side * (0.22 + Math.floor(k / 2) * 0.18)
+        + explosionPatternSigned(serial, 'terrain-spall', k, 21) * 0.06;
+      const speed = (reduced ? 9 : 14) + explosionPattern01(serial, 'terrain-spall', k, 22) * (reduced ? 5 : 12);
+      this._spawnParticle(p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
+        reduced ? 0.20 : 0.30, reduced ? 0.65 : 0.9, 0,
+        this._c0, this._c1, 2.6, 0, 0, angle, reduced ? 1.8 : 2.6);
+    }
+    // A short tangent scar and one local dust tongue keep the contact direction readable without
+    // escalating a routine solver contact into damage, control, or destruction presentation.
+    this._spawnProjectileTrailStreak(p.pos.x, 0.16, p.pos.z,
+      reduced ? 0.20 : 0.28, 0.05, reduced ? 1.1 : 1.8,
+      (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
+      '#ead6b8', 0, 0, tx, tz);
+    this._spawnSprite(SPR_PUFF, p.pos.x - nx * 0.12, 0.04, p.pos.z - nz * 0.12,
+      reduced ? 0.36 : 0.52, 0.45, reduced ? 1.1 : 1.8,
+      (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
+      '#786a5b', nx * 1.2, nz * 1.2, 2.2, base);
+    return true;
+  },
+
+  _onPhysicsImpact(p) {
+    // Shipping SG-02/Rapier publishes physics:impact but not the legacy `collision` companion.
+    // Custom physics publishes both, so it deliberately stays on _onCollision to avoid double VFX.
+    if (!p || !p.pos || p.backend !== 'rapier-dynamic' || !this._admitLowCollisionContact(p)) return false;
+    return this._emitLowCollisionContact(p);
+  },
+
   _onCollision(p) {
-    if (!this._scene || !p.pos) return;
-    // small impact spark puff on physical ram
-    this._impactSparks(p.pos.x, p.pos.z, null, '#ffd0a0', 6);
+    if (!p || !p.pos || !this._admitLowCollisionContact(p)) return false;
+    return this._emitLowCollisionContact(p);
   },
 
   _onKilled(p) {
@@ -2930,6 +3097,10 @@ export const vfx = {
   },
 
   _emitExplosionPhase(phase, entry) {
+    if (entry && entry.cause && entry.cause !== 'generic') {
+      this._emitCausalExplosionPhase(phase, entry);
+      return;
+    }
     const x = entry.x;
     const z = entry.z;
     const r = entry.radius;
@@ -3315,6 +3486,291 @@ export const vfx = {
           reduced ? 0.13 : 0.23, k % 2 ? '#a64b2c' : '#d78a52',
           Math.cos(a) * (4 + k * 1.8), Math.sin(a) * (4 + k * 1.8),
           Math.cos(a), Math.sin(a));
+      }
+    }
+  },
+
+  _spawnCauseFragment(entry, x, z, angle, life, width, length, opacity, color, speed, travelScale) {
+    const axisX = Math.cos(angle);
+    const axisZ = Math.sin(angle);
+    const inheritedX = Number.isFinite(entry.targetVelocityX) ? entry.targetVelocityX : 0;
+    const inheritedZ = Number.isFinite(entry.targetVelocityZ) ? entry.targetVelocityZ : 0;
+    const breakupSpeed = Math.max(0, Math.min(42, Number(speed) || 0)) * travelScale;
+    return this._spawnProjectileTrailStreak(
+      x, 0.24, z, life, width, length, opacity, color,
+      inheritedX + axisX * breakupSpeed,
+      inheritedZ + axisZ * breakupSpeed,
+      axisX, axisZ,
+    );
+  },
+
+  _emitCausalExplosionPhase(phase, entry) {
+    const cause = entry.cause;
+    const x = entry.x;
+    const z = entry.z;
+    const r = entry.radius;
+    const classScale = entry.classId === 'capital' ? 1.12 : (entry.classId === 'small' ? 0.90 : 1);
+    const scale = classScale * Math.max(0.78, Math.min(1.65, Math.sqrt(r / 8)));
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = accessibility.flashOpacityScale < 1;
+    const motionReduced = !!(this.state && this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce);
+    const travelScale = motionReduced ? 0.42 : (reduced ? 0.72 : 1);
+    const opacityScale = accessibility.flashOpacityScale;
+    const dirAngle = Math.atan2(entry.dirZ, entry.dirX);
+    let contactX = entry.hasNormal ? entry.normalX : entry.dirX;
+    let contactZ = entry.hasNormal ? entry.normalZ : entry.dirZ;
+    if (cause === 'terrain_collision') {
+      const incomingDot = contactX * entry.targetVelocityX + contactZ * entry.targetVelocityZ;
+      if (incomingDot > 0) { contactX = -contactX; contactZ = -contactZ; }
+    }
+    const contactAngle = Math.atan2(contactZ, contactX);
+    const tangentX = -contactZ;
+    const tangentZ = contactX;
+    const tangentAngle = Math.atan2(tangentZ, tangentX);
+    const flashLife = Math.max(accessibility.flashMinLife, reduced ? 0.11 : 0.075);
+
+    if (phase === 'contact-compression') {
+      // Terrain starts at real contact: one flattened axis-locked compression, never an omnidirectional
+      // pre-contact burst. Normal is unoriented, so target motion selects its outward half-space.
+      this._spawnSprite(SPR_FLASH, x, 0.24, z, flashLife,
+        r * 0.055 * scale,
+        r * 0.24 * scale,
+        0.92, 0, '#fff0d0', contactX * 2, contactZ * 2, 2.8, contactAngle);
+      this._spawnCauseFragment(entry, x, z, contactAngle, reduced ? 0.24 : 0.34,
+        0.08 * scale, 2.8 * scale, 0.66 * opacityScale, '#f1d2a0', 18, travelScale);
+      if (accessibility.eventLightPeakScale > 0) {
+        this._flashLight({ x, z }, '#ffc080', 6.4 * scale, 12, 100 + r * 3);
+      }
+      return;
+    }
+
+    if (phase === 'terrain-spall') {
+      const count = reduced ? 2 : 4;
+      for (let k = 0; k < count; k++) {
+        const side = k % 2 === 0 ? -1 : 1;
+        const fan = (Math.floor(k / 2) + 1) * 0.13;
+        const angle = tangentAngle + (side < 0 ? Math.PI : 0) + side * fan;
+        this._spawnCauseFragment(entry, x + tangentX * side * r * 0.05,
+          z + tangentZ * side * r * 0.05, angle,
+          reduced ? 0.30 : 0.46, 0.055 * scale, (1.8 + k * 0.25) * scale,
+          (reduced ? 0.30 : 0.58) * opacityScale, '#c9a878', 15 + k * 2, travelScale);
+      }
+      this._spawnSprite(SPR_PUFF, x - contactX * r * 0.04, 0.08, z - contactZ * r * 0.04,
+        reduced ? 0.55 : 0.78, r * 0.08 * scale, r * 0.30 * scale,
+        (reduced ? 0.20 : 0.30) * opacityScale, 0, '#7c6650',
+        contactX * 2 * travelScale, contactZ * 2 * travelScale, 2.7, tangentAngle);
+      return;
+    }
+
+    if (phase === 'collision-shear') {
+      // Craft-on-craft contact is bilateral. Both unoriented normal halves survive, so swapping the
+      // contact normal sign cannot change the read or pretend one hull was stationary terrain.
+      const perSide = reduced ? 1 : 2;
+      for (const side of [-1, 1]) {
+        for (let k = 0; k < perSide; k++) {
+          const angle = contactAngle + (side < 0 ? Math.PI : 0) + side * k * 0.18;
+          this._spawnCauseFragment(entry, x + contactX * side * r * 0.06,
+            z + contactZ * side * r * 0.06, angle,
+            reduced ? 0.28 : 0.42, 0.07 * scale, (2.6 + k * 0.5) * scale,
+            (reduced ? 0.36 : 0.68) * opacityScale, '#dbe8f1', 20 + k * 3, travelScale);
+        }
+      }
+      this._spawnSprite(SPR_FLASH, x, 0.25, z, flashLife,
+        r * 0.05 * scale,
+        r * 0.25 * scale,
+        0.84, 0, '#ffffff', 0, 0, 2.6, contactAngle);
+      if (accessibility.eventLightPeakScale > 0) {
+        this._flashLight({ x, z }, '#dcecff', 6.8 * scale, 12, 110 + r * 3);
+      }
+      return;
+    }
+
+    if (phase === 'ignition') {
+      const ignitionAngle = cause === 'ship_collision' ? contactAngle : dirAngle;
+      this._spawnSprite(SPR_FLASH, x, 0.28, z, flashLife,
+        r * 0.055 * scale,
+        r * (cause === 'kinetic' ? 0.28 : 0.20) * scale,
+        cause === 'kinetic' ? 0.94 : 0.86, 0, '#ffffff',
+        Math.cos(ignitionAngle) * 2, Math.sin(ignitionAngle) * 2,
+        cause === 'kinetic' ? 3.1 : 2.3, ignitionAngle);
+      if (cause !== 'kinetic') {
+        const pockets = reduced ? 1 : (cause === 'explosive' ? 3 : 2);
+        for (let k = 0; k < pockets; k++) {
+          const centered = k - (pockets - 1) * 0.5;
+          this._spawnSprite(SPR_COMBUSTION,
+            x + entry.dirX * centered * r * 0.12 - entry.dirZ * r * 0.05,
+            0.20,
+            z + entry.dirZ * centered * r * 0.12 + entry.dirX * r * 0.05,
+            reduced ? 0.24 : 0.38 + k * 0.04,
+            r * 0.055 * scale, r * 0.19 * scale,
+            reduced ? 0.42 : 0.46, 0,
+            k % 2 ? '#ffd08a' : '#e45b28',
+            entry.dirX * (2 + k) * travelScale, entry.dirZ * (2 + k) * travelScale,
+            1.5, ignitionAngle + centered * 0.26);
+        }
+      }
+      if (accessibility.eventLightPeakScale > 0) {
+        this._flashLight({ x, z }, cause === 'kinetic' ? '#fff0d0' : '#ff9a48',
+          (cause === 'kinetic' ? 5.8 : 8.2) * scale, 11, 110 + r * 4);
+      }
+      return;
+    }
+
+    if (phase === 'kinetic-tear') {
+      const count = reduced ? 2 : 4;
+      for (let k = 0; k < count; k++) {
+        const centered = k - (count - 1) * 0.5;
+        const angle = dirAngle + centered * (reduced ? 0.18 : 0.16);
+        this._spawnCauseFragment(entry,
+          x - entry.dirZ * centered * r * 0.025, z + entry.dirX * centered * r * 0.025,
+          angle, reduced ? 0.25 : 0.38 + k * 0.025,
+          0.045 * scale, (3.4 + k * 0.38) * scale,
+          (reduced ? 0.30 : 0.70 - Math.abs(centered) * 0.08) * opacityScale,
+          k % 2 ? '#f4d3a0' : '#d9e2e8', 24 + k * 2, travelScale);
+      }
+      return;
+    }
+
+    if (phase === 'internal' || phase === 'internal-secondary') {
+      const secondary = phase === 'internal-secondary';
+      const side = secondary ? 1 : -1;
+      const count = reduced ? 1 : (secondary ? 3 : 2);
+      for (let k = 0; k < count; k++) {
+        const centered = k - (count - 1) * 0.5;
+        const px = x - entry.dirZ * side * r * (secondary ? 0.28 : 0.17)
+          + entry.dirX * centered * r * 0.12;
+        const pz = z + entry.dirX * side * r * (secondary ? 0.28 : 0.17)
+          + entry.dirZ * centered * r * 0.12;
+        this._spawnSprite(SPR_COMBUSTION, px, 0.18, pz,
+          reduced ? 0.28 : 0.46 + k * 0.05,
+          r * 0.06 * scale, r * (secondary ? 0.28 : 0.20) * scale,
+          reduced ? 0.42 : (secondary ? 0.54 : 0.42), 0,
+          secondary ? '#ff6930' : '#ffc06a',
+          (-entry.dirZ * side * (3 + k) + entry.dirX * centered) * travelScale,
+          (entry.dirX * side * (3 + k) + entry.dirZ * centered) * travelScale,
+          1.5, dirAngle + side * (secondary ? 0.92 : 0.58));
+      }
+      return;
+    }
+
+    if (phase === 'breakup') {
+      const count = reduced ? 2 : 4;
+      for (let k = 0; k < count; k++) {
+        const centered = k - (count - 1) * 0.5;
+        const baseAngle = cause === 'ship_collision' ? contactAngle : dirAngle;
+        const angle = baseAngle + centered * (cause === 'kinetic' ? 0.18 : 0.44);
+        this._spawnCauseFragment(entry, x, z, angle, reduced ? 0.34 : 0.56,
+          0.06 * scale, (2.8 + k * 0.42) * scale,
+          (reduced ? 0.27 : 0.54) * opacityScale, '#e7c79c', 20 + k * 2, travelScale);
+      }
+      return;
+    }
+
+    if (phase === 'rupture') {
+      const count = reduced ? 2 : (cause === 'explosive' ? 7 : (cause === 'ship_collision' ? 6 : 4));
+      const spread = cause === 'kinetic' ? 0.48 : (cause === 'explosive' ? 2.2 : 1.4);
+      for (let k = 0; k < count; k++) {
+        let angle;
+        if (cause === 'ship_collision') {
+          const side = k % 2 === 0 ? -1 : 1;
+          angle = contactAngle + (side < 0 ? Math.PI : 0)
+            + side * Math.floor(k / 2) * 0.24;
+        } else if (cause === 'terrain_collision') {
+          const normalized = count > 1 ? k / (count - 1) - 0.5 : 0;
+          angle = contactAngle + normalized * spread;
+        } else {
+          const normalized = count > 1 ? k / (count - 1) - 0.5 : 0;
+          angle = dirAngle + normalized * spread;
+        }
+        this._spawnCauseFragment(entry, x, z, angle,
+          reduced ? 0.28 : 0.48 + k * 0.025,
+          0.055 * scale, (2.4 + k * 0.24) * scale,
+          (reduced ? 0.27 : 0.58) * opacityScale,
+          k % 2 ? '#e7a15d' : '#f4dfb8', 18 + k * 1.5, travelScale);
+      }
+      const ruptureAngle = cause === 'terrain_collision' || cause === 'ship_collision'
+        ? contactAngle : dirAngle;
+      this._spawnSprite(SPR_FLASH, x, 0.27, z, flashLife,
+        r * 0.06 * scale,
+        r * 0.25 * scale,
+        0.90, 0, '#ffffff',
+        Math.cos(ruptureAngle) * 3, Math.sin(ruptureAngle) * 3, 2.7, ruptureAngle);
+      if (accessibility.eventLightPeakScale > 0) {
+        this._flashLight({ x, z }, '#ff9a50', 8.4 * scale, 7, 140 + r * 5);
+      }
+      this.bus.emit('camera:shake', {
+        amount: (reduced ? 0.16 : 0.30) * (entry.classId === 'capital' ? 1.5 : 1),
+        position: { x, z },
+      });
+      return;
+    }
+
+    if (phase === 'debris') {
+      const baseCount = cause === 'explosive' ? 7 : (cause === 'kinetic' ? 4 : 6);
+      const count = reduced ? Math.max(2, Math.floor(baseCount * 0.45)) : baseCount;
+      for (let k = 0; k < count; k++) {
+        const normalized = count > 1 ? k / (count - 1) - 0.5 : 0;
+        let baseAngle = dirAngle;
+        let spread = cause === 'kinetic' ? 0.62 : 1.8;
+        if (cause === 'terrain_collision') { baseAngle = contactAngle; spread = 1.28; }
+        if (cause === 'ship_collision') {
+          const side = k % 2 === 0 ? -1 : 1;
+          baseAngle = contactAngle + (side < 0 ? Math.PI : 0);
+          spread = 0.72;
+        }
+        const angle = baseAngle + normalized * spread
+          + explosionPatternSigned(entry.serial, phase, k, 15) * 0.08;
+        this._spawnCauseFragment(entry, x, z, angle,
+          reduced ? 0.42 : 0.72 + k * 0.035,
+          (0.045 + explosionPattern01(entry.serial, phase, k, 16) * 0.025) * scale,
+          (1.0 + explosionPattern01(entry.serial, phase, k, 17) * 1.1) * scale,
+          (reduced ? 0.20 : 0.42) * opacityScale,
+          k % 2 ? '#bd7b4c' : '#dac5aa', 12 + k * 2, travelScale);
+      }
+      return;
+    }
+
+    if (phase === 'pressure') {
+      const axisAngle = cause === 'ship_collision' ? contactAngle : dirAngle;
+      const axisX = Math.cos(axisAngle);
+      const axisZ = Math.sin(axisAngle);
+      const sideX = -axisZ;
+      const sideZ = axisX;
+      for (const side of [-1, 1]) {
+        const segments = reduced ? 1 : (cause === 'explosive' ? 2 : 1);
+        for (let k = 0; k < segments; k++) {
+          this._spawnSprite(SPR_PUFF,
+            x + sideX * side * r * (0.16 + k * 0.08) + axisX * k * r * 0.10,
+            0,
+            z + sideZ * side * r * (0.16 + k * 0.08) + axisZ * k * r * 0.10,
+            reduced ? 0.42 : 0.62 + k * 0.11,
+            r * 0.10 * scale, r * (cause === 'explosive' ? 0.52 : 0.38) * scale,
+            (reduced ? 0.04 : 0.085) * opacityScale, 0, '#655a54',
+            sideX * side * 5 * travelScale, sideZ * side * 5 * travelScale,
+            2.8, Math.atan2(sideZ * side, sideX * side));
+        }
+      }
+      return;
+    }
+
+    if (phase === 'residue') {
+      const count = reduced ? 2 : (cause === 'explosive' ? 5 : 3);
+      for (let k = 0; k < count; k++) {
+        const normalized = count > 1 ? k / (count - 1) - 0.5 : 0;
+        const baseAngle = cause === 'terrain_collision' ? tangentAngle : dirAngle;
+        const angle = baseAngle + normalized * (cause === 'terrain_collision' ? 1.1 : 1.7)
+          + explosionPatternSigned(entry.serial, phase, k, 18) * 0.16;
+        const distance = r * (0.10 + explosionPattern01(entry.serial, phase, k, 19) * 0.24);
+        this._spawnSprite(SPR_PUFF,
+          x + Math.cos(angle) * distance, 0, z + Math.sin(angle) * distance,
+          reduced ? 0.78 : 1.18 + k * 0.08,
+          r * 0.10 * scale, r * (0.28 + k * 0.025) * scale,
+          (reduced ? 0.16 : 0.24) * opacityScale, 0,
+          cause === 'terrain_collision' ? '#6f604f' : '#5e514a',
+          (entry.targetVelocityX * 0.06 + Math.cos(angle) * 2) * travelScale,
+          (entry.targetVelocityZ * 0.06 + Math.sin(angle) * 2) * travelScale,
+          1.8, angle);
       }
     }
   },
@@ -5336,9 +5792,14 @@ export const vfx = {
   // (graphics-checkpoint reject list). Scale tracks the receipted deltaV; a tumble reads harder.
   // Pooled sprites/lights only; reduced-flash aware; consumes the receipt geometry (no query).
   _onCollisionConsequence(p) {
-    if (!this._scene || !p || !p.pos) return;
+    if (!this._scene || !p || !p.pos) return false;
+    const realControl = p.control === 'stagger' || p.control === 'tumble';
+    const realDamage = Math.max(0, Number(p.impactDamage) || 0) > 0;
+    if (!realControl && !realDamage) return false;
+    this._rememberMediumCollision(p);
     const pos = p.pos;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
     const dv = Math.max(0, Number(p.deltaV) || 0);
     const hard = p.control === 'tumble';
     const magnitude = Math.max(0.6, Math.min(2.4, dv / 14));
@@ -5354,7 +5815,7 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 1.1 * scale, 3.4 * scale, 0.9 * op, 0.0,
       terrain ? '#ffe9c4' : '#dfefff', ox * 6, oz * 6);
     // Dust / spall skimming the surface, thrown outward + fanned along the tangent.
-    const puffs = hard ? 5 : 3;
+    const puffs = reduced ? (hard ? 2 : 1) : (hard ? 5 : 3);
     for (let k = 0; k < puffs; k++) {
       const spread = (k - (puffs - 1) * 0.5) * 0.5;
       const vx = ox * (10 + dv * 0.4) + tx * spread * 14;
@@ -5362,20 +5823,30 @@ export const vfx = {
       this._spawnSprite(SPR_PUFF, pos.x, 0.05, pos.z, 0.5 + 0.2 * scale, 1.6 * scale, 4.2 * scale,
         0.42 * op, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz);
     }
+    // The medium rung always retains one normal-locked compression bar. Reduced settings shorten
+    // travel/count/opacity but never erase the contact direction or substitute a circular flash.
+    this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z,
+      reduced ? 0.24 : (hard ? 0.44 : 0.34),
+      (reduced ? 0.07 : 0.10) * scale,
+      (reduced ? 1.8 : (hard ? 4.8 : 3.4)) * scale,
+      (reduced ? 0.28 : 0.60) * op,
+      terrain ? '#f0d0a0' : '#d4e6f5',
+      ox * (reduced ? 4 : 10), oz * (reduced ? 4 : 10), ox, oz);
     const lightPeak = 2.6 * magnitude * acc.eventLightPeakScale;
     if (lightPeak > 0.01) {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff', lightPeak, 9, 120 + dv * 3);
     }
+    return true;
   },
 
   // Deterministic debris count from the receipt → directional fragments flung off the contact along
   // the surface normal. Pooled particle substrate (discrete event, no per-frame allocation) and the
   // receipt's normal/count are consumed directly — never a spatial-hash query.
   _onCollisionDebris(p) {
-    if (!this._scene || !p || !p.pos) return;
+    if (!this._scene || !p || !p.pos || !this._consumeMediumCollision(p)) return false;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const count = Math.max(0, Math.min(18, Math.round(Number(p.count) || 0)));
-    if (count <= 0) return;
+    if (count <= 0) return false;
     const pos = p.pos;
     const nx = Number(p.normal && p.normal.x) || 0;
     const nz = Number(p.normal && p.normal.z) || 0;
@@ -5385,12 +5856,16 @@ export const vfx = {
     this._c0.set(terrain ? '#d8c090' : '#c4d8ec');
     this._c1.set(terrain ? '#6a4a28' : '#33506e');
     const emit = Math.max(1, Math.round(count * (acc.flashOpacityScale < 1 ? 0.5 : 1)));
+    const serial = this._collisionPatternSerial(p);
     for (let k = 0; k < emit; k++) {
-      const a = baseAng + (Math.random() - 0.5) * 1.4;
-      const v = 24 + Math.random() * 60;
+      const a = baseAng + explosionPatternSigned(serial, 'terrain-spall', k, 23) * 0.7;
+      const v = 24 + explosionPattern01(serial, 'terrain-spall', k, 24) * 60;
       this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.3 + Math.random() * 0.35, 1.2, 0.0, this._c0, this._c1, 2.2, 0, 0);
+        0.3 + explosionPattern01(serial, 'terrain-spall', k, 25) * 0.35,
+        1.2, 0.0, this._c0, this._c1, 2.2, 0, 0, a,
+        acc.flashOpacityScale < 1 ? 1.8 : 2.8);
     }
+    return true;
   },
 
   // AI telegraph / flee / formation break markers (spec2/02 §3 + M1 doctrine tells).

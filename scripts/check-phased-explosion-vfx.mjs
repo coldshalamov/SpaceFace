@@ -4,7 +4,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  EXPLOSION_CAUSE_SCHEDULES,
   EXPLOSION_SCHEDULES,
+  explosionScheduleFor,
   PhasedExplosionLifecycle,
 } from '../src/render/combat/phasedExplosions.js';
 import { vfx } from '../src/render/vfx.js';
@@ -121,11 +123,29 @@ for (const [classId, phases] of Object.entries(emitted)) {
   assert.deepEqual(phases, EXPLOSION_SCHEDULES[classId].events.map((event) => event.phase));
 }
 
+const causeEmitted = {};
+const causeSignatures = new Set();
+for (const cause of Object.keys(EXPLOSION_CAUSE_SCHEDULES)) {
+  const causeLifecycle = new PhasedExplosionLifecycle({ capacity: 1 });
+  const phases = [];
+  causeLifecycle.start({ classId: 'ordinary', cause, direction: { x: 1, z: 0 } });
+  for (let i = 0; i < 80; i++) causeLifecycle.update(0.05, (phase) => phases.push(phase));
+  const schedule = explosionScheduleFor('ordinary', cause);
+  assert.deepEqual(phases, schedule.events.map((event) => event.phase));
+  const signature = schedule.events.map((event) => `${event.phase}@${event.at}`).join('|');
+  causeSignatures.add(signature);
+  causeEmitted[cause] = phases;
+}
+assert.equal(causeSignatures.size, Object.keys(EXPLOSION_CAUSE_SCHEDULES).length,
+  'all causal profiles require distinct temporal signatures');
+
 const report = {
   schema: 'spaceface.phasedExplosionVfx.v1',
   ok: true,
   capacity: lifecycle.capacity,
   schedules: Object.fromEntries(Object.entries(EXPLOSION_SCHEDULES).map(([id, value]) => [id, value.events])),
+  causeSchedules: Object.fromEntries(Object.entries(EXPLOSION_CAUSE_SCHEDULES)
+    .map(([id, value]) => [id, value.events])),
   primaryRuptureUsesRings: false,
   pressureLanguage: 'paired-directional-vapor-shears',
   pressureRingCount: ringCount,
@@ -137,8 +157,14 @@ const report = {
     .filter((event) => event.phase !== 'rupture' && event.at < 0.64)
     .map((event) => event.phase),
   emitted,
+  causeEmitted,
 };
 const out = resolve(ROOT, '.devshots/graphics/phased-explosion-verify.json');
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
-console.log(JSON.stringify({ ok: true, report: out, classes: Object.keys(emitted) }));
+console.log(JSON.stringify({
+  ok: true,
+  report: out,
+  classes: Object.keys(emitted),
+  causes: Object.keys(causeEmitted),
+}));

@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  EXPLOSION_CAUSE_SCHEDULES,
   explosionPattern01,
   explosionPatternSigned,
+  explosionScheduleFor,
   PhasedExplosionLifecycle,
   EXPLOSION_SCHEDULES,
 } from '../src/render/combat/phasedExplosions.js';
@@ -47,6 +49,32 @@ test('bounded lifecycle emits each phase once and retires cleanly', () => {
   assert.equal(new Set(phases).size, phases.length);
   assert.deepEqual(phases, EXPLOSION_SCHEDULES.ordinary.events.map((event) => `${event.phase}:ordinary`));
   assert.equal(lifecycle.activeCount, 0);
+});
+
+test('five causal profiles have distinct frozen schedules while generic stays class-compatible', () => {
+  const signatures = Object.entries(EXPLOSION_CAUSE_SCHEDULES).map(([cause, schedule]) => [
+    cause,
+    schedule.events.map((event) => `${event.phase}@${event.at}`).join('|'),
+  ]);
+  assert.equal(signatures.length, 5);
+  assert.equal(new Set(signatures.map(([, signature]) => signature)).size, 5);
+  assert.equal(explosionScheduleFor('ordinary', 'generic'), EXPLOSION_SCHEDULES.ordinary,
+    'generic callers retain the exact accepted class schedule object');
+  assert.equal(explosionScheduleFor('invalid', 'invalid'), EXPLOSION_SCHEDULES.small);
+  assert.ok(Object.isFrozen(EXPLOSION_CAUSE_SCHEDULES));
+  assert.ok(Object.values(EXPLOSION_CAUSE_SCHEDULES).every((schedule) => Object.isFrozen(schedule)));
+
+  for (const cause of Object.keys(EXPLOSION_CAUSE_SCHEDULES)) {
+    const lifecycle = new PhasedExplosionLifecycle({ capacity: 1 });
+    const emitted = [];
+    lifecycle.start({ classId: 'ordinary', cause });
+    for (let i = 0; i < 80; i++) lifecycle.update(0.05, (phase) => emitted.push(phase));
+    assert.deepEqual(emitted, explosionScheduleFor('ordinary', cause).events.map((event) => event.phase));
+    for (const classId of ['small', 'ordinary', 'capital']) {
+      const times = explosionScheduleFor(classId, cause).events.map((event) => event.at);
+      assert.deepEqual(times, [...times].sort((a, b) => a - b), `${cause}/${classId} stays chronological`);
+    }
+  }
 });
 
 test('pool capacity remains bounded under dense combat', () => {

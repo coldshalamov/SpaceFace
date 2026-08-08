@@ -30,6 +30,10 @@ function normalizeExplosionCause(value) {
 // It is presentation-only and deliberately does not consume simulation RNG.
 const PHASE_SALTS = Object.freeze({
   ignition: 0x11f03a75,
+  'kinetic-tear': 0x2c716b09,
+  'contact-compression': 0x35dc20e1,
+  'terrain-spall': 0x4a72d3c5,
+  'collision-shear': 0x582e91af,
   internal: 0x43a6972d,
   'internal-secondary': 0x7ed16f4b,
   breakup: 0xa51c93e7,
@@ -90,6 +94,78 @@ export const EXPLOSION_SCHEDULES = Object.freeze({
     { phase: 'residue', at: 1.02 },
   ]),
 });
+
+// Cause schedules are presentation grammar, not damage timing. Generic receipts retain the exact
+// accepted class schedules above; immutable non-generic receipts select a distinct causal cadence.
+// The exported set is the ordinary-class reference used by checks and art review.
+export const EXPLOSION_CAUSE_SCHEDULES = Object.freeze({
+  generic: EXPLOSION_SCHEDULES.ordinary,
+  kinetic: schedule(0.72, [
+    { phase: 'ignition', at: 0 },
+    { phase: 'kinetic-tear', at: 0.035 },
+    { phase: 'rupture', at: 0.07 },
+    { phase: 'debris', at: 0.105 },
+    { phase: 'residue', at: 0.22 },
+  ]),
+  explosive: schedule(1.18, [
+    { phase: 'ignition', at: 0 },
+    { phase: 'internal', at: 0.06 },
+    { phase: 'internal-secondary', at: 0.14 },
+    { phase: 'rupture', at: 0.22 },
+    { phase: 'debris', at: 0.28 },
+    { phase: 'pressure', at: 0.36 },
+    { phase: 'residue', at: 0.52 },
+  ]),
+  terrain_collision: schedule(1.24, [
+    { phase: 'contact-compression', at: 0 },
+    { phase: 'terrain-spall', at: 0.04 },
+    { phase: 'rupture', at: 0.11 },
+    { phase: 'internal', at: 0.24 },
+    { phase: 'debris', at: 0.30 },
+    { phase: 'residue', at: 0.55 },
+  ]),
+  ship_collision: schedule(1.06, [
+    { phase: 'collision-shear', at: 0 },
+    { phase: 'ignition', at: 0.04 },
+    { phase: 'rupture', at: 0.11 },
+    { phase: 'debris', at: 0.18 },
+    { phase: 'pressure', at: 0.25 },
+    { phase: 'residue', at: 0.42 },
+  ]),
+});
+
+const CAUSE_CLASS_TIME_SCALE = Object.freeze({ small: 0.78, ordinary: 1, capital: 1.65 });
+
+function scaledCauseSchedule(base, classId) {
+  if (classId === 'ordinary') return base;
+  const scaleValue = CAUSE_CLASS_TIME_SCALE[classId];
+  const events = [];
+  let insertedBreakup = false;
+  for (const event of base.events) {
+    if (classId === 'capital' && !insertedBreakup && event.phase === 'rupture') {
+      const previousAt = events.length ? events[events.length - 1].at : 0;
+      const ruptureAt = event.at * scaleValue;
+      events.push({ phase: 'breakup', at: previousAt + (ruptureAt - previousAt) * 0.55 });
+      insertedBreakup = true;
+    }
+    events.push({ phase: event.phase, at: event.at * scaleValue });
+  }
+  return schedule(base.duration * scaleValue, events);
+}
+
+const EXPLOSION_CAUSE_CLASS_SCHEDULES = Object.freeze(Object.fromEntries(
+  Object.entries(EXPLOSION_CAUSE_SCHEDULES).map(([cause, base]) => [cause, Object.freeze({
+    small: cause === 'generic' ? EXPLOSION_SCHEDULES.small : scaledCauseSchedule(base, 'small'),
+    ordinary: cause === 'generic' ? EXPLOSION_SCHEDULES.ordinary : base,
+    capital: cause === 'generic' ? EXPLOSION_SCHEDULES.capital : scaledCauseSchedule(base, 'capital'),
+  })]),
+));
+
+export function explosionScheduleFor(classId, cause = 'generic') {
+  const safeClass = EXPLOSION_SCHEDULES[classId] ? classId : 'small';
+  const safeCause = normalizeExplosionCause(cause);
+  return EXPLOSION_CAUSE_CLASS_SCHEDULES[safeCause][safeClass];
+}
 
 export class PhasedExplosionLifecycle {
   constructor(options = {}) {
@@ -196,7 +272,7 @@ export class PhasedExplosionLifecycle {
       const entry = this.entries[entryIndex];
       if (!entry.active) continue;
       entry.age += step;
-      const scheduleDef = EXPLOSION_SCHEDULES[entry.classId];
+      const scheduleDef = explosionScheduleFor(entry.classId, entry.cause);
       while (entry.phaseIndex < scheduleDef.events.length) {
         const event = scheduleDef.events[entry.phaseIndex];
         if (event.at > entry.age) break;
