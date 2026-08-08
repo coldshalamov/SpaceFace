@@ -200,7 +200,26 @@ assert.doesNotMatch(
 
 const bundle = read('scripts/build-bundle.mjs');
 assert.doesNotMatch(bundle, /\?prod=1/, 'Bundle policy must not refer to prod query flags');
-assert.match(bundle, /RELEASE_COPY_MAPPINGS/, 'Production bundle must copy runtime roots from the deterministic release map');
+assert.match(bundle, /await copyReleaseRuntimeTrees\(\{\s*root:\s*ROOT,\s*webRoot:\s*OUT\s*\}\)/,
+  'Production bundle must invoke the deterministic release projection against the staging output');
+assert.match(bundle, /acquireReleaseBuildLock\(\{\s*projectRoot:\s*ROOT,\s*buildRoot:\s*join\(ROOT, 'build'\)\s*\}\)/,
+  'Production bundle must serialize the complete staged-build and publication transaction');
+assert.match(bundle, /runLockedBuild\(\)\.catch/,
+  'Production bundle entrypoint must execute through the serialized build transaction');
+assert.match(bundle, /assertReleasePathSafe\(\{\s*root:\s*ROOT,\s*path:\s*actual,[\s\S]*?await rm\(actual/,
+  'Production bundle must reject a symlinked build path before recursive staging cleanup');
+assert.match(
+  bundle,
+  /await runNodeGate\('scripts\/check-render-package-instance-plan\.mjs', \[\s*'--package-dir',\s*join\(OUT, 'assets', 'ships', 'release', 'render-packages'\),\s*\]\)/,
+  'Production bundle must validate the exact copied package plans/runtime tables before publication',
+);
+assert.match(bundle, /await validateReleaseBuildReceipt\(\{[\s\S]*webRoot:\s*OUT,[\s\S]*receipt:\s*releaseReceipt/,
+  'Production bundle must validate its projected receipt before publishing build/web');
+assert.ok(
+  bundle.indexOf('const releaseValidation = await validateReleaseBuildReceipt')
+    < bundle.indexOf('await publishOutputDir()'),
+  'Production bundle must revalidate the exact staged output before its atomic publish',
+);
 assert.match(bundle, /writeReleaseBuildReceipt/, 'Production bundle must emit a deterministic hash-bound receipt');
 assert.match(bundle, /__SPACEFACE_PRODUCTION__:\s*'true'/,
   'Production bundle must compile out public debug routes instead of relying on a launcher query flag');

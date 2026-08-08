@@ -7,7 +7,9 @@
 // into-the-game" regressions from creeping back after the wiring landed.
 //
 // Scans src/ + styles/ only (runtime surfaces). Build/check tooling under scripts/ legitimately names
-// release/dev asset paths that never ship, so it is not scanned.
+// release/dev asset paths that never ship, so it is not scanned. The one Node-only validation module
+// under src/contracts is excluded for the same reason: its default names an authoring input and it is
+// imported only by scripts/tests, never by the player entry graph.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +20,7 @@ import {
   PORTRAIT_ASSET_ROOT,
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
+import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -26,7 +29,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLED_ROOTS = [
   'assets/cinematics',
   'assets/ui',
-  'assets/ships',
+  'assets/ships/release',
   'assets/portraits',
   'assets/fx/thruster',
 ];
@@ -61,6 +64,7 @@ const REFERENCE_ONLY = {
 
 const SCAN_DIRS = ['src', 'styles'];
 const SCAN_EXT = /\.(m?js|css)$/;
+const NON_RUNTIME_SCAN_FILES = new Set(['src/contracts/assetValidation.js']);
 // Match a relative assets/... path with a media extension (the leading ../ or ./ falls outside).
 const ASSET_RE = /assets\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm|ogg|glb|gltf|ktx2|svg|json)/g;
 
@@ -97,9 +101,10 @@ const addReference = (asset, source) => {
 for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, dir))) {
     if (!SCAN_EXT.test(file)) continue;
+    const relFile = file.slice(ROOT.length + 1).replace(/\\/g, '/');
+    if (NON_RUNTIME_SCAN_FILES.has(relFile)) continue;
     const code = stripComments(readFileSync(file, 'utf8'));
     for (const match of code.match(ASSET_RE) || []) {
-      const relFile = file.slice(ROOT.length + 1).replace(/\\/g, '/');
       addReference(match, relFile);
     }
   }
@@ -132,6 +137,8 @@ for (const asset of dynamicRegistries.thrusterTextures) {
 
 const issues = [];
 const underBundledRoot = (asset) => BUNDLED_ROOTS.some((r) => asset === r || asset.startsWith(`${r}/`));
+const packageRouteFor = (asset) => renderPackagePilotForSourceUrl(asset);
+const physicallyBundled = (asset) => underBundledRoot(asset) && !packageRouteFor(asset);
 
 // 1. Every referenced asset must exist on disk.
 for (const [asset, files] of referenced) {
@@ -140,11 +147,26 @@ for (const [asset, files] of referenced) {
   }
 }
 
-// 2. Every referenced asset must live under a bundled root (or it 404s in the shipped game).
+// 2. Every referenced asset must either remain physically present under a copied root or be an
+// exact source URL intercepted by the shipping render-package manifest. Package-routed source GLBs
+// are deliberately projected out of retail; their metadata and payload remain in the copied tree.
 for (const [asset, files] of referenced) {
-  if (!underBundledRoot(asset)) {
-    issues.push(`NOT BUNDLED: "${asset}" (referenced by ${files.join(', ')}) is outside the bundled roots [${BUNDLED_ROOTS.join(', ')}]. ` +
+  const packageRoute = packageRouteFor(asset);
+  if (!underBundledRoot(asset) && !packageRoute) {
+    issues.push(`NOT RETAIL-ROUTABLE: "${asset}" (referenced by ${files.join(', ')}) is outside the bundled roots [${BUNDLED_ROOTS.join(', ')}] and has no render-package route. ` +
       `Add its directory to build-bundle.mjs + package.json build.files, or drop the reference.`);
+  }
+  if (packageRoute) {
+    if (!existsSync(join(ROOT, packageRoute.metadataUrl))) {
+      issues.push(`PACKAGE ROUTE MISSING: "${asset}" maps to absent metadata ${packageRoute.metadataUrl}.`);
+      continue;
+    }
+    const metadata = JSON.parse(readFileSync(join(ROOT, packageRoute.metadataUrl), 'utf8'));
+    const packageDir = dirname(packageRoute.metadataUrl).replace(/\\/g, '/');
+    const renderPath = `${packageDir}/${metadata.render?.uri || ''}`;
+    if (!metadata.render?.uri || !existsSync(join(ROOT, renderPath))) {
+      issues.push(`PACKAGE ROUTE MISSING: "${asset}" maps to absent payload ${renderPath}.`);
+    }
   }
 }
 
@@ -166,7 +188,7 @@ const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const pkgFiles = (((pkg.build || {}).files) || []).map((f) => String(f).replace(/\\/g, '/'));
 for (const root of BUNDLED_ROOTS) {
   const leaf = root.split('/').pop();
-  const copiedInReleasePack = releasePackSrc.includes(`'${root}'`) || (root === 'assets/ships' && releasePackSrc.includes('assets/ships/release'));
+  const copiedInReleasePack = releasePackSrc.includes(`'${root}'`);
   if (!bundleSrc.includes(`'${leaf}'`) && !copiedInReleasePack) {
     issues.push(`BUNDLE DRIFT: scripts/build-bundle.mjs or releasePackaging.mjs no longer copies "${root}" — referenced assets there would 404 in the web release.`);
   }
@@ -176,12 +198,18 @@ for (const root of BUNDLED_ROOTS) {
   }
 }
 
-const bundledRefs = [...referenced.keys()].filter(underBundledRoot).length;
+const physicallyBundledRefs = [...referenced.keys()].filter(physicallyBundled).length;
+const packageRoutedRefs = [...referenced.keys()].filter((asset) => Boolean(packageRouteFor(asset))).length;
+const retailRoutableRefs = [...referenced.keys()].filter(
+  (asset) => physicallyBundled(asset) || Boolean(packageRouteFor(asset)),
+).length;
 const report = {
   pass: issues.length === 0,
   issues,
   referencedAssetCount: referenced.size,
-  bundledReferenceCount: bundledRefs,
+  physicallyBundledReferenceCount: physicallyBundledRefs,
+  packageRoutedReferenceCount: packageRoutedRefs,
+  retailRoutableReferenceCount: retailRoutableRefs,
   referenceOnlyCount: Object.keys(REFERENCE_ONLY).length,
   dynamicRegistries,
 };
@@ -191,7 +219,8 @@ if (process.argv.includes('--json')) {
 } else if (issues.length) {
   console.error('asset reachability FAILED:\n' + issues.map((i) => '  - ' + i).join('\n'));
 } else {
-  console.log(`asset reachability OK — ${referenced.size} referenced runtime assets exist and are bundled (${bundledRefs} under bundled roots); ` +
+  console.log(`asset reachability OK — ${referenced.size} referenced runtime assets exist and are retail-routable ` +
+    `(${physicallyBundledRefs} physically bundled, ${packageRoutedRefs} render-package-routed); ` +
     `${Object.keys(REFERENCE_ONLY).length} authoring-only reference sheets held out of the runtime.`);
 }
 

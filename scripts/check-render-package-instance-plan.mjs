@@ -29,7 +29,13 @@ import { renderPackagePilotForAssetId } from '../src/render/renderPackageManifes
 import { readGlbJson as readGlbJsonChunk, sceneFromGlbJson as buildDecodedScene } from './lib/renderPackageRuntimeTable.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PACKAGE_DIR = resolve(ROOT, 'assets/ships/release/render-packages');
+const packageDirIndex = process.argv.indexOf('--package-dir');
+if (packageDirIndex >= 0 && !process.argv[packageDirIndex + 1]) {
+  throw new Error('--package-dir requires a directory path');
+}
+const PACKAGE_DIR = packageDirIndex >= 0
+  ? resolve(process.argv[packageDirIndex + 1])
+  : resolve(ROOT, 'assets/ships/release/render-packages');
 
 /**
  * Read a .glb container's JSON chunk without decoding any binary payload.

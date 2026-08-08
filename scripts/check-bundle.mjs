@@ -4,7 +4,10 @@
 //   2. The bundled index.html has NO importmap (the bundle resolves bare specifiers itself).
 //   3. The bundled main.js is syntactically valid.
 //   4. Runtime-fetched data contracts and player-facing URL assets are copied beside the bundle.
-//   5. The bundled JS is meaningfully smaller than raw (src + vendor) — the whole point of bundling.
+//   5. Every URL-fetched runtime root matches its declared exact or render-package projection.
+//      Source GLBs covered by the shipping render-package manifest are absent, while their exact
+//      package metadata/payloads and every uncovered source GLB remain present.
+//   6. The bundled JS is meaningfully smaller than raw (src + vendor).
 //      We require >=20% smaller (the observed saving is ~45%); a result below 20% would mean the
 //      bundler regressed (e.g. minification disabled, or three/rapier double-included).
 //
@@ -19,9 +22,11 @@ import assert from 'node:assert/strict';
 
 import { SIGNAL_ARCHIVE } from '../src/ui/screens/codex.js';
 import {
+  RENDER_PACKAGE_SOURCE_PROJECTION,
   RELEASE_RECEIPT_FILE,
   validateReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
+import { RENDER_PACKAGE_PILOTS } from '../src/render/renderPackageManifest.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
@@ -90,13 +95,37 @@ for (const clip of SIGNAL_ARCHIVE) {
 assert.ok(existsSync(UI_ICON_ATLAS_BUNDLE_PATH),
   'build/web/assets/ui/icons_atlas.jpg must exist for bundled CSS icon atlas references');
 
-// 5. The release receipt is deterministic and proves every copied player-facing runtime tree is
-// byte-identical to its source. It also rejects source art/evidence/sourcemaps in the retail tree.
+// 5. The release receipt is deterministic and proves every copied player-facing runtime tree
+// matches its declared projection byte-for-byte. It also rejects source art/evidence/sourcemaps.
 const releaseReceipt = JSON.parse(await readFile(join(BUILD_WEB, RELEASE_RECEIPT_FILE), 'utf8'));
 const releaseValidation = await validateReleaseBuildReceipt({ root: ROOT, webRoot: BUILD_WEB, receipt: releaseReceipt });
 assert.equal(releaseValidation.pass, true, releaseValidation.failures.join('; '));
 assert.ok(releaseReceipt.copies.every((copy) => copy.exact === true),
-  'every release runtime root must copy byte-for-byte');
+  'every release runtime root must match its declared projection byte-for-byte');
+const shippedAssets = releaseReceipt.copies.find((copy) => copy.source === 'assets/ships/release');
+assert.equal(shippedAssets?.projection, RENDER_PACKAGE_SOURCE_PROJECTION,
+  'ship assets must use the fail-closed render-package source projection');
+const expectedOmissions = RENDER_PACKAGE_PILOTS
+  .map((pilot) => pilot.sourceUrl.replace(/^assets\/ships\/release\//, ''))
+  .sort();
+assert.deepEqual(shippedAssets.omissions.map((entry) => entry.path).sort(), expectedOmissions,
+  'retail may omit exactly the source GLBs intercepted by the shipping render-package manifest');
+assert.equal(shippedAssets.omittedFileCount, RENDER_PACKAGE_PILOTS.length);
+assert.equal(shippedAssets.sourceFileCount - shippedAssets.fileCount, shippedAssets.omittedFileCount,
+  'the projected asset tree must differ from canonical release only by proven source GLBs');
+assert.equal(shippedAssets.sourceBytes - shippedAssets.bytes, shippedAssets.omittedBytes,
+  'every omitted byte must be attributed to a manifest-proven source GLB');
+assert.ok(shippedAssets.omittedBytes > 0, 'the projection must remove real duplicate payload bytes');
+for (const omission of shippedAssets.omissions) {
+  assert.equal(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.path.split('/'))), false,
+    `${omission.path} must not duplicate its compiled render package in retail`);
+  assert.ok(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.replacement.metadataPath.split('/'))),
+    `${omission.replacement.metadataPath} must remain bundled`);
+  assert.ok(existsSync(join(BUILD_WEB, 'assets', 'ships', 'release', ...omission.replacement.renderPath.split('/'))),
+    `${omission.replacement.renderPath} must remain bundled`);
+}
+console.log(`[check-bundle] render packages replace ${shippedAssets.omittedFileCount} source GLBs ` +
+  `(${(shippedAssets.omittedBytes / 1024 / 1024).toFixed(2)} MB removed from retail)`);
 
 // Production-only debug entry routes must be tree-shaken from the shipped player entrypoint. This
 // does not ban internal diagnostics used by systems; it rejects public query routes and boot handles.
@@ -105,8 +134,8 @@ for (const debugToken of ['dev=shippreview', 'dev=shipshot', '[SpaceFace] booted
   assert.ok(!bundledMain.includes(debugToken), `production main.js must strip debug route token ${debugToken}`);
 }
 
-// 6. The bundle is meaningfully smaller than raw JS. Compare JS-to-JS only (binary assets ship
-// identically either way).
+// 6. The bundle is meaningfully smaller than raw JS. Keep this JS-to-JS measure independent from
+// the source-GLB projection asserted above.
 const rawJs = await jsSize(join(ROOT, 'src')) + await jsSize(join(ROOT, 'vendor'));
 const bundledJs = await jsSize(BUILD_WEB);
 assert.ok(rawJs > 0 && bundledJs > 0, 'both raw and bundled JS sizes must be > 0');
