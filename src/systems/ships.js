@@ -285,10 +285,10 @@ function engineMods(def) {
 }
 
 /** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
- * exactly the one flight already infers from class/mass; only Travel Burn V-MAX is tier-scaled, so
- * fitting an engine cannot silently rewrite ordinary thrust, handling or drive-family behavior. */
-function buildDerivedPropulsion(flightClass, totalMass, engine) {
-  const base = resolvePropulsionProfile({ flightClass, mass: totalMass });
+ * the hull's authored drive, with class/mass retained for legacy fallback. Only Travel Burn V-MAX
+ * is tier-scaled, so fitting an engine cannot silently rewrite thrust, handling or drive-family behavior. */
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine) {
+  const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
   const derived = {
     ...base,
@@ -439,7 +439,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const bdef = shipDef.boost || {};
   const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
-  const propulsion = buildDerivedPropulsion(flightClass, totalMass, engine);
+  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine);
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,

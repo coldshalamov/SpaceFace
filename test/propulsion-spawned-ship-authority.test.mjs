@@ -22,22 +22,22 @@
 // uses at `src/systems/flightV3.js:1143`, so what the kernel is handed here is what the kernel is
 // handed in flight.
 //
-// MEASURED, not assumed (2026-07-19, this tree). Recorded so a drift is legible as a drift:
-//   ship_kestrel + starter fittings -> drive_reaction_s, family reaction, combatSpeed 210,
-//   travel ceiling 472.5 WU/s, mass 32, radius 14, inertia ~26.96.
+// MEASURED, not assumed (2026-08-08, this tree). Recorded so a drift is legible as a drift:
+//   ship_kestrel + starter fittings -> drive_reaction_m, family reaction, combatSpeed 195,
+//   travel ceiling 438.75 WU/s, mass 32, radius 14, inertia ~26.96.
 // Note every one of those differs from the fixture. That is the point.
 //
 // WHICH SPEED NUMBER IS AUTHORITATIVE — traced, because two plausible ones disagree and the tests
 // below would be measuring the wrong product if this were guessed:
 //   * `derived.flightModel.maxSpeed` = 145.0 for the starter kestrel, and it rises with the fitted
 //     engine module (ion 145 -> fusion 185.7 -> warp 217.4).
-//   * `profile.combatSpeed` = 210, fixed by the resolved drive and unaffected by engine fittings.
+//   * `profile.combatSpeed` = 195, fixed by the resolved drive and unaffected by engine fittings.
 // The clamp actually applied is the kernel's: `stepReaction` publishes
 // `maxSpeed: finiteOrInfinity(profile.solverSpeedLimit)`, flightV3 forwards it verbatim through
 // `writePhysicsControl` (`flightV3.js:261-266`) and `physicsAuthority.js:33` takes it as the
-// velocity clamp. For `drive_reaction_s` that value is **Infinity**. So under flightV3 nothing
+// velocity clamp. For `drive_reaction_m` that value is **Infinity**. So under flightV3 nothing
 // clamps the player to 145: the operative authority is the assisted governor servoing toward
-// `combatSpeed` (210), which is what the tests below assert against.
+// `combatSpeed` (195), which is what the tests below assert against.
 //
 // WHAT THIS FILE DELIBERATELY DOES NOT DO. It does not assert unbuilt product. The travel-drive
 // axis has no production input owner (ledger W1-1/W1-2 "built, NOT wired") and the velocity tape
@@ -229,11 +229,27 @@ test("the kernel body carries the ship's DERIVED stats, not invented fixture num
   }
 });
 
-test('every player-purchasable hull resolves a real drive and a bounded ceiling', () => {
+test('every player-purchasable hull resolves its authored drive and engine tiers preserve its family', () => {
   // The starter hull is not the only ship the player flies. A hull that falls through to a default
   // profile would fly with someone else's numbers, silently.
-  for (const shipDef of Object.values(SHIPS)) {
+  const driveMismatches = [];
+  const engineTierIds = ['mod_engine_ion_m', 'mod_engine_fusion_m', 'mod_engine_warp_l'];
+  for (const shipDef of SHIPS) {
     const { entity, profile } = player(shipDef.id, []);
+    const topLevelDriveId = entity.propulsion && entity.propulsion.id;
+    const derivedDriveId = entity.data && entity.data.derived
+      && entity.data.derived.propulsion && entity.data.derived.propulsion.id;
+    if (profile.id !== shipDef.driveId
+        || topLevelDriveId !== shipDef.driveId
+        || derivedDriveId !== shipDef.driveId) {
+      driveMismatches.push({
+        shipId: shipDef.id,
+        authoredDriveId: shipDef.driveId,
+        resolvedDriveId: profile.id,
+        topLevelDriveId,
+        derivedDriveId,
+      });
+    }
     assert.ok(
       PROPULSION_PROFILES[profile.id],
       `${shipDef.id}: resolved drive "${profile.id}" is not a catalogue entry`
@@ -248,7 +264,18 @@ test('every player-purchasable hull resolves a real drive and a bounded ceiling'
       `${shipDef.id}: ceiling ${ceiling} breaks the absolute engineering bound`
     );
     assert.ok(entity.mass > 0 && entity.radius > 0, `${shipDef.id}: must spawn with positive mass and radius`);
+
+    for (const engineId of engineTierIds) {
+      const fittings = fittingsFromDefaultModules(shipDef.id, [engineId]);
+      if (!fittings.includes(engineId)) continue;
+      const fittedProfile = player(shipDef.id, fittings).profile;
+      assert.equal(fittedProfile.id, profile.id,
+        `${shipDef.id}: ${engineId} must not rewrite the hull's drive identity`);
+      assert.equal(fittedProfile.family, profile.family,
+        `${shipDef.id}: ${engineId} must not rewrite the hull's propulsion family`);
+    }
   }
+  assert.deepEqual(driveMismatches, [], 'spawned hulls must resolve their authored SHIPS driveId');
 });
 
 test('the travel ceiling honours an authored per-drive override — the upgrade hook is live', () => {
@@ -269,9 +296,10 @@ test('the travel ceiling honours an authored per-drive override — the upgrade 
 });
 
 test('fitted engine tiers raise Travel Burn V-MAX without changing ordinary propulsion', () => {
-  // Hornet has an L engine bay, so all three production engine tiers fit through the real fitting
-  // helper. The hull is held constant: only the fitted engine tier may move Travel Burn V-MAX.
-  const shipId = 'ship_hornet';
+  // Atlas has an L engine bay and an unbounded reaction-drive solver, so all three production
+  // engine tiers can express their full V-MAX multiplier through the real fitting helper. Capped
+  // families still retain the multiplier in their derived descriptor, but the solver envelope wins.
+  const shipId = 'ship_atlas';
   const profileFor = (engineId) => player(
     shipId,
     fittingsFromDefaultModules(shipId, [engineId]),
@@ -309,6 +337,40 @@ test('fitted engine tiers raise Travel Burn V-MAX without changing ordinary prop
   });
   assert.equal(labRead.id, 'drive_field_sail_m',
     'the explicit player-only flight-lab override must remain authoritative over derived fittings');
+});
+
+test('bounded authored drives retain engine-tier scaling beneath their solver envelope', () => {
+  const shipId = 'ship_hornet';
+  const profileFor = (engineId) => player(
+    shipId,
+    fittingsFromDefaultModules(shipId, [engineId]),
+  ).profile;
+  const ion = profileFor('mod_engine_ion_m');
+  const fusion = profileFor('mod_engine_fusion_m');
+  const warp = profileFor('mod_engine_warp_l');
+  const withoutTravelCeiling = ({ travelCeiling: _travelCeiling, ...profile }) => profile;
+
+  for (const profile of [ion, fusion, warp]) {
+    assert.equal(profile.id, 'drive_gravimetric_s', 'Hornet engine tiers must preserve authored drive identity');
+    assert.equal(profile.family, 'gravimetric', 'Hornet engine tiers must preserve gravimetric family behavior');
+    assert.equal(
+      resolveTravelCeiling(profile),
+      Math.min(profile.travelCeiling, profile.solverSpeedLimit, TRAVEL_CEILING_ABSOLUTE_WU_S),
+      'effective V-MAX must clamp the tier-scaled authored ceiling to the drive solver envelope',
+    );
+  }
+
+  assert.deepEqual(withoutTravelCeiling(fusion), withoutTravelCeiling(ion),
+    'fusion fitting must change only Hornet\'s tier-scaled travel ceiling');
+  assert.deepEqual(withoutTravelCeiling(warp), withoutTravelCeiling(ion),
+    'warp fitting must change only Hornet\'s tier-scaled travel ceiling');
+
+  assert.ok(ion.travelCeiling < fusion.travelCeiling && fusion.travelCeiling < warp.travelCeiling,
+    'the derived descriptor must retain each fitted engine tier multiplier before solver clamping');
+  assert.ok(resolveTravelCeiling(ion) < resolveTravelCeiling(fusion),
+    'the fusion tier must raise Hornet V-MAX until the gravimetric solver envelope is reached');
+  assert.equal(resolveTravelCeiling(fusion), resolveTravelCeiling(warp),
+    'higher tiers must not bypass Hornet\'s finite gravimetric solver envelope');
 });
 
 // --------------------------------------------------------------------------------------------
