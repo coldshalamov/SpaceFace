@@ -68,3 +68,63 @@ test('ship pitch keeps legacy fallback, lifecycle skips, and zero settling', () 
   assert.equal(dead.pitch, -0.2);
   assert.equal(asteroid.pitch, 0.3);
 });
+
+test('ship pitch writes and clears a separate resident thrown-trail plan from live velocity', () => {
+  const thrown = craft('ship', {
+    id: 2,
+    radius: 6,
+    vel: { x: 120, z: 0 },
+    angVel: 3,
+    bank: 0,
+  });
+  const status = {
+    id: 'status_tumbling',
+    attackerId: 1,
+    data: { cause: 'thrown', startedAt: 1, until: 5, spin: 3 },
+  };
+  const state = {
+    playerId: 1,
+    player: { targetId: 2 },
+    simTime: 2,
+    entityList: [thrown],
+    combat: { entities: { 2: { statuses: { status_tumbling: status } } } },
+    settings: {
+      video: { motionReduce: false, flashReduce: false },
+      accessibility: { flashReduce: false },
+    },
+  };
+
+  assert.equal(updateShipPitchPresentation(state, 1 / 60), 1);
+  const tumbleRecord = thrown.presentation.tumble;
+  const trailRecord = thrown.presentation.thrownTrail;
+  assert.notEqual(trailRecord, tumbleRecord, 'translational trail stays separate from angular cues');
+  assert.equal(tumbleRecord.cause, 'thrown');
+  assert.equal(tumbleRecord.attackerId, 1);
+  assert.equal(tumbleRecord.playerCaused, true,
+    'angular presentation retains exact active-status causality without owning the trail');
+  assert.equal(trailRecord.active, true);
+  assert.equal(trailRecord.axisX, 1);
+  assert.equal(trailRecord.axisZ, 0);
+  assert.equal(trailRecord.admissionPriority, 0.98);
+
+  thrown.vel.x = 0;
+  thrown.vel.z = 120;
+  updateShipPitchPresentation(state, 1 / 60);
+  assert.equal(thrown.presentation.thrownTrail, trailRecord, 'trail plan remains resident');
+  assert.equal(trailRecord.axisX, 0);
+  assert.equal(trailRecord.axisZ, 1, 'resident plan follows the current velocity, not prior history');
+
+  delete state.combat.entities[2].statuses.status_tumbling;
+  updateShipPitchPresentation(state, 1 / 60);
+  assert.equal(trailRecord.active, false, 'status exit clears the record in place');
+
+  state.combat.entities[2].statuses.status_tumbling = status;
+  thrown.alive = true;
+  thrown.vel.x = 120;
+  thrown.vel.z = 0;
+  updateShipPitchPresentation(state, 1 / 60);
+  assert.equal(trailRecord.active, true);
+  thrown.alive = false;
+  assert.equal(updateShipPitchPresentation(state, 1 / 60), 0);
+  assert.equal(trailRecord.active, false, 'death clears stale trail intent without replacing it');
+});

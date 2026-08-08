@@ -4,6 +4,7 @@
 // Simulation authority for tumble scheduling and player immunity remains in tumbleStates / combat.
 
 export const TUMBLE_STATUS_ID = 'status_tumbling';
+const EMPTY_THROWN_TRAIL_INPUT = Object.freeze({});
 
 /** @typedef {'idle'|'tumbling'|'drifting'|'recovering'} TumbleVisualMode */
 
@@ -13,10 +14,10 @@ export const TUMBLE_STATUS_ID = 'status_tumbling';
  */
 export function readControlLossPresentation(state, entity) {
   if (!entity || !state) {
-    return { mode: 'idle', tumbling: false, drifting: false, startedAt: null, until: null, spin: 0, elapsedS: 0, remainS: 0 };
+    return idleControlLossPresentation();
   }
   if (entity.id != null && entity.id === state.playerId) {
-    return { mode: 'idle', tumbling: false, drifting: false, startedAt: null, until: null, spin: 0, elapsedS: 0, remainS: 0 };
+    return idleControlLossPresentation();
   }
   const runtime = state.combat && state.combat.entities
     ? state.combat.entities[String(entity.id)]
@@ -33,10 +34,119 @@ export function readControlLossPresentation(state, entity) {
   const spin = data && Number.isFinite(data.spin) ? Math.abs(data.spin) : Math.abs(finite(entity.angVel, 0));
   const elapsedS = startedAt != null ? Math.max(0, now - startedAt) : 0;
   const remainS = until != null ? Math.max(0, until - now) : 0;
+  const cause = tumbling && data && typeof data.cause === 'string' ? data.cause : null;
+  const attackerId = tumbling && status && Object.prototype.hasOwnProperty.call(status, 'attackerId')
+    ? status.attackerId
+    : null;
+  const playerCaused = state.playerId != null && attackerId === state.playerId;
   let mode = 'idle';
   if (tumbling) mode = 'tumbling';
   else if (drifting) mode = 'drifting';
-  return { mode, tumbling, drifting, startedAt, until, spin, elapsedS, remainS };
+  return {
+    mode,
+    tumbling,
+    drifting,
+    startedAt,
+    until,
+    spin,
+    elapsedS,
+    remainS,
+    cause,
+    attackerId,
+    playerCaused,
+  };
+}
+
+function idleControlLossPresentation() {
+  return {
+    mode: 'idle',
+    tumbling: false,
+    drifting: false,
+    startedAt: null,
+    until: null,
+    spin: 0,
+    elapsedS: 0,
+    remainS: 0,
+    cause: null,
+    attackerId: null,
+    playerCaused: false,
+  };
+}
+
+/**
+ * Translational thrown-body trail intent. This remains separate from angular tumble body language:
+ * its axis and carry are derived only from the craft's live velocity snapshot.
+ */
+export function resolveThrownBodyTrailPlan(input = {}, out = {}) {
+  const source = input && typeof input === 'object' ? input : EMPTY_THROWN_TRAIL_INPUT;
+  const plan = out && typeof out === 'object' ? out : {};
+  const velocityX = source.velocityX;
+  const velocityZ = source.velocityZ;
+  const finiteVelocity = Number.isFinite(velocityX) && Number.isFinite(velocityZ);
+  const speed = finiteVelocity ? Math.hypot(velocityX, velocityZ) : 0;
+  const active = Number.isFinite(speed)
+    && source.mode === 'tumbling'
+    && source.cause === 'thrown'
+    && source.playerCaused === true
+    && source.isPlayer !== true
+    && source.alive === true
+    && speed > 48;
+
+  if (!active) return clearThrownBodyTrailPlan(plan);
+
+  const intensity = clamp01((speed - 48) / 192);
+  const reduced = source.reduced === true;
+  const fullLength = 14 + intensity * 38;
+  const fullWidth = 0.4 + intensity;
+  const fullOpacity = 0.55 + intensity * 0.3;
+  const length = reduced ? Math.min(22, fullLength * 0.42) : fullLength;
+  const width = reduced ? fullWidth * 0.65 : fullWidth;
+  const radius = Math.max(0, finite(source.radius, 0));
+  const carry = reduced ? 0.18 : 0.35;
+
+  plan.active = true;
+  plan.reduced = reduced;
+  plan.speed = speed;
+  plan.intensity = intensity;
+  plan.axisX = velocityX / speed;
+  plan.axisZ = velocityZ / speed;
+  plan.length = length;
+  plan.width = width;
+  plan.centerOffset = radius + length * 0.5;
+  plan.life = reduced ? 0.28 + intensity * 0.04 : 0.16 + intensity * 0.08;
+  plan.opacity = reduced ? Math.min(0.32, fullOpacity * 0.42) : fullOpacity;
+  plan.cadenceHz = reduced ? 4 : 8 + intensity * 4;
+  plan.carry = carry;
+  plan.sourceVelocityX = velocityX;
+  plan.sourceVelocityZ = velocityZ;
+  plan.residentVelocityX = velocityX * carry;
+  plan.residentVelocityZ = velocityZ * carry;
+  plan.admissionPriority = source.targetRelevant === true ? 0.98 : 0.92;
+  plan.color = '#d8fbff';
+  return plan;
+}
+
+function clearThrownBodyTrailPlan(plan) {
+  plan.active = false;
+  plan.reduced = false;
+  plan.speed = 0;
+  plan.intensity = 0;
+  plan.axisX = 0;
+  plan.axisZ = 0;
+  plan.length = 0;
+  plan.width = 0;
+  plan.centerOffset = 0;
+  plan.life = 0;
+  plan.opacity = 0;
+  plan.cadenceHz = 0;
+  plan.carry = 0;
+  plan.sourceVelocityX = 0;
+  plan.sourceVelocityZ = 0;
+  plan.residentVelocityX = 0;
+  plan.residentVelocityZ = 0;
+  plan.admissionPriority = 0;
+  plan.color = '#d8fbff';
+  return plan;
 }
 
 /**
@@ -45,6 +155,11 @@ export function readControlLossPresentation(state, entity) {
  */
 export function resolveTumbleBodyLanguage(input = {}) {
   const mode = input.mode || 'idle';
+  const cause = typeof input.cause === 'string' ? input.cause : null;
+  const attackerId = Object.prototype.hasOwnProperty.call(input, 'attackerId')
+    ? input.attackerId
+    : null;
+  const playerCaused = input.playerCaused === true;
   const angVel = finite(input.angVel, 0);
   const simTime = finite(input.simTime, 0);
   const elapsedS = Math.max(0, finite(input.elapsedS, 0));
@@ -55,6 +170,9 @@ export function resolveTumbleBodyLanguage(input = {}) {
   if (mode === 'idle' || motionReduce) {
     return {
       mode: motionReduce && mode !== 'idle' ? mode : 'idle',
+      cause,
+      attackerId,
+      playerCaused,
       bank: finite(input.flightBank, 0),
       pitch: finite(input.flightPitch, 0),
       poseIntensity: 0,
@@ -96,6 +214,9 @@ export function resolveTumbleBodyLanguage(input = {}) {
 
   return {
     mode,
+    cause,
+    attackerId,
+    playerCaused,
     bank,
     pitch,
     poseIntensity,

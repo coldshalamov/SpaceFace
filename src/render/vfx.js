@@ -1228,6 +1228,18 @@ export const vfx = {
   _subscribe() {
     const bus = this.bus;
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
+    const clearTumbleCadenceFor = (p) => {
+      const id = p && (p.id ?? p.entityId ?? p.targetId);
+      const cd = this._tumbleVfxCd;
+      if (id == null || !cd) return;
+      cd.delete(id);
+      const indexed = this.state && this.state.entities && this.state.entities.get(id);
+      if (indexed) cd.delete(indexed);
+      // Removal may precede this event, so also retire any resident entity-object cadence key.
+      for (const key of cd.keys()) {
+        if (key && typeof key === 'object' && key.id === id) cd.delete(key);
+      }
+    };
 
     add('tether:attached', (p) => this._onTetherLatch(p));
     add('tether:released', (p) => this._onTetherRelease(p));
@@ -1245,14 +1257,14 @@ export const vfx = {
     // emits no juice cue so cue-count contracts stay frozen.
     add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
-    add('entity:killed', (p) => { this._markEntityCacheDirty(); this._onKilled(p); });
-    add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
+    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._markEntityCacheDirty(); this._onKilled(p); });
+    add('entity:destroyed', (p) => { clearTumbleCadenceFor(p); this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => this._clearStationSideEvents());
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -8826,7 +8838,8 @@ export const vfx = {
 
   /**
    * Continuous tumble / drift body-language VFX. Reads presentation intent written by
-   * updateShipPitchPresentation; never writes sim. Cadence-gated thrash puffs + spin ribbons.
+   * updateShipPitchPresentation; never writes sim. Cadence-gated thrash puffs, spin ribbons, and
+   * a separate actual-velocity thrown-body streak.
    */
   _updateTumbleBodyLanguageVfx(dt) {
     if (!this._scene || !this.state || this.state.mode !== 'flight') return;
@@ -8834,37 +8847,95 @@ export const vfx = {
     const reduced = this._isReduced();
     const list = shipPitchCandidates(this.state);
     const cd = this._tumbleVfxCd;
+    const frameDt = Math.max(0, dt || 0);
     for (const e of list) {
-      if (!e || !e.alive || !e.pos) continue;
-      if (e.id === this.state.playerId) continue;
-      const tumble = e.presentation && e.presentation.tumble;
-      const plan = resolveTumbleContinuousVfxPlan(tumble || {});
-      if (!plan.active) {
-        if (cd.has(e.id)) cd.delete(e.id);
+      if (!e) continue;
+      if (!e.alive || !e.pos || (e.flags && e.flags.docked)) {
+        if (e.id != null) cd.delete(e.id);
+        cd.delete(e);
         continue;
       }
-      if (!plan.spawnThrash && !plan.spawnRibbon && !plan.spawnHullBlur && !tumble.recovering) continue;
+      if (e.id === this.state.playerId) {
+        cd.delete(e.id);
+        cd.delete(e);
+        continue;
+      }
+      const tumble = e.presentation && e.presentation.tumble;
+      const thrownTrail = e.presentation && e.presentation.thrownTrail;
+      const plan = resolveTumbleContinuousVfxPlan(tumble || {});
+      const thrownActive = !!(thrownTrail && thrownTrail.active);
+      const recovering = !!(tumble && tumble.recovering);
+      const angularActive = !!(plan.active
+        && (plan.spawnThrash || plan.spawnRibbon || plan.spawnHullBlur || recovering));
+      if (!angularActive && !thrownActive) {
+        cd.delete(e.id);
+        cd.delete(e);
+        continue;
+      }
       const thrash = plan.thrash;
       const ribbon = plan.ribbon;
       const hullBlur = plan.hullBlur;
-      const hz = Math.max(4, plan.thrashCadenceHz || 8);
-      const period = 1 / hz;
-      let age = cd.get(e.id) || 0;
-      age += Math.max(0, dt || 0);
-      if (age < period) {
-        cd.set(e.id, age);
-        continue;
+      let emitAngular = false;
+      let angularAge = 0;
+      let angularPeriod = 0;
+      if (angularActive) {
+        angularPeriod = 1 / Math.max(4, plan.thrashCadenceHz || 8);
+        angularAge = (cd.get(e.id) || 0) + frameDt;
+        if (angularAge >= angularPeriod) {
+          emitAngular = true;
+          angularAge %= angularPeriod;
+        }
+        cd.set(e.id, angularAge);
+      } else {
+        cd.delete(e.id);
       }
-      cd.set(e.id, age - period);
+
+      let emitThrown = false;
+      if (thrownActive) {
+        const thrownPeriod = 1 / Math.max(4, thrownTrail.cadenceHz || 0);
+        if (!cd.has(e)) {
+          emitThrown = true;
+          cd.set(e, 0);
+        } else {
+          let thrownAge = (cd.get(e) || 0) + frameDt;
+          if (thrownAge >= thrownPeriod) {
+            emitThrown = true;
+            thrownAge %= thrownPeriod;
+          }
+          cd.set(e, thrownAge);
+        }
+      } else {
+        cd.delete(e);
+      }
+
+      if (!emitAngular && !emitThrown) continue;
+      const r = Math.max(3, e.radius || 6);
+      if (emitThrown) {
+        const centerX = e.pos.x - thrownTrail.axisX * thrownTrail.centerOffset;
+        const centerZ = e.pos.z - thrownTrail.axisZ * thrownTrail.centerOffset;
+        this._spawnProjectileTrailStreak(
+          centerX, 0.16, centerZ,
+          thrownTrail.life,
+          thrownTrail.width,
+          thrownTrail.length,
+          thrownTrail.opacity,
+          thrownTrail.color || '#d8fbff',
+          thrownTrail.residentVelocityX,
+          thrownTrail.residentVelocityZ,
+          thrownTrail.axisX,
+          thrownTrail.axisZ,
+          thrownTrail.admissionPriority,
+        );
+      }
+      if (!emitAngular) continue;
       const neon = resolveForceNeonScale('tumble.continuous', this._forceNeonMetrics({
         rcsThrash: thrash,
         poseIntensity: tumble.poseIntensity,
       }));
-      const r = Math.max(3, e.radius || 6);
       const ang = (e.rot || 0) + (e.angVel || 0) * 0.08;
       // Frantic RCS thrash: alternating side puffs that weaken as thrash falls (then-failing).
       if (plan.spawnThrash && !reduced) {
-        const side = (Math.sin((e.id || 0) + age * 17) > 0 ? 1 : -1);
+        const side = (Math.sin((e.id || 0) + angularAge * 17) > 0 ? 1 : -1);
         const px = e.pos.x + Math.cos(ang + side * 1.2) * r * 0.7;
         const pz = e.pos.z + Math.sin(ang + side * 1.2) * r * 0.7;
         const vx = Math.cos(ang + side * 1.2) * (12 + thrash * 28) * neon.particleBoost;
@@ -8906,15 +8977,16 @@ export const vfx = {
         );
       }
       // Recover settle flash once when recovering starts (very light).
-      if (tumble.recovering && thrash < 0.05 && ribbon < 0.25 && age < period * 1.5) {
+      if (recovering && thrash < 0.05 && ribbon < 0.25 && angularAge < angularPeriod * 1.5) {
         this._spawnSprite(SPR_FLASH, e.pos.x, 0, e.pos.z, 0.12, r * 0.3, r * 1.1, 0.35, 0, '#dfefff', 0, 0);
       }
     }
     // Bound map growth: drop ids for dead entities occasionally.
     if (cd.size > 48) {
-      for (const id of cd.keys()) {
+      for (const key of cd.keys()) {
+        const id = key && typeof key === 'object' ? key.id : key;
         const ent = this.state.entities && this.state.entities.get(id);
-        if (!ent || !ent.alive) cd.delete(id);
+        if (!ent || !ent.alive || (key && typeof key === 'object' && ent !== key)) cd.delete(key);
       }
     }
   },

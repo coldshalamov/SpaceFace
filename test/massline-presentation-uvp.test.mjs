@@ -5,6 +5,7 @@ import {
   readControlLossPresentation,
   resolveForceNeonScale,
   resolveMasslineFeelPunch,
+  resolveThrownBodyTrailPlan,
   resolveTumbleBodyLanguage,
   resolveTumbleContinuousVfxPlan,
   resolveTumbleRecoverPose,
@@ -162,6 +163,55 @@ test('readControlLossPresentation never tumbles the player; ships get status/dri
   assert.equal(p.mode, 'idle', 'player immunity in presentation');
   assert.equal(f.mode, 'tumbling');
   assert.equal(f.drifting, true);
+});
+
+test('control-loss presentation exposes only active strict player-caused throw truth', () => {
+  const foe = { id: 2, type: 'ship', angVel: 2 };
+  const active = {
+    id: TUMBLE_STATUS_ID,
+    attackerId: 1,
+    data: { cause: 'thrown', startedAt: 2, until: 6, spin: 2 },
+  };
+  const runtime = {
+    statuses: { [TUMBLE_STATUS_ID]: active },
+    pendingStatuses: [],
+  };
+  const state = {
+    playerId: 1,
+    simTime: 3,
+    combat: { entities: { 2: runtime } },
+  };
+
+  const truth = readControlLossPresentation(state, foe);
+  assert.equal(truth.mode, 'tumbling');
+  assert.equal(truth.cause, 'thrown');
+  assert.equal(truth.attackerId, 1);
+  assert.equal(truth.playerCaused, true);
+
+  active.attackerId = '1';
+  assert.equal(readControlLossPresentation(state, foe).playerCaused, false,
+    'player causality must not coerce id types');
+
+  active.attackerId = 1;
+  active.id = 'status_not_active';
+  const malformed = readControlLossPresentation(state, foe);
+  assert.equal(malformed.mode, 'idle');
+  assert.equal(malformed.cause, null, 'only the active status_tumbling record exposes cause');
+  assert.equal(malformed.playerCaused, false);
+  active.id = TUMBLE_STATUS_ID;
+
+  delete runtime.statuses[TUMBLE_STATUS_ID];
+  runtime.pendingStatuses.push({ ...active, attackerId: 1 });
+  const pending = readControlLossPresentation(state, foe);
+  assert.equal(pending.mode, 'idle', 'scheduled status is not active presentation truth');
+  assert.equal(pending.cause, null);
+  assert.equal(pending.playerCaused, false);
+
+  const collision = resolveThrownBodyTrailPlan({
+    mode: 'tumbling', cause: 'collision', playerCaused: true, isPlayer: false,
+    alive: true, velocityX: 120, velocityZ: 0,
+  });
+  assert.equal(collision.active, false, 'collision body language cannot masquerade as a throw');
 });
 
 test('continuous VFX plan consumes hullBlur alongside thrash and spin ribbons', () => {

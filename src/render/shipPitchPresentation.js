@@ -5,9 +5,23 @@
 // pure tumble body language (multi-axis thrash) instead of thrust lean. Physics is not written here.
 import {
   readControlLossPresentation,
+  resolveThrownBodyTrailPlan,
   resolveTumbleBodyLanguage,
   resolveTumbleRecoverPose,
 } from './masslinePresentation.js';
+
+const THROWN_TRAIL_INPUT = {
+  mode: 'idle',
+  cause: null,
+  playerCaused: false,
+  isPlayer: false,
+  alive: false,
+  velocityX: 0,
+  velocityZ: 0,
+  radius: 0,
+  reduced: false,
+  targetRelevant: false,
+};
 
 export function shipPitchCandidates(state) {
   const index = state && state.entityIndex;
@@ -66,10 +80,18 @@ export function updateShipPitchPresentation(state, frameDt) {
     ? state.simTime
     : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
   const motionReduce = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+  const video = state && state.settings && state.settings.video;
+  const accessibility = state && state.settings && state.settings.accessibility;
+  const reduced = !!((video && (video.motionReduce || video.flashReduce))
+    || (accessibility && accessibility.flashReduce));
 
   for (const entity of shipPitchCandidates(state)) {
-    if (!entity.alive || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
-    if (entity.flags && entity.flags.docked) continue;
+    if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+    if (!entity.alive || (entity.flags && entity.flags.docked)) {
+      const staleTrail = entity.presentation && entity.presentation.thrownTrail;
+      if (staleTrail) resolveThrownBodyTrailPlan(null, staleTrail);
+      continue;
+    }
 
     const flightPitch = flightPitchTarget(entity);
     if (entity.pitch == null) entity.pitch = 0;
@@ -78,6 +100,28 @@ export function updateShipPitchPresentation(state, frameDt) {
     const loss = readControlLossPresentation(state, entity);
     const pres = ensurePresentation(entity);
     const recover = pres.tumbleRecover;
+    const existingThrownTrail = pres.thrownTrail;
+    const thrownCandidate = loss.mode === 'tumbling'
+      && loss.cause === 'thrown'
+      && loss.playerCaused === true;
+    if (existingThrownTrail || thrownCandidate) {
+      const vel = entity.vel;
+      THROWN_TRAIL_INPUT.mode = loss.mode;
+      THROWN_TRAIL_INPUT.cause = loss.cause;
+      THROWN_TRAIL_INPUT.playerCaused = loss.playerCaused;
+      THROWN_TRAIL_INPUT.isPlayer = entity.id === state.playerId;
+      THROWN_TRAIL_INPUT.alive = entity.alive === true;
+      THROWN_TRAIL_INPUT.velocityX = vel && vel.x;
+      THROWN_TRAIL_INPUT.velocityZ = vel && vel.z;
+      THROWN_TRAIL_INPUT.radius = entity.radius;
+      THROWN_TRAIL_INPUT.reduced = reduced;
+      THROWN_TRAIL_INPUT.targetRelevant = !!(state.player
+        && state.player.targetId === entity.id);
+      pres.thrownTrail = resolveThrownBodyTrailPlan(
+        THROWN_TRAIL_INPUT,
+        existingThrownTrail || {},
+      );
+    }
 
     if (recover && Number.isFinite(recover.until) && now < recover.until) {
       const ageS = Math.max(0, now - finite(recover.startedAt, now));
@@ -100,6 +144,9 @@ export function updateShipPitchPresentation(state, frameDt) {
     if (loss.mode === 'tumbling' || loss.mode === 'drifting') {
       const body = resolveTumbleBodyLanguage({
         mode: loss.mode,
+        cause: loss.cause,
+        attackerId: loss.attackerId,
+        playerCaused: loss.playerCaused,
         angVel: entity.angVel,
         spin: loss.spin,
         simTime: now,
