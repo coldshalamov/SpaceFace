@@ -5,7 +5,7 @@
 queueId: PHYSICS-AS-SPECTACLE-PROGRAM
 lifecycle: claimed
 acceptance: unproven
-packetRevision: 2
+packetRevision: 3
 owner: user-authorized program; integrator assigns exact-path leaf leases
 baseRequirement: re-read current master, NOW.md, and the recovery dependency state before every leaf
 foundation: MASSLINE-PRESENTATION-UVP plus published recovery, causal-receipt, priority-admission, and cause-VFX leaves
@@ -34,14 +34,16 @@ Lifecycle and acceptance remain separate:
 - Published commit `ae2b2887` implements causal priority/admission infrastructure. It is a prerequisite
   already on master, not proof that the R8 route, saturated scene, or hero-event discriminator passes.
 - Published commits `6a929571`, `194dc1a8`, `c99d1c1a`, and `b4e40e19` are the independently accepted
-  R0 Sandbox, R1 camera, R2 orbit-control, and R4 physics-combat leaves. R3, R5, and the five-minute
-  Ceres gate remain open.
+  R0 Sandbox, R1 camera, R2 orbit-control, and R4 physics-combat leaves. R3 production is published
+  through acquisition `793361c3` and causal release `716fe504`. R5 and the five-minute Ceres gate
+  remain open.
 - Published receipt chain `b90a9225` through `e6b9a47c` implements immutable kill truth and carries
   combat-owned collision provenance/direction. Published cause-VFX chain `fc6eacfd` through
   `a6dc06a8` consumes those contact receipts while adding priority-aware structural streak admission
-  and five deterministic destruction profiles. These are source/focused proof only; they do not
-  claim the Ceres route, a headed
-  discriminator pass, or G0-G7 acceptance.
+  and five deterministic destruction profiles. Published source/focused motion leaves add truthful
+  thrown-body translation (`8c03a9b8`), physics-earned exceptional speed (`3118aa5a`), bounded player
+  plume light (`ef9ca96e`), and Momentum Sink convergence (`7f3c95b1`). These receipts do not claim the
+  Ceres route, a headed discriminator pass, or G0-G7 acceptance.
 - Published runtime-table correction `bae27489` is available to a future frozen candidate. Exact
   authored admission on default New Game in hardware Browser and Electron remains unproven, so G0 is
   open and all later visual gates remain open.
@@ -88,18 +90,18 @@ five-minute Ceres gate and the R8 showcase have current accepted evidence.
 - [x] The user authorized this unified program and its global art direction.
 - [x] The retained Massline UVP foundation and published VFX prerequisite commits are on master.
 - [x] R0, R1, R2, and R4 are independently accepted and published at the current base.
-- [ ] R3, R5, and the five-minute Ceres gate are accepted at the candidate base.
+- [x] R3 acquisition and causal-release production leaves are independently accepted and published.
+- [ ] R5 and the five-minute Ceres gate are accepted at the candidate base.
 - [ ] G0 authored admission passes on default New Game in both hardware Browser and Electron.
 - [ ] Each implementation leaf has a fresh exact-path lease, entry baseline, cost model, and focused
       characterization before editing.
 - [ ] The R8 candidate has an exact start fingerprint and a frozen end fingerprint for evidence.
 
-Current coordinated foreign boundaries must be refreshed before every leaf. At packet revision 2:
+Current coordinated foreign boundaries must be refreshed before every leaf. At packet revision 3:
 
 - R0, R1, R2, and R4 are released production truth, not continuing umbrella leases.
-- Active R3 acquisition/release work remains exact-path recovery work until its reviewed hashes
-  publish. The thrown-body leaf must follow R3B and may not race its shared
-  `src/render/vfx.js` or `src/render/masslinePresentation.js` seams.
+- R3 acquisition and causal release are released production truth at `793361c3` and `716fe504`, not
+  continuing umbrella leases. Later Massline or VFX work must still fresh-diff their exact paths.
 - The accepted R1 camera selection is `194dc1a8`; later camera work must fresh-diff it and preserve
   exact manual zoom, damped physics-earned opening, safe composition, and reduced-motion behavior.
 - The render-package loader/runtime-table work is released, not a continuing umbrella lease. Fresh
@@ -214,7 +216,8 @@ every presentation adapter into admission.
 ### Phase 0 — dependency and candidate truth
 
 - [x] Complete, independently accept, and publish R0, R1, R2, and R4.
-- [ ] Complete R3, then R5 and the five-minute Ceres gate in controlling order.
+- [x] Complete and publish R3 acquisition and causal release in controlling order.
+- [ ] Complete R5 and the five-minute Ceres gate.
 - [ ] Freeze exact Browser/Electron candidate fingerprints and pass G0.
 - [ ] Reconfirm the retained UVP and published corrective VFX/priority contracts without rewriting
       their history.
@@ -235,8 +238,8 @@ every presentation adapter into admission.
 - [x] Add the optional immutable `entity:killed.presentation` receipt and compatibility coverage
       (`b90a9225`, hardened through `e6b9a47c`).
 - [x] Carry real contact provenance through combat-owned death to presentation.
-- [ ] Add a translational thrown-body trail driven by actual target velocity; keep rotational spin
-      ribbons and hull smear as separate tumble cues.
+- [x] Add a translational thrown-body trail driven by actual target velocity while retaining separate
+      rotational spin ribbons and hull smear (`8c03a9b8`; source/focused receipt only).
 - [x] Refine collision consequence reads in the pooled source/focused implementation:
   - low — sparks, local dust, small debris, brief instability;
   - medium — directional compression, fragments, rebound/tumble;
@@ -249,12 +252,16 @@ every presentation adapter into admission.
 
 ### Phase 3 — signature force and motion language
 
-- [ ] Preserve the four velocity bands and zero boost bias; add bounded exceptional-speed camera
-      opening and player projectile-ribbon intensity.
-- [ ] Make boost structurally distinct through the existing plume system: longer core/sheath, changed
-      turbulence and downstream breakup, stronger local light, and retained ignition punch.
-- [ ] Derive the player-facing release ladder from live producer truth without renaming its
-      `messy | good | clean | razor` classifications:
+- [x] Preserve the four velocity bands and zero boost bias; add bounded exceptional-speed camera
+      opening and player projectile-ribbon intensity (`3118aa5a`; source/focused receipt only).
+- [x] Bridge one bounded exact-player plume light with ordinary-to-boost headroom into the existing
+      six-light pool (`ef9ca96e`).
+- [ ] Reconfirm the complete structural boost grammar on the accepted route: longer core/sheath,
+      changed turbulence and downstream breakup, the stronger local light, and retained ignition
+      punch. The light receipt alone does not close this compound row.
+- [x] Present the pre-release Approaching read and paired ordinary Poor, Good, and Near-optimal reads
+      from live producer truth without renaming its `messy | good | clean | razor` classifications
+      (`716fe504`; source/focused receipt only):
 
   | Player-facing read | Required live truth |
   |---|---|
@@ -270,10 +277,15 @@ every presentation adapter into admission.
   fabricate or relabel an outcome. Separately, `massline:releaseValidated.withinTolerance === false`
   means the predicted exit direction diverged from the next-tick actual direction; it diagnoses
   prediction/implementation accuracy and is never a release rating or player-blame signal.
-- [ ] On release, separate both line ends with a short recoil ripple, immediately hand visual
-      dominance to retained velocity, and do not auto-target the camera.
-- [ ] Retain Well and Repulsor geometry/flow unless muted review finds them unreadable. Add missing
-      Momentum Sink world-space convergence and compressed-trail language without physics changes.
+- [ ] Add the canonical attempted-window Missed presentation consumer from
+      `massline:releaseValidated.prediction.onSolution === false`. No ordinary-release miss owner
+      receipt exists; never map `withinTolerance === false` or an orphan break rating to Missed.
+- [x] On release, separate both line ends with a short recoil ripple, immediately hand visual
+      dominance to retained velocity, and do not auto-target the camera (`716fe504`; source/focused
+      receipt only).
+- [x] Add Momentum Sink world-space convergence and compressed-trail language without physics changes
+      (`7f3c95b1`; source/focused receipt only).
+- [ ] Retain Well and Repulsor geometry/flow unless candidate-bound muted review finds either unreadable.
 
 ### Phase 4 — first complete R8 sequence
 
@@ -333,8 +345,9 @@ The completed original authority-admission transaction owned only:
 - `design/program/roadmap/active/README.md`;
 - `design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`.
 
-Packet revision 2 is a one-file evidence refresh of this packet only. It does not reopen or advance
-the Canonical map, active README, `NOW.md`, queue state, route acceptance, or whole-program status.
+Packet revisions 2 and 3 are one-file evidence refreshes of this packet only. They do not reopen or
+advance the Canonical map, active README, `NOW.md`, queue state, route acceptance, or whole-program
+status.
 
 No implementation agent inherits a subsystem-wide lease from this umbrella. Before each leaf, list
 the exact current owner files and focused tests, fresh-diff them, coordinate shared camera/HUD/VFX/
