@@ -1982,12 +1982,21 @@ export const vfx = {
       case 'proximity-burst': {
         // Flak is a proximity-fuzed volume event, not a surface incidence gouge. The profile had
         // declared this mode since PQ-023, but without a renderer branch it fell through to the
-        // autocannon default below. Keep the core compact and the light below autocannon so dense
-        // point-defense fire does not wash the scene; the primary identity is the full-volume
-        // fragment spread and its longer outward release.
-        this._spawnSprite(SPR_FLASH, surfaceX, 0.28, surfaceZ,
-          profile.life * 0.68, 0.85 * scale, 3.4 * scale, 0.82, 0,
-          profile.coreColor, nx * 1.2, nz * 1.2, 1.35, normalAngle);
+        // autocannon default below. Two crossed, pooled streaks make the compact ignition a piece of
+        // directional structure instead of the shared circular flash card. Keep the light below
+        // autocannon so dense point-defense fire does not wash the scene; the primary identity is
+        // still the full-volume fragment spread and its longer outward release.
+        const flakTangentX = -nz;
+        const flakTangentZ = nx;
+        this._spawnProjectileTrailStreak(surfaceX, 0.28, surfaceZ,
+          profile.life * 0.68, 0.28 * scale, 3.4 * scale, 0.82,
+          profile.coreColor, nx * 1.2, nz * 1.2, nx, nz);
+        this._spawnProjectileTrailStreak(
+          surfaceX + flakTangentX * 0.16 * scale, 0.25,
+          surfaceZ + flakTangentZ * 0.16 * scale,
+          profile.life * 0.58, 0.14 * scale, 2.2 * scale, 0.58,
+          profile.accentColor, flakTangentX * 2.4, flakTangentZ * 2.4,
+          flakTangentX, flakTangentZ);
         const fragmentStreaks = Math.max(6, Math.round(6 * burst));
         for (let k = 0; k < fragmentStreaks; k++) {
           const a = normalAngle + (k / fragmentStreaks) * Math.PI * 2
@@ -2801,7 +2810,7 @@ export const vfx = {
         entry.classId === 'capital' ? 0.13 : (isSmall && !reduced ? 0.14 : 0.09),
         ignitionCore, ignitionCore * (isSmall ? (reduced ? 3.25 : 5.2) : 2.6),
         reduced ? 0.72 : 1.0, 0.0, '#ffffff',
-        entry.dirX * 2, entry.dirZ * 2);
+        entry.dirX * 2, entry.dirZ * 2, isSmall ? 1.8 : 2.25, dirAngle);
       if (isSmall) {
         // A compact body's identity is a hot asymmetric snap and departing fragments. Full motion
         // gets a three-point biased envelope plus one offset combustion lobe so the event survives
@@ -2976,9 +2985,9 @@ export const vfx = {
         entry.classId === 'capital' ? 0.72 : 0.52, 0.36 * scale,
         '#ffe3a0', '#65301d', 1.35);
       // Rupture heat. Two compact white cores offset along the tear axis (never centred, so they
-      // cannot rebuild the radial flower the phase is written to avoid) plus one bright shock ring.
-      // Same reasoning as ignition: brightness carries the energy, the combustion cards carry the
-      // shape, and neither job is done by making the orange cards bigger.
+      // cannot rebuild the radial flower the phase is written to avoid). Brightness carries the
+      // energy and the combustion cards carry the shape; neither job is done by making the orange
+      // cards bigger.
       for (const side of [-1, 1]) {
         const coreAlong = r * scale * 0.09 * side;
         const coreAcross = r * scale * 0.05 * side;
@@ -2992,10 +3001,28 @@ export const vfx = {
           1.6 + 0.5 * side, dirAngle + side * 0.22);
       }
       if (!isSmall) {
-        this._spawnSprite(SPR_RING, x, 0.26, z,
-          entry.classId === 'capital' ? 0.46 : 0.32,
-          r * scale * 0.10, r * scale * (entry.classId === 'capital' ? 0.95 : 0.72),
-          reduced ? 0.26 : 0.46, 0.0, '#ffb060', 0, 0);
+        // The old expanding ring made every ordinary/capital rupture read as the same radial pulse.
+        // A bounded fork of hot tear-axis shears now carries the pressure outward while keeping the
+        // killing direction legible. Reduced mode retains one primary shear instead of changing
+        // grammar or disabling the cue.
+        const shearCount = reduced ? 1 : 2;
+        for (let k = 0; k < shearCount; k++) {
+          const side = k === 0 ? -1 : 1;
+          const shearAngle = dirAngle + side * (entry.classId === 'capital' ? 0.48 : 0.36);
+          const shearX = Math.cos(shearAngle);
+          const shearZ = Math.sin(shearAngle);
+          this._spawnProjectileTrailStreak(
+            x + tangentX * side * r * 0.08, 0.26,
+            z + tangentZ * side * r * 0.08,
+            entry.classId === 'capital' ? 0.52 : 0.38,
+            r * scale * 0.028,
+            r * scale * (entry.classId === 'capital' ? 0.72 : 0.54),
+            reduced ? 0.24 : (side < 0 ? 0.46 : 0.34),
+            side < 0 ? '#ffd49a' : '#ff8a42',
+            shearX * (entry.classId === 'capital' ? 14 : 10) * scale,
+            shearZ * (entry.classId === 'capital' ? 14 : 10) * scale,
+            shearX, shearZ);
+        }
       }
       this._flashLight({ x, z }, '#ffa050', (entry.classId === 'capital' ? 13 : 8.0) * scale, 5.5, 180 + r * 7);
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
@@ -4985,22 +5012,49 @@ export const vfx = {
       }
     }
 
+    // Spark exactly at the two visible cable endpoints. The prior 34-per-end burst could consume 68
+    // particle slots before the recoil ribbon and lights were admitted; preserve the dual-end read
+    // with a quality-scaled 14..22 budget instead.
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
-    for (const ent of [player, target]) {
-      if (!ent || !ent.pos) continue;
-      const n = Math.max(20, Math.round(34 * (this._burst || 1)));
+    const snapEnds = [];
+    if (player && player.pos) {
+      const playerForwardX = Math.cos(player.rot || 0);
+      const playerForwardZ = Math.sin(player.rot || 0);
+      const playerNose = player.radius || 6;
+      snapEnds.push({
+        x: player.pos.x + playerForwardX * playerNose,
+        z: player.pos.z + playerForwardZ * playerNose,
+      });
+    }
+    if (target && target.pos) {
+      const sourceEnd = snapEnds[0];
+      if (sourceEnd) {
+        const targetDx = target.pos.x - sourceEnd.x;
+        const targetDz = target.pos.z - sourceEnd.z;
+        const targetDistance = Math.hypot(targetDx, targetDz) || 1;
+        const targetRadius = tetherVisualRadius(target);
+        snapEnds.push({
+          x: target.pos.x - (targetDx / targetDistance) * targetRadius * 0.88,
+          z: target.pos.z - (targetDz / targetDistance) * targetRadius * 0.88,
+        });
+      } else {
+        snapEnds.push(target.pos);
+      }
+    }
+    for (const pos of snapEnds) {
+      const n = Math.min(22, Math.max(14, Math.round(22 * (this._burst || 1))));
       for (let k = 0; k < n; k++) {
         const a = Math.random() * Math.PI * 2;
         const v = 34 + Math.random() * 110;
         // Spark trails inherit their own direction so they streak instead of dotting.
-        this._spawnParticle(ent.pos.x, ent.pos.z, Math.cos(a) * v, Math.sin(a) * v,
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
           0.24 + Math.random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, 0.85);
       }
-      this._spawnSprite(SPR_FLASH, ent.pos.x, 0, ent.pos.z, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
       // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
       // whole ship in a flat orange donut for a third of a second.
-      this._spawnSprite(SPR_RING, ent.pos.x, 0.9, ent.pos.z, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
-      this._flashLight({ x: ent.pos.x, z: ent.pos.z }, '#ffb0a0', 5.4, 12, 200);
+      this._spawnSprite(SPR_RING, pos.x, 0.9, pos.z, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
+      this._flashLight({ x: pos.x, z: pos.z }, '#ffb0a0', 5.4, 12, 200);
     }
   },
 

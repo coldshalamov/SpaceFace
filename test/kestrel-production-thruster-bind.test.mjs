@@ -61,7 +61,19 @@ test('recipe validation owns role-specific readability and turbo-structure bound
 
 test('live Kestrel seam suppresses the legacy bead trail and generic boost burst', () => {
   assert.match(vfxSource, /_usesProductionThruster\(e\)/);
-  assert.match(vfxSource, /if \(this\._usesProductionThruster\(e\)\) return \{ particles: 0, streaks: 0 \}/);
+  const system = Object.create(vfx);
+  system._scene = {};
+  system.state = { playerId: 'player' };
+  system._trailSpawnScratch = { particles: 8, streaks: 8 };
+  let fallbackSpawns = 0;
+  system._spawnTrailStreak = () => { fallbackSpawns++; };
+  const result = system._emitEngineTrail(
+    { id: 'player', type: 'ship' }, 1, 1 / 60, system._trailSpawnScratch,
+  );
+  assert.equal(result, system._trailSpawnScratch,
+    'production suppression retains the allocation-free scratch result');
+  assert.deepEqual(result, { particles: 0, streaks: 0 });
+  assert.equal(fallbackSpawns, 0, 'production Kestrel cannot layer the legacy fallback streak');
   assert.match(vfxSource, /if \(this\._usesProductionThruster\(e\)\) return;/,
     'event-driven thrust/boost paths must not layer generic sprites over the production plume');
   // Production owners: fleet constructs ContinuousPlumeSystem + RcsImpulseSystem per family.
@@ -419,19 +431,32 @@ test('normal-route acceptance rejects draw-count-only and legacy-profile false p
 });
 
 test('legacy NPC engine fallback cannot emit moving particle beads', () => {
-  const start = vfxSource.indexOf('  _emitEngineTrail(e, throttle, dt) {');
-  assert.ok(start >= 0, 'engine fallback source boundary must remain inspectable');
-  // Slice only this function — later field/damage systems also call _spawnParticle.
-  const after = vfxSource.slice(start);
-  const close = after.match(/streaksSpawned = 1;\r?\n\s*return \{ particles: particlesSpawned, streaks: streaksSpawned \};\r?\n\s*\},/);
-  assert.ok(close, 'engine fallback end boundary must remain inspectable');
-  const fallback = after.slice(0, close.index + close[0].length);
-  assert.doesNotMatch(fallback, /_spawnParticle\(/,
+  const system = Object.create(vfx);
+  system._scene = {};
+  system.state = { playerId: 'player', player: {}, settings: { video: { engineTrails: true } } };
+  system._trailSpawnScratch = { particles: 0, streaks: 0 };
+  system._productionOwnedIds = null;
+  system._productionOwnedCount = 0;
+  system._trailFrameIndex = 0;
+  system._c0 = new THREE.Color();
+  system._cFaction = new THREE.Color();
+  system._ctmp = new THREE.Color();
+  system._engineProfile = () => ({ coreColor: '#88aaff', streakLenMul: 1 });
+  system._engineColor = () => '#88aaff';
+  system._trailSocketWorldPose = () => null;
+  let particleSpawns = 0;
+  let streakSpawns = 0;
+  system._spawnParticle = () => { particleSpawns++; };
+  system._spawnTrailStreak = () => { streakSpawns++; };
+  const result = system._emitEngineTrail({
+    id: 'npc', type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 4, z: 0 },
+    rot: 0, radius: 4, maxSpeed: 40, flags: {},
+  }, 0.8, 1 / 60, system._trailSpawnScratch);
+  assert.equal(particleSpawns, 0,
     'engine fallback must use attached pooled streak layers, never round moving particles');
-  assert.match(fallback, /_spawnTrailStreak\(/,
-    'fallback must emit the attached streak substrate');
-  assert.match(fallback, /streaksSpawned = 1/,
+  assert.equal(streakSpawns, 1,
     'fallback emits one alternating core-or-sheath layer per cadence to stay bounded');
+  assert.deepEqual(result, { particles: 0, streaks: 1 });
 });
 
 test('low-tier ContinuousPlumeSystem is readable core+inner GPU feedback', () => {

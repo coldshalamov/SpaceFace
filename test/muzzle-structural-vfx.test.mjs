@@ -45,6 +45,7 @@ test('ordinary projectile impacts do not reintroduce the shared circular flash c
 test('impact families retain bounded, mechanically distinct release residues', () => {
   const receipts = [
     ['kinetic', 'wpn_autocannon_m'],
+    ['flak', 'wpn_flak_turret_s'],
     ['rail', 'wpn_railgun_m'],
     ['plasma', 'wpn_plasma_cannon_m'],
     ['beam', 'wpn_beam_laser_m'],
@@ -82,6 +83,10 @@ test('impact families retain bounded, mechanically distinct release residues', (
   assert.ok(results.get('kinetic').streaks.length >= 5,
     'kinetic release retains a gouge plus a cool-metal fragment fan');
   assert.ok(Math.max(...results.get('kinetic').streaks.map((args) => args[3])) >= 0.22);
+  assert.ok(results.get('flak').streaks.length >= 8 && results.get('flak').cones.length === 1,
+    'flak release retains crossed ignition structure plus its bounded full-volume fragment cloud');
+  assert.equal(results.get('flak').sprites.length, 0,
+    'flak proximity ignition must not fall back to any shared sprite card');
   assert.ok(results.get('rail').streaks.length >= 3,
     'rail release retains its axial ionized scar and narrow exit cue');
   assert.ok(Math.max(...results.get('rail').streaks.map((args) => args[3])) >= 0.23);

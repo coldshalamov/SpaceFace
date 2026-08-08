@@ -17,6 +17,7 @@ import {
 } from '../src/render/thruster/recipes/registry.js';
 import { assertContinuousThrottleResponse } from '../src/render/thruster/systems/throttleResponse.js';
 import { FamilyProductionFleet } from '../src/render/thruster/systems/familyFleet.js';
+import { vfx } from '../src/render/vfx.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VFX = resolve(ROOT, 'src/render/vfx.js');
@@ -31,10 +32,28 @@ const FLEET = resolve(ROOT, 'src/render/thruster/systems/familyFleet.js');
 const fleetSrc = readFileSync(FLEET, 'utf8');
 const combined = `${src}\n${fleetSrc}`;
 
+// The allocation-free scratch-result refactor changed the source spelling from a new object literal
+// to `return result` while preserving the production-plume guard. Exercise the real hot-path method
+// so this contract survives harmless return-shape refactors and still fails on duplicate Kestrel
+// legacy trails.
+const suppressionHarness = Object.create(vfx);
+suppressionHarness._scene = {};
+suppressionHarness.state = { playerId: 'player' };
+suppressionHarness._trailSpawnScratch = { particles: 17, streaks: 23 };
+let legacyTrailSpawns = 0;
+suppressionHarness._spawnTrailStreak = () => { legacyTrailSpawns++; };
+const suppressedTrail = suppressionHarness._emitEngineTrail(
+  { id: 'player', type: 'ship' }, 1, 1 / 60, suppressionHarness._trailSpawnScratch,
+);
+const productionTrailSuppressed = suppressedTrail === suppressionHarness._trailSpawnScratch
+  && suppressedTrail.particles === 0
+  && suppressedTrail.streaks === 0
+  && legacyTrailSpawns === 0;
+
 const cycles = [
   { id: 1, name: 'batched continuous plume', re: /new ContinuousPlumeSystem/, hay: combined },
   { id: 2, name: 'authored socket binding', re: /_writeProductionPlumeSockets/, hay: src },
-  { id: 3, name: 'legacy Kestrel trail suppression', re: /_usesProductionThruster\(e\).*return \{ particles: 0, streaks: 0 \}/s, hay: src },
+  { id: 3, name: 'legacy Kestrel trail suppression', ok: productionTrailSuppressed },
   { id: 4, name: 'continuous boost response', re: /setShipDrive|opts\.boost = driveInfo\.boost/, hay: src },
   { id: 5, name: 'directional RCS system', re: /new RcsImpulseSystem/, hay: combined },
   { id: 6, name: 'trail socket objects', re: /_trailSocketObjects/, hay: src },
@@ -50,7 +69,7 @@ const cycles = [
 ];
 
 const cycleResults = cycles.map((c) => {
-  const ok = c.re.test(c.hay || src);
+  const ok = c.ok ?? c.re.test(c.hay || src);
   assert(ok, `cycle ${c.id}: ${c.name}`);
   return { id: c.id, name: c.name, ok };
 });
@@ -124,6 +143,7 @@ const report = {
   cyclesTotal: cycleResults.length,
   families: listThrusterRecipePacks().map((p) => p.profileId),
   failures,
+  productionTrailSuppressed,
   ok: failures.length === 0,
 };
 writeFileSync(REPORT, JSON.stringify(report, null, 2));
