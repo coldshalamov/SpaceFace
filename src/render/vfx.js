@@ -34,6 +34,8 @@ import {
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
   partIdFromSlotUrls,
   resolveEngineProfile,
@@ -112,6 +114,13 @@ import {
   writeMasslineReleaseArcGeometry,
 } from './masslineReleaseArc.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
+import {
+  MOMENTUM_SINK_VFX_COLORS,
+  MOMENTUM_SINK_VFX_HZ,
+  MOMENTUM_SINK_VFX_TARGET_CAPACITY,
+  createMomentumSinkVfxPlanScratch,
+  resolveMomentumSinkVfxPlan,
+} from './momentumSinkVfx.js';
 import {
   DEFAULT_VFX_ADMISSION_PRIORITY,
   deriveVfxAdmissionMetadata,
@@ -502,6 +511,7 @@ function emptyVfxSubsystemDiag() {
     miningBeam: 0,
     tetherCable: 0,
     masslineReleaseArc: 0,
+    momentumSink: 0,
     seamMarkers: 0,
     combatBeams: 0,
     explosions: 0,
@@ -648,6 +658,25 @@ export const vfx = {
     this._cadenceRibbon = 0;
     this._cadenceProjectileTrail = 0;
     this._cadenceLootMagnet = 0;
+    this._cadenceMomentumSink = 0;
+    this._momentumSinkPlanScratch = createMomentumSinkVfxPlanScratch();
+    this._momentumSinkInputScratch = {
+      targetPosition: null,
+      targetVelocity: null,
+      frameVelocity: null,
+      frameReady: false,
+      radius: 0,
+      motionReduce: false,
+      flashReduce: false,
+      playerCaused: false,
+      targetRelevant: false,
+    };
+    this._momentumSinkCandidates = new Array(MOMENTUM_SINK_VFX_TARGET_CAPACITY);
+    this._momentumSinkCandidateStatuses = new Array(MOMENTUM_SINK_VFX_TARGET_CAPACITY);
+    this._momentumSinkCandidatePriorities = new Float64Array(MOMENTUM_SINK_VFX_TARGET_CAPACITY);
+    this._momentumSinkCandidateCount = 0;
+    this._momentumSinkParticleStart = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleStart);
+    this._momentumSinkParticleEnd = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleEnd);
     this._cadenceStationSideEvent = 0;
     this._lootMagnetLive = 0;
     this._stationSideEventSlots = [];
@@ -1260,19 +1289,24 @@ export const vfx = {
     // emits no juice cue so cue-count contracts stay frozen.
     add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
-    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._markEntityCacheDirty(); this._onKilled(p); });
-    add('entity:destroyed', (p) => { clearTumbleCadenceFor(p); this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
+    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); });
+    add('entity:destroyed', (p) => {
+      clearTumbleCadenceFor(p);
+      this._forgetMomentumSinkEntity(p);
+      this._markEntityCacheDirtyIfTrailType(p);
+      this._onDestroyed(p);
+    });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('sector:exit', () => this._clearStationSideEvents());
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => { this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
     });
-    add('player:death', (p) => { this._releasePlayerPlumeEventLight(); this._explode({ pos: p && p.pos, radius: 12 }, true); });
+    add('player:death', (p) => { this._resetMomentumSinkPresentation(); this._releasePlayerPlumeEventLight(); this._explode({ pos: p && p.pos, radius: 12 }, true); });
     add('mining:start', (p) => this._onMiningStart(p));
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
@@ -7893,6 +7927,21 @@ export const vfx = {
       this._integrateTrailStreaks(dt);
       sub.trails = 1;
     }
+    // Emit after shared streak integration. Momentum residue is intentionally <= one 12 Hz period;
+    // placing it earlier would let a clamped 100 ms frame create and retire the same cue before its
+    // first draw. Status clear is still pull-validated and drains by the following cadence.
+    const momentumSinkStep = this._consumeCadence(
+      '_cadenceMomentumSink',
+      dt,
+      MOMENTUM_SINK_VFX_HZ,
+    );
+    if (momentumSinkStep > 0) {
+      const momentumSinkTargets = this._updateMomentumSinkPresentation();
+      sub.momentumSink = momentumSinkTargets > 0 ? 1 : 0;
+      if (momentumSinkTargets > 0) sub.trails = 1;
+    } else {
+      sub.momentumSink = 0;
+    }
     sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
     this._publishVfxSubsystemDiag();
   },
@@ -7979,6 +8028,230 @@ export const vfx = {
     }
     this._lootMagnetLive = drawn;
     return drawn > 0 ? 1 : 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // Momentum Sink — target motion converging on the combat-owned attacker frame.
+  //
+  // Status clear has no event, so this is deliberately a cadence-gated pull from the live combat
+  // bag. The planner and all candidate storage are retained. It never reacquires the attacker:
+  // data.frameVelocity is the exact reference frame Momentum Sink preserves across disappearance
+  // and Continue.
+  // -------------------------------------------------------------------------
+  _resetMomentumSinkPresentation() {
+    this._cadenceMomentumSink = 0;
+    this._momentumSinkCandidateCount = 0;
+    const candidates = this._momentumSinkCandidates;
+    const statuses = this._momentumSinkCandidateStatuses;
+    if (candidates && statuses) {
+      for (let i = 0; i < MOMENTUM_SINK_VFX_TARGET_CAPACITY; i++) {
+        candidates[i] = null;
+        statuses[i] = null;
+      }
+    }
+    const input = this._momentumSinkInputScratch;
+    if (input) {
+      input.targetPosition = null;
+      input.targetVelocity = null;
+      input.frameVelocity = null;
+      input.frameReady = false;
+    }
+  },
+
+  _forgetMomentumSinkEntity(payload) {
+    const id = payload && (payload.id ?? payload.entityId ?? payload.targetId);
+    if (id == null || this._momentumSinkCandidateCount <= 0) return false;
+    const candidates = this._momentumSinkCandidates;
+    const statuses = this._momentumSinkCandidateStatuses;
+    const priorities = this._momentumSinkCandidatePriorities;
+    const count = this._momentumSinkCandidateCount;
+    let write = 0;
+    let removed = false;
+    for (let read = 0; read < count; read++) {
+      const entity = candidates[read];
+      if (entity && entity.id === id) {
+        removed = true;
+        continue;
+      }
+      if (write !== read) {
+        candidates[write] = entity;
+        statuses[write] = statuses[read];
+        priorities[write] = priorities[read];
+      }
+      write++;
+    }
+    for (let index = write; index < count; index++) {
+      candidates[index] = null;
+      statuses[index] = null;
+      priorities[index] = 0;
+    }
+    this._momentumSinkCandidateCount = write;
+    return removed;
+  },
+
+  _momentumSinkStatusFor(entity) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !entity || entity.alive !== true || entity.id == null) {
+      return null;
+    }
+    const pos = entity.pos;
+    const vel = entity.vel;
+    if (!pos || !vel
+      || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)
+      || !Number.isFinite(vel.x) || !Number.isFinite(vel.z)) return null;
+    if (!Number.isInteger(state.tick)) return null;
+    const runtimes = state.combat && state.combat.entities;
+    const runtime = runtimes && runtimes[String(entity.id)];
+    const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
+    const data = active && active.data;
+    const frame = data && data.frameVelocity;
+    if (!active || !Number.isFinite(active.expiresTick) || !(active.expiresTick > state.tick)
+      || !data || typeof data !== 'object'
+      || data.frameKind !== MOMENTUM_SINK_FRAME_KIND || data.frameReady !== true
+      || !frame || typeof frame !== 'object'
+      || !Number.isFinite(frame.x) || !Number.isFinite(frame.z)) return null;
+    return active;
+  },
+
+  _writeMomentumSinkInput(entity, active) {
+    const input = this._momentumSinkInputScratch;
+    const data = active.data;
+    const playerState = this.state.player;
+    input.targetPosition = entity.pos;
+    input.targetVelocity = entity.vel;
+    input.frameVelocity = data.frameVelocity;
+    input.frameReady = data.frameReady === true;
+    input.radius = entity.radius;
+    input.motionReduce = !!(this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce);
+    input.flashReduce = !!(
+      (this.state.settings && this.state.settings.video && this.state.settings.video.flashReduce)
+      || (this.state.settings && this.state.settings.accessibility
+        && this.state.settings.accessibility.flashReduce)
+    );
+    input.playerCaused = active.attackerId === this.state.playerId;
+    input.targetRelevant = !!playerState && entity.id === playerState.targetId;
+    return input;
+  },
+
+  _collectMomentumSinkCandidates() {
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list) || !list.length) {
+      this._momentumSinkCandidateCount = 0;
+      return 0;
+    }
+    const candidates = this._momentumSinkCandidates;
+    const statuses = this._momentumSinkCandidateStatuses;
+    const priorities = this._momentumSinkCandidatePriorities;
+    const plan = this._momentumSinkPlanScratch;
+    let count = 0;
+    for (let cursor = 0; cursor < list.length; cursor++) {
+      const entity = list[cursor];
+      const active = this._momentumSinkStatusFor(entity);
+      if (!active) continue;
+      resolveMomentumSinkVfxPlan(plan, this._writeMomentumSinkInput(entity, active));
+      if (!plan.active) continue;
+      const priority = plan.admissionPriority;
+      let insertAt = 0;
+      // Strict greater-than preserves entity-list order for equal-priority candidates.
+      while (insertAt < count && priority <= priorities[insertAt]) insertAt++;
+      if (count >= MOMENTUM_SINK_VFX_TARGET_CAPACITY
+        && insertAt >= MOMENTUM_SINK_VFX_TARGET_CAPACITY) continue;
+      const nextCount = Math.min(count + 1, MOMENTUM_SINK_VFX_TARGET_CAPACITY);
+      for (let index = nextCount - 1; index > insertAt; index--) {
+        candidates[index] = candidates[index - 1];
+        statuses[index] = statuses[index - 1];
+        priorities[index] = priorities[index - 1];
+      }
+      candidates[insertAt] = entity;
+      statuses[insertAt] = active;
+      priorities[insertAt] = priority;
+      count = nextCount;
+    }
+    this._momentumSinkCandidateCount = count;
+    return count;
+  },
+
+  _emitMomentumSinkPlan(plan) {
+    let emitted = false;
+    const priority = plan.admissionPriority;
+    const mainX = plan.targetX - plan.axisX * plan.centerOffset;
+    const mainZ = plan.targetZ - plan.axisZ * plan.centerOffset;
+    if (this._spawnProjectileTrailStreak(
+      mainX, 0.2, mainZ,
+      plan.life, plan.width, plan.length, plan.opacity,
+      MOMENTUM_SINK_VFX_COLORS.core,
+      plan.carryX, plan.carryZ, plan.axisX, plan.axisZ, priority,
+    )) emitted = true;
+
+    if (plan.streakCount > 1) {
+      const baseX = plan.targetX - plan.axisX * plan.radius * 0.12;
+      const baseZ = plan.targetZ - plan.axisZ * plan.radius * 0.12;
+      const sideX = plan.perpX * plan.sideOffset;
+      const sideZ = plan.perpZ * plan.sideOffset;
+      const inwardX = plan.perpX * plan.convergenceSpeed;
+      const inwardZ = plan.perpZ * plan.convergenceSpeed;
+      if (this._spawnProjectileTrailStreak(
+        baseX + sideX, 0.14, baseZ + sideZ,
+        plan.life, plan.width * 0.76, plan.length * 0.62, plan.opacity * 0.74,
+        MOMENTUM_SINK_VFX_COLORS.compression,
+        plan.carryX - inwardX, plan.carryZ - inwardZ,
+        plan.axisX, plan.axisZ, priority,
+      )) emitted = true;
+      if (this._spawnProjectileTrailStreak(
+        baseX - sideX, 0.14, baseZ - sideZ,
+        plan.life, plan.width * 0.76, plan.length * 0.62, plan.opacity * 0.74,
+        MOMENTUM_SINK_VFX_COLORS.compression,
+        plan.carryX + inwardX, plan.carryZ + inwardZ,
+        plan.axisX, plan.axisZ, priority,
+      )) emitted = true;
+
+      if (plan.particleCount > 0) {
+        const particleInwardX = plan.perpX * plan.particleSpeed;
+        const particleInwardZ = plan.perpZ * plan.particleSpeed;
+        const trailAxis = Math.atan2(plan.axisZ, plan.axisX);
+        const first = this._spawnParticle(
+          plan.targetX + sideX, plan.targetZ + sideZ,
+          plan.carryX - particleInwardX, plan.carryZ - particleInwardZ,
+          plan.life, plan.width * 1.25, 0.04,
+          this._momentumSinkParticleStart, this._momentumSinkParticleEnd,
+          7.5, 0.16, 0, trailAxis, 1.8, priority,
+        );
+        const second = this._spawnParticle(
+          plan.targetX - sideX, plan.targetZ - sideZ,
+          plan.carryX + particleInwardX, plan.carryZ + particleInwardZ,
+          plan.life, plan.width * 1.25, 0.04,
+          this._momentumSinkParticleStart, this._momentumSinkParticleEnd,
+          7.5, 0.16, 0, trailAxis, 1.8, priority,
+        );
+        if (first != null || second != null) emitted = true;
+      }
+    }
+    return emitted;
+  },
+
+  _updateMomentumSinkPresentation() {
+    const count = this._collectMomentumSinkCandidates();
+    let emittedTargets = 0;
+    for (let index = 0; index < count; index++) {
+      const entity = this._momentumSinkCandidates[index];
+      const active = this._momentumSinkCandidateStatuses[index];
+      const plan = resolveMomentumSinkVfxPlan(
+        this._momentumSinkPlanScratch,
+        this._writeMomentumSinkInput(entity, active),
+      );
+      if (plan.active && this._emitMomentumSinkPlan(plan)) emittedTargets++;
+      // Do not retain removed world entities or restored status records between cadence pulls.
+      this._momentumSinkCandidates[index] = null;
+      this._momentumSinkCandidateStatuses[index] = null;
+    }
+    this._momentumSinkCandidateCount = 0;
+    const input = this._momentumSinkInputScratch;
+    input.targetPosition = null;
+    input.targetVelocity = null;
+    input.frameVelocity = null;
+    input.frameReady = false;
+    return emittedTargets;
   },
 
   _consumeCadence(field, dt, hz) {
