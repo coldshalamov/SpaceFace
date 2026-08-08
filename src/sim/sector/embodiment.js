@@ -15,6 +15,7 @@
 //   so a later rematerialize pass can stamp data.worldRecordId without re-keying.
 
 import { hash32 } from '../../core/rng.js';
+import { CERES_ACTIVITY_SECTOR_ID } from '../../data/sectorActivityPockets.js';
 
 export const EMBODIMENT_SCHEMA_ID = 'spaceface.sectorEmbodimentIntent.v1';
 export const EMBODIMENT_SCHEMA_VERSION = 1;
@@ -46,6 +47,26 @@ export const EMBODIMENT_TO_RECORD_KIND = Object.freeze({
   [EMBODIMENT_KIND.MARKET_PRESSURE]: null, // economy intent already separate
   [EMBODIMENT_KIND.INTEL_SIGNAL]: null,
 });
+
+/**
+ * Sectors with a frozen authored-activity contract own their local actor cast. Offscreen scalar
+ * truth still projects normally, but stochastic body recipes must not compete with that cast.
+ */
+export const AUTHORED_ACTIVITY_EMBODIMENT_SECTOR_IDS = Object.freeze([
+  CERES_ACTIVITY_SECTOR_ID,
+]);
+
+const AUTHORED_ACTIVITY_EMBODIMENT_SECTORS = new Set(AUTHORED_ACTIVITY_EMBODIMENT_SECTOR_IDS);
+const STOCHASTIC_EMBODIMENT_RECORD_KINDS = new Set([
+  EMBODIMENT_KIND.CONVOY_ITINERARY,
+  EMBODIMENT_KIND.PATROL_PRESENCE,
+  EMBODIMENT_KIND.RAID_PRESENCE,
+]);
+
+export function shouldSuppressStochasticEmbodimentIntent(sectorId, kind) {
+  return AUTHORED_ACTIVITY_EMBODIMENT_SECTORS.has(sectorId)
+    && STOCHASTIC_EMBODIMENT_RECORD_KINDS.has(kind);
+}
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -122,6 +143,7 @@ export function projectSectorEmbodiment(opts = {}) {
     12,
   );
   const roleMixBias = buildRoleMixBias({ danger, pricePressure, scn, reach, sector });
+  const suppressStochasticRecords = AUTHORED_ACTIVITY_EMBODIMENT_SECTORS.has(sectorId);
 
   const intents = [];
 
@@ -165,7 +187,9 @@ export function projectSectorEmbodiment(opts = {}) {
   // Convoy recipes when trade conductivity / price shock is meaningful.
   const convoySlots = Math.min(
     MAX_EMBODIMENT_SLOTS_PER_SECTOR,
-    Math.max(0, Math.floor(Math.abs(pricePressure) * 4 + mts * 2 + (Math.abs(dangerDelta) > 0.08 ? 1 : 0))),
+    suppressStochasticRecords
+      ? 0
+      : Math.max(0, Math.floor(Math.abs(pricePressure) * 4 + mts * 2 + (Math.abs(dangerDelta) > 0.08 ? 1 : 0))),
   );
   for (let i = 0; i < convoySlots; i++) {
     const identityKey = `convoy:${epochKey}:${i}`;
@@ -187,7 +211,9 @@ export function projectSectorEmbodiment(opts = {}) {
   // Patrol presence when Concord (or secure baseline) projects order.
   const patrolSlots = Math.min(
     MAX_EMBODIMENT_SLOTS_PER_SECTOR,
-    Math.max(0, Math.floor(scn * 3 + (danger < 0.35 ? 1 : 0) - (reach > 0.35 ? 1 : 0))),
+    suppressStochasticRecords
+      ? 0
+      : Math.max(0, Math.floor(scn * 3 + (danger < 0.35 ? 1 : 0) - (reach > 0.35 ? 1 : 0))),
   );
   for (let i = 0; i < patrolSlots; i++) {
     const identityKey = `patrol:${epochKey}:${i}`;
@@ -208,7 +234,9 @@ export function projectSectorEmbodiment(opts = {}) {
   // Raid presence when Reach / high danger.
   const raidSlots = Math.min(
     MAX_EMBODIMENT_SLOTS_PER_SECTOR,
-    Math.max(0, Math.floor(reach * 3 + Math.max(0, danger - 0.45) * 4)),
+    suppressStochasticRecords
+      ? 0
+      : Math.max(0, Math.floor(reach * 3 + Math.max(0, danger - 0.45) * 4)),
   );
   for (let i = 0; i < raidSlots; i++) {
     const identityKey = `raid:${epochKey}:${i}`;

@@ -5,6 +5,7 @@
 // becomes a durable record (FULL residency promotion), preserving the world authority line.
 
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { shouldSuppressStochasticEmbodimentIntent } from '../sim/sector/embodiment.js';
 import { RECORD_KIND, stableRecordId } from './worldRecords.js';
 
 export const WORLD_EMBODIMENT_SCHEMA_ID = 'spaceface.worldEmbodimentCache.v1';
@@ -68,6 +69,14 @@ export function consumeEmbodimentPayload(cache, payload) {
   const target = cache && cache.bySector ? cache : createEmptyEmbodimentCache();
   if (!payload || payload.schemaId !== SECTOR_EMBODIMENT_SCHEMA_ID) return { cache: target, accepted: 0 };
   if (!Number.isInteger(payload.epochKey) || !Array.isArray(payload.intents)) return { cache: target, accepted: 0 };
+
+  // `consumeEmbodimentPayload` is public and may receive a pre-normalized save cache directly.
+  // Sanitize the retained side before grouping: an incoming payload made solely of suppressed
+  // recipes has no accepted sector group, but must still be unable to preserve stale recipes.
+  for (const sectorId of Object.keys(target.bySector).sort()) {
+    const current = target.bySector[sectorId];
+    if (current) current.intents = normalizeIntentList(current.intents, sectorId);
+  }
 
   const grouped = new Map();
   for (const raw of payload.intents) {
@@ -196,6 +205,7 @@ function normalizeIntent(raw, sectorId) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   if (raw.schemaId !== SECTOR_EMBODIMENT_SCHEMA_ID) return null;
   if (typeof raw.intentId !== 'string' || !raw.intentId || !RETAINED_KINDS.has(raw.kind)) return null;
+  if (shouldSuppressStochasticEmbodimentIntent(sectorId, raw.kind)) return null;
   if (!Number.isInteger(raw.epochKey)) return null;
   const payload = clonePlain(raw.payload);
   return {

@@ -19,6 +19,8 @@ import {
 import {
   EMBODIMENT_SCHEMA_ID,
   EMBODIMENT_KIND,
+  AUTHORED_ACTIVITY_EMBODIMENT_SECTOR_IDS,
+  shouldSuppressStochasticEmbodimentIntent,
   projectSectorEmbodiment,
   projectFieldEmbodiment,
   filterNewEmbodimentIntents,
@@ -182,6 +184,57 @@ test('intent payload schema is minimal and documented', () => {
   assert.ok(kinds.has(EMBODIMENT_KIND.TRAFFIC_DENSITY));
   assert.ok(kinds.has(EMBODIMENT_KIND.DANGER_PRESENCE));
   assert.ok(kinds.has(EMBODIMENT_KIND.MARKET_PRESSURE));
+});
+
+test('authored activity sectors keep scalar truth while suppressing only stochastic record recipes', () => {
+  const sectorId = 'sector_ceres_belt';
+  const counterfactualSectorId = 'sector_tethys_junction';
+  const node = {
+    danger: 0.9,
+    pricePressure: 0.8,
+    influence: { faction_scn: 0.8, faction_reach: 0.8, faction_mts: 0.8 },
+    dominantFactionId: 'faction_scn',
+    contestMargin: 0.05,
+  };
+  const sector = { stations: ['station_fixture'], industries: { mining: true }, enemyDensity: 0.2 };
+  const opts = { sector, node, seed: 42, epochDays: 2, baseDanger: 0.35 };
+  const authored = projectSectorEmbodiment({ ...opts, sectorId });
+  const counterfactual = projectSectorEmbodiment({ ...opts, sectorId: counterfactualSectorId });
+  const stochasticKinds = new Set([
+    EMBODIMENT_KIND.CONVOY_ITINERARY,
+    EMBODIMENT_KIND.PATROL_PRESENCE,
+    EMBODIMENT_KIND.RAID_PRESENCE,
+  ]);
+
+  assert.deepEqual(AUTHORED_ACTIVITY_EMBODIMENT_SECTOR_IDS, [sectorId]);
+  assert.ok(counterfactual.some((intent) => intent.kind === EMBODIMENT_KIND.CONVOY_ITINERARY));
+  assert.ok(counterfactual.some((intent) => intent.kind === EMBODIMENT_KIND.PATROL_PRESENCE));
+  assert.ok(counterfactual.some((intent) => intent.kind === EMBODIMENT_KIND.RAID_PRESENCE));
+  assert.equal(authored.some((intent) => stochasticKinds.has(intent.kind)), false);
+  for (const kind of stochasticKinds) {
+    assert.equal(shouldSuppressStochasticEmbodimentIntent(sectorId, kind), true);
+    assert.equal(shouldSuppressStochasticEmbodimentIntent(counterfactualSectorId, kind), false);
+  }
+
+  const scalarKinds = [
+    EMBODIMENT_KIND.TRAFFIC_DENSITY,
+    EMBODIMENT_KIND.DANGER_PRESENCE,
+    EMBODIMENT_KIND.MARKET_PRESSURE,
+    EMBODIMENT_KIND.INTEL_SIGNAL,
+  ];
+  for (const kind of scalarKinds) {
+    const retained = authored.find((intent) => intent.kind === kind);
+    const ordinary = counterfactual.find((intent) => intent.kind === kind);
+    assert.ok(retained, `${kind} remains in the authored-activity projection`);
+    assert.ok(ordinary, `${kind} exists in the counterfactual projection`);
+    assert.deepEqual(retained.payload, ordinary.payload, `${kind} scalar payload stays byte-equivalent`);
+    assert.equal(shouldSuppressStochasticEmbodimentIntent(sectorId, kind), false);
+  }
+  assert.equal(
+    authored.find((intent) => intent.kind === EMBODIMENT_KIND.DANGER_PRESENCE).proposedRecordKind,
+    'npc',
+    'danger_presence remains scalar truth despite its historical proposedRecordKind marker',
+  );
 });
 
 test('filterNewEmbodimentIntents is idempotent', () => {
