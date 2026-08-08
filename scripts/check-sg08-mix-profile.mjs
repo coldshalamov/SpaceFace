@@ -45,11 +45,17 @@ const COMBAT_BED = Object.freeze([
 assert.equal(RECIPES.length, Object.keys(AUDIO_RECIPE_BY_ID).length, 'audio recipe lookup should cover every authored recipe');
 
 for (const [cueId, recipe] of Object.entries(PRESENTATION_RECIPES)) {
-  assert(PRESENTATION_AUDIO_CUE_BY_ID[cueId], `${cueId} must map to a semantic audio cue`);
+  assert(Number.isFinite(recipe.budgets.voices), `${cueId} must declare an SG-08 voice budget`);
+  const hasAudioMapping = Object.hasOwn(PRESENTATION_AUDIO_CUE_BY_ID, cueId);
+  if (recipe.lanes.audio === 'audio.none') {
+    assert.equal(recipe.budgets.voices, 0, `${cueId} audio.none lane must budget zero voices`);
+    assert.equal(hasAudioMapping, false, `${cueId} audio.none lane must not own a semantic audio mapping`);
+    continue;
+  }
+  assert.equal(hasAudioMapping, true, `${cueId} must map to a semantic audio cue`);
   const audioCueId = PRESENTATION_AUDIO_CUE_BY_ID[cueId];
   const recipeId = resolveAudioCueRecipeId(audioCueId);
   assert(AUDIO_RECIPE_BY_ID[recipeId], `${cueId} semantic audio cue must resolve to a concrete recipe`);
-  assert(Number.isFinite(recipe.budgets.voices), `${cueId} must declare an SG-08 voice budget`);
 }
 
 for (const cueId of CRITICAL_SLICE_EVENT_IDS) {

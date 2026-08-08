@@ -144,6 +144,7 @@ export const presentationOrchestrator = {
       // intentionally has no recipe, so _emitCue suppresses it (missing_recipe) and no
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
+      this.bus.on('massline:releaseValidated', (payload) => this._onMasslineReleaseValidated(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
       this.bus.on('ai:counterTether', (payload) => this._onCounterTether(payload || {})),
@@ -1208,6 +1209,51 @@ export const presentationOrchestrator = {
       material: 'massline',
       magnitude: Math.max(1, finiteScore(payload && payload.releaseScore) * 100),
       tags: ['release', payload && payload.classification],
+    });
+  },
+
+  _onMasslineReleaseValidated(payload) {
+    if (payload && payload.schema !== 'spaceface.masslineReleaseValidation.v1') return false;
+    if (!payload || !payload.prediction || payload.prediction.onSolution !== false) return false;
+    if (typeof payload.releaseId !== 'string' || !payload.releaseId.trim()) return false;
+    if (payload.kind !== 'throw' && payload.kind !== 'self-sling') return false;
+
+    const entities = this.state && this.state.entities;
+    const playerId = this.state && this.state.playerId;
+    const player = entities && typeof entities.get === 'function' && playerId != null
+      ? entities.get(playerId)
+      : null;
+    const target = entities && typeof entities.get === 'function' && payload.entityId != null
+      ? entities.get(payload.entityId)
+      : null;
+    if (!player || player.alive !== true || player.id !== playerId) return false;
+    if (!target || target.alive !== true || target.id !== payload.entityId) return false;
+    if (payload.kind === 'self-sling' && payload.entityId !== playerId) return false;
+    if (payload.kind === 'throw' && payload.entityId === playerId) return false;
+
+    // A validated gameplay receipt is still not presentation-control authority. Whitelist only
+    // the mechanical fields this semantic cue may retain so injected importance/tags/dedupe keys
+    // cannot turn a polite HUD fact into a critical cue or rewrite its release identity.
+    const cuePayload = {
+      schema: payload.schema,
+      releaseId: payload.releaseId,
+      kind: payload.kind,
+      entityId: payload.entityId,
+      releaseTick: payload.releaseTick,
+      validatedTick: payload.validatedTick,
+      prediction: payload.prediction,
+      withinTolerance: payload.withinTolerance,
+    };
+    return this._emitCue('massline.release.missed', cuePayload, {
+      sourceEvent: 'massline:releaseValidated',
+      sourceId: playerId,
+      targetId: payload.entityId,
+      subsystemId: payload.kind,
+      material: 'massline',
+      magnitude: 1,
+      sequence: payload.releaseId,
+      tags: [payload.kind],
+      playerRelevance: 0.88,
     });
   },
 

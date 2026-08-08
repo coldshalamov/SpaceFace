@@ -117,6 +117,7 @@ const UI_CUES = Object.freeze({
   'tether.release.good': uiCue('presentation:tether:release-good', 'info', 'CLEAN RELEASE', 1.1),
   'tether.release.clean': uiCue('presentation:tether:release-clean', 'info', 'CLEAN CUT', 1.5),
   'tether.release.razor': uiCue('presentation:tether:release-razor', 'warn', 'RAZOR CUT', 2.0),
+  'massline.release.missed': uiCue('presentation:massline:release-missed', 'info', 'MISSED WINDOW', 1.1),
   'shield.collapse': uiCue('presentation:shield:collapse', 'danger', 'SHIELDS COLLAPSED', 1.8),
   'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8, true),
   'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
@@ -138,6 +139,7 @@ const CAPTIONS = Object.freeze({
   'tether.release.good': 'Clean release.',
   'tether.release.clean': 'Clean cut.',
   'tether.release.razor': 'Razor cut.',
+  'massline.release.missed': 'Massline release window missed.',
   'shield.collapse': 'Shield collapse.',
   'subsystem.disabled': 'Subsystem disabled.',
   'scenario.signal.pulse': 'Unregistered signal pulse.',
@@ -614,6 +616,7 @@ function shapeForCue(id) {
   // failure from a restoration without reading the caption.
   if (id === 'world_site.damage') return 'bracket';
   if (id === 'world_site.recovery') return 'ring';
+  if (id === 'massline.release.missed') return 'arc';
   if (id && (id.startsWith('tether.') || id.startsWith('massline.counter_tether.'))) return 'arc';
   if (id === 'shield.collapse') return 'ring';
   if (id === 'subsystem.disabled') return 'bracket';

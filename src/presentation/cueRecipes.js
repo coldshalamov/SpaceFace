@@ -307,6 +307,23 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.16, particles: 56, voices: 2, uiPulses: 1 },
     tags: ['tether', 'release', 'razor'],
   }),
+  // Post-release validation owns one calm attempted-window fact. The retained-velocity release
+  // grammar remains on the direct Massline presentation route, so this semantic cue deliberately
+  // drives no camera, world VFX, or audio lane.
+  'massline.release.missed': recipe({
+    importance: 0.62,
+    dedupeWindowTicks: 60,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.none',
+      audio: 'audio.none',
+      ui: 'ui.massline_release_missed',
+      accessibility: 'accessibility.release_missed_caption',
+    },
+    budgets: { cameraTrauma: 0, particles: 0, lights: 0, voices: 0, uiPulses: 1 },
+    tags: ['massline', 'release', 'missed'],
+  }),
   'shield.collapse': recipe({
     importance: 0.84,
     // 8 ticks (133 ms) was sized for a cue that fired for EVERY combatant, where a short window was
