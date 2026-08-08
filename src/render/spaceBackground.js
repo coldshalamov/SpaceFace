@@ -94,6 +94,12 @@ const PALETTE_NAMES = ['EMBER', 'ION', 'VERDIGRIS', 'AZURE', 'CRIMSON'];
 // lookup against SECTOR_PALETTE_CLASSES is reliable.)
 const SECTOR_CLASS_TO_SKY = { core: 'AZURE', belt: 'EMBER', fringe: 'CRIMSON', anomaly: 'ION' };
 
+function valueNoiseCorner(a, b, seed) {
+  let s = ((a * 73856093) ^ (b * 19349663) ^ (seed * 83492791)) >>> 0;
+  s = (s * 1664525 + 1013904223) >>> 0;
+  return s / 4294967296;
+}
+
 // Star colors follow blackbody temperature, weighted toward white/blue-white.
 const BLACKBODY = [
   { col: '#9db4ff', w: 0.18 },
@@ -1096,6 +1102,7 @@ export class SpaceBackground {
     this._tintB = new THREE.Color(1, 1, 1);
     this._starTint = new THREE.Color(1, 1, 1);
     this._dbs = new THREE.Vector2();
+    this._smearFit = { stretch: 1, dim: 1 };
 
     // planet texture LRU (render targets, disposed when evicted)
     this.planetCache = new Map();
@@ -2441,7 +2448,7 @@ export class SpaceBackground {
     // `drive.smear` is already motionReduce-scaled inside velocityBandDrive, so reading the record
     // rather than the raw band gets reduced-motion handling for free — and, more to the point, makes
     // it impossible for this consumer to drift from the reduction the rest of the language applies.
-    const smearFit = smearStretch(smear);
+    const smearFit = smearStretch(smear, this._smearFit);
 
     if (this.stars) {
       const un = this.stars.mat.uniforms;
@@ -2540,12 +2547,10 @@ export class SpaceBackground {
     const u = f * f * (3 - 2 * f);
     const v = g * g * (3 - 2 * g);
     const seed = this.seed;
-    const h = (a, b) => {
-      let s = ((a * 73856093) ^ (b * 19349663) ^ (seed * 83492791)) >>> 0;
-      s = (s * 1664525 + 1013904223) >>> 0;
-      return s / 4294967296;
-    };
-    const a = h(i, j), b = h(i + 1, j), c = h(i, j + 1), d = h(i + 1, j + 1);
+    const a = valueNoiseCorner(i, j, seed);
+    const b = valueNoiseCorner(i + 1, j, seed);
+    const c = valueNoiseCorner(i, j + 1, seed);
+    const d = valueNoiseCorner(i + 1, j + 1, seed);
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
 

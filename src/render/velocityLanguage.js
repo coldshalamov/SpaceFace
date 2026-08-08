@@ -562,16 +562,27 @@ export const VL_SMEAR_MAX_STRETCH = 3.4;
  * the integrated energy of each point constant: the star spreads, it does not glow.
  *
  * @param {number} smear 0..1, already motionReduce-scaled by `velocityBandDrive`
+ * @param {{stretch?:number, dim?:number}|null} [out] optional caller-owned result record
  * @returns {{stretch:number, dim:number}} `stretch` >= 1 along flow; `dim` = 1/stretch
  */
-export function smearStretch(smear) {
+export function smearStretch(smear, out = null) {
+  // Keep the public one-argument API allocating: scripts, tooling, and external callers may retain
+  // its plain result record. The render loop supplies one owned record so normal flight does not
+  // create another short-lived object every display frame.
+  const result = out && typeof out === 'object' ? out : {};
   // Fail NEUTRAL, not dark and not bright: a non-finite smear yields no elongation and no dimming,
   // which is exactly the band-0/1 sky. Clamping to the far end would either wash the field out or
   // black it, and both are worse than simply not applying an optional cue.
-  if (!Number.isFinite(smear) || smear <= 0) return { stretch: 1, dim: 1 };
+  if (!Number.isFinite(smear) || smear <= 0) {
+    result.stretch = 1;
+    result.dim = 1;
+    return result;
+  }
   const s = smear > VL_SMEAR_MAX ? VL_SMEAR_MAX : smear;
   const stretch = 1 + s * (VL_SMEAR_MAX_STRETCH - 1);
-  return { stretch, dim: 1 / stretch };
+  result.stretch = stretch;
+  result.dim = 1 / stretch;
+  return result;
 }
 
 // ---------------------------------------------------------------------------------------------
