@@ -10,6 +10,7 @@ import {
   CERES_ACTIVITY_BANDS,
   CERES_ACTIVITY_POCKET_ORDER,
   CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_ACTIVITY_SERVICE_SLOTS,
   CERES_AUTHORED_ACTIVITY_CAPACITY,
   CERES_AUTHORED_ACTIVITY_SLOT_ORDER,
@@ -286,10 +287,13 @@ test('R5B materializes five inert object slots inside the existing Ceres budget'
   ], 'the first entities after Ceres dressing retain their numeric IDs and order');
 });
 
-test('R5A acceptance entry names the legal Hornet physics toolkit without wiring it', () => {
+test('R5 acceptance entry wires the legal Hornet physics toolkit without claiming acceptance', () => {
   const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
-  assert.equal(entry.scope, 'acceptance_entry_reference_only');
-  assert.equal(entry.runtimeStatus, 'not_wired');
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[entry.pocketId];
+  assert.equal(entry.scope, 'sandbox_acceptance_entry');
+  assert.equal(entry.runtimeStatus, 'wired_unaccepted');
+  assert.ok(pocket);
+  assert.equal(pocket.activityAnchor.zoneId, 'zone_ceres_refinery');
   assert.equal(entry.shipId, 'ship_hornet');
   assert.equal(entry.loadoutId, 'physics_toolkit');
   assert.equal(entry.cameraZoomWU, 144);
@@ -322,6 +326,7 @@ test('R5A acceptance entry names the legal Hornet physics toolkit without wiring
     assert.notEqual(index, -1, `${def.id} must fit the canonical Hornet`);
     available.splice(index, 1);
   }
+  assert.deepEqual(entry.entryOffset, { x: -72, z: 0 });
   assert.equal(distanceFromPocketAnchor(entry.entryOffset) <= 95, true);
 });
 

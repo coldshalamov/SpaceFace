@@ -450,9 +450,9 @@ export const CERES_AUTHORED_ACTIVITY_SLOT_ORDER = Object.freeze([
   ...CERES_ACTIVITY_SERVICE_SLOTS.map((slot) => slot.id),
 ]);
 
-/** Acceptance setup reference only; production pockets remain ship-agnostic. */
+/** Sandbox acceptance entry; production pockets remain ship-agnostic and acceptance remains open. */
 export const CERES_REFERENCE_ACCEPTANCE_ENTRY = Object.freeze({
-  scope: 'acceptance_entry_reference_only',
+  scope: 'sandbox_acceptance_entry',
   sectorId: CERES_ACTIVITY_SECTOR_ID,
   pocketId: refineryId,
   shipId: 'ship_hornet',
@@ -473,7 +473,7 @@ export const CERES_REFERENCE_ACCEPTANCE_ENTRY = Object.freeze({
     'ships.fitModule',
   ]),
   moduleGrantPolicy: 'named_loadout_only',
-  runtimeStatus: 'not_wired',
+  runtimeStatus: 'wired_unaccepted',
 });
 
 if (CERES_POCKET_ACTOR_SLOT_ORDER.length !== 8) {

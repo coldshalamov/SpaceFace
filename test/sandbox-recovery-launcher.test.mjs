@@ -14,6 +14,10 @@ import {
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import {
+  CERES_ACTIVITY_POCKETS_BY_ID,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY,
+} from '../src/data/sectorActivityPockets.js';
 import { PQ019_HEIST_SECTOR_ID } from '../src/data/heistFacilities.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { TECH_NODES } from '../src/data/tech.js';
@@ -262,53 +266,141 @@ test('physics swarm preset uses production economy and ships writers to unlock a
   );
 });
 
-test('failed sandbox launch clears pending setup before the next ordinary game starts', () => {
+test('sandbox hook applies the Ceres acceptance entry once and clears a later failed launch', () => {
   const bus = createBus();
+  const state = createGameState(0xc3e5);
+  const economy = Object.create(economyPrototype);
+  const ships = Object.create(shipsPrototype);
   const toasts = [];
-  const ctx = {
-    state: {
-      playerId: 0,
-      player: {
-        credits: 0,
-        activeShipIndex: 0,
-        ownedShips: [],
-        moduleInventory: [],
-        researchedNodes: [],
-        researchPoints: 0,
+  const newGames = [];
+  const enteredSectors = [];
+  const relocations = [];
+  const cameraZooms = [];
+  const shipCalls = [];
+  const systems = new Map([
+    ['economy', economy],
+    ['ships', ships],
+    ['world', {
+      enterSector(sectorId) { enteredSectors.push(sectorId); },
+      relocatePlayerInSector(pose, meta) {
+        relocations.push({ pose: { ...pose }, meta: { ...meta } });
+        return true;
       },
-      entities: new Map(),
+    }],
+  ]);
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = {
+        ...spec,
+        id: state.nextEntityId++,
+        alive: true,
+        pos: { ...(spec.pos || { x: 0, z: 0 }) },
+        data: { ...(spec.data || {}) },
+      };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
     },
-    registry: { get: () => null },
-    helpers: {},
+  };
+  const ctx = {
+    state,
+    registry: { get: (name) => systems.get(name) || null },
+    helpers,
     bus,
   };
+  economy.init(ctx);
+  ships.init(ctx);
+  ships.newGame();
+  const starter = state.player.ownedShips[0];
+  assert.equal(starter.defId, 'ship_kestrel', 'ordinary New Game still owns the Kestrel default');
+  const player = helpers.spawnEntity(makeShipEntitySpec(starter.defId, {
+    isPlayer: true,
+    player: state.player,
+    fittings: starter.fittings,
+    appearance: starter.appearance,
+    livingHull: starter.livingHull,
+    pos: { x: 0, z: 0 },
+  }));
+  state.playerId = player.id;
+  state.render.cameraCtrl = {
+    setZoom(zoom) { cameraZooms.push(zoom); },
+    snapToPlayer() {},
+  };
+  for (const method of ['buyShip', 'setActiveShip', 'grantModule', 'unfitModule', 'fitModule']) {
+    const original = ships[method].bind(ships);
+    ships[method] = (...args) => {
+      shipCalls.push({ method, args });
+      return original(...args);
+    };
+  }
   bus.on('toast', (payload) => toasts.push(payload));
+  bus.on('game:new', (payload) => newGames.push(payload));
   installSandboxGameStartedHook(bus, ctx);
 
+  const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
+  const preset = recoveryPreset('ceres_reference_pocket');
+  requestSandboxGame(bus, preset.config);
+  assert.deepEqual(newGames, [{}], 'the launcher enters through the public game:new route');
+  bus.emit('game:started', {});
+
+  const active = state.player.ownedShips[state.player.activeShipIndex];
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[entry.pocketId];
+  const zone = SECTOR_ZONES[entry.sectorId].find((row) => row.id === pocket.activityAnchor.zoneId);
+  const expected = sectorLocalToGlobalForSector({
+    x: zone.center.x + entry.entryOffset.x,
+    z: zone.center.z + entry.entryOffset.z,
+  }, entry.sectorId);
+  assert.equal(active.defId, entry.shipId);
+  assert.deepEqual(entry.itemIds.filter((defId) => active.fittings.includes(defId)), entry.itemIds);
+  assert.deepEqual(enteredSectors, [entry.sectorId]);
+  assert.deepEqual(relocations, [{
+    pose: { x: expected.x, z: expected.z, heading: 0 },
+    meta: { reason: `sandbox:${pocket.activityAnchor.zoneId}` },
+  }]);
+  assert.deepEqual(cameraZooms, [entry.cameraZoomWU]);
+  assert.equal(shipCalls.some((call) => call.method === 'buyShip'), true);
+  assert.equal(shipCalls.some((call) => call.method === 'setActiveShip'), true);
+  assert.deepEqual(
+    shipCalls.filter((call) => call.method === 'grantModule').map((call) => call.args[0].defId),
+    entry.itemIds,
+    'the acceptance entry grants only its named physics toolkit',
+  );
+
+  const toastCount = toasts.length;
   requestSandboxGame(bus, { scenarioId: 'physics_swarm' });
   bus.emit('game:startFailed', { error: 'synthetic launch failure' });
   bus.emit('game:started', {});
 
-  assert.deepEqual(toasts, [], 'ordinary start cannot consume config from the failed Sandbox launch');
+  assert.equal(toasts.length, toastCount,
+    'ordinary start cannot consume config from the failed Sandbox launch');
 });
 
-test('Ceres preset enters the real sector and stages clear of the refinery center', () => {
+test('Ceres preset derives its anchor-local entry from the activity contract', () => {
   const h = makeContext();
   const preset = recoveryPreset('ceres_reference_pocket');
   applySandboxSetup(h.ctx, preset.config);
 
-  const zone = SECTOR_ZONES.sector_ceres_belt.find((item) => item.id === 'zone_ceres_refinery');
+  const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[entry.pocketId];
+  const zone = SECTOR_ZONES[entry.sectorId].find((item) => item.id === pocket.activityAnchor.zoneId);
   const expected = sectorLocalToGlobalForSector({
-    x: zone.center.x + preset.config.spawnAtZoneOffset.x,
-    z: zone.center.z + preset.config.spawnAtZoneOffset.z,
-  }, 'sector_ceres_belt');
+    x: zone.center.x + entry.entryOffset.x,
+    z: zone.center.z + entry.entryOffset.z,
+  }, entry.sectorId);
 
-  assert.deepEqual(h.enteredSectors, ['sector_ceres_belt']);
+  assert.equal(preset.config.shipId, entry.shipId);
+  assert.equal(preset.config.physicsLoadout, entry.loadoutId);
+  assert.equal(preset.config.unlockAllTech, true);
+  assert.equal(Object.hasOwn(preset.config, 'grantAllModules'), false);
+  assert.equal(Object.hasOwn(preset.config, 'credits'), false);
+  assert.equal(preset.config.spawnAtZoneId, pocket.activityAnchor.zoneId);
+  assert.deepEqual(preset.config.spawnAtZoneOffset, entry.entryOffset);
+  assert.deepEqual(h.enteredSectors, [entry.sectorId]);
   assert.deepEqual(h.relocations, [{
     pose: { x: expected.x, z: expected.z, heading: 0 },
-    meta: { reason: 'sandbox:zone_ceres_refinery' },
+    meta: { reason: `sandbox:${pocket.activityAnchor.zoneId}` },
   }]);
-  assert.deepEqual(h.cameraZooms, [120]);
+  assert.deepEqual(h.cameraZooms, [entry.cameraZoomWU]);
   assert.equal(h.emitted.at(-1).payload.text, 'Sandbox: Ceres Reference Pocket ready');
 });
 

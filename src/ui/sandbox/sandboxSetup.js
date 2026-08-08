@@ -21,6 +21,10 @@ import { TECH_NODES } from '../../data/tech.js';
 import { SHIPS } from '../../data/ships.js';
 import { FACTION_META } from '../../data/factions.js';
 import { SECTOR_ZONES } from '../../data/sectorZones.js';
+import {
+  CERES_ACTIVITY_POCKETS_BY_ID,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY,
+} from '../../data/sectorActivityPockets.js';
 import { ZONE_TETHYS_ANVIL } from '../../data/authoredPlaces.js';
 import { PQ019_FACILITIES, PQ019_HEIST_SECTOR_ID } from '../../data/heistFacilities.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
@@ -67,6 +71,13 @@ export const SANDBOX_PHYSICS_LOADOUTS = Object.freeze([
     itemIds: Object.freeze(['wpn_concussion_cannon_m', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s']),
   }),
 ]);
+
+const ceresAcceptancePocket = CERES_ACTIVITY_POCKETS_BY_ID[
+  CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId
+];
+if (!ceresAcceptancePocket?.activityAnchor?.zoneId) {
+  throw new Error('Ceres acceptance entry requires a canonical activity-anchor zone');
+}
 
 /** Merge optional human-test controls into a preset without mutating the frozen preset record. */
 export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
@@ -208,10 +219,13 @@ export const SCENARIO_PRESETS = Object.freeze([
     description: 'Launch beside the refinery working pocket on the real Ceres route and systems.',
     config: Object.freeze({
       scenarioId: 'ceres_reference_pocket',
-      sectorId: 'sector_ceres_belt',
-      spawnAtZoneId: 'zone_ceres_refinery',
-      spawnAtZoneOffset: Object.freeze({ x: 180, z: 120 }),
-      cameraCandidate: 'wide_gameplay',
+      sectorId: CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+      spawnAtZoneId: ceresAcceptancePocket.activityAnchor.zoneId,
+      spawnAtZoneOffset: CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset,
+      shipId: CERES_REFERENCE_ACCEPTANCE_ENTRY.shipId,
+      unlockAllTech: true,
+      physicsLoadout: CERES_REFERENCE_ACCEPTANCE_ENTRY.loadoutId,
+      cameraCandidate: 'physics_study',
     }),
   },
   {
