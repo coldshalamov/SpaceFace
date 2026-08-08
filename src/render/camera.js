@@ -8,7 +8,12 @@ import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
-import { readVelocityLanguage } from './velocityLanguage.js';
+import {
+  readOwnedExceptionalSpeed,
+  readVelocityLanguage,
+  resolveExceptionalSpeed,
+  VL_EXCEPTIONAL_SPEED_RATIO_MAX,
+} from './velocityLanguage.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -53,7 +58,7 @@ export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target upda
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
 export const SPEED_ZOOM_MAX = 1.18;  // ordinary hull-max factor
 export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 1.55;
-export const PHYSICS_EARNED_SPEED_RATIO_MAX = 3;
+export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
 // R1 gameplay-scale reset: 144 WU is the selected normal framing. At 1600×1000 the starter hull
 // occupies ~10.6% of frame width while a nearby structure and three actors can share the view. The
@@ -252,10 +257,17 @@ export function resolveSpeedZoomFactor(speed, maxSpeed, physicsEarned = false) {
   const speedRatio = Math.max(0, finiteOr(speed, 0) / shipMax);
   const ordinaryRatio = Math.min(1, speedRatio);
   const ordinaryFactor = SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * ordinaryRatio;
-  if (!physicsEarned || speedRatio <= 1) return ordinaryFactor;
-  const earnedT = clamp01((speedRatio - 1) / (PHYSICS_EARNED_SPEED_RATIO_MAX - 1));
-  const smoothEarnedT = earnedT * earnedT * (3 - 2 * earnedT);
-  return ordinaryFactor + (PHYSICS_EARNED_SPEED_ZOOM_MAX - ordinaryFactor) * smoothEarnedT;
+  return resolveExceptionalSpeedZoomFactor(
+    resolveExceptionalSpeed(speed, shipMax, physicsEarned),
+    ordinaryFactor,
+  );
+}
+
+/** Apply a normalized, owner-validated shared-record scalar to an ordinary camera factor. */
+export function resolveExceptionalSpeedZoomFactor(exceptionalSpeed, ordinaryFactor = SPEED_ZOOM_MAX) {
+  const base = Number.isFinite(ordinaryFactor) ? ordinaryFactor : SPEED_ZOOM_MAX;
+  const intensity = clamp01(exceptionalSpeed);
+  return base + (PHYSICS_EARNED_SPEED_ZOOM_MAX - base) * intensity;
 }
 
 export function resolveInitialChaseZoom(zoom) {
@@ -639,7 +651,6 @@ export function createChaseCamera(state) {
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
       let playerSpeed = 0;
-      let physicsEarnedSpeed = false;
       let directorOwnsComposition = false;
       if (p && p.pos) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
@@ -654,8 +665,6 @@ export function createChaseCamera(state) {
         const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
         const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
         playerSpeed = Math.hypot(vx, vz);
-        physicsEarnedSpeed = !!(p._flightFrame && p._flightFrame.governor
-          && p._flightFrame.governor.physicsEarned === true);
         const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW
           && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
@@ -776,10 +785,11 @@ export function createChaseCamera(state) {
         if (_speedZoomSampleT <= 0) {
           // Reduced motion keeps the ordinary 0.88..1.18 speed framing but suppresses the larger
           // physics-earned pullback, matching the existing Massline release-camera contract.
-          _speedZoomFactor = resolveSpeedZoomFactor(
-            playerSpeed,
-            p.maxSpeed || 120,
-            physicsEarnedSpeed && !isMotionReduced(state),
+          const ordinarySpeedZoom = resolveSpeedZoomFactor(playerSpeed, p.maxSpeed || 120, false);
+          const exceptionalSpeed = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
+          _speedZoomFactor = resolveExceptionalSpeedZoomFactor(
+            exceptionalSpeed,
+            ordinarySpeedZoom,
           );
           _speedZoomSampleT = SPEED_ZOOM_SAMPLE_INTERVAL;
         }

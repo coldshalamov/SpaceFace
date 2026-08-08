@@ -13,13 +13,14 @@ import {
   CAMERA_ZOOM_MIN,
   CHASE_ZOOM_CLOSE,
   CHASE_ZOOM_DEFAULT,
-  PHYSICS_EARNED_SPEED_RATIO_MAX,
   PHYSICS_EARNED_SPEED_ZOOM_MAX,
   SPEED_ZOOM_MAX,
   createChaseCamera,
+  resolveExceptionalSpeedZoomFactor,
   resolveInitialChaseZoom,
   resolveSpeedZoomFactor,
 } from '../src/render/camera.js';
+import { VL_EXCEPTIONAL_SPEED_RATIO_MAX } from '../src/render/velocityLanguage.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CAM = resolve(ROOT, 'src/render/camera.js');
@@ -31,7 +32,7 @@ const assert = (c, m) => { if (!c) failures.push(m); };
 const camSrc = readFileSync(CAM, 'utf8');
 const near = (actual, expected, tolerance = 1e-9) => Math.abs(actual - expected) <= tolerance;
 const ordinaryMax = resolveSpeedZoomFactor(120, 120, false);
-const earnedTwiceMax = resolveSpeedZoomFactor(240, 120, true);
+const earnedTwiceMax = resolveExceptionalSpeedZoomFactor(0.5);
 globalThis.window = { innerWidth: 1600, innerHeight: 1000 };
 const lifecyclePlayer = {
   id: 1,
@@ -101,10 +102,15 @@ const cycles = [
   {
     id: 13,
     name: 'earned envelope reaches its bounded cap',
-    ok: near(resolveSpeedZoomFactor(PHYSICS_EARNED_SPEED_RATIO_MAX * 120, 120, true), PHYSICS_EARNED_SPEED_ZOOM_MAX),
+    ok: near(resolveExceptionalSpeedZoomFactor(1), PHYSICS_EARNED_SPEED_ZOOM_MAX),
   },
   { id: 14, name: 'zoom min still supports an explicit close view', ok: CAMERA_ZOOM_MIN < CHASE_ZOOM_CLOSE },
-  { id: 15, name: 'camera consumes flight physics provenance', ok: /_flightFrame\.governor[\s\S]*physicsEarned/.test(camSrc) },
+  {
+    id: 15,
+    name: 'camera consumes owner-bound shared exceptional speed',
+    ok: /readOwnedExceptionalSpeed\(state\)/.test(camSrc)
+      && !/_flightFrame\.governor[\s\S]*physicsEarned/.test(camSrc),
+  },
   { id: 16, name: 'fixed-heading follow remains focus-based', ok: /cam\.lookAt\(c\.focus\.x, 0, c\.focus\.z\)/.test(camSrc) },
 ];
 
@@ -123,7 +129,7 @@ const report = {
     CAMERA_ZOOM_MIN,
     SPEED_ZOOM_MAX,
     PHYSICS_EARNED_SPEED_ZOOM_MAX,
-    PHYSICS_EARNED_SPEED_RATIO_MAX,
+    VL_EXCEPTIONAL_SPEED_RATIO_MAX,
     earnedTwiceMax,
   },
   cycles: cycleResults,

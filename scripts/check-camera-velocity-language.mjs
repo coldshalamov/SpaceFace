@@ -1,8 +1,10 @@
 // Velocity-language consumption probe for src/render/camera.js (ADR D7, band 3).
 //
-// THE DEFECT THIS PINS. velocityLanguage.js publishes two band-3 fields on the shared record at
+// THE DEFECT THIS PINS. velocityLanguage.js publishes camera and provenance-bound speed fields on
+// the shared record at
 // state.render.velocityLanguage.drive — `cameraLeadWU` (a few WU of camera lead along the velocity
-// vector) and `shakeScale` (a deliberate REDUCTION of trauma shake at extreme speed). Both were
+// vector), `shakeScale` (a deliberate REDUCTION of trauma shake at extreme speed), and the bounded
+// `exceptionalSpeed` scalar consumed only when the record belongs to the current player. The first two were
 // published with ZERO consumers: a grep for them outside velocityLanguage.js found only an unrelated
 // LOCAL `shakeScale` in camera.js (the motionReduce factor). A published signal nobody reads is
 // indistinguishable from a signal that does not exist, and a future edit that quietly drops either
@@ -38,6 +40,7 @@ import {
   VL_CAMERA_LEAD_WU_MAX,
   VL_TAPER_END,
   publishVelocityLanguage,
+  readOwnedExceptionalSpeed,
   velocityBandDrive,
 } from '../src/render/velocityLanguage.js';
 
@@ -69,6 +72,10 @@ check('camera.js imports readVelocityLanguage (never re-derives the band)', () =
   // And it must CALL it at consume time, not merely import it.
   assert.match(cameraSrc, /readVelocityLanguage\(state\)/,
     'camera.js must call readVelocityLanguage(state) to read the published record');
+  assert.match(cameraSrc, /readOwnedExceptionalSpeed\(state\)/,
+    'camera.js must consume exceptional speed from the owner-bound shared record');
+  assert.doesNotMatch(cameraSrc, /\bp\._flightFrame\b/,
+    'camera.js must not re-read physics-earned provenance from the live flight frame');
 });
 
 check('camera.js reads drive.cameraLeadWU off the published record', () => {
@@ -136,6 +143,20 @@ check('shakeScale is NOT further reduced by motionReduce (the camera lane owns t
   assert.equal(full.shakeScale, reduced.shakeScale,
     `shakeScale must be identical with/without motionReduce (got ${full.shakeScale} vs ${reduced.shakeScale}); ` +
     'the camera lane composes its own MOTION_REDUCE_SHAKE_SCALE on top');
+});
+
+check('exceptional speed is published on the same owner-bound v1 record', () => {
+  const state = { playerId: 7 };
+  const drive = velocityBandDrive(2 * MAX_SPEED, MAX_SPEED, false, false, true);
+  const node = publishVelocityLanguage(state, drive, null);
+  assert.equal(node.schema, 'velocity_language_v1');
+  assert.equal(node.ownerId, 7);
+  assert.equal(readOwnedExceptionalSpeed(state), 0.5);
+  node.ownerId = 8;
+  assert.equal(readOwnedExceptionalSpeed(state), 0, 'stale player records must fail closed');
+  node.ownerId = 7;
+  node.drive.exceptionalSpeed = Infinity;
+  assert.equal(readOwnedExceptionalSpeed(state), 0, 'non-finite shared scalars must fail closed');
 });
 
 // ================================================================================================
@@ -209,11 +230,16 @@ function cameraDistance(state, camera) {
   return camera.obj.position.distanceTo(state.camera.focus);
 }
 
-function makeZoomEnvelopeState(speed, physicsEarned, motionReduce = false) {
+function makeZoomEnvelopeState(speed, physicsEarned, motionReduce = false, recordOwnerId = 1) {
   const { state, player } = makeState(motionReduce, null);
   state.camera.zoom = CHASE_ZOOM_DEFAULT;
   player.vel.x = speed;
-  player._flightFrame = { governor: { physicsEarned } };
+  // Camera deliberately consumes the prior render frame's owner-bound record. A conflicting live
+  // flight frame must not become a second provenance producer in this lane.
+  player._flightFrame = { governor: { physicsEarned: !physicsEarned } };
+  const drive = velocityBandDrive(speed, MAX_SPEED, false, motionReduce, physicsEarned);
+  publishVelocityLanguage(state, drive, null);
+  state.render.velocityLanguage.ownerId = recordOwnerId;
   return { state, player, camera: createChaseCamera(state) };
 }
 
@@ -261,7 +287,11 @@ check('physics-earned overspeed opens farther than ordinary max thrust, then ret
     `physics-earned 2x speed should open at least 12% farther (${earnedDistance.toFixed(3)} vs ` +
     `${ordinaryDistance.toFixed(3)} WU)`);
 
-  earned.player._flightFrame.governor.physicsEarned = false;
+  publishVelocityLanguage(
+    earned.state,
+    velocityBandDrive(MAX_SPEED * 2, MAX_SPEED, false, false, false),
+    null,
+  );
   const returnSamples = [];
   for (let i = 0; i < 60; i++) {
     earned.camera.follow(DT);
@@ -286,11 +316,26 @@ check('physics-earned overspeed opens farther than ordinary max thrust, then ret
 check('motionReduce suppresses the earned pullback but retains ordinary max-speed framing', () => {
   const ordinary = makeZoomEnvelopeState(MAX_SPEED, false);
   const ordinaryDistance = settleCameraDistance(ordinary.state, ordinary.camera);
-  const earnedReduced = makeZoomEnvelopeState(MAX_SPEED * 2, true, true);
+  const earnedReduced = makeZoomEnvelopeState(MAX_SPEED * 2, true, false);
+  assert.equal(earnedReduced.state.render.velocityLanguage.drive.exceptionalSpeed, 0.5,
+    'precondition: prior frame carries an earned midpoint scalar');
+  // Accessibility changes before feel publishes its next record. Camera must consult the current
+  // setting and suppress this one-frame-old earned scalar immediately, retaining ordinary framing.
+  earnedReduced.state.settings.video.motionReduce = true;
   const earnedReducedDistance = settleCameraDistance(earnedReduced.state, earnedReduced.camera);
   assert.ok(Math.abs(earnedReducedDistance - ordinaryDistance) < 0.5,
     `motionReduce should suppress only the earned extension and retain ordinary max framing ` +
     `(${earnedReducedDistance.toFixed(3)} vs ${ordinaryDistance.toFixed(3)} WU)`);
+});
+
+check('stale exceptional records never transfer between player owners', () => {
+  const ordinary = makeZoomEnvelopeState(MAX_SPEED * 2, false);
+  const ordinaryDistance = settleCameraDistance(ordinary.state, ordinary.camera);
+  const stale = makeZoomEnvelopeState(MAX_SPEED * 2, true, false, 2);
+  const staleDistance = settleCameraDistance(stale.state, stale.camera);
+  assert.ok(Math.abs(staleDistance - ordinaryDistance) < 0.5,
+    `mismatched record owner must retain ordinary framing (${staleDistance.toFixed(3)} vs ` +
+    `${ordinaryDistance.toFixed(3)} WU)`);
 });
 
 check('camera lead is ZERO under motionReduce (the prompt requirement, end-to-end)', () => {

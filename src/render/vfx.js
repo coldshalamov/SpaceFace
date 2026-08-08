@@ -47,6 +47,7 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
@@ -9308,16 +9309,21 @@ export const vfx = {
     totals[kind]++;
   },
 
-  _executeProjectileTrailPlan(plan, diag) {
+  _executeProjectileTrailPlan(plan, diag, exceptionalSpeed = 0) {
     const cls = plan.class || 'kinetic';
     const { x: bx, z: bz } = plan.origin;
     const { x: vx, z: vz } = plan.vel;
     const { x: backX, z: backZ } = plan.backVel;
     const trailAxis = plan.trailAxis;
+    const exceptional = clamp01Finite(exceptionalSpeed);
+    const exceptionalLength = Math.min(1.4, 1 + exceptional * 0.4);
+    const exceptionalOpacity = Math.min(1.15, 1 + exceptional * 0.15);
 
     if ((plan.mode === 'streak' || plan.mode === 'tracer') && plan.streak) {
       const streak = this._spawnProjectileTrailStreak(
-        bx, 0, bz, plan.life, plan.streak.width, plan.streak.length, plan.streak.opacity,
+        bx, 0, bz, plan.life, plan.streak.width,
+        plan.streak.length * exceptionalLength,
+        exceptionalTrailOpacity(plan.streak.opacity, exceptionalOpacity),
         plan.coreColor, vx * 0.12, vz * 0.12,
       );
       if (streak) {
@@ -9340,7 +9346,8 @@ export const vfx = {
       // instead of a row of independent smoke beads.
       const exhaust = this._spawnProjectileTrailStreak(
         bx, 0.12, bz, Math.min(0.12, plan.life * 0.4), plan.streak.width,
-        plan.streak.length, plan.streak.opacity, plan.coreColor,
+        plan.streak.length * exceptionalLength,
+        exceptionalTrailOpacity(plan.streak.opacity, exceptionalOpacity), plan.coreColor,
         vx * 0.04, vz * 0.04, backX, backZ,
       );
       if (exhaust) {
@@ -9363,13 +9370,14 @@ export const vfx = {
       // projectile axis and retire before gaps can form at the 45 Hz emitter cadence; unlike the
       // former point-particle recipe, neither layer can become a detached ball or bead trail.
       const inner = this._spawnProjectileTrailStreak(
-        bx, 0.17, bz, plan.life, plan.streak.width, plan.streak.length,
-        plan.streak.opacity, plan.coreColor, vx * 0.055, vz * 0.055, backX, backZ,
+        bx, 0.17, bz, plan.life, plan.streak.width, plan.streak.length * exceptionalLength,
+        exceptionalTrailOpacity(plan.streak.opacity, exceptionalOpacity),
+        plan.coreColor, vx * 0.055, vz * 0.055, backX, backZ,
       );
       const sheath = this._spawnProjectileTrailStreak(
         bx + backX * 0.22, 0.12, bz + backZ * 0.22, plan.life * 1.25,
-        plan.streak.width * 1.85, plan.streak.length * 0.72,
-        plan.streak.opacity * 0.32, plan.tailColor,
+        plan.streak.width * 1.85, plan.streak.length * 0.72 * exceptionalLength,
+        exceptionalTrailOpacity(plan.streak.opacity * 0.32, exceptionalOpacity), plan.tailColor,
         vx * 0.035, vz * 0.035, backX, backZ,
       );
       if (inner) {
@@ -9412,6 +9420,9 @@ export const vfx = {
     const qualityMul = q === 'low' ? 0.45 : (q === 'med' || q === 'medium' ? 0.72 : 1.0);
     const motionMul = (video && video.motionReduce) ? 0.5 : 1.0;
     const burst = (this._burst || 1) * qualityMul * motionMul;
+    const exceptionalSpeed = (video && video.motionReduce)
+      ? 0
+      : readOwnedExceptionalSpeed(this.state);
     this._projectileTrailFrameIndex = ((this._projectileTrailFrameIndex || 0) + 1) >>> 0;
 
     let anySpawned = false;
@@ -9425,7 +9436,8 @@ export const vfx = {
       if (plan.mode === 'propelled') {
         plan.emitSmoke = ((this._projectileTrailFrameIndex + i) % 3) === 0;
       }
-      if (this._executeProjectileTrailPlan(plan, diag)) anySpawned = true;
+      const playerExceptional = e.ownerId === this.state.playerId ? exceptionalSpeed : 0;
+      if (this._executeProjectileTrailPlan(plan, diag, playerExceptional)) anySpawned = true;
     }
     return anySpawned;
   },
@@ -10368,6 +10380,11 @@ function oreColor(id) {
 function clamp01Finite(value) {
   if (!Number.isFinite(value)) return 0;
   return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+function exceptionalTrailOpacity(opacity, multiplier) {
+  if (multiplier === 1) return opacity;
+  return Math.min(1, opacity * multiplier);
 }
 
 function releaseClassification(value) {

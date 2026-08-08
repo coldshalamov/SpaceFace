@@ -22,6 +22,7 @@ import {
   VL_COLOR,
   VL_COMPOSITE,
   publishVelocityLanguage,
+  resolveExceptionalSpeed,
   resolveRegionCrossfade,
   velocityBandDrive,
   velocityLanguageFlag,
@@ -135,11 +136,15 @@ const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x
 // The flag defaults ON in the browser, so the four-band language is what actually runs in the game;
 // the legacy branch is what runs under node, which is why the existing pins still describe it.
 // Read at CALL TIME — a cached flag cannot be opted into by a headless test.
-export function speedLineDrive(speed, maxSpeed, boosting, motionReduce) {
+export function speedLineDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned = false) {
   if (velocityLanguageFlag('bands')) {
-    return velocityBandDrive(speed, maxSpeed, boosting, motionReduce);
+    return velocityBandDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned);
   }
-  return speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce);
+  const drive = speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce);
+  drive.exceptionalSpeed = motionReduce
+    ? 0
+    : resolveExceptionalSpeed(speed, maxSpeed, physicsEarned);
+  return drive;
 }
 
 // The Slice 0 bounded drive, verbatim. Exported so the probe can assert the legacy branch directly
@@ -319,7 +324,9 @@ export const feel = {
     }
 
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-    const drive = speedLineDrive(speed, maxSpd, boosting, mr);
+    const physicsEarned = !!(player && player._flightFrame && player._flightFrame.governor
+      && player._flightFrame.governor.physicsEarned === true);
+    const drive = speedLineDrive(speed, maxSpd, boosting, mr, physicsEarned);
 
     // Region volumes (D7, second half). `player.pos` is GLOBAL (`global_v1`) — world.js spawns
     // entities through `_toGlobal`, and the render frame membrane converts to the rebased draw frame

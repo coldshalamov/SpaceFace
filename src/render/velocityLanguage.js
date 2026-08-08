@@ -138,6 +138,9 @@ export const VL_BAND3_COUNT_FLOOR = 2;
  */
 export const VL_BOOST_BIAS = 0;
 
+/** Speed ratio where the bounded physics-earned presentation scalar reaches one. */
+export const VL_EXCEPTIONAL_SPEED_RATIO_MAX = 3;
+
 // motionReduce factors, one per channel. Separate factors rather than one folded scale so a future
 // channel cannot inherit a wrong reduction by accident, and so the intent of each is readable.
 const MR_COUNT = 0.5;
@@ -188,6 +191,18 @@ function smooth(t) {
   return c * c * (3 - 2 * c);
 }
 
+/**
+ * Presentation-only intensity for speed earned from the live flight governor.
+ * Boost is deliberately absent: only exact physics provenance may open this channel.
+ */
+export function resolveExceptionalSpeed(speed, maxSpeed, physicsEarned = false) {
+  if (physicsEarned !== true) return 0;
+  if (!Number.isFinite(speed) || !Number.isFinite(maxSpeed) || !(maxSpeed > 0)) return 0;
+  const ratio = Math.max(0, speed) / maxSpeed;
+  if (!(ratio > 1)) return 0;
+  return smooth((ratio - 1) / (VL_EXCEPTIONAL_SPEED_RATIO_MAX - 1));
+}
+
 // ---------------------------------------------------------------------------------------------
 // the band drive
 // ---------------------------------------------------------------------------------------------
@@ -215,6 +230,7 @@ function silentRecord(speedRatio, effectiveRatio) {
     // camera (published for the camera lane; this module never applies it)
     cameraLeadWU: 0,
     shakeScale: 1,
+    exceptionalSpeed: 0,
   };
 }
 
@@ -241,7 +257,7 @@ export function resolveVelocityBand(effectiveRatio) {
  * @param {boolean} motionReduce
  * @returns {object} a plain (unfrozen, allocation-per-call) record; see silentRecord for the shape
  */
-export function velocityBandDrive(speed, maxSpeed, boosting, motionReduce) {
+export function velocityBandDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned = false) {
   const maxSpd = Math.max(1, Number.isFinite(maxSpeed) ? maxSpeed : 1);
   // Screen at the entry point. A NaN or Infinity anywhere downstream would otherwise clamp to the
   // WRONG end on the descending ramps (count and alpha both fall with speed above band 2), so the
@@ -330,6 +346,9 @@ export function velocityBandDrive(speed, maxSpeed, boosting, motionReduce) {
   rec.smear = Math.min(VL_SMEAR_MAX, Math.max(0, rec.smear));
   rec.cameraLeadWU = Math.min(VL_CAMERA_LEAD_WU_MAX, Math.max(0, rec.cameraLeadWU));
   rec.maxAlpha = rec.targetOpacity;
+  rec.exceptionalSpeed = motionReduce
+    ? 0
+    : resolveExceptionalSpeed(speed, maxSpeed, physicsEarned);
 
   return rec;
 }
@@ -572,9 +591,10 @@ export function publishVelocityLanguage(state, drive, region) {
   if (!state.render) state.render = {};
   let node = state.render.velocityLanguage;
   if (!node) {
-    node = { schema: 'velocity_language_v1', drive: null, region: null, frame: 0 };
+    node = { schema: 'velocity_language_v1', ownerId: null, drive: null, region: null, frame: 0 };
     state.render.velocityLanguage = node;
   }
+  node.ownerId = state.playerId ?? null;
   node.drive = drive || null;
   node.region = region || null;
   node.frame = (node.frame || 0) + 1;
@@ -584,4 +604,13 @@ export function publishVelocityLanguage(state, drive, region) {
 /** Read the published record, or null. Never derives — a reader that derives is a second producer. */
 export function readVelocityLanguage(state) {
   return (state && state.render && state.render.velocityLanguage) || null;
+}
+
+/** Read the prior-frame exceptional scalar only when it belongs to the current player. */
+export function readOwnedExceptionalSpeed(state) {
+  const node = readVelocityLanguage(state);
+  const playerId = state && state.playerId;
+  if (playerId == null || !node || node.schema !== 'velocity_language_v1' || node.ownerId !== playerId) return 0;
+  const value = node.drive && node.drive.exceptionalSpeed;
+  return clamp01(value);
 }

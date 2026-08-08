@@ -51,12 +51,14 @@ import {
   VL_COMPOSITE,
   VL_COUNT_MAX,
   VL_GRAIN_MAX,
+  VL_EXCEPTIONAL_SPEED_RATIO_MAX,
   VL_LEN_SCALE_MAX,
   VL_PARALLAX_GAIN_MAX,
   VL_TAPER_END,
   REGION_CROSSFADE_WU,
   isPlausibleCameraStep,
   resolveRegionCrossfade,
+  resolveExceptionalSpeed,
   resolveVelocityBand,
   smearStretch,
   streamPhaseStep,
@@ -240,7 +242,25 @@ check('legacy branch is the node default, so the pins above describe what they c
     'bands flag must default OFF under node (IS_BROWSER), or the legacy pins above are meaningless');
   const viaSeam = speedLineDrive(MAX_SPEED, MAX_SPEED, false, false);
   const direct = speedLineDriveLegacy(MAX_SPEED, MAX_SPEED, false, false);
-  assert.deepEqual(viaSeam, direct, 'flag-off seam must route to the legacy drive verbatim');
+  assert.deepEqual({ ...viaSeam, exceptionalSpeed: undefined }, { ...direct, exceptionalSpeed: undefined },
+    'flag-off seam must preserve the bounded legacy drive fields verbatim');
+  assert.equal(viaSeam.exceptionalSpeed, 0,
+    'the resident drive must carry a silent exceptional-speed field even on the legacy visual branch');
+});
+
+check('exceptional speed is strict physics provenance, bounded, and boost-independent', () => {
+  assert.equal(VL_EXCEPTIONAL_SPEED_RATIO_MAX, 3);
+  assert.equal(resolveExceptionalSpeed(MAX_SPEED, MAX_SPEED, true), 0);
+  assert.equal(resolveExceptionalSpeed(2 * MAX_SPEED, MAX_SPEED, true), 0.5);
+  assert.equal(resolveExceptionalSpeed(3 * MAX_SPEED, MAX_SPEED, true), 1);
+  assert.equal(resolveExceptionalSpeed(99 * MAX_SPEED, MAX_SPEED, true), 1);
+  for (const provenance of [false, null, undefined, 1, 'true', {}]) {
+    assert.equal(resolveExceptionalSpeed(3 * MAX_SPEED, MAX_SPEED, provenance), 0);
+  }
+  const boostOnly = speedLineDrive(2 * MAX_SPEED, MAX_SPEED, true, false, false);
+  assert.equal(boostOnly.exceptionalSpeed, 0, 'boost must not manufacture exceptional speed');
+  const reduced = speedLineDrive(2 * MAX_SPEED, MAX_SPEED, false, true, true);
+  assert.equal(reduced.exceptionalSpeed, 0, 'motionReduce must suppress exceptional amplification');
 });
 
 // Representative speed ratios, one comfortably inside each band plus the seams themselves.
