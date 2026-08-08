@@ -9,6 +9,7 @@ import {
   DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
   applyDiagnosticVariantToState,
   assertTier1CountersBooted,
+  awaitElectronInitialCanonicalLoad,
   cleanupIsolatedElectronProfile,
   installTier1CountersInitScript,
   launchIsolatedElectronApplication,
@@ -186,6 +187,145 @@ test('Electron Tier-1 reload owns expected navigation and releases it on failure
     ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
     ['end', 47],
   ]);
+});
+
+test('Electron Tier-1 reload waits for the initial canonical load to settle in main', async () => {
+  const events = [];
+  let releaseInitialLoad;
+  const initialLoad = new Promise((resolve) => { releaseInitialLoad = resolve; });
+  const rootUrl = 'http://127.0.0.1:64291/';
+  const page = {
+    url() { return rootUrl; },
+    async waitForLoadState(state, options) {
+      events.push(['wait', state, options]);
+      await initialLoad;
+      events.push('load-settled');
+    },
+    async addInitScript() { events.push('init'); },
+    async reload(options) {
+      events.push(['reload', options]);
+      return { ok: true };
+    },
+  };
+  const electronApp = {
+    async browserWindow(boundPage) {
+      events.push(['bind-window', boundPage === page]);
+      return {
+        async evaluate(_callback, expectedRootUrl) {
+          events.push(['main-turn', expectedRootUrl]);
+          return { url: expectedRootUrl, loadingMainFrame: false };
+        },
+        async dispose() { events.push('window-handle-disposed'); },
+      };
+    },
+  };
+  const tracker = {
+    beginExpectedNavigation(label) {
+      events.push(['begin', label]);
+      return 53;
+    },
+    endExpectedNavigation(token) {
+      events.push(['end', token]);
+      return token === 53;
+    },
+  };
+
+  const prepareAndReload = (async () => {
+    await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl, { timeoutMs: 7654 });
+    events.push('ownership-ready');
+    return reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 });
+  })();
+  await Promise.resolve();
+  assert.deepEqual(events, [['wait', 'load', { timeout: 7654 }]],
+    'the instrumentation reload must remain blocked while Electron main owns the initial load');
+
+  releaseInitialLoad();
+  await prepareAndReload;
+  assert.deepEqual(events, [
+    ['wait', 'load', { timeout: 7654 }],
+    'load-settled',
+    ['bind-window', true],
+    ['main-turn', rootUrl],
+    'window-handle-disposed',
+    'ownership-ready',
+    'init',
+    ['begin', 'tier1-counter-install'],
+    ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
+    ['end', 53],
+  ]);
+});
+
+test('Electron initial-load proof rejects a mismatched page owner and disposes its handle', async () => {
+  const events = [];
+  const rootUrl = 'http://127.0.0.1:64291/';
+  const page = {
+    url() { return rootUrl; },
+    async waitForLoadState() { events.push('load'); },
+  };
+  const electronApp = {
+    async browserWindow(boundPage) {
+      assert.equal(boundPage, page);
+      events.push('bound');
+      return {
+        async evaluate() {
+          events.push('evaluated');
+          return { url: 'http://127.0.0.1:65530/', loadingMainFrame: false };
+        },
+        async dispose() { events.push('disposed'); },
+      };
+    },
+  };
+  await assert.rejects(
+    awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl),
+    /main-process window left its canonical root/,
+  );
+  assert.deepEqual(events, ['load', 'bound', 'evaluated', 'disposed']);
+});
+
+test('Electron launch publishes one canonical tracker and exact root before Tier-1 reload', () => {
+  const launchStart = probeSource.indexOf('async function launchElectron(');
+  const launchEnd = probeSource.indexOf('\nexport async function awaitElectronInitialCanonicalLoad', launchStart);
+  const launch = probeSource.slice(launchStart, launchEnd);
+  assert.ok(launchStart >= 0 && launchEnd > launchStart, 'Electron launch implementation must be inspectable');
+  assert.equal((launch.match(/createElectronCanonicalUrlTracker\(/g) || []).length, 1,
+    'the launch must own exactly one canonical lifecycle tracker');
+  const appAcquired = launch.indexOf('const electronApp = await launchIsolatedElectronApplication');
+  const appPublished = launch.indexOf('publishOwnership();', appAcquired);
+  const processRead = launch.indexOf('childProcess = electronApp.process();', appAcquired);
+  const processPublished = launch.indexOf('publishOwnership();', processRead);
+  const monitorCreated = launch.indexOf('processMonitor = createElectronProcessMonitor', processRead);
+  const monitorPublished = launch.indexOf('publishOwnership();', monitorCreated);
+  const trackerCreated = launch.indexOf('pageIssueTracker = createStrictElectronApplicationIssueTracker', monitorCreated);
+  const trackerPublished = launch.indexOf('publishOwnership();', trackerCreated);
+  const firstWindow = launch.indexOf('await electronApp.firstWindow', trackerCreated);
+  assert.ok(
+    appAcquired >= 0
+      && appPublished > appAcquired
+      && processRead > appPublished
+      && processPublished > processRead
+      && monitorCreated > processPublished
+      && monitorPublished > monitorCreated
+      && trackerCreated > monitorPublished
+      && trackerPublished > trackerCreated
+      && firstWindow > trackerPublished,
+    'app, child, monitor, and issue-tracker ownership must publish before each later setup seam',
+  );
+  const pagePublished = launch.indexOf('publishOwnership({ page });', firstWindow);
+  const pollingInstalled = launch.indexOf('installCspSafePlaywrightPolling(page);', firstWindow);
+  const canonicalTrackerCreated = launch.indexOf('const canonicalUrlTracker = createElectronCanonicalUrlTracker', pollingInstalled);
+  const canonicalTrackerPublished = launch.indexOf('publishOwnership({\n    page,\n    canonicalUrlTracker,\n  });', canonicalTrackerCreated);
+  assert.ok(
+    pagePublished > firstWindow
+      && pollingInstalled > pagePublished
+      && canonicalTrackerCreated > pollingInstalled
+      && canonicalTrackerPublished > canonicalTrackerCreated,
+    'page and canonical tracker ownership must publish before each later page setup seam',
+  );
+  const rootPublication = launch.indexOf('canonicalUrlTracker,\n    rootUrl,');
+  const initialLoad = launch.indexOf('await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);');
+  const reload = launch.indexOf('await reloadElectronWithTier1Counters(page, pageIssueTracker);');
+  assert.ok(rootPublication >= 0 && initialLoad > rootPublication && reload > initialLoad,
+    'page, tracker, and exact root cleanup ownership must precede settled-load proof and reload');
 });
 
 test('isolated Electron launch rejection removes its unpublished owned profile', async () => {

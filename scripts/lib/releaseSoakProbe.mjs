@@ -226,18 +226,20 @@ export async function runReleaseSoakProbe({
         processMonitor = owned.processMonitor;
         pageIssueTracker = owned.pageIssueTracker;
         isolatedLaunch = owned.isolatedLaunch;
+        page = owned.page || page;
+        canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
+        rootUrl = owned.rootUrl || rootUrl;
       });
-      ({ page, electronApp, childProcess, processMonitor, pageIssueTracker, isolatedLaunch } = launched);
-      canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
-        bootstrapTimeoutMs: 10_000,
-        pollIntervalMs: 75,
-        allowAnyLoopbackPort: true,
-      });
-      await pageIssueTracker.bindAndBackfillPage(page);
-      rootUrl = await canonicalUrlTracker.waitForCanonicalRoot(10_000);
-      rootUrl = assertIsolatedElectronRootUrl(rootUrl);
-      assert.deepEqual(inspectCanonicalRootUrl(page.url(), rootUrl).failures, [], 'Electron must remain on its launcher-owned canonical root');
-      await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+      ({
+        page,
+        electronApp,
+        childProcess,
+        processMonitor,
+        pageIssueTracker,
+        isolatedLaunch,
+        canonicalUrlTracker,
+        rootUrl,
+      } = launched);
     }
 
     page.setDefaultTimeout(30_000);
@@ -484,22 +486,58 @@ async function launchElectron(
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
   const electronApp = await launchIsolatedElectronApplication(electron, isolatedLaunch);
-  const processMonitor = createElectronProcessMonitor({ electronApp, childProcess: electronApp.process() });
-  const childProcess = processMonitor.childProcess;
-  const pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp);
-  // Publish every cleanup handle before firstWindow/init/reload can fail. The caller's outer finally
-  // then owns both the runtime and its isolated profile even if setup never returns a launch record.
-  onOwnership({
+  let childProcess = null;
+  let processMonitor = null;
+  let pageIssueTracker = null;
+  const publishOwnership = (extra = {}) => onOwnership({
     electronApp,
     processMonitor,
     childProcess,
     pageIssueTracker,
     isolatedLaunch,
     runtimeProvisioning,
+    ...extra,
   });
+  // A successful Electron launch is already an owned live runtime. Publish the application/profile
+  // before even asking for its process so any synchronous setup failure still reaches outer cleanup.
+  publishOwnership();
+  childProcess = electronApp.process();
+  publishOwnership();
+  processMonitor = createElectronProcessMonitor({ electronApp, childProcess });
+  childProcess = processMonitor.childProcess;
+  publishOwnership();
+  pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp);
+  // Publish every cleanup handle before firstWindow/init/reload can fail. The caller's outer finally
+  // then owns both the runtime and its isolated profile even if setup never returns a launch record.
+  publishOwnership();
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
+  publishOwnership({ page });
   installCspSafePlaywrightPolling(page);
+  const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+    bootstrapTimeoutMs: 10_000,
+    pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
+  });
+  // Publish the page and its single lifecycle tracker as soon as they exist. If canonical
+  // acquisition fails, the caller can still close the exact window and stop the exact tracker.
+  publishOwnership({
+    page,
+    canonicalUrlTracker,
+  });
+  await pageIssueTracker.bindAndBackfillPage(page);
+  const rootUrl = assertIsolatedElectronRootUrl(
+    await canonicalUrlTracker.waitForCanonicalRoot(10_000),
+  );
+  // The initial BrowserWindow.loadURL() is still owned by Electron main when firstWindow()
+  // resolves. Publish its exact listener before any later setup can fail, then wait for the full
+  // initial load to settle before an instrumentation reload is allowed to begin.
+  publishOwnership({
+    page,
+    canonicalUrlTracker,
+    rootUrl,
+  });
+  await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
   if (enableTier1Counters) {
     // Electron creates its first page as part of app startup, before Playwright can install an init
     // script. Reload the same canonical route once inside the same owned runtime after arming the
@@ -512,9 +550,56 @@ async function launchElectron(
     childProcess,
     pageIssueTracker,
     page,
+    canonicalUrlTracker,
+    rootUrl,
     isolatedLaunch,
     runtimeProvisioning,
   };
+}
+
+export async function awaitElectronInitialCanonicalLoad(
+  page,
+  electronApp,
+  rootUrl,
+  { timeoutMs = 90_000 } = {},
+) {
+  assert(page && typeof page.waitForLoadState === 'function',
+    'Electron initial-load ownership requires a page load-state seam');
+  assert(electronApp && typeof electronApp.browserWindow === 'function',
+    'Electron initial-load ownership requires a page-bound BrowserWindow seam');
+  assertIsolatedElectronRootUrl(rootUrl);
+  await page.waitForLoadState('load', { timeout: timeoutMs });
+  // BrowserWindow.loadURL() resolves in Electron main after did-finish-load. Crossing one main-loop
+  // turn makes that promise settlement an explicit prerequisite rather than racing it from the
+  // Playwright renderer connection returned by firstWindow(). Resolve the BrowserWindow from that
+  // exact page rather than accepting an unrelated same-root sibling, and always release the handle.
+  const browserWindow = await electronApp.browserWindow(page);
+  let observation;
+  try {
+    observation = await browserWindow.evaluate(async (win, expectedRootUrl) => {
+      await new Promise((resolve) => setImmediate(resolve));
+      return {
+        url: win.webContents.getURL(),
+        loadingMainFrame: win.webContents.isLoadingMainFrame(),
+      };
+    }, rootUrl);
+  } finally {
+    await browserWindow.dispose();
+  }
+  assert(observation, 'Electron initial canonical BrowserWindow disappeared before Tier-1 reload');
+  assert.equal(observation.loadingMainFrame, false,
+    'Electron initial canonical BrowserWindow was still loading before Tier-1 reload');
+  assert.deepEqual(
+    inspectCanonicalRootUrl(observation.url, rootUrl).failures,
+    [],
+    'Electron main-process window left its canonical root before Tier-1 reload',
+  );
+  assert.deepEqual(
+    inspectCanonicalRootUrl(page.url(), rootUrl).failures,
+    [],
+    'Electron Playwright page left its canonical root before Tier-1 reload',
+  );
+  return observation;
 }
 
 export async function installTier1CountersInitScript(target) {
@@ -3700,6 +3785,9 @@ async function runPerformanceAttributionProbe({
         pageIssueTracker = owned.pageIssueTracker;
         isolatedLaunch = owned.isolatedLaunch;
         electronRuntime = owned.runtimeProvisioning;
+        page = owned.page || page;
+        canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
+        rootUrl = owned.rootUrl || rootUrl;
       }, taskId, { enableTier1Counters });
       ({
         page,
@@ -3709,22 +3797,14 @@ async function runPerformanceAttributionProbe({
         pageIssueTracker,
         isolatedLaunch,
         runtimeProvisioning: electronRuntime,
+        canonicalUrlTracker,
+        rootUrl,
       } = launched);
-      canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
-        bootstrapTimeoutMs: 10_000,
-        pollIntervalMs: 75,
-        allowAnyLoopbackPort: true,
-      });
-      await pageIssueTracker.bindAndBackfillPage(page);
-      rootUrl = assertIsolatedElectronRootUrl(
-        await canonicalUrlTracker.waitForCanonicalRoot(10_000),
-      );
       assert.deepEqual(
         inspectCanonicalRootUrl(page.url(), rootUrl).failures,
         [],
         'Electron attribution must remain on its launcher-owned canonical root',
       );
-      await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
       if (enableTier1Counters) await assertTier1CountersBooted(page, { phase: 'initial boot' });
     }
     page.setDefaultTimeout(30_000);
