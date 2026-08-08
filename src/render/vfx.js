@@ -229,6 +229,22 @@ const TRAIL_STREAK_CAP = 96;
 const CONTACT_SPARK_COOLDOWN_TICKS = 6;
 const COLLISION_PRESENTATION_CACHE_CAP = 128;
 
+function isCollisionEntityId(value) {
+  return (typeof value === 'number' && Number.isFinite(value))
+    || (typeof value === 'string' && value.length > 0);
+}
+
+function isProductionPhysicsImpactReceipt(payload) {
+  if (!payload || (payload.backend !== 'rapier-dynamic' && payload.backend !== 'custom')) return false;
+  if (payload.consequenceKernelVersion !== 1
+    || !Number.isFinite(payload.tick) || payload.tick < 0
+    || !isCollisionEntityId(payload.aId) || !isCollisionEntityId(payload.bId)
+    || String(payload.aId) === String(payload.bId)
+    || !payload.pos || !Number.isFinite(payload.pos.x) || !Number.isFinite(payload.pos.z)
+    || !Number.isFinite(payload.impulse) || !(payload.impulse > 0)) return false;
+  return true;
+}
+
 // Sprite "kinds" — drive how a pooled sprite ages (scale/opacity curve).
 const SPR_FLASH = 0;   // punch-out flash (muzzle, impact, explosion core): scale grows, opacity fades
 const SPR_RING = 1;    // expanding shockwave / shield ripple ring: radius eases out, opacity fades
@@ -577,6 +593,7 @@ export const vfx = {
     this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
+    this._collisionPresentationTick = -1;
     this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
     this._admissionSerial = 0;
     this._explosionEmitter = (phase, entry) => {
@@ -2929,6 +2946,14 @@ export const vfx = {
     const tick = Number.isFinite(p && p.tick)
       ? Math.max(0, Math.trunc(p.tick))
       : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    if (Number.isFinite(this._collisionPresentationTick) && this._collisionPresentationTick >= 0
+      && tick < this._collisionPresentationTick) {
+      // A simulation restart/load can move tick backwards before its boundary event reaches render.
+      // Old cooldowns and medium tokens belong to the prior presentation epoch.
+      this._collisionContactTicks.clear();
+      if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
+    }
+    this._collisionPresentationTick = tick;
     const key = this._collisionPairKey(p && p.aId, p && p.bId);
     const previous = this._collisionContactTicks.get(key);
     if (Number.isFinite(previous) && tick - previous < CONTACT_SPARK_COOLDOWN_TICKS) return false;
@@ -2959,6 +2984,7 @@ export const vfx = {
   _resetCollisionPresentation() {
     if (this._collisionContactTicks) this._collisionContactTicks.clear();
     if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
+    this._collisionPresentationTick = -1;
   },
 
   _collisionContactAxis(p) {
@@ -3039,9 +3065,10 @@ export const vfx = {
   },
 
   _onPhysicsImpact(p) {
-    // Shipping SG-02/Rapier publishes physics:impact but not the legacy `collision` companion.
-    // Custom physics publishes both, so it deliberately stays on _onCollision to avoid double VFX.
-    if (!p || !p.pos || p.backend !== 'rapier-dynamic' || !this._admitLowCollisionContact(p)) return false;
+    // Shipping SG-02/Rapier publishes only this versioned receipt. Custom station contact also
+    // publishes only this receipt; ordinary custom contact follows it with legacy `collision`, which
+    // the shared pair/tick cooldown consumes rather than drawing twice.
+    if (!isProductionPhysicsImpactReceipt(p) || !this._admitLowCollisionContact(p)) return false;
     return this._emitLowCollisionContact(p);
   },
 
@@ -3109,6 +3136,10 @@ export const vfx = {
       sourceType: p && (p.type || p.victimClass) || null,
       priority: admission.admissionPriority,
     });
+    if (entry) {
+      entry.hasDirection = !!(direction && Number.isFinite(direction.x)
+        && Number.isFinite(direction.z) && Math.hypot(direction.x, direction.z) > 1e-8);
+    }
     return !!entry;
   },
 
@@ -3537,9 +3568,25 @@ export const vfx = {
     let contactX = entry.hasNormal ? entry.normalX : entry.dirX;
     let contactZ = entry.hasNormal ? entry.normalZ : entry.dirZ;
     if (cause === 'terrain_collision') {
-      const incomingDot = contactX * entry.targetVelocityX + contactZ * entry.targetVelocityZ;
-      if (incomingDot > 0) { contactX = -contactX; contactZ = -contactZ; }
+      if (entry.hasNormal) {
+        // SG-02 normal is an axis. Canonicalize it first, then choose a signed half only from
+        // truthful motion/causal direction. Tangent or absent inputs retain the canonical axis.
+        if (contactX < -1e-8 || (Math.abs(contactX) <= 1e-8 && contactZ < 0)) {
+          contactX = -contactX;
+          contactZ = -contactZ;
+        }
+        let incomingDot = contactX * entry.targetVelocityX + contactZ * entry.targetVelocityZ;
+        if (Math.abs(incomingDot) <= 1e-8 && entry.hasDirection !== false) {
+          incomingDot = contactX * entry.dirX + contactZ * entry.dirZ;
+        }
+        if (incomingDot > 1e-8) { contactX = -contactX; contactZ = -contactZ; }
+      } else {
+        const incomingDot = contactX * entry.targetVelocityX + contactZ * entry.targetVelocityZ;
+        if (incomingDot > 0) { contactX = -contactX; contactZ = -contactZ; }
+      }
     }
+    if (Math.abs(contactX) < 1e-12) contactX = 0;
+    if (Math.abs(contactZ) < 1e-12) contactZ = 0;
     const contactAngle = Math.atan2(contactZ, contactX);
     const tangentX = -contactZ;
     const tangentZ = contactX;
@@ -5819,6 +5866,7 @@ export const vfx = {
     const dv = Math.max(0, Number(p.deltaV) || 0);
     const hard = p.control === 'tumble';
     const magnitude = Math.max(0.6, Math.min(2.4, dv / 14));
+    const authoredScale = magnitude;
     const scale = magnitude * acc.flashSizeScale;
     const op = acc.flashOpacityScale;
     const axisAngle = this._collisionContactAxis(p);
@@ -5830,8 +5878,9 @@ export const vfx = {
     const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
     for (const side of [-1, 1]) {
       this._spawnSprite(SPR_FLASH,
-        pos.x + axisX * side * 0.08 * scale, 0, pos.z + axisZ * side * 0.08 * scale,
-        0.10, 1.1 * scale, 3.4 * scale, 0.9 * op, 0.0,
+        pos.x + axisX * side * 0.08 * authoredScale, 0,
+        pos.z + axisZ * side * 0.08 * authoredScale,
+        0.10, 1.1 * authoredScale, 3.4 * authoredScale, 0.9, 0.0,
         terrain ? '#ffe9c4' : '#dfefff', axisX * side * 6, axisZ * side * 6,
         2.6, axisAngle);
       for (let k = 0; k < puffsPerSide; k++) {
@@ -5856,9 +5905,9 @@ export const vfx = {
         axisX * side, axisZ * side,
       );
     }
-    const lightPeak = 2.6 * magnitude * acc.eventLightPeakScale;
-    if (lightPeak > 0.01) {
-      this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff', lightPeak, 9, 120 + dv * 3);
+    if (acc.eventLightPeakScale > 0) {
+      this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
+        2.6 * magnitude, 9, 120 + dv * 3);
     }
     return true;
   },

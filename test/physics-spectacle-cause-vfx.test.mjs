@@ -59,6 +59,21 @@ function captureCause(cause, { reduced = false, overrides = {} } = {}) {
   return calls;
 }
 
+function productionImpact(overrides = {}) {
+  return {
+    consequenceKernelVersion: 1,
+    backend: 'rapier-dynamic',
+    tick: 20,
+    aId: 1,
+    bId: 2,
+    dp: 220,
+    impulse: 220,
+    pos: { x: 2, z: 0 },
+    normal: { x: 1, z: 0 },
+    ...overrides,
+  };
+}
+
 function structuralSignature(calls) {
   return calls.map((call) => {
     if (call.type === 'streak') {
@@ -118,6 +133,47 @@ test('cause fragments inherit target velocity and breakup axes rotate with recei
     'unoriented terrain normal chooses the half-space opposing incoming target velocity');
 });
 
+test('terrain collision contact geometry is normal-sign invariant for tangent and zero velocity', () => {
+  const cases = [
+    {
+      label: 'tangent target velocity uses causal direction',
+      overrides: {
+        targetVelocityX: 0,
+        targetVelocityZ: 12,
+        dirX: -1,
+        dirZ: 0,
+        hasDirection: true,
+      },
+    },
+    {
+      label: 'zero velocity and tangent direction use the canonical normal axis',
+      overrides: {
+        targetVelocityX: 0,
+        targetVelocityZ: 0,
+        dirX: 0,
+        dirZ: 1,
+        hasDirection: true,
+      },
+    },
+  ];
+  for (const reduced of [false, true]) {
+    for (const scenario of cases) {
+      const positive = captureCause('terrain_collision', {
+        reduced,
+        overrides: { ...scenario.overrides, normalX: 1, normalZ: 0 },
+      });
+      const negative = captureCause('terrain_collision', {
+        reduced,
+        overrides: { ...scenario.overrides, normalX: -1, normalZ: 0 },
+      });
+      assert.deepEqual(negative, positive,
+        `${scenario.label} (${reduced ? 'reduced' : 'normal'})`);
+      assert.ok(positive.some((call) => call.type === 'streak'),
+        `${scenario.label} retains direction-locked structure`);
+    }
+  }
+});
+
 test('reduced settings retain direction-locked structure with lower count, travel, opacity, and no light', () => {
   const normal = captureCause('explosive');
   const reduced = captureCause('explosive', { reduced: true });
@@ -167,7 +223,7 @@ function captureCollisionRungs(normal, reduced = false) {
   low.harness.state.settings.accessibility.flashReduce = reduced;
   low.harness._onPhysicsImpact({
     backend: 'rapier-dynamic', consequenceKernelVersion: 1, tick: 40,
-    aId: 1, bId: 2, dp: 240, pos: { x: 2, z: 0 }, normal,
+    aId: 1, bId: 2, dp: 240, impulse: 240, pos: { x: 2, z: 0 }, normal,
   });
 
   const medium = collisionHarness();
@@ -204,17 +260,14 @@ test('unoriented SG-02 contact normals are sign-invariant and bilateral in norma
 
 test('collision rungs keep low contact, real medium consequence, and catastrophic kill ownership separate', () => {
   const { harness, calls } = collisionHarness();
-  const impact = {
-    backend: 'rapier-dynamic', consequenceKernelVersion: 1, tick: 20,
-    aId: 1, bId: 2, dp: 220, pos: { x: 2, z: 0 }, normal: { x: 1, z: 0 },
-  };
+  const impact = productionImpact();
   assert.equal(harness._onPhysicsImpact(impact), true);
   const lowCount = calls.length;
   assert.ok(lowCount > 0);
   assert.equal(harness._onPhysicsImpact(impact), false, 'pair cooldown rate-limits resting contacts');
   assert.equal(calls.length, lowCount);
-  assert.equal(harness._onPhysicsImpact({ ...impact, backend: 'custom', tick: 21 }), false,
-    'custom backend low contact stays on the legacy collision event, avoiding a duplicate');
+  assert.equal(harness._onPhysicsImpact({ ...impact, backend: 'other', tick: 21 }), false,
+    'unknown backends cannot enter the production impact presentation route');
   assert.equal(calls.some((call) => call.type === 'explosion'), false);
   harness._resetCollisionPresentation();
   assert.equal(harness._onPhysicsImpact({ ...impact, tick: 21 }), true,
@@ -255,6 +308,61 @@ test('collision rungs keep low contact, real medium consequence, and catastrophi
   assert.ok(reducedStreak && Number.isFinite(reducedStreak.args[10]) && Number.isFinite(reducedStreak.args[11]),
     'reduced medium collision retains its explicit contact axis');
   assert.equal(reduced.calls.some((call) => call.type === 'light'), false);
+});
+
+test('physics impact admission requires a production receipt and starts a new epoch on tick rollback', () => {
+  const invalidReceipts = [
+    productionImpact({ consequenceKernelVersion: 0 }),
+    productionImpact({ aId: null }),
+    productionImpact({ aId: { id: 1 } }),
+    productionImpact({ bId: '' }),
+    productionImpact({ bId: 1 }),
+    productionImpact({ pos: { x: Number.NaN, z: 0 } }),
+    productionImpact({ pos: { x: 2, z: Number.POSITIVE_INFINITY } }),
+    productionImpact({ impulse: 0 }),
+    productionImpact({ impulse: -1 }),
+    productionImpact({ impulse: undefined }),
+    productionImpact({ impulse: Number.NaN }),
+    productionImpact({ tick: -1 }),
+    productionImpact({ tick: Number.NaN }),
+  ];
+  for (const receipt of invalidReceipts) {
+    const probe = collisionHarness();
+    assert.equal(probe.harness._onPhysicsImpact(receipt), false);
+    assert.equal(probe.calls.length, 0, 'invalid impact truth cannot mutate a presentation pool');
+  }
+
+  const epoch = collisionHarness();
+  assert.equal(epoch.harness._onPhysicsImpact(productionImpact({ tick: 100 })), true);
+  const firstEpochCount = epoch.calls.length;
+  assert.equal(epoch.harness._onPhysicsImpact(productionImpact({ tick: 101 })), false,
+    'same-epoch cooldown still rejects a repeated pair');
+  assert.equal(epoch.calls.length, firstEpochCount);
+  assert.equal(epoch.harness._onPhysicsImpact(productionImpact({ tick: 2 })), true,
+    'simulation tick rollback begins a fresh presentation epoch');
+  assert.ok(epoch.calls.length > firstEpochCount);
+});
+
+test('custom station impacts retain one low cue while ordinary custom collision pairs deduplicate', () => {
+  const station = collisionHarness();
+  assert.equal(station.harness._onPhysicsImpact(productionImpact({ backend: 'custom' })), true,
+    'custom station branch publishes only the versioned physics impact');
+  const physicsCueCount = station.calls.length;
+  assert.equal(station.harness._onCollision({
+    aId: 1,
+    bId: 2,
+    pos: { x: 2, z: 0 },
+    dp: 220,
+  }), false, 'ordinary custom collision companion is suppressed by the same pair/tick cooldown');
+  assert.equal(station.calls.length, physicsCueCount);
+
+  const legacy = collisionHarness();
+  assert.equal(legacy.harness._onCollision({
+    aId: 1,
+    bId: 2,
+    pos: { x: 2, z: 0 },
+    dp: 220,
+  }), true, 'legacy collision-only callers retain their low contact cue');
 });
 
 test('source contract contains no random or rupture/pressure ring fallback in destruction emitter', () => {
@@ -307,4 +415,44 @@ test('causal receipt runs through the real pooled VFX substrates with inherited 
   assert.ok(system._liveTrailStreakCount > 0);
   assert.ok(Array.from(system._activeTrailStreaks.slice(0, system._liveTrailStreakCount),
     (slot) => system._ts[slot].admissionPriority).every((priority) => priority === 0.91));
+});
+
+test('real pooled medium collision applies reduced-flash size, opacity, and light scaling once', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const target = { id: 2, type: 'asteroid', alive: true, pos: { x: 4, z: 0 } };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [target.id, target]]),
+    entityList: [player, target],
+    settings: {
+      video: { particleQuality: 'low', motionReduce: false, engineTrails: true },
+      accessibility: { flashReduce: true },
+    },
+    render: { scene: new THREE.Scene() },
+    content: {},
+  };
+  const system = Object.create(vfx);
+  system.init({ state, bus: createBus(), helpers: {} });
+  assert.equal(system._onCollisionConsequence({
+    tick: 20,
+    targetId: 1,
+    otherId: 2,
+    pos: { x: 2, z: 0 },
+    normal: { x: 1, z: 0 },
+    control: 'tumble',
+    impactDamage: 6,
+    deltaV: 14,
+    surface: 'terrain',
+  }), true);
+
+  const flashes = system._spr.filter((sprite) => sprite.alive && sprite.kind === flashKind);
+  assert.equal(flashes.length, 2);
+  for (const flash of flashes) {
+    assert.ok(Math.abs(flash.size0 - 1.1 * 0.68) < 1e-12);
+    assert.ok(Math.abs(flash.size1 - 3.4 * 0.68) < 1e-12);
+    assert.ok(Math.abs(flash.op0 - 0.9 * 0.3) < 1e-12);
+  }
+  const activeLights = system._lights.filter((slot) => slot.active);
+  assert.equal(activeLights.length, 1);
+  assert.ok(Math.abs(activeLights[0].peak - 2.6 * 0.24) < 1e-12);
 });
