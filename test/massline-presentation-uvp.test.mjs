@@ -6,10 +6,12 @@ import {
   resolveForceNeonScale,
   resolveMasslineFeelPunch,
   resolveTumbleBodyLanguage,
+  resolveTumbleContinuousVfxPlan,
   resolveTumbleRecoverPose,
   TUMBLE_STATUS_ID,
 } from '../src/render/masslinePresentation.js';
 import { updateShipPitchPresentation } from '../src/render/shipPitchPresentation.js';
+import { vfx } from '../src/render/vfx.js';
 
 test('tumble body language is multi-axis and thrash-then-failing', () => {
   const early = resolveTumbleBodyLanguage({
@@ -160,6 +162,53 @@ test('readControlLossPresentation never tumbles the player; ships get status/dri
   assert.equal(p.mode, 'idle', 'player immunity in presentation');
   assert.equal(f.mode, 'tumbling');
   assert.equal(f.drifting, true);
+});
+
+test('continuous VFX plan consumes hullBlur alongside thrash and spin ribbons', () => {
+  const body = resolveTumbleBodyLanguage({
+    mode: 'tumbling',
+    angVel: 4.0,
+    spin: 4.0,
+    simTime: 1,
+    elapsedS: 0.2,
+    remainS: 3,
+  });
+  assert.ok(body.hullBlur > 0.12, 'tumble body language must produce hull blur intensity');
+  const plan = resolveTumbleContinuousVfxPlan(body);
+  assert.equal(plan.spawnHullBlur, true, 'hullBlur must gate continuous hull-smear VFX');
+  assert.equal(plan.spawnRibbon, true);
+  assert.equal(plan.spawnThrash, true);
+  const idlePlan = resolveTumbleContinuousVfxPlan({ mode: 'idle', hullBlur: 0.9 });
+  assert.equal(idlePlan.spawnHullBlur, false, 'idle mode never spawns hull blur');
+});
+
+test('tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)', () => {
+  // Drive the shipped vfx._presentationStyle path with a minimal this-binding.
+  const host = {
+    _forceNeonMetrics(extra = {}) {
+      return { ...extra };
+    },
+  };
+  const style = vfx._presentationStyle.call(host, {
+    id: 'tether.whip_impact',
+    lane: 'massline',
+    magnitude: 90,
+    rating: 'crushing',
+    tags: ['whip', 'crushing'],
+  });
+  const neon = resolveForceNeonScale('whip', { severity: 0.9, rating: 'crushing' });
+  assert.equal(style.forceNeonKind, 'whip', 'whip force-neon branch must win over tether.* catch-all');
+  assert.ok(style.forceNeonEnergy > 1.05, 'whip energy must exceed hull-neutral');
+  assert.ok(Math.abs(style.forceNeonEnergy - neon.energy) < 1e-9,
+    'style must use resolveForceNeonScale whip energy');
+  assert.ok(Math.abs(style.forceNeonLightPeak - neon.lightPeak) < 1e-9,
+    'style must use resolveForceNeonScale whip lightPeak');
+  assert.ok(style.lightPeak > 3.0,
+    `whip lightPeak (${style.lightPeak}) must beat generic tether lightPeak 3.0`);
+  // Generic tether latch cue must still use the mild cyan path (no forceNeonKind).
+  const latch = vfx._presentationStyle.call(host, { id: 'tether.attach', lane: 'tether' });
+  assert.equal(latch.forceNeonKind, null);
+  assert.equal(latch.lightPeak, 3.0);
 });
 
 test('updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle', () => {

@@ -103,7 +103,7 @@ import {
 } from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
-import { resolveForceNeonScale } from './masslinePresentation.js';
+import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
@@ -2593,12 +2593,30 @@ export const vfx = {
     if (id === 'tether.break' || lane.includes('tether_break')) {
       return presentationStyle('#ffffff', '#5fe0ff', SPR_RING, { echoRing: true, lightPeak: 5.0, lightDistance: 190, speed0: 46, speedJitter: 58, size0: 2.4 });
     }
-    if (id.startsWith('tether.') || lane.includes('tether')) {
-      return presentationStyle('#dffcff', '#2bb7ff', SPR_RING, { lightPeak: 3.0, lightDistance: 140, speed0: 28, speedJitter: 30, size0: 1.8 });
-    }
-    // Massline Wave M2: throw release = hot amber whip-crack streaking along the exit direction;
-    // tumble = ragged white/red spill (RCS puffs losing the argument).
+    // Massline force cues MUST sit above the generic tether.* catch-all: whip_impact id is
+    // `tether.whip_impact` and would otherwise return the mild cyan ring instead of neon force.
     // UVP neon pass: force cues scale above hull-neutral via resolveForceNeonScale.
+    if (id === 'tether.whip_impact' || lane.includes('whip_impact') || (lane.includes('whip') && !lane.includes('tether_break'))) {
+      const neon = resolveForceNeonScale('whip', this._forceNeonMetrics({
+        severity: p && p.magnitude != null ? Number(p.magnitude) / 100 : 0.6,
+        rating: p && (p.rating || (Array.isArray(p.tags) ? p.tags.find((t) => t === 'crushing' || t === 'solid' || t === 'glance') : null)),
+      }));
+      return presentationStyle('#ffffff', '#ff8a40', SPR_FLASH, {
+        radial: true,
+        lightPeak: 3.4 * neon.lightPeak,
+        lightDistance: 160 + neon.coreWhite * 50,
+        speed0: 48 * neon.particleBoost,
+        speedJitter: 52,
+        life0: 0.28,
+        size0: 1.9 * neon.energy * 0.5,
+        size1: 0.12,
+        drag: 1.2,
+        spriteOpacity: Math.min(1, 0.7 * neon.energy),
+        forceNeonKind: 'whip',
+        forceNeonEnergy: neon.energy,
+        forceNeonLightPeak: neon.lightPeak,
+      });
+    }
     if (id === 'massline.throw' || lane.includes('massline_throw')) {
       const neon = resolveForceNeonScale('throw', this._forceNeonMetrics());
       return presentationStyle('#fff8e8', '#ffb347', SPR_FLASH, {
@@ -2610,6 +2628,9 @@ export const vfx = {
         size0: 2.0 * (0.9 + neon.coreWhite * 0.35),
         size1: 0.15,
         spriteOpacity: Math.min(1, 0.72 * neon.energy),
+        forceNeonKind: 'throw',
+        forceNeonEnergy: neon.energy,
+        forceNeonLightPeak: neon.lightPeak,
       });
     }
     if (id === 'ship.tumble' || lane.includes('massline_tumble') || id === 'ship.tumble.recover') {
@@ -2626,25 +2647,13 @@ export const vfx = {
         size0: 1.6 * neon.energy * 0.55,
         size1: 0.25,
         drag: 1.4,
+        forceNeonKind: 'tumble',
+        forceNeonEnergy: neon.energy,
+        forceNeonLightPeak: neon.lightPeak,
       });
     }
-    if (id === 'tether.whip_impact' || lane.includes('whip_impact') || lane.includes('whip')) {
-      const neon = resolveForceNeonScale('whip', this._forceNeonMetrics({
-        severity: p && p.magnitude != null ? Number(p.magnitude) / 100 : 0.6,
-        rating: p && p.rating,
-      }));
-      return presentationStyle('#ffffff', '#ff8a40', SPR_FLASH, {
-        radial: true,
-        lightPeak: 3.4 * neon.lightPeak,
-        lightDistance: 160 + neon.coreWhite * 50,
-        speed0: 48 * neon.particleBoost,
-        speedJitter: 52,
-        life0: 0.28,
-        size0: 1.9 * neon.energy * 0.5,
-        size1: 0.12,
-        drag: 1.2,
-        spriteOpacity: Math.min(1, 0.7 * neon.energy),
-      });
+    if (id.startsWith('tether.') || lane.includes('tether')) {
+      return presentationStyle('#dffcff', '#2bb7ff', SPR_RING, { lightPeak: 3.0, lightDistance: 140, speed0: 28, speedJitter: 30, size0: 1.8 });
     }
     // SF-10 vector-mine detonation — a fast cool-blue radial SHOVE (an impulse front driven outward),
     // deliberately a punch-flash burst rather than a primary ring (graphics-checkpoint reject list),
@@ -7676,14 +7685,16 @@ export const vfx = {
       if (!e || !e.alive || !e.pos) continue;
       if (e.id === this.state.playerId) continue;
       const tumble = e.presentation && e.presentation.tumble;
-      if (!tumble || (tumble.mode !== 'tumbling' && tumble.mode !== 'drifting' && !tumble.recovering)) {
+      const plan = resolveTumbleContinuousVfxPlan(tumble || {});
+      if (!plan.active) {
         if (cd.has(e.id)) cd.delete(e.id);
         continue;
       }
-      const thrash = Math.max(0, tumble.rcsThrash || 0);
-      const ribbon = Math.max(0, tumble.spinRibbon || 0);
-      if (thrash < 0.08 && ribbon < 0.12 && !tumble.recovering) continue;
-      const hz = Math.max(4, tumble.thrashCadenceHz || 8);
+      if (!plan.spawnThrash && !plan.spawnRibbon && !plan.spawnHullBlur && !tumble.recovering) continue;
+      const thrash = plan.thrash;
+      const ribbon = plan.ribbon;
+      const hullBlur = plan.hullBlur;
+      const hz = Math.max(4, plan.thrashCadenceHz || 8);
       const period = 1 / hz;
       let age = cd.get(e.id) || 0;
       age += Math.max(0, dt || 0);
@@ -7699,7 +7710,7 @@ export const vfx = {
       const r = Math.max(3, e.radius || 6);
       const ang = (e.rot || 0) + (e.angVel || 0) * 0.08;
       // Frantic RCS thrash: alternating side puffs that weaken as thrash falls (then-failing).
-      if (thrash > 0.08 && !reduced) {
+      if (plan.spawnThrash && !reduced) {
         const side = (Math.sin((e.id || 0) + age * 17) > 0 ? 1 : -1);
         const px = e.pos.x + Math.cos(ang + side * 1.2) * r * 0.7;
         const pz = e.pos.z + Math.sin(ang + side * 1.2) * r * 0.7;
@@ -7709,7 +7720,7 @@ export const vfx = {
           0.35 + thrash * 0.35, 0, '#ffe0d0', vx, vz);
       }
       // Spin ribbon: short directional streak opposite angular motion.
-      if (ribbon > 0.15) {
+      if (plan.spawnRibbon) {
         const tx = -Math.sin(ang) * (18 + ribbon * 40);
         const tz = Math.cos(ang) * (18 + ribbon * 40);
         this._c0.set('#ffe2d6');
@@ -7721,6 +7732,24 @@ export const vfx = {
           1.2 * neon.energy * 0.5, 0.05,
           this._c0, this._c1,
           1.3, 0, 0,
+        );
+      }
+      // Hull blur / motion smear — soft ghost puffs along spin (consumes presentation.tumble.hullBlur).
+      if (plan.spawnHullBlur && !reduced) {
+        const smear = hullBlur;
+        const sx = -Math.sin(ang) * r * (0.35 + smear * 0.55);
+        const sz = Math.cos(ang) * r * (0.35 + smear * 0.55);
+        this._spawnSprite(
+          SPR_PUFF,
+          e.pos.x - sx * 0.4, 0.02, e.pos.z - sz * 0.4,
+          0.16 + smear * 0.14,
+          1.1 + smear * 1.4,
+          2.8 + smear * 1.6,
+          0.18 + smear * 0.22,
+          0,
+          '#ffc8b8',
+          -sx * (4 + smear * 10),
+          -sz * (4 + smear * 10),
         );
       }
       // Recover settle flash once when recovering starts (very light).
@@ -8952,6 +8981,10 @@ function presentationStyle(color0, color1, spriteKind, overrides = {}) {
     lightPeak: overrides.lightPeak || 0,
     lightDecay: overrides.lightDecay || 9,
     lightDistance: overrides.lightDistance || 140,
+    // Optional UVP force-neon diagnostics (ignored by spawn path; used by tests / probes).
+    forceNeonKind: overrides.forceNeonKind || null,
+    forceNeonEnergy: overrides.forceNeonEnergy ?? null,
+    forceNeonLightPeak: overrides.forceNeonLightPeak ?? null,
   };
 }
 

@@ -109,6 +109,29 @@ export function resolveTumbleBodyLanguage(input = {}) {
   };
 }
 
+/**
+ * Continuous VFX spawn plan from presentation.tumble intent.
+ * Consumers (vfx._updateTumbleBodyLanguageVfx) must honor these flags — especially hullBlur.
+ */
+export function resolveTumbleContinuousVfxPlan(tumble = {}) {
+  const thrash = Math.max(0, finite(tumble.rcsThrash, 0));
+  const ribbon = Math.max(0, finite(tumble.spinRibbon, 0));
+  const hullBlur = Math.max(0, finite(tumble.hullBlur, 0));
+  const recovering = !!tumble.recovering;
+  const mode = tumble.mode || 'idle';
+  const active = mode === 'tumbling' || mode === 'drifting' || recovering;
+  return {
+    active,
+    thrash,
+    ribbon,
+    hullBlur,
+    spawnThrash: active && thrash > 0.08,
+    spawnRibbon: active && ribbon > 0.15,
+    spawnHullBlur: active && hullBlur > 0.12,
+    thrashCadenceHz: Math.max(0, finite(tumble.thrashCadenceHz, thrash > 0.08 ? 8 : 0)),
+  };
+}
+
 /** Brief settle after tumble end — damp residual thrash pose toward flight lean. */
 export function resolveTumbleRecoverPose(input = {}) {
   const age = Math.max(0, finite(input.ageS, 0));
