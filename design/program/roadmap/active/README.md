@@ -7,6 +7,18 @@ These files translate queue intent into current, bounded implementation instruct
 
 The queue priority numbers remain stable identities, not permission to ignore current entry gates.
 
+The user-authorized [`PHYSICS_AS_SPECTACLE_PROGRAM.md`](./PHYSICS_AS_SPECTACLE_PROGRAM.md) has its
+own controlling recovery chain and does not leapfrog directly to a galaxy-wide graphics pass:
+
+```text
+R0 Sandbox launcher -> R1 camera selection -> R2/R3 Massline feel/acquisition
+  -> R4 physics combat -> R5 Ceres reference pocket -> five-minute Ceres gate
+  -> R8 kinetic showcase -> five cells / four asset waves / technical finish
+```
+
+Published priority/admission infrastructure is an implemented prerequisite only. It does not prove
+the Ceres gate, R8 route acceptance, or any visual G0–G7 gate.
+
 ```text
 PQ-018 Wreck Cathedral runtime promotion
   └─> PQ-020 Ceres topology consumes the accepted Cathedral placement
@@ -58,6 +70,7 @@ evidence triggers are proved.
 
 | Packet | Executable interpretation | Entry summary |
 |---|---|---|
+| [`PHYSICS_AS_SPECTACLE_PROGRAM.md`](./PHYSICS_AS_SPECTACLE_PROGRAM.md) | integrate causal physics spectacle in the accepted Ceres route; scale out to five scene cells, four asset waves, and technical finish only after showcase acceptance | R0→R5 plus five-minute Ceres gate before R8; exact Browser/Electron G0 remains unproven |
 | [`PQ-018.md`](./PQ-018.md) | release, register, place, wire, and accept the Wreck Cathedral through the integrated World Site substrate | PQ-017 current contract; asset/renderer/GPU lane free |
 | [`PQ-019.md`](./PQ-019.md) | split the heist into physical facilities, owner seams, and one authored route | stable ID correction; facility phase precedes mission phase |
 | [`PQ-020.md`](./PQ-020.md) | bounded Ceres topology/data slice, one existing-owner local condition, and route proof | consume PQ-018 placement without relocation; Atlas/data lease |

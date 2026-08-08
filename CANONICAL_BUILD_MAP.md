@@ -48,13 +48,17 @@ but no changed visible zone may inherit a DCC default. Claim
 the exact source/candidate paths first. The catalog is routing evidence, not permission to merge old
 branches, promote candidates, or bypass G0-G7 acceptance.
 
-**Massline presentation UVP (tumble body language / force neon / fling feel):** presentation-only
-work that sells sustained control loss and neon force against grey hulls starts at
-[`design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md`](./design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md).
-That packet owns the multi-pass plan, write budget, and non-goals; pure mappers live under
-`src/render/masslinePresentation.js`. It does **not** reopen closed PQ-023 gold-corridor acceptance
-and must not rewrite physics/tumble immunity. For ordinary admitted queue work, still use
-`program-dispatch` above.
+**Physics as Spectacle (graphics / VFX / Massline program):** the user-authorized R8 program starts at
+[`design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`](./design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md).
+Its hierarchy is bright force against colored, materially varied hulls: deep space remains darkest;
+world geometry uses varied industrial materials; ships retain strong faction paint and identity;
+engines and machinery are bright; Massline, fields, weapons, and destruction are brightest. The
+unchanged [`MASSLINE_PRESENTATION_UVP.md`](./design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md)
+is its implemented foundation and focused receipt, not a new route-acceptance claim. Execute the
+recovery dependency chain and five-minute Ceres gate before R8 showcase work; only after that
+showcase is also accepted, use the active packet for the gated five-cell, asset-promotion, and
+technical-finish rollout. Do not rewrite physics, tumble immunity, damage ownership, or renderer
+authority.
 
 **Orphaned worktree / branch recovery:** when the explicit task is evaluating stopped-agent work,
 harvests, orphan refs, or a corrupt local clone, start at
