@@ -271,6 +271,16 @@ function requiredZoomForEntity(
   );
 }
 
+function cameraThreatCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  return state && state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : [];
+}
+
 function requiredThreatContextZoom(
   state, player, primaryTarget, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
 ) {
@@ -280,7 +290,7 @@ function requiredThreatContextZoom(
   const range = CAMERA_DIRECTOR_THREAT_CONTEXT_RANGE;
   const range2 = range * range;
   let required = CAMERA_DIRECTOR_MIN_ZOOM;
-  for (const ent of state.entities.values()) {
+  for (const ent of cameraThreatCandidates(state)) {
     if (!isActiveHostileThreat(state, player, ent, primaryTarget)) continue;
     const dx = ent.pos.x - player.pos.x;
     const dz = ent.pos.z - player.pos.z;

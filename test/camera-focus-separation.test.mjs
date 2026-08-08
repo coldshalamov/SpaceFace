@@ -129,6 +129,152 @@ function assertInFocusMargin(item, frame, safeNdc, label) {
   assert.ok(b.y <= safeNdc + 1e-6, `${label} vertical NDC ${b.y} must be <= ${safeNdc}`);
 }
 
+function countedMapValues(state) {
+  const values = state.entities.values.bind(state.entities);
+  let visits = 0;
+  state.entities.values = function* countedValues() {
+    for (const item of values()) {
+      visits++;
+      yield item;
+    }
+  };
+  return () => visits;
+}
+
+function countedShipLikeIndex(state, candidates) {
+  let visits = 0;
+  const shipLike = [...candidates];
+  shipLike[Symbol.iterator] = function* countedValues() {
+    const values = Array.prototype.values.call(this);
+    for (const item of values) {
+      visits++;
+      yield item;
+    }
+  };
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    shipLike,
+  };
+  state.entities.values = () => {
+    throw new Error('ready camera shipLike index must bypass the full entity map');
+  };
+  return () => visits;
+}
+
+function irrelevantCameraEntities(count, startId = 10_000) {
+  const types = ['asteroid', 'projectile', 'station', 'pickup', 'fx'];
+  return Array.from({ length: count }, (_, index) => ({
+    id: startId + index,
+    type: types[index % types.length],
+    alive: true,
+    hull: 100,
+    team: 1,
+    pos: { x: 800 + index, z: -700 - index },
+    radius: 4,
+  }));
+}
+
+test('ordinary chase composition visits only the ready stable ship-like index', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const hostile = entity(2, 140, 25, 9, {
+    team: 1,
+    data: { combat: { targetId: player.id, lockTarget: player.id } },
+  });
+  const irrelevant = irrelevantCameraEntities(1_000);
+  const baseline = stateFor(player, [hostile, ...irrelevant]);
+  const indexed = stateFor(player, [hostile, ...irrelevant]);
+  const baselineVisits = countedMapValues(baseline);
+  const indexedVisits = countedShipLikeIndex(indexed, [player, hostile]);
+
+  const expected = resolveChaseComposition(baseline, player, { x: 0, z: 0 });
+  const actual = resolveChaseComposition(indexed, player, { x: 0, z: 0 });
+  assert.deepEqual(actual, expected, 'candidate narrowing preserves exact threat choice and composition');
+  assert.equal(baselineVisits(), 1_002, 'legacy source visits player, hostile, and every irrelevant root');
+  assert.equal(indexedVisits(), 2, 'ordinary frame visits only the player and hostile ship-like roots');
+
+  const unready = stateFor(player, [hostile]);
+  unready.entityIndex = { __spacefaceEntityIndexV1: true, ready: false, shipLike: [player] };
+  const fallbackVisits = countedMapValues(unready);
+  assert.equal(resolveChaseComposition(unready, player, { x: 0, z: 0 }).hasActiveAttacker, true,
+    'boot/rebuild uses the complete map instead of a stale unready index');
+  assert.equal(fallbackVisits(), 2);
+});
+
+test('indexed chase preserves Map insertion order for an exact-distance hostile tie after rebuild', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const mapFirst = entity(2, -120, 0, 9, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  });
+  const rebuiltFirst = entity(3, 120, 0, 9, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  });
+  const tiedFormation = Array.from({ length: 24 }, (_, index) => entity(100 + index, 0, 120, 9, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  }));
+  const mapOrder = [mapFirst, rebuiltFirst, ...tiedFormation];
+  const baseline = stateFor(player, mapOrder);
+  const rebuilt = stateFor(player, mapOrder);
+  rebuilt.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    // A direct non-ship append can force reconcile from swap-removed entityList order without
+    // changing the legacy Map order. Model the resulting reversed equal-distance candidates.
+    shipLike: [player, ...tiedFormation.toReversed(), rebuiltFirst, mapFirst],
+  };
+
+  const expected = resolveChaseComposition(baseline, player, { x: 0, z: 0 });
+  const tieMapVisits = countedMapValues(rebuilt);
+  const actual = resolveChaseComposition(rebuilt, player, { x: 0, z: 0 });
+  assert.deepEqual(actual, expected, 'exact ties retain the legacy first Map-inserted hostile');
+  assert.ok(actual.x < 0, 'the Map-first hostile remains the composed side of the frame');
+  assert.equal(tieMapVisits(), 2,
+    'the whole tied formation resolves in one Map pass ending at the first hostile');
+});
+
+test('pair director threat context visits only ship-like roots without changing framing', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const pairHostile = entity(2, 125, 0, 10, { team: 1 });
+  const crossingThreat = entity(3, -70, 20, 8, { team: 1 });
+  const irrelevant = irrelevantCameraEntities(750, 20_000);
+  const options = { tetherActive: true, tetherTargetId: pairHostile.id };
+  const baseline = stateFor(player, [pairHostile, crossingThreat, ...irrelevant], options);
+  const indexed = stateFor(player, [pairHostile, crossingThreat, ...irrelevant], options);
+  const baselineVisits = countedMapValues(baseline);
+  const indexedVisits = countedShipLikeIndex(indexed, [player, pairHostile, crossingThreat]);
+
+  const expectedDirector = createCameraDirector();
+  expectedDirector.syncFollow(0, 0, TACTICAL_ZOOM);
+  const expected = { ...settle(expectedDirector, 0.5, baseline, player) };
+  const actualDirector = createCameraDirector();
+  actualDirector.syncFollow(0, 0, TACTICAL_ZOOM);
+  const actual = { ...settle(actualDirector, 0.5, indexed, player) };
+
+  assert.deepEqual(actual, expected, 'candidate narrowing preserves exact pair/threat zoom and pose');
+  assert.equal(actual.mode, CameraDirectorMode.TETHER_PAIR);
+  assert.ok(baselineVisits() > indexedVisits() * 200,
+    `irrelevant-root visits fall from ${baselineVisits()} to ${indexedVisits()} at identical framing`);
+
+  const unready = stateFor(player, [pairHostile, crossingThreat], options);
+  unready.entityIndex = { __spacefaceEntityIndexV1: true, ready: false, shipLike: [player] };
+  const fallbackDirector = createCameraDirector();
+  fallbackDirector.syncFollow(0, 0, TACTICAL_ZOOM);
+  const fallback = { ...settle(fallbackDirector, 0.5, unready, player) };
+  const fallbackBaselineDirector = createCameraDirector();
+  fallbackBaselineDirector.syncFollow(0, 0, TACTICAL_ZOOM);
+  const fallbackBaseline = { ...settle(
+    fallbackBaselineDirector,
+    0.5,
+    stateFor(player, [pairHostile, crossingThreat], options),
+    player,
+  ) };
+  assert.deepEqual(fallback, fallbackBaseline,
+    'pair framing falls back to the full map while the stable index is rebuilding');
+});
+
 // ---------------------------------------------------------------------------
 // RED: asteroid / non-hostile tether must not take combat pair framing
 // ---------------------------------------------------------------------------

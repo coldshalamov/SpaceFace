@@ -313,6 +313,16 @@ function extendCompositionMinZoom(minZoom, item, fx, fz, tanHalf, aspect, tilt) 
   );
 }
 
+function cameraThreatCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  return state && state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : [];
+}
+
 export function resolveChaseComposition(state, player, focus, view = {}, out = null, tetherOut = null) {
   const result = out || {};
   let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
@@ -322,6 +332,8 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   let nearestThreatD2 = Infinity;
   let activeAttacker = null;
   let activeAttackerD2 = Infinity;
+  let nearestThreatTied = false;
+  let activeAttackerTied = false;
   let zoomBias = 0;
 
   if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
@@ -339,7 +351,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   const leasedTargetId = readFlybyLeaseTargetId(state);
 
   // Combat composes player + nearest threat instead of only following the player.
-  for (const e of state.entities.values()) {
+  for (const e of cameraThreatCandidates(state)) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
@@ -352,14 +364,48 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     if (attacksPlayer && d2 < activeAttackerD2) {
       activeAttacker = e;
       activeAttackerD2 = d2;
+      activeAttackerTied = false;
+    } else if (activeAttacker && attacksPlayer && d2 === activeAttackerD2) {
+      activeAttackerTied = true;
     }
     if (d2 < THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE) {
       nearbyEnemies++;
       if (d2 < nearestThreatD2) {
         nearestThreat = e;
         nearestThreatD2 = d2;
+        nearestThreatTied = false;
+      } else if (nearestThreat && d2 === nearestThreatD2) {
+        nearestThreatTied = true;
       }
     }
+  }
+
+  if (activeAttackerTied || nearestThreatTied) {
+    // Reconciliation can rebuild shipLike from swap-removed entityList order, while the legacy scan
+    // used Map insertion order. Resolve all exact ties in one conditional Map pass so the first-wins
+    // contract stays exact without turning a symmetric formation into repeated full-map scans.
+    let resolvedActive = activeAttackerTied ? null : activeAttacker;
+    let resolvedNearest = nearestThreatTied ? null : nearestThreat;
+    for (const e of state.entities.values()) {
+      if (e === player) continue;
+      if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
+      if (!isHostileToPlayer(e, player.team, state)) continue;
+      const dx = e.pos.x - player.pos.x;
+      const dz = e.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      const combat = e.data && e.data.combat;
+      const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+        || (leasedTargetId != null && e.id === leasedTargetId);
+      if (activeAttackerTied && !resolvedActive && attacksPlayer && d2 === activeAttackerD2) {
+        resolvedActive = e;
+      }
+      if (nearestThreatTied && !resolvedNearest && d2 === nearestThreatD2) {
+        resolvedNearest = e;
+      }
+      if (resolvedActive && resolvedNearest) break;
+    }
+    if (resolvedActive) activeAttacker = resolvedActive;
+    if (resolvedNearest) nearestThreat = resolvedNearest;
   }
 
   const composedThreat = activeAttacker || nearestThreat;
