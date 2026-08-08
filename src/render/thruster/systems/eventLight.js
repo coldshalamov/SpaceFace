@@ -6,6 +6,12 @@
 
 import { sampleCurve } from '../recipes/validate.js';
 
+const MAIN_EVENT_LIGHT_BOOST_GAIN = 0.35;
+
+function finiteOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 export class EventLightPool {
   constructor(recipe, opts = {}) {
     this.recipe = recipe;
@@ -80,16 +86,30 @@ export class EventLightPool {
   writeMain(throttle, nozzle, eventLightScale, boost = 0) {
     if (!this.enabled) return;
     if (this._finalized) this.beginFrame();
-    const scale = sampleCurve(this.throttleScale, Math.max(0, throttle));
-    const a11y = eventLightScale == null ? 1 : eventLightScale;
-    let intensity = this.maxIntensity * scale * a11y * (1 + Math.min(1, boost) * 0.35);
-    intensity = Math.min(this.maxIntensity, Math.max(0, intensity));
-    const range = this.maxRange * (0.45 + scale * 0.55) * Math.min(1, a11y + 0.25);
+    const drive = Math.max(0, finiteOr(throttle, 0));
+    const sampled = sampleCurve(this.throttleScale, drive);
+    const scale = Math.max(0, Math.min(1, finiteOr(sampled, 0)));
+    const boostBlend = Math.max(0, Math.min(1, finiteOr(boost, 0)));
+    const a11y = Math.max(0, finiteOr(eventLightScale, eventLightScale == null ? 1 : 0));
+    // Preserve authored headroom for the structural turbo read. Ordinary full throttle stays below
+    // the recipe cap; a fully blended boost reaches (but never exceeds) it. Accessibility remains
+    // the single intensity owner and is not re-applied by the rendered PointLight bridge.
+    const boostScale = (1 + MAIN_EVENT_LIGHT_BOOST_GAIN * boostBlend)
+      / (1 + MAIN_EVENT_LIGHT_BOOST_GAIN);
+    const intensity = Math.max(0, Math.min(
+      this.maxIntensity,
+      this.maxIntensity * scale * a11y * boostScale,
+    ));
+    // Boost changes brightness, not the radius of influence — no extra wash to buy the read.
+    const range = Math.max(0, Math.min(
+      this.maxRange,
+      this.maxRange * (0.45 + scale * 0.55) * Math.min(1, a11y + 0.25),
+    ));
     const L = this.lights[0];
     L.alive = intensity > 0.02;
-    L.x = nozzle.x;
-    L.y = nozzle.y;
-    L.z = nozzle.z;
+    L.x = finiteOr(nozzle && nozzle.x, 0);
+    L.y = finiteOr(nozzle && nozzle.y, 0);
+    L.z = finiteOr(nozzle && nozzle.z, 0);
     L.intensity = L.alive ? intensity : 0;
     L.range = L.alive ? Math.min(this.maxRange, range) : 0;
     L.r = this.color[0];

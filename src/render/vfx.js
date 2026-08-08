@@ -132,6 +132,8 @@ const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
 // accessibility scales intensity at the event choke point instead of adding/removing lights and
 // forcing a whole-scene shader recompile.
 export const EVENT_LIGHT_POOL_SIZE = 6;
+const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
+const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
 export function eventLightPoolSizeFor(_video) {
   return EVENT_LIGHT_POOL_SIZE;
 }
@@ -1264,13 +1266,13 @@ export const vfx = {
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
     add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => this._clearStationSideEvents());
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
     });
-    add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
+    add('player:death', (p) => { this._releasePlayerPlumeEventLight(); this._explode({ pos: p && p.pos, radius: 12 }, true); });
     add('mining:start', (p) => this._onMiningStart(p));
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
@@ -8382,7 +8384,10 @@ export const vfx = {
 
   _updateEnergyPlume(dt) {
     const energy = this._energy;
-    if (!energy) return;
+    if (!energy) {
+      this._releasePlayerPlumeEventLight();
+      return;
+    }
     const a11y = this._productionThrusterA11y;
     const video = this.state.settings && this.state.settings.video || {};
     const accessibility = this.state.settings && this.state.settings.accessibility || {};
@@ -8397,6 +8402,9 @@ export const vfx = {
 
     // Test/harness fallback: single plumeSystem mock without a fleet table.
     if (!energy.fleet) {
+      // Only the retained fleet table can prove that this is the exact current player rather than
+      // an aggregate/fallback family sample. Keep old single-plume harnesses visual-only.
+      this._releasePlayerPlumeEventLight();
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
       if (!player || !player.alive) {
         this._hideEnergyPlumes(0);
@@ -8538,7 +8546,53 @@ export const vfx = {
       energy.plumeDrive = Math.max(energy.plumeDrive, pd.drive);
       energy.boostBlend = pd.boost;
     }
+    // Family endUpdate writes an aggregate max-drive light at a fallback socket. Reacquire the
+    // retained player and its possibly migrated family only now, then overwrite that preallocated
+    // CPU record from the player's smoothed drive state and exact frame-local nozzle.
+    this._syncPlayerPlumeEventLight(player);
     this._updateProductionRcs(player, dt, a11y);
+  },
+
+  _syncPlayerPlumeEventLight(player) {
+    const energy = this._energy;
+    const fleet = energy && energy.fleet;
+    if (!fleet || !player || !player.alive || player.type !== 'ship'
+      || (player.flags && player.flags.docked)) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
+    const record = fleet.findShip(player.id);
+    if (!record || !record.alive || !record.isPlayer || record.socketCount < 1
+      || record.entityId !== player.id) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
+    const driveState = record.driveState;
+    const drive = driveState && Number.isFinite(driveState.plumeDrive)
+      ? Math.max(0, driveState.plumeDrive) : 0;
+    const boost = driveState && Number.isFinite(driveState.boostBlend)
+      ? Math.max(0, driveState.boostBlend) : 0;
+    if (drive <= 0.02 && boost <= 0.02) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
+    // Capacity growth can replace a family's ContinuousPlumeSystem during endFrame. Always
+    // reacquire it from the record rather than trusting energy.plumeSystem's earlier alias.
+    const plume = fleet.familyPlume(record.profileId);
+    const eventLights = plume && plume.eventLights;
+    const presentation = plume && plume.pool && plume.pool._presentation;
+    if (!eventLights || !presentation || !record.sockets[0]) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
+    energy.plumeSystem = plume;
+    const snapshot = eventLights.updateMain(
+      drive,
+      record.sockets[0],
+      presentation.eventLightScale,
+      boost,
+    );
+    return this._upsertPlayerPlumeEventLight(snapshot && snapshot.lights && snapshot.lights[0]);
   },
 
   _writeProductionPlumeSockets(player) {
@@ -8640,6 +8694,7 @@ export const vfx = {
   },
 
   _hideEnergyPlumes() {
+    this._releasePlayerPlumeEventLight();
     const energy = this._energy;
     if (!energy) return;
     if (energy.fleet) energy.fleet.reset();
@@ -8706,6 +8761,7 @@ export const vfx = {
   },
 
   _disposeEnergy() {
+    this._releasePlayerPlumeEventLight();
     if (!this._energy) return;
     if (this._energy.fleet) {
       this._energy.fleet.dispose();
@@ -9029,6 +9085,8 @@ export const vfx = {
         active: false,
         admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY,
         admissionSerial: -1,
+        sustainedKey: null,
+        sustained: false,
       });
     }
     this._freeLights = new Int32Array(this._LIGHT_NPOOL);
@@ -9036,6 +9094,115 @@ export const vfx = {
     this._freeLightCount = this._LIGHT_NPOOL;
     // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
+  },
+
+  _findSustainedEventLight(key) {
+    const pool = this._lights;
+    if (!pool || key == null) return null;
+    for (let i = 0; i < pool.length; i++) {
+      const slot = pool[i];
+      if (slot.active && slot.sustainedKey === key) return slot;
+    }
+    return null;
+  },
+
+  /**
+   * Claim one existing PointLight slot without allocating. Sustained residents are never eviction
+   * candidates for transient flashes; this leaves five transient slots while the player plume is
+   * active and restores all six when it sleeps.
+   */
+  _claimEventLightSlot(priority, sustainedKey = null) {
+    const pool = this._lights;
+    if (!pool) return null;
+    let slotIndex = -1;
+    if (this._freeLightCount > 0) {
+      slotIndex = this._freeLights[--this._freeLightCount];
+    } else {
+      for (let i = 0; i < pool.length; i++) {
+        const candidate = pool[i];
+        if (candidate.sustainedKey != null) continue;
+        if (slotIndex < 0) {
+          slotIndex = i;
+          continue;
+        }
+        const resident = pool[slotIndex];
+        if (candidate.admissionPriority < resident.admissionPriority
+          || (candidate.admissionPriority === resident.admissionPriority
+            && candidate.admissionSerial < resident.admissionSerial)) slotIndex = i;
+      }
+      if (slotIndex < 0 || priority < pool[slotIndex].admissionPriority) return null;
+    }
+    const slot = pool[slotIndex];
+    this._lightCur = (slotIndex + 1) % pool.length;
+    if (!slot.active) {
+      slot.active = true;
+      this._activeLightCount++;
+    }
+    slot.sustainedKey = sustainedKey;
+    slot.sustained = sustainedKey != null;
+    slot.admissionPriority = priority;
+    slot.admissionSerial = this._admissionSerial++;
+    return slot;
+  },
+
+  _retireEventLightSlot(slot) {
+    if (!slot || !slot.active) return false;
+    slot.active = false;
+    slot.intensity = 0;
+    slot.peak = 0;
+    slot.decay = 0;
+    slot.t = 0;
+    slot.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+    slot.admissionSerial = -1;
+    slot.sustainedKey = null;
+    slot.sustained = false;
+    if (slot.obj) slot.obj.intensity = 0;
+    this._activeLightCount = Math.max(0, this._activeLightCount - 1);
+    this._freeLights[this._freeLightCount++] = slot.slot;
+    return true;
+  },
+
+  _releasePlayerPlumeEventLight() {
+    return this._retireEventLightSlot(
+      this._findSustainedEventLight(PLAYER_PLUME_EVENT_LIGHT_KEY),
+    );
+  },
+
+  _upsertPlayerPlumeEventLight(source) {
+    const finiteSource = source && source.alive
+      && Number.isFinite(source.x) && Number.isFinite(source.y) && Number.isFinite(source.z)
+      && Number.isFinite(source.r) && Number.isFinite(source.g) && Number.isFinite(source.b)
+      && Number.isFinite(source.intensity) && Number.isFinite(source.range)
+      && source.intensity > 0.02 && source.range > 0;
+    if (!finiteSource) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
+    let slot = this._findSustainedEventLight(PLAYER_PLUME_EVENT_LIGHT_KEY);
+    if (!slot) {
+      slot = this._claimEventLightSlot(
+        PLAYER_PLUME_EVENT_LIGHT_PRIORITY,
+        PLAYER_PLUME_EVENT_LIGHT_KEY,
+      );
+      if (!slot) return false;
+    }
+    const intensity = Math.max(0, source.intensity);
+    const range = Math.max(0, source.range);
+    slot.obj.position.set(source.x, source.y, source.z);
+    slot.obj.color.setRGB(
+      Math.max(0, Math.min(1, source.r)),
+      Math.max(0, Math.min(1, source.g)),
+      Math.max(0, Math.min(1, source.b)),
+    );
+    slot.obj.distance = range;
+    slot.obj.intensity = intensity;
+    slot.intensity = intensity;
+    slot.peak = intensity;
+    slot.decay = 0;
+    slot.t = 0;
+    slot.sustained = true;
+    slot.admissionPriority = PLAYER_PLUME_EVENT_LIGHT_PRIORITY;
+    return true;
   },
 
   // Grab a pool light, position it at {x,z} (y lifted slightly above the plane), set its color +
@@ -9059,27 +9226,9 @@ export const vfx = {
       admissionPriority,
       this._spawnAdmissionPriority,
     );
-    let slotIndex;
-    if (this._freeLightCount > 0) {
-      slotIndex = this._freeLights[--this._freeLightCount];
-    } else {
-      slotIndex = 0;
-      for (let i = 1; i < pool.length; i++) {
-        const candidate = pool[i];
-        const resident = pool[slotIndex];
-        if (candidate.admissionPriority < resident.admissionPriority
-          || (candidate.admissionPriority === resident.admissionPriority
-            && candidate.admissionSerial < resident.admissionSerial)) slotIndex = i;
-      }
-      if (priority < pool[slotIndex].admissionPriority) return false;
-    }
-    const slot = pool[slotIndex];
-    this._lightCur = (slotIndex + 1) % pool.length;
+    const slot = this._claimEventLightSlot(priority);
+    if (!slot) return false;
     const obj = slot.obj;
-    if (!slot.active) {
-      slot.active = true;
-      this._activeLightCount++;
-    }
     const local = this._toLocalXZ(pos.x || 0, pos.z || 0, this._spawnLocalXZ);
     obj.position.set(local.x, 12, local.z); // lift above the play plane
     if (typeof color === 'number') obj.color.setHex(color);
@@ -9089,8 +9238,8 @@ export const vfx = {
     slot.intensity = peak * 0.3; // start ramped partway (fast attack)
     slot.decay = decayRate || 8;
     slot.t = 0;
-    slot.admissionPriority = priority;
-    slot.admissionSerial = this._admissionSerial++;
+    slot.sustainedKey = null;
+    slot.sustained = false;
     return true;
   },
 
@@ -9099,6 +9248,10 @@ export const vfx = {
     if (!pool || this._activeLightCount <= 0) return false;
     const ATTACK = 0.05; // seconds to reach peak after the initial partial ramp
     for (const slot of pool) {
+      if (slot.sustainedKey != null) {
+        slot.obj.intensity = slot.intensity;
+        continue;
+      }
       if (slot.peak <= 0) continue;
       slot.t += dt;
       if (slot.t < ATTACK) {
@@ -9108,15 +9261,8 @@ export const vfx = {
         // exponential decay toward 0
         slot.intensity += -slot.intensity * slot.decay * dt;
         if (slot.intensity < 0.02) {
-          slot.intensity = 0;
-          slot.peak = 0;
-          if (slot.active) {
-            slot.active = false;
-            this._activeLightCount = Math.max(0, this._activeLightCount - 1);
-            slot.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
-            slot.admissionSerial = -1;
-            this._freeLights[this._freeLightCount++] = slot.slot;
-          }
+          this._retireEventLightSlot(slot);
+          continue;
         }
       }
       slot.obj.intensity = slot.intensity;
