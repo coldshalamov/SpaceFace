@@ -49,6 +49,8 @@ let shellLifecycleSequence = 0;
 let powerSuspended = false;
 let screenLocked = false;
 let powerLifecycleListenersInstalled = false;
+let gameServerPortPromise = null;
+let windowCreationPromise = null;
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
 // scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own
@@ -91,6 +93,19 @@ async function startServer() {
   const error = new Error(`isolated Electron listener repeatedly resolved to forbidden player port ${PORT}`);
   error.code = 'SPACEFACE_ISOLATED_PORT_COLLISION';
   throw error;
+}
+
+function ensureGameServerPort() {
+  if (!gameServerPortPromise) {
+    gameServerPortPromise = startServer().catch((error) => {
+      // A failed bind never becomes the retained process server. Initial startup owns the fatal
+      // classification below; clearing here prevents a rejected promise from masquerading as a
+      // live listener if another lifecycle callback observes it first.
+      gameServerPortPromise = null;
+      throw error;
+    });
+  }
+  return gameServerPortPromise;
 }
 
 function listenGameServer(root, requestedPort) {
@@ -294,7 +309,10 @@ function readAppPath(name) {
 
 async function createWindow() {
   installPowerLifecycleListeners();
-  const port = await startServer();
+  // macOS keeps the application process alive after the last window closes. Reuse the one
+  // process-owned fixed-origin listener when Dock activation creates a replacement window; a
+  // second bind would collide with our own server and strand the player without a window.
+  const port = await ensureGameServerPort();
   const win = new BrowserWindow({
     width: 1480, height: 920, minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false,
@@ -337,6 +355,25 @@ async function createWindow() {
   // win.webContents.openDevTools();
 }
 
+function handleWindowCreationFailure(error) {
+  receipt('startup-failed', { code: error && error.code, message: error && error.message ? error.message : String(error) });
+  console.error('[electron] desktop startup failed:', error);
+  app.exit(1);
+}
+
+function requestGameWindow() {
+  if (!windowCreationPromise) {
+    let trackedPromise;
+    trackedPromise = createWindow()
+      .catch(handleWindowCreationFailure)
+      .finally(() => {
+        if (windowCreationPromise === trackedPromise) windowCreationPromise = null;
+      });
+    windowCreationPromise = trackedPromise;
+  }
+  return windowCreationPromise;
+}
+
 // Single-instance lock: a second launch focuses the existing window instead of starting a rival
 // server that would lose the fixed port (and split saves across origins).
 if (!app.requestSingleInstanceLock()) {
@@ -355,11 +392,13 @@ if (!app.requestSingleInstanceLock()) {
     const w = BrowserWindow.getAllWindows()[0];
     if (w) { if (w.isMinimized()) w.restore(); w.focus(); }
   });
-  app.whenReady().then(createWindow).catch((error) => {
-    receipt('startup-failed', { code: error && error.code, message: error && error.message ? error.message : String(error) });
-    console.error('[electron] desktop startup failed:', error);
-    app.exit(1);
-  });
+  app.whenReady()
+    .then(() => { void requestGameWindow(); })
+    .catch(handleWindowCreationFailure);
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      void requestGameWindow();
+    }
+  });
 }

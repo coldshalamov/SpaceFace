@@ -37,10 +37,19 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
-async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = false } = {}) {
+async function loadMain({
+  isolatedEvidence = false,
+  allowBackgroundExecution = false,
+  platform = 'win32',
+  activateBeforeServerReady = 0,
+  failWindowLoads = 0,
+  allowStartupFailure = false,
+} = {}) {
   const windows = [];
   const commands = [];
   const receipts = [];
+  const pendingServerListens = [];
+  const serverStats = { created: 0, listens: 0, quits: 0, exits: [] };
   const security = {
     permissionCheckHandler: null,
     permissionRequestHandler: null,
@@ -53,8 +62,11 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
     setPath() {},
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
-    quit() {},
-    exit(code) { throw new Error(`unexpected app.exit(${code})`); },
+    quit() { serverStats.quits += 1; },
+    exit(code) {
+      serverStats.exits.push(code);
+      if (!allowStartupFailure) throw new Error(`unexpected app.exit(${code})`);
+    },
   });
 
   function FakeBrowserWindow(options) {
@@ -92,6 +104,10 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
       blur() { this.focused = false; this.emit('blur'); },
       async loadURL(url) {
         this.loadedUrl = url;
+        if (failWindowLoads > 0) {
+          failWindowLoads -= 1;
+          throw new Error('injected window load failure');
+        }
         webContents.emit('did-finish-load');
       },
     });
@@ -101,8 +117,14 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   FakeBrowserWindow.getAllWindows = () => windows.filter((win) => !win.destroyed);
 
   function createGameServer() {
+    serverStats.created += 1;
     return emitter({
-      listen(port, _host, callback) { this.port = port; callback(); },
+      listen(port, _host, callback) {
+        serverStats.listens += 1;
+        this.port = port;
+        if (activateBeforeServerReady > 0) pendingServerListens.push(callback);
+        else callback();
+      },
       address() { return { port: this.port }; },
       close(callback) { callback(); },
     });
@@ -118,7 +140,7 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
       env: allowBackgroundExecution
         ? { SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }
         : {},
-      platform: 'win32',
+      platform,
       execPath: path.join(ROOT, 'electron.exe'),
       resourcesPath: path.join(ROOT, 'resources'),
       versions: {
@@ -154,9 +176,15 @@ async function loadMain({ isolatedEvidence = false, allowBackgroundExecution = f
   };
 
   vm.runInNewContext(readFileSync(MAIN_PATH, 'utf8'), sandbox, { filename: MAIN_PATH });
+  if (activateBeforeServerReady > 0) {
+    await Promise.resolve();
+    await Promise.resolve();
+    for (let index = 0; index < activateBeforeServerReady; index += 1) app.emit('activate');
+    for (const release of pendingServerListens.splice(0)) release();
+  }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, win: windows[0], windows, commands, receipts, security };
+  return { app, powerMonitor, win: windows[0], windows, commands, receipts, security, serverStats };
 }
 
 function loadPreload() {
@@ -305,6 +333,45 @@ test('only an isolated evidence process may disable background throttling', asyn
     explicitOverride.receipts.find((entry) => entry.status === 'starting')?.details.evidenceBackgroundOverride,
     true,
   );
+});
+
+test('macOS Dock activation recreates a window on the one process-owned server', async () => {
+  const h = await loadMain({ platform: 'darwin' });
+  const firstUrl = h.win.loadedUrl;
+  assert.equal(h.serverStats.created, 1);
+  assert.equal(h.serverStats.listens, 1);
+
+  h.win.destroyed = true;
+  h.win.webContents.destroyed = true;
+  h.app.emit('window-all-closed');
+  assert.equal(h.serverStats.quits, 0, 'macOS keeps the application process alive without windows');
+  h.app.emit('activate');
+  h.app.emit('activate');
+  await settle();
+
+  assert.equal(h.windows.length, 2, 'Dock activation creates one replacement window');
+  assert.equal(h.windows[1].loadedUrl, firstUrl, 'replacement window preserves the fixed save origin');
+  assert.equal(h.serverStats.created, 1, 'replacement window reuses the existing server instance');
+  assert.equal(h.serverStats.listens, 1, 'replacement window does not attempt a second fixed-port bind');
+});
+
+test('macOS startup and early activation share one server and one in-flight window creation', async () => {
+  const h = await loadMain({ platform: 'darwin', activateBeforeServerReady: 2 });
+  assert.equal(h.windows.length, 1);
+  assert.equal(h.serverStats.created, 1);
+  assert.equal(h.serverStats.listens, 1);
+  assert.deepEqual(h.serverStats.exits, []);
+});
+
+test('a coalesced macOS window failure is classified fatally exactly once', async () => {
+  const h = await loadMain({
+    platform: 'darwin',
+    activateBeforeServerReady: 2,
+    failWindowLoads: 1,
+    allowStartupFailure: true,
+  });
+  assert.equal(h.receipts.filter((entry) => entry.status === 'startup-failed').length, 1);
+  assert.deepEqual(h.serverStats.exits, [1]);
 });
 
 test('window hide, minimize, focus, and blur publish normalized lifecycle states', async () => {
