@@ -62,7 +62,7 @@ async function loadMain({
     setPath() {},
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
-    quit() { serverStats.quits += 1; },
+    quit() { serverStats.quits += 1; this.emit('before-quit'); },
     exit(code) {
       serverStats.exits.push(code);
       if (!allowStartupFailure) throw new Error(`unexpected app.exit(${code})`);
@@ -353,6 +353,44 @@ test('macOS Dock activation recreates a window on the one process-owned server',
   assert.equal(h.windows[1].loadedUrl, firstUrl, 'replacement window preserves the fixed save origin');
   assert.equal(h.serverStats.created, 1, 'replacement window reuses the existing server instance');
   assert.equal(h.serverStats.listens, 1, 'replacement window does not attempt a second fixed-port bind');
+});
+
+test('a second macOS launch focuses a live window or single-flights its replacement', async () => {
+  const h = await loadMain({ platform: 'darwin' });
+  const firstUrl = h.win.loadedUrl;
+  h.win.minimized = true;
+  h.app.emit('second-instance');
+  assert.equal(h.win.minimized, false, 'an existing minimized player window is restored');
+  assert.equal(h.win.focused, true, 'an existing player window receives focus');
+  assert.equal(h.windows.length, 1, 'focusing never creates a rival window');
+
+  h.win.destroyed = true;
+  h.win.webContents.destroyed = true;
+  h.app.emit('window-all-closed');
+  h.app.emit('second-instance');
+  h.app.emit('second-instance');
+  await settle();
+
+  assert.equal(h.windows.length, 2, 'two concurrent relaunch signals create one replacement');
+  assert.equal(h.windows[1].loadedUrl, firstUrl, 'replacement preserves the fixed save origin');
+  assert.equal(h.serverStats.created, 1, 'relaunch reuses the process-owned game server');
+  assert.equal(h.serverStats.listens, 1, 'relaunch never attempts a rival fixed-port bind');
+});
+
+test('shutdown never recreates a zero-window application', async () => {
+  const h = await loadMain({ platform: 'win32' });
+  h.win.destroyed = true;
+  h.win.webContents.destroyed = true;
+  h.app.emit('window-all-closed');
+  assert.equal(h.serverStats.quits, 1, 'non-macOS last-window close begins application shutdown');
+
+  h.app.emit('second-instance');
+  h.app.emit('activate');
+  await settle();
+
+  assert.equal(h.windows.length, 1, 'shutdown does not construct a replacement window');
+  assert.equal(h.serverStats.created, 1, 'shutdown does not create a second game server');
+  assert.equal(h.serverStats.listens, 1, 'shutdown does not attempt another fixed-port bind');
 });
 
 test('macOS startup and early activation share one server and one in-flight window creation', async () => {

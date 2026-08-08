@@ -51,6 +51,9 @@ let screenLocked = false;
 let powerLifecycleListenersInstalled = false;
 let gameServerPortPromise = null;
 let windowCreationPromise = null;
+let appQuitting = false;
+
+app.on('before-quit', () => { appQuitting = true; });
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
 // scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own
@@ -362,6 +365,7 @@ function handleWindowCreationFailure(error) {
 }
 
 function requestGameWindow() {
+  if (appQuitting) return null;
   if (!windowCreationPromise) {
     let trackedPromise;
     trackedPromise = createWindow()
@@ -390,7 +394,15 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
-    if (w) { if (w.isMinimized()) w.restore(); w.focus(); }
+    if (w) {
+      if (w.isMinimized()) w.restore();
+      w.focus();
+    } else {
+      // macOS can keep the first application process alive after its last window closes. A later
+      // executable launch is still player intent to see the game, so recover through the same
+      // single-flight path as Dock activation rather than silently consuming the launch.
+      void requestGameWindow();
+    }
   });
   app.whenReady()
     .then(() => { void requestGameWindow(); })
