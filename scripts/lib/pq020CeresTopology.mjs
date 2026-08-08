@@ -20,7 +20,11 @@ import {
 import { SECTORS } from '../../src/data/sectors.js';
 import { zonesForSector } from '../../src/data/sectorZones.js';
 import { worldSiteAssetBinding } from '../../src/data/worldSiteAssetBindings.js';
-import { worldSiteManifestById } from '../../src/data/worldSiteManifests.js';
+import {
+  WORLD_SITE_MANIFESTS,
+  worldSiteManifestById,
+} from '../../src/data/worldSiteManifests.js';
+import { CINDER_SLUICE_SITE_ID } from '../../src/data/environmentalMachinery.js';
 import { asteroidSites } from '../../src/systems/asteroidSites.js';
 import { trafficRoleMixForSector } from '../../src/systems/traffic.js';
 import { world } from '../../src/systems/world.js';
@@ -58,8 +62,12 @@ export const PQ020_CERES_TOPOLOGY_SCHEMA = 'spaceface.pq020-ceres-topology.v1';
 export const PQ020_CERES_SECTOR_ID = 'sector_ceres_belt';
 export const PQ020_CATHEDRAL_SITE_ID = 'world_site_wreck_cathedral';
 export const PQ020_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
+export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
+  'spaceface.pq020-ceres-additive-world-sites.v1';
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
   'b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d';
+
+const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 
 const EXPECTED_POCKETS = Object.freeze({
   civic: Object.freeze({
@@ -264,13 +272,15 @@ export async function buildPq020CeresTopologySnapshot() {
       ),
     },
     structuralCost: harness.structuralCost,
+    additiveWorldSites: harness.additiveWorldSites,
     requiresHeaded: headedEvidenceStubs(),
   };
 
   // ── PQ-020 continuation proofs ───────────────────────────────────────────────────────────────
-  // Every row below is a SIBLING of `structuralCost`. `structuralCost` itself is deliberately left
-  // byte-identical: its digest b2232d1d… is a pinned golden, and folding new fields into it would
-  // force a re-pin. A re-pinned golden is not evidence.
+  // Every row below, including additiveWorldSites above, is a SIBLING of `structuralCost`.
+  // `structuralCost` deliberately remains the Cathedral-inclusive PQ-020 core: its digest
+  // b2232d1d… is pinned, while manifest-identified later World Sites fail closed in their own
+  // live-versus-planned census instead of silently moving or weakening that core.
   snapshot.naturalJobs = buildNaturalJobCensusReport();
   snapshot.offscreenProjection = buildOffscreenProjectionReport();
   snapshot.mechanicalCondition = buildMechanicalConditionReport();
@@ -470,6 +480,7 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
   }
 
   validateStructuralCost(snapshot?.structuralCost, failures);
+  validateAdditiveWorldSites(snapshot?.additiveWorldSites, failures);
   validateHeadedStubs(snapshot?.requiresHeaded, failures);
   validateContinuationProofs(snapshot, failures);
 
@@ -497,6 +508,7 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
     deterministicEffects: snapshot?.deterministicEffects || null,
     rejectedStaleProposal: stale,
     structuralCost: snapshot?.structuralCost || null,
+    additiveWorldSites: snapshot?.additiveWorldSites || null,
     requiresHeaded: snapshot?.requiresHeaded || null,
     naturalJobs: snapshot?.naturalJobs || null,
     offscreenProjection: snapshot?.offscreenProjection || null,
@@ -555,26 +567,23 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
     });
     sim.step(SIM_DT);
 
-    const entities = [...state.entities.values()]
+    const liveCeresEntities = [...state.entities.values()]
       .filter((entity) => entity && entity.alive !== false && !entity.data?.pq020HarnessPlayer)
       .filter((entity) => entitySectorId(entity) === sector.id
         || worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`));
-    const byType = {};
-    for (const entity of entities) byType[entity.type] = (byType[entity.type] || 0) + 1;
-    const sortedByType = Object.fromEntries(
-      Object.entries(byType).sort(([left], [right]) => left.localeCompare(right)),
-    );
-    const collidable = entities.filter((entity) => entity.collides === true);
-    const colliders = collidable.reduce((sum, entity) => {
-      const manifest = resolveCollisionProxyManifest(entity);
-      return sum + (manifest
-        ? expandProxyPrimitives(manifest, { entity }).length
-        : 1);
-    }, 0);
+    const additiveManifests = WORLD_SITE_MANIFESTS.filter((manifest) => (
+      manifest.sectorId === sector.id && manifest.id !== PQ020_CATHEDRAL_SITE_ID
+    ));
+    const additiveWorldSites = buildAdditiveWorldSiteCensus(liveCeresEntities, additiveManifests);
+    const additiveWorldObjectIds = new Set(additiveManifests.map((manifest) => manifest.worldObjectId));
+    const entities = liveCeresEntities.filter((entity) => (
+      !worldSiteOwnerIdForEntity(entity, additiveWorldObjectIds)
+    ));
+    const coreCensus = censusLiveEntities(entities);
     const siteEntities = entities.filter((entity) => (
       worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)
     ));
-    const plan = planWorldSiteMaterialization(
+    const cathedralPlan = planWorldSiteMaterialization(
       cathedralManifest,
       createWorldSiteRecord(cathedralManifest, { tick: 0 }),
     );
@@ -601,10 +610,10 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       },
       entities: {
         total: entities.length,
-        byType: sortedByType,
-        collidable: collidable.length,
+        byType: coreCensus.byType,
+        collidable: coreCensus.collidable,
       },
-      colliders,
+      colliders: coreCensus.colliders,
       spatial: {
         queries: Number(spatial.queries) || 0,
         candidates: Number(spatial.candidates) || 0,
@@ -612,9 +621,9 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       worldSite: {
         siteId: cathedralManifest.id,
         materializedEntities: siteEntities.length,
-        plannedEntities: plan.entities.length,
-        interactionProxies: plan.components.length,
-        collisionProxies: plan.collisionProxies.length,
+        plannedEntities: cathedralPlan.entities.length,
+        interactionProxies: cathedralPlan.components.length,
+        collisionProxies: cathedralPlan.collisionProxies.length,
         operations: cathedralManifest.operations?.length || 0,
         releaseSha256: cathedralBinding.release.sha256,
       },
@@ -626,6 +635,7 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
     };
     return {
       structuralCost,
+      additiveWorldSites,
       systemModel,
       beaconPhysicalGlobal: beacon?.pos ? roundPoint(beacon.pos) : null,
       beaconPhysicalPlaceId: beacon?.data?.placeId || null,
@@ -638,6 +648,110 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
   } finally {
     sim.dispose();
   }
+}
+
+function buildAdditiveWorldSiteCensus(liveEntities, manifests) {
+  const sites = [...manifests]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((manifest) => {
+      const ownerIds = new Set([manifest.worldObjectId]);
+      const live = censusLiveEntities(liveEntities.filter((entity) => (
+        worldSiteOwnerIdForEntity(entity, ownerIds) === manifest.worldObjectId
+      )));
+      const planned = censusPlannedWorldSite(manifest);
+      return {
+        siteId: manifest.id,
+        worldObjectId: manifest.worldObjectId,
+        manifestSchemaVersion: manifest.schemaVersion,
+        producerKind: manifest.producer?.kind || null,
+        live,
+        planned,
+        exactAgreement: stableStringify(live) === stableStringify(planned),
+      };
+    });
+  const totals = {
+    live: sumEntityCensuses(sites.map((site) => site.live)),
+    planned: sumEntityCensuses(sites.map((site) => site.planned)),
+  };
+  return {
+    schema: PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA,
+    sectorId: PQ020_CERES_SECTOR_ID,
+    coreWorldSiteId: PQ020_CATHEDRAL_SITE_ID,
+    exclusionPolicy: 'manifest_identified_non_cathedral_world_records',
+    siteIds: sites.map((site) => site.siteId),
+    sites,
+    totals,
+    allMaterializedExactlyAsPlanned: sites.every((site) => site.exactAgreement),
+  };
+}
+
+function censusLiveEntities(entities) {
+  const collidable = entities.filter((entity) => entity.collides === true);
+  const colliders = collidable.reduce((sum, entity) => {
+    const manifest = resolveCollisionProxyManifest(entity);
+    return sum + (manifest ? expandProxyPrimitives(manifest, { entity }).length : 1);
+  }, 0);
+  return {
+    entities: entities.length,
+    byType: countTypes(entities),
+    collidable: collidable.length,
+    colliders,
+  };
+}
+
+function censusPlannedWorldSite(manifest) {
+  const plan = planWorldSiteMaterialization(
+    manifest,
+    createWorldSiteRecord(manifest, { tick: 0 }),
+  );
+  const collidable = plan.entities.filter((entity) => (
+    entity.collides === true || entity.bodyType === 'solid'
+  ));
+  return {
+    entities: plan.entities.length,
+    byType: countTypes(plan.entities),
+    collidable: collidable.length,
+    colliders: collidable.length,
+  };
+}
+
+function countTypes(entities) {
+  const byType = {};
+  for (const entity of entities) byType[entity.type] = (byType[entity.type] || 0) + 1;
+  return Object.fromEntries(
+    Object.entries(byType).sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+function sumEntityCensuses(censuses) {
+  const byType = {};
+  let entities = 0;
+  let collidable = 0;
+  let colliders = 0;
+  for (const census of censuses) {
+    entities += Number(census?.entities) || 0;
+    collidable += Number(census?.collidable) || 0;
+    colliders += Number(census?.colliders) || 0;
+    for (const [type, count] of Object.entries(census?.byType || {})) {
+      byType[type] = (byType[type] || 0) + (Number(count) || 0);
+    }
+  }
+  return {
+    entities,
+    byType: Object.fromEntries(
+      Object.entries(byType).sort(([left], [right]) => left.localeCompare(right)),
+    ),
+    collidable,
+    colliders,
+  };
+}
+
+function worldSiteOwnerIdForEntity(entity, worldObjectIds) {
+  const recordId = worldRecordId(entity);
+  for (const worldObjectId of worldObjectIds) {
+    if (recordId === worldObjectId || recordId.startsWith(`${worldObjectId}/`)) return worldObjectId;
+  }
+  return null;
 }
 
 function validateStructuralCost(value, failures) {
@@ -669,6 +783,106 @@ function validateStructuralCost(value, failures) {
   exact(failures, 'structuralCost.worldSite.plannedEntities', value.worldSite?.plannedEntities, 15);
   exact(failures, 'structuralCost.residencyTier', value.residencyTier, 'FULL');
   exact(failures, 'structuralCost.presentationAdmission', value.presentationAdmission, 'headless');
+}
+
+function validateAdditiveWorldSites(value, failures) {
+  if (!value || value.schema !== PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA) {
+    failures.push('additiveWorldSites:schema');
+    return;
+  }
+  exact(failures, 'additiveWorldSites.sectorId', value.sectorId, PQ020_CERES_SECTOR_ID);
+  exact(
+    failures,
+    'additiveWorldSites.coreWorldSiteId',
+    value.coreWorldSiteId,
+    PQ020_CATHEDRAL_SITE_ID,
+  );
+  exact(
+    failures,
+    'additiveWorldSites.exclusionPolicy',
+    value.exclusionPolicy,
+    'manifest_identified_non_cathedral_world_records',
+  );
+
+  const manifests = WORLD_SITE_MANIFESTS
+    .filter((manifest) => (
+      manifest.sectorId === PQ020_CERES_SECTOR_ID && manifest.id !== PQ020_CATHEDRAL_SITE_ID
+    ))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const manifestIds = manifests.map((manifest) => manifest.id);
+  if (stableStringify(manifestIds) !== stableStringify(EXPECTED_ADDITIVE_WORLD_SITE_IDS)) {
+    failures.push(
+      `additiveWorldSites:manifest-set:${stableStringify(manifestIds)}`
+      + `!=${stableStringify(EXPECTED_ADDITIVE_WORLD_SITE_IDS)}`,
+    );
+  }
+  if (stableStringify(value.siteIds) !== stableStringify(manifestIds)) {
+    failures.push(`additiveWorldSites:siteIds:${stableStringify(value.siteIds || null)}`);
+  }
+
+  const sites = Array.isArray(value.sites) ? value.sites : [];
+  exact(failures, 'additiveWorldSites.siteCount', sites.length, manifests.length);
+  const expectedCensuses = [];
+  for (const manifest of manifests) {
+    const row = sites.find((candidate) => candidate?.siteId === manifest.id);
+    if (!row) {
+      failures.push(`additiveWorldSites:${manifest.id}:missing`);
+      continue;
+    }
+    const expected = censusPlannedWorldSite(manifest);
+    expectedCensuses.push(expected);
+    exact(failures, `additiveWorldSites.${manifest.id}.worldObjectId`, row.worldObjectId, manifest.worldObjectId);
+    exact(
+      failures,
+      `additiveWorldSites.${manifest.id}.manifestSchemaVersion`,
+      row.manifestSchemaVersion,
+      manifest.schemaVersion,
+    );
+    exact(
+      failures,
+      `additiveWorldSites.${manifest.id}.producerKind`,
+      row.producerKind,
+      manifest.producer?.kind || null,
+    );
+    if (stableStringify(row.planned) !== stableStringify(expected)) {
+      failures.push(
+        `additiveWorldSites.${manifest.id}.planned:${stableStringify(row.planned || null)}`
+        + `!=${stableStringify(expected)}`,
+      );
+    }
+    if (stableStringify(row.live) !== stableStringify(expected)) {
+      failures.push(
+        `additiveWorldSites.${manifest.id}.live:${stableStringify(row.live || null)}`
+        + `!=${stableStringify(expected)}`,
+      );
+    }
+    exact(failures, `additiveWorldSites.${manifest.id}.exactAgreement`, row.exactAgreement, true);
+  }
+
+  const expectedTotals = sumEntityCensuses(expectedCensuses);
+  if (stableStringify(value.totals?.planned) !== stableStringify(expectedTotals)) {
+    failures.push('additiveWorldSites.totals.planned');
+  }
+  if (stableStringify(value.totals?.live) !== stableStringify(expectedTotals)) {
+    failures.push('additiveWorldSites.totals.live');
+  }
+  exact(
+    failures,
+    'additiveWorldSites.allMaterializedExactlyAsPlanned',
+    value.allMaterializedExactlyAsPlanned,
+    true,
+  );
+
+  const cinder = sites.find((site) => site?.siteId === CINDER_SLUICE_SITE_ID);
+  const expectedCinder = {
+    entities: 5,
+    byType: { fx: 1, wreck: 4 },
+    collidable: 2,
+    colliders: 2,
+  };
+  if (stableStringify(cinder?.planned) !== stableStringify(expectedCinder)) {
+    failures.push(`additiveWorldSites.${CINDER_SLUICE_SITE_ID}:contract-drift`);
+  }
 }
 
 /**

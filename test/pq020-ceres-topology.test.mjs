@@ -121,16 +121,39 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.receiptDigest, second.receiptDigest);
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
-  assert.ok(first.structuralCost.entities.total > 0);
-  assert.ok(first.structuralCost.entities.byType.fx > 0);
-  assert.ok(first.structuralCost.entities.collidable > 0);
-  assert.ok(first.structuralCost.colliders > 0);
+  assert.deepEqual(first.structuralCost.entities, {
+    total: 124,
+    byType: { asteroid: 90, fx: 12, ship: 2, station: 6, wreck: 14 },
+    collidable: 105,
+  });
+  assert.equal(first.structuralCost.colliders, 105);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.residencyTier, 'FULL');
   assert.equal(first.structuralCost.presentationAdmission, 'headless');
   assert.ok(Number.isInteger(first.structuralCost.spatial.queries));
   assert.ok(Number.isInteger(first.structuralCost.spatial.candidates));
+
+  assert.deepEqual(first.additiveWorldSites, second.additiveWorldSites);
+  assert.equal(
+    first.additiveWorldSites.schema,
+    'spaceface.pq020-ceres-additive-world-sites.v1',
+  );
+  assert.equal(first.additiveWorldSites.coreWorldSiteId, SITE_ID);
+  assert.equal(
+    first.additiveWorldSites.exclusionPolicy,
+    'manifest_identified_non_cathedral_world_records',
+  );
+  assert.deepEqual(first.additiveWorldSites.siteIds, ['world_site_ceres_cinder_sluice']);
+  assert.equal(first.additiveWorldSites.allMaterializedExactlyAsPlanned, true);
+  assert.deepEqual(first.additiveWorldSites.totals, {
+    live: { entities: 5, byType: { fx: 1, wreck: 4 }, collidable: 2, colliders: 2 },
+    planned: { entities: 5, byType: { fx: 1, wreck: 4 }, collidable: 2, colliders: 2 },
+  });
+  const cinder = first.additiveWorldSites.sites[0];
+  assert.equal(cinder.siteId, 'world_site_ceres_cinder_sluice');
+  assert.equal(cinder.exactAgreement, true);
+  assert.deepEqual(cinder.live, cinder.planned);
 
   for (const group of Object.values(first.requiresHeaded)) {
     assert.equal(group.requiresHeaded, true);
@@ -155,6 +178,31 @@ test('PQ-020 validator fails closed on topology, structural, map, and evidence-s
   const changed = validatePq020CeresTopologySnapshot(structuralDrift);
   assert.equal(changed.pass, false);
   assert.ok(changed.failures.some((failure) => failure.startsWith('structuralCostDigest:')));
+
+  for (const type of ['asteroid', 'fx', 'wreck']) {
+    const ordinaryCeresDrift = structuredClone(snapshot);
+    ordinaryCeresDrift.structuralCost.entities.total += 1;
+    ordinaryCeresDrift.structuralCost.entities.byType[type] += 1;
+    const result = validatePq020CeresTopologySnapshot(ordinaryCeresDrift);
+    assert.equal(result.pass, false, `${type} growth must remain inside the pinned core gate`);
+    assert.ok(result.failures.some((failure) => failure.startsWith('structuralCostDigest:')));
+  }
+
+  const cinderLiveDrift = structuredClone(snapshot);
+  cinderLiveDrift.additiveWorldSites.sites[0].live.entities += 1;
+  const cinderLiveResult = validatePq020CeresTopologySnapshot(cinderLiveDrift);
+  assert.equal(cinderLiveResult.pass, false);
+  assert.ok(cinderLiveResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.live:')
+  )));
+
+  const cinderPlannedDrift = structuredClone(snapshot);
+  cinderPlannedDrift.additiveWorldSites.sites[0].planned.collidable += 1;
+  const cinderPlannedResult = validatePq020CeresTopologySnapshot(cinderPlannedDrift);
+  assert.equal(cinderPlannedResult.pass, false);
+  assert.ok(cinderPlannedResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.planned:')
+  )));
 
   const mapDrift = structuredClone(snapshot);
   mapDrift.transit.beacon.systemMapDrawPos.x += 1;

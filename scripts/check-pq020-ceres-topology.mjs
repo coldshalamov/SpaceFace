@@ -33,6 +33,7 @@ if (!receipt.pass) {
     cathedral: receipt.cathedral,
     route: receipt.route,
     structuralCost: receipt.structuralCost,
+    additiveWorldSites: receipt.additiveWorldSites,
     requiresHeaded: receipt.requiresHeaded,
     naturalJobs: receipt.naturalJobs,
     offscreenProjection: receipt.offscreenProjection,
@@ -50,8 +51,14 @@ if (!receipt.pass) {
   const jobs = receipt.naturalJobs;
   const condition = receipt.mechanicalCondition;
   const routing = receipt.routing;
+  const additiveSiteSummary = (receipt.additiveWorldSites?.sites || []).map((site) => (
+    `${site.siteId}: live == planned ${site.live.entities} entities`
+    + ` (${site.live.byType.fx || 0} fx + ${site.live.byType.wreck || 0} wreck),`
+    + ` ${site.live.collidable} collidable / ${site.live.colliders} colliders`
+  )).join('; ');
   const lines = [
     `PQ-020 Ceres topology PASS — ${receipt.route.siteId} route ${receipt.route.totalDistance} WU`,
+    `  additive World Sites: ${additiveSiteSummary}`,
     `  natural jobs (held-out seeds ${jobs.heldOutSeeds.join(', ')}, no injection):`,
     ...jobs.perSeed.map((row) => (
       `    seed ${row.seed}: roles ${JSON.stringify(row.withMetadata.trafficRoles)}`
