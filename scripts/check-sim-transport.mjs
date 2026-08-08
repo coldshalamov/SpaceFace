@@ -48,6 +48,11 @@ function stepSim(snapshot, frame) {
 }
 
 async function run() {
+  const defaultTransport = createSimTransport();
+  defaultTransport.publish(TRANSPORT_MESSAGE.EVENT, { diagnostic: true });
+  check('diagnostic journaling is opt-in', defaultTransport.journalSize === 0);
+  defaultTransport.close();
+
   // Baseline: the single-threaded path, read directly with no transport in between.
   const baselineDigests = [];
   {
@@ -58,21 +63,27 @@ async function run() {
   }
 
   // Separated: the sim publishes across the transport and the renderer digests what it receives.
-  const transport = createSimTransport();
+  const transport = createSimTransport({ journalCapacity: 3 });
   const receivedDigests = [];
   const receivedSequences = [];
+  let resolveAllDeliveries;
+  const allDeliveries = new Promise((resolve) => { resolveAllDeliveries = resolve; });
   transport.onRender((message) => {
     if (message.kind !== TRANSPORT_MESSAGE.SNAPSHOT) return;
     receivedSequences.push(message.sequence);
     receivedDigests.push(digestSnapshot(unpackSnapshot(message.payload)));
+    if (receivedDigests.length === FRAMES) resolveAllDeliveries();
   });
 
   const simSnapshot = createPresentationSnapshot({ capacity: 512 });
   for (let frame = 0; frame < FRAMES; frame++) {
     transport.publish(TRANSPORT_MESSAGE.SNAPSHOT, packSnapshot(stepSim(simSnapshot, frame)));
   }
-  // Let every queued message land. A transport that delivered synchronously would already have run.
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  // Wait for the contract rather than a timer turn: MessagePort delivery can occur after timers.
+  await Promise.race([
+    allDeliveries,
+    new Promise((resolve) => setTimeout(resolve, 100)),
+  ]);
 
   check('the transport uses a real MessageChannel', transport.structured,
     'fell back to the queue shim — the production and proven paths differ');
@@ -81,6 +92,14 @@ async function run() {
 
   const ordered = receivedSequences.every((seq, i) => i === 0 || seq > receivedSequences[i - 1]);
   check('messages arrive in publish order', ordered, receivedSequences.slice(0, 8).join(','));
+
+  check('the diagnostic journal is bounded', transport.journalSize === 3,
+    `retained ${transport.journalSize} entries`);
+  check('journal overflow is counted', transport.journalDropped === FRAMES - 3,
+    `dropped ${transport.journalDropped}`);
+  check('the bounded journal retains the newest publications',
+    transport.journal.map((entry) => entry.sequence).join(',') === `${FRAMES - 2},${FRAMES - 1},${FRAMES}`,
+    transport.journal.map((entry) => entry.sequence).join(','));
 
   const firstDivergence = baselineDigests.findIndex((d, i) => d !== receivedDigests[i]);
   check('separated digests match the single-threaded baseline, frame for frame',
@@ -108,7 +127,16 @@ async function run() {
       'the renderer can mutate sim state through the payload');
   }
 
-  transport.close();
+  check('close releases the transport once', transport.close() === true);
+  check('close clears retained journal references', transport.closed && transport.journalSize === 0);
+  check('close is idempotent', transport.close() === false);
+  let closedPublishFailed = false;
+  try {
+    transport.publish(TRANSPORT_MESSAGE.SNAPSHOT, {});
+  } catch (error) {
+    closedPublishFailed = /closed/i.test(String(error && error.message));
+  }
+  check('a closed transport fails fast instead of retaining new work', closedPublishFailed);
 }
 
 await run();

@@ -66,9 +66,17 @@ export function digestSnapshot(snapshot, quantum = 1e-4) {
  */
 export function createSimTransport(options = {}) {
   const listeners = { sim: null, render: null };
-  const journal = [];
+  const requestedJournalCapacity = Number(options.journalCapacity);
+  const journalCapacity = Number.isFinite(requestedJournalCapacity)
+    ? Math.max(0, Math.floor(requestedJournalCapacity))
+    : 0;
+  const journal = journalCapacity > 0 ? new Array(journalCapacity) : [];
+  let journalSize = 0;
+  let journalWriteIndex = 0;
+  let journalDropped = 0;
   let delivered = 0;
   let posted = 0;
+  let closed = false;
 
   const Channel = options.MessageChannel || globalThis.MessageChannel;
   const channel = Channel ? new Channel() : null;
@@ -80,9 +88,32 @@ export function createSimTransport(options = {}) {
     || (typeof queueMicrotask === 'function' ? queueMicrotask : (fn) => Promise.resolve().then(fn));
 
   function deliver(side, message) {
+    if (closed) return;
     delivered++;
     const listener = listeners[side];
     if (listener) listener(message);
+  }
+
+  function recordJournal(kind, sequence) {
+    if (journalCapacity === 0) return;
+    if (journalSize === journalCapacity) journalDropped++;
+    else journalSize++;
+    journal[journalWriteIndex] = { kind, sequence };
+    journalWriteIndex = (journalWriteIndex + 1) % journalCapacity;
+  }
+
+  function journalEntries() {
+    if (journalSize === 0) return [];
+    const entries = new Array(journalSize);
+    const start = journalSize === journalCapacity ? journalWriteIndex : 0;
+    for (let i = 0; i < journalSize; i++) {
+      entries[i] = journal[(start + i) % journalCapacity];
+    }
+    return entries;
+  }
+
+  function assertOpen() {
+    if (closed) throw new Error('Sim transport has been closed.');
   }
 
   if (channel) {
@@ -96,17 +127,27 @@ export function createSimTransport(options = {}) {
     schema: SIM_TRANSPORT_SCHEMA,
     /** True when a real MessageChannel backs this transport. */
     get structured() { return !!channel; },
+    get closed() { return closed; },
     get posted() { return posted; },
     get delivered() { return delivered; },
-    get journal() { return journal; },
+    get journal() { return journalEntries(); },
+    get journalSize() { return journalSize; },
+    get journalDropped() { return journalDropped; },
 
-    onRender(listener) { listeners.render = listener; },
-    onSim(listener) { listeners.sim = listener; },
+    onRender(listener) {
+      assertOpen();
+      listeners.render = typeof listener === 'function' ? listener : null;
+    },
+    onSim(listener) {
+      assertOpen();
+      listeners.sim = typeof listener === 'function' ? listener : null;
+    },
 
     /** Sim → render. The payload is copied, never shared, so the renderer cannot reach back. */
     publish(kind, payload) {
+      assertOpen();
       posted++;
-      journal.push({ kind, sequence: posted });
+      recordJournal(kind, posted);
       const message = { kind, sequence: posted, payload };
       if (channel) channel.port2.postMessage(message);
       else schedule(() => deliver('render', message));
@@ -115,6 +156,7 @@ export function createSimTransport(options = {}) {
 
     /** Render/platform → sim. Same one-way copy in the other direction. */
     request(kind, payload) {
+      assertOpen();
       posted++;
       const message = { kind, sequence: posted, payload };
       if (channel) channel.port1.postMessage(message);
@@ -123,8 +165,20 @@ export function createSimTransport(options = {}) {
     },
 
     close() {
+      if (closed) return false;
+      closed = true;
+      listeners.render = null;
+      listeners.sim = null;
+      if (channel) {
+        channel.port1.onmessage = null;
+        channel.port2.onmessage = null;
+      }
       channel?.port1.close();
       channel?.port2.close();
+      for (let i = 0; i < journal.length; i++) journal[i] = undefined;
+      journalSize = 0;
+      journalWriteIndex = 0;
+      return true;
     },
   };
 }

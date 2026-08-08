@@ -36,86 +36,11 @@ import {
   classifyRenderEntity,
   createRenderEntityFrame,
   endRenderEntityFrame,
-  projectRenderEntityFrame,
 } from './renderEntityFrame.js';
-import { createPresentationSnapshot, SNAPSHOT_FLAG } from './presentationSnapshot.js';
-import {
-  createSimTransport,
-  digestSnapshot,
-  packSnapshot,
-  unpackSnapshot,
-  TRANSPORT_MESSAGE,
-} from '../core/simTransport.js';
 
-/**
- * Archetype id for the batched path: entities sharing geometry *and* material can be drawn in one
- * instanced call, so that pair is the identity. Ids are cached per mesh in a WeakMap, keyed by the
- * mesh itself, so the common case is one lookup and no allocation — and a mesh that is disposed
- * takes its entry with it rather than pinning the geometry alive.
- */
-const RENDER_ARCHETYPE_IDS = new WeakMap();
-const RENDER_ARCHETYPE_BY_KEY = new Map();
-let nextRenderArchetypeId = 0;
+// The dense snapshot/batcher remains an offline parity candidate until it has a real authored-root
+// consumer. Ordinary flight must not pay its projection or transport-audit cost in the meantime.
 
-/**
- * How often the default route round-trips a snapshot through the sim/render transport.
- *
- * The audit is O(entities): it packs a copy, ships it across the boundary and hashes both sides.
- * Doing that every frame would spend real budget on a diagnostic, and the violation it looks for —
- * the renderer mutating what the sim owns — is a structural bug, not a transient one. If it exists
- * it will be caught within a couple of seconds either way, so sample rather than saturate.
- */
-const PRESENTATION_OWNERSHIP_AUDIT_INTERVAL = 30;
-
-/**
- * Round-trip this frame's snapshot through the sim/render transport and prove both sides agree.
- *
- * This is what makes the default route actually use separated owners rather than merely being able
- * to. The renderer publishes a copy across the boundary and hashes what comes back against what it
- * holds; a mismatch means the two sides disagree about state the sim owns, which is precisely the
- * bug that a real Worker would otherwise surface as a rendering artifact with no stack.
- *
- * It runs on a cadence because the check is O(entities) and the fault it hunts is structural, not
- * transient — a violation shows up within a second or two either way, and spending frame budget on a
- * diagnostic every frame would be paying for certainty nobody asked for.
- *
- * Divergence is recorded, never thrown. A renderer that hard-fails mid-flight over an audit is worse
- * than one that reports the disagreement and keeps drawing.
- */
-function auditPresentationOwnership(renderer) {
-  const snapshot = renderer._presentationSnapshot;
-  if (!snapshot || snapshot.count === 0) return;
-  if ((snapshot.generation % PRESENTATION_OWNERSHIP_AUDIT_INTERVAL) !== 0) return;
-  if (!renderer._simTransport) {
-    renderer._simTransport = createSimTransport();
-    renderer._ownershipAudit = { checks: 0, divergences: 0, lastDigest: 0 };
-    renderer._simTransport.onRender((message) => {
-      if (message.kind !== TRANSPORT_MESSAGE.SNAPSHOT) return;
-      const audit = renderer._ownershipAudit;
-      audit.checks++;
-      if (digestSnapshot(unpackSnapshot(message.payload)) !== audit.lastDigest) audit.divergences++;
-    });
-  }
-  renderer._ownershipAudit.lastDigest = digestSnapshot(snapshot);
-  renderer._simTransport.publish(TRANSPORT_MESSAGE.SNAPSHOT, packSnapshot(snapshot));
-}
-
-function renderArchetypeOf(record) {
-  const mesh = record && record.mesh;
-  if (!mesh) return 0;
-  const cached = RENDER_ARCHETYPE_IDS.get(mesh);
-  if (cached !== undefined) return cached;
-  const geometry = mesh.geometry;
-  const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-  const key = `${geometry ? geometry.uuid : 'none'}|${material ? material.uuid : 'none'}`;
-  let id = RENDER_ARCHETYPE_BY_KEY.get(key);
-  if (id === undefined) {
-    id = nextRenderArchetypeId++;
-    RENDER_ARCHETYPE_BY_KEY.set(key, id);
-  }
-  RENDER_ARCHETYPE_IDS.set(mesh, id);
-  return id;
-}
 import {
   createPresentationWorld,
   PRESENTATION_DIRTY,
@@ -2264,23 +2189,6 @@ export const render = {
       }
       world.clearDirty(slot);
     }
-
-    // Publish the dense presentation snapshot for this frame. The classification pass above has
-    // already visited every entity and cached its pose, so this is a linear copy of numbers the
-    // frame already holds — not a second traversal — and it allocates nothing after the first frame.
-    //
-    // It runs on the default route rather than behind a flag because a snapshot only some players
-    // produce is a snapshot nobody can trust: divergence would show up as a bug report, not a gate.
-    // The batched consumer reads this; the per-entity draw path still runs alongside it, which is the
-    // parity window `check:render-path-parity` measures.
-    if (!this._presentationSnapshot) this._presentationSnapshot = createPresentationSnapshot({ capacity: 512 });
-    projectRenderEntityFrame(
-      this._entityFrame,
-      this._presentationSnapshot,
-      renderArchetypeOf,
-      SNAPSHOT_FLAG.VISIBLE,
-    );
-    auditPresentationOwnership(this);
 
     endRenderEntityFrame(this._entityFrame);
     const diagnostics = this._entityViewDiagnostics;
