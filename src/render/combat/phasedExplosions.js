@@ -1,3 +1,8 @@
+import {
+  DEFAULT_VFX_ADMISSION_PRIORITY,
+  normalizeVfxAdmissionPriority,
+} from '../../presentation/vfxAdmissionPriority.js';
+
 function schedule(duration, events) {
   return Object.freeze({ duration, events: Object.freeze(events.map((event) => Object.freeze(event))) });
 }
@@ -83,6 +88,8 @@ export class PhasedExplosionLifecycle {
       slot,
       active: false,
       serial: -1,
+      admissionSerial: -1,
+      priority: DEFAULT_VFX_ADMISSION_PRIORITY,
       classId: 'small',
       age: 0,
       phaseIndex: 0,
@@ -96,6 +103,10 @@ export class PhasedExplosionLifecycle {
   }
 
   start(input = {}) {
+    const priority = normalizeVfxAdmissionPriority(
+      input.admissionPriority ?? input.priority,
+      DEFAULT_VFX_ADMISSION_PRIORITY,
+    );
     let entry = null;
     for (let i = 0; i < this.entries.length; i++) {
       if (!this.entries[i].active) {
@@ -106,8 +117,12 @@ export class PhasedExplosionLifecycle {
     if (!entry) {
       entry = this.entries[0];
       for (let i = 1; i < this.entries.length; i++) {
-        if (this.entries[i].serial < entry.serial) entry = this.entries[i];
+        const candidate = this.entries[i];
+        if (candidate.priority < entry.priority
+          || (candidate.priority === entry.priority
+            && candidate.admissionSerial < entry.admissionSerial)) entry = candidate;
       }
+      if (priority < entry.priority) return null;
     } else {
       this.activeCount++;
     }
@@ -125,6 +140,8 @@ export class PhasedExplosionLifecycle {
     }
     entry.active = true;
     entry.serial = this._serial++;
+    entry.admissionSerial = entry.serial;
+    entry.priority = priority;
     entry.classId = classId;
     entry.age = 0;
     entry.phaseIndex = 0;
@@ -162,7 +179,12 @@ export class PhasedExplosionLifecycle {
   _release(entry) {
     if (!entry.active) return;
     entry.active = false;
+    entry.serial = -1;
+    entry.admissionSerial = -1;
+    entry.priority = DEFAULT_VFX_ADMISSION_PRIORITY;
     entry.phaseIndex = 0;
+    entry.age = 0;
+    entry.sourceType = null;
     this.activeCount = Math.max(0, this.activeCount - 1);
   }
 }

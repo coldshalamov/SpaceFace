@@ -105,6 +105,11 @@ import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJ
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
+import {
+  DEFAULT_VFX_ADMISSION_PRIORITY,
+  deriveVfxAdmissionMetadata,
+  normalizeVfxAdmissionPriority,
+} from '../presentation/vfxAdmissionPriority.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
@@ -568,7 +573,17 @@ export const vfx = {
     this._combatBeamLocalizer = (x, z, out) => this._toLocalXZ(x, z, out);
     this._beamDamageCueNext = new Map();
     this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
-    this._explosionEmitter = (phase, entry) => this._emitExplosionPhase(phase, entry);
+    this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+    this._admissionSerial = 0;
+    this._explosionEmitter = (phase, entry) => {
+      const previousPriority = this._spawnAdmissionPriority;
+      this._spawnAdmissionPriority = normalizeVfxAdmissionPriority(entry && entry.priority);
+      try {
+        return this._emitExplosionPhase(phase, entry);
+      } finally {
+        this._spawnAdmissionPriority = previousPriority;
+      }
+    };
     this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 };
     this._entityLocalXZ = { x: 0, z: 0 };
     // Renderer prepareFrame calls this on frameOriginSeq change (no effect erasure).
@@ -885,6 +900,10 @@ export const vfx = {
     this._cr1 = new Float32Array(cap); this._cg1 = new Float32Array(cap); this._cb1 = new Float32Array(cap);
     this._particleTrailAxis = new Float32Array(cap);
     this._particleTrailStretch = new Float32Array(cap);
+    this._particleAdmissionPriority = new Float64Array(cap);
+    this._particleAdmissionPriority.fill(DEFAULT_VFX_ADMISSION_PRIORITY);
+    this._particleAdmissionSerial = new Float64Array(cap);
+    this._particleAdmissionSerial.fill(-1);
     this._alive = new Uint8Array(cap);
     this._head = 0;        // round-robin allocation cursor
     this._liveCount = 0;
@@ -939,6 +958,7 @@ export const vfx = {
       this._spr.push({
         alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1,
         op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0, aspect: 1,
+        admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY, admissionSerial: -1,
         r: 1, g: 1, b: 1,
       });
     }
@@ -1002,6 +1022,7 @@ export const vfx = {
     const oldCap = this._cap || 0;
     const oldLiveCount = this._liveCount || 0;
     const oldActive = this._activeParticles;
+    const oldActivePos = this._activeParticlePos;
     const old = {};
     const scalarFields = [
       '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
@@ -1015,6 +1036,31 @@ export const vfx = {
     old._pAlpha = this._pAlpha;
     old._pTrailAxis = this._pTrailAxis;
     old._pTrailStretch = this._pTrailStretch;
+    old._pPackedParticleSlots = this._pPackedParticleSlots;
+    old._particleAdmissionPriority = this._particleAdmissionPriority;
+    old._particleAdmissionSerial = this._particleAdmissionSerial;
+    if (!old._particleAdmissionPriority || old._particleAdmissionPriority.length !== oldCap) {
+      old._particleAdmissionPriority = new Float64Array(oldCap);
+      old._particleAdmissionPriority.fill(DEFAULT_VFX_ADMISSION_PRIORITY);
+    }
+    if (!old._particleAdmissionSerial || old._particleAdmissionSerial.length !== oldCap) {
+      old._particleAdmissionSerial = new Float64Array(oldCap);
+      old._particleAdmissionSerial.fill(-1);
+      for (let cursor = 0; cursor < oldLiveCount; cursor++) {
+        const slot = oldActive[cursor];
+        if (slot >= 0 && slot < oldCap) old._particleAdmissionSerial[slot] = cursor;
+      }
+    }
+
+    // A quality downgrade is itself an admission event. Retain the most important residents; for
+    // equal priority, dropping the oldest first matches saturated-pool eviction semantics.
+    let retainedActive = null;
+    if (oldLiveCount > nextCap) {
+      retainedActive = Array.from({ length: oldLiveCount }, (_, cursor) => oldActive[cursor]);
+      retainedActive.sort((a, b) => old._particleAdmissionPriority[b]
+        - old._particleAdmissionPriority[a]
+        || old._particleAdmissionSerial[b] - old._particleAdmissionSerial[a]);
+    }
 
     const geo = new THREE.BufferGeometry();
     this._pPos = new Float32Array(nextCap * 3);
@@ -1040,28 +1086,53 @@ export const vfx = {
     this._activeParticlePos.fill(-1);
     this._pPackedParticleSlots = new Int32Array(nextCap);
     this._pPackedParticleSlots.fill(-1);
+    this._particleAdmissionPriority = new Float64Array(nextCap);
+    this._particleAdmissionPriority.fill(DEFAULT_VFX_ADMISSION_PRIORITY);
+    this._particleAdmissionSerial = new Float64Array(nextCap);
+    this._particleAdmissionSerial.fill(-1);
     this._freeParticles = new Int32Array(nextCap);
 
     const keep = Math.min(oldLiveCount, nextCap);
     for (let dst = 0; dst < keep; dst++) {
-      const src = oldActive[dst];
+      const src = retainedActive ? retainedActive[dst] : oldActive[dst];
       if (!(src >= 0 && src < oldCap)) continue;
       for (const field of scalarFields) this[field][dst] = old[field][src];
       // The old GPU attributes are already packed in active-list order, independently of the
-      // stable CPU slot. Preserve the exact last-presented record during the capacity swap.
-      const src3 = dst * 3;
+      // stable CPU slot. Preserve the exact last-presented record only while its identity matches;
+      // recycle/retire can invalidate a packed index before the next integration has rewritten it.
+      const packedSource = oldActivePos && oldActivePos[src] >= 0 ? oldActivePos[src] : dst;
       const dst3 = dst * 3;
-      this._pPos[dst3] = old._pPos[src3];
-      this._pPos[dst3 + 1] = old._pPos[src3 + 1];
-      this._pPos[dst3 + 2] = old._pPos[src3 + 2];
-      this._pCol[dst3] = old._pCol[src3];
-      this._pCol[dst3 + 1] = old._pCol[src3 + 1];
-      this._pCol[dst3 + 2] = old._pCol[src3 + 2];
-      this._pSize[dst] = old._pSize[dst];
-      this._pAlpha[dst] = old._pAlpha[dst];
-      this._pTrailAxis[dst] = old._pTrailAxis[dst];
-      this._pTrailStretch[dst] = old._pTrailStretch[dst];
+      const packedIdentityValid = !!old._pPackedParticleSlots
+        && old._pPackedParticleSlots[packedSource] === src;
+      if (packedIdentityValid) {
+        const src3 = packedSource * 3;
+        this._pPos[dst3] = old._pPos[src3];
+        this._pPos[dst3 + 1] = old._pPos[src3 + 1];
+        this._pPos[dst3 + 2] = old._pPos[src3 + 2];
+        this._pCol[dst3] = old._pCol[src3];
+        this._pCol[dst3 + 1] = old._pCol[src3 + 1];
+        this._pCol[dst3 + 2] = old._pCol[src3 + 2];
+        this._pSize[dst] = old._pSize[packedSource];
+        this._pAlpha[dst] = old._pAlpha[packedSource];
+        this._pTrailAxis[dst] = old._pTrailAxis[packedSource];
+        this._pTrailStretch[dst] = old._pTrailStretch[packedSource];
+      } else {
+        const life = old._life[src];
+        const t = life > 1e-8 ? Math.max(0, Math.min(1, old._age[src] / life)) : 1;
+        this._pPos[dst3] = old._px[src];
+        this._pPos[dst3 + 1] = old._py[src];
+        this._pPos[dst3 + 2] = old._pz[src];
+        this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
+        this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
+        this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
+        this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
+        this._pAlpha[dst] = 1 - t;
+        this._pTrailAxis[dst] = old._particleTrailAxis[src];
+        this._pTrailStretch[dst] = old._particleTrailStretch[src];
+      }
       this._alive[dst] = 1;
+      this._particleAdmissionPriority[dst] = old._particleAdmissionPriority[src];
+      this._particleAdmissionSerial[dst] = old._particleAdmissionSerial[src];
       this._activeParticles[dst] = dst;
       this._activeParticlePos[dst] = dst;
       this._pPackedParticleSlots[dst] = dst;
@@ -1073,6 +1144,7 @@ export const vfx = {
     this._pDrawMax = keep;
     this._freeParticleCount = nextCap - keep;
     for (let i = 0; i < this._freeParticleCount; i++) this._freeParticles[i] = nextCap - 1 - i;
+    if (!Number.isFinite(this._admissionSerial)) this._admissionSerial = keep;
     geo.setDrawRange(0, keep);
     this._pGeo = geo;
     this._points.geometry = geo;
@@ -1266,15 +1338,59 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Particle / sprite allocation
   // -------------------------------------------------------------------------
-  _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch) {
+  _lowestPriorityParticleSlot() {
+    if (this._liveCount <= 0) return -1;
+    const active = this._activeParticles;
+    let lowest = active[0];
+    for (let cursor = 1; cursor < this._liveCount; cursor++) {
+      const candidate = active[cursor];
+      if (this._particleAdmissionPriority[candidate] < this._particleAdmissionPriority[lowest]
+        || (this._particleAdmissionPriority[candidate] === this._particleAdmissionPriority[lowest]
+          && this._particleAdmissionSerial[candidate] < this._particleAdmissionSerial[lowest])) {
+        lowest = candidate;
+      }
+    }
+    return lowest;
+  },
+
+  _lowestPrioritySpriteSlot() {
+    if (this._liveSpriteCount <= 0) return -1;
+    const active = this._activeSprites;
+    let lowest = active[0];
+    for (let cursor = 1; cursor < this._liveSpriteCount; cursor++) {
+      const candidate = active[cursor];
+      const a = this._spr[candidate];
+      const b = this._spr[lowest];
+      if (a.admissionPriority < b.admissionPriority
+        || (a.admissionPriority === b.admissionPriority
+          && a.admissionSerial < b.admissionSerial)) lowest = candidate;
+    }
+    return lowest;
+  },
+
+  _spawnParticle(
+    x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch,
+    admissionPriority,
+  ) {
     if (!this._scene) return;
     assertDynamicBufferOwnerWritable(this._particleDynamicBufferOwner);
     const cap = this._cap;
-    // Prefer an O(1) free stack. Only when every slot is live do we recycle at the cursor.
+    const priority = normalizeVfxAdmissionPriority(
+      admissionPriority,
+      this._spawnAdmissionPriority,
+    );
+    // Prefer an O(1) free stack. Saturation alone pays the bounded, allocation-free priority scan.
     let i;
     if (this._freeParticleCount > 0) i = this._freeParticles[--this._freeParticleCount];
-    else i = this._head;
+    else {
+      i = this._lowestPriorityParticleSlot();
+      if (i < 0 || priority < this._particleAdmissionPriority[i]) return null;
+      this._retireParticle(i);
+      i = this._freeParticles[--this._freeParticleCount];
+    }
     this._head = (i + 1) % cap;
+    this._particleAdmissionPriority[i] = priority;
+    this._particleAdmissionSerial[i] = this._admissionSerial++;
     if (!this._alive[i]) this._activateParticle(i);
 
     // Galactic-global spawn → frame-local GPU pose (Helios origin-zero is identity).
@@ -1293,9 +1409,13 @@ export const vfx = {
     }
     this._alive[i] = 1;
     if (this._tier1Spawn) this._tier1Spawn.countVfxEmissions(1, 'particle');
+    return i;
   },
 
-  _spawnSprite(kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null) {
+  _spawnSprite(
+    kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null,
+    admissionPriority,
+  ) {
     if (!this._scene) return null;
     if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
       const authored = this._flashAccessibilityScratch;
@@ -1315,16 +1435,27 @@ export const vfx = {
       op0 = authored.opacity0;
       op1 = authored.opacity1;
     }
+    const priority = normalizeVfxAdmissionPriority(
+      admissionPriority,
+      this._spawnAdmissionPriority,
+    );
     const n = SPRITE_CAP;
     let i;
     if (this._freeSpriteCount > 0) i = this._freeSprites[--this._freeSpriteCount];
-    else i = this._sHead;
+    else {
+      i = this._lowestPrioritySpriteSlot();
+      if (i < 0 || priority < this._spr[i].admissionPriority) return null;
+      this._retireSprite(i);
+      i = this._freeSprites[--this._freeSpriteCount];
+    }
     this._sHead = (i + 1) % n;
 
     const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     const st = this._spr[i];
     const wasAlive = st.alive;
     st.alive = true; st.kind = kind; st.age = 0; st.life = life;
+    st.admissionPriority = priority;
+    st.admissionSerial = this._admissionSerial++;
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
     st.x = local.x; st.y = y || 0; st.z = local.z; st.vx = vx || 0; st.vz = vz || 0;
     st.roll = Number.isFinite(roll) ? roll : Math.random() * Math.PI * 2;
@@ -1482,6 +1613,10 @@ export const vfx = {
       this._activeParticlePos[i] = -1;
       if (this._pPackedParticleSlots) this._pPackedParticleSlots[lastPos] = -1;
     }
+    if (this._particleAdmissionPriority) {
+      this._particleAdmissionPriority[i] = DEFAULT_VFX_ADMISSION_PRIORITY;
+    }
+    if (this._particleAdmissionSerial) this._particleAdmissionSerial[i] = -1;
     this._freeParticles[this._freeParticleCount++] = i;
   },
 
@@ -1504,6 +1639,8 @@ export const vfx = {
       }
       this._activeSpritePos[i] = -1;
     }
+    st.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+    st.admissionSerial = -1;
     this._freeSprites[this._freeSpriteCount++] = i;
   },
 
@@ -2314,10 +2451,15 @@ export const vfx = {
     const style = this._presentationStyle(p);
     const radius = this._presentationRadius(p);
     const angle = this._dirAngle(p.direction, p.sourceId);
+    const admissionPriority = normalizeVfxAdmissionPriority(p.admissionPriority);
     const particlesSpawned = particlesRequested > 0
-      ? this._spawnPresentationParticles(p, pos, style, particlesRequested, angle, radius)
+      ? this._spawnPresentationParticles(
+        p, pos, style, particlesRequested, angle, radius, admissionPriority,
+      )
       : 0;
-    if (particlesRequested > 0) this._spawnPresentationSprite(p, pos, style, radius);
+    if (particlesRequested > 0) {
+      this._spawnPresentationSprite(p, pos, style, radius, admissionPriority);
+    }
 
     const maxLights = Math.min(lightsRequested, this._LIGHT_NPOOL || 0);
     let lightsActivated = 0;
@@ -2325,7 +2467,14 @@ export const vfx = {
       const off = i - (maxLights - 1) * 0.5;
       const dx = Math.cos(angle + Math.PI / 2) * off * radius * 0.35;
       const dz = Math.sin(angle + Math.PI / 2) * off * radius * 0.35;
-      if (this._flashLight({ x: pos.x + dx, z: pos.z + dz }, style.lightColor || style.color0, style.lightPeak, style.lightDecay, style.lightDistance)) {
+      if (this._flashLight(
+        { x: pos.x + dx, z: pos.z + dz },
+        style.lightColor || style.color0,
+        style.lightPeak,
+        style.lightDecay,
+        style.lightDistance,
+        admissionPriority,
+      )) {
         lightsActivated++;
       }
     }
@@ -2342,6 +2491,7 @@ export const vfx = {
       lightsRequested,
       lightsActivated,
       flashReduced: !!p.flashReduced,
+      admissionPriority,
     };
   },
 
@@ -2538,29 +2688,38 @@ export const vfx = {
     return Math.max(4, base * (0.7 + Math.log2(mag + 1) * 0.18));
   },
 
-  _spawnPresentationSprite(p, pos, style, radius) {
+  _spawnPresentationSprite(p, pos, style, radius, admissionPriority) {
     const reduced = !!(p && p.flashReduced);
     const kind = reduced ? SPR_RING : style.spriteKind;
     const opacity = reduced ? Math.min(style.spriteOpacity, 0.42) : style.spriteOpacity;
-    this._spawnSprite(kind, pos.x, 0, pos.z, style.spriteLife, radius * style.spriteSize0, radius * style.spriteSize1, opacity, 0.0, style.color0, 0, 0);
+    this._spawnSprite(
+      kind, pos.x, 0, pos.z, style.spriteLife,
+      radius * style.spriteSize0, radius * style.spriteSize1,
+      opacity, 0.0, style.color0, 0, 0, 1, null, admissionPriority,
+    );
     if (!reduced && style.echoRing) {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, style.spriteLife * 1.25, radius * style.spriteSize0 * 0.7, radius * style.spriteSize1 * 1.35, opacity * 0.55, 0.0, style.color1, 0, 0);
+      this._spawnSprite(
+        SPR_RING, pos.x, 0, pos.z, style.spriteLife * 1.25,
+        radius * style.spriteSize0 * 0.7, radius * style.spriteSize1 * 1.35,
+        opacity * 0.55, 0.0, style.color1, 0, 0, 1, null, admissionPriority,
+      );
     }
   },
 
-  _spawnPresentationParticles(p, pos, style, requested, angle, radius) {
+  _spawnPresentationParticles(p, pos, style, requested, angle, radius, admissionPriority) {
     const burst = this._burst || 1;
     const count = Math.max(1, Math.min(requested, Math.round(requested * burst)));
     this._c0.set(style.color0);
     this._c1.set(style.color1);
     const radial = style.radial || (p && p.id && (p.id.includes('shield') || p.id.includes('signal') || p.id.includes('branch')));
+    let spawned = 0;
     for (let k = 0; k < count; k++) {
       const a = radial ? Math.random() * Math.PI * 2 : angle + (Math.random() - 0.5) * style.spread;
       const sp = style.speed0 + Math.random() * style.speedJitter;
       const dist = radial ? Math.random() * radius * 0.45 : (Math.random() - 0.5) * radius * 0.35;
       const sx = pos.x + Math.cos(a) * dist;
       const sz = pos.z + Math.sin(a) * dist;
-      this._spawnParticle(
+      const slot = this._spawnParticle(
         sx, sz,
         Math.cos(a) * sp, Math.sin(a) * sp,
         style.life0 + Math.random() * style.lifeJitter,
@@ -2568,9 +2727,11 @@ export const vfx = {
         this._c0, this._c1,
         style.drag,
         style.y, style.vy,
+        0, 0, admissionPriority,
       );
+      if (slot != null) spawned++;
     }
-    return count;
+    return spawned;
   },
 
   _presentationStyle(p) {
@@ -2739,15 +2900,17 @@ export const vfx = {
     const pos = this._posFrom(p, p && p.id);
     if (!pos) return false;
     const direction = p && (p.direction || p.vel || p.approach) || null;
-    this._explosions.start({
+    const admission = deriveVfxAdmissionMetadata(p || {}, this.state);
+    const entry = this._explosions.start({
       classId,
       x: pos.x,
       z: pos.z,
       radius: Math.max(2, Number(p && p.radius) || 6),
       direction,
       sourceType: p && (p.type || p.victimClass) || null,
+      priority: admission.admissionPriority,
     });
-    return true;
+    return !!entry;
   },
 
   _emitExplosionPhase(phase, entry) {
@@ -7850,9 +8013,22 @@ export const vfx = {
       // whole-scene shader recompile (measured multi-second stalls on Intel/ANGLE). The count
       // must never change at runtime — precompile.js warms shaders against this same count.
       this._scene.add(l);
-      this._lights.push({ obj: l, intensity: 0, peak: 0, decay: 0, t: 0, active: false });
+      this._lights.push({
+        slot: i,
+        obj: l,
+        intensity: 0,
+        peak: 0,
+        decay: 0,
+        t: 0,
+        active: false,
+        admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY,
+        admissionSerial: -1,
+      });
     }
-    // cursor for LRU grab
+    this._freeLights = new Int32Array(this._LIGHT_NPOOL);
+    for (let i = 0; i < this._LIGHT_NPOOL; i++) this._freeLights[i] = this._LIGHT_NPOOL - 1 - i;
+    this._freeLightCount = this._LIGHT_NPOOL;
+    // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
   },
 
@@ -7861,7 +8037,7 @@ export const vfx = {
   // — reads as a sharp flash, not a fade-in. `decayRate` ~ 6-10 (higher = snappier).
   // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
   // `pos` is galactic-global XZ (same as entity.pos / event payloads); GPU placement is frame-local.
-  _flashLight(pos, color, peak, decayRate, dist) {
+  _flashLight(pos, color, peak, decayRate, dist, admissionPriority) {
     const pool = this._lights;
     if (!pool || !pos) return false;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -7873,8 +8049,26 @@ export const vfx = {
     const pp = this._playerPos();
     const d = Math.hypot((pos.x || 0) - pp.x, (pos.z || 0) - pp.z);
     if (d > 700) return false;
-    const slot = pool[this._lightCur];
-    this._lightCur = (this._lightCur + 1) % pool.length;
+    const priority = normalizeVfxAdmissionPriority(
+      admissionPriority,
+      this._spawnAdmissionPriority,
+    );
+    let slotIndex;
+    if (this._freeLightCount > 0) {
+      slotIndex = this._freeLights[--this._freeLightCount];
+    } else {
+      slotIndex = 0;
+      for (let i = 1; i < pool.length; i++) {
+        const candidate = pool[i];
+        const resident = pool[slotIndex];
+        if (candidate.admissionPriority < resident.admissionPriority
+          || (candidate.admissionPriority === resident.admissionPriority
+            && candidate.admissionSerial < resident.admissionSerial)) slotIndex = i;
+      }
+      if (priority < pool[slotIndex].admissionPriority) return false;
+    }
+    const slot = pool[slotIndex];
+    this._lightCur = (slotIndex + 1) % pool.length;
     const obj = slot.obj;
     if (!slot.active) {
       slot.active = true;
@@ -7889,6 +8083,8 @@ export const vfx = {
     slot.intensity = peak * 0.3; // start ramped partway (fast attack)
     slot.decay = decayRate || 8;
     slot.t = 0;
+    slot.admissionPriority = priority;
+    slot.admissionSerial = this._admissionSerial++;
     return true;
   },
 
@@ -7911,6 +8107,9 @@ export const vfx = {
           if (slot.active) {
             slot.active = false;
             this._activeLightCount = Math.max(0, this._activeLightCount - 1);
+            slot.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+            slot.admissionSerial = -1;
+            this._freeLights[this._freeLightCount++] = slot.slot;
           }
         }
       }

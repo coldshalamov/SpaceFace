@@ -2,6 +2,8 @@
 // existing camera, audio, UI, and accessibility buses. This stays DOM/Three/WebAudio-free so the
 // same contract is testable in headless replay.
 
+import { deriveVfxAdmissionMetadata } from '../presentation/vfxAdmissionPriority.js';
+
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
 /**
@@ -434,6 +436,7 @@ export const presentationAdapters = {
     }
     const budget = cue && cue.budgets || {};
     const flashReduced = !!(this.state && this.state.settings && this.state.settings.accessibility && this.state.settings.accessibility.flashReduce);
+    const admission = deriveVfxAdmissionMetadata(cue, this.state);
     const payload = {
       id: cue.id,
       lane,
@@ -443,13 +446,37 @@ export const presentationAdapters = {
       position: cue.position || null,
       direction: cue.direction || null,
       magnitude: finite(cue.magnitude, 1),
+      importance: admission.importance,
+      playerRelevance: admission.playerRelevance,
+      distance: Math.max(0, finite(cue.distance, 0)),
+      proximity: admission.proximity,
+      severity: admission.severity,
+      targetRelevance: admission.targetRelevance,
+      playerCaused: admission.playerCaused,
+      currentTarget: admission.currentTarget,
+      admissionPriority: admission.admissionPriority,
+      priorityComponents: {
+        importance: admission.importance,
+        playerRelevance: admission.playerRelevance,
+        proximity: admission.proximity,
+        severity: admission.severity,
+        targetRelevance: admission.targetRelevance,
+        playerCaused: admission.playerCaused,
+        currentTarget: admission.currentTarget,
+      },
       material: cue.material || 'unknown',
-      sourceId: cue.sourceId ?? null,
-      targetId: cue.targetId ?? null,
+      sourceId: admission.sourceId,
+      targetId: admission.targetId,
       tags: Array.isArray(cue.tags) ? [...cue.tags] : [],
     };
     this.bus.emit('presentation:vfxCue', payload);
-    return { event: 'presentation:vfxCue', particles: payload.particles, lights: payload.lights, flashReduced };
+    return {
+      event: 'presentation:vfxCue',
+      particles: payload.particles,
+      lights: payload.lights,
+      flashReduced,
+      admissionPriority: payload.admissionPriority,
+    };
   },
 
   _applyAudio(cue) {
