@@ -1,6 +1,6 @@
 # SpaceFace visual-asset catalog
 
-**Snapshot:** 2026-07-29
+**Snapshot:** 2026-08-08
 **Status:** read-only census and production routing; not program state or visual acceptance
 
 This is the readable companion to [VISUAL_ASSET_CATALOG.json](./VISUAL_ASSET_CATALOG.json). It
@@ -16,7 +16,7 @@ The ranked remediation sequence and component-level fiction/development agreemen
 - Every current release-manifest row, path, and exact source/release hash is included.
 - Current whole-ship player, hostile, and traffic selectors are included.
 - Major standalone-media families and the highest-exposure place references are counted.
-- Candidate/worktree archaeology is a dated 2026-07-29 snapshot, hash-pinned where the
+- Candidate/worktree archaeology is a dated 2026-08-08 snapshot, hash-pinned where the
   files are tracked.
 - Per-mesh materials, UVs, embedded texture channels, LODs, fallbacks, and editable-source replay
   are **not yet a complete GLB-internal census**. Those remain the deeper VA-001 inspector task.
@@ -31,11 +31,11 @@ The ranked remediation sequence and component-level fiction/development agreemen
 
 ## Manifest census
 
-The release manifest contains **82** exact rows and is
+The release manifest contains **83** exact rows and is
 anchored by SHA-256
-`ec6586683b5d0e559bc3c9fe633e2ccab7c944fce50be507dcb685e50dee878e`. The source manifest contains
-**81** rows and is anchored by
-`c10015874cf3d29933434c966d5d7b6778558a577acf255c361183727c33094d`.
+`4850c2a731865bebe68062a342425e75e1f533546caf11f9dbae32194d77c0d3`. The source manifest contains
+**88** rows and is anchored by
+`b24397b5cb0e2647f2db99ecc9d4b8a66ef65fa8af4c19aeaef0d6fe378987ce`.
 
 | Release kind | Count |
 |---|---:|
@@ -45,13 +45,13 @@ anchored by SHA-256
 | `part:gear` | 2 |
 | `part:greebles` | 7 |
 | `part:hulls` | 10 |
-| `part:places` | 28 |
+| `part:places` | 29 |
 | `part:pods` | 3 |
 | `part:weapons` | 6 |
 | `part:wholeships` | 10 |
 | `ship-reference` | 1 |
 
-Source-only IDs: `wholeship_pelican`, `wholeship_wasp`.
+Source-only IDs: `place_ash_pin`, `place_claim_mark`, `place_cold_locker`, `place_lane_pin`, `place_tally_post`, `place_whistle`, `wholeship_pelican`, `wholeship_wasp`.
 Release-only IDs: `ship_kestrel_reference`, `wholeship_kestrel_lod1`, `wholeship_kestrel_lod2`.
 
 The JSON records every release ID, source/release path, and exact source/release hash. A manifest row
@@ -92,7 +92,7 @@ required, or an independent human-eye verdict.
 
 ## High-exposure places
 
-These counts are authored static references from the read-only 2026-07-29 census, not
+These counts are authored static references from the read-only 2026-08-08 census, not
 runtime telemetry:
 
 | Place | Static references |
@@ -117,26 +117,27 @@ thruster work is review input—not permission to restart those assets.
 
 | Asset | Lifecycle | Use or finding |
 |---|---|---|
-| `helios_lark_stopped_remaster` | legacy-donor | The branch contains a newer editable Lark blend and useful build/evidence logic, but its candidate/package evidence is not safe to promote as-is. |
+| `helios_lark_stopped_remaster` | legacy-donor | The unique stopped-Lark source states are now tracked as a never-runtime donor for a separate NPC express-liner identity; they are not a replacement for the accepted courier Lark. |
 | `foundry_ashline_rig_corsair_blade` | legacy-donor | Donor direction for separating corsair_raider from reaver_pirate; never substitute without authored source and live acceptance. |
 | `foundry_ashline_rig_reaver_hook` | legacy-donor | Donor direction for separating reaver_pirate from corsair_raider; never substitute without authored source and live acceptance. |
 | `helios_arclight` | candidate | Strong heavy-hauler candidate that still needs a gameplay identity, current build replay, and route acceptance. |
 | `kestrel_m5_upgrade` | legacy-donor | Historical Kestrel donor only. Extract justified component ideas; do not replace the current Kestrel or reintroduce superseded geometry. |
 
-### Stopped Lark recovery
+### Tracked stopped-Lark donor
 
-Use tag `refs/tags/recovery/lark-graphics-remaster-20260723` at
-`d538a583b673c61051e305963254f6de83d871d0`. Do not merge it wholesale. Recover the editable
-blend and only reviewed build/evidence logic, rebuild against the current pipeline, regenerate
-hashes/evidence, and then seek normal-route and independent art acceptance. The JSON pins the master
-and stopped-ref hashes needed to audit that extraction.
+The unique iter15 editable Blend and iter19 source GLB now live at
+`assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19` with exact provenance. They are never-runtime
+reference inputs for a separate express-liner identity, not a replacement for accepted courier Lark.
+The future asset must be substantially reauthored, rebuilt through current source/release manifests,
+and independently accepted on its own exact hashes.
 
-### Stopped Grok worktree
+### Stopped Grok clone
 
-`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` still exists. Its routed Kestrel references match tracked master,
-but its Blender source and build-summary records differ. Those divergent records remain unsafe
-foreign work pending a coordinated source/build audit. Preserve the tree read-only; do not mine,
-clean, copy, delete, or promote from it.
+`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` still exists as an independent corrupt clone, not a registered
+worktree. HEAD/objects are incomplete, and a bounded index audit identified 237 unique targeted
+Kestrel/asset paths. Preserve it read-only until `REC-GROK-KES-SALVAGE` records a hash ledger,
+inspects only genuinely distinct Blender/GLB/evidence families, and preserves or rejects them before
+deleting the clone.
 
 ## Standalone and code-native visuals
 
@@ -153,8 +154,8 @@ clean, copy, delete, or promote from it.
 - The source manifest has legacy Pelican/Wasp records that are absent from the current release manifest.
 - The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.
 - Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.
-- The stopped Lark branch contains useful unique authoring work but stale packaging evidence; selective recovery plus current rebuild is mandatory.
-- The stopped Grok worktree has routed Kestrel references matching master, but divergent Blender/build records remain unsafe foreign work pending coordinated audit; it must not be mined or cleaned.
+- The stopped Lark source states are tracked as a non-runtime express-liner donor; accepted courier Lark identity is frozen and the historical refs are no longer production dependencies.
+- The stopped Grok directory is an independent corrupt clone with 237 unique targeted asset paths; it remains read-only until the bounded REC-GROK-KES-SALVAGE ledger preserves or rejects each distinct family.
 - Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.
 - icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.
 

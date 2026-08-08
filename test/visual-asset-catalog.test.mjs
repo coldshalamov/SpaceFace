@@ -20,7 +20,7 @@ test('visual asset catalog covers the exact release manifest without confusing p
   const catalog = buildVisualAssetCatalog();
 
   assert.equal(validateVisualAssetCatalog(catalog), true);
-  assert.equal(catalog.manifestCensus.releaseManifest.total, 82);
+  assert.equal(catalog.manifestCensus.releaseManifest.total, 83);
   assert.deepEqual(catalog.manifestCensus.releaseManifest.byKind, {
     'part:cockpits': 3,
     'part:engines': 6,
@@ -28,14 +28,14 @@ test('visual asset catalog covers the exact release manifest without confusing p
     'part:gear': 2,
     'part:greebles': 7,
     'part:hulls': 10,
-    'part:places': 28,
+    'part:places': 29,
     'part:pods': 3,
     'part:weapons': 6,
     'part:wholeships': 10,
     'ship-reference': 1,
   });
-  assert.equal(catalog.manifestCensus.releaseAssets.length, 82);
-  assert.equal(new Set(catalog.manifestCensus.releaseAssets.map((row) => row.id)).size, 82);
+  assert.equal(catalog.manifestCensus.releaseAssets.length, 83);
+  assert.equal(new Set(catalog.manifestCensus.releaseAssets.map((row) => row.id)).size, 83);
   assert.match(catalog.coverage.glbInternals, /not complete/);
   assert.equal(catalog.coverage.visualAcceptance, 'none assigned by this catalog');
   assert.ok(catalog.manifestCensus.sourceOnlyIds.includes('wholeship_pelican'));
@@ -85,20 +85,28 @@ test('top five has honest states, ordered gates, and no visual-acceptance fabric
   assert.match(rig.currentState, /Reaver\/Corsair identity split remain open/);
 });
 
-test('legacy recovery is selective and unsafe worktrees remain protected', () => {
+test('legacy recovery is tracked as a donor and the corrupt foreign clone remains protected', () => {
   const catalog = buildVisualAssetCatalog();
   const lark = catalog.candidatesAndLegacyDonors.find((row) => row.id === 'helios_lark_stopped_remaster');
   const grok = catalog.unsafeForeign.find((row) => row.id === 'stopped_grok_worktree');
 
-  assert.equal(lark.tip, 'd538a583b673c61051e305963254f6de83d871d0');
-  assert.equal(lark.uniqueCommitsVsMasterAtAudit, 16);
-  assert.ok(lark.recovery.some((step) => step.includes('Do not merge')));
-  assert.equal(lark.stoppedRefHashes.blend, '2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee');
+  assert.equal(lark.historicalTip, 'd538a583b673c61051e305963254f6de83d871d0');
+  assert.ok(lark.recovery.some((step) => step.includes('Do not replace')));
+  assert.equal(lark.blendSha256, '2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee');
+  assert.equal(lark.blendBytes, 9442638);
+  assert.equal(lark.sourceSha256, 'e16c6a28692d209319d710c5ee4b11b6b2fabb7a669848f205711ae1a09cc866');
+  assert.equal(lark.sourceBytes, 11390796);
+  const larkBlend = readFileSync(new URL(`../${lark.blend}`, import.meta.url));
+  const larkSource = readFileSync(new URL(`../${lark.source}`, import.meta.url));
+  assert.equal(larkBlend.length, lark.blendBytes);
+  assert.equal(larkSource.length, lark.sourceBytes);
+  assert.equal(sha256(larkBlend), lark.blendSha256);
+  assert.equal(sha256(larkSource), lark.sourceSha256);
   assert.equal(grok.lifecycle, 'unsafe-foreign');
   assert.match(grok.action, /Preserve read-only/);
-  assert.match(grok.action, /Do not mine, clean/);
-  assert.match(grok.finding, /routed Kestrel references match tracked master/);
-  assert.match(grok.finding, /Blender source and build-summary records differ/);
+  assert.match(grok.action, /REC-GROK-KES-SALVAGE/);
+  assert.match(grok.finding, /independent corrupt\/incomplete clone/);
+  assert.match(grok.finding, /237 unique targeted Kestrel\/asset paths/);
 });
 
 test('tracked catalog artifacts are deterministic products of current manifests and routing facts', () => {

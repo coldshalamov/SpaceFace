@@ -127,28 +127,32 @@ const RECOVERY_AND_DONORS = Object.freeze([
   {
     id: 'helios_lark_stopped_remaster',
     lifecycle: 'legacy-donor',
-    sourceRef: 'refs/tags/recovery/lark-graphics-remaster-20260723',
-    equivalentBranch: 'agent/gfx-production-remaster-lark',
-    tip: 'd538a583b673c61051e305963254f6de83d871d0',
-    uniqueCommitsVsMasterAtAudit: 16,
-    finding: 'The branch contains a newer editable Lark blend and useful build/evidence logic, but its candidate/package evidence is not safe to promote as-is.',
+    donorRoot: 'assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19',
+    blend: 'assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/helios_lark_iter15_editable.blend',
+    blendSha256: '2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee',
+    blendBytes: 9442638,
+    source: 'assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/helios_lark_iter19_source.glb',
+    sourceSha256: 'e16c6a28692d209319d710c5ee4b11b6b2fabb7a669848f205711ae1a09cc866',
+    sourceBytes: 11390796,
+    provenance: 'assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/REFERENCE_PROVENANCE.md',
+    historicalTip: 'd538a583b673c61051e305963254f6de83d871d0',
+    historicalRefs: [
+      'refs/heads/agent/gfx-production-remaster-lark',
+      'refs/tags/recovery/lark-graphics-remaster-20260723',
+    ],
+    finding: 'The unique stopped-Lark source states are now tracked as a never-runtime donor for a separate NPC express-liner identity; they are not a replacement for the accepted courier Lark.',
     recovery: [
-      'Do not merge or cherry-pick the branch wholesale.',
-      'Extract the editable blend and only the scripts or evidence contracts that survive review.',
-      'Rebuild source and release candidates with the current pipeline.',
-      'Recompute every hash and regenerate normal-camera, motion, LOD, and material-channel evidence.',
-      'Promote only after current source/release parity, runtime selection, and independent art review.',
+      'Do not replace or reopen the accepted courier Lark.',
+      'Start a new express-liner fiction, supported-view, and material-zone preflight.',
+      'Reauthor substantial macro and meso construction from the donor rather than renaming or recoloring it.',
+      'Build new source, LOD, release, manifest, render-package, and express-only runtime identities.',
+      'Promote only after Browser/Electron route, tether, save/Continue, performance, and independent exact-hash art review.',
     ],
     masterHashes: {
       blend: '51e8d91966ff4c7cc6528d64768341da4579ca8a375a6dcb24558fb3659c1ce5',
       familySource: '9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f',
       candidate: 'ea6b131c7e822ff727a27b15c8d707c9e8a0177198a7a9aae52edd050b2426dc',
       liveRelease: '5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473',
-    },
-    stoppedRefHashes: {
-      blend: '2e2a7b454a9705e89085c9358682ec962c686d3ae5ee090d3b0a3d917b2aecee',
-      familySource: 'e16c6a28692d209319d710c5ee4b11b6b2fabb7a669848f205711ae1a09cc866',
-      candidate: '60ed547af535336e02508d528b0ea5b1588110517010650b416db9cdd0f5b2f5',
     },
   },
   {
@@ -214,21 +218,8 @@ const UNSAFE_FOREIGN = Object.freeze([
     id: 'stopped_grok_worktree',
     lifecycle: 'unsafe-foreign',
     path: 'C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041',
-    finding: 'Its routed Kestrel references match tracked master, but its Blender source and build-summary records differ. Those divergent records are unsafe foreign work pending a coordinated audit, not recovery-ready donor assets.',
-    action: 'Preserve read-only. Do not mine, clean, copy, delete, or promote from it without explicit coordination and a source/build audit.',
-  },
-  {
-    id: 'active_registered_worktrees',
-    lifecycle: 'unsafe-foreign',
-    paths: [
-      'C:/Users/93rob/sf-l21',
-      'C:/Users/93rob/sf-l22',
-      'C:/Users/93rob/sf-perf-admission-20260726',
-      'C:/Users/93rob/sf-perf-modernization-20260726',
-      'C:/Users/93rob/sf-perf01a',
-    ],
-    finding: 'Concurrent product/performance/PQ worktrees are not visual donor libraries.',
-    action: 'Do not inspect destructively, move, merge, or publish their assets without explicit coordination.',
+    finding: 'This is an independent corrupt/incomplete clone, not a registered worktree: HEAD is unresolved, referenced objects are missing, and a bounded index audit found 237 unique targeted Kestrel/asset paths among duplicated modified/deleted rows.',
+    action: 'Preserve read-only. Do not delete or promote from it. Run REC-GROK-KES-SALVAGE as a bounded hash-ledger pass over Blender, GLB, and evidence families; inspect only genuinely distinct results, preserve named donors, then remove the clone.',
   },
 ]);
 
@@ -328,7 +319,7 @@ export function buildVisualAssetCatalog() {
 
   const catalog = {
     schema: 'spaceface.visual-asset-catalog.v1',
-    snapshotDate: '2026-07-29',
+    snapshotDate: '2026-08-08',
     authority: {
       status: 'read-only census and production routing; not program state or visual acceptance',
       craft: 'docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md',
@@ -341,7 +332,7 @@ export function buildVisualAssetCatalog() {
       liveWholeShipSelectors: 'complete for the current partsLibrary player, hostile, and traffic maps',
       standaloneMedia: 'major runtime families counted; individual 23 portrait and 9 thruster records remain in their owning registries/manifests',
       runtimePlaces: 'ranked static-reference census for the highest-exposure places; not route telemetry',
-      candidateAndLegacyArchaeology: 'dated 2026-07-29 and hash-pinned where tracked bytes exist',
+      candidateAndLegacyArchaeology: 'dated 2026-08-08 and hash-pinned where tracked bytes exist',
       glbInternals: 'not complete: per-mesh materials, UVs, texture channels, LODs, fallbacks, and editable-source replay still require the deeper VA-001 inspector',
       visualAcceptance: 'none assigned by this catalog',
     },
@@ -372,7 +363,7 @@ export function buildVisualAssetCatalog() {
     runtime: {
       selectors: selectorMappings(),
       highExposurePlaces: {
-        measurement: 'authored static reference count from the 2026-07-29 read-only census; not runtime telemetry',
+        measurement: 'authored static reference count from the 2026-08-08 read-only census; not runtime telemetry',
         rows: HIGH_EXPOSURE_PLACES,
       },
       standaloneMedia: {
@@ -407,8 +398,8 @@ export function buildVisualAssetCatalog() {
       'The source manifest has legacy Pelican/Wasp records that are absent from the current release manifest.',
       'The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.',
       'Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.',
-      'The stopped Lark branch contains useful unique authoring work but stale packaging evidence; selective recovery plus current rebuild is mandatory.',
-      'The stopped Grok worktree has routed Kestrel references matching master, but divergent Blender/build records remain unsafe foreign work pending coordinated audit; it must not be mined or cleaned.',
+      'The stopped Lark source states are tracked as a non-runtime express-liner donor; accepted courier Lark identity is frozen and the historical refs are no longer production dependencies.',
+      'The stopped Grok directory is an independent corrupt clone with 237 unique targeted asset paths; it remains read-only until the bounded REC-GROK-KES-SALVAGE ledger preserves or rejects each distinct family.',
       'Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.',
       'icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.',
     ],
@@ -416,7 +407,7 @@ export function buildVisualAssetCatalog() {
       ...rankedTopFive.map((row) => ({ rank: row.rank, id: row.id, state: row.currentState })),
       { rank: 6, id: 'station_tethys_unique_visual', state: 'Split from trade-hub reuse after exact runtime/Atlas ownership review.' },
       { rank: 7, id: 'C-INTRO-01', state: 'Refresh only after real game identity and crop/video contracts are established.' },
-      { rank: 8, id: 'wholeship_helios_lark', state: 'Selectively recover the stopped branch, rebuild current, then use it as civilian craft pilot.' },
+      { rank: 8, id: 'massline_express_liner_v1', state: 'Adapt the tracked stopped-Lark donor into a separate express-liner identity through a fresh multi-day asset packet; never replace accepted Lark.' },
       { rank: 9, id: 'wholeship_helios_cradle', state: 'Follow only an accepted Lark construction/material method.' },
       { rank: 10, id: 'wholeship_helios_span', state: 'Follow only an accepted Lark method; evaluate foundry faction variants as donors.' },
     ],
@@ -450,8 +441,10 @@ export function validateVisualAssetCatalog(catalog) {
     failures.push('rig-current-state-fingerprint');
   }
   const lark = catalog?.candidatesAndLegacyDonors?.find((row) => row.id === 'helios_lark_stopped_remaster');
-  if (lark?.tip !== 'd538a583b673c61051e305963254f6de83d871d0') failures.push('lark-tip');
-  if (!lark?.recovery?.some((step) => step.includes('Do not merge'))) failures.push('lark-recovery');
+  if (lark?.historicalTip !== 'd538a583b673c61051e305963254f6de83d871d0') failures.push('lark-tip');
+  if (!lark?.recovery?.some((step) => step.includes('Do not replace'))) failures.push('lark-recovery');
+  validateFingerprint(lark, 'blend', 'blendSha256', 'blendBytes', failures);
+  validateFingerprint(lark, 'source', 'sourceSha256', 'sourceBytes', failures);
   const grok = catalog?.unsafeForeign?.find((row) => row.id === 'stopped_grok_worktree');
   if (!grok || !grok.action.includes('Preserve read-only')) failures.push('grok-preservation');
   for (const row of [
@@ -615,20 +608,21 @@ thruster work is review input—not permission to restart those assets.
 |---|---|---|
 ${donors}
 
-### Stopped Lark recovery
+### Tracked stopped-Lark donor
 
-Use tag \`${catalog.candidatesAndLegacyDonors[0].sourceRef}\` at
-\`${catalog.candidatesAndLegacyDonors[0].tip}\`. Do not merge it wholesale. Recover the editable
-blend and only reviewed build/evidence logic, rebuild against the current pipeline, regenerate
-hashes/evidence, and then seek normal-route and independent art acceptance. The JSON pins the master
-and stopped-ref hashes needed to audit that extraction.
+The unique iter15 editable Blend and iter19 source GLB now live at
+\`${catalog.candidatesAndLegacyDonors[0].donorRoot}\` with exact provenance. They are never-runtime
+reference inputs for a separate express-liner identity, not a replacement for accepted courier Lark.
+The future asset must be substantially reauthored, rebuilt through current source/release manifests,
+and independently accepted on its own exact hashes.
 
-### Stopped Grok worktree
+### Stopped Grok clone
 
-\`${catalog.unsafeForeign[0].path}\` still exists. Its routed Kestrel references match tracked master,
-but its Blender source and build-summary records differ. Those divergent records remain unsafe
-foreign work pending a coordinated source/build audit. Preserve the tree read-only; do not mine,
-clean, copy, delete, or promote from it.
+\`${catalog.unsafeForeign[0].path}\` still exists as an independent corrupt clone, not a registered
+worktree. HEAD/objects are incomplete, and a bounded index audit identified 237 unique targeted
+Kestrel/asset paths. Preserve it read-only until \`REC-GROK-KES-SALVAGE\` records a hash ledger,
+inspects only genuinely distinct Blender/GLB/evidence families, and preserves or rejects them before
+deleting the clone.
 
 ## Standalone and code-native visuals
 
