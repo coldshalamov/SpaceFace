@@ -125,6 +125,12 @@ try {
     'authored opaque GLB primitives should be wired into scene static batches or instance pools');
   assert.ok(report.instancePoolLiveCount + report.staticBatchCount > 0,
     'scene should contain live authored GLB static batches or pooled instances');
+  assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
+    `a real Wasp/freighter package surface should share one pool across at least two authored roots: ${JSON.stringify(report.packageShipPoolRoots)}`);
+  assert.deepEqual(report.ships.filter((ship) => (
+    ship.packageInstancePoolKeys.length > 0 && !ship.packagePoolTextureResidency.allResident
+  )).map(summarizeShip), [],
+  'package pool proxies must retain the exact materials whose textures completed GPU residency');
   assert.equal(report.loaderDiagnostics.failureCount, 0,
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentJobs <= 1,
@@ -153,6 +159,8 @@ try {
     authoredShipCount: report.authoredShipCount,
     instancePoolCount: report.instancePoolCount,
     instancePoolLiveCount: report.instancePoolLiveCount,
+    packageShipPoolRoots: report.packageShipPoolRoots,
+    repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys,
     staticBatchCount: report.staticBatchCount,
     loaderDiagnostics: {
       available: report.loaderDiagnostics.available,
@@ -248,7 +256,9 @@ function collectAuthoredGateSnapshot(cdp) {
       let presented = false;
       if (!root) return false;
       root.traverse((object) => {
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
+          && object?.userData?.spacefaceInstanceProxy === true;
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
         let cursor = object;
         while (cursor) {
           if (cursor.visible === false) return;
@@ -284,6 +294,29 @@ async function collectAuthoredReport(cdp) {
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
+    const instancePools = [];
+    const submittedPoolSlotTokens = new Set();
+    let staticBatchCount = 0;
+    if (scene) {
+      scene.traverse((object) => {
+        if (object && object.isInstancedMesh && object.userData && object.userData.spacefaceInstancePool) {
+          const key = object.userData.spacefaceInstancePoolKey || null;
+          const chunk = Number(object.userData.spacefaceInstancePoolChunk) || 0;
+          const submittedSlots = submittedInstancePoolSlots(object);
+          for (const index of submittedSlots) submittedPoolSlotTokens.add(poolSlotToken(key, chunk, index));
+          instancePools.push({
+            name: object.name || '',
+            key,
+            chunk,
+            count: object.count || 0,
+            submittedSlots,
+            submittedSlotCount: submittedSlots.length,
+          });
+        } else if (object && object.isMesh && object.userData && object.userData.spacefaceStaticBatch) {
+          staticBatchCount++;
+        }
+      });
+    }
     const reports = ships.map((entity) => inspectShip(entity, state)).filter(Boolean);
     const presentedShips = reports.filter((entry) => entry.presented);
     const authoredShips = presentedShips.filter((entry) => entry.state === 'authored');
@@ -305,17 +338,31 @@ async function collectAuthoredReport(cdp) {
     const nonReleasePartUrls = [...new Set(reports
       .flatMap((entry) => Object.values(entry.slots || {}).flat())
       .filter((url) => !String(url || '').startsWith('assets/ships/release/parts/')))];
-    const instancePools = [];
-    let staticBatchCount = 0;
-    if (scene) {
-      scene.traverse((object) => {
-        if (object && object.isInstancedMesh && object.userData && object.userData.spacefaceInstancePool) {
-          instancePools.push({ name: object.name || '', count: object.count || 0 });
-        } else if (object && object.isMesh && object.userData && object.userData.spacefaceStaticBatch) {
-          staticBatchCount++;
+    const packageRootsByPoolKey = new Map();
+    for (const ship of reports) {
+      if (!ship.presented) continue;
+      for (const key of ship.packageSubmittedPoolKeys || []) {
+        let roots = packageRootsByPoolKey.get(key);
+        if (!roots) {
+          roots = new Map();
+          packageRootsByPoolKey.set(key, roots);
         }
-      });
+        roots.set(ship.id, {
+          id: ship.id,
+          defId: ship.defId,
+          trafficRole: ship.trafficRole,
+          wholeShipBodyUrls: ship.wholeShipBodyUrls,
+        });
+      }
     }
+    const packageShipPoolRoots = [...packageRootsByPoolKey.entries()].map(([key, roots]) => ({
+      key,
+      distinctAuthoredRootCount: roots.size,
+      roots: [...roots.values()],
+    })).sort((a, b) => a.key.localeCompare(b.key));
+    const repeatedPackageShipPoolKeys = packageShipPoolRoots.filter((entry) => (
+      entry.roots.filter(isFrequentShipRoot).length >= 2
+    )).map((entry) => entry.key);
     return {
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
@@ -324,7 +371,10 @@ async function collectAuthoredReport(cdp) {
       presentedShipCount: presentedShips.length,
       authoredShipCount: authoredShips.length,
       instancePoolCount: instancePools.length,
-      instancePoolLiveCount: instancePools.reduce((sum, pool) => sum + (pool.count || 0), 0),
+      instancePoolLiveCount: instancePools.reduce((sum, pool) => sum + pool.submittedSlotCount, 0),
+      instancePools,
+      packageShipPoolRoots,
+      repeatedPackageShipPoolKeys,
       staticBatchCount,
       loaderDiagnostics,
       nonReleasePartUrls,
@@ -346,12 +396,29 @@ async function collectAuthoredReport(cdp) {
       let partObjectCount = 0;
       let instanceProxyCount = 0;
       let staticBatchCount = 0;
+      const packageInstancePoolKeys = new Set();
+      const packageSubmittedPoolKeys = new Set();
+      const packagePoolSubmissions = [];
+      const packagePoolTextures = new Set();
       const childNames = [];
       root.traverse((object) => {
         if (!object) return;
         if (object !== root && object.parent === root) childNames.push(object.name || '');
         if (object.isMesh) meshCount++;
         if (object.userData && object.userData.spacefaceInstanceProxy) instanceProxyCount++;
+        if (object.userData?.spacefaceRenderPackagePooled === true) {
+          const key = object.userData.spacefaceInstancePoolKey || null;
+          if (key) {
+            packageInstancePoolKeys.add(key);
+            const chunk = Number(object.userData.spacefaceInstancePoolChunk) || 0;
+            const index = Number(object.userData.spacefaceInstancePoolSlot);
+            const submitted = Number.isInteger(index)
+              && submittedPoolSlotTokens.has(poolSlotToken(key, chunk, index));
+            packagePoolSubmissions.push({ key, chunk, index, submitted });
+            if (submitted) packageSubmittedPoolKeys.add(key);
+          }
+          collectMaterialTextures(object.material, packagePoolTextures);
+        }
         if (object.userData && object.userData.spacefaceStaticBatch) staticBatchCount++;
         const urls = object.userData && Array.isArray(object.userData.spacefacePartUrls)
           ? object.userData.spacefacePartUrls
@@ -377,6 +444,7 @@ async function collectAuthoredReport(cdp) {
       return {
         id: entity.id,
         defId: entity.data && entity.data.defId || null,
+        trafficRole: entity.data && entity.data.trafficRole || null,
         scenarioActorId: entity.data && entity.data.scenarioActorId || null,
         team: entity.team,
         factionId: entity.factionId || null,
@@ -396,6 +464,10 @@ async function collectAuthoredReport(cdp) {
         partObjectCount,
         meshCount,
         instanceProxyCount,
+        packageInstancePoolKeys: [...packageInstancePoolKeys].sort(),
+        packageSubmittedPoolKeys: [...packageSubmittedPoolKeys].sort(),
+        packagePoolSubmissions,
+        packagePoolTextureResidency: textureResidency(packagePoolTextures, state),
         staticBatchCount,
         authoredBodyProof: bodyProof,
       };
@@ -405,7 +477,9 @@ async function collectAuthoredReport(cdp) {
       let presented = false;
       if (!root) return false;
       root.traverse((object) => {
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
+          && object?.userData?.spacefaceInstanceProxy === true;
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
         let cursor = object;
         while (cursor) {
           if (cursor.visible === false) return;
@@ -445,7 +519,9 @@ async function collectAuthoredReport(cdp) {
         root.updateWorldMatrix(true, true);
       } catch (_) {}
       root.traverse((object) => {
-        if (!object || !object.isMesh) return;
+        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
+          && object?.userData?.spacefaceInstanceProxy === true;
+        if (!object || !(object.isMesh || poolProxy)) return;
         const urls = partUrlsForObject(object);
         const isReadability = !!(object.userData && object.userData.spacefaceReadabilityCore)
           || urls.some((url) => String(url || '').includes('readability/'));
@@ -602,6 +678,62 @@ async function collectAuthoredReport(cdp) {
     function materialIsVisible(material) {
       if (Array.isArray(material)) return material.some((entry) => !entry || entry.visible !== false);
       return !material || material.visible !== false;
+    }
+
+    function submittedInstancePoolSlots(pool) {
+      if (!pool || pool.visible === false || !pool.parent || typeof pool.getMatrixAt !== 'function') return [];
+      const Matrix4 = pool.matrixWorld?.constructor;
+      if (typeof Matrix4 !== 'function') return [];
+      const matrix = new Matrix4();
+      const submitted = [];
+      for (let index = 0; index < (Number(pool.count) || 0); index++) {
+        pool.getMatrixAt(index, matrix);
+        if (Math.abs(matrix.determinant()) > 1e-12) submitted.push(index);
+      }
+      return submitted;
+    }
+
+    function poolSlotToken(key, chunk, index) {
+      return String(key || '') + '|' + (Number(chunk) || 0) + '|' + Number(index);
+    }
+
+    function collectMaterialTextures(material, textures) {
+      const materials = Array.isArray(material) ? material : material ? [material] : [];
+      for (const entry of materials) {
+        for (const value of Object.values(entry || {})) {
+          if (value && value.isTexture) textures.add(value);
+        }
+        for (const uniform of Object.values(entry?.uniforms || {})) {
+          if (uniform?.value?.isTexture) textures.add(uniform.value);
+        }
+      }
+    }
+
+    function textureResidency(textures, state) {
+      const renderer = state?.render?.renderer;
+      const values = [...textures];
+      let resident = 0;
+      for (const texture of values) {
+        const properties = renderer?.properties?.get?.(texture);
+        if (properties?.__webglTexture) resident++;
+      }
+      return {
+        textures: values.length,
+        resident,
+        allResident: resident === values.length,
+      };
+    }
+
+    function isFrequentShipRoot(root) {
+      const defId = String(root?.defId || '').toLowerCase();
+      const trafficRole = String(root?.trafficRole || '').toLowerCase();
+      const urls = Array.isArray(root?.wholeShipBodyUrls) ? root.wholeShipBodyUrls : [];
+      return defId === 'ship_wasp'
+        || defId === 'ship_mule'
+        || defId === 'ship_atlas'
+        || trafficRole === 'hauler'
+        || trafficRole === 'freighter'
+        || urls.some((url) => /(?:wasp|helios_span)/i.test(String(url || '')));
     }
 
     function roundFinite(value) {
@@ -822,7 +954,9 @@ async function installStartupTrace(cdp) {
       let presented = false;
       if (!root) return false;
       root.traverse((object) => {
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite)) return;
+        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
+          && object?.userData?.spacefaceInstanceProxy === true;
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
         let cursor = object;
         while (cursor) {
           if (cursor.visible === false) return;
@@ -1180,6 +1314,10 @@ function summarizeShip(ship) {
     fallbackParts: ship.fallbackParts,
     partObjectCount: ship.partObjectCount,
     instanceProxyCount: ship.instanceProxyCount,
+    packageInstancePoolKeys: ship.packageInstancePoolKeys,
+    packageSubmittedPoolKeys: ship.packageSubmittedPoolKeys,
+    packagePoolSubmissions: ship.packagePoolSubmissions,
+    packagePoolTextureResidency: ship.packagePoolTextureResidency,
     staticBatchCount: ship.staticBatchCount,
     authoredBodyProof: ship.authoredBodyProof,
   };

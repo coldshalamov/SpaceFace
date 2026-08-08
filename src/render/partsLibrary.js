@@ -32,6 +32,7 @@ import {
   createDynamicBufferCoordinator,
   markDynamicBufferItems,
   registerDynamicBufferOwner,
+  unregisterDynamicBufferOwner,
 } from './dynamicBufferRanges.js';
 
 const PART_ROOT = 'assets/ships/parts/';
@@ -2699,6 +2700,19 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   };
 }
 
+async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
+  const poolAdmissions = Array.isArray(authored?.packagePoolAdmissions)
+    ? authored.packagePoolAdmissions
+    : EMPTY_ARRAY;
+  const preparations = [prepareAuthoredVisualPipelines(authored.root, options)];
+  for (const admission of poolAdmissions) {
+    preparations.push(prepareRenderPackagePoolAdmission(admission, options));
+  }
+  const [rootPreparation] = await Promise.all(preparations);
+  for (const admission of poolAdmissions) activateRenderPackagePoolAdmission(admission);
+  return rootPreparation;
+}
+
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   const cacheKey = libraryCacheKey(partRoot, options);
@@ -2735,7 +2749,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       let pipelineReady;
       const pipelineStartedAtMs = monotonicNow();
       try {
-        pipelineReady = prepareAuthoredVisualPipelines(authored.root, options);
+        pipelineReady = prepareAuthoredShipVisualPipelines(authored, options);
       } finally {
         recordAdmissionSlice(pipelineStartedAtMs);
         const tier1 = tier1CausalCounters();
@@ -3451,6 +3465,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots: uniqueSlotMap(authoredSlots),
     fallbackParts,
     wholeShip,
+    packagePoolAdmissions: [...bindings.packagePoolAdmissions],
   };
 }
 
@@ -4254,7 +4269,7 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
 function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
     return instantiateRenderPackagePart(
-      record, parent, placement, palette, owner, bindings, mutableMaterials,
+      record, parent, placement, palette, scene, owner, bindings, mutableMaterials,
     );
   }
 
@@ -4338,7 +4353,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
   return partRoot;
 }
 
-function instantiateRenderPackagePart(record, parent, placement, palette, owner, bindings, mutableMaterials) {
+function instantiateRenderPackagePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials) {
   const partRoot = new THREE.Group();
   partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
   applyPlacementTransform(partRoot, placement);
@@ -4348,10 +4363,25 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
   partRoot.updateMatrix();
   parent.add(partRoot);
 
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  const createNode = owner?.userData?.kind === 'ship' && scene?.isScene
+    ? createRenderPackageShipNodeFactory({
+        scene,
+      owner,
+      record,
+      palette,
+      tagsByName,
+      poolAdmissions: bindings.packagePoolAdmissions,
+    })
+    : null;
   const instance = record.renderPackage.createInstance({
     name: `RenderPackage_${placement.label}_${record.assetId}`,
     residencyOwner: owner,
     residencyRole: 'live-boundary',
+    ...(createNode ? { createNode } : {}),
   });
   const packageRoot = instance?.root;
   if (!packageRoot?.isObject3D) {
@@ -4364,11 +4394,6 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
   };
   partRoot.userData.renderPackageInstance = instance;
   partRoot.add(packageRoot);
-
-  const tagsByName = new Map([
-    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
-    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
-  ]);
 
   // Specialisation walks the loader's FLAT instance plan, not packageRoot.traverse(). The plan is
   // in depth-first pre-order with the root at index 0, so this visits exactly the same nodes in
@@ -4397,12 +4422,14 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
     if (object.isMesh) {
       if (object.visible === false) continue;
       const primitive = { material: object.material, tags };
-      object.material = requiresPerShipMesh(primitive)
-        ? dedicatedMaterialFor(
-            object.material, tags, palette, mutableMaterials,
-            `${record.url}|${placement.label}|${object.name}`,
-          )
-        : sharedMaterialFor(object.material, tags, palette);
+      if (object.userData?.spacefacePackageMaterialPrepared !== true) {
+        object.material = requiresPerShipMesh(primitive)
+          ? dedicatedMaterialFor(
+              object.material, tags, palette, mutableMaterials,
+              `${record.url}|${placement.label}|${object.name}`,
+            )
+          : sharedMaterialFor(object.material, tags, palette);
+      }
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       object.castShadow = materials.some((material) => material && !material.transparent && material.depthWrite !== false);
       object.receiveShadow = materials.some((material) => material && !material.transparent);
@@ -4429,6 +4456,293 @@ function instantiateRenderPackagePart(record, parent, placement, palette, owner,
   return partRoot;
 }
 
+function createRenderPackageShipNodeFactory({
+  scene, owner, record, palette, tagsByName, poolAdmissions,
+}) {
+  return ({ source }) => {
+    const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
+    if (!canPoolRenderPackageShipMesh(source, tags)) return null;
+
+    const material = sharedMaterialFor(source.material, tags, palette);
+    const object = source.clone(false);
+    object.material = material;
+    object.userData = {
+      ...(object.userData || {}),
+      spacefacePackageMaterialPrepared: true,
+    };
+    return admitRenderPackageShipPoolCandidate(
+      scene,
+      owner,
+      object,
+      source.geometry,
+      material,
+      `${record.assetId || 'PackageShip'}_${source.name || 'Mesh'}`,
+      poolAdmissions,
+    );
+  };
+}
+
+function canPoolRenderPackageShipMesh(source, tags = {}) {
+  if (!source?.isMesh || source.isInstancedMesh || source.isSkinnedMesh) return false;
+  if (source.visible === false || !source.geometry || !source.material || Array.isArray(source.material)) return false;
+  if (tags.damageRole) return false;
+  if (source.material.visible === false || requiresPerShipMesh({ material: source.material, tags })) return false;
+  if (source.layers?.mask !== 1 || Number(source.renderOrder) !== 0) return false;
+  if (source.customDepthMaterial || source.customDistanceMaterial) return false;
+  if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
+    || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
+  if (source.morphTargetInfluences != null || source.morphTargetDictionary != null) return false;
+  if (Object.keys(source.geometry.morphAttributes || {}).length > 0) return false;
+  return true;
+}
+
+function admitRenderPackageShipPoolCandidate(
+  scene, owner, object, geometry, material, label, poolAdmissions,
+) {
+  const state = sceneState(scene);
+  const key = instancePoolKey(geometry, material);
+  const pool = state.pools.get(key) || null;
+  const hasPackageSlots = packagePoolSlots(pool).length > 0;
+  const first = state.packageCandidates.get(key) || null;
+  const nextCandidate = createPackagePoolCandidate(key, owner, object, geometry, material, label);
+
+  if (!hasPackageSlots && !first) {
+    installPackagePoolCandidate(state, nextCandidate);
+    return object;
+  }
+
+  // Repetition inside one authored root is not the cross-root batching contract. Keep those meshes
+  // direct until another stable ship boundary proves that this resource identity really repeats.
+  if (!hasPackageSlots && first?.owner === owner) return object;
+
+  const allocations = [];
+  try {
+    if (!hasPackageSlots && first) {
+      allocations.push(allocateInstance(
+        scene,
+        first.owner,
+        first.object,
+        first.geometry,
+        first.object.material || first.material,
+        first.label,
+        {
+          deferNewChunkPublication: true,
+          initializeVisibleMatrix: true,
+          deferProxyActivation: true,
+          activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key),
+          packageCandidate: first,
+        },
+      ));
+    }
+    allocations.push(allocateInstance(scene, owner, object, geometry, material, label, {
+      deferNewChunkPublication: true,
+      deferProxyActivation: true,
+      activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key),
+      packageCandidate: nextCandidate,
+    }));
+
+    const immediateByChunk = new Map();
+    for (const allocation of allocations) {
+      if (allocation.admission) continue;
+      let handles = immediateByChunk.get(allocation.slot.chunk);
+      if (!handles) immediateByChunk.set(allocation.slot.chunk, handles = []);
+      handles.push(allocation);
+    }
+    for (const handles of immediateByChunk.values()) {
+      activatePackageSlotsTransaction(handles[0].slot.chunk, handles.map((handle) => handle.slot));
+    }
+  } catch (error) {
+    for (const allocation of allocations) {
+      restoreDirectPackageMesh(allocation.slot.proxy, false);
+      allocation.rollback();
+    }
+    if (first) installPackagePoolCandidate(state, first);
+    throw error;
+  }
+
+  // Candidate retirement is the transaction commit: every required slot exists and any already-
+  // admitted chunk transfer succeeded, while new chunks remain direct until exact GPU admission.
+  if (first && state.packageCandidates.get(key) === first) state.packageCandidates.delete(key);
+
+  for (const allocation of allocations) {
+    if (allocation?.admission) poolAdmissions?.add(allocation.admission);
+  }
+  return object;
+}
+
+function createPackagePoolCandidate(key, owner, object, geometry, material, label) {
+  return { key, owner, object, geometry, material, label };
+}
+
+function installPackagePoolCandidate(state, candidate) {
+  if (!state || !candidate) return false;
+  state.packageCandidates.set(candidate.key, candidate);
+  restoreDirectPackageMesh(candidate.object, true);
+  candidate.object.userData.spacefaceInstancePoolKey = candidate.key;
+  if (candidate.releaseRegistered !== true) {
+    candidate.releaseRegistered = true;
+    registerOwnerRelease(candidate.owner, () => {
+      if (state.packageCandidates.get(candidate.key) === candidate) {
+        state.packageCandidates.delete(candidate.key);
+      }
+    });
+  }
+  return true;
+}
+
+function promoteRenderPackageMeshToPoolProxy(object, key) {
+  // Keep visibility true: pool visibility follows this exact object's ancestor/LOD chain. Suppress
+  // only direct Mesh submission so the same object can remain in planNodes/nodes/anchors maps while
+  // the scene-level InstancedMesh owns the draw. Geometry/material stay attached for bounds,
+  // texture-residency collection, diagnostics, and semantic inspection.
+  object.isMesh = false;
+  object.userData = {
+    ...(object.userData || {}),
+    spacefaceInstanceProxy: true,
+    spacefaceRenderPackagePooled: true,
+    spacefaceInstancePoolKey: key,
+  };
+  delete object.userData.spacefacePackagePoolCandidate;
+  return object;
+}
+
+function restoreDirectPackageMesh(object, asCandidate) {
+  if (!object) return object;
+  object.isMesh = true;
+  object.userData = { ...(object.userData || {}) };
+  delete object.userData.spacefaceInstanceProxy;
+  delete object.userData.spacefaceRenderPackagePooled;
+  delete object.userData.spacefacePackagePoolCandidate;
+  delete object.userData.spacefaceInstancePoolChunk;
+  delete object.userData.spacefaceInstancePoolSlot;
+  if (asCandidate) {
+    object.userData.spacefacePackagePoolCandidate = true;
+  } else {
+    delete object.userData.spacefaceInstancePoolKey;
+  }
+  return object;
+}
+
+function prepareRenderPackagePoolAdmission(admission, options) {
+  if (!admission || admission.cancelled) {
+    return Promise.resolve({ skipped: true, reason: 'package pool admission cancelled' });
+  }
+  if (admission.prepared) return Promise.resolve(admission.result);
+  if (!admission.preparation) {
+    admission.preparation = prepareAuthoredVisualPipelines(admission.target, options).then((result) => {
+      admission.result = result;
+      admission.prepared = !admission.cancelled;
+      return result;
+    }, (error) => {
+      // A later repeated root may retry the same still-hidden exact target. The already-live first
+      // direct mesh remains untouched until one preparation succeeds.
+      admission.preparation = null;
+      throw error;
+    });
+  }
+  return admission.preparation;
+}
+
+function activateRenderPackagePoolAdmission(admission) {
+  if (!admission || admission.cancelled || !admission.prepared || admission.activated) return false;
+  const { chunk } = admission;
+  const liveSlots = [...admission.slots].filter((slot) => !slot.released);
+  if (!liveSlots.length) {
+    admission.cancelled = true;
+    return false;
+  }
+
+  // The exact InstancedMesh has completed both existing admission gates while detached and at zero
+  // count. Commit every visible matrix first, then transfer renderer identity and scene publication
+  // under one rollback guard so the accepted direct surface can never disappear on an exception.
+  activatePackageSlotsTransaction(chunk, liveSlots, { publishTarget: true });
+  for (const slot of liveSlots) slot.admission = null;
+  delete chunk.mesh.userData.spacefacePackageAdmissionPending;
+  chunk.packageAdmission = null;
+  admission.slots.clear();
+  admission.activated = true;
+  return true;
+}
+
+function activatePackageSlotsTransaction(chunk, slots, options = {}) {
+  const liveSlots = slots.filter((slot) => slot && !slot.released);
+  if (!liveSlots.length) return false;
+  const priorCount = chunk.mesh.count;
+  const priorVisible = chunk.mesh.visible;
+  const matrixSnapshots = liveSlots.map((slot) => ({
+    slot,
+    matrixInitialized: slot.matrixInitialized,
+    matrixElements: slot.matrixElements.slice(),
+    lastSubmitted: slot.lastSubmitted,
+    visibleIndex: chunk.visibleIndices.has(slot.index),
+    ownerSubmittedCount: slot.ownerState.submittedCount,
+  }));
+
+  try {
+    for (const slot of liveSlots) {
+      if (!visibleProxyChainReachesOwner(slot.proxy, slot.owner)) continue;
+      slot.owner.updateWorldMatrix(true, true);
+      if (setInstanceMatrixIfChanged(chunk, slot.index, slot, slot.proxy.matrixWorld)) {
+        chunk.visibleIndices.add(slot.index);
+        if (!slot.lastSubmitted) slot.ownerState.submittedCount++;
+        slot.lastSubmitted = true;
+      }
+    }
+    chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
+    chunk.mesh.visible = chunk.mesh.count > 0;
+    commitInstanceChunkMatrix(chunk);
+  } catch (error) {
+    rollbackPackageSlotMatrices(chunk, matrixSnapshots, priorCount, priorVisible);
+    throw error;
+  }
+
+  const proxySnapshots = [];
+  let published = false;
+  try {
+    for (const slot of liveSlots) {
+      if (!slot.activateProxy) continue;
+      proxySnapshots.push({ object: slot.proxy, isMesh: slot.proxy.isMesh, userData: slot.proxy.userData });
+      slot.activateProxy();
+    }
+    if (options.publishTarget === true && !chunk.mesh.parent) {
+      chunk.scene.add(chunk.mesh);
+      published = true;
+    }
+    for (const slot of liveSlots) slot.activateProxy = null;
+    return true;
+  } catch (error) {
+    if (published || chunk.mesh.parent === chunk.scene) chunk.mesh.removeFromParent();
+    for (let index = proxySnapshots.length - 1; index >= 0; index--) {
+      const snapshot = proxySnapshots[index];
+      snapshot.object.isMesh = snapshot.isMesh;
+      snapshot.object.userData = snapshot.userData;
+    }
+    rollbackPackageSlotMatrices(chunk, matrixSnapshots, priorCount, priorVisible);
+    throw error;
+  }
+}
+
+function rollbackPackageSlotMatrices(chunk, snapshots, priorCount, priorVisible) {
+  for (const snapshot of snapshots) {
+    const { slot } = snapshot;
+    slot.matrixInitialized = snapshot.matrixInitialized;
+    slot.matrixElements.set(snapshot.matrixElements);
+    slot.lastSubmitted = snapshot.lastSubmitted;
+    slot.ownerState.submittedCount = snapshot.ownerSubmittedCount;
+    if (snapshot.visibleIndex) chunk.visibleIndices.add(slot.index);
+    else chunk.visibleIndices.delete(slot.index);
+    try {
+      writeInstanceChunkMatrix(chunk, slot.index, snapshot.matrixInitialized
+        ? new THREE.Matrix4().fromArray(snapshot.matrixElements)
+        : ZERO_MATRIX);
+    } catch { /* detached/rolled-back target remains non-rendering even if the injected write fails */ }
+  }
+  chunk.mesh.count = priorCount;
+  chunk.mesh.visible = priorVisible;
+  try { commitInstanceChunkMatrix(chunk); }
+  catch { /* preserve the original activation failure */ }
+}
+
 function createBindings() {
   return {
     driveFans: [], driveCores: [], drivePlumes: [],
@@ -4437,6 +4751,7 @@ function createBindings() {
     mounts: { cockpit: [], engine: [], fin: [] },
     lod: { lod0: [], lod1: [], lod2: [] },
     lodDynamicDetails: [],
+    packagePoolAdmissions: new Set(),
   };
 }
 
@@ -4604,21 +4919,30 @@ function closestAvailableLod(requested, available) {
 // Scene-level instance pools. A ship owns transform proxies; pools own the draw calls. Removal of the
 // stable ship root releases all of its slots immediately, so hot reload/rebuild cannot leave ghosts.
 // -------------------------------------------------------------------------------------------------
-function allocateInstance(scene, owner, proxy, geometry, material, label) {
+function allocateInstance(scene, owner, proxy, geometry, material, label, options = {}) {
   const state = sceneState(scene);
   const key = instancePoolKey(geometry, material);
   let pool = state.pools.get(key);
+  const poolIsNew = !pool;
   if (!pool) {
-    pool = { chunks: [], geometry, material, label, key };
-    state.pools.set(key, pool);
+    pool = { chunks: [], geometry, material, label, key, scene };
   }
   let chunk = pool.chunks.find((candidate) => candidate.free.length || candidate.next < INSTANCE_CHUNK_SIZE);
   if (!chunk) {
-    chunk = createInstanceChunk(scene, pool, pool.chunks.length);
+    try {
+      chunk = createInstanceChunk(scene, pool, pool.chunks.length, {
+        deferScenePublication: options.deferNewChunkPublication === true,
+      });
+    } catch (error) {
+      if (poolIsNew) state.pools.delete(key);
+      throw error;
+    }
     pool.chunks.push(chunk);
   }
+  if (poolIsNew) state.pools.set(key, pool);
 
   const index = chunk.free.length ? chunk.free.pop() : chunk.next++;
+  const admission = chunk.packageAdmission || null;
   const slot = {
     proxy,
     owner,
@@ -4628,44 +4952,100 @@ function allocateInstance(scene, owner, proxy, geometry, material, label) {
     lastSubmitted: false,
     matrixInitialized: false,
     matrixElements: new Float32Array(16),
+    admission,
+    activateProxy: typeof options.activateProxy === 'function' ? options.activateProxy : null,
+    packageCandidate: options.packageCandidate || null,
+    ownerState: null,
   };
-  chunk.slots.set(index, slot);
-  let ownerState = state.ownerSlots.get(owner);
-  if (!ownerState) {
-    ownerState = { slots: new Set(), submittedCount: 0, dirty: true };
-    state.ownerSlots.set(owner, ownerState);
+  try {
+    chunk.slots.set(index, slot);
+    let ownerState = state.ownerSlots.get(owner);
+    if (!ownerState) {
+      ownerState = { slots: new Set(), submittedCount: 0, dirty: true };
+      state.ownerSlots.set(owner, ownerState);
+    }
+    ownerState.slots.add(slot);
+    slot.ownerState = ownerState;
+    proxy.userData = {
+      ...(proxy.userData || {}),
+      spacefaceInstancePoolKey: key,
+      spacefaceInstancePoolChunk: chunk.ordinal,
+      spacefaceInstancePoolSlot: index,
+    };
+    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
+    if (admission) {
+      admission.slots.add(slot);
+    } else {
+      if (slot.activateProxy && options.deferProxyActivation !== true) {
+        slot.activateProxy();
+        slot.activateProxy = null;
+      }
+      chunk.mesh.count = Math.max(chunk.mesh.count, index + 1);
+      if (options.initializeVisibleMatrix === true && visibleProxyChainReachesOwner(proxy, owner)) {
+        owner.updateWorldMatrix(true, true);
+        if (setInstanceMatrixIfChanged(chunk, index, slot, proxy.matrixWorld)) {
+          chunk.visibleIndices.add(index);
+          ownerState.submittedCount++;
+          slot.lastSubmitted = true;
+        }
+      }
+    }
+    commitInstanceChunkMatrix(chunk);
+  } catch (error) {
+    releaseInstanceSlot(state, pool, slot);
+    throw error;
   }
-  ownerState.slots.add(slot);
-  slot.ownerState = ownerState;
-  chunk.mesh.count = Math.max(chunk.mesh.count, index + 1);
-  writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
-  commitInstanceChunkMatrix(chunk);
 
-  const release = () => {
-    if (slot.released) return;
-    slot.released = true;
-    if (slot.lastSubmitted) {
-      chunk.visibleIndices.delete(index);
-      ownerState.submittedCount = Math.max(0, ownerState.submittedCount - 1);
-    }
-    slot.lastSubmitted = false;
-    chunk.slots.delete(index);
-    ownerState.slots.delete(slot);
-    if (!ownerState.slots.size) {
-      state.ownerSlots.delete(owner);
-      state.activeFrameOwners.delete(owner);
-    }
-    chunk.free.push(index);
+  const release = () => releaseInstanceSlot(state, pool, slot);
+  const rollback = () => releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
+  try {
+    registerOwnerRelease(owner, release);
+  } catch (error) {
+    release();
+    throw error;
+  }
+  return { release, rollback, admission, slot };
+}
+
+function releaseInstanceSlot(state, pool, slot, options = {}) {
+  if (!slot || slot.released) return false;
+  slot.released = true;
+  const { chunk, index, owner, ownerState } = slot;
+  if (slot.lastSubmitted) {
+    chunk.visibleIndices.delete(index);
+    ownerState.submittedCount = Math.max(0, ownerState.submittedCount - 1);
+  }
+  slot.lastSubmitted = false;
+  if (slot.admission) slot.admission.slots.delete(slot);
+  chunk.slots.delete(index);
+  ownerState?.slots.delete(slot);
+  if (ownerState && !ownerState.slots.size) {
+    state.ownerSlots.delete(owner);
+    state.activeFrameOwners.delete(owner);
+  }
+  chunk.free.push(index);
+  try {
     writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
     chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
     chunk.mesh.visible = chunk.mesh.count > 0;
     commitInstanceChunkMatrix(chunk);
-  };
-  registerOwnerRelease(owner, release);
-  return release;
+  } finally {
+    const collapsed = options.skipPackageCollapse !== true && collapsePackagePoolIfUnique(state, pool);
+    if (!collapsed) retireInstancePoolIfEmpty(state, pool);
+  }
+  return true;
 }
 
-function createInstanceChunk(scene, pool, ordinal) {
+function visibleProxyChainReachesOwner(proxy, owner) {
+  if (!proxy || !owner?.parent) return false;
+  for (let current = proxy; current; current = current.parent) {
+    if (current.visible === false) return false;
+    if (current === owner) return true;
+  }
+  return false;
+}
+
+function createInstanceChunk(scene, pool, ordinal, options = {}) {
   const mesh = new THREE.InstancedMesh(pool.geometry, pool.material, INSTANCE_CHUNK_SIZE);
   mesh.name = `GLTFKit_InstancePool_${pool.label}_${ordinal}`;
   mesh.count = 0;
@@ -4676,6 +5056,7 @@ function createInstanceChunk(scene, pool, ordinal) {
   mesh.userData.spacefaceInstancePool = true;
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
+  mesh.userData.spacefaceInstancePoolChunk = ordinal;
   const dynamicBufferOwner = registerDynamicBufferOwner(scene, {
     id: `authored-instance-${mesh.id}`,
     mesh,
@@ -4689,9 +5070,70 @@ function createInstanceChunk(scene, pool, ordinal) {
     free: [],
     next: 0,
     dynamicBufferOwner,
+    ordinal,
+    scene,
+    packageAdmission: null,
   };
-  scene.add(mesh);
+  if (options.deferScenePublication === true) {
+    chunk.packageAdmission = {
+      target: mesh,
+      chunk,
+      slots: new Set(),
+      preparation: null,
+      prepared: false,
+      activated: false,
+      cancelled: false,
+    };
+    mesh.userData.spacefacePackageAdmissionPending = true;
+  } else {
+    scene.add(mesh);
+  }
   return chunk;
+}
+
+function packagePoolSlots(pool) {
+  if (!pool) return EMPTY_ARRAY;
+  const slots = [];
+  for (const chunk of pool.chunks) {
+    for (const slot of chunk.slots.values()) {
+      if (!slot.released && slot.packageCandidate) slots.push(slot);
+    }
+  }
+  return slots;
+}
+
+function collapsePackagePoolIfUnique(state, pool) {
+  const slots = packagePoolSlots(pool);
+  if (!slots.length || new Set(slots.map((slot) => slot.owner)).size >= 2) return false;
+  const candidate = slots[0].packageCandidate;
+  for (const slot of slots) restoreDirectPackageMesh(slot.proxy, false);
+  for (const slot of slots) {
+    releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
+  }
+  if (candidate?.owner?.parent) installPackagePoolCandidate(state, candidate);
+  return true;
+}
+
+function retireInstancePoolIfEmpty(state, pool) {
+  if (!pool || pool.chunks.some((chunk) => chunk.slots.size > 0)) return false;
+  for (const chunk of pool.chunks) {
+    if (chunk.packageAdmission) {
+      chunk.packageAdmission.cancelled = true;
+      chunk.packageAdmission.slots.clear();
+      chunk.packageAdmission = null;
+    }
+    state.affectedChunks.delete(chunk);
+    unregisterDynamicBufferOwner(chunk.dynamicBufferOwner);
+    chunk.dynamicBufferOwner = null;
+    chunk.mesh.removeFromParent();
+    chunk.mesh.dispose();
+    chunk.slots.clear();
+    chunk.visibleIndices.clear();
+    chunk.free.length = 0;
+  }
+  pool.chunks.length = 0;
+  if (state.pools.get(pool.key) === pool) state.pools.delete(pool.key);
+  return true;
 }
 
 function writeInstanceChunkMatrix(chunk, index, matrix) {
@@ -4786,6 +5228,7 @@ function syncOwnerSlots(ownerState, context, stats, affectedChunks, forceHidden)
 
 function syncInstanceSlot(slot, context, stats, forceHidden) {
   const chunk = slot.chunk;
+  if (chunk.packageAdmission && !chunk.packageAdmission.activated) return false;
   const index = slot.index;
   const record = context.recordsByOwner && context.recordsByOwner.get(slot.owner);
   const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record);
@@ -4891,6 +5334,7 @@ function sceneState(scene) {
   if (!state) {
     state = {
       pools: new Map(),
+      packageCandidates: new Map(),
       stats: createPoolStats(),
       ownerVisibility: new WeakMap(),
       ownerSlots: new Map(),

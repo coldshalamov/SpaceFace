@@ -602,6 +602,89 @@ test('flat-plan instances are structurally identical to a recursive SkeletonUtil
   loader.dispose();
 });
 
+test('createNode hook substitutes plan objects without changing plan or semantic-map identity', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const calls = [];
+  let bodyProxy = null;
+  const instance = loaded.createInstance({
+    createNode({ source, planIndex, parentIndex }) {
+      calls.push({ name: source.name, planIndex, parentIndex });
+      if (source.name !== 'Hull') return null;
+      bodyProxy = new THREE.Object3D().copy(source, false);
+      bodyProxy.geometry = source.geometry;
+      bodyProxy.material = source.material;
+      bodyProxy.userData.spacefaceInstanceProxy = true;
+      return bodyProxy;
+    },
+  });
+
+  assert.deepEqual(calls, [
+    { name: 'FixtureScene', planIndex: 0, parentIndex: -1 },
+    { name: 'Hull', planIndex: 1, parentIndex: 0 },
+    { name: 'FX_Trail_Left', planIndex: 2, parentIndex: 1 },
+    { name: 'Turret', planIndex: 3, parentIndex: 0 },
+  ]);
+  assert.strictEqual(instance.planNodes[1], bodyProxy);
+  assert.strictEqual(instance.nodes.get('fixture.body'), bodyProxy,
+    'semantic nodes map retains the exact hook-created object');
+  assert.strictEqual(instance.anchors.get('fixture.trail.left').parent, bodyProxy,
+    'recorded parent index attaches later plan nodes to the substitute');
+  assert.strictEqual(instance.dynamicGroups.get('fixture.turret.group'), instance.planNodes[3]);
+  assert.strictEqual(bodyProxy.geometry, decoded.geometry);
+  assert.strictEqual(bodyProxy.material, decoded.material);
+  assert.deepEqual(instance.planNodes.map((object) => object.name), [
+    'FixtureScene', 'Hull', 'FX_Trail_Left', 'Turret',
+  ]);
+
+  instance.dispose();
+  loader.dispose();
+});
+
+test('createNode hook rejects non-objects, template nodes, aliases, descendants, and attached objects', async () => {
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    loadGlb: async () => decoded,
+    residency: createAssetResidencyRegistry(),
+  });
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => ({}) }),
+    /must return an Object3D or null/i,
+  );
+  assert.throws(
+    () => loaded.createInstance({ createNode: ({ source }) => source }),
+    /cannot return a template node/i,
+  );
+  const reused = new THREE.Object3D();
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => reused }),
+    /must return a unique Object3D/i,
+  );
+  const childBearing = new THREE.Object3D();
+  childBearing.add(new THREE.Object3D());
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => childBearing }),
+    /must return an Object3D without children/i,
+  );
+  const parent = new THREE.Group();
+  const attached = new THREE.Object3D();
+  parent.add(attached);
+  assert.throws(
+    () => loaded.createInstance({ createNode: () => attached }),
+    /must return an unattached Object3D/i,
+  );
+
+  assert.equal(decoded.scene.children[0].parent, decoded.scene,
+    'rejected hooks never reparent the decoded template graph');
+  loader.dispose();
+});
+
 test('two instances of one package are independent in transform and shared in resources', async () => {
   const decoded = decodedFixture();
   const loader = createRenderPackageLoader({

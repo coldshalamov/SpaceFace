@@ -14,6 +14,20 @@ test('live asset proof respects spatial streaming while forbidding visible subst
     'offscreen boundaries must wait invisibly instead of publishing procedural boxes');
   assert.match(source, /maxConcurrentDecode <= 1/,
     'production decode admission remains serial and bounded');
+  assert.match(source, /repeatedPackageShipPoolKeys\.length > 0/,
+    'the live route must bind one real package pool key to at least two Wasp or freighter roots');
+  assert.match(source, /entry\.roots\.filter\(isFrequentShipRoot\)\.length >= 2/,
+    'both roots counted by repeated package proof must be members of the frequent Wasp/freighter population');
+  assert.match(source, /spacefaceRenderPackagePooled === true/,
+    'surface and bounds proof must recognize package pool proxies without pretending they are direct meshes');
+  assert.match(source, /packagePoolTextureResidency\.allResident/,
+    'pool proxies retain final materials so the live proof can verify their textures are resident');
+  assert.match(source, /packageSubmittedPoolKeys/,
+    'repeated-root proof must use package slots submitted by the production pool sync');
+  assert.match(source, /submittedInstancePoolSlots/,
+    'the live probe must reject zero-matrix and hidden pool membership as route proof');
+  assert.match(source, /submittedSlotCount/,
+    'the report exposes currently submitted slots per exact scene pool chunk');
 });
 
 test('Electron normal route proves authored release identities without an artificial drain', () => {

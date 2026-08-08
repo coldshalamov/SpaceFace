@@ -370,6 +370,7 @@ function buildInstancePlan(template, metadata, counters = null) {
 
   return Object.freeze({
     entries,
+    templateNodes: new Set(entries.map((entry) => entry.source)),
     resources,
     nodePlanIndices,
     anchorPlanIndices,
@@ -524,6 +525,11 @@ class LoadedRenderPackage {
       const plan = this.#plan;
       const { entries } = plan;
       const count = entries.length;
+      const createNode = typeof instanceOptions.createNode === 'function'
+        ? instanceOptions.createNode
+        : null;
+      const templateNodes = createNode ? plan.templateNodes : null;
+      const instanceNodes = createNode ? new Set() : null;
 
       // ONE flat pass. Every node is reconstructed rigidly with clone(false) — transform,
       // visibility, shadow flags, layers and userData copied; geometry and materials SHARED with
@@ -536,7 +542,38 @@ class LoadedRenderPackage {
       const objects = new Array(count);
       for (let i = 0; i < count; i++) {
         const entry = entries[i];
-        const object = entry.source.clone(false);
+        const created = createNode ? createNode({
+          source: entry.source,
+          planIndex: i,
+          parentIndex: entry.parentIndex,
+        }) : null;
+        const object = created == null ? entry.source.clone(false) : created;
+        if (!object?.isObject3D) {
+          throw new TypeError(
+            `Render package ${this.assetId} createNode() must return an Object3D or null for plan index ${i}.`,
+          );
+        }
+        if (templateNodes?.has(object)) {
+          throw new TypeError(
+            `Render package ${this.assetId} createNode() cannot return a template node at plan index ${i}.`,
+          );
+        }
+        if (instanceNodes?.has(object)) {
+          throw new TypeError(
+            `Render package ${this.assetId} createNode() must return a unique Object3D for plan index ${i}.`,
+          );
+        }
+        if (created != null && object.children.length > 0) {
+          throw new TypeError(
+            `Render package ${this.assetId} createNode() must return an Object3D without children at plan index ${i}.`,
+          );
+        }
+        if (object.parent) {
+          throw new TypeError(
+            `Render package ${this.assetId} createNode() must return an unattached Object3D at plan index ${i}.`,
+          );
+        }
+        instanceNodes?.add(object);
         objects[i] = object;
         if (entry.parentIndex >= 0) objects[entry.parentIndex].add(object);
       }
