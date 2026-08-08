@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import * as flightV3Module from '../src/systems/flightV3.js';
+import { ORBIT_ASSIST_TUNING_V1 } from '../src/core/flight/orbitAssist.js';
 import * as masslineLab from '../scripts/lib/masslineControlLab.mjs';
 import { createGameState } from '../src/core/gameState.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
@@ -64,6 +65,158 @@ test('the requested turn rate scales with swing speed and inverse line radius', 
 
   assert.ok(Math.abs(fastLong.telemetry.orbitalYawRate - slowLong.telemetry.orbitalYawRate * 2) < 1e-12);
   assert.ok(Math.abs(fastShort.telemetry.orbitalYawRate - fastLong.telemetry.orbitalYawRate * 2) < 1e-12);
+});
+
+test('R2 radial-facing starts use a small correction without replacing physical angular motion', () => {
+  const capFraction = ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction;
+  assert.ok(capFraction > 0 && capFraction < 0.5,
+    'heading correction has its own small cap below half of full yaw authority');
+
+  const long = orbitStep({
+    radius: 220,
+    tangentialSpeed: 60,
+    hostRot: 0,
+    anchorAhead: true,
+  });
+  const short = orbitStep({
+    radius: 72,
+    tangentialSpeed: 60,
+    hostRot: 0,
+    anchorAhead: true,
+  });
+
+  for (const result of [long, short]) {
+    assert.equal(result.active, true);
+    assert.ok(Math.abs(result.telemetry.desiredYawRate) > 0.05,
+      'a radial-facing launch still requests visible yaw');
+    assert.ok(Math.abs(result.telemetry.desiredYawRate) < result.telemetry.maxYawRate * 0.9,
+      'heading alignment cannot take over at full yaw rate');
+    assert.ok(Math.abs(result.telemetry.alignmentYawRate)
+      <= result.telemetry.headingCorrectionLimit + 1e-12);
+    assert.equal(result.telemetry.headingCorrectionSaturated, true,
+      'the large radial heading error is bounded independently');
+    assert.equal(result.telemetry.headingDirectionCommitted, true,
+      'the radial tie is resolved in the player-selected orbit direction');
+    assert.equal(
+      Math.sign(result.telemetry.alignmentYawRate),
+      Math.sign(result.telemetry.orbitalYawRate),
+      'radial alignment must reinforce rather than cancel physical swing feed-forward',
+    );
+  }
+  assert.ok(Math.abs(short.telemetry.orbitalYawRate) > Math.abs(long.telemetry.orbitalYawRate),
+    'radial-facing nose correction leaves the stronger 72 WU physical feed-forward intact');
+});
+
+test('R2 signed heading offsets preserve feed-forward and release either chord key immediately', () => {
+  const tangentHeading = -Math.PI / 2;
+  for (const offset of [-0.1, 0.1]) {
+    const long = orbitStep({
+      radius: 220,
+      tangentialSpeed: 60,
+      hostRot: tangentHeading + offset,
+      anchorAhead: true,
+    });
+    const short = orbitStep({
+      radius: 72,
+      tangentialSpeed: 60,
+      hostRot: tangentHeading + offset,
+      anchorAhead: true,
+    });
+    assert.equal(Math.sign(long.telemetry.alignmentYawRate), -Math.sign(offset));
+    assert.equal(Math.sign(short.telemetry.alignmentYawRate), -Math.sign(offset));
+    assert.equal(long.telemetry.headingDirectionCommitted, false,
+      'inside the tangent capture cone, signed error keeps shortest-path trimming');
+    assert.equal(short.telemetry.headingDirectionCommitted, false,
+      'inside the tangent capture cone, signed error keeps shortest-path trimming');
+    assert.ok(Math.abs(short.telemetry.orbitalYawRate) > Math.abs(long.telemetry.orbitalYawRate),
+      'heading correction never replaces inverse-radius orbital feed-forward');
+  }
+
+  const raw = { throttle: 0.8, strafe: 0.2, turn: 0.65, boost: false, brake: false };
+  const noForward = orbitStep({
+    radius: 72, tangentialSpeed: 60, hostRot: 0, anchorAhead: true,
+    input: raw, forward: 0, lateral: 1,
+  });
+  const noTurn = orbitStep({
+    radius: 72, tangentialSpeed: 60, hostRot: 0, anchorAhead: true,
+    input: raw, forward: 1, lateral: 0,
+  });
+  assert.deepEqual(noForward.input, raw);
+  assert.deepEqual(noTurn.input, raw);
+  assert.equal(noForward.active, false);
+  assert.equal(noTurn.active, false);
+});
+
+test('R2 heading recovery is symmetric across direction, strength, angle wrap, and capture boundary', () => {
+  const radialByDirection = new Map();
+  for (const direction of [-1, 1]) {
+    const result = orbitStep({
+      radius: 72,
+      tangentialSpeed: 60,
+      hostRot: 0,
+      anchorAhead: true,
+      lateral: direction,
+    });
+    radialByDirection.set(direction, result);
+    assert.equal(result.telemetry.selectedDirection, direction);
+    assert.equal(Math.sign(result.telemetry.orbitalYawRate), direction);
+    assert.equal(Math.sign(result.telemetry.alignmentYawRate), direction);
+    assert.equal(result.telemetry.headingDirectionCommitted, true);
+  }
+  assert.equal(
+    Math.abs(radialByDirection.get(-1).telemetry.desiredYawRate),
+    Math.abs(radialByDirection.get(1).telemetry.desiredYawRate),
+    'left and right orbit chords are mirror-equivalent',
+  );
+
+  const strengthResults = new Map(['light', 'standard', 'full'].map((strength) => [
+    strength,
+    orbitStep({
+      radius: 220,
+      tangentialSpeed: 60,
+      hostRot: 0,
+      anchorAhead: true,
+      strength,
+    }),
+  ]));
+  assert.equal(
+    Math.abs(strengthResults.get('light').telemetry.alignmentYawRate) * 2,
+    Math.abs(strengthResults.get('standard').telemetry.alignmentYawRate),
+    'Light keeps exactly half the Standard heading correction',
+  );
+  assert.equal(
+    strengthResults.get('standard').telemetry.alignmentYawRate,
+    strengthResults.get('full').telemetry.alignmentYawRate,
+    'the accepted Full and Standard profiles retain their current equal strength',
+  );
+  assert.equal(
+    strengthResults.get('light').telemetry.orbitalYawRate,
+    strengthResults.get('full').telemetry.orbitalYawRate,
+    'assist strength never scales the physical inverse-radius feed-forward term',
+  );
+
+  const positivePi = orbitStep({ anchorAhead: true, hostRot: Math.PI - 0.2 });
+  const negativePi = orbitStep({ anchorAhead: true, hostRot: -Math.PI - 0.2 });
+  for (const field of ['shortestHeadingError', 'headingError', 'alignmentYawRate', 'desiredYawRate']) {
+    assert.ok(Math.abs(positivePi.telemetry[field] - negativePi.telemetry[field]) < 1e-12,
+      `${field} is equivalent across the +/-pi representation wrap`);
+  }
+
+  for (const direction of [-1, 1]) {
+    const desiredHeading = direction > 0 ? -Math.PI / 2 : Math.PI / 2;
+    const probe = orbitStep({ anchorAhead: true, lateral: direction, hostRot: desiredHeading });
+    const boundary = probe.telemetry.headingCaptureAngle;
+    const insideHeading = desiredHeading + direction * (boundary - 1e-6);
+    const outsideHeading = desiredHeading + direction * (boundary + 1e-6);
+    const inside = orbitStep({ anchorAhead: true, lateral: direction, hostRot: insideHeading });
+    const outside = orbitStep({ anchorAhead: true, lateral: direction, hostRot: outsideHeading });
+    assert.equal(inside.telemetry.headingDirectionCommitted, false,
+      `${direction}: immediately inside capture uses shortest-path trim`);
+    assert.equal(outside.telemetry.headingDirectionCommitted, true,
+      `${direction}: immediately outside capture commits to the held orbit direction`);
+    assert.equal(Math.sign(inside.telemetry.alignmentYawRate), -direction);
+    assert.equal(Math.sign(outside.telemetry.alignmentYawRate), direction);
+  }
 });
 
 test('the assist exists only for the explicit forward-plus-turn chord', () => {
@@ -148,22 +301,79 @@ test('the production forward-plus-turn controller passes the deterministic orbit
   assert.equal(repeat.digest, matrix.digest);
 });
 
+test('R2 production recovery matrix covers exact R0 radii and radial/signed heading starts', async () => {
+  const matrix = await masslineLab.orbitAssistHeadingAcceptanceMatrix({ seed: 47 });
+  assert.equal(matrix.schema, 'spaceface.masslineControlLab.orbitAssistHeadingMatrix.v1');
+  assert.equal(matrix.rows.length, 36);
+  assert.deepEqual(matrix.summary, { total: 36, pass: 36, fail: 0 });
+  assert.deepEqual(new Set(matrix.rows.map((row) => row.params.lineLength)), new Set([72, 220]));
+  assert.deepEqual(
+    new Set(matrix.rows.map((row) => row.params.productionOrbitDirection)),
+    new Set([-1, 1]),
+  );
+  assert.deepEqual(
+    new Set(matrix.rows.map((row) => row.params.orbitAssistStrength)),
+    new Set(['light', 'standard', 'full']),
+  );
+  assert.deepEqual(
+    new Set(matrix.rows.map((row) => row.params.headingCase)),
+    new Set(['radial-facing', 'tangent-minus', 'tangent-plus']),
+  );
+  assert.ok(matrix.rows.every((row) => row.metrics.visibleYaw));
+  assert.ok(matrix.rows.every((row) => row.metrics.noFullRateTakeover));
+  assert.ok(matrix.rows.every((row) => row.metrics.correctionBounded));
+  assert.ok(matrix.rows.every((row) => row.metrics.orbitAssistActiveTicks > 0));
+  assert.ok(matrix.rows.every((row) => Number.isFinite(row.metrics.worstDesiredYawRateRatio)));
+  assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio < 0.9));
+  assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio
+    >= row.metrics.initialAbsDesiredYawRate / row.metrics.maxYawRate - 1e-6));
+  assert.ok(matrix.rows.some((row) => row.metrics.worstDesiredYawRateRatioTick > 0),
+    'the takeover gate records a later worst sample rather than assuming tick zero is worst');
+
+  for (const direction of [-1, 1]) {
+    for (const strength of ['light', 'standard', 'full']) {
+      for (const headingCase of ['radial-facing', 'tangent-minus', 'tangent-plus']) {
+        const matches = (row) => row.params.productionOrbitDirection === direction
+          && row.params.orbitAssistStrength === strength
+          && row.params.headingCase === headingCase;
+        const short = matrix.rows.find((row) => row.params.lineLength === 72 && matches(row));
+        const long = matrix.rows.find((row) => row.params.lineLength === 220 && matches(row));
+        assert.ok(short && long);
+        assert.ok(short.metrics.initialAbsOrbitalYawRate > long.metrics.initialAbsOrbitalYawRate,
+          `${direction}/${strength}/${headingCase}: short line keeps stronger physical feed-forward`);
+        assert.ok(short.metrics.initialAbsDesiredYawRate > long.metrics.initialAbsDesiredYawRate,
+          `${direction}/${strength}/${headingCase}: short line requests faster yaw`);
+        assert.ok(short.metrics.actualYawDelta30Ticks > long.metrics.actualYawDelta30Ticks,
+          `${direction}/${strength}/${headingCase}: short line produces more visible hull yaw`);
+      }
+    }
+  }
+
+  const repeat = await masslineLab.orbitAssistHeadingAcceptanceMatrix({ seed: 47 });
+  assert.equal(repeat.digest, matrix.digest);
+});
+
 function orbitStep(options = {}) {
   const radius = options.radius ?? 120;
   const tangentialSpeed = options.tangentialSpeed ?? 30;
   const input = options.input || { throttle: 1, strafe: 0, turn: 1, boost: false, brake: false };
+  const anchorAhead = options.anchorAhead === true;
+  const selectedDirection = Math.sign(options.lateral ?? 1) || 1;
   return flightV3Module.stepAnchorRelativeOrbitAssist({
     dt: DT,
     host: {
-      pos: { x: radius, z: 0 },
-      vel: { x: 0, z: tangentialSpeed },
+      pos: { x: anchorAhead ? 0 : radius, z: 0 },
+      vel: {
+        x: 0,
+        z: (anchorAhead ? -1 : 1) * tangentialSpeed * selectedDirection,
+      },
       rot: options.hostRot ?? Math.PI / 2,
       angVel: 0,
       mass: 20,
       radius: 10,
     },
     anchor: {
-      pos: { x: 0, z: 0 },
+      pos: { x: anchorAhead ? radius : 0, z: 0 },
       vel: { x: 0, z: 0 },
       mass: 2000,
       radius: 20,

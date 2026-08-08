@@ -280,6 +280,14 @@ export async function runScenario(options = {}) {
   const c = Math.cos(params.rotation);
   const s = Math.sin(params.rotation);
   const rot = (x, z) => ({ x: x * c - z * s, z: x * s + z * c });
+  // Recovery heading cells name orientation relative to the tangent selected by the held turn.
+  // Keep the historical matrix's original heading/velocity when no explicit offset is supplied.
+  const selectedTangentHeading = params.rotation + Math.PI
+    + params.productionOrbitDirection * Math.PI / 2;
+  const recoveryHeadingCell = Number.isFinite(params.initialOrbitHeadingOffsetRad);
+  const initialHeading = recoveryHeadingCell
+    ? selectedTangentHeading + params.initialOrbitHeadingOffsetRad
+    : params.rotation + Math.PI / 2;
 
   const player = sim.spawn(makeShipEntitySpec(NEW_GAME.shipId, {
     team: 0,
@@ -288,7 +296,7 @@ export async function runScenario(options = {}) {
     player: state.player,
     fittings: fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
     pos: { x: 0, z: 0 },
-    rot: params.rotation + Math.PI / 2,   // face the tangent of the initial (rotated) line
+    rot: initialHeading,
   }));
   state.playerId = player.id;
 
@@ -314,7 +322,12 @@ export async function runScenario(options = {}) {
 
   // Seed entry velocity BEFORE Rapier body creation. Assigning entity.vel after prepareBackend only
   // changed the mirror, not the authority-owned body, and made the historical speed axis vacuous.
-  const entryVel = rot(0, params.entrySpeed);
+  const entryVel = recoveryHeadingCell
+    ? {
+        x: Math.cos(selectedTangentHeading) * params.entrySpeed,
+        z: Math.sin(selectedTangentHeading) * params.entrySpeed,
+      }
+    : rot(0, params.entrySpeed);
   player.vel.x = entryVel.x;
   player.vel.z = entryVel.z;
 
@@ -354,7 +367,7 @@ export async function runScenario(options = {}) {
     lastCommand: null,
   };
   if (params.productionOrbitAssist) {
-    state.settings.gameplay.orbitAssistStrength = 'standard';
+    state.settings.gameplay.orbitAssistStrength = params.orbitAssistStrength;
     state.player.tether = {
       ...(state.player.tether || {}),
       active: true,
@@ -374,7 +387,9 @@ export async function runScenario(options = {}) {
     const input = resolveInput(params, tick);
     state.input.moveX = finite(input.moveX, 0);
     state.input.moveZ = params.productionOrbitAssist ? 1 : finite(input.moveZ, 0);
-    state.input.turnIntent = params.productionOrbitAssist ? 1 : finite(input.turnIntent, 0);
+    state.input.turnIntent = params.productionOrbitAssist
+      ? params.productionOrbitDirection
+      : finite(input.turnIntent, 0);
     state.input.boost = !!input.boost;
     state.input.aimAngle = player.rot;
     state.input.actions.reelDelta = params.productionOrbitAssist ? 0 : finite(input.reelDelta, 0);
@@ -415,6 +430,7 @@ export async function runScenario(options = {}) {
       tetherActive: !!(state.player.tether && state.player.tether.active),
       mt,
       orbitAssist: host && host._flightFrame && host._flightFrame.orbitAssist,
+      host,
       attachmentActive: !!(att && att.state === 'active'),
     }));
   }
@@ -529,6 +545,8 @@ export function computeMetrics(trace, { restLength0 = 0, attachmentActiveAtEnd =
 export function makeTraceSample(tick, obs, restLength, opts = {}) {
   const cmd = opts.command || null;
   const mt = opts.mt || {};
+  const orbitAssist = opts.orbitAssist || null;
+  const host = opts.host || null;
   return {
     tick: tick | 0,
     distance: round6(obs.distance),
@@ -550,9 +568,17 @@ export function makeTraceSample(tick, obs, restLength, opts = {}) {
     cmdZ: round6(cmd ? cmd.z : 0),
     cmdRejected: !!(cmd && cmd.rejected),
     cmdClamped: !!(cmd && cmd.clamped),
-    orbitAssistActive: !!(opts.orbitAssist && opts.orbitAssist.active),
-    orbitAssistReason: opts.orbitAssist && opts.orbitAssist.reason || null,
-    orbitSaturated: !!(opts.orbitAssist && opts.orbitAssist.saturated),
+    orbitAssistActive: !!(orbitAssist && orbitAssist.active),
+    orbitAssistReason: orbitAssist && orbitAssist.reason || null,
+    orbitSaturated: !!(orbitAssist && orbitAssist.saturated),
+    orbitDesiredYawRate: round6(finite(orbitAssist && orbitAssist.desiredYawRate, 0)),
+    orbitOrbitalYawRate: round6(finite(orbitAssist && orbitAssist.orbitalYawRate, 0)),
+    orbitAlignmentYawRate: round6(finite(orbitAssist && orbitAssist.alignmentYawRate, 0)),
+    orbitHeadingCorrectionLimit: round6(finite(orbitAssist && orbitAssist.headingCorrectionLimit, 0)),
+    orbitHeadingCorrectionSaturated: !!(orbitAssist && orbitAssist.headingCorrectionSaturated),
+    orbitMaxYawRate: round6(finite(orbitAssist && orbitAssist.maxYawRate, 0)),
+    hostHeading: round6(finite(host && host.rot, 0)),
+    hostAngularVelocity: round6(finite(host && host.angVel, 0)),
     attachmentActive: opts.attachmentActive !== false,
   };
 }
@@ -682,6 +708,76 @@ export async function orbitAssistAcceptanceMatrix(options = {}) {
   const passCount = rows.filter((row) => row.pass).length;
   return {
     schema: 'spaceface.masslineControlLab.orbitAssistMatrix.v1',
+    deterministic: true,
+    seed,
+    rows,
+    summary: { total: rows.length, pass: passCount, fail: rows.length - passCount },
+    digest: hashMatrix(rows),
+  };
+}
+
+/** R2 recovery acceptance: exact Sandbox long/short radii, each started radial-facing and with a
+ * small signed error around the selected tangent. Entry velocity is already tangent so line length
+ * changes the physical angular rate immediately; hull heading remains an independent yaw problem. */
+export async function orbitAssistHeadingAcceptanceMatrix(options = {}) {
+  const seed = Number.isFinite(options.seed) ? options.seed : DEFAULT_SEED;
+  const ticks = Number.isFinite(options.ticks) ? Math.max(60, Math.trunc(options.ticks)) : 180;
+  const lineLengths = [72, 220];
+  const directions = [-1, 1];
+  const strengths = ['light', 'standard', 'full'];
+  const headingCases = [
+    { id: 'radial-facing', offsetRad: Math.PI / 2 },
+    { id: 'tangent-minus', offsetRad: -0.1 },
+    { id: 'tangent-plus', offsetRad: 0.1 },
+  ];
+  const rows = [];
+
+  for (const lineLength of lineLengths) {
+    for (const productionOrbitDirection of directions) {
+      for (const orbitAssistStrength of strengths) {
+        for (const headingCase of headingCases) {
+          const result = await runScenario({
+            seed,
+            ticks,
+            lineLength,
+            entrySpeed: 60,
+            anchorMass: 5000,
+            productionOrbitAssist: true,
+            productionOrbitDirection,
+            orbitAssistStrength,
+            initialOrbitHeadingOffsetRad: headingCase.offsetRad,
+            controller: BASELINE_CONTROLLER,
+            reelWindow: [],
+          });
+          const selectedTangentHeading = Math.PI + productionOrbitDirection * Math.PI / 2;
+          const initialHeading = selectedTangentHeading + headingCase.offsetRad;
+          const metrics = productionOrbitHeadingMetrics(result.trace, initialHeading);
+          rows.push({
+            id: `L${lineLength}-D${productionOrbitDirection < 0 ? 'neg' : 'pos'}-${orbitAssistStrength}-${headingCase.id}`,
+            params: sortedParams({
+              seed,
+              ticks,
+              lineLength,
+              entrySpeed: 60,
+              anchorMass: 5000,
+              productionOrbitDirection,
+              orbitAssistStrength,
+              headingCase: headingCase.id,
+              headingOffsetRad: round6(headingCase.offsetRad),
+            }),
+            metrics,
+            pass: metrics.pass,
+            live: result.live,
+          });
+        }
+      }
+    }
+  }
+
+  rows.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const passCount = rows.filter((row) => row.pass).length;
+  return {
+    schema: 'spaceface.masslineControlLab.orbitAssistHeadingMatrix.v1',
     deterministic: true,
     seed,
     rows,
@@ -961,6 +1057,67 @@ function productionOrbitMetrics(trace, contactDistance) {
   };
 }
 
+function productionOrbitHeadingMetrics(trace, initialHeading) {
+  const first = trace[0] || {};
+  const yawWindowIndex = Math.min(29, Math.max(0, trace.length - 1));
+  const yawWindow = trace[yawWindowIndex] || first;
+  const initialAbsDesiredYawRate = Math.abs(finite(first.orbitDesiredYawRate));
+  const initialAbsOrbitalYawRate = Math.abs(finite(first.orbitOrbitalYawRate));
+  const initialAbsAlignmentYawRate = Math.abs(finite(first.orbitAlignmentYawRate));
+  const maxYawRate = Math.abs(finite(first.orbitMaxYawRate));
+  const actualYawDelta30Ticks = Math.abs(wrapLabAngle(
+    finite(yawWindow.hostHeading, initialHeading) - initialHeading,
+  ));
+  let orbitAssistActiveTicks = 0;
+  let correctionBounded = true;
+  let worstDesiredYawRateRatio = 0;
+  let worstDesiredYawRateRatioTick = null;
+  for (const sample of trace) {
+    if (!sample.orbitAssistActive) continue;
+    orbitAssistActiveTicks++;
+    const sampleMaxYawRate = Math.abs(finite(sample.orbitMaxYawRate));
+    const sampleDesiredYawRate = Math.abs(finite(sample.orbitDesiredYawRate));
+    const desiredYawRateRatio = sampleMaxYawRate > 0
+      ? sampleDesiredYawRate / sampleMaxYawRate
+      : Infinity;
+    if (desiredYawRateRatio > worstDesiredYawRateRatio) {
+      worstDesiredYawRateRatio = desiredYawRateRatio;
+      worstDesiredYawRateRatioTick = sample.tick;
+    }
+    if (Math.abs(finite(sample.orbitAlignmentYawRate))
+        > Math.abs(finite(sample.orbitHeadingCorrectionLimit)) + 1e-6) {
+      correctionBounded = false;
+    }
+  }
+  const visibleYaw = initialAbsDesiredYawRate > 0.05 && actualYawDelta30Ticks > 0.01;
+  const noFullRateTakeover = orbitAssistActiveTicks > 0
+    && Number.isFinite(worstDesiredYawRateRatio)
+    && worstDesiredYawRateRatio < 0.9;
+  const attachmentActiveAtEnd = trace.length > 0 && trace[trace.length - 1].attachmentActive;
+  const pass = visibleYaw
+    && noFullRateTakeover
+    && correctionBounded
+    && orbitAssistActiveTicks > 0
+    && attachmentActiveAtEnd;
+  return {
+    initialAbsDesiredYawRate: round6(initialAbsDesiredYawRate),
+    initialAbsOrbitalYawRate: round6(initialAbsOrbitalYawRate),
+    initialAbsAlignmentYawRate: round6(initialAbsAlignmentYawRate),
+    maxYawRate: round6(maxYawRate),
+    actualYawDelta30Ticks: round6(actualYawDelta30Ticks),
+    visibleYaw,
+    worstDesiredYawRateRatio: Number.isFinite(worstDesiredYawRateRatio)
+      ? round6(worstDesiredYawRateRatio)
+      : null,
+    worstDesiredYawRateRatioTick,
+    noFullRateTakeover,
+    correctionBounded,
+    orbitAssistActiveTicks,
+    attachmentActiveAtEnd,
+    pass,
+  };
+}
+
 /**
  * Grid-search sweep over controller gains × environment. Default controllerFactory is the reference
  * PD controller, so the gain axes actually bite (a real, non-flat matrix). Returns stable-ordered
@@ -1038,7 +1195,34 @@ function normalizeScenario(options) {
   const frames = Array.isArray(options.frames) ? options.frames : null;
   const boost = !!options.boost;
   const productionOrbitAssist = !!options.productionOrbitAssist;
-  return { seed, ticks, lineLength, anchorMass, entrySpeed, throttle, rotation, reelWindow, frames, boost, productionOrbitAssist };
+  const productionOrbitDirection = Math.sign(finite(options.productionOrbitDirection, 1)) || 1;
+  const orbitAssistStrength = normalizeOrbitAssistStrength(options.orbitAssistStrength);
+  const initialOrbitHeadingOffsetRad = Number.isFinite(options.initialOrbitHeadingOffsetRad)
+    ? wrapLabAngle(options.initialOrbitHeadingOffsetRad)
+    : null;
+  return {
+    seed,
+    ticks,
+    lineLength,
+    anchorMass,
+    entrySpeed,
+    throttle,
+    rotation,
+    reelWindow,
+    frames,
+    boost,
+    productionOrbitAssist,
+    productionOrbitDirection,
+    orbitAssistStrength,
+    initialOrbitHeadingOffsetRad,
+  };
+}
+
+function normalizeOrbitAssistStrength(value) {
+  const strength = String(value || 'standard').toLowerCase();
+  return strength === 'light' || strength === 'full' || strength === 'off'
+    ? strength
+    : 'standard';
 }
 
 function sortedParams(obj) {

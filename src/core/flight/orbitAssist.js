@@ -8,6 +8,9 @@ export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
   id: 'orbitAssist.tuning.v1',
   minIntent: 0.05,
   tangentAlignTimeS: 0.55,
+  // Heading alignment is only a quiet bridge onto the selected tangent. It must not flatten the
+  // actual inverse-radius orbital-rate read into full manual yaw when a latch begins radial-facing.
+  maxHeadingCorrectionRateFraction: 0.35,
 });
 
 export const ORBIT_ASSIST_STRENGTH = Object.freeze({
@@ -61,11 +64,30 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   // longer line or slower swing requests less. Heading error only brings the nose onto the chosen
   // tangent, then falls to zero and leaves the exact angular-rate feed-forward term.
   const orbitalYawRate = (rx * relVz - rz * relVx) / (radius * radius);
-  const desiredHeading = Math.atan2(tangentZ, tangentX);
-  const headingError = wrapAngle(desiredHeading - finite(host.rot));
-  const alignmentYawRate = headingError
-    / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
   const maxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  const headingCorrectionLimit = maxYawRate
+    * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction
+    * strengthScale;
+  // Far outside the proportional correction cone, preserve the orbit direction chosen by the
+  // held key. Once the nose enters the unsaturated cone, ordinary shortest-path trim can correct
+  // either side without turning a small overshoot into a full revolution.
+  const headingCaptureAngle = headingCorrectionLimit
+    * (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
+  const desiredHeading = Math.atan2(tangentZ, tangentX);
+  const headingSelection = selectedTangentHeadingError(
+    desiredHeading,
+    finite(host.rot),
+    selectedDirection,
+    headingCaptureAngle,
+  );
+  const headingError = headingSelection.headingError;
+  const rawAlignmentYawRate = headingError
+    / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
+  const alignmentYawRate = clamp(
+    rawAlignmentYawRate,
+    -headingCorrectionLimit,
+    headingCorrectionLimit,
+  );
   const rawDesiredYawRate = orbitalYawRate + alignmentYawRate;
   const desiredYawRate = clamp(rawDesiredYawRate, -maxYawRate, maxYawRate);
   const turn = desiredYawRate / maxYawRate;
@@ -84,8 +106,16 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       radialSpeed,
       tangentialSpeed,
       desiredHeading,
+      shortestHeadingError: headingSelection.shortestHeadingError,
       headingError,
+      headingDirectionCommitted: headingSelection.directionCommitted,
+      headingCaptureAngle,
       orbitalYawRate,
+      rawAlignmentYawRate,
+      alignmentYawRate,
+      headingCorrectionLimit,
+      headingCorrectionSaturated: alignmentYawRate !== rawAlignmentYawRate,
+      maxYawRate,
       desiredYawRate,
       turnIntent: turn,
       saturated: desiredYawRate !== rawDesiredYawRate,
@@ -134,4 +164,26 @@ function wrapAngle(value) {
   if (angle <= -Math.PI) angle += Math.PI * 2;
   if (angle > Math.PI) angle -= Math.PI * 2;
   return angle;
+}
+
+function selectedTangentHeadingError(
+  desiredHeading,
+  currentHeading,
+  selectedDirection,
+  captureAngle,
+) {
+  const shortestHeadingError = wrapAngle(desiredHeading - currentHeading);
+  const direction = Math.sign(finite(selectedDirection));
+  const outsideCapture = Math.abs(shortestHeadingError) + 1e-12
+    >= positive(captureAngle);
+  const directionCommitted = outsideCapture
+    && direction !== 0
+    && shortestHeadingError * direction < 0;
+  return {
+    shortestHeadingError,
+    headingError: directionCommitted
+      ? shortestHeadingError + direction * Math.PI * 2
+      : shortestHeadingError,
+    directionCommitted,
+  };
 }
