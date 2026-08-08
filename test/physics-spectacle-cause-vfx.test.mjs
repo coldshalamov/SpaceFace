@@ -363,6 +363,32 @@ test('custom station impacts retain one low cue while ordinary custom collision 
     pos: { x: 2, z: 0 },
     dp: 220,
   }), true, 'legacy collision-only callers retain their low contact cue');
+
+  const invalidLegacyReceipts = [
+    { aId: null, bId: 2, pos: { x: 2, z: 0 }, dp: 220 },
+    { aId: 1, bId: '', pos: { x: 2, z: 0 }, dp: 220 },
+    { aId: 1, bId: 1, pos: { x: 2, z: 0 }, dp: 220 },
+    { aId: 1, bId: 2, pos: { x: Number.NaN, z: 0 }, dp: 220 },
+    { aId: 1, bId: 2, pos: { x: 2, z: Number.NEGATIVE_INFINITY }, dp: 220 },
+    { aId: 1, bId: 2, pos: { x: 2, z: 0 }, dp: 0 },
+    { aId: 1, bId: 2, pos: { x: 2, z: 0 }, impulse: -1 },
+    { aId: 1, bId: 2, pos: { x: 2, z: 0 } },
+  ];
+  for (const receipt of invalidLegacyReceipts) {
+    const invalid = collisionHarness();
+    assert.equal(invalid.harness._onCollision(receipt), false,
+      'malformed legacy collision truth cannot enter presentation');
+    assert.equal(invalid.calls.length, 0,
+      'rejected legacy collision cannot mutate a presentation pool');
+  }
+
+  const impulseOnly = collisionHarness();
+  assert.equal(impulseOnly.harness._onCollision({
+    aId: 'ship:1',
+    bId: 'rock:2',
+    pos: { x: 2, z: 0 },
+    impulse: 12,
+  }), true, 'positive finite legacy impulse remains a supported momentum source');
 });
 
 test('source contract contains no random or rupture/pressure ring fallback in destruction emitter', () => {

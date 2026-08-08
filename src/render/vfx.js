@@ -245,6 +245,16 @@ function isProductionPhysicsImpactReceipt(payload) {
   return true;
 }
 
+function isLegacyCollisionReceipt(payload) {
+  if (!payload
+    || !isCollisionEntityId(payload.aId) || !isCollisionEntityId(payload.bId)
+    || String(payload.aId) === String(payload.bId)
+    || !payload.pos || !Number.isFinite(payload.pos.x) || !Number.isFinite(payload.pos.z)) return false;
+  const hasImpulse = Number.isFinite(payload.impulse) && payload.impulse > 0;
+  const hasDeltaMomentum = Number.isFinite(payload.dp) && payload.dp > 0;
+  return hasImpulse || hasDeltaMomentum;
+}
+
 // Sprite "kinds" — drive how a pooled sprite ages (scale/opacity curve).
 const SPR_FLASH = 0;   // punch-out flash (muzzle, impact, explosion core): scale grows, opacity fades
 const SPR_RING = 1;    // expanding shockwave / shield ripple ring: radius eases out, opacity fades
@@ -3073,7 +3083,7 @@ export const vfx = {
   },
 
   _onCollision(p) {
-    if (!p || !p.pos || !this._admitLowCollisionContact(p)) return false;
+    if (!isLegacyCollisionReceipt(p) || !this._admitLowCollisionContact(p)) return false;
     return this._emitLowCollisionContact(p);
   },
 
