@@ -259,6 +259,80 @@ test('selected-target projections retain exact per-HUD center and radius records
   }
 });
 
+test('moving waypoint marker retains its projection record and exact edge presentation at high refresh', () => {
+  let expectedPresentation = null;
+  const identitiesFromPriorHud = new Set();
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const inputIdentities = new Set();
+    const outputIdentities = new Set();
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies the retained waypoint projection output`);
+      inputIdentities.add(point);
+      outputIdentities.add(out);
+      out.x = 960 + point.x;
+      out.y = 540 + point.z;
+      out.onScreen = point.z >= 0;
+      calls.push({ x: point.x, y: point.y, z: point.z, onScreen: out.onScreen });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen, targetId: null });
+    try {
+      fixture.player.vel.x = 0;
+      fixture.player.vel.z = 0;
+      fixture.state.nav.waypoint = {
+        kind: 'navigation',
+        label: 'Test Vector',
+        pos: { x: 0, z: 1000 },
+      };
+      const frames = fps;
+      for (let frame = 0; frame < frames; frame += 1) {
+        const progress = (frame + 1) / frames;
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        fixture.state.nav.waypoint.pos.z = 1000 - 2000 * progress;
+        fixture.hud.frame(1 / fps);
+      }
+      fixture.hud.forceRefresh();
+      fixture.hud.frame(1 / fps);
+
+      assert.ok(calls.length >= 29 && calls.length <= 40,
+        `${fps} FPS waypoint projection remains on the retained overlay-or-slow cadence`);
+      assert.equal(inputIdentities.size, 1, `${fps} FPS retains one waypoint world record`);
+      assert.equal(outputIdentities.size, 1, `${fps} FPS retains one waypoint screen record`);
+      for (const identity of [...inputIdentities, ...outputIdentities]) {
+        assert.equal(identitiesFromPriorHud.has(identity), false,
+          `${fps} FPS waypoint scratch belongs only to its mounted HUD instance`);
+        identitiesFromPriorHud.add(identity);
+      }
+      assert.deepEqual(calls.at(-1), { x: 0, y: 0, z: -1000, onScreen: false });
+
+      const arrow = fixture.document.querySelector('.sf-objarrow');
+      const presentation = {
+        transform: arrow.style.transform,
+        edge: arrow.dataset.edge,
+        edgeClass: arrow.classList.contains('sf-objarrow--edge'),
+        onScreenClass: arrow.classList.contains('sf-objarrow--onscreen'),
+        label: arrow.querySelector('.sf-objarrow__label').textContent,
+        aria: arrow.getAttribute('aria-label'),
+      };
+      assert.deepEqual(presentation, {
+        transform: 'translate3d(960px,1046px,0)',
+        edge: 'bottom',
+        edgeClass: true,
+        onScreenClass: false,
+        label: 'GOAL · TEST VECTOR · 1.0k WU · ETA —',
+        aria: 'Current objective: TEST VECTOR, 1.0k WU, ETA —',
+      });
+      if (expectedPresentation == null) expectedPresentation = presentation;
+      else assert.deepEqual(presentation, expectedPresentation,
+        `${fps} FPS preserves identical final waypoint edge presentation`);
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
 function mountHudFixture({
   worldToScreen = () => ({ x: 960, y: 540, onScreen: true }),
   targetId = 'selected',

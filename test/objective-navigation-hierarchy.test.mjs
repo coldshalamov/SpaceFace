@@ -119,6 +119,37 @@ test('goal readout reports honest distance and ETA only while closing', () => {
   assert.equal(opening.etaText, 'ETA —');
 });
 
+test('goal presenters can rewrite caller-owned records without changing their values', () => {
+  const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 30, z: 40 } };
+  const state = { playerId: 1, entities: new Map([[1, player]]) };
+  const waypoint = { pos: { x: 300, z: 400 } };
+  const travelOut = { stale: true };
+  assert.equal(objectiveTravelReadout(state, waypoint, travelOut), travelOut);
+  assert.deepEqual(travelOut, {
+    stale: true,
+    distanceWu: 500,
+    closingSpeed: 50,
+    etaS: 10,
+    distanceText: '500 WU',
+    etaText: 'ETA 10s',
+  });
+
+  player.vel = { x: -30, z: -40 };
+  assert.equal(objectiveTravelReadout(state, waypoint, travelOut), travelOut);
+  assert.equal(travelOut.etaS, null, 'reused travel output clears the prior ETA');
+  assert.equal(travelOut.etaText, 'ETA —');
+
+  const edgeOut = { stale: true };
+  assert.equal(resolveObjectiveEdgePlacement(1440, 900, player, { x: 0, z: -1000 }, 34, edgeOut), edgeOut);
+  assert.deepEqual(edgeOut, {
+    stale: true,
+    x: 720,
+    y: 866,
+    edge: 'bottom',
+    angleRad: Math.PI / 2,
+  });
+});
+
 test('800x600 floor, 1280x720 standard and 1920x1080 target keep HUD anchors disjoint', () => {
   for (const [width, height] of [[800, 600], [1280, 720], [1920, 1080]]) {
     const layout = resolveObjectiveHudLayout(width, height);

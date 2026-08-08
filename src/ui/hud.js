@@ -227,11 +227,17 @@ function mtFmtTime(s) {
   return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
 }
 
-export function objectiveTravelReadout(state, wp) {
+export function objectiveTravelReadout(state, wp, out = null) {
+  const result = out && typeof out === 'object' ? out : {};
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
   if (!pos || !player || !player.pos) {
-    return { distanceWu: null, closingSpeed: 0, etaS: null, distanceText: 'ROUTE PENDING', etaText: 'ETA —' };
+    result.distanceWu = null;
+    result.closingSpeed = 0;
+    result.etaS = null;
+    result.distanceText = 'ROUTE PENDING';
+    result.etaText = 'ETA —';
+    return result;
   }
   const dist = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
   const vel = player.vel || { x: 0, z: 0 };
@@ -243,7 +249,12 @@ export function objectiveTravelReadout(state, wp) {
   const etaText = etaS == null
     ? 'ETA —'
     : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
-  return { distanceWu: dist, closingSpeed, etaS, distanceText, etaText };
+  result.distanceWu = dist;
+  result.closingSpeed = closingSpeed;
+  result.etaS = etaS;
+  result.distanceText = distanceText;
+  result.etaText = etaText;
+  return result;
 }
 
 function mtWaypointDistance(state, wp) {
@@ -275,7 +286,7 @@ export function objectiveBearingGlyph(state, wp) {
  * The camera never yaws and the radar deliberately maps +X left / +Z up, so this is the stable
  * player-relative bearing contract for the edge cue.
  */
-export function resolveObjectiveEdgePlacement(width, height, player, target, margin = 34) {
+export function resolveObjectiveEdgePlacement(width, height, player, target, margin = 34, out = null) {
   const playerPos = player && player.pos;
   const targetPos = target && target.pos ? target.pos : target;
   if (!playerPos || !targetPos) return null;
@@ -299,7 +310,12 @@ export function resolveObjectiveEdgePlacement(width, height, player, target, mar
   const edge = x > w * 0.72
     ? 'right'
     : (x < w * 0.28 ? 'left' : (dy < 0 ? 'top' : 'bottom'));
-  return { x, y, edge, angleRad: Math.atan2(dy, dx) };
+  const result = out && typeof out === 'object' ? out : {};
+  result.x = x;
+  result.y = y;
+  result.edge = edge;
+  result.angleRad = Math.atan2(dy, dx);
+  return result;
 }
 
 function mtObjectiveAction(action, wp) {
@@ -1373,6 +1389,20 @@ export function createHud(ctx, alerts) {
   arrow.innerHTML = '<span class="sf-objarrow__glyph" aria-hidden="true"></span><span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
   const arrowLabel = arrow.querySelector('.sf-objarrow__label');
+  // The ordinary navigation marker paints at the retained overlay cadence for as long as a live
+  // waypoint exists. Keep its projection and presenter records with this HUD instance so the hot
+  // path rewrites scalar fields rather than constructing four (on-screen) or five (edge) records.
+  const objectiveProjectionWorld = { x: 0, y: 0, z: 0 };
+  const objectiveProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const objectiveWaypointRecord = { pos: null };
+  const objectiveTravelRecord = {
+    distanceWu: null,
+    closingSpeed: 0,
+    etaS: null,
+    distanceText: 'ROUTE PENDING',
+    etaText: 'ETA —',
+  };
+  const objectiveEdgeRecord = { x: 0, y: 0, edge: 'top', angleRad: 0 };
 
   // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
 
@@ -4239,7 +4269,10 @@ export function createHud(ctx, alerts) {
       lastObjectiveMarkerText = '';
       return;
     }
-    const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });
+    objectiveProjectionWorld.x = wp.x;
+    objectiveProjectionWorld.y = 0;
+    objectiveProjectionWorld.z = wp.z;
+    const proj = helpers.worldToScreen(objectiveProjectionWorld, objectiveProjectionScreen);
     // distance + ETA readout (always shown while a nav target is set)
     const dist = Math.hypot(wp.x - p.pos.x, wp.z - p.pos.z);
     const speed = Math.hypot(p.vel.x, p.vel.z);
@@ -4251,7 +4284,8 @@ export function createHud(ctx, alerts) {
     const label = wpLabel || '—';
     setTitle(arrow, label);
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
-    const travel = objectiveTravelReadout(state, { pos: wp });
+    objectiveWaypointRecord.pos = wp;
+    const travel = objectiveTravelReadout(state, objectiveWaypointRecord, objectiveTravelRecord);
     const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
     const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
     if (markerText !== lastObjectiveMarkerText) {
@@ -4280,7 +4314,7 @@ export function createHud(ctx, alerts) {
       setDisplay(arrow, true);
       return;
     }
-    const edgePlacement = resolveObjectiveEdgePlacement(w, h, p, wp);
+    const edgePlacement = resolveObjectiveEdgePlacement(w, h, p, wp, 34, objectiveEdgeRecord);
     if (!edgePlacement) {
       setDisplay(arrow, false);
       return;
