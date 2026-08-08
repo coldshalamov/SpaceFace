@@ -10,12 +10,30 @@ import { isPersistentCargo, removeCargo } from './cargo.js';
 import { lossesFor } from './lossLedger.js';
 import { SHIPS } from '../data/ships.js';
 import {
+  CERES_ACTIVITY_SECTOR_ID,
+  ceresActivityPocket,
+} from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import {
   FULFILLMENT_FIXED_ROUTES,
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
+import {
+  RECORD_KIND,
+  findLiveEntityForRecord,
+  stableRecordId,
+} from '../world/worldRecords.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+const CERES_REFINERY_ACTIVITY = ceresActivityPocket('ceres_refinery_pocket');
+const CERES_REFINERY_TENDER = CERES_REFINERY_ACTIVITY.actorSlots
+  .find((slot) => slot.id === 'ceres_refinery_tender');
+const TENDER_CANONICAL_FIELDS = Object.freeze([
+  'type', 'factionId', 'team', 'radius', 'mass', 'flightClass', 'flightModel', 'propulsion',
+  'armorFlat', 'shieldRegenRate', 'shieldRegenDelay', 'capMax', 'capRegen',
+  'thrust', 'turnRate', 'maxSpeed', 'drag',
+]);
 
 function ensureOwnState(state) {
   if (!state.factionPresence || typeof state.factionPresence !== 'object') {
@@ -142,6 +160,194 @@ function presenceFittings(plan) {
   return fittings;
 }
 
+function presenceMarker(plan) {
+  return {
+    source: 'depth-program-k1',
+    factionId: plan.factionId,
+    lossId: plan.lossId || null,
+    routeId: plan.routeId || null,
+    route: plan.route || null,
+    fixedRoute: plan.fixedRoute === true,
+    observerPrism: plan.observerPrism === true,
+    vergePhase: plan.vergePhase || null,
+    yardTender: plan.yardTender === true,
+    routeStart: plan.routeStart || null,
+    routeEnd: plan.routeEnd || null,
+    routePeriodS: plan.routePeriodS || null,
+    formation: plan.formation || null,
+    formationIndex: plan.formationIndex,
+    formationCount: plan.formationCount,
+    formationSpacing: plan.formationSpacing,
+  };
+}
+
+function makePresenceSpec(plan, state) {
+  const profile = normalizeFactionBehaviorProfile(plan.behavior);
+  const activeCombat = plan.passive === false && !!profile;
+  const ai = {
+    archetype: 'passive',
+    passive: !activeCombat,
+    allowPassiveManeuver: !!profile,
+    spawnContext: plan.fixedRoute ? 'convoy_civilian' : 'faction_presence',
+    factionPresenceDoctrine: profile,
+    formation: plan.formation || (profile && profile.liveFormation) || null,
+    formationSpacing: plan.formationSpacing || null,
+    formationBound: Number.isFinite(plan.formationBound) && plan.formationBound > 0
+      ? plan.formationBound
+      : null,
+    combatDoctrineId: profile && profile.combatDoctrineId,
+    roe: activeCombat ? 'weapons_free' : 'hold_fire',
+    activity: presenceActivity(plan, profile, state),
+    ...engagementFields(plan, profile),
+  };
+  const fittings = presenceFittings(plan);
+  ai.capabilities = fittings.includes('wpn_emp_disruptor_m') ? ['disable', 'ranged'] : ['ranged'];
+  if (activeCombat && plan.factionId === 'faction_verge_layers'
+    && profile.firstFireCondition === 'gate_closer') {
+    ai.retaliationTargetId = state.playerId;
+    ai.activity.targetId = state.playerId;
+  }
+  const spec = makeShipEntitySpec(plan.shipDefId, {
+    team: teamFor(plan, profile),
+    factionId: plan.factionId,
+    pos: plan.pos,
+    fittings,
+    ai,
+  });
+  spec.data.factionPresence = presenceMarker(plan);
+  return spec;
+}
+
+function matchesCeresRefineryTender(plan) {
+  const match = CERES_REFINERY_TENDER && CERES_REFINERY_TENDER.binding
+    && CERES_REFINERY_TENDER.binding.match;
+  return !!match
+    && plan.sectorId === match.sectorId
+    && plan.factionId === match.factionId
+    && plan.yardTender === match.yardTender
+    && plan.sectorId === CERES_ACTIVITY_SECTOR_ID;
+}
+
+function tenderGlobalPoint(offset) {
+  const anchor = CERES_REFINERY_ACTIVITY.activityAnchor.localPos;
+  return sectorLocalToGlobalForSector({
+    x: anchor.x + offset.x,
+    z: anchor.z + offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID);
+}
+
+function ceresTenderContext(plan, seed, createdTick = 0) {
+  if (!matchesCeresRefineryTender(plan)) return null;
+  const identityKey = CERES_REFINERY_TENDER.worldRecordSlotId;
+  return {
+    plan: { ...plan, pos: tenderGlobalPoint(CERES_REFINERY_TENDER.spawnOffset) },
+    slot: CERES_REFINERY_TENDER,
+    identityKey,
+    createdTick: createdTick | 0,
+    recordId: stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.NPC, identityKey),
+    activeKey: `ceres-activity:${CERES_REFINERY_TENDER.id}`,
+    route: CERES_REFINERY_TENDER.route.marks.map((mark) => ({
+      id: mark.id,
+      label: mark.id,
+      pos: tenderGlobalPoint(mark.offset),
+    })),
+  };
+}
+
+function recordIsTerminal(record) {
+  return !!record && (record.alive === false
+    || record.outcome === 'destroyed'
+    || record.outcome === 'defeated');
+}
+
+function stampCeresTenderIdentity(entity, context) {
+  if (!entity.data) entity.data = {};
+  entity.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  entity.data.worldRecordId = context.recordId;
+  entity.data.identityKey = context.identityKey;
+  entity.data.durable = true;
+  if (!Number.isFinite(entity.data.recordCreatedTick)) {
+    entity.data.recordCreatedTick = context.createdTick | 0;
+  }
+  entity.data.activityActorSlotId = context.slot.id;
+  delete entity.data.trafficRole;
+}
+
+function releaseCeresTenderFromWorldExtras(state, entity) {
+  const bag = state.world && state.world.sectorContents
+    && state.world.sectorContents[CERES_ACTIVITY_SECTOR_ID];
+  const enemies = bag && bag.enemies;
+  if (!Array.isArray(enemies) || !entity) return;
+  for (let index = enemies.length - 1; index >= 0; index -= 1) {
+    if (enemies[index] === entity.id) enemies.splice(index, 1);
+  }
+}
+
+function rehydrateCeresTenderWeapons(existing, canonical) {
+  if (!Array.isArray(canonical)) return [];
+  const sameLoadout = Array.isArray(existing)
+    && existing.length === canonical.length
+    && canonical.every((weapon, index) => existing[index]
+      && existing[index].defId === weapon.defId
+      && existing[index].slotIndex === weapon.slotIndex);
+  return canonical.map((weapon, index) => {
+    if (!sameLoadout) return { ...weapon };
+    const current = existing[index];
+    return {
+      ...weapon,
+      _cooldown: Number.isFinite(current._cooldown) ? Math.max(0, current._cooldown) : 0,
+      _heat: Number.isFinite(current._heat)
+        ? Math.max(0, Math.min(weapon.heatMax, current._heat))
+        : 0,
+    };
+  });
+}
+
+function rehydrateCeresTender(entity, canonicalSpec, context) {
+  const preservedData = entity.data || (entity.data = {});
+  for (const field of TENDER_CANONICAL_FIELDS) {
+    const value = canonicalSpec[field];
+    if (value && typeof value === 'object') {
+      entity[field] = Array.isArray(value) ? value.slice() : { ...value };
+    } else {
+      entity[field] = value;
+    }
+  }
+  entity.cap = Number.isFinite(entity.cap)
+    ? Math.max(0, Math.min(canonicalSpec.capMax, entity.cap))
+    : 0;
+  if (!entity.boost || typeof entity.boost !== 'object') {
+    entity.boost = { ...canonicalSpec.boost };
+  } else {
+    const currentEnergy = Number.isFinite(entity.boost.energy) ? entity.boost.energy : 0;
+    const currentCooldown = Number.isFinite(entity.boost.dashCdT) ? entity.boost.dashCdT : 0;
+    entity.boost = {
+      ...canonicalSpec.boost,
+      energy: Math.max(0, Math.min(canonicalSpec.boost.max, currentEnergy)),
+      dashCdT: Math.max(0, Math.min(canonicalSpec.boost.dashCd, currentCooldown)),
+    };
+  }
+  for (const field of ['defId', 'derived', 'miningBeam', 'fittings', 'appearance', 'livingHull']) {
+    const value = canonicalSpec.data[field];
+    if (Array.isArray(value)) preservedData[field] = value.slice();
+    else if (value && typeof value === 'object') preservedData[field] = { ...value };
+    else preservedData[field] = value;
+  }
+  preservedData.weapons = rehydrateCeresTenderWeapons(
+    preservedData.weapons,
+    canonicalSpec.data.weapons,
+  );
+  if (!preservedData.combat) preservedData.combat = { ...canonicalSpec.data.combat };
+  preservedData.ai = canonicalSpec.data.ai;
+  preservedData.factionId = canonicalSpec.data.factionId;
+  preservedData.team = canonicalSpec.data.team;
+  preservedData.factionPresence = canonicalSpec.data.factionPresence;
+  stampCeresTenderIdentity(entity, context);
+  return entity;
+}
+
 export const factionPresence = {
   name: 'factionPresence',
 
@@ -199,58 +405,14 @@ export const factionPresence = {
     const plans = planFactionPresence({ sectorId, seed, losses, ...story });
     const own = ensureOwnState(state);
     for (const presencePlan of plans) {
+      const tenderContext = ceresTenderContext(presencePlan, seed, state.tick);
+      if (tenderContext) {
+        this._bindCeresRefineryTender(tenderContext, own);
+        continue;
+      }
       const key = spawnKey(presencePlan);
       if (own.active[key]) continue;
-      const profile = normalizeFactionBehaviorProfile(presencePlan.behavior);
-      const activeCombat = presencePlan.passive === false && !!profile;
-      const ai = {
-        archetype: 'passive',
-        passive: !activeCombat,
-        allowPassiveManeuver: !!profile,
-        spawnContext: presencePlan.fixedRoute ? 'convoy_civilian' : 'faction_presence',
-        factionPresenceDoctrine: profile,
-        formation: presencePlan.formation || (profile && profile.liveFormation) || null,
-        formationSpacing: presencePlan.formationSpacing || null,
-        formationBound: Number.isFinite(presencePlan.formationBound) && presencePlan.formationBound > 0
-          ? presencePlan.formationBound
-          : null,
-        combatDoctrineId: profile && profile.combatDoctrineId,
-        roe: activeCombat ? 'weapons_free' : 'hold_fire',
-        activity: presenceActivity(presencePlan, profile, state),
-        ...engagementFields(presencePlan, profile),
-      };
-      const fittings = presenceFittings(presencePlan);
-      ai.capabilities = fittings.includes('wpn_emp_disruptor_m') ? ['disable', 'ranged'] : ['ranged'];
-      if (activeCombat && presencePlan.factionId === 'faction_verge_layers'
-        && profile.firstFireCondition === 'gate_closer') {
-        ai.retaliationTargetId = state.playerId;
-        ai.activity.targetId = state.playerId;
-      }
-      const spec = makeShipEntitySpec(presencePlan.shipDefId, {
-        team: teamFor(presencePlan, profile),
-        factionId: presencePlan.factionId,
-        pos: presencePlan.pos,
-        fittings,
-        ai,
-      });
-      spec.data.factionPresence = {
-        source: 'depth-program-k1',
-        factionId: presencePlan.factionId,
-        lossId: presencePlan.lossId || null,
-        routeId: presencePlan.routeId || null,
-        route: presencePlan.route || null,
-        fixedRoute: presencePlan.fixedRoute === true,
-        observerPrism: presencePlan.observerPrism === true,
-        vergePhase: presencePlan.vergePhase || null,
-        yardTender: presencePlan.yardTender === true,
-        routeStart: presencePlan.routeStart || null,
-        routeEnd: presencePlan.routeEnd || null,
-        routePeriodS: presencePlan.routePeriodS || null,
-        formation: presencePlan.formation || null,
-        formationIndex: presencePlan.formationIndex,
-        formationCount: presencePlan.formationCount,
-        formationSpacing: presencePlan.formationSpacing,
-      };
+      const spec = makePresenceSpec(presencePlan, state);
       const entity = typeof this.helpers.spawnEntity === 'function'
         ? this.helpers.spawnEntity(spec)
         : null;
@@ -274,6 +436,98 @@ export const factionPresence = {
     }
     this._bindPitbornConcordTargets();
     this._rehydrateBoardingConvoy();
+  },
+
+  _bindCeresRefineryTender(context, own = ensureOwnState(this.state)) {
+    const state = this.state;
+    const records = state.world && state.world.records && state.world.records.byId;
+    const record = records && records[context.recordId];
+    const jobId = `job:${context.recordId}`;
+    const releaseJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+    if (recordIsTerminal(record)) {
+      if (typeof releaseJob === 'function') releaseJob(jobId);
+      delete own.active[context.activeKey];
+      return null;
+    }
+
+    const live = findLiveEntityForRecord(state.entityList, context.recordId);
+    // An active durable record without a materialized body belongs to world residency. Never
+    // additive-spawn over it here; world will rematerialize it when the sector reaches FULL.
+    if (record && !live) {
+      delete own.active[context.activeKey];
+      return null;
+    }
+    // A body vanished during this live ownership window before its tombstone settled. Suppress a
+    // same-sector duplicate; ordinary exit clears the row and world records decide the next entry.
+    if (own.active[context.activeKey] && !live) return null;
+
+    const assignJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const activeRow = own.active[context.activeKey];
+    if (live && activeRow && activeRow.entityId === live.id) {
+      // Repeated lifecycle notifications are strict no-ops for live gameplay state. The job seam
+      // itself is idempotent and may need only to restore a missing transient hull marker.
+      if (typeof assignJob === 'function') {
+        assignJob(live, {
+          kind: context.slot.jobKind,
+          sectorId: CERES_ACTIVITY_SECTOR_ID,
+          route: context.route,
+        });
+      }
+      return live;
+    }
+
+    const canonicalSpec = makePresenceSpec(context.plan, state);
+    canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+    canonicalSpec.data.recordCreatedTick = state.tick | 0;
+    stampCeresTenderIdentity(canonicalSpec, context);
+
+    let entity = live;
+    let spawned = false;
+    if (entity) {
+      // World-record rematerialization intentionally builds a generic shell. Restore the canonical
+      // Ironback presentation/loadout/AI fields, while never touching its saved pose or vitals.
+      rehydrateCeresTender(entity, canonicalSpec, context);
+    } else if (typeof this.helpers.spawnEntity === 'function') {
+      entity = this.helpers.spawnEntity(canonicalSpec);
+      spawned = !!entity;
+      if (entity) stampCeresTenderIdentity(entity, context);
+    }
+    if (!entity) return null;
+    // World rematerializes every durable NPC through its generic FULL-extra bag. This tender is
+    // immediately adopted by factionPresence instead, so remove that temporary membership; hard
+    // exit captures/removes it explicitly, while continuous handoff keeps the live local actor.
+    releaseCeresTenderFromWorldExtras(state, entity);
+
+    if (typeof assignJob === 'function') {
+      assignJob(entity, {
+        kind: context.slot.jobKind,
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        route: context.route,
+      });
+    }
+
+    own.active[context.activeKey] = {
+      entityId: entity.id || null,
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      factionId: context.plan.factionId,
+      routeId: null,
+      activityActorSlotId: context.slot.id,
+      worldRecordId: context.recordId,
+    };
+
+    if (spawned) {
+      const receipt = {
+        t: state.simTime || 0,
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        factionId: context.plan.factionId,
+        entityId: entity.id || null,
+        shipDefId: context.plan.shipDefId,
+        source: context.plan.source || 'authoredPresence',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+    }
+    return entity;
   },
 
   _onEntitySpawned(payload) {
@@ -442,6 +696,14 @@ export const factionPresence = {
   },
 
   _onSaveLoaded() {
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      const seed = ((this.state.meta && this.state.meta.seed) || 1) >>> 0;
+      const tenderPlan = planFactionPresence({ sectorId, seed })
+        .find((plan) => matchesCeresRefineryTender(plan));
+      const context = tenderPlan && ceresTenderContext(tenderPlan, seed, this.state.tick);
+      if (context) this._bindCeresRefineryTender(context, ensureOwnState(this.state));
+    }
     const boarding = ensureOwnState(this.state).boarding;
     this._rehydrateBoardingConvoy();
     if (boarding) this._emitBoardingPhase(boarding);
@@ -453,7 +715,29 @@ export const factionPresence = {
     if (!sectorId) return;
     const own = ensureOwnState(this.state);
     for (const [key, row] of Object.entries(own.active)) {
-      if (row && row.sectorId === sectorId) delete own.active[key];
+      if (!row || row.sectorId !== sectorId) continue;
+      if (row.activityActorSlotId === CERES_REFINERY_TENDER.id
+        && !(payload.continuous || payload.noTeleport)) {
+        const entity = row.entityId != null && this.state.entities && this.state.entities.get
+          ? this.state.entities.get(row.entityId)
+          : null;
+        if (entity && entity.alive !== false) {
+          // Faction presences are not part of world's authored enemy/dressing bags. On a hard exit,
+          // capture this one durable authored actor through the world owner before scoped removal;
+          // otherwise it survives forever beside a REDUCED sector with no active owner. Continuous
+          // corridor handoff deliberately keeps the live hull, matching traffic's locality policy.
+          const world = this.registry && this.registry.get && this.registry.get('world');
+          const captured = world && typeof world.upsertWorldRecord === 'function'
+            ? world.upsertWorldRecord(entity)
+            : null;
+          if (captured) {
+            const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
+            if (typeof remove === 'function') remove(entity.id);
+            else entity.alive = false;
+          }
+        }
+      }
+      delete own.active[key];
     }
   },
 
