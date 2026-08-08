@@ -162,6 +162,19 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
       else assert.deepEqual(presentation, expectedPresentation,
         `${fps} FPS preserves the same final prograde placement and visibility`);
       assert.equal(prograde.style.opacity, '0.900', `${fps} FPS leaves the moving prograde cue visible`);
+      const heatBar = fixture.document.querySelector('.sf-bar--heat');
+      const heatFill = heatBar?.querySelector('.sf-bar__fill');
+      const heatRow = heatBar?.parentNode;
+      fixture.player.data.weapons.push({ _heat: 87, heatMax: 100 });
+      fixture.hud.frame(1 / fps);
+      assert.equal(heatFill?.style.transform, 'scaleX(0.87)',
+        `${fps} FPS retained heat summary repaints a newly armed mount every frame`);
+      assert.equal(heatRow?.style.display, '', `${fps} FPS reveals the newly armed heat row`);
+      fixture.player.data.weapons.length = 0;
+      fixture.hud.frame(1 / fps);
+      assert.equal(heatFill?.style.transform, 'scaleX(0)',
+        `${fps} FPS retained heat summary clears after the last mount is removed`);
+      assert.equal(heatRow?.style.display, 'none', `${fps} FPS retires the unarmed heat row`);
     } finally {
       fixture.restore();
     }

@@ -805,14 +805,14 @@ function setHidden(el, hidden) {
   el.hidden = next;
 }
 // Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
-function setHudScreenTransform(el, x, y, opts = {}) {
+function setHudScreenTransform(el, x, y, opts = null) {
   if (!el) return;
   const nx = Number(x);
   const ny = Number(y);
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-  const center = opts.center !== false;
-  const rotate = Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
-  const offset = opts.offset || (center ? 'translate(-50%,-50%)' : '');
+  const center = !opts || opts.center !== false;
+  const rotate = opts && Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
+  const offset = (opts && opts.offset) || (center ? 'translate(-50%,-50%)' : '');
   const next = `translate3d(${nx.toFixed(1)}px,${ny.toFixed(1)}px,0) ${offset}${rotate}`.trim();
   if (el._sfHudTransform === next) return;
   el._sfHudTransform = next;
@@ -1440,6 +1440,9 @@ export function createHud(ctx, alerts) {
   const progradeWorldB = { x: 0, y: 0, z: 0 };
   const progradeScreenA = { x: 0, y: 0, onScreen: false };
   const progradeScreenB = { x: 0, y: 0, onScreen: false };
+  const progradeTransformOptions = { offset: 'translate(-4px,-1px)', rotate: 0 };
+  const weaponHeatScratch = { frac: 0, pct: 0, overheated: false, armed: false };
+  const targetPanelUpdateOptions = { slow: false, weakPoint: null };
 
   // Per-weapon heat bars. Built once per ship load, updated per frame.
   const wpnHeatsWrap = document.createElement('div');
@@ -3926,7 +3929,7 @@ export function createHud(ctx, alerts) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-      const wpnHeat = weaponHeatSummary(p.data && p.data.weapons);
+      const wpnHeat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
       const heatFrac = wpnHeat.frac;
 
       // Ship schematic (dual-color flask fill level + shield ring via stroke-dashoffset).
@@ -4020,10 +4023,8 @@ export function createHud(ctx, alerts) {
           if (A.onScreen && dl > 0.001) {
             dx /= dl; dy /= dl;
             const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-            setHudScreenTransform(proTick, A.x + dx * 40, A.y + dy * 40, {
-              offset: 'translate(-4px,-1px)',
-              rotate: ang,
-            });
+            progradeTransformOptions.rotate = ang;
+            setHudScreenTransform(proTick, A.x + dx * 40, A.y + dy * 40, progradeTransformOptions);
             setOpacity(proTick, _proAlpha.toFixed(3));
           } else {
             setOpacity(proTick, '0');
@@ -4173,7 +4174,9 @@ export function createHud(ctx, alerts) {
       if (routeOwnsAttention && target && !combatRelevant && !miningRelevant) {
         setDisplay(targetPanel.el, false);
       } else {
-        targetPanel.update({ slow, weakPoint });
+        targetPanelUpdateOptions.slow = slow;
+        targetPanelUpdateOptions.weakPoint = weakPoint;
+        targetPanel.update(targetPanelUpdateOptions);
       }
     }
 

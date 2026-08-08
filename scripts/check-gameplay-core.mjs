@@ -998,6 +998,7 @@ function emitsCount(emits, event) {
 function checkWeaponHeatHudSummary() {
   assert.deepEqual(weaponHeatSummary(null), { frac: 0, pct: 0, overheated: false, armed: false },
     'empty loadout should report unarmed weapon heat');
+  const scratch = {};
   const warm = weaponHeatSummary([
     { _heat: 36, heatMax: 100 },
     { _heat: 72, heatMax: 100 },
@@ -1007,10 +1008,17 @@ function checkWeaponHeatHudSummary() {
   const pegged = weaponHeatSummary([{ _heat: 100, heatMax: 100 }]);
   assert.equal(pegged.pct, 100, 'pegged weapon heat should read 100%');
   assert.equal(pegged.overheated, true, 'pegged weapon heat must flag overheated');
+  assert.strictEqual(weaponHeatSummary([{ _heat: 100, heatMax: 100 }], scratch), scratch,
+    'HUD may retain one caller-owned weapon heat summary');
+  assert.deepEqual(scratch, pegged, 'caller-owned heat summary matches the allocating API');
+  assert.strictEqual(weaponHeatSummary(null, scratch), scratch,
+    'unarmed transition retains the same caller-owned summary');
+  assert.deepEqual(scratch, { frac: 0, pct: 0, overheated: false, armed: false },
+    'unarmed transition fully clears the retained heat summary');
 
   const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.match(hudSrc, /weaponHeatSummary\(p\.data && p\.data\.weapons\)/,
-    'flight HUD bottom-left HEAT bar must aggregate weapon-instance heat');
+  assert.match(hudSrc, /weaponHeatSummary\(p\.data && p\.data\.weapons,\s*weaponHeatScratch\)/,
+    'flight HUD bottom-left HEAT bar must aggregate weapon-instance heat into retained storage');
   assert.doesNotMatch(hudSrc, /p\.data\.heat/,
     'flight HUD must not read the dead p.data.heat field for the weapon heat bar');
   console.log(`[PASS] weapon-heat-hud warm=${warm.pct}% pegged=${pegged.pct}% overheated=${pegged.overheated}`);

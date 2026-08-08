@@ -1,7 +1,12 @@
 // Aggregate weapon-instance heat for HUD vitals (not WANTED heat — see heat.js).
-export function weaponHeatSummary(weapons) {
+export function weaponHeatSummary(weapons, out = null) {
+  const summary = out || {};
   if (!Array.isArray(weapons) || !weapons.length) {
-    return { frac: 0, pct: 0, overheated: false, armed: false };
+    summary.frac = 0;
+    summary.pct = 0;
+    summary.overheated = false;
+    summary.armed = false;
+    return summary;
   }
   let maxFrac = 0;
   let overheated = false;
@@ -14,5 +19,9 @@ export function weaponHeatSummary(weapons) {
     if (hCur >= hMax) overheated = true;
   }
   const frac = maxFrac < 0 ? 0 : maxFrac > 1 ? 1 : maxFrac;
-  return { frac, pct: Math.round(frac * 100), overheated, armed: true };
+  summary.frac = frac;
+  summary.pct = Math.round(frac * 100);
+  summary.overheated = overheated;
+  summary.armed = true;
+  return summary;
 }
