@@ -157,6 +157,12 @@ test('PQ-004 classifier names exact Focus, route-anchor, and tow/salvage context
   assert.equal(scoring.classifyMasslineIntent(p, candidates, {
     cursorPrecisionOf: (candidate) => candidate.id === wreck.id ? 1 : 0,
   }).id, 'tow/salvage');
+  const pointerOverFocus = scoring.classifyMasslineIntent(p, candidates, {
+    focusId: hostile.id,
+    cursorPrecisionOf: (candidate) => candidate.id === wreck.id ? 1 : 0,
+  });
+  assert.equal(pointerOverFocus.forceId, wreck.id,
+    'genuinely precise pointer intent outranks the transient Focus bias');
 });
 
 test('PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise paint and deliberate reversal immediately', () => {
@@ -182,14 +188,14 @@ test('PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise
   assert.equal(reversed.selected.id, 'a', 'deliberate reversal bypasses hysteresis');
 });
 
-test('a Massline press honors the player-selected physical target instead of a stale receipt', () => {
+test('a Massline press honors active pointer paint instead of a stale receipt or gun/UI selection', () => {
   const h = createRuntimeHarness();
   h.system.update(1 / 60, h.state);
   // Idle flight now publishes a live acquisition receipt every tick — that is the headline of this
   // chunk ("you can see what the Massline will grab before you press, and it updates as you move").
   // The old assertion demanded the receipt stay null, which held only while
   // _refreshAcquisitionPreview had no callers. The claim this test is named for survives unchanged
-  // and is checked below: a press must honour the target the player has actually selected, not
+  // and is checked below: a press must honour the target the player has actively painted, not
   // whatever an earlier tick happened to be previewing.
   assert.ok(h.state.masslineAcquisition, 'idle flight must publish a live acquisition receipt');
   assert.equal(h.latched.length, 0, 'publishing a preview must not latch anything');
@@ -198,8 +204,9 @@ test('a Massline press honors the player-selected physical target instead of a s
   assert.equal(idleSelection, h.anchor.id,
     'with forward+right steering the idle preview leans on the heavy anchor');
 
-  h.state.player.targetId = h.decoy.id;
+  h.state.player.targetId = h.anchor.id;
   h.state.input.aimWorld = { x: h.decoy.pos.x, z: h.decoy.pos.z };
+  h.state.input.pointerScreen.active = true;
   h.state.input.turnIntent = -1;
   h.state.input.moveZ = 0;
   h.state.tick += 7;
@@ -209,20 +216,20 @@ test('a Massline press honors the player-selected physical target instead of a s
 
   assert.equal(h.created.length, 1);
   assert.equal(h.created[0].targetId, h.decoy.id,
-    'the player-selected target must win at the moment of the Massline command');
+    'active pointer paint must win without borrowing persistent gun/UI target authority');
   assert.equal(h.latched.length, 1);
 });
 
-test('stations and planets are valid physical Massline anchors when deliberately selected', () => {
+test('stations and planets are valid physical Massline anchors when deliberately painted', () => {
   for (const type of ['station', 'planet']) {
     const h = createRuntimeHarness();
     h.anchor.type = type;
-    h.state.player.targetId = h.anchor.id;
     h.state.input.aimWorld = { ...h.anchor.pos };
+    h.state.input.pointerScreen.active = true;
     assert.equal(isAttachable(h.anchor, h.state.playerId), true, `${type} must be physically attachable`);
     h.state.input.actions.tetherFire = true;
     h.system.update(1 / 60, h.state);
-    assert.equal(h.created.at(-1)?.targetId, h.anchor.id, `${type} selection must create the attachment`);
+    assert.equal(h.created.at(-1)?.targetId, h.anchor.id, `${type} paint must create the attachment`);
   }
 });
 
@@ -481,7 +488,7 @@ test('previewMatched reports false when the latch could not consume the publishe
 // combat/autoTargetMode.tickAutoTarget overwrites state.input.aimWorld with the gun lead point
 // while auto-target is held, and acquisitionCursorActive treated any aimWorld as a player cursor.
 // With 0.34 on the cursor axis that let the guns pick the Massline's anchor outright.
-test('a held auto-target lead point does not steer Massline acquisition', () => {
+test('only genuine input-owned aim intent can steer Massline acquisition', () => {
   const steering = createSteppedHarness();
   stepRuntime(steering, (state) => { state.input.turnIntent = 1; });
   const baseline = steering.state.masslineAcquisition?.selected;
@@ -493,6 +500,7 @@ test('a held auto-target lead point does not steer Massline acquisition', () => 
   stepRuntime(gunned, (state) => {
     state.input.turnIntent = 1;
     state.input.autoFire = true;
+    state.input.aimIntentActive = true;
     state.input.autoAim = { targetId: gunned.left.id, leadSpeed: 420 };
     state.input.aimWorld = { x: gunned.left.pos.x, z: gunned.left.pos.z };
   });
@@ -504,15 +512,78 @@ test('a held auto-target lead point does not steer Massline acquisition', () => 
   assert.equal(gunnedSelection?.context, baseline?.context,
     'and it must not even change which contextual profile is selected');
 
-  // Provenance, not a blanket cursor mute: the SAME aim point with no autoAim marker is a genuine
+  // A stale/default aimWorld is derived state, not evidence that the player is painting a target.
+  const stale = createSteppedHarness();
+  stepRuntime(stale, (state) => {
+    state.input.turnIntent = 1;
+    state.input.aimWorld = { x: stale.left.pos.x, z: stale.left.pos.z };
+    state.input.pointerScreen.active = true;
+    state.input.aimIntentActive = false;
+  });
+  assert.equal(stale.state.masslineAcquisition?.selected?.targetId, stale.right.id,
+    'explicitly inactive intent cannot fall back to stale pointer/aim coordinates');
+
+  for (const source of ['gamepad', 'touch']) {
+    const analog = createSteppedHarness();
+    stepRuntime(analog, (state) => {
+      state.input.turnIntent = 1;
+      state.input.aimWorld = { x: analog.left.pos.x, z: analog.left.pos.z };
+      state.input.pointerScreen.active = false;
+      state.input.aimIntentActive = true;
+    });
+    assert.equal(analog.state.masslineAcquisition?.selected?.targetId, analog.left.id,
+      `${source} right-stick intent can precision-pick without a mouse pointer`);
+  }
+
+  // Provenance, not a blanket cursor mute: the SAME aim point from an active pointer is a genuine
   // player paint and must still win, or this gate would have deleted cursor targeting outright.
   const painted = createSteppedHarness();
   stepRuntime(painted, (state) => {
     state.input.turnIntent = 1;
     state.input.aimWorld = { x: painted.left.pos.x, z: painted.left.pos.z };
+    state.input.pointerScreen.active = true;
   });
   assert.equal(painted.state.masslineAcquisition?.selected?.targetId, painted.left.id,
-    'a real cursor paint on the same point must still take the candidate');
+    'a legacy direct fixture without the new property keeps pointerScreen fallback');
+});
+
+test('invalid Focus and route hints fall through to physically eligible world candidates', () => {
+  const missingFocus = createSteppedHarness();
+  missingFocus.state.player.flybyFocus = { active: true, targetId: 9999, until: 3, latchScale: 2.6 };
+  stepRuntime(missingFocus, (state) => { state.input.turnIntent = 1; });
+  assert.equal(missingFocus.state.masslineAcquisition?.selected?.targetId, missingFocus.right.id,
+    'a missing active Focus target cannot blank an otherwise valid acquisition pool');
+
+  const blockedFocus = createRuntimeHarness({
+    helpers: { isMasslineObstructed: ({ target: candidate }) => candidate?.id === 10 },
+  });
+  blockedFocus.state.player.flybyFocus = {
+    active: true,
+    targetId: blockedFocus.decoy.id,
+    until: 3,
+    latchScale: 2.6,
+  };
+  blockedFocus.system.update(1 / 60, blockedFocus.state);
+  assert.equal(blockedFocus.state.masslineAcquisition?.selected?.targetId, blockedFocus.anchor.id,
+    'a line-of-sight blocked Focus target cannot preempt a clear reachable anchor');
+  assert.equal(blockedFocus.state.masslineAcquisition?.selected?.status, 'ready');
+
+  const hinted = createSteppedHarness();
+  const farFocus = target(40, 'ship', 500, 0, {
+    team: 1,
+    mass: 300,
+    data: { ai: { huntPlayer: true }, combat: {} },
+  });
+  const farRoute = target(41, 'asteroid', 520, 0, { mass: 5000, radius: 20 });
+  hinted.state.entities.set(farFocus.id, farFocus);
+  hinted.state.entities.set(farRoute.id, farRoute);
+  hinted.state.entityList.push(farFocus, farRoute);
+  hinted.state.player.flybyFocus = { active: true, targetId: farFocus.id, until: 3, latchScale: 2.6 };
+  hinted.state.nav.waypoint = { targetEntityId: farRoute.id };
+  stepRuntime(hinted, (state) => { state.input.turnIntent = 1; });
+  assert.equal(hinted.state.masslineAcquisition?.selected?.targetId, hinted.right.id,
+    'out-of-range exact hints cannot force score-zero records over a reachable turn-side anchor');
+  assert.equal(hinted.state.masslineAcquisition?.selected?.status, 'ready');
 });
 
 // Two symmetric heavy anchors, one on each turn side, so steering intent alone decides the pick.

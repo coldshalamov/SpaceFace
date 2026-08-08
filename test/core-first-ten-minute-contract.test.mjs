@@ -640,6 +640,10 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
       weapons: [{ id: 'wpn_test' }],
     },
   };
+  const selectedRock = {
+    id: 2, type: 'asteroid', team: null, alive: true,
+    pos: { x: 35, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
+  };
   const state = {
     mode: 'flight',
     simTime: 0,
@@ -648,12 +652,16 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
     playerId: p.id,
     player: {
       heat: 0,
-      targetId: null,
+      targetId: selectedRock.id,
       tether: { active: false, targetId: null },
     },
-    entities: new Map([[p.id, p], [foe.id, foe]]),
-    entityList: [p, foe],
-    input: { aimWorld: { x: foe.pos.x, z: foe.pos.z }, aimAngle: 0 },
+    entities: new Map([[p.id, p], [selectedRock.id, selectedRock], [foe.id, foe]]),
+    entityList: [p, selectedRock, foe],
+    input: {
+      aimWorld: { x: foe.pos.x, z: foe.pos.z },
+      aimAngle: 0,
+      pointerScreen: { x: 0, y: 0, active: false },
+    },
   };
 
   const picked = pickFlybyTarget(state, p, [foe]);
@@ -667,8 +675,18 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
 
   assert.equal(state.player.flybyFocus.active, true, 'Focus must activate on high-speed pass');
   assert.equal(state.player.flybyFocus.targetId, foe.id, 'Focus must lock the flyby threat');
-  assert.equal(state.player.targetId, foe.id, 'Focus must own player targetId for tether');
+  assert.equal(state.player.targetId, selectedRock.id,
+    'Focus must preserve the explicit persistent gun/UI selection');
   assert.ok(state.timeScale <= 0.5 + 1e-9, 'Focus must request slow-time (≤50%)');
+
+  const latch = tetherGameplay._acquireTarget.call(
+    { _targetScratch: [], helpers: {} },
+    p,
+    { maxLength: 390 },
+    state,
+  );
+  assert.equal(latch?.entity?.id, foe.id,
+    'Massline must consume transient flybyFocus.targetId instead of nearer gun/UI selection');
 
   const scale = latchGraceScale(state);
   assert.ok(scale >= 2.4, `Focus latch scale must expand tether grace (got ${scale})`);
@@ -690,6 +708,8 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
   );
 
   system.destroy();
+  assert.equal(state.player.targetId, selectedRock.id,
+    'Focus teardown must not clear persistent gun/UI selection');
 });
 
 // ─── 6. Objective: one action, destination, distance, distinctive marker ──────

@@ -1,8 +1,9 @@
 // Flyby Focus — exact high-speed threat lease for the First Flyby milestone.
 //
-// Focus owns one target for a deterministic three-sim-second window, requests 50% slow-time through
-// the shared time-effects authority, and reasserts state.player.targetId before tether gameplay runs.
-// The 280 wu acquisition envelope gives a fast threat enough lead time to be read and latched. Once
+// Focus owns one transient target for a deterministic three-sim-second window and requests 50%
+// slow-time through the shared time-effects authority. Persistent gun/UI selection remains owned by
+// its explicit player-targeting path; Massline reads flybyFocus.targetId directly as acquisition
+// bias. The 280 wu envelope gives a fast threat enough lead time to be read and latched. Once
 // acquired, the lease is temporal and survives the target flying beyond that start range.
 // Deterministic: only state.simTime, entity kinematics, and stable ids; no RNG or wall clock.
 //
@@ -83,11 +84,10 @@ function isHostileShip(state, ent, player) {
   return isHostileToPlayer(ent, player.team, state);
 }
 
-// The whole point of the lease is that the player can latch the thing it names. tetherGameplay's
-// isAuthorizedFocusTarget additionally requires isAttachable, and a target that opts out of the
-// Massline (`masslineTetherable === false`) fails it — which blanks the ENTIRE acquisition receipt
-// to 'no-target' for the three seconds the lease is held (buildAcquisitionSnapshot, tetherGameplay
-// .js:784-786). Refuse to lease it here instead, so the preview never goes dark.
+// The lease is a transient Massline acquisition bias, so it should only name something the player
+// can latch. tetherGameplay now validates Focus hints before priority and falls through to other
+// physical candidates when one becomes invalid; refuse an explicit Massline opt-out here as well so
+// Focus never advertises a target that it cannot authorize.
 function masslineRefusesTarget(ent) {
   return ent?.data?.masslineTetherable === false || ent?.flags?.masslineTetherable === false;
 }
@@ -242,7 +242,7 @@ export const flybyFocus = {
     // A registry/test re-init can reuse this singleton with a different state. Finish through the
     // old references before replacing them so the old time-effects request cannot leak, and any
     // end notification is delivered only to the bus that observed that lease.
-    if (this.state && this.timeEffects) this._finish('reinit', true, true, true);
+    if (this.state && this.timeEffects) this._finish('reinit', true, true);
     if (Array.isArray(this._unsubs)) {
       for (const unsub of this._unsubs) if (typeof unsub === 'function') unsub();
     }
@@ -262,7 +262,7 @@ export const flybyFocus = {
     ensureFocus(this.state);
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
-      this._unsubs.push(this.bus.on(event, () => this._finish(reason, true, true, true)));
+      this._unsubs.push(this.bus.on(event, () => this._finish(reason, true, true)));
     };
     resetOn('save:restoring', 'load');
     resetOn('save:loaded', 'load');
@@ -274,20 +274,20 @@ export const flybyFocus = {
         const reason = payload && typeof payload.reason === 'string' && payload.reason
           ? payload.reason
           : 'cancelled';
-        this._finish(reason, true, false, true);
+        this._finish(reason, false, true);
       }));
     }
   },
 
   destroy() {
-    this._finish('destroy', true, true, true);
+    this._finish('destroy', true, true);
     if (Array.isArray(this._unsubs)) {
       for (const unsub of this._unsubs) if (typeof unsub === 'function') unsub();
     }
     this._unsubs = [];
   },
 
-  _finish(reason, clearPlayerTarget = false, resetCooldown = false, resetZoom = false) {
+  _finish(reason, resetCooldown = false, resetZoom = false) {
     const st = this.state;
     if (!st) return;
     const focus = ensureFocus(st);
@@ -306,7 +306,6 @@ export const flybyFocus = {
       if (this._targetCooldowns) this._targetCooldowns.clear();
     }
     if (resetZoom) focus.zoom = 0;
-    if (clearPlayerTarget && st.player && st.player.targetId === targetId) st.player.targetId = null;
     if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
     if (wasActive && this.bus) {
       this.bus.emit('flybyFocus:end', {
@@ -333,13 +332,13 @@ export const flybyFocus = {
     if (!st) return;
     const focus = ensureFocus(st);
     if (st.mode !== 'flight') {
-      if (focus.active) this._finish('mode-change', true, false, true);
+      if (focus.active) this._finish('mode-change', false, true);
       return;
     }
     const now = Number.isFinite(st.simTime) ? st.simTime : 0;
     const player = playerEntity(st);
     if (!player || (player.flags && player.flags.docked)) {
-      if (focus.active) this._finish(player ? 'docked' : 'target-lost', true, false, true);
+      if (focus.active) this._finish(player ? 'docked' : 'target-lost', false, true);
       return;
     }
 
@@ -351,9 +350,8 @@ export const flybyFocus = {
     if (focus.active) {
       const invalidReason = activeTargetInvalidReason(st, player, focus.targetId);
       if (invalidReason) {
-        this._finish(invalidReason, true);
+        this._finish(invalidReason);
       } else {
-        st.player.targetId = focus.targetId;
         if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
       }
     }
@@ -384,7 +382,6 @@ export const flybyFocus = {
     if (this._targetCooldowns) this._targetCooldowns.set(pick.id, now + TARGET_COOLDOWN_S);
     focus.targetId = pick.id;
     focus.zoom = 0.35;
-    st.player.targetId = pick.id;
     if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
     if (this.bus) {
       this.bus.emit('flybyFocus:start', {

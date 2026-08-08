@@ -141,7 +141,8 @@ function runtimeFor(contacts, options = {}) {
   assert.equal(pickFlybyTarget(state, p, [cleanLaw])?.id, 10, 'wanted lawful patrol becomes eligible');
 }
 
-// Activation owns target and slow-time; the exact target survives competing writes and drives F.
+// Activation owns only its transient lease and slow-time. Persistent gun/UI selection is separate,
+// while the exact Focus target still biases Massline acquisition through flybyFocus.targetId.
 {
   const target = hostile(2);
   const distractor = {
@@ -157,7 +158,8 @@ function runtimeFor(contacts, options = {}) {
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, true);
   assert.equal(f.state.player.flybyFocus.targetId, target.id);
-  assert.equal(f.state.player.targetId, target.id, 'Focus owns the authoritative player target');
+  assert.equal(f.state.player.targetId, distractor.id,
+    'Focus start must preserve the player\'s persistent gun/UI selection');
   assert.equal(f.state.player.flybyFocus.until, 3, 'window provides a full three-second latch opportunity');
   assert.equal(f.state.timeScale, 0.5, 'Focus requests 50% slow-time through the shared authority');
   assert.equal(starts.length, 1);
@@ -166,10 +168,11 @@ function runtimeFor(contacts, options = {}) {
     ['closestSurfaceMiss', 'closingSpeed', 'durationS', 'relativeSpeed', 'scale', 'startedAt', 'targetId', 'timeToClosestS', 'until'].sort(),
   );
 
-  f.state.player.targetId = distractor.id;
+  f.state.player.targetId = 'manual-gun-target';
   f.state.simTime = 0.5;
   f.system.update(DT, f.state);
-  assert.equal(f.state.player.targetId, target.id, 'active lease reasserts after an ordinary target write');
+  assert.equal(f.state.player.targetId, 'manual-gun-target',
+    'an active Focus lease must not overwrite a later explicit gun/UI selection');
 
   const latch = tetherGameplay._acquireTarget.call(
     { _targetScratch: [] },
@@ -191,7 +194,8 @@ function runtimeFor(contacts, options = {}) {
   f.state.simTime = 3;
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, false);
-  assert.equal(f.state.player.targetId, target.id, 'normal expiry leaves the exact target selected');
+  assert.equal(f.state.player.targetId, 'manual-gun-target',
+    'normal expiry must not clear or replace persistent gun/UI selection');
   assert.equal(f.state.timeScale, 1);
   assert.equal(ends.at(-1)?.reason, 'expired');
   f.system.destroy();
@@ -223,8 +227,8 @@ function runtimeFor(contacts, options = {}) {
     'active Focus hard-prefers its validated target even when selected target and nearest clutter disagree');
 }
 
-// A valid Focus lease can outlive tether reach (720 wu hold range versus a 390 wu tether). In that
-// interval F must wait for the leased target instead of silently latching lower-authority clutter.
+// A Focus lease can outlive tether reach (720 wu hold range versus a 390 wu tether). Physical
+// eligibility comes first, so the out-of-range hint falls through to reachable world-space clutter.
 {
   const target = hostile(22, { pos: { x: 118, z: 0 } });
   const clutter = {
@@ -247,11 +251,12 @@ function runtimeFor(contacts, options = {}) {
     f.state,
     true,
   );
-  assert.equal(latch, null, 'out-of-reach exact target blocks lower-authority nearest clutter');
+  assert.equal(latch?.entity?.id, clutter.id,
+    'an out-of-reach Focus hint falls through to the reachable world-space candidate');
 }
 
 // Combat runs between Focus and tether gameplay. If it invalidates the leased target in that
-// window, the public tether update must fail closed for this press instead of creating on clutter.
+// window, the public tether update must ignore the stale hint and attempt reachable clutter.
 {
   const target = hostile(24, { pos: { x: 118, z: 0 } });
   const clutter = {
@@ -283,19 +288,20 @@ function runtimeFor(contacts, options = {}) {
   tether.update(DT, f.state);
 
   assert.equal(f.state.player.flybyFocus.active, true, 'Focus owner has not run again in this tick');
-  assert.equal(createCalls, 0, 'invalid exact lease does not create an attachment on clutter');
+  assert.equal(createCalls, 1, 'invalid exact lease falls through and attempts the reachable clutter');
   assert.equal(f.state.player.tether.active, false, 'public update leaves the tether unlatched');
 }
 
-// Invalidation and runtime boundaries clear only the Focus-owned transient request.
+// Invalidation and runtime boundaries clear only the Focus-owned transient request, never the
+// persistent gun/UI selection.
 for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:docked', 'player:death']) {
   const target = hostile(2);
-  const f = runtimeFor([target]);
+  const f = runtimeFor([target], { targetId: 'persistent-selection' });
   f.system.update(DT, f.state);
   assert.equal(f.state.timeScale, 0.5, `${event}: fixture activates`);
   f.bus.emit(event, {});
   assert.equal(f.state.player.flybyFocus.active, false, `${event}: focus resets`);
-  assert.equal(f.state.player.targetId, null, `${event}: leased target clears`);
+  assert.equal(f.state.player.targetId, 'persistent-selection', `${event}: persistent selection survives`);
   assert.equal(f.state.timeScale, 1, `${event}: Focus request clears`);
   f.system.destroy();
 }
@@ -305,13 +311,13 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
 // keeps its full turn-and-latch window, while teleports/runaway contacts cannot own the camera.
 {
   const target = hostile(2);
-  const f = runtimeFor([target]);
+  const f = runtimeFor([target], { targetId: 'persistent-selection' });
   const ends = [];
   f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
   f.system.update(DT, f.state);
   f.bus.emit('flybyFocus:cancel', { reason: 'player-cancel' });
   assert.equal(f.state.player.flybyFocus.active, false, 'explicit cancel releases Focus');
-  assert.equal(f.state.player.targetId, null, 'explicit cancel clears the leased target');
+  assert.equal(f.state.player.targetId, 'persistent-selection', 'explicit cancel preserves persistent selection');
   assert.equal(f.state.timeScale, 1, 'explicit cancel clears slow-time');
   assert.equal(ends.at(-1)?.reason, 'player-cancel');
   f.system.destroy();
@@ -319,7 +325,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
 
 {
   const target = hostile(2);
-  const f = runtimeFor([target]);
+  const f = runtimeFor([target], { targetId: 'persistent-selection' });
   const ends = [];
   f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
   f.system.update(DT, f.state);
@@ -327,7 +333,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   f.state.simTime = 0.25;
   f.system.update(DT, f.state);
   assert.equal(f.state.player.flybyFocus.active, false, 'extreme range exit releases Focus');
-  assert.equal(f.state.player.targetId, null, 'range release clears the leased target');
+  assert.equal(f.state.player.targetId, 'persistent-selection', 'range release preserves persistent selection');
   assert.equal(f.state.timeScale, 1, 'range release clears slow-time');
   assert.equal(ends.at(-1)?.reason, 'out-of-range');
   f.system.destroy();
@@ -384,7 +390,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
 // Registry/test re-init must finish the lease through the OLD state/time authority before the
 // singleton object adopts new references. The new bus must not receive an end event for old state.
 {
-  const old = runtimeFor([hostile(2)]);
+  const old = runtimeFor([hostile(2)], { targetId: 'persistent-selection' });
   const oldState = old.state;
   const oldEnds = [];
   old.bus.on('flybyFocus:end', (payload) => oldEnds.push(payload));
@@ -405,7 +411,8 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
 
   assert.equal(oldState.player.flybyFocus.active, false, 'old Focus lease is finished before re-init');
   assert.equal(oldState.player.flybyFocus.latchScale, 1, 'old latch presentation scale is normalized');
-  assert.equal(oldState.player.targetId, null, 'old leased target is cleared before re-init');
+  assert.equal(oldState.player.targetId, 'persistent-selection',
+    're-init finishes the transient lease without mutating persistent selection');
   assert.equal(oldState.timeScale, 1, 'old time authority is released before re-init');
   assert.equal(oldEnds.length, 1, 'old bus receives exactly one end event for its lease');
   assert.deepEqual(

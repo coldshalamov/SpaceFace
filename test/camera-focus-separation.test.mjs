@@ -39,6 +39,7 @@ import {
 import { createBus } from '../src/core/eventBus.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
+import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 
 const DT = 1 / 60;
 const FOV = 50;
@@ -987,7 +988,7 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
     entityList: [player, hostile, rock],
     player: {
       heat: 0,
-      targetId: null,
+      targetId: rock.id,
       tether: { active: false, targetId: null },
       flybyFocus: null,
     },
@@ -1000,8 +1001,17 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
 
   assert.equal(state.player.flybyFocus.active, true, 'valid hostile near-miss arms Focus');
   assert.equal(state.player.flybyFocus.targetId, hostile.id);
-  assert.equal(state.player.targetId, hostile.id);
+  assert.equal(state.player.targetId, rock.id,
+    'Focus preserves the explicit persistent gun/UI selection');
   assert.equal(state.timeScale, 0.5, 'Focus owns 50% time scale through timeEffects authority');
+  const latch = tetherGameplay._acquireTarget.call(
+    { _targetScratch: [], helpers: {} },
+    player,
+    { maxLength: 390 },
+    state,
+  );
+  assert.equal(latch?.entity?.id, hostile.id,
+    'Massline reads the transient Focus target directly despite nearer persistent selection');
 
   // Mining tether active blocks further acquisition after release, and never arms focus on rock.
   system.update(DT, state); // still active
@@ -1011,6 +1021,7 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
   state.simTime = state.player.flybyFocus.until + 0.01;
   system.update(DT, state);
   assert.equal(state.player.flybyFocus.active, false, 'Focus releases when window ends');
+  assert.equal(state.player.targetId, rock.id, 'Focus expiry preserves persistent gun/UI selection');
   // Cooldown + tether active: no re-acquire, especially not on asteroid
   state.simTime += 10;
   system.update(DT, state);

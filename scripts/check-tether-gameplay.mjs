@@ -168,6 +168,7 @@ async function assertCursorTetherTargeting() {
   await ensureSg02Ready(runtime, state);
   state.input.aimWorld = { x: aimedShip.pos.x, z: aimedShip.pos.z };
   state.input.aimAngle = Math.atan2(aimedShip.pos.z - player.pos.z, aimedShip.pos.x - player.pos.x);
+  state.input.pointerScreen.active = true;
   fireTetherOnce(harness);
 
   assert.equal(events.latched.length, 1, 'cursor-targeted tether should latch exactly once');
@@ -216,6 +217,7 @@ async function assertNonCollidingPayloadAcquisitionWithActiveSpatialHash() {
   await ensureSg02Ready(runtime, state);
   state.input.aimWorld = { x: spindle.pos.x, z: spindle.pos.z };
   state.input.aimAngle = 0;
+  state.input.pointerScreen.active = true;
   fireTetherOnce(harness);
 
   assert(state.spatialHash?.diagnostics?.activeBuckets > 0,
@@ -263,6 +265,7 @@ async function assertWeaponLockDoesNotStealMasslinePaint() {
   state.player.targetId = lockedHostile.id;
   state.input.aimWorld = { x: nearbyRock.pos.x, z: nearbyRock.pos.z };
   state.input.aimAngle = Math.atan2(nearbyRock.pos.z - player.pos.z, nearbyRock.pos.x - player.pos.x);
+  state.input.pointerScreen.active = true;
   fireTetherOnce(harness);
 
   assert.equal(events.latched.length, 1, 'Massline cursor paint should latch exactly once');
@@ -357,6 +360,7 @@ async function assertPickupMasslinePull() {
 
   state.input.aimWorld = { x: pickup.pos.x, z: pickup.pos.z };
   state.input.aimAngle = 0;
+  state.input.pointerScreen.active = true;
   fireTetherOnce(harness);
   assert.equal(events.latched.length, 1, 'cursor-targeted tether should latch a floating pickup');
   assert.equal(events.latched[0].targetId, pickup.id, 'pickup tether should identify the aimed loose material');

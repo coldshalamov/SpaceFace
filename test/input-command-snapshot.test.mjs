@@ -17,6 +17,7 @@ function commandInput() {
     fire: true,
     fireGroup: 1,
     autoFire: true,
+    aimIntentActive: true,
     deployCountermeasure: true,
     aimWorld: { x: 120, z: -48 },
     aimAngle: 1.25,
@@ -84,6 +85,7 @@ test('InputCommandSnapshot is immutable, detached, exact-target, and consumed on
   queue.capture(1, input, 42);
 
   input.moveX = -1;
+  input.aimIntentActive = false;
   input.aimWorld.x = -999;
   input.actions.scanPulse = false;
   input.actions.massline.phase = 'mutated';
@@ -99,6 +101,7 @@ test('InputCommandSnapshot is immutable, detached, exact-target, and consumed on
     assert.equal(record.targetTick, 42);
     assert.equal(record.lifecycleGeneration, 3);
     assert.equal(record.axes.moveX, 0.75);
+    assert.equal(record.aimIntentActive, true);
     assert.equal(record.axes.aimWorldX, 120);
     assert.equal(record.actions.scanPulse, true);
     assert.equal(record.massline.phase, 'line-control');
@@ -129,6 +132,18 @@ test('InputCommandSnapshot is immutable, detached, exact-target, and consumed on
     orderErrorCount: 1,
     consumerErrorCount: 0,
   });
+});
+
+test('InputCommandSnapshot normalizes absent aim intent to false', () => {
+  const queue = createInputCommandSnapshotQueue(1);
+  const input = commandInput();
+  delete input.aimIntentActive;
+  const record = createInputCommandSnapshotRecord();
+
+  queue.publish(1, 1, 0, input);
+  queue.consume(1, (reader, token) => reader.copyTo(token, record));
+
+  assert.equal(record.aimIntentActive, false);
 });
 
 test('expired InputCommandSnapshot lease cannot revive when its ring slot is reused', () => {

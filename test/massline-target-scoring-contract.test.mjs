@@ -18,7 +18,11 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { scoreMasslineTarget, rankMasslineTargets } from '../src/combat/masslineTargetScoring.js';
+import {
+  scoreMasslineTarget,
+  rankMasslineTargets,
+  stabilizeMasslineSelection,
+} from '../src/combat/masslineTargetScoring.js';
 
 const P = () => ({ pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } });
 const T = (id, x, z, { vx = 0, vz = 0, mass = 500 } = {}) => ({
@@ -168,6 +172,20 @@ test('T03 §4: obstruction gates to blocked; own/station gate to protected; ally
   // A protected gate wins over obstruction in reporting (most actionable reason first).
   const both = scoreMasslineTarget(P(), clear, { ownership: 'station', obstructed: true });
   assert.equal(both.rating, 'protected');
+});
+
+test('T03 §4b: an exact hint cannot force a gated record ahead of a physically eligible candidate', () => {
+  const records = [
+    { id: 'blocked-focus', score: 0, rating: 'blocked', reasons: { gate: 'obstructed' } },
+    { id: 'clear-anchor', score: 0.61, rating: 'good', reasons: {} },
+  ];
+  const selected = stabilizeMasslineSelection(records, null, 4, { forceId: 'blocked-focus' });
+  assert.equal(selected.selected?.id, 'clear-anchor',
+    'forceId is priority among eligible records, never permission to bypass a physical gate');
+
+  const denialOnly = stabilizeMasslineSelection([records[0]], null, 4, { forceId: 'blocked-focus' });
+  assert.equal(denialOnly.selected?.id, 'blocked-focus',
+    'when no eligible record exists the gated record remains available for a readable denial');
 });
 
 // ── §5 exact-target clutter ────────────────────────────────────────────────────────────────────

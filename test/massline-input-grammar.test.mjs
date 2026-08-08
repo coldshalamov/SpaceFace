@@ -49,6 +49,21 @@ function makeInput(gamepad = null) {
   return host;
 }
 
+function makeAnalogDevice(rightX = 0, rightY = 0) {
+  return {
+    axes: { leftX: 0, leftY: 0, rightX, rightY },
+    actions: {
+      massline: { held: false, pressed: false, released: false, value: 0 },
+      boost: { held: false }, fire: { held: false }, mine: { held: false },
+      brake: { held: false }, countermeasure: { held: false },
+    },
+    lastActiveTick: 0,
+    lastActiveSeq: 1,
+    tick() {},
+    isConnected() { return true; },
+  };
+}
+
 function step(host, state, ticks = 1) {
   for (let i = 0; i < ticks; i++) {
     state.tick += 1;
@@ -289,4 +304,141 @@ test('PQ-003 gamepad A/Cross reaches the same grammar in open flight but yields 
   step(dockHost, dockState);
   assert.ok(dockState.input.actions.massline);
   assert.equal(dockState.input.actions.massline.latch, false, 'dock/accept wins the contextual A press');
+});
+
+test('active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it', () => {
+  const gp = makeAnalogDevice(0.8, -0.25);
+  const host = makeInput(gp);
+  const state = makeState();
+
+  step(host, state);
+  assert.equal(state.input.pointerScreen.active, false,
+    'cold controller aim does not manufacture mouse-pointer activity');
+  assert.equal(state.input.aimIntentActive, true,
+    'an active winning right stick publishes precise aim intent');
+
+  gp.axes.rightX = 0;
+  gp.axes.rightY = 0;
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, false,
+    'neutral right stick clears the transient intent bit on the next tick');
+
+  gp.axes.rightX = -0.6;
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, true);
+  state.ui.screenStack.push('pause');
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, false,
+    'modal/non-flight early return clears analog aim authority');
+});
+
+test('active cold touch right-stick aim publishes the same precise intent contract', () => {
+  const touch = makeAnalogDevice(-0.7, 0.2);
+  const host = makeInput();
+  host.touch = touch;
+  const state = makeState();
+
+  step(host, state);
+  assert.equal(state.input.pointerScreen.active, false,
+    'touch-stick aim remains independent of the mouse-pointer channel');
+  assert.equal(state.input.aimIntentActive, true,
+    'active touch right-stick aim publishes precise intent');
+
+  touch.axes.rightX = 0;
+  touch.axes.rightY = 0;
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, false,
+    'neutral touch aim clears the transient intent bit');
+});
+
+test('genuine pointer activity owns the same precise intent bit without stale carry-over', () => {
+  const host = makeInput();
+  const state = makeState();
+
+  host._screen.active = true;
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, true);
+
+  host._screen.active = false;
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, false);
+});
+
+test('modal focus loss cannot revive stale pointer precision on the first resumed tick', () => {
+  const host = makeInput();
+  const state = makeState();
+  host._screen.x = 321;
+  host._screen.y = 147;
+  host._screen.active = true;
+
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, true);
+
+  state.ui.screenStack.push('pause');
+  step(host, state);
+  const duringModal = {
+    rawActive: host._screen.active,
+    committedActive: state.input.pointerScreen.active,
+    aimIntentActive: state.input.aimIntentActive,
+  };
+
+  state.ui.screenStack.pop();
+  step(host, state);
+  assert.deepEqual({
+    duringModal,
+    resumed: {
+      rawActive: host._screen.active,
+      committedActive: state.input.pointerScreen.active,
+      aimIntentActive: state.input.aimIntentActive,
+    },
+    coordinates: {
+      rawX: host._screen.x,
+      rawY: host._screen.y,
+      committedX: state.input.pointerScreen.x,
+      committedY: state.input.pointerScreen.y,
+    },
+  }, {
+    duringModal: { rawActive: false, committedActive: false, aimIntentActive: false },
+    resumed: { rawActive: false, committedActive: false, aimIntentActive: false },
+    coordinates: { rawX: 321, rawY: 147, committedX: 321, committedY: 147 },
+  });
+});
+
+test('releaseHeldControls cannot revive stale pointer precision without a new pointer event', () => {
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  host._screen.x = 444;
+  host._screen.y = 222;
+  host._screen.active = true;
+
+  step(host, state);
+  assert.equal(state.input.aimIntentActive, true);
+
+  host.releaseHeldControls('game:new');
+  const afterRelease = {
+    rawActive: host._screen.active,
+    committedActive: state.input.pointerScreen.active,
+    aimIntentActive: state.input.aimIntentActive,
+  };
+  step(host, state);
+
+  assert.deepEqual({
+    afterRelease,
+    resumed: {
+      rawActive: host._screen.active,
+      committedActive: state.input.pointerScreen.active,
+      aimIntentActive: state.input.aimIntentActive,
+    },
+    coordinates: {
+      rawX: host._screen.x,
+      rawY: host._screen.y,
+      committedX: state.input.pointerScreen.x,
+      committedY: state.input.pointerScreen.y,
+    },
+  }, {
+    afterRelease: { rawActive: false, committedActive: false, aimIntentActive: false },
+    resumed: { rawActive: false, committedActive: false, aimIntentActive: false },
+    coordinates: { rawX: 444, rawY: 222, committedX: 444, committedY: 222 },
+  });
 });

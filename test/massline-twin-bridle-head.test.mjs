@@ -220,6 +220,7 @@ function harness() {
 function step(h, { aim = null, latch = false, cut = false, dt = DT } = {}) {
   h.state.tick += 1;
   h.state.simTime += dt;
+  h.state.input.aimIntentActive = !!aim;
   if (aim) {
     h.state.input.aimWorld.x = aim.x;
     h.state.input.aimWorld.z = aim.z;

@@ -368,14 +368,12 @@ function selectNow(record, time) {
 
 /**
  * Pure PQ-004 intent classifier. It names the selection grammar before ranking so callers and the
- * HUD can explain the same decision. Focus is an exact lease; a genuinely precise cursor paint is
- * next; route, turn-side anchor, hostile flyby, and tow context follow in that order.
+ * HUD can explain the same decision. The narrow World Site payload selection is an explicit
+ * delivery command; otherwise a genuinely precise cursor paint leads, followed by Focus bias,
+ * route, turn-side anchor, hostile flyby, and tow context.
  */
 export function classifyMasslineIntent(player, candidates, opts = {}) {
   const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
-  const focus = candidateById(list, opts.focusId);
-  if (focus) return contextRecord('hostile-flyby', focus.id, 'flyby-focus');
-
   const selected = candidateById(list, opts.selectedId);
   if (selected) {
     const id = isTowCandidate(selected) ? 'tow/salvage' : 'precision-pick';
@@ -404,6 +402,9 @@ export function classifyMasslineIntent(player, candidates, opts = {}) {
     const id = isTowCandidate(precise) ? 'tow/salvage' : 'precision-pick';
     return contextRecord(id, precise.id, 'cursor-paint');
   }
+
+  const focus = candidateById(list, opts.focusId);
+  if (focus) return contextRecord('hostile-flyby', focus.id, 'flyby-focus');
 
   const route = candidateById(list, opts.routeId);
   if (route) return contextRecord('route-anchor', route.id, 'route-anchor');
@@ -445,8 +446,8 @@ export function stabilizeMasslineSelection(ranked, previousMemory, now, opts = {
   if (!list.length) return { selected: null, memory: null };
   const time = finite(now, 0);
   const forceId = opts.forceId;
-  const forced = forceId != null ? list.find((record) => record.id === forceId) : null;
   const eligible = list.filter((record) => record.score > 0);
+  const forced = forceId != null ? eligible.find((record) => record.id === forceId) : null;
   const best = forced || eligible[0] || list[0];
   const previous = previousMemory && previousMemory.selectedId != null
     ? list.find((record) => record.id === previousMemory.selectedId)

@@ -364,20 +364,22 @@ duration.
 
 **Named failure mode.** Constant retriggering during a battle, producing repeated zoom in/out.
 
-**Two of the three mitigations already ship.** `src/systems/flybyFocus.js` gates on relative speed ≥ 96
-and closing speed ≥ 25 (`:174-177`) with a time-to-closest window (`:179`), and holds a 4-second
-cooldown (`:14, :330`). Remaining work:
+**All three mitigations ship.** `src/systems/flybyFocus.js` gates acquisition on relative speed ≥ 96,
+closing speed ≥ 25, and a bounded time-to-closest window. Its 4-second global cooldown remains the
+anti-spam floor across all contacts, while a deterministic 14-second per-target cooldown prevents
+the same ship from reopening bullet time throughout one knife-fight.
 
-- **Make the cooldown per-target.** It is currently one global scalar (`flybyFocus.js:343`); a
-  `Map<targetId, until>` stops a knife-fight retriggering on the same ship.
-- **Stop moving the camera.** `src/render/cameraDirector.js:437-452` switches to `FOCUS_PAIR`
-  whenever focus is active. That is the nausea source. Removing it also orphans
-  `focusPairFitsCamera` (`flybyFocus.js:108-126`), which currently gates *acquisition* on the camera
-  being able to frame the pair — retire both together.
-- **Lock the Massline candidate, which it does not do today.** Focus currently forces
-  `state.player.targetId` (`flybyFocus.js:318`) and widens `latchScale` (`:24, :324`), but the widened
-  scale only feeds scoring paths that are not called. Once §7.1 is wired, focus should pin the
-  acquisition receipt for its duration.
+- **Cooldowns have separate jobs.** The global floor limits overall Focus frequency; the bounded
+  `Map<targetId, until>` skips a recently focused ship without preventing a genuinely new attacker
+  from opening a later window.
+- **Ordinary hostile Focus no longer moves the camera.** The involuntary `FOCUS_PAIR` takeover and
+  its render-dependent pair-fit acquisition gate are retired together. Only the explicitly flagged
+  onboarding/training Focus exception retains `FOCUS_PAIR`; ordinary hostile leases remain a
+  gameplay/time effect under the threat-aware chase camera.
+- **Massline reads a dedicated transient target.** Active Focus publishes
+  `state.player.flybyFocus.targetId` plus its latch scale, and Massline acquisition consumes that
+  target directly as a physically validated bias. Focus never writes or clears
+  `state.player.targetId`, which remains the player's explicit persistent gun/UI selection.
 
 ### 7.3 Tractor beam — modal, not stateful
 

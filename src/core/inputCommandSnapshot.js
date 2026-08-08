@@ -95,6 +95,7 @@ const COMMAND_KEYS = Object.freeze([
   'fire',
   'fireGroup',
   'autoFire',
+  'aimIntentActive',
   'deployCountermeasure',
   'tetherMode',
 ]);
@@ -129,6 +130,7 @@ export function createInputCommandSnapshotRecord() {
     fire: false,
     fireGroup: null,
     autoFire: false,
+    aimIntentActive: false,
     deployCountermeasure: false,
     tetherMode: null,
     axes: createScalarMap(AXIS_KEYS, 0),
@@ -206,6 +208,7 @@ function copyInput(slot, input) {
   data.fire = source.fire === true;
   data.fireGroup = commandValue(source.fireGroup);
   data.autoFire = source.autoFire === true;
+  data.aimIntentActive = source.aimIntentActive === true;
   data.deployCountermeasure = source.deployCountermeasure === true;
   data.tetherMode = commandValue(source.tetherMode);
 

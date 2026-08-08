@@ -460,6 +460,33 @@ test('Ctrl-nearest bypasses a farther selected target and attaches the nearest p
   assert.equal(h.events.latched[0]?.targetId, nearest.id);
 });
 
+test('invalid Focus hints fall through to valid candidates in scored and explicit-nearest acquisition', () => {
+  const farFocus = hostileShip(43, { pos: { x: 500, z: 0 } });
+  const reachable = station(44, { pos: { x: 85, z: 0 }, radius: 12 });
+  const scored = buildHarness([farFocus, reachable], {
+    playerState: {
+      flybyFocus: { active: true, targetId: farFocus.id, until: 99, latchScale: 2.6 },
+    },
+  });
+  fireLatch(scored);
+  assert.equal(scored.events.denied.length, 0);
+  assert.equal(scored.events.latched[0]?.targetId, reachable.id,
+    'an out-of-range Focus hint cannot suppress a reachable scored candidate');
+
+  const deadFocus = hostileShip(45, { alive: false, pos: { x: 60, z: 0 } });
+  const nearest = asteroid(46, { pos: { x: 70, z: 0 } });
+  const explicit = buildHarness([deadFocus, nearest], {
+    tetherMode: 'nearest',
+    playerState: {
+      flybyFocus: { active: true, targetId: deadFocus.id, until: 99, latchScale: 2.6 },
+    },
+  });
+  fireLatch(explicit);
+  assert.equal(explicit.events.denied.length, 0);
+  assert.equal(explicit.events.latched[0]?.targetId, nearest.id,
+    'Ctrl-nearest ignores an invalid Focus lease and still performs its explicit geometry search');
+});
+
 test('released World Site payload selection is resolved directly on the latch tick', () => {
   const relayCore = asteroid(26, {
     pos: { x: 100, z: 0 },

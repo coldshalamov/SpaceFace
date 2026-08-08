@@ -781,8 +781,8 @@ export const input = {
   },
 
   // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
-  // The committed state remains untouched for the coherent restore snapshot; the first resumed tick
-  // resamples neutral keyboard/pointer/touch state and the current gamepad state through update().
+  // Pointer activity is also cleared from committed input so it cannot revive without a new event;
+  // other committed commands remain intact for the coherent restore snapshot.
   releaseHeldControls(_reason = 'lifecycle') {
     const keys = this._keys;
     if (keys) {
@@ -792,6 +792,15 @@ export const input = {
     this._m1 = false;
     this._m2 = false;
     this._prevM1 = false;
+    if (this._screen) this._screen.active = false;
+    const committedInput = this.state && this.state.input;
+    if (committedInput && committedInput.pointerScreen) {
+      committedInput.pointerScreen.active = false;
+    }
+    if (committedInput
+      && Object.prototype.hasOwnProperty.call(committedInput, 'aimIntentActive')) {
+      committedInput.aimIntentActive = false;
+    }
     this._kbmActivityPending = false;
     this._travelEdge = false;
     this._cmHeld = false;
@@ -807,7 +816,7 @@ export const input = {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
     const grammar = this._masslineGrammar;
-    const actions = this.state && this.state.input && this.state.input.actions;
+    const actions = committedInput && committedInput.actions;
     if (grammar && actions && actions.massline === grammar.command
       && typeof grammar.snapshot === 'function') {
       actions.massline = grammar.snapshot();
@@ -906,6 +915,10 @@ export const input = {
     if (tp) tp.tick(dt, state, this);
 
     const inp = state.input;
+    // Transient, input-owned provenance for consumers that need to distinguish deliberate
+    // precision aim from continuously derived/stale aimWorld coordinates. Stamp every tick so
+    // neutral input and modal/non-flight early returns cannot retain authority.
+    inp.aimIntentActive = false;
     const autoTargetPointer = !!inp.autoFire;
     if (autoTargetPointer !== !!this._autoTargetPointerMode) {
       this._autoTargetPointerMode = autoTargetPointer;
@@ -930,6 +943,8 @@ export const input = {
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
+      this._screen.active = false;
+      if (inp.pointerScreen) inp.pointerScreen.active = false;
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
       inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
       inp.fire = false; inp.boost = false; inp.brake = false; inp.fireGroup = null;
@@ -1109,6 +1124,7 @@ export const input = {
     const gpOrTouchAim = gpAimActive || tpAimActive;
     const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
     if (aimAxes && !kbmRecent && p) {
+      inp.aimIntentActive = true;
       // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
       const ax = aimAxes.rightX;
       const ay = -aimAxes.rightY; // world +Z is "up" on the stick
@@ -1131,6 +1147,7 @@ export const input = {
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
+      inp.aimIntentActive = pointerScreen.active === true;
       writeAutoTargetVector(inp);
       // N2: flight-profile-affecting path drawing uses deterministic sim clock, not wall time.
       if (inp.autoFire) updateAutoTargetPathDrawing(this, simClockMs(state));

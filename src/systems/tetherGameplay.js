@@ -776,22 +776,6 @@ export const tetherGameplay = {
   // pure geometry with no scoring, no intent, and no hysteresis.
   _acquireCommandTarget(player, def, state) {
     const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
-    const focus = state.player?.flybyFocus;
-    if (focus?.active && focus.targetId != null) {
-      const focusTarget = state.entities?.get ? state.entities.get(focus.targetId) : null;
-      if (!isAuthorizedFocusTarget(state, player, focusTarget)) {
-        this._lastLatchDenial = { reason: 'no-target', targetId: focus.targetId, maxLength };
-        return null;
-      }
-    }
-    const nearestOnly = state.input?.tetherMode === 'nearest';
-    const selectedId = state.player && state.player.targetId;
-    const selected = selectedId != null && state.entities?.get ? state.entities.get(selectedId) : null;
-    const selectedDenial = validateAcquisitionTarget(this, player, selected, def, state);
-    if (!nearestOnly && selected && !selectedDenial) {
-      return { entity: selected, targetWorld: surfacePointToward(selected, player.pos) };
-    }
-
     const entities = state.entityList || (state.entities?.values ? Array.from(state.entities.values()) : []);
     let nearest = null;
     let nearestSurfaceDistance = Infinity;
@@ -808,8 +792,7 @@ export const tetherGameplay = {
     }
     if (!nearest) {
       this._lastLatchDenial = {
-        reason: selectedDenial && selected ? selectedDenial : 'no-target',
-        targetId: selected && selected.id,
+        reason: 'no-target',
         maxLength,
       };
       return null;
@@ -1332,10 +1315,6 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
   const focusTarget = focus && focus.active && focus.targetId != null && state.entities?.get
     ? state.entities.get(focus.targetId)
     : null;
-  if (focus && focus.active && !isAuthorizedFocusTarget(state, player, focusTarget)) {
-    return emptyAcquisitionSnapshot('no-target', intent);
-  }
-  const focusId = focusTarget ? focusTarget.id : null;
   const selectedPayloadId = masslineSelectedPayloadTargetId(state);
   const routeId = masslineRouteTargetId(state);
   const nearby = queryNearbyEntities(
@@ -1358,40 +1337,57 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
   appendExactCandidate(candidates, focusTarget);
   appendExactCandidate(candidates, routeId != null && state.entities?.get ? state.entities.get(routeId) : null);
 
-  const attachable = [];
+  const physicallyEligible = [];
+  const deniedCandidates = [];
+  const denialById = new Map();
   const byId = new Map();
   for (const entity of candidates) {
     if (!isAttachable(entity, player.id) || byId.has(entity.id)) continue;
-    const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-    const exactAuthority = entity.id === focusId || entity.id === routeId;
-    if (!exactAuthority && distance > maxLength + Math.max(0, finite(entity.radius))) continue;
-    attachable.push(entity);
     byId.set(entity.id, entity);
+    const denial = validateAcquisitionTarget(host, player, entity, def, state);
+    denialById.set(entity.id, denial);
+    if (denial) deniedCandidates.push(entity);
+    else physicallyEligible.push(entity);
   }
-  attachable.sort(compareEntityIds);
-  if (!attachable.length) return emptyAcquisitionSnapshot('no-target', intent);
+  physicallyEligible.sort(compareEntityIds);
+  deniedCandidates.sort(compareEntityIds);
+  // Priority is allowed to choose only inside the physically valid set. Retain invalid records
+  // solely when no valid body exists so the receipt can still explain blocked/out-of-range truth.
+  const rankingCandidates = physicallyEligible.length ? physicallyEligible : deniedCandidates;
+  if (!rankingCandidates.length) return emptyAcquisitionSnapshot('no-target', intent);
+
+  const physicallyEligibleIds = new Set(physicallyEligible.map((entity) => entity.id));
+  const focusId = focusTarget
+    && physicallyEligibleIds.has(focusTarget.id)
+    && isAuthorizedFocusTarget(state, player, focusTarget)
+    ? focusTarget.id
+    : null;
+  const eligibleSelectedPayloadId = physicallyEligibleIds.has(selectedPayloadId)
+    ? selectedPayloadId
+    : null;
+  const eligibleRouteId = physicallyEligibleIds.has(routeId) ? routeId : null;
 
   const aim = aimWorldFor(player, state, maxLength);
-  const cursorActive = acquisitionCursorActive(state);
+  const cursorActive = physicallyEligible.length > 0 && acquisitionCursorActive(state);
   const cursorPrecisionOf = (entity) => cursorActive ? preciseCursorScore(entity, aim) : 0;
   const hostileOf = (entity) => isHostileToPlayer(entity, player.team, state);
-  const context = classifyMasslineIntent(player, attachable, {
+  const context = classifyMasslineIntent(player, rankingCandidates, {
     focusId,
-    selectedId: selectedPayloadId,
-    routeId,
+    selectedId: eligibleSelectedPayloadId,
+    routeId: eligibleRouteId,
     turnIntent: intent.turn,
     moveZ: intent.moveZ,
     intentDir: intent.dir,
     cursorPrecisionOf,
     isHostile: hostileOf,
   });
-  const ranked = rankMasslineTargets(player, attachable, {
+  const ranked = rankMasslineTargets(player, rankingCandidates, {
     maxRange: maxLength,
     context,
     intentDir: intent.dir,
     cursorPrecisionOf,
     isHostile: hostileOf,
-    isObstructed: (entity) => masslineObstructed(host, state, player, entity),
+    isObstructed: (entity) => denialById.get(entity.id) === 'blocked',
     ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
   });
@@ -1548,14 +1544,16 @@ function weaponSynthesisedAim(state) {
 
 function acquisitionCursorActive(state) {
   if (weaponSynthesisedAim(state)) return false;
-  const pointer = state && state.input && state.input.pointerScreen;
-  const ndc = state && state.input && state.input.mouseNdc;
-  // Direct/headless harnesses and gamepad aim both publish aimWorld without reliable pointer
-  // provenance. Precision still requires the aim point to land inside a narrow surface envelope;
-  // a broad idle cursor elsewhere contributes zero and cannot beat steering intent.
-  return !!(pointer && pointer.active)
-    || Math.hypot(finite(ndc && ndc.x), finite(ndc && ndc.y)) > 0.08
-    || !!(state && state.input && state.input.aimWorld);
+  const input = state && state.input;
+  if (!input) return false;
+  // Live input stamps this every tick for pointer, gamepad, and touch aim. An explicit false (or a
+  // malformed value) is authoritative; only legacy/direct fixtures without the property fall back
+  // to the older pointer bit.
+  if (Object.prototype.hasOwnProperty.call(input, 'aimIntentActive')) {
+    return input.aimIntentActive === true;
+  }
+  const pointer = input.pointerScreen;
+  return pointer && pointer.active === true;
 }
 
 function preciseCursorScore(entity, aim) {
