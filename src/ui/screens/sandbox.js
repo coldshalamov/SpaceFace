@@ -16,7 +16,8 @@ import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
 import {
-  SCENARIO_PRESETS, requestSandboxGame,
+  SCENARIO_PRESETS, SANDBOX_CAMERA_CANDIDATES, SANDBOX_PHYSICS_LOADOUTS,
+  buildSandboxLaunchConfig, requestSandboxGame,
   giveAndEquipItem, spawnEnemyNow, spawnTargetsNow,
 } from '../sandbox/sandboxSetup.js';
 
@@ -124,13 +125,14 @@ export const sandboxScreen = {
     rootEl.appendChild(cardsHeader);
     const cardGrid = el('div', 'sf-sandbox-cards');
     rootEl.appendChild(cardGrid);
+    let readOverrides = () => ({});
     for (const preset of SCENARIO_PRESETS) {
       const card = el('button', 'sf-sandbox-card');
       card.type = 'button';
       card.appendChild(el('div', 'sf-sandbox-card__title', preset.title));
       card.appendChild(el('div', 'sf-sandbox-card__desc', preset.description));
       card.addEventListener('click', () => {
-        requestSandboxGame(ctx.bus, preset.config);
+        requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(preset.config, readOverrides()));
       });
       cardGrid.appendChild(card);
     }
@@ -165,6 +167,73 @@ export const sandboxScreen = {
     sectorSel.value = 'sector_helios_prime';
     fine.appendChild(sectorLabel); fine.appendChild(sectorSel);
 
+    const cameraLabel = el('label', null, 'Camera candidate');
+    cameraLabel.htmlFor = 'sf-sandbox-camera';
+    const cameraSel = document.createElement('select');
+    cameraSel.id = 'sf-sandbox-camera';
+    const cameraDefault = document.createElement('option');
+    cameraDefault.value = '';
+    cameraDefault.textContent = 'Use preset / current';
+    cameraSel.appendChild(cameraDefault);
+    for (const candidate of SANDBOX_CAMERA_CANDIDATES) {
+      const o = document.createElement('option');
+      o.value = candidate.id;
+      o.textContent = candidate.label;
+      cameraSel.appendChild(o);
+    }
+    fine.appendChild(cameraLabel); fine.appendChild(cameraSel);
+
+    const loadoutLabel = el('label', null, 'Physics loadout');
+    loadoutLabel.htmlFor = 'sf-sandbox-physics-loadout';
+    const loadoutSel = document.createElement('select');
+    loadoutSel.id = 'sf-sandbox-physics-loadout';
+    const loadoutDefault = document.createElement('option');
+    loadoutDefault.value = '';
+    loadoutDefault.textContent = 'Use preset / current';
+    loadoutSel.appendChild(loadoutDefault);
+    for (const loadout of SANDBOX_PHYSICS_LOADOUTS) {
+      const o = document.createElement('option');
+      o.value = loadout.id;
+      o.textContent = loadout.label;
+      loadoutSel.appendChild(o);
+    }
+    fine.appendChild(loadoutLabel); fine.appendChild(loadoutSel);
+
+    const enemyCountLabel = el('label', null, 'Enemy count override');
+    enemyCountLabel.htmlFor = 'sf-sandbox-enemy-count';
+    const enemyCountInput = document.createElement('input');
+    enemyCountInput.type = 'number';
+    enemyCountInput.id = 'sf-sandbox-enemy-count';
+    enemyCountInput.min = '0';
+    enemyCountInput.max = '20';
+    enemyCountInput.placeholder = 'Preset';
+    enemyCountInput.value = '';
+    fine.appendChild(enemyCountLabel); fine.appendChild(enemyCountInput);
+
+    const lineLengthLabel = el('label', null, 'Massline length (WU)');
+    lineLengthLabel.htmlFor = 'sf-sandbox-line-length';
+    const lineLengthInput = document.createElement('input');
+    lineLengthInput.type = 'number';
+    lineLengthInput.id = 'sf-sandbox-line-length';
+    lineLengthInput.min = '60';
+    lineLengthInput.max = '600';
+    lineLengthInput.step = '10';
+    lineLengthInput.placeholder = 'Preset / 140';
+    lineLengthInput.value = '';
+    fine.appendChild(lineLengthLabel); fine.appendChild(lineLengthInput);
+
+    const anchorMassLabel = el('label', null, 'Anchor mass');
+    anchorMassLabel.htmlFor = 'sf-sandbox-anchor-mass';
+    const anchorMassInput = document.createElement('input');
+    anchorMassInput.type = 'number';
+    anchorMassInput.id = 'sf-sandbox-anchor-mass';
+    anchorMassInput.min = '1';
+    anchorMassInput.max = '1000000';
+    anchorMassInput.step = '100';
+    anchorMassInput.placeholder = 'Preset / 400';
+    anchorMassInput.value = '';
+    fine.appendChild(anchorMassLabel); fine.appendChild(anchorMassInput);
+
     const creditsLabel = el('label', null, 'Credits');
     creditsLabel.htmlFor = 'sf-sandbox-credits';
     const creditsInput = document.createElement('input');
@@ -183,6 +252,7 @@ export const sandboxScreen = {
       ['unlockAllTech', 'Unlock all tech', true],
       ['grantAllModules', 'Grant all weapons & modules', true],
       ['maxReputation', 'Max reputation (all factions)', false],
+      ['masslineEnabled', 'Spawn a Massline test anchor', false],
     ];
     const checkboxes = {};
     for (const [key, label, def] of toggles) {
@@ -197,6 +267,18 @@ export const sandboxScreen = {
     }
     rootEl.appendChild(checks);
 
+    readOverrides = () => {
+      const enemyRaw = enemyCountInput.value.trim();
+      return {
+        cameraCandidate: cameraSel.value || undefined,
+        physicsLoadout: loadoutSel.value || undefined,
+        enemyCount: enemyRaw === '' ? undefined : Number(enemyRaw),
+        masslineEnabled: checkboxes.masslineEnabled.checked,
+        lineLength: lineLengthInput.value.trim() === '' ? undefined : Number(lineLengthInput.value),
+        anchorMass: anchorMassInput.value.trim() === '' ? undefined : Number(anchorMassInput.value),
+      };
+    };
+
     // --- Launch ---
     const launch = el('button', 'sf-btn sf-btn--primary sf-sandbox-launch', 'Launch with these settings');
     launch.type = 'button';
@@ -209,7 +291,7 @@ export const sandboxScreen = {
         grantAllModules: checkboxes.grantAllModules.checked,
         maxReputation: checkboxes.maxReputation.checked,
       };
-      requestSandboxGame(ctx.bus, config);
+      requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(config, readOverrides()));
     });
     rootEl.appendChild(launch);
 

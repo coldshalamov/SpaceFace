@@ -20,6 +20,10 @@ import { MODULES } from '../../data/modules.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { SHIPS } from '../../data/ships.js';
 import { FACTION_META } from '../../data/factions.js';
+import { SECTOR_ZONES } from '../../data/sectorZones.js';
+import { ZONE_TETHYS_ANVIL } from '../../data/authoredPlaces.js';
+import { PQ019_FACILITIES, PQ019_HEIST_SECTOR_ID } from '../../data/heistFacilities.js';
+import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from '../../systems/combat.js';
 import { buildSlotList, makeShipEntitySpec } from '../../systems/ships.js';
 import { getCombatKernel } from '../../combat/kernel.js';
@@ -28,6 +32,81 @@ import { getCombatKernel } from '../../combat/kernel.js';
 // don't need a shared object threaded through ctx. One pending config at a time.
 let pendingConfig = null;
 let hookInstalled = false;
+
+export const RECOVERY_SCENARIO_IDS = Object.freeze([
+  'massline_long_line',
+  'massline_short_line',
+  'massline_moving_anchor',
+  'physics_swarm',
+  'ceres_reference_pocket',
+  'planet_sling_course',
+  'crime_interception',
+  'visual_stress_scene',
+]);
+
+// R0 exposes the candidates; R1 uses repeatable live play to select the shipping framing. These
+// values intentionally use the existing camera controller's public setZoom seam, so the Sandbox
+// does not grow a second camera implementation.
+export const SANDBOX_CAMERA_CANDIDATES = Object.freeze([
+  Object.freeze({ id: 'current', label: 'Current framing (72 WU)', zoom: 72 }),
+  Object.freeze({ id: 'medium_wide', label: 'Medium-wide (96 WU)', zoom: 96 }),
+  Object.freeze({ id: 'wide_gameplay', label: 'Wide gameplay (120 WU)', zoom: 120 }),
+  Object.freeze({ id: 'physics_study', label: 'Physics-speed study (144 WU)', zoom: 144 }),
+]);
+
+export const SANDBOX_PHYSICS_LOADOUTS = Object.freeze([
+  Object.freeze({ id: 'starter', label: 'Current ship loadout', itemIds: Object.freeze([]) }),
+  Object.freeze({
+    id: 'impulse',
+    label: 'Autocannon + Concussion',
+    itemIds: Object.freeze(['wpn_autocannon_m', 'wpn_concussion_cannon_m']),
+  }),
+  Object.freeze({
+    id: 'physics_toolkit',
+    label: 'Concussion + force tools',
+    itemIds: Object.freeze(['wpn_concussion_cannon_m', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s']),
+  }),
+]);
+
+/** Merge optional human-test controls into a preset without mutating the frozen preset record. */
+export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
+  const out = { ...baseConfig };
+  if (overrides.cameraCandidate) out.cameraCandidate = String(overrides.cameraCandidate);
+  if (overrides.physicsLoadout) out.physicsLoadout = String(overrides.physicsLoadout);
+
+  if (Number.isFinite(overrides.enemyCount)) {
+    const count = Math.max(0, Math.min(20, Math.trunc(overrides.enemyCount)));
+    if (out.physicsSwarm) {
+      const authoredMediumCount = Math.max(
+        0,
+        Math.min(4, Math.trunc(out.physicsSwarm.mediumCount ?? 2)),
+      );
+      const mediumCount = Math.min(count, authoredMediumCount);
+      out.physicsSwarm = {
+        ...out.physicsSwarm,
+        lightCount: count - mediumCount,
+        mediumCount,
+      };
+    } else {
+      out.spawnEnemies = count > 0
+        ? [{ type: 'wasp_swarmer', count, distance: 260 }]
+        : undefined;
+    }
+  }
+
+  if (out.masslineRange || overrides.masslineEnabled) {
+    out.masslineRange = {
+      ...(out.masslineRange || {}),
+      ...(Number.isFinite(overrides.lineLength)
+        ? { distance: Math.max(60, Math.min(600, overrides.lineLength)) }
+        : {}),
+      ...(Number.isFinite(overrides.anchorMass)
+        ? { mass: Math.max(1, Math.min(1_000_000, overrides.anchorMass)) }
+        : {}),
+    };
+  }
+  return out;
+}
 
 /** Display names + config for each quick-setup card on the Sandbox screen. */
 export const SCENARIO_PRESETS = Object.freeze([
@@ -76,14 +155,101 @@ export const SCENARIO_PRESETS = Object.freeze([
     }),
   },
   {
-    id: 'massline',
-    title: 'Massline Range',
-    description: 'A grapple target out front with a tractor head equipped, tether pre-attached. ' +
-      'Practice latch/reel/orbit/throw instantly.',
+    id: 'massline_long_line',
+    title: 'Massline — Long Line',
+    description: 'Start latched to a distant heavy anchor. Check forward+turn yaw at a long radius.',
     config: Object.freeze({
+      scenarioId: 'massline_long_line',
+      unlockAllTech: true,
+      masslineRange: Object.freeze({ distance: 220, mass: 1800, preAttach: true }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
+    id: 'massline_short_line',
+    title: 'Massline — Short Line',
+    description: 'Start latched close to a heavy anchor. Check fast swing yaw and raw-control release.',
+    config: Object.freeze({
+      scenarioId: 'massline_short_line',
+      unlockAllTech: true,
+      masslineRange: Object.freeze({ distance: 72, mass: 1800, preAttach: true }),
+      cameraCandidate: 'medium_wide',
+    }),
+  },
+  {
+    id: 'massline_moving_anchor',
+    title: 'Massline — Moving Target',
+    description: 'A crossing neutral target tests preview, natural acquisition and moving-body latch.',
+    config: Object.freeze({
+      scenarioId: 'massline_moving_anchor',
+      unlockAllTech: true,
+      masslineRange: Object.freeze({ distance: 170, mass: 260, movingTarget: true, preAttach: false }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
+    id: 'physics_swarm',
+    title: 'Physics Combat Swarm',
+    description: 'Ten disposable lights, two mediums and three collision anchors for force-first combat.',
+    config: Object.freeze({
+      scenarioId: 'physics_swarm',
+      shipId: 'ship_hornet',
+      credits: 100_000,
       unlockAllTech: true,
       grantAllModules: true,
-      masslineRange: Object.freeze({ distance: 140, preAttach: true }),
+      physicsLoadout: 'physics_toolkit',
+      physicsSwarm: Object.freeze({ lightCount: 10, mediumCount: 2, anchorCount: 3 }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
+    id: 'ceres_reference_pocket',
+    title: 'Ceres Reference Pocket',
+    description: 'Launch beside the refinery working pocket on the real Ceres route and systems.',
+    config: Object.freeze({
+      scenarioId: 'ceres_reference_pocket',
+      sectorId: 'sector_ceres_belt',
+      spawnAtZoneId: 'zone_ceres_refinery',
+      spawnAtZoneOffset: Object.freeze({ x: 180, z: 120 }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
+    id: 'planet_sling_course',
+    title: 'Planet Sling Course',
+    description: 'Start off The Anvil with two physical route anchors and the normal Massline controls.',
+    config: Object.freeze({
+      scenarioId: 'planet_sling_course',
+      sectorId: 'sector_tethys_junction',
+      planetSlingCourse: Object.freeze({ anchorCount: 2 }),
+      cameraCandidate: 'physics_study',
+    }),
+  },
+  {
+    id: 'crime_interception',
+    title: 'Crime Interception',
+    description: 'Stage near the real Tethys launcher before a physical cargo capsule departs.',
+    config: Object.freeze({
+      scenarioId: 'crime_interception',
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      crimeInterception: Object.freeze({ launchDelayS: 8 }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
+    id: 'visual_stress_scene',
+    title: 'Visual Stress Scene',
+    description: 'A dense mixed combat cast, inert targets and terrain for ordinary-scale VFX review.',
+    config: Object.freeze({
+      scenarioId: 'visual_stress_scene',
+      shipId: 'ship_hornet',
+      credits: 100_000,
+      unlockAllTech: true,
+      grantAllModules: true,
+      physicsLoadout: 'physics_toolkit',
+      physicsSwarm: Object.freeze({ lightCount: 12, mediumCount: 2, anchorCount: 3 }),
+      targetDrones: Object.freeze({ count: 4, distance: 190 }),
+      cameraCandidate: 'physics_study',
     }),
   },
 ]);
@@ -114,6 +280,9 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     }
   };
   bus.on('game:started', handler);
+  // A failed transition never reaches game:started. Clear its staged config here so a later
+  // ordinary New Game cannot inherit the abandoned Sandbox request. Repeated failures are benign.
+  bus.on('game:startFailed', () => { pendingConfig = null; });
 }
 
 // --------------------------------------------------------------------------------------------
@@ -137,9 +306,22 @@ function setCredits(ctx, target) {
 function unlockAllTech(ctx) {
   const ships = sys(ctx, 'ships');
   if (!ships || typeof ships.unlockTech !== 'function') return;
-  // unlockTech enforces prereqs + charges credits/RP. We've already given plenty of credits above,
-  // but RP is ships' to spend — top it up generously so the chain doesn't stall on RP costs.
   const p = ctx.state.player;
+  const researched = new Set(p.researchedNodes || []);
+  const remainingNodes = TECH_NODES.filter((node) => !researched.has(node.id));
+  const remainingCreditCost = remainingNodes.reduce(
+    (sum, node) => sum + ((node.cost && node.cost.credits) || 0),
+    0,
+  );
+  const economy = sys(ctx, 'economy');
+  // Provision exactly what the remaining research tree will charge. Because unlockTech routes
+  // every charge back through economy, the balance present on entry (including a preset target)
+  // is restored after the final unlock without Sandbox ever writing player.credits directly.
+  if (remainingCreditCost > 0 && economy && typeof economy.grantCredits === 'function') {
+    economy.grantCredits(remainingCreditCost, 'sandbox:tech-budget');
+  }
+
+  // unlockTech also enforces RP. RP is ships-owned, so top it up before walking the real tree.
   const totalRpNeeded = TECH_NODES.reduce((sum, n) => sum + ((n.cost && n.cost.rp) || 0), 0);
   if (typeof p.researchPoints === 'number') p.researchPoints += totalRpNeeded + 1000;
   // Loop until stable: prereqs can back-reference, so a single pass may miss leaves whose roots
@@ -148,6 +330,10 @@ function unlockAllTech(ctx) {
     let progressed = false;
     for (const node of TECH_NODES) {
       if (p.researchedNodes.includes(node.id)) continue;
+      // The production writer intentionally toasts rejected requests. Skip nodes whose
+      // prerequisites are not ready yet so this bounded dependency walk does not surface a
+      // false error before a later pass unlocks the same node successfully.
+      if (typeof ships.researchable === 'function' && !ships.researchable(node.id)) continue;
       if (ships.unlockTech(node.id)) progressed = true;
     }
     if (!progressed) break;
@@ -206,6 +392,34 @@ function enterSectorIfSet(ctx, sectorId) {
   const world = sys(ctx, 'world');
   if (!world || typeof world.enterSector !== 'function') return;
   world.enterSector(sectorId);
+}
+
+function relocatePlayer(ctx, sectorId, localPos, reason) {
+  if (!sectorId || !localPos) return false;
+  const world = sys(ctx, 'world');
+  if (!world || typeof world.relocatePlayerInSector !== 'function') return false;
+  const global = sectorLocalToGlobalForSector(localPos, sectorId);
+  return !!world.relocatePlayerInSector({ x: global.x, z: global.z, heading: 0 }, { reason });
+}
+
+function relocateToZone(ctx, sectorId, zoneId, offset = {}) {
+  const zones = SECTOR_ZONES[sectorId] || [];
+  const zone = zones.find((item) => item && item.id === zoneId);
+  if (!zone) return false;
+  return relocatePlayer(ctx, sectorId, {
+    x: zone.center.x + (Number(offset.x) || 0),
+    z: zone.center.z + (Number(offset.z) || 0),
+  }, `sandbox:${zoneId}`);
+}
+
+function applyCameraCandidate(ctx, candidateId) {
+  if (!candidateId) return false;
+  const candidate = SANDBOX_CAMERA_CANDIDATES.find((item) => item.id === candidateId);
+  const camera = ctx.state.render && ctx.state.render.cameraCtrl;
+  if (!candidate || !camera || typeof camera.setZoom !== 'function') return false;
+  camera.setZoom(candidate.zoom);
+  if (typeof camera.snapToPlayer === 'function') camera.snapToPlayer();
+  return true;
 }
 
 /** Swap the player onto a different hull via the sanctioned buyShip(grant)+setActiveShip path.
@@ -307,6 +521,38 @@ function grantAndEquip(ctx, defId) {
   return !!ships.fitModule({ slotIndex: slotIdx, instanceId: inst.instanceId });
 }
 
+/** Apply a named physical-play loadout through ships-owned grant/unfit/fit operations. */
+function applyPhysicsLoadout(ctx, loadoutId) {
+  const loadout = SANDBOX_PHYSICS_LOADOUTS.find((item) => item.id === loadoutId);
+  const ships = sys(ctx, 'ships');
+  if (!loadout || !ships || loadout.itemIds.length === 0) return;
+  const p = ctx.state.player;
+  const owned = p.ownedShips[p.activeShipIndex];
+  const shipDef = owned && SHIPS.find((item) => item.id === owned.defId);
+  if (!owned || !shipDef) return;
+  const slots = buildSlotList(shipDef);
+  const RANK = { S: 1, M: 2, L: 3 };
+
+  for (const defId of loadout.itemIds) {
+    if (Array.isArray(owned.fittings) && owned.fittings.includes(defId)) continue;
+    const def = [...WEAPONS, ...MODULES].find((item) => item.id === defId);
+    if (!def) continue;
+    const compatible = slots.filter((slot) => (
+      slot.type === def.slotType && RANK[slot.size] >= RANK[def.size]
+    ));
+    if (compatible.length === 0) {
+      grantAndEquip(ctx, defId); // inventory-only on this hull remains truthful
+      continue;
+    }
+    const fittings = Array.isArray(owned.fittings) ? owned.fittings : [];
+    const target = compatible.find((slot) => !fittings[slot.index]) || compatible[0];
+    if (fittings[target.index] && typeof ships.unfitModule === 'function') {
+      ships.unfitModule({ slotIndex: target.index });
+    }
+    grantAndEquip(ctx, defId);
+  }
+}
+
 /** Spawn N inert target drones (team 2, no AI) — grappleable, shootable, passive. Arranged in a
  *  ring ahead of the player. Returns the spawned entities. */
 function spawnTargetDrones(ctx, { count = 3, distance = 350, shipId = 'ship_kestrel' } = {}) {
@@ -330,6 +576,76 @@ function spawnTargetDrones(ctx, { count = 3, distance = 350, shipId = 'ship_kest
     if (e) spawned.push(e);
   }
   return spawned;
+}
+
+function spawnCollisionAnchors(ctx, count = 3, distance = 210) {
+  const helpers = ctx.helpers;
+  const player = ctx.state.entities.get(ctx.state.playerId);
+  if (!helpers || typeof helpers.spawnEntity !== 'function' || !player || !player.pos) return [];
+  const n = Math.max(1, Math.min(6, Math.trunc(count) || 1));
+  const spawned = [];
+  for (let i = 0; i < n; i++) {
+    const a = -0.72 + (i / Math.max(1, n - 1)) * 1.44;
+    const radius = 18 + i * 4;
+    const e = helpers.spawnEntity({
+      type: 'asteroid',
+      pos: {
+        x: player.pos.x + Math.cos(a) * (distance + i * 28),
+        z: player.pos.z + Math.sin(a) * (distance + i * 28),
+      },
+      radius,
+      mass: 1600 + i * 900,
+      hull: 1200,
+      hullMax: 1200,
+      data: { typeId: i % 2 ? 'ast_common_rock' : 'ast_metallic', sandboxCollisionAnchor: true },
+    });
+    if (e) spawned.push(e);
+  }
+  return spawned;
+}
+
+function setupPhysicsSwarm(ctx, opts = {}) {
+  const lightCount = Math.max(0, Math.min(20, Math.trunc(opts.lightCount ?? 10)));
+  const mediumCount = Math.max(0, Math.min(4, Math.trunc(opts.mediumCount ?? 2)));
+  if (lightCount > 0) spawnEnemies(ctx, [{ type: 'wasp_swarmer', count: lightCount, distance: 230 }]);
+  if (mediumCount > 0) {
+    const reavers = Math.ceil(mediumCount / 2);
+    const corsairs = Math.floor(mediumCount / 2);
+    spawnEnemies(ctx, [
+      ...(reavers ? [{ type: 'reaver_pirate', count: reavers, distance: 285 }] : []),
+      ...(corsairs ? [{ type: 'corsair_raider', count: corsairs, distance: 315 }] : []),
+    ]);
+  }
+  spawnCollisionAnchors(ctx, opts.anchorCount ?? 3, 175);
+}
+
+function setupPlanetSlingCourse(ctx, opts = {}) {
+  const sectorId = 'sector_tethys_junction';
+  // The real planet runtime owns The Anvil. Start outside its atmosphere and add only two ordinary
+  // physical route anchors; no Sandbox-only gravity, guidance, or flight behavior is introduced.
+  relocatePlayer(ctx, sectorId, {
+    x: ZONE_TETHYS_ANVIL.center.x - ZONE_TETHYS_ANVIL.radius - 210,
+    z: ZONE_TETHYS_ANVIL.center.z,
+  }, 'sandbox:planet_sling_course');
+  spawnCollisionAnchors(ctx, opts.anchorCount ?? 2, 155);
+}
+
+function setupCrimeInterception(ctx, opts = {}) {
+  const launcher = PQ019_FACILITIES.heist_launcher;
+  relocatePlayer(ctx, PQ019_HEIST_SECTOR_ID, {
+    x: launcher.localPos.x - 210,
+    z: launcher.localPos.z + 65,
+  }, 'sandbox:crime_interception');
+  const owner = sys(ctx, 'heistFacilities');
+  if (!owner) return;
+  if (typeof owner.materializeForSector === 'function') owner.materializeForSector(PQ019_HEIST_SECTOR_ID);
+  if (typeof owner.requestLaunchSchedule === 'function') {
+    const delay = Math.max(1, Math.min(60, Number(opts.launchDelayS) || 8));
+    owner.requestLaunchSchedule({
+      scheduleId: `sandbox-crime-${ctx.state.tick | 0}`,
+      launchAtSimT: (Number(ctx.state.simTime) || 0) + delay,
+    });
+  }
 }
 
 // --------------------------------------------------------------------------------------------
@@ -356,26 +672,42 @@ function equipMasslineHead(ctx, headDefId) {
   return grantAndEquip(ctx, headDefId);
 }
 
-/** Set up the massline range: equip the tractor head, spawn a target, optionally pre-attach the
- *  tether so the player starts already latched and can reel/orbit/throw immediately. */
+/** Set up a default-Massline range. An advanced head is fitted only when the caller explicitly
+ *  requests one; recovery scenarios exercise the shipping base tether rather than hidden tech. */
 function setupMasslineRange(ctx, opts = {}) {
   const helpers = ctx.helpers;
   if (!helpers || typeof helpers.spawnEntity !== 'function') return;
-  // 1. Equip the tractor head (the standard grapple). grantAllModules ran earlier so it's in inv.
-  equipMasslineHead(ctx, 'mod_tractor_beam_m');
+  if (opts.headDefId) equipMasslineHead(ctx, opts.headDefId);
 
-  // 2. Spawn a grappleable target ahead of the player. A heavy asteroid is the canonical lab anchor
-  //    (massline-latch-reel.scenario.json uses asteroid.heavy); it's grappleable and survives.
+  // Spawn a grappleable target ahead of the player. Static ranges use the canonical heavy-rock
+  // shape; the moving range uses an ordinary neutral production ship with initial velocity.
   const player = ctx.state.entities.get(ctx.state.playerId);
   const px = (player && player.pos && player.pos.x) || 0;
   const pz = (player && player.pos && player.pos.z) || 0;
   const distance = Math.max(60, opts.distance || 140);
-  const target = helpers.spawnEntity({
-    type: 'asteroid',
-    pos: { x: px + distance, z: pz },
-    radius: 10, mass: 400, hull: 500, hullMax: 500,
-    data: { typeId: 'ast_metallic', oreHP: 500, oreHPMax: 500 },
-  });
+  const mass = Math.max(1, Number(opts.mass) || 400);
+  let targetSpec;
+  if (opts.movingTarget) {
+    targetSpec = makeShipEntitySpec('ship_mule', {
+      team: 2,
+      factionId: 'faction_dmc',
+      pos: { x: px + distance, z: pz - distance * 0.45 },
+      rot: Math.PI / 2,
+    });
+    targetSpec.vel = { x: 0, z: 42 };
+    targetSpec.data = { ...targetSpec.data, sandboxMovingTarget: true };
+  } else {
+    targetSpec = {
+      type: 'asteroid',
+      pos: { x: px + distance, z: pz },
+      radius: 10,
+      mass,
+      hull: 500,
+      hullMax: 500,
+      data: { typeId: 'ast_metallic', oreHP: 500, oreHPMax: 500, sandboxMasslineAnchor: true },
+    };
+  }
+  const target = helpers.spawnEntity(targetSpec);
   if (!target) return;
 
   // 3. Pre-attach the tether via the combat kernel's attachment service — the same API the live
@@ -391,7 +723,7 @@ function setupMasslineRange(ctx, opts = {}) {
         ownerId: ctx.state.playerId,
         targetId: target.id,
         sourceWorld: { x: px, y: 0, z: pz },
-        targetWorld: { x: px + distance, y: 0, z: pz },
+        targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
       });
     }
   } catch (err) {
@@ -419,6 +751,10 @@ export function applySandboxSetup(ctx, config) {
   // 5. Auto-equip a primary weapon (after inventory is populated).
   if (cfg.autoEquipBestWeapon) autoEquipBestWeapon(ctx);
 
+  // 5b. Named physical-play loadout. Ships remains the only fitting writer; incompatible items
+  //     are granted to inventory rather than forced into an illegal slot.
+  if (cfg.physicsLoadout) applyPhysicsLoadout(ctx, cfg.physicsLoadout);
+
   // 6. Reputation (independent of the above).
   if (cfg.maxReputation) maxReputation(ctx);
 
@@ -426,8 +762,20 @@ export function applySandboxSetup(ctx, config) {
   //    the right place and aren't evicted by the sector swap).
   enterSectorIfSet(ctx, cfg.sectorId);
 
+  // 7b. Scenario staging uses world's public same-sector relocation seam. No raw physics pose
+  //     mutation and no alternate travel/gameplay path.
+  if (cfg.spawnAtZoneId && cfg.sectorId) {
+    relocateToZone(ctx, cfg.sectorId, cfg.spawnAtZoneId, cfg.spawnAtZoneOffset);
+  }
+
   // 8. Enemies (placed relative to the player in the now-current sector).
   if (cfg.spawnEnemies) spawnEnemies(ctx, cfg.spawnEnemies);
+
+  // 8b. Recovery scenarios compose existing systems inside the camera-scale test pocket.
+  if (cfg.physicsSwarm) setupPhysicsSwarm(ctx, cfg.physicsSwarm);
+  if (cfg.planetSlingCourse) setupPlanetSlingCourse(ctx, cfg.planetSlingCourse);
+  if (cfg.crimeInterception) setupCrimeInterception(ctx, cfg.crimeInterception);
+  if (cfg.targetDrones) spawnTargetDrones(ctx, cfg.targetDrones);
 
   // 9. Drill (spawns asteroid + begins + opens screen). Last so it isn't disrupted by sector swap.
   if (cfg.drillOnStart) startDrill(ctx);
@@ -436,7 +784,15 @@ export function applySandboxSetup(ctx, config) {
   //     target lands in the right place; after module grant so the head is in inventory.
   if (cfg.masslineRange) setupMasslineRange(ctx, cfg.masslineRange);
 
-  ctx.bus.emit('toast', { text: 'Sandbox ready', kind: 'success', ttl: 2 });
+  // 11. Camera selection is presentation-owned and snaps only after any authored relocation.
+  if (cfg.cameraCandidate) applyCameraCandidate(ctx, cfg.cameraCandidate);
+
+  const scenario = SCENARIO_PRESETS.find((item) => item.id === cfg.scenarioId);
+  ctx.bus.emit('toast', {
+    text: scenario ? `Sandbox: ${scenario.title} ready` : 'Sandbox ready',
+    kind: 'success',
+    ttl: 2,
+  });
 }
 
 // --------------------------------------------------------------------------------------------
