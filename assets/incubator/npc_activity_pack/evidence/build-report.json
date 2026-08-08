@@ -1,0 +1,862 @@
+{
+  "schema": "spaceface.npcActivityPack.v1",
+  "provenance": {
+    "builderPath": "tools/blender/build_npc_activity_pack.py",
+    "builderSha256AtAssetGeneration": "a895d865cc7b5a9e6406d678a984e0d151711aa6f412905ef17ac1a9517b0ff7",
+    "blenderVersionAtAssetGeneration": null,
+    "gltfGeneratorRecords": [
+      "Khronos glTF Blender I/O v5.1.20"
+    ],
+    "canonicalFullBuildCommandForRevalidation": "blender --background --factory-startup --python tools/blender/build_npc_activity_pack.py -- --render --distances --gallery",
+    "byteReproducibilityStatus": "unverified_blender_version_was_not_captured_rebuild_twice_before_promotion"
+  },
+  "assets": [
+    {
+      "id": "prospector_skiff",
+      "status": "design_candidate",
+      "triangles": 936,
+      "sizeM": [
+        18.175,
+        4.256,
+        4.161
+      ],
+      "parts": 30,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_Stake_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.219,
+          0.158,
+          -0.15
+        ],
+        "halfExtentsM": [
+          9.087,
+          2.128,
+          2.08
+        ]
+      },
+      "bytes": 85488,
+      "sha256": "3deaf4cb113e22b8d4c8e4579e61a53cb4e6af630e7253a585aabff44e4783e4",
+      "role": "prospector",
+      "fiction": "THE_WORKING_FLEET.md \u00a71 / THE_WORKING_TRADES.md \u00a75",
+      "servesJobKind": "miner",
+      "servesTrafficRole": "miner (light variant)",
+      "signals": [
+        "reading_the_dark",
+        "blind_cone",
+        "home_under_rock"
+      ],
+      "workState": "arms unfolded to seam, wand cone lit amber, drums venting dust",
+      "socketPurposes": {
+        "SOCKET_Mining_Front": "blind_cone cut-beam origin (wand tip)",
+        "SOCKET_Stake_Starboard": "claim-stake launch + distress flare origin",
+        "SOCKET_Cargo_Ventral": "filter-drum transfer point"
+      },
+      "lodPlan": "LOD1: drop arms/stake tubes/drums, keep wand+chevron; LOD2: hull+engine+wand silhouette",
+      "render": "assets/incubator/npc_activity_pack/evidence/prospector_skiff.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "ore_barge",
+      "status": "design_candidate",
+      "triangles": 3012,
+      "sizeM": [
+        43.444,
+        8.02,
+        8.307
+      ],
+      "parts": 79,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.722,
+          0.01,
+          2.454
+        ],
+        "halfExtentsM": [
+          21.722,
+          4.01,
+          4.154
+        ]
+      },
+      "bytes": 267368,
+      "sha256": "0970195b2255ed7cedd78c439cbc6e2db3b293686cb9a1bbe57953e29a35eba3",
+      "role": "ore carrier",
+      "fiction": "THE_WORKING_FLEET.md \u00a72",
+      "servesJobKind": "miner (heavy logistics end)",
+      "servesTrafficRole": "miner/hauler bulk class",
+      "signals": [
+        "heavy_burn",
+        "home_under_rock",
+        "spilling_the_count",
+        "stacking"
+      ],
+      "workState": "boom over baskets, floods on, tally lamp stepping its ring",
+      "socketPurposes": {
+        "SOCKET_Work_Boom": "trim-boom scoop tip; tally/transfer VFX origin",
+        "SOCKET_Cargo_Dorsal": "basket field center \u2014 spilling_the_count dust origin"
+      },
+      "variant": "baskets",
+      "lodPlan": "LOD1: merge baskets to solid fills, drop masts; LOD2: spine+bow+drive blocks",
+      "render": "assets/incubator/npc_activity_pack/evidence/ore_barge.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "ore_barge_b",
+      "status": "design_candidate",
+      "triangles": 2028,
+      "sizeM": [
+        43.444,
+        7.57,
+        8.307
+      ],
+      "parts": 41,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.722,
+          0.265,
+          2.454
+        ],
+        "halfExtentsM": [
+          21.722,
+          3.785,
+          4.154
+        ]
+      },
+      "bytes": 174860,
+      "sha256": "d7d3f8d8ca6fdb461b641948896d1bf29a261790ed9316c7f7533b10553a037e",
+      "role": "ore carrier",
+      "fiction": "THE_WORKING_FLEET.md \u00a72",
+      "servesJobKind": "miner (heavy logistics end)",
+      "servesTrafficRole": "miner/hauler bulk class",
+      "signals": [
+        "heavy_burn",
+        "home_under_rock",
+        "spilling_the_count",
+        "stacking"
+      ],
+      "workState": "boom over baskets, floods on, tally lamp stepping its ring",
+      "socketPurposes": {
+        "SOCKET_Work_Boom": "trim-boom scoop tip; tally/transfer VFX origin",
+        "SOCKET_Cargo_Dorsal": "basket field center \u2014 spilling_the_count dust origin"
+      },
+      "variant": "trough",
+      "lodPlan": "LOD1: merge baskets to solid fills, drop masts; LOD2: spine+bow+drive blocks",
+      "render": "assets/incubator/npc_activity_pack/evidence/ore_barge_b.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "volatiles_tanker",
+      "status": "design_candidate",
+      "triangles": 4420,
+      "sizeM": [
+        36.586,
+        7.16,
+        7.665
+      ],
+      "parts": 38,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Coupling_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.043,
+          0.0,
+          1.053
+        ],
+        "halfExtentsM": [
+          18.293,
+          3.58,
+          3.833
+        ]
+      },
+      "bytes": 329924,
+      "sha256": "d3de5944c03e6c5b6a5e867a0a691b1ea7bd5588263a1236f6ab71dcef2bafdc",
+      "role": "volatiles tanker",
+      "fiction": "THE_WORKING_FLEET.md \u00a73",
+      "servesJobKind": "hauler (hazard-cargo variant)",
+      "servesTrafficRole": "tanker (new)",
+      "signals": [
+        "heavy_burn",
+        "clean_burn",
+        "mouth_open (at the BOW coupling)"
+      ],
+      "workState": "probe extended, cage lit white, tank-status lamps walking the spine",
+      "neverShows": "a cutting cone \u2014 amber near your bow from a tanker is wrong",
+      "socketPurposes": {
+        "SOCKET_Coupling_Front": "mouth_open transfer-umbilical origin (bow, not amidships)",
+        "SOCKET_Cargo_Dorsal": "tank-status lamp walk path center"
+      },
+      "variant": "spheres",
+      "lodPlan": "LOD1: drop pipe run/cage bars, keep tanks+bands; LOD2: tanks+truss+drives only",
+      "render": "assets/incubator/npc_activity_pack/evidence/volatiles_tanker.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "volatiles_tanker_b",
+      "status": "design_candidate",
+      "triangles": 2056,
+      "sizeM": [
+        36.586,
+        6.0,
+        7.797
+      ],
+      "parts": 44,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Coupling_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.043,
+          0.0,
+          1.448
+        ],
+        "halfExtentsM": [
+          18.293,
+          3.0,
+          3.898
+        ]
+      },
+      "bytes": 152068,
+      "sha256": "55808935a734444f8e108a60dd36f3e1b819e73b588773ee4ceb120399bebcbc",
+      "role": "volatiles tanker",
+      "fiction": "THE_WORKING_FLEET.md \u00a73",
+      "servesJobKind": "hauler (hazard-cargo variant)",
+      "servesTrafficRole": "tanker (new)",
+      "signals": [
+        "heavy_burn",
+        "clean_burn",
+        "mouth_open (at the BOW coupling)"
+      ],
+      "workState": "probe extended, cage lit white, tank-status lamps walking the spine",
+      "neverShows": "a cutting cone \u2014 amber near your bow from a tanker is wrong",
+      "socketPurposes": {
+        "SOCKET_Coupling_Front": "mouth_open transfer-umbilical origin (bow, not amidships)",
+        "SOCKET_Cargo_Dorsal": "tank-status lamp walk path center"
+      },
+      "variant": "cylinders",
+      "lodPlan": "LOD1: drop pipe run/cage bars, keep tanks+bands; LOD2: tanks+truss+drives only",
+      "render": "assets/incubator/npc_activity_pack/evidence/volatiles_tanker_b.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "scrap_sweeper",
+      "status": "design_candidate",
+      "triangles": 1028,
+      "sizeM": [
+        18.012,
+        7.1,
+        6.863
+      ],
+      "parts": 34,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Aft",
+        "SOCKET_Engine_Main",
+        "SOCKET_Sweep_Front",
+        "SOCKET_Trail_Main",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.798,
+          0.0,
+          0.621
+        ],
+        "halfExtentsM": [
+          9.006,
+          3.55,
+          3.431
+        ]
+      },
+      "bytes": 94244,
+      "sha256": "ecd412bd3fd213d3e0f344c0105848e34e08f3d0587f1a3ce63264e0b10cec6f",
+      "role": "debris sweeper",
+      "fiction": "THE_WORKING_FLEET.md \u00a74",
+      "servesJobKind": "salvor-adjacent (collector); future cleanup kind",
+      "servesTrafficRole": "debris-cleanup (new)",
+      "signals": [
+        "blind_cone (mouth-directed)",
+        "home_under_rock",
+        "spilling_the_count"
+      ],
+      "workState": "throat lit, magnet boom sweeping, cage filling",
+      "neverShows": "shears or umbrellas \u2014 a sweeper collects, it does not cut",
+      "socketPurposes": {
+        "SOCKET_Sweep_Front": "collector intake \u2014 cone/particle sink",
+        "SOCKET_Work_Boom": "magnet head \u2014 pick-up VFX origin",
+        "SOCKET_Cargo_Aft": "cage fill point"
+      },
+      "lodPlan": "LOD1: cage to 4 beams + solid junk mass; LOD2: hull+throat+lips only",
+      "render": "assets/incubator/npc_activity_pack/evidence/scrap_sweeper.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "repair_tender",
+      "status": "design_candidate",
+      "triangles": 1632,
+      "sizeM": [
+        23.756,
+        12.534,
+        6.875
+      ],
+      "parts": 50,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Umbilical_Dorsal",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.25,
+          -1.468,
+          0.963
+        ],
+        "halfExtentsM": [
+          11.878,
+          6.267,
+          3.438
+        ]
+      },
+      "bytes": 149008,
+      "sha256": "5f24a6db5d6ce6a55116db663f149af82cebc4a3219913705d5714aa2118aad5",
+      "role": "repair tender",
+      "fiction": "THE_WORKING_FLEET.md \u00a75 / THE_WORKING_TRADES.md \u00a73",
+      "servesJobKind": "tender",
+      "servesTrafficRole": "tender",
+      "signals": [
+        "hull_open",
+        "spine_wake",
+        "clean_burn"
+      ],
+      "workState": "boom out, petals lit blue-white, red corners on, bar deployed \u2014 four simultaneous silhouette changes",
+      "resolves": "fiction\u2194code hull contradiction (TRADES says Mule-frame; runtime uses hull_multirole)",
+      "socketPurposes": {
+        "SOCKET_Work_Boom": "weld-stitch origin (hull_open men-at-work seam)",
+        "SOCKET_Umbilical_Dorsal": "soft-dock collar / parts transfer"
+      },
+      "lodPlan": "LOD1: rack to one striped slab, drop petals/rails; LOD2: hull+drum+boom stub",
+      "render": "assets/incubator/npc_activity_pack/evidence/repair_tender.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "yard_tug",
+      "status": "design_candidate",
+      "triangles": 956,
+      "sizeM": [
+        16.8,
+        14.2,
+        8.25
+      ],
+      "parts": 33,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Engine_Main",
+        "SOCKET_Push_Front",
+        "SOCKET_Tow_Aft",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.3,
+          0.0,
+          1.475
+        ],
+        "halfExtentsM": [
+          8.4,
+          7.1,
+          4.125
+        ]
+      },
+      "bytes": 90240,
+      "sha256": "218375332403b74146d719dcb40287b861afbb5fb27e801899644051fac2b5e3",
+      "role": "yard tug / lighter",
+      "fiction": "THE_WORKING_FLEET.md \u00a76 / THE_WORKING_TRADES.md \u00a76",
+      "servesJobKind": "none yet \u2014 full dossier, zero code presence; future dock-approach choreography",
+      "servesTrafficRole": "tug (new)",
+      "signals": [
+        "stacking (flown for the OTHER hull)",
+        "heavy_burn (under tow, honest combined mass)"
+      ],
+      "workState": "cradle floods on, drum turning, nudge thrusters ticking in count",
+      "socketPurposes": {
+        "SOCKET_Push_Front": "client contact point \u2014 cradle kiss",
+        "SOCKET_Tow_Aft": "tow-line origin (drum)"
+      },
+      "lodPlan": "LOD1: drop pads/shoes/beacon, keep drives+cradle arms; LOD2: spine+two drive cylinders",
+      "render": "assets/incubator/npc_activity_pack/evidence/yard_tug.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "salvage_cutter",
+      "status": "design_candidate",
+      "triangles": 1360,
+      "sizeM": [
+        19.105,
+        8.42,
+        5.356
+      ],
+      "parts": 42,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Aft",
+        "SOCKET_Engine_Main",
+        "SOCKET_Tether_Port",
+        "SOCKET_Tether_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.069,
+          0.0,
+          0.878
+        ],
+        "halfExtentsM": [
+          9.553,
+          4.21,
+          2.678
+        ]
+      },
+      "bytes": 117484,
+      "sha256": "755ff601243d4f60d0c442f5d2a6ba5c7032153b80a16a97abba6be6219bce28",
+      "role": "salvage cutter",
+      "fiction": "THE_WORKING_FLEET.md \u00a77 / THE_WORKING_TRADES.md \u00a72",
+      "servesJobKind": "salvor",
+      "servesTrafficRole": "salvor",
+      "signals": [
+        "picking_the_bones",
+        "home_under_rock",
+        "spilling_the_count"
+      ],
+      "workState": "umbrellas out and lit, shears at the seam, scrap arcing into the cradle",
+      "resolves": "fiction\u2194code hull contradiction (salvor currently reads as a miner via hull_miner)",
+      "condition": "worn",
+      "socketPurposes": {
+        "SOCKET_Work_Boom": "cut-arc origin (shear jaws)",
+        "SOCKET_Tether_Port": "wrangle tether origin",
+        "SOCKET_Tether_Starboard": "wrangle tether origin",
+        "SOCKET_Cargo_Aft": "scrap-cradle fill point"
+      },
+      "lodPlan": "LOD1: drop chain/scrap/patches, keep umbrellas+shears; LOD2: hull+one umbrella+jaw wedge",
+      "render": "assets/incubator/npc_activity_pack/evidence/salvage_cutter.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "salvage_cutter_damaged",
+      "status": "design_candidate",
+      "triangles": 1268,
+      "sizeM": [
+        19.105,
+        8.42,
+        5.356
+      ],
+      "parts": 39,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Aft",
+        "SOCKET_Engine_Main",
+        "SOCKET_Tether_Port",
+        "SOCKET_Tether_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Work_Boom"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.069,
+          0.0,
+          0.878
+        ],
+        "halfExtentsM": [
+          9.553,
+          4.21,
+          2.678
+        ]
+      },
+      "bytes": 109832,
+      "sha256": "b0eb9b182ca96547fd645406be03806ff979d86c4bed973fd4326a08c67094a7",
+      "role": "salvage cutter",
+      "fiction": "THE_WORKING_FLEET.md \u00a77 / THE_WORKING_TRADES.md \u00a72",
+      "servesJobKind": "salvor",
+      "servesTrafficRole": "salvor",
+      "signals": [
+        "picking_the_bones",
+        "home_under_rock",
+        "spilling_the_count"
+      ],
+      "workState": "umbrellas out and lit, shears at the seam, scrap arcing into the cradle",
+      "resolves": "fiction\u2194code hull contradiction (salvor currently reads as a miner via hull_miner)",
+      "condition": "damaged",
+      "socketPurposes": {
+        "SOCKET_Work_Boom": "cut-arc origin (shear jaws)",
+        "SOCKET_Tether_Port": "wrangle tether origin",
+        "SOCKET_Tether_Starboard": "wrangle tether origin",
+        "SOCKET_Cargo_Aft": "scrap-cradle fill point"
+      },
+      "lodPlan": "LOD1: drop chain/scrap/patches, keep umbrellas+shears; LOD2: hull+one umbrella+jaw wedge",
+      "render": "assets/incubator/npc_activity_pack/evidence/salvage_cutter_damaged.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "survey_pin",
+      "status": "design_candidate",
+      "triangles": 996,
+      "sizeM": [
+        18.712,
+        9.169,
+        5.05
+      ],
+      "parts": 30,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Engine_Main",
+        "SOCKET_Scan_Pin",
+        "SOCKET_Sensor_Dorsal",
+        "SOCKET_Trail_Main"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.456,
+          0.0,
+          1.375
+        ],
+        "halfExtentsM": [
+          9.356,
+          4.584,
+          2.525
+        ]
+      },
+      "bytes": 91104,
+      "sha256": "77ea9e11b384db7e5b5070e85a69e0e126e972172fabaca02ee9cd00b8bb4a50",
+      "role": "surveyor",
+      "fiction": "THE_WORKING_FLEET.md \u00a78 / THE_WORKING_TRADES.md \u00a71",
+      "servesJobKind": "surveyor",
+      "servesTrafficRole": "surveyor",
+      "signals": [
+        "reading_the_dark (every phase but the dock)"
+      ],
+      "workState": "boom crabbed 90\u00b0, green pulse-ring off the pin, paddles feathering",
+      "socketPurposes": {
+        "SOCKET_Scan_Pin": "pulse_ring origin; the pin the reaction keeps between you and the belly",
+        "SOCKET_Sensor_Dorsal": "scan-sweep lamp mount"
+      },
+      "lodPlan": "LOD1: drop gel drums/instruments, keep spine+paddles+mast; LOD2: hull+spine line",
+      "render": "assets/incubator/npc_activity_pack/evidence/survey_pin.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "liner_shuttle",
+      "status": "design_candidate",
+      "triangles": 1076,
+      "sizeM": [
+        30.097,
+        8.4,
+        8.317
+      ],
+      "parts": 21,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.048,
+          0.0,
+          0.227
+        ],
+        "halfExtentsM": [
+          15.048,
+          4.2,
+          4.159
+        ]
+      },
+      "bytes": 89036,
+      "sha256": "931248455ac297622408633ed0179b5843ae940f35974dde1d225ebd02c7de01",
+      "role": "passenger liner",
+      "fiction": "THE_WORKING_FLEET.md \u00a79",
+      "servesJobKind": "none (schedule IS the work)",
+      "servesTrafficRole": "express / civilian transport",
+      "signals": [
+        "clean_burn (fast and level)",
+        "stacking (long flat buttered approach)"
+      ],
+      "workState": "none \u2014 a liner working looks like a liner cruising",
+      "neverShows": "external tools of any kind",
+      "reference": "assets/ships/massline_express_liner_v1/ (reference-only art)",
+      "socketPurposes": {
+        "SOCKET_Cargo_Ventral": "baggage pannier transfer"
+      },
+      "lodPlan": "LOD1: drop pannier frames/mark, keep windows; LOD2: fuselage+nacelles, windows as one strip",
+      "render": "assets/incubator/npc_activity_pack/evidence/liner_shuttle.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "customs_cutter",
+      "status": "design_candidate",
+      "triangles": 896,
+      "sizeM": [
+        22.778,
+        7.26,
+        6.183
+      ],
+      "parts": 32,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Dock_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Inspection_Front",
+        "SOCKET_Sensor_Dorsal",
+        "SOCKET_Trail_Main"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.461,
+          0.0,
+          0.892
+        ],
+        "halfExtentsM": [
+          11.389,
+          3.63,
+          3.092
+        ]
+      },
+      "bytes": 82440,
+      "sha256": "7ebe5c4ac4bf4cb6bb5487ef79d91faac11a35a22a7e30c2aab79d8c70e9559e",
+      "role": "customs / interdiction",
+      "fiction": "THE_WORKING_FLEET.md \u00a710",
+      "servesJobKind": "patrol (law variant)",
+      "servesTrafficRole": "customs (new); patrol_scan encounter surface",
+      "signals": [
+        "on_the_pin (regulated blue-white metronome)",
+        "inspection lock \u2014 sweep lamp STOPPED on the client"
+      ],
+      "workState": "inspection frame lit arc-blue, sweep locked instead of sweeping",
+      "neverShows": "cargo of any kind",
+      "socketPurposes": {
+        "SOCKET_Inspection_Front": "inspection emitter frame center \u2014 scan-lock beam origin",
+        "SOCKET_Dock_Ventral": "boarding collar"
+      },
+      "lodPlan": "LOD1: drop struts, keep hoop+fin; LOD2: wedge+fin silhouette",
+      "render": "assets/incubator/npc_activity_pack/evidence/customs_cutter.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "rescue_lifter",
+      "status": "design_candidate",
+      "triangles": 1128,
+      "sizeM": [
+        22.602,
+        6.62,
+        8.324
+      ],
+      "parts": 50,
+      "sockets": [
+        "SOCKET_Bay_Front",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Hoist_Dorsal",
+        "SOCKET_Trail_Main"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.335,
+          0.0,
+          0.734
+        ],
+        "halfExtentsM": [
+          11.301,
+          3.31,
+          4.162
+        ]
+      },
+      "bytes": 109132,
+      "sha256": "f4584e2e2798cf5893e2f7543d3140cac88ed054a3217742492610e7786a6d07",
+      "role": "rescue / emergency",
+      "fiction": "THE_WORKING_FLEET.md \u00a711",
+      "servesJobKind": "none yet (responder to breaking_the_pattern)",
+      "servesTrafficRole": "rescue",
+      "signals": [
+        "responder code: red-white STEADY where the victim alternates",
+        "floods on approach \u2014 \"we see you\""
+      ],
+      "workState": "bay mouth open and lit, grapple out, floods up, red-white steady",
+      "costOfWrong": "faking the lifter's bars is the one forgery every faction hangs for",
+      "socketPurposes": {
+        "SOCKET_Bay_Front": "casualty intake \u2014 soft-dock target",
+        "SOCKET_Hoist_Dorsal": "stretcher basket / grapple line origin"
+      },
+      "lodPlan": "LOD1: drop basket/floods masts, keep bars+bay; LOD2: hull+bay+bar strips",
+      "render": "assets/incubator/npc_activity_pack/evidence/rescue_lifter.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "construction_rig",
+      "status": "design_candidate",
+      "triangles": 1636,
+      "sizeM": [
+        44.052,
+        14.2,
+        11.898
+      ],
+      "parts": 57,
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Engine_Main",
+        "SOCKET_Hoist_Aux",
+        "SOCKET_Hoist_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.026,
+          0.0,
+          2.749
+        ],
+        "halfExtentsM": [
+          22.026,
+          7.1,
+          5.949
+        ]
+      },
+      "bytes": 142452,
+      "sha256": "a51cef1bcd8ad7135d0f175601f110da501f48f1ab6666cb603c352ead236852",
+      "role": "construction barge",
+      "fiction": "THE_WORKING_FLEET.md \u00a712",
+      "servesJobKind": "none yet (hull_open semantics at fleet scale)",
+      "servesTrafficRole": "construction (new); convoy_industrial_route poi family",
+      "signals": [
+        "hull_open (fleet scale)",
+        "on_the_pin (holding over the site)"
+      ],
+      "workState": "cranes traversed outboard, segment mid-hoist, weld stars, red corners",
+      "idleState": "cranes parked inboard \u2014 the silhouette folds from site to ship",
+      "socketPurposes": {
+        "SOCKET_Hoist_Main": "primary crane hook \u2014 hoist VFX origin",
+        "SOCKET_Hoist_Aux": "second crane hook",
+        "SOCKET_Cargo_Dorsal": "prefab rack transfer point"
+      },
+      "lodPlan": "LOD1: drop diagonals/lines/rails, keep chords+cranes+spool; LOD2: spine slab+two masts+spool",
+      "render": "assets/incubator/npc_activity_pack/evidence/construction_rig.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    }
+  ]
+}
