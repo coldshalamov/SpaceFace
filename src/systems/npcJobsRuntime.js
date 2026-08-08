@@ -139,6 +139,14 @@ export const npcJobsRuntime = {
       // place. On re-entry the sector's jobs advance by the away time and re-link to the hull.
       this.bus.on('sector:exit', (p) => this._onSectorExit(p || {}));
       this.bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
+      // Continue rematerializes the saved sector before this system's deserialize() restores the
+      // job bag (saveSystem restore step 9 versus step 13). The earlier sector:enter therefore
+      // cannot see those freshly restored virtual jobs. Re-run the same bounded relink pass after
+      // every owner has deserialized and the live world-record hulls are already present.
+      this.bus.on('save:loaded', () => {
+        const sectorId = this.state.world && this.state.world.currentSectorId;
+        if (sectorId) this._onSectorEnter({ sectorId });
+      });
       // Physics publishes the hash before several later systems may spawn. Keep those stable IDs as
       // one-tick candidates so this owner sees the same live hulls the former entityList scan saw.
       this.bus.on('entity:spawned', (p) => this._threatQueries.recordSpawn(p || {}));
@@ -636,6 +644,16 @@ export const npcJobsRuntime = {
   },
 
   deserialize(data) {
+    // World re-entry happens before this restore step. An outgoing virtual job can therefore
+    // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
+    // below is authoritative; clear every live marker owned by this runtime before replacing it,
+    // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
+    for (const entity of this.state.entityList || []) {
+      if (entity && entity.data && typeof entity.data.jobId === 'string'
+        && entity.data.jobId.startsWith('job:')) {
+        delete entity.data.jobId;
+      }
+    }
     const byId = {};
     const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
     for (const jobId of Object.keys(src)) {

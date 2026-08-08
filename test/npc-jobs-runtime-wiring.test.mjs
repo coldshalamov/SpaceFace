@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { traffic } from '../src/systems/traffic.js';
+import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
 import { NPC_JOB_PHASE, NPC_JOB_KIND } from '../src/systems/npcJobs.js';
 
@@ -262,16 +263,22 @@ test('flee: a nearby hostile interrupts the job into flee; removing it resumes t
 // ═══ THE REAL Continue path: saveSystem.serialize → loadEnvelope with the runtime REGISTERED ═══════
 // The other save test round-trips the bag directly; this exercises the production save envelope +
 // destructive restore end-to-end (the path the browser save→Continue capture will exercise).
-test('save/Continue (real envelope): the live job persists through saveSystem.serialize + loadEnvelope, restored virtual', () => {
-  const sim = createSimulation({ seed: 7, systems: [npcJobsRuntime, save] });
+test('save/Continue (real envelope): a restored job relinks after its durable hull rematerializes before deserialize', () => {
+  const sectorId = 'sector_helios_prime';
+  const sim = createSimulation({ seed: 7, systems: [world, npcJobsRuntime, save] });
   sim.state.mode = 'flight';
   sim.state.world = sim.state.world || {};
-  sim.state.world.currentSectorId = 'sector_a';
+  sim.state.world.currentSectorId = sectorId;
   // A real save envelope requires a player entity (the loadEnvelope normalizer rejects `no_player`).
   const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 6, flags: { persistent: true } });
   sim.state.playerId = player.id;
-  const e = hull(sim, 'rec-continue');
-  sim.helpers.npcJobs.assign(e, minerSpec());
+  const e = hull(sim, 'rec-continue', { x: 120, z: -40 }, 2, sectorId);
+  e.homeSectorId = sectorId;
+  e.data.homeSectorId = sectorId;
+  e.data.trafficRole = 'miner';
+  e.data.durable = true;
+  e.data.defId = 'ship_pelican';
+  sim.helpers.npcJobs.assign(e, minerSpec({ sectorId }));
   stepSeconds(sim, 8); // mid-loop
   const jobs = sim.registry.get('npcJobsRuntime');
   const beforePhase = jobs._byId()['job:rec-continue'].job.phase;
@@ -285,15 +292,81 @@ test('save/Continue (real envelope): the live job persists through saveSystem.se
   assert.ok(savedJob && savedJob.job, 'the LIVE job is serialized (registered runtime, not the {} unregistered fallback)');
   assert.equal(savedJob.job.kind, NPC_JOB_KIND.MINER);
   assert.equal(savedJob.lastAdvanceSimT, beforeLast, 'the away-clock anchor persists in the envelope');
+  assert.ok(envelope.data.world.records.byId['rec-continue'],
+    'world capture persists the same durable hull identity before Continue');
 
-  // Continue: destructive restore. Entities are cleared → the job comes back VIRTUAL to re-link later.
+  // Continue: world rematerializes the durable hull during restore step 9, then the job bag is
+  // deserialized (virtual) during step 13. save:loaded is the first truthful join point.
   const loaded = saveSys.loadEnvelope(JSON.parse(JSON.stringify(envelope)), 'test-continue');
   assert.equal(loaded, true, 'loadEnvelope succeeds');
   const back = jobs._byId()['job:rec-continue'];
   assert.ok(back, 'the job survived Continue');
   assert.equal(back.job.phase, beforePhase, 'phase preserved across Continue');
-  assert.equal(back.entityId, null, 'restored virtual (re-links to the rematerialized hull on next enter)');
-  assert.equal(back.job.materialized, false);
+  assert.ok(sim.state.world.records.byId['rec-continue'],
+    `world retained the durable record through Continue; records=${Object.keys(sim.state.world.records.byId).join(',')}`);
+  const restoredHull = sim.state.entityList.find((candidate) => candidate && candidate.alive
+    && candidate.data && candidate.data.worldRecordId === 'rec-continue');
+  assert.ok(restoredHull, 'world rematerialized the durable hull during the same Continue');
+  assert.equal(back.entityId, restoredHull.id, 'save:loaded relinks to the already-rematerialized hull');
+  assert.equal(restoredHull.data.jobId, 'job:rec-continue');
+  assert.equal(back.job.materialized, true, 'the restored current-sector job resumes immediately');
+  const stable = {
+    entityId: back.entityId,
+    phase: back.job.phase,
+    routeIndex: back.job.routeIndex,
+    progress: back.job.progress,
+    loopCount: back.job.loopCount,
+    lastAdvanceSimT: back.lastAdvanceSimT,
+  };
+  sim.bus.emit('save:loaded', { slot: 'repeat-proof' });
+  sim.bus.emit('sector:enter', { sectorId });
+  assert.deepEqual({
+    entityId: back.entityId,
+    phase: back.job.phase,
+    routeIndex: back.job.routeIndex,
+    progress: back.job.progress,
+    loopCount: back.job.loopCount,
+    lastAdvanceSimT: back.lastAdvanceSimT,
+  }, stable, 'repeated lifecycle notifications neither relink nor advance an already-linked job twice');
+});
+
+test('save/Continue: an outgoing virtual job cannot leave a phantom hull marker when the incoming bag is empty', () => {
+  const sectorId = 'sector_helios_prime';
+  const sim = createSimulation({ seed: 11, systems: [world, npcJobsRuntime, save] });
+  sim.state.mode = 'flight';
+  sim.state.world.currentSectorId = sectorId;
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 6, flags: { persistent: true },
+  });
+  sim.state.playerId = player.id;
+  const durable = hull(sim, 'rec-stale', { x: 160, z: 20 }, 2, sectorId);
+  durable.homeSectorId = sectorId;
+  durable.data.homeSectorId = sectorId;
+  durable.data.trafficRole = 'miner';
+  durable.data.durable = true;
+  durable.data.defId = 'ship_pelican';
+
+  // This is the incoming checkpoint: it contains the durable hull but no NPC job.
+  const saveSys = sim.registry.get('save');
+  const envelope = saveSys.serialize('incoming-empty-jobs');
+  assert.deepEqual(envelope.data.npcJobs.byId, {});
+  assert.ok(envelope.data.world.records.byId['rec-stale']);
+
+  // The outgoing run later acquired and virtualized a job. During Continue's early world re-entry,
+  // that old virtual record can see the incoming hull before the empty saved bag is deserialized.
+  sim.helpers.npcJobs.assign(durable, minerSpec({ sectorId }));
+  sim.bus.emit('sector:exit', { sectorId });
+  const outgoing = sim.registry.get('npcJobsRuntime')._byId()['job:rec-stale'];
+  assert.ok(outgoing && outgoing.entityId === null, 'outgoing job is virtual and eligible for the early relink');
+
+  assert.equal(saveSys.loadEnvelope(JSON.parse(JSON.stringify(envelope)), 'incoming-empty-jobs'), true);
+  assert.deepEqual(sim.registry.get('npcJobsRuntime')._byId(), {}, 'the incoming empty bag is authoritative');
+  const restoredHull = sim.state.entityList.find((candidate) => candidate && candidate.alive
+    && candidate.data && candidate.data.worldRecordId === 'rec-stale');
+  assert.ok(restoredHull, 'incoming durable hull rematerialized');
+  assert.equal(restoredHull.data.jobId, undefined,
+    'deserialize removes the outgoing runtime marker instead of leaving traffic permanently yielded');
 });
 
 test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)', () => {
