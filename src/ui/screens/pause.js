@@ -8,6 +8,7 @@ import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { IS_DEV } from '../../core/devMode.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -386,6 +387,9 @@ export const pauseScreen = {
     if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
+    // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
+    // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'));
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({

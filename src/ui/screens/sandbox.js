@@ -12,7 +12,13 @@
 import { IS_DEV } from '../../core/devMode.js';
 import { SHIPS } from '../../data/ships.js';
 import { SECTORS } from '../../data/sectors.js';
-import { SCENARIO_PRESETS, requestSandboxGame } from '../sandbox/sandboxSetup.js';
+import { WEAPONS } from '../../data/weapons.js';
+import { MODULES } from '../../data/modules.js';
+import { ENEMY_TYPES } from '../../data/enemies.js';
+import {
+  SCENARIO_PRESETS, requestSandboxGame,
+  giveAndEquipItem, spawnEnemyNow, spawnTargetsNow,
+} from '../sandbox/sandboxSetup.js';
 
 const STYLE_ID = 'sf-sandbox-style';
 
@@ -51,9 +57,23 @@ function injectStyle() {
     color: var(--ink, #d3e6ff); font-size: var(--t-sm, 13px);
   }
   .sf-sandbox-launch { margin-top: 16px; }
+  .sf-sandbox-livehint {
+    font-size: var(--t-xs, 12px); color: var(--ink-mute, #5a7aa0);
+    font-style: italic; margin-bottom: 8px;
+  }
+  .sf-sandbox-live { display: flex; flex-direction: column; gap: 8px; }
+  .sf-sandbox-picker { display: grid; grid-template-columns: 70px 1fr max-content; gap: 8px; align-items: center; }
+  .sf-sandbox-picker__label { color: var(--ink-dim, #84a0c8); font-size: var(--t-xs, 12px); }
+  .sf-sandbox-picker select {
+    background: var(--panel-2, #111d30); color: var(--ink, #d3e6ff);
+    border: 1px solid var(--panel-edge, #1d3350); border-radius: 4px;
+    padding: 5px 7px; font-family: var(--mono); font-size: 12px; min-width: 0;
+  }
+  .sf-sandbox-picker button:disabled { opacity: .45; cursor: not-allowed; }
   @media (max-width: 560px) {
     .sf-sandbox-cards { grid-template-columns: 1fr; }
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
+    .sf-sandbox-picker { grid-template-columns: 1fr; }
   }
   `;
   document.head.appendChild(s);
@@ -64,6 +84,17 @@ function el(tag, cls, text) {
   if (cls) e.className = cls;
   if (text != null) e.textContent = text;
   return e;
+}
+
+/** Build a labeled picker row: [label] [select?] [action button]. select may be null (button-only). */
+function pickerRow(labelText, select, actionBtn) {
+  const row = document.createElement('div');
+  row.className = 'sf-sandbox-picker';
+  const lbl = el('span', 'sf-sandbox-picker__label', labelText);
+  row.appendChild(lbl);
+  if (select) row.appendChild(select);
+  if (actionBtn) row.appendChild(actionBtn);
+  return row;
 }
 
 function getManager(ctx) {
@@ -182,6 +213,76 @@ export const sandboxScreen = {
     });
     rootEl.appendChild(launch);
 
+    // --- Live Tools (in-flight only) ---
+    // These mutate the RUNNING game directly via system writers — they don't relaunch. Disabled
+    // until a game is in flight; onShow() re-checks the mode and enables them.
+    rootEl.appendChild(el('div', 'sf-section-h', 'LIVE TOOLS (use during flight)'));
+    const liveHint = el('div', 'sf-sandbox-livehint',
+      'Launch a game first, then re-open this screen (Esc → Sandbox) to use these.');
+    rootEl.appendChild(liveHint);
+    sandboxScreen._liveHintEl = liveHint;
+
+    const live = el('div', 'sf-sandbox-live');
+
+    // Weapon picker + Give & Equip
+    const weaponSel = document.createElement('select');
+    for (const w of WEAPONS) {
+      const o = document.createElement('option');
+      o.value = w.id;
+      o.textContent = w.name + ' — ' + w.size + ' ' + w.damageType + ' (dps ' + (w.dps || '?') + ')';
+      weaponSel.appendChild(o);
+    }
+    const giveWeaponBtn = el('button', 'sf-btn', 'Give & Equip');
+    giveWeaponBtn.type = 'button';
+    giveWeaponBtn.addEventListener('click', () => {
+      if (weaponSel.value) giveAndEquipItem(sandboxScreen._ctx, weaponSel.value);
+    });
+
+    // Module picker + Give & Equip
+    const moduleSel = document.createElement('select');
+    for (const m of MODULES) {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = m.name + ' — ' + m.slotType + ' ' + m.size;
+      moduleSel.appendChild(o);
+    }
+    const giveModuleBtn = el('button', 'sf-btn', 'Give & Equip');
+    giveModuleBtn.type = 'button';
+    giveModuleBtn.addEventListener('click', () => {
+      if (moduleSel.value) giveAndEquipItem(sandboxScreen._ctx, moduleSel.value);
+    });
+
+    // Enemy picker + Spawn
+    const enemySel = document.createElement('select');
+    for (const e of ENEMY_TYPES) {
+      const o = document.createElement('option');
+      o.value = e.id;
+      o.textContent = e.name + (e.aiArchetype ? ' (' + e.aiArchetype + ')' : '');
+      enemySel.appendChild(o);
+    }
+    enemySel.value = 'wasp_swarmer';
+    const spawnEnemyBtn = el('button', 'sf-btn', 'Spawn 1');
+    spawnEnemyBtn.type = 'button';
+    spawnEnemyBtn.addEventListener('click', () => {
+      if (enemySel.value) spawnEnemyNow(sandboxScreen._ctx, enemySel.value, 1);
+    });
+
+    // Target drones button (no picker — fixed inert drone)
+    const spawnTargetsBtn = el('button', 'sf-btn', 'Spawn 3 target drones');
+    spawnTargetsBtn.type = 'button';
+    spawnTargetsBtn.addEventListener('click', () => {
+      spawnTargetsNow(sandboxScreen._ctx, 3);
+    });
+
+    live.appendChild(pickerRow('Weapon', weaponSel, giveWeaponBtn));
+    live.appendChild(pickerRow('Module', moduleSel, giveModuleBtn));
+    live.appendChild(pickerRow('Enemy', enemySel, spawnEnemyBtn));
+    live.appendChild(pickerRow('Targets', null, spawnTargetsBtn));
+    rootEl.appendChild(live);
+
+    // Stash refs for onShow to enable/disable based on flight mode.
+    sandboxScreen._liveEls = [weaponSel, moduleSel, enemySel, giveWeaponBtn, giveModuleBtn, spawnEnemyBtn, spawnTargetsBtn];
+
     // --- Back ---
     const back = el('button', 'sf-btn', 'Back');
     back.type = 'button';
@@ -194,7 +295,19 @@ export const sandboxScreen = {
     sandboxScreen._ctx = ctx;
   },
 
-  onShow() {},
+  onShow(ctx) {
+    // Live tools need a running game (a player entity exists). Both 'flight' and 'paused' count —
+    // the sandbox is reachable from the pause menu, where mode is 'paused' but the game is live.
+    // Mode flips to 'menu' only on the title screen / game-over, where no player entity exists.
+    const c = ctx || sandboxScreen._ctx;
+    const inGame = !!(c && c.state && c.state.playerId && c.state.entities.get(c.state.playerId));
+    if (sandboxScreen._liveEls) {
+      for (const elx of sandboxScreen._liveEls) { elx.disabled = !inGame; }
+    }
+    if (sandboxScreen._liveHintEl) {
+      sandboxScreen._liveHintEl.style.display = inGame ? 'none' : '';
+    }
+  },
   onHide() {},
   refresh() {},
 };
