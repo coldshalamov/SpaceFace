@@ -231,6 +231,12 @@ test('the current attribution entry is broker-gated before either headed runtime
   const runnerAllocation = probe.indexOf('allocateOutputDir', runner);
   assert.ok(runner >= 0 && runnerGate > runner && runnerGate < runnerAllocation,
     'the library runner itself must consume authority before allocating artifacts or launching');
+  assert.match(probe, /PERFORMANCE_REGISTERED_SCENARIO_IDS/,
+    'specialized packet scenarios must be recognized without expanding PERFORMANCE_SCENARIO_IDS defaults');
+  assert.match(probe, /finally \{[\s\S]*restoreScenario\(page, routeTag, log\)/,
+    'scenario authority restoration remains failure-atomic around every measurement window');
+  assert.match(probe.slice(runner), /runBrowserPublicRoute\(\{[\s\S]*?dockTimeoutMs,[\s\S]*?seed,/,
+    'the broker-fixed seed must reach the real New Game route rather than only the evidence metadata');
 });
 
 test('direct acceptance exits before runtime launch when no broker claim is present', () => {

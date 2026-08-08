@@ -5,6 +5,8 @@ import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 
 import {
   PERFORMANCE_CLOSURE_SCHEMA,
+  PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS,
+  PERFORMANCE_REGISTERED_SCENARIO_IDS,
   PERFORMANCE_SCENARIO_IDS,
   PERFORMANCE_WINDOW_SCHEMA,
   buildPerformanceClosureReport,
@@ -209,6 +211,19 @@ test('scenario matrix covers every closure workload and exact fleet scales', () 
   assert.equal(performanceScenario('jump_asset_admission').pipelinePolicy, 'admission');
   assert.equal(performanceScenario('flight_steady').gpuTimingPolicy, 'required');
   assert.equal(performanceScenario('flight_steady').pipelinePolicy, 'stable');
+  assert.deepEqual(PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS, [
+    'presentation_world_legacy_current',
+    'presentation_world_dense_5x',
+    'presentation_world_churn',
+    'presentation_world_rebase',
+  ]);
+  for (const id of PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS) {
+    assert.equal(PERFORMANCE_SCENARIO_IDS.includes(id), false, `${id} must not expand the default closure matrix`);
+    assert.equal(PERFORMANCE_REGISTERED_SCENARIO_IDS.includes(id), true, `${id} must remain explicitly registered`);
+    assert.equal(performanceScenario(id).presentationWorldMode != null, true);
+  }
+  assert.equal(PERFORMANCE_REGISTERED_SCENARIO_IDS.length,
+    PERFORMANCE_SCENARIO_IDS.length + PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS.length);
   assert.throws(() => resolvePerformanceScenarios(['unknown']), /unknown performance scenario/);
 });
 

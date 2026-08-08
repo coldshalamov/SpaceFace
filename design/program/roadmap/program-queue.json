@@ -4803,10 +4803,31 @@
         "browser-gpu",
         "performance-evidence"
       ],
-      "paths": [],
-      "checks": [],
+      "paths": [
+        "design/program/roadmap/active/PQ-038.md",
+        "design/program/roadmap/program-queue.json",
+        "scripts/lib/performanceClosureContracts.mjs",
+        "scripts/lib/performanceScenarioDriver.mjs",
+        "scripts/lib/releaseSoakProbe.mjs",
+        "scripts/lib/performancePresentationWorldAcceptance.mjs",
+        "scripts/check-performance-presentation-world.mjs",
+        "scripts/validation-manifests/performance-presentation-world-browser.mjs",
+        "scripts/validation-manifests/performance-presentation-world-electron.mjs",
+        "test/performance-closure-contracts.test.mjs",
+        "test/performance-scenario-driver.test.mjs",
+        "test/performance-attribution-runtime-matrix.test.mjs",
+        "test/performance-presentation-world-acceptance.test.mjs",
+        "test/performance-presentation-world-manifests.test.mjs"
+      ],
+      "checks": [
+        "node --test test/performance-presentation-world-acceptance.test.mjs test/performance-presentation-world-manifests.test.mjs",
+        "node --test test/performance-closure-contracts.test.mjs test/performance-scenario-driver.test.mjs test/performance-attribution-runtime-matrix.test.mjs",
+        "node scripts/validation-broker-cli.mjs --manifest performance-presentation-world-browser",
+        "node scripts/validation-broker-cli.mjs --manifest performance-presentation-world-electron",
+        "node scripts/check-performance-presentation-world.mjs"
+      ],
       "receiptRefs": [],
-      "brief": "Close native visual parity, lifecycle, culling, and entity-scale performance.",
+      "brief": "The support-only paired Browser/source-Electron harness preserves the literal same-candidate dense@5B publication criterion through a temporary legacy comparator and raw fail-closed lifecycle/rebase/cleanup evidence. It deliberately remains non-terminal: route-scoped moving/far/churn/rebase/context 5x, dense combat, travel, damage/effects, authored admission, save/Continue, exact attachment/dynamic-closure and downstream-pool output, rebuild, PresentationWorld context-loss resource/generation soak, matched image/temporal parity, executable adapter-failure proof, and packaged-Electron evidence remain open. Current churn is 2B and rebase/context are B, so they cannot close their separate 5x cells. The checker returns partial/nonzero and cannot consume a terminal acceptance claim from an unscoped flag.",
       "blocker": null
     },
     {

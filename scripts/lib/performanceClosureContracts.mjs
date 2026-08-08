@@ -94,10 +94,49 @@ const SCENARIOS = [
   }),
 ];
 
+const PRESENTATION_WORLD_SCENARIOS = [
+  scenario('presentation_world_legacy_current', 'presentation-world-legacy-current', {
+    injectedState: true,
+    holdsMeasuredPose: true,
+    presentationWorldMode: 'legacy-current',
+  }),
+  scenario('presentation_world_dense_5x', 'presentation-world-dense-5x', {
+    injectedState: true,
+    holdsMeasuredPose: true,
+    actualRenderedEntitiesRequired: true,
+    presentationWorldMode: 'dense-5x',
+  }),
+  scenario('presentation_world_churn', 'presentation-world-churn', {
+    injectedState: true,
+    holdsMeasuredPose: true,
+    actualRenderedEntitiesRequired: true,
+    presentationWorldMode: 'churn',
+  }),
+  scenario('presentation_world_rebase', 'presentation-world-rebase', {
+    injectedState: true,
+    holdsMeasuredPose: true,
+    presentationWorldReadyRequired: true,
+    presentationWorldMode: 'rebase',
+  }),
+];
+
 export const PERFORMANCE_SCENARIOS = Object.freeze(SCENARIOS.map((entry) => Object.freeze(entry)));
 export const PERFORMANCE_SCENARIO_IDS = Object.freeze(PERFORMANCE_SCENARIOS.map((entry) => entry.id));
+export const PERFORMANCE_PRESENTATION_WORLD_SCENARIOS = Object.freeze(
+  PRESENTATION_WORLD_SCENARIOS.map((entry) => Object.freeze(entry)),
+);
+export const PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS = Object.freeze(
+  PERFORMANCE_PRESENTATION_WORLD_SCENARIOS.map((entry) => entry.id),
+);
+export const PERFORMANCE_REGISTERED_SCENARIO_IDS = Object.freeze([
+  ...PERFORMANCE_SCENARIO_IDS,
+  ...PERFORMANCE_PRESENTATION_WORLD_SCENARIO_IDS,
+]);
 
-const PERFORMANCE_SCENARIO_BY_ID = createPerformanceScenarioIndex();
+const PERFORMANCE_SCENARIO_BY_ID = createPerformanceScenarioIndex([
+  ...PERFORMANCE_SCENARIOS,
+  ...PERFORMANCE_PRESENTATION_WORLD_SCENARIOS,
+]);
 
 export function performanceScenario(id) {
   if (typeof id !== 'string') return null;
@@ -728,11 +767,11 @@ function validateErrors(errors, failures) {
   }
 }
 
-function createPerformanceScenarioIndex() {
+function createPerformanceScenarioIndex(scenarios) {
   const result = Object.create(null);
-  for (let index = 0; index < PERFORMANCE_SCENARIOS.length; index += 1) {
+  for (let index = 0; index < scenarios.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(
-      PERFORMANCE_SCENARIOS,
+      scenarios,
       String(index),
     );
     if (!descriptor || !Object.hasOwn(descriptor, 'value')) {

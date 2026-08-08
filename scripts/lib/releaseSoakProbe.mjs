@@ -50,6 +50,7 @@ import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
 import { runBrowserPublicRoute } from './alphaLiveBaselineRoute.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
 import {
+  PERFORMANCE_REGISTERED_SCENARIO_IDS,
   PERFORMANCE_SCENARIO_IDS,
   PERFORMANCE_WINDOW_SCHEMA,
   buildPerformanceClosureReport,
@@ -955,7 +956,7 @@ async function sampleRafWindow(page, {
   triggerAutosave = false,
   scenarioAction = null,
 } = {}) {
-  const allowed = new Set([...ATTRIBUTION_ROUTE_TAGS, ...PERFORMANCE_SCENARIO_IDS, 'flight_steady', 'context_recover_steady']);
+  const allowed = new Set([...ATTRIBUTION_ROUTE_TAGS, ...PERFORMANCE_REGISTERED_SCENARIO_IDS, 'flight_steady', 'context_recover_steady']);
   assert(allowed.has(phaseTag), `unsupported steady-state phase: ${phaseTag}`);
   assert(Number.isFinite(warmupMs) && warmupMs >= 0, 'rAF warmup must be finite and non-negative');
   assert(Number.isFinite(pipelineStableMs) && pipelineStableMs >= 5_000,
@@ -3291,6 +3292,7 @@ async function finalizePerformanceAttributionRun({
   processMonitor,
   rootUrl,
   logLines,
+  additionalDocumentValidator,
   setCleanupReport,
 }) {
   const measurementState = await disableMeasurementGates(page);
@@ -3386,14 +3388,29 @@ async function finalizePerformanceAttributionRun({
   document.closure = closureReport;
   document.validation = validatePerformanceAttribution(document);
 
-  const failures = [
+  const baseFailures = [
     ...document.validation.failures,
     ...closureReport.validation.failures,
     ...artifactValidation.failures,
     ...cleanupValidation.failures,
   ];
-  if (routeResult?.pass !== true) failures.push('shared public route did not pass');
-  if (errorCount(errors) > 0) failures.push('page/runtime errors or warnings were observed');
+  if (routeResult?.pass !== true) baseFailures.push('shared public route did not pass');
+  if (errorCount(errors) > 0) baseFailures.push('page/runtime errors or warnings were observed');
+  document.baseValidation = {
+    pass: baseFailures.length === 0,
+    failures: [...new Set(baseFailures)],
+  };
+  document.pass = document.baseValidation.pass;
+  const specializedValidation = typeof additionalDocumentValidator === 'function'
+    ? await additionalDocumentValidator(document)
+    : null;
+  if (specializedValidation) document.specializedValidation = specializedValidation;
+  const failures = [
+    ...baseFailures,
+    ...(specializedValidation?.pass === false
+      ? specializedValidation.failures || ['specialized acceptance validation failed']
+      : []),
+  ];
   const validation = { pass: failures.length === 0, failures: [...new Set(failures)] };
   const pass = validation.pass;
   document.pass = pass;
@@ -3498,6 +3515,7 @@ async function runPerformanceAttributionProbe({
   enableTier1Counters = false,
   activityInspector = inspectPerformanceActivity,
   log = () => {},
+  additionalDocumentValidator = null,
 } = {}) {
   assert(root, 'runPerformanceAttributionProbe requires root');
   const runtimePlan = performanceAttributionRuntimePlan(runtimeKind);
@@ -3645,6 +3663,7 @@ async function runPerformanceAttributionProbe({
         log: doLog,
         flightTimeoutMs,
         dockTimeoutMs,
+        seed,
         // The performance route validates the active station shell through its Market tab and
         // trade controls below. Do not apply the shared baseline's legacy stationHub DOM contract.
         skipStationHubAcceptance: true,
@@ -3681,7 +3700,7 @@ async function runPerformanceAttributionProbe({
         routeLog('[attribution] navigated docked_market_ui');
         return;
       }
-      if (PERFORMANCE_SCENARIO_IDS.includes(routeTag) || ATTRIBUTION_ROUTE_TAGS.includes(routeTag)) {
+      if (PERFORMANCE_REGISTERED_SCENARIO_IDS.includes(routeTag) || ATTRIBUTION_ROUTE_TAGS.includes(routeTag)) {
         if (await isDocked(pg)) {
           await undockForRecovery(pg, routeLog);
         }
@@ -3751,6 +3770,7 @@ async function runPerformanceAttributionProbe({
       processMonitor,
       rootUrl,
       logLines,
+      additionalDocumentValidator,
       setCleanupReport: (value) => { cleanupReport = value; },
     });
   } catch (error) {
