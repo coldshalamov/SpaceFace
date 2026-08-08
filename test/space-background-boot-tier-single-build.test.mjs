@@ -22,7 +22,7 @@ const SOFTWARE_GPU = { renderer: 'Google SwiftShader', vendor: 'Google Inc.', so
 function buildProbe(gpu, { particleQuality = 'medium' } = {}) {
   const calls = {
     bakeAll: 0, _createStars: 0, _createFlares: 0, _createComet: 0,
-    _refreshHeroes: 0, _rebuildStarsAndFlares: 0,
+    _refreshHeroes: 0, _rebuildStarsAndFlares: 0, _warmPlanetBakePipeline: 0,
   };
 
   class ProbeBackground extends SpaceBackground {
@@ -32,6 +32,7 @@ function buildProbe(gpu, { particleQuality = 'medium' } = {}) {
       this.starCell = 1800; this.windowBiasZ = 0; this.perspScale = 973; this.starPxToWorld = 0.4;
     }
     _bakeFlareAtlas() { return null; }
+    _warmPlanetBakePipeline() { calls._warmPlanetBakePipeline += 1; return true; }
     bakeAll() { calls.bakeAll += 1; }
     _createStars() { calls._createStars += 1; }
     _createFlares() { calls._createFlares += 1; }
@@ -68,13 +69,13 @@ const high = buildProbe(HIGH_TIER_GPU);
 assert.equal(high.bg.tierName, 'high', 'a discrete GPU published before construction resolves the high tier immediately');
 assert.deepEqual(high.calls, {
   bakeAll: 1, _createStars: 1, _createFlares: 1, _createComet: 1,
-  _refreshHeroes: 1, _rebuildStarsAndFlares: 0,
+  _refreshHeroes: 1, _rebuildStarsAndFlares: 0, _warmPlanetBakePipeline: 1,
 }, 'construction builds the backdrop exactly once');
 
 high.bg.applyGpuTier(HIGH_TIER_GPU);
 assert.deepEqual(high.calls, {
   bakeAll: 1, _createStars: 1, _createFlares: 1, _createComet: 1,
-  _refreshHeroes: 1, _rebuildStarsAndFlares: 0,
+  _refreshHeroes: 1, _rebuildStarsAndFlares: 0, _warmPlanetBakePipeline: 1,
 }, "renderer.js's applyGpuTier call is a no-op safety net once detection runs first");
 
 high.bg.applyGpuTier(HIGH_TIER_GPU);
@@ -98,7 +99,7 @@ legacy.bg.applyGpuTier(HIGH_TIER_GPU);
 assert.equal(legacy.bg.tierName, 'high');
 assert.deepEqual(legacy.calls, {
   bakeAll: 2, _createStars: 2, _createFlares: 2, _createComet: 2,
-  _refreshHeroes: 2, _rebuildStarsAndFlares: 1,
+  _refreshHeroes: 2, _rebuildStarsAndFlares: 1, _warmPlanetBakePipeline: 1,
 }, 'the old ordering discards a complete backdrop build and pays for a second one');
 
 // ---------------------------------------------------------------------------------------------
@@ -112,6 +113,8 @@ assert.equal(low.bg.starCount, 6000);
 assert.equal(low.bg.flareCount, 36);
 low.bg.applyGpuTier(SOFTWARE_GPU);
 assert.equal(low.calls.bakeAll, 1, 'the software tier is resolved once, not guessed then corrected');
+assert.equal(low.calls._warmPlanetBakePipeline, 1,
+  'every quality tier admits the same planet shader once during loading');
 
 // The one behavioural delta of the hoist. _bakePlanetTarget sizes off this.lowTier and memoizes into
 // planetCache, which applyGpuTier does NOT invalidate — so under the old ordering a software machine

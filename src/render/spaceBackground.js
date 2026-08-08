@@ -1118,9 +1118,16 @@ export class SpaceBackground {
     // ---- bake rig -----------------------------------------------------------------
     this.bakeScene = new THREE.Scene();
     this.bakeCam = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10);
-    this.bakePlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1));
+    // Planet hero admission may happen during an ordinary-flight grid crossing. Keep its exact
+    // bake material alive for the background lifetime so Three retains the compiled program; a
+    // create/render/dispose cycle here otherwise releases the only owner and re-links on the next
+    // uncached planet draw.
+    this._planetBakeEmission = new THREE.Color();
+    this._planetBakeMaterial = this._createPlanetBakeMaterial();
+    this.bakePlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this._planetBakeMaterial);
     this.bakePlane.position.z = -1;
     this.bakeScene.add(this.bakePlane);
+    this._warmPlanetBakePipeline();
 
     this._measureGeometry();
     this.flareAtlas = this._bakeFlareAtlas();
@@ -1269,6 +1276,98 @@ export class SpaceBackground {
     return rt;
   }
 
+  _makePlanetRT(size) {
+    const rt = new THREE.WebGLRenderTarget(size, size, {
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+      generateMipmaps: true,
+      minFilter: THREE.LinearMipmapLinearFilter,
+      magFilter: THREE.LinearFilter,
+      depthBuffer: false,
+      stencilBuffer: false,
+    });
+    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    return rt;
+  }
+
+  _createPlanetBakeMaterial() {
+    return new THREE.ShaderMaterial({
+      name: 'SpaceBackgroundPlanetBake',
+      vertexShader: QUAD_VERT,
+      fragmentShader: PLANET_FRAG,
+      uniforms: {
+        uSeed: { value: 0 },
+        uType: { value: 1 },
+        uLightDir: { value: new THREE.Vector2(1, 0) },
+        uRing: { value: 0 },
+        uRingTilt: { value: 0 },
+        uColA: { value: new THREE.Color('#4c443c') },
+        uColB: { value: new THREE.Color('#7a6c5e') },
+        uColC: { value: new THREE.Color('#a89684') },
+        uAtm: { value: new THREE.Color('#93a8b8') },
+      },
+      transparent: true,
+    });
+  }
+
+  _configurePlanetBakeMaterial(spec) {
+    if (!this._planetBakeMaterial) this._planetBakeMaterial = this._createPlanetBakeMaterial();
+    if (!this._planetBakeEmission) this._planetBakeEmission = new THREE.Color();
+
+    const pal = PALETTES[this.currentPaletteName];
+    const uniforms = this._planetBakeMaterial.uniforms;
+    const colA = uniforms.uColA.value;
+    const colB = uniforms.uColB.value;
+    const colC = uniforms.uColC.value;
+    const atm = uniforms.uAtm.value;
+    this._planetBakeEmission.set(pal.emission);
+
+    if (spec.type === 'gas') {
+      colA.set('#6b4226'); colB.set('#b3793f'); colC.set('#e8c088'); atm.set('#ffb070');
+    } else if (spec.type === 'ice') {
+      colA.set('#7d97b0'); colB.set('#b8d0e4'); colC.set('#eef6ff'); atm.set('#9fd4ff');
+    } else {
+      colA.set('#4c443c'); colB.set('#7a6c5e'); colC.set('#a89684'); atm.set('#93a8b8');
+    }
+    colB.lerp(this._planetBakeEmission, 0.12);
+    colC.lerp(this._planetBakeEmission, 0.08);
+    atm.lerp(this._planetBakeEmission, 0.18);
+
+    uniforms.uSeed.value = (spec.seed % 1000) * 0.13;
+    uniforms.uType.value = spec.type === 'gas' ? 0 : (spec.type === 'rocky' ? 1 : 2);
+    uniforms.uLightDir.value.set(Math.cos(spec.lightAngle), Math.sin(spec.lightAngle));
+    uniforms.uRing.value = spec.ring ? 1 : 0;
+    uniforms.uRingTilt.value = spec.ringTilt || 0;
+    return this._planetBakeMaterial;
+  }
+
+  _warmPlanetBakePipeline() {
+    const renderer = this.renderer;
+    if (!renderer || typeof renderer.render !== 'function' ||
+        typeof renderer.getRenderTarget !== 'function' || typeof renderer.setRenderTarget !== 'function') {
+      return false;
+    }
+    const target = this._makePlanetRT(1);
+    try {
+      const material = this._configurePlanetBakeMaterial({
+        type: 'rocky', seed: 0, lightAngle: 0, ring: false, ringTilt: 0,
+      });
+      // Use the shipping bake path and render-target color contract. The 1x1 pixels are discarded;
+      // the retained material keeps the exact linked program ready for later 256/512px admissions.
+      this._bakeLayer(material, target);
+      return true;
+    } finally {
+      target.dispose();
+    }
+  }
+
+  _disposePlanetBakeMaterial() {
+    if (!this._planetBakeMaterial) return;
+    const material = this._planetBakeMaterial;
+    this._planetBakeMaterial = null;
+    material.dispose();
+  }
+
   _bakeLayer(material, rt) {
     const renderer = this.renderer;
     const prev = renderer.getRenderTarget();
@@ -1401,10 +1500,17 @@ export class SpaceBackground {
       this.l1Target,
       this.l2Target,
       ...this.planetCache.values(),
+      // The bake rig is intentionally off-scene. Expose its retained compiled resources so the
+      // context-loss lifecycle can detach Three's old-context dispose listeners before reuse.
+      this._planetBakeMaterial,
+      this.bakePlane?.geometry,
     ].filter(Boolean);
   }
 
   onContextRestore() {
+    // WebGL programs are context-owned. Re-admit the retained planet program during restoration so
+    // the first post-restore grid crossing cannot turn into another in-flight link stall.
+    this._warmPlanetBakePipeline();
     const p = this._paletteColors(this.currentPaletteName);
     const sizes = this.bakeSizes;
     const bakeSeed = (this.skySeed % 100000) * 0.001;
@@ -2175,16 +2281,7 @@ export class SpaceBackground {
 
   _bakePlanetTarget(spec) {
     const size = this.lowTier ? 256 : 512;
-    const rt = new THREE.WebGLRenderTarget(size, size, {
-      format: THREE.RGBAFormat,
-      type: THREE.UnsignedByteType,
-      generateMipmaps: true,
-      minFilter: THREE.LinearMipmapLinearFilter,
-      magFilter: THREE.LinearFilter,
-      depthBuffer: false,
-      stencilBuffer: false,
-    });
-    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    const rt = this._makePlanetRT(size);
 
     this._renderPlanetTarget(rt, spec);
     return rt;
@@ -2192,40 +2289,8 @@ export class SpaceBackground {
 
   _renderPlanetTarget(rt, spec) {
     if (!rt || !spec) return;
-
-    // per-type surface ramps, tinted slightly by the active palette's emission hue
-    const pal = PALETTES[this.currentPaletteName];
-    const emission = new THREE.Color(pal.emission);
-    let colA, colB, colC, atm;
-    if (spec.type === 'gas') {
-      colA = new THREE.Color('#6b4226'); colB = new THREE.Color('#b3793f'); colC = new THREE.Color('#e8c088');
-      atm = new THREE.Color('#ffb070');
-    } else if (spec.type === 'ice') {
-      colA = new THREE.Color('#7d97b0'); colB = new THREE.Color('#b8d0e4'); colC = new THREE.Color('#eef6ff');
-      atm = new THREE.Color('#9fd4ff');
-    } else {
-      colA = new THREE.Color('#4c443c'); colB = new THREE.Color('#7a6c5e'); colC = new THREE.Color('#a89684');
-      atm = new THREE.Color('#93a8b8');
-    }
-    colB.lerp(emission, 0.12); colC.lerp(emission, 0.08); atm.lerp(emission, 0.18);
-
-    const type = spec.type === 'gas' ? 0 : (spec.type === 'rocky' ? 1 : 2);
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: QUAD_VERT,
-      fragmentShader: PLANET_FRAG,
-      uniforms: {
-        uSeed: { value: (spec.seed % 1000) * 0.13 },
-        uType: { value: type },
-        uLightDir: { value: new THREE.Vector2(Math.cos(spec.lightAngle), Math.sin(spec.lightAngle)) },
-        uRing: { value: spec.ring ? 1 : 0 },
-        uRingTilt: { value: spec.ringTilt || 0 },
-        uColA: { value: colA }, uColB: { value: colB }, uColC: { value: colC },
-        uAtm: { value: atm },
-      },
-      transparent: true,
-    });
-    this._bakeLayer(mat, rt);
-    mat.dispose();
+    const material = this._configurePlanetBakeMaterial(spec);
+    this._bakeLayer(material, rt);
   }
 
   _spawnWormhole(spec) {
@@ -2667,6 +2732,7 @@ export class SpaceBackground {
     this._spriteMatCache.clear();
     if (this._cometMat) { THREE.Material.prototype.dispose.call(this._cometMat); this._cometMat = null; }
     if (this._cometTex) { this._cometTex.dispose(); this._cometTex = null; }
+    this._disposePlanetBakeMaterial();
     const layerGeometry = this.layerGeometry;
     this.group.traverse((o) => {
       if (o.geometry && o.geometry !== layerGeometry) o.geometry.dispose();
