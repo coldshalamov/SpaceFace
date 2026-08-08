@@ -43,7 +43,12 @@ import {
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
 const QUALITY_TIERS = ['high', 'medium', 'low'];
-const DYNAMIC_ATTRIBUTE_KEYS = ['instOffset', 'instAxis', 'instParams', 'instDynamics', 'instColor'];
+const PLUME_INSTANCE_STRIDE = 18;
+const PLUME_OFFSET_OFFSET = 0;
+const PLUME_AXIS_SCALE_OFFSET = 3;
+const PLUME_PARAMS_OFFSET = 7;
+const PLUME_DYNAMICS_OFFSET = 11;
+const PLUME_COLOR_OFFSET = 15;
 
 /**
  * Parse #RRGGBB into preallocated rgb array.
@@ -505,15 +510,12 @@ export class ContinuousPlumeSystem {
       const tb = batch.tierBuffers[t];
       if (!tb) continue;
       if (batch.dynamicBufferOwner) {
-        for (let bindingIndex = 0; bindingIndex < DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
-          const key = DYNAMIC_ATTRIBUTE_KEYS[bindingIndex];
-          replaceDynamicBufferAttribute(
-            batch.dynamicBufferOwner,
-            bindingIndex,
-            tb.attrs[key],
-            `plume-quality-tier:${t}`,
-          );
-        }
+        replaceDynamicBufferAttribute(
+          batch.dynamicBufferOwner,
+          0,
+          tb.backing,
+          `plume-quality-tier:${t}`,
+        );
       }
       batch.mesh.geometry = tb.geo;
       batch.offset = tb.offset;
@@ -521,6 +523,7 @@ export class ContinuousPlumeSystem {
       batch.params = tb.params;
       batch.dynamics = tb.dynamics;
       batch.color = tb.color;
+      batch.backing = tb.backing;
       batch.attrs = tb.attrs;
       if (batch.dynamicBufferOwner) commitDynamicBufferOwner(batch.dynamicBufferOwner, 0);
       else batch.mesh.count = 0;
@@ -600,16 +603,33 @@ export class ContinuousPlumeSystem {
         const tier = QUALITY_TIERS[ti];
         const segs = resolveSegmentCount(this.recipe, tier);
         const geo = createSegmentedPlumeGeometry(THREE, segs);
+        // These compact arrays are retained as the CPU readback contract used by
+        // acceptance/capture tooling. The renderer binds only the interleaved
+        // backing below, so one instance is one 18-float GPU publication.
         const offset = new Float32Array(capacity * 3);
         const axisScale = new Float32Array(capacity * 4);
         const params = new Float32Array(capacity * 4);
         const dynamics = new Float32Array(capacity * 4);
         const color = new Float32Array(capacity * 3);
-        const instOffset = new THREE.InstancedBufferAttribute(offset, 3);
-        const instAxis = new THREE.InstancedBufferAttribute(axisScale, 4);
-        const instParams = new THREE.InstancedBufferAttribute(params, 4);
-        const instDynamics = new THREE.InstancedBufferAttribute(dynamics, 4);
-        const instColor = new THREE.InstancedBufferAttribute(color, 3);
+        const backing = new THREE.InstancedInterleavedBuffer(
+          new Float32Array(capacity * PLUME_INSTANCE_STRIDE),
+          PLUME_INSTANCE_STRIDE,
+        );
+        const instOffset = new THREE.InterleavedBufferAttribute(
+          backing, 3, PLUME_OFFSET_OFFSET,
+        );
+        const instAxis = new THREE.InterleavedBufferAttribute(
+          backing, 4, PLUME_AXIS_SCALE_OFFSET,
+        );
+        const instParams = new THREE.InterleavedBufferAttribute(
+          backing, 4, PLUME_PARAMS_OFFSET,
+        );
+        const instDynamics = new THREE.InterleavedBufferAttribute(
+          backing, 4, PLUME_DYNAMICS_OFFSET,
+        );
+        const instColor = new THREE.InterleavedBufferAttribute(
+          backing, 3, PLUME_COLOR_OFFSET,
+        );
         geo.setAttribute('instanceOffset', instOffset);
         geo.setAttribute('instanceAxisScale', instAxis);
         geo.setAttribute('instanceParams', instParams);
@@ -622,6 +642,7 @@ export class ContinuousPlumeSystem {
           params,
           dynamics,
           color,
+          backing,
           attrs: { instOffset, instAxis, instParams, instDynamics, instColor },
           segments: segs,
         };
@@ -676,6 +697,7 @@ export class ContinuousPlumeSystem {
         params: active.params,
         dynamics: active.dynamics,
         color: active.color,
+        backing: active.backing,
         attrs: active.attrs,
         tierBuffers,
         capacity,
@@ -700,10 +722,7 @@ export class ContinuousPlumeSystem {
       batch.dynamicBufferOwner = registerDynamicBufferOwner(scene, {
         id: `continuous-plume:${this.recipe.id}:${batch.role}`,
         mesh: batch.mesh,
-        attributes: DYNAMIC_ATTRIBUTE_KEYS.map((key) => ({
-          name: key,
-          attribute: batch.attrs[key],
-        })),
+        attributes: [{ name: 'instances', attribute: batch.backing }],
       });
       if (batch.dynamicBufferOwner) bound++;
     }
@@ -843,31 +862,36 @@ export class ContinuousPlumeSystem {
         if (!batch) continue;
         const w = batch.writeCount;
         if (w >= batch.capacity) continue;
+        markDynamicBufferItems(batch.dynamicBufferOwner, 0, w);
         const oi = w * 3;
         const a = w * 4;
-        batch.offset[oi] = s.offset[0];
-        batch.offset[oi + 1] = s.offset[1];
-        batch.offset[oi + 2] = s.offset[2];
-        batch.axisScale[a] = s.axis[0];
-        batch.axisScale[a + 1] = s.axis[1];
-        batch.axisScale[a + 2] = s.axis[2];
-        batch.axisScale[a + 3] = s.length;
-        batch.params[a] = s.width;
-        batch.params[a + 1] = s.throttle;
-        batch.params[a + 2] = s.phase;
-        batch.params[a + 3] = s.boostBlend != null ? s.boostBlend : 0;
+        const p = w * PLUME_INSTANCE_STRIDE;
+        const packed = batch.backing.array;
+        const boostBlend = s.boostBlend != null ? s.boostBlend : 0;
+        const flowSpeed = s.flowSpeed != null ? s.flowSpeed : 1;
+        const turbulence = s.turbulence != null ? s.turbulence : 0.5;
+        const coreSheath = s.coreSheath != null ? s.coreSheath : 0.8;
+        const dissipation = s.dissipation != null ? s.dissipation : 1;
+        batch.offset[oi] = packed[p + PLUME_OFFSET_OFFSET] = s.offset[0];
+        batch.offset[oi + 1] = packed[p + PLUME_OFFSET_OFFSET + 1] = s.offset[1];
+        batch.offset[oi + 2] = packed[p + PLUME_OFFSET_OFFSET + 2] = s.offset[2];
+        batch.axisScale[a] = packed[p + PLUME_AXIS_SCALE_OFFSET] = s.axis[0];
+        batch.axisScale[a + 1] = packed[p + PLUME_AXIS_SCALE_OFFSET + 1] = s.axis[1];
+        batch.axisScale[a + 2] = packed[p + PLUME_AXIS_SCALE_OFFSET + 2] = s.axis[2];
+        batch.axisScale[a + 3] = packed[p + PLUME_AXIS_SCALE_OFFSET + 3] = s.length;
+        batch.params[a] = packed[p + PLUME_PARAMS_OFFSET] = s.width;
+        batch.params[a + 1] = packed[p + PLUME_PARAMS_OFFSET + 1] = s.throttle;
+        batch.params[a + 2] = packed[p + PLUME_PARAMS_OFFSET + 2] = s.phase;
+        batch.params[a + 3] = packed[p + PLUME_PARAMS_OFFSET + 3] = boostBlend;
         if (batch.dynamics) {
-          batch.dynamics[a] = s.flowSpeed != null ? s.flowSpeed : 1;
-          batch.dynamics[a + 1] = s.turbulence != null ? s.turbulence : 0.5;
-          batch.dynamics[a + 2] = s.coreSheath != null ? s.coreSheath : 0.8;
-          batch.dynamics[a + 3] = s.dissipation != null ? s.dissipation : 1;
+          batch.dynamics[a] = packed[p + PLUME_DYNAMICS_OFFSET] = flowSpeed;
+          batch.dynamics[a + 1] = packed[p + PLUME_DYNAMICS_OFFSET + 1] = turbulence;
+          batch.dynamics[a + 2] = packed[p + PLUME_DYNAMICS_OFFSET + 2] = coreSheath;
+          batch.dynamics[a + 3] = packed[p + PLUME_DYNAMICS_OFFSET + 3] = dissipation;
         }
-        batch.color[oi] = s.color[0];
-        batch.color[oi + 1] = s.color[1];
-        batch.color[oi + 2] = s.color[2];
-        for (let bindingIndex = 0; bindingIndex < DYNAMIC_ATTRIBUTE_KEYS.length; bindingIndex++) {
-          markDynamicBufferItems(batch.dynamicBufferOwner, bindingIndex, w);
-        }
+        batch.color[oi] = packed[p + PLUME_COLOR_OFFSET] = s.color[0];
+        batch.color[oi + 1] = packed[p + PLUME_COLOR_OFFSET + 1] = s.color[1];
+        batch.color[oi + 2] = packed[p + PLUME_COLOR_OFFSET + 2] = s.color[2];
         batch.writeCount = w + 1;
       }
 
@@ -880,11 +904,7 @@ export class ContinuousPlumeSystem {
         if (batch.dynamicBufferOwner) {
           commitDynamicBufferOwner(batch.dynamicBufferOwner, batch.writeCount);
         } else {
-          batch.attrs.instOffset.needsUpdate = true;
-          batch.attrs.instAxis.needsUpdate = true;
-          batch.attrs.instParams.needsUpdate = true;
-          if (batch.attrs.instDynamics) batch.attrs.instDynamics.needsUpdate = true;
-          batch.attrs.instColor.needsUpdate = true;
+          batch.backing.needsUpdate = true;
           batch.mesh.count = batch.writeCount;
         }
         batch.mesh.visible = batch.writeCount > 0 && this.pool._layerEnabled[batch.layerIndex] === 1;

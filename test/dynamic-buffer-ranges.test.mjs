@@ -10,6 +10,7 @@ import {
   markDynamicBufferItems,
   markDynamicComponentRange,
   registerDynamicBufferOwner,
+  replaceDynamicBufferAttribute,
   unregisterDynamicBufferOwner,
 } from '../src/render/dynamicBufferRanges.js';
 import {
@@ -72,6 +73,44 @@ function beginSceneRender(fixture) {
   const epoch = fixture.coordinator.arm();
   fixture.scene.onBeforeRender({}, fixture.scene, fixture.camera, null);
   return epoch;
+}
+
+function makeInterleavedOwnerFixture(capacity = 4) {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const backing = new THREE.InstancedInterleavedBuffer(new Float32Array(capacity * 18), 18);
+  const views = [
+    new THREE.InterleavedBufferAttribute(backing, 3, 0),
+    new THREE.InterleavedBufferAttribute(backing, 4, 3),
+    new THREE.InterleavedBufferAttribute(backing, 4, 7),
+    new THREE.InterleavedBufferAttribute(backing, 4, 11),
+    new THREE.InterleavedBufferAttribute(backing, 3, 15),
+  ];
+  for (let index = 0; index < views.length; index++) {
+    geometry.setAttribute(`packed${index}`, views[index]);
+  }
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry, material, capacity);
+  mesh.count = 0;
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+  const owner = registerDynamicBufferOwner(scene, {
+    id: 'interleaved-fixture',
+    mesh,
+    attributes: [{ name: 'packed', attribute: backing }],
+  });
+  return {
+    scene,
+    coordinator,
+    backing,
+    views,
+    geometry,
+    material,
+    mesh,
+    owner,
+    camera: new THREE.PerspectiveCamera(),
+  };
 }
 
 function makeParticleVfxFixture(capacity = 3000) {
@@ -249,6 +288,57 @@ test('ordinary dirty spans survive skipped draws and publish once on eligibility
   assert.equal(fixture.coordinator.getDiagnostics().updateRangeAllocations, 1,
     'one registration-time record replaces per-upload range allocations');
   assert.equal(fixture.coordinator.getDiagnostics().updateRangeRecordReuses, 1);
+});
+
+test('one interleaved backing owns ranged publication, replacement, and context recovery', () => {
+  const fixture = makeInterleavedOwnerFixture();
+  assert.equal(fixture.owner.bindings.length, 1);
+  assert.equal(fixture.owner.capacity, 4);
+  assert.deepEqual(fixture.views.map((attribute) => attribute.data), Array(5).fill(fixture.backing));
+  assert.deepEqual(fixture.views.map((attribute) => attribute.offset), [0, 3, 7, 11, 15]);
+
+  let epoch = beginSceneRender(fixture);
+  assert.deepEqual(fixture.backing.updateRanges, [{ start: 0, count: 4 * 18 }]);
+  acknowledgeInitial(fixture.backing);
+  fixture.coordinator.disarm(epoch);
+
+  markDynamicBufferItems(fixture.owner, 0, 1, 2);
+  fixture.backing.array[18] = 7;
+  fixture.backing.array[53] = 9;
+  commitDynamicBufferOwner(fixture.owner, 3);
+  epoch = beginSceneRender(fixture);
+  assert.deepEqual(fixture.backing.updateRanges, [{ start: 18, count: 2 * 18 }]);
+  acknowledgeUpdate(fixture.backing);
+  fixture.coordinator.disarm(epoch);
+  assert.equal(fixture.owner.diagnostics.requestedUploadBytes, (4 + 2) * 18 * 4);
+  assert.equal(fixture.owner.diagnostics.uploadRangeCount, 2);
+
+  const originalBacking = fixture.backing;
+  const replacement = new THREE.InstancedInterleavedBuffer(new Float32Array(4 * 18), 18);
+  replaceDynamicBufferAttribute(fixture.owner, 0, replacement, 'test-replacement');
+  fixture.backing = replacement;
+  for (const attribute of fixture.views) attribute.data = replacement;
+  assert.equal(Object.hasOwn(originalBacking, 'onUploadCallback'), false,
+    'replacement retires the old GPU-buffer callback');
+  epoch = beginSceneRender(fixture);
+  assert.deepEqual(replacement.updateRanges, [{ start: 0, count: replacement.array.length }]);
+  acknowledgeInitial(replacement);
+  fixture.coordinator.disarm(epoch);
+
+  const versionBeforeRestore = replacement.version;
+  fixture.coordinator.handleContextLost();
+  fixture.coordinator.handleContextRestored();
+  assert.doesNotThrow(() => replacement.onUploadCallback(),
+    'the restored driver may acknowledge the one interleaved backing directly');
+  assert.equal(replacement.version, versionBeforeRestore);
+  epoch = beginSceneRender(fixture);
+  assert.deepEqual(replacement.updateRanges, []);
+  fixture.coordinator.disarm(epoch);
+
+  assert.equal(unregisterDynamicBufferOwner(fixture.owner), true);
+  assert.equal(Object.hasOwn(replacement, 'onUploadCallback'), false);
+  fixture.geometry.dispose();
+  fixture.material.dispose();
 });
 
 test('probe-only full-span control changes requested bytes without changing logical writes', () => {
@@ -562,7 +652,7 @@ test('common-rock matrices publish only the changed compacted slot after residen
   material.dispose();
 });
 
-test('ordinary-flight plume layers publish their written socket prefixes', () => {
+test('ordinary-flight plume layers publish one packed socket prefix per layer', () => {
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);
   const camera = new THREE.PerspectiveCamera();
@@ -577,12 +667,48 @@ test('ordinary-flight plume layers publish their written socket prefixes', () =>
     { x: -1, y: 0, z: 0.5, ax: -1, ay: 0, az: 0 },
   ];
   const attributesFor = (batch) => [
-    batch.attrs.instOffset,
-    batch.attrs.instAxis,
-    batch.attrs.instParams,
-    batch.attrs.instDynamics,
-    batch.attrs.instColor,
+    [batch.attrs.instOffset, 3, 0],
+    [batch.attrs.instAxis, 4, 3],
+    [batch.attrs.instParams, 4, 7],
+    [batch.attrs.instDynamics, 4, 11],
+    [batch.attrs.instColor, 3, 15],
   ];
+  const assertPackedParity = (batch) => {
+    const sourceSlots = plume.pool.slots
+      .slice(0, plume.pool.activeCount)
+      .filter((slot) => slot.layerIndex === batch.layerIndex);
+    assert.equal(sourceSlots.length, batch.writeCount);
+    for (let index = 0; index < batch.writeCount; index++) {
+      const slot = sourceSlots[index];
+      const packedStart = index * 18;
+      const offsetStart = index * 3;
+      const fourStart = index * 4;
+      const packed = Array.from(batch.backing.array.slice(packedStart, packedStart + 18));
+      const expectedFromSource = Array.from(Float32Array.from([
+        ...slot.offset,
+        ...slot.axis,
+        slot.length,
+        slot.width,
+        slot.throttle,
+        slot.phase,
+        slot.boostBlend ?? 0,
+        slot.flowSpeed ?? 1,
+        slot.turbulence ?? 0.5,
+        slot.coreSheath ?? 0.8,
+        slot.dissipation ?? 1,
+        ...slot.color,
+      ]));
+      assert.deepEqual(packed, expectedFromSource,
+        `${batch.role} packs the exact 18 authored instance scalars from the live slot`);
+      assert.deepEqual(packed, [
+          ...batch.offset.slice(offsetStart, offsetStart + 3),
+          ...batch.axisScale.slice(fourStart, fourStart + 4),
+          ...batch.params.slice(fourStart, fourStart + 4),
+          ...batch.dynamics.slice(fourStart, fourStart + 4),
+          ...batch.color.slice(offsetStart, offsetStart + 3),
+        ], `${batch.role} keeps its existing CPU readback contract`);
+    }
+  };
 
   plume.update(1 / 60, 0.72, sockets, { a11y: {} });
   let epoch = coordinator.arm();
@@ -590,18 +716,28 @@ test('ordinary-flight plume layers publish their written socket prefixes', () =>
   const activeBatches = plume.layerBatches.filter((batch) => batch.writeCount > 0 && batch.mesh.visible);
   assert.ok(activeBatches.length >= 2, 'accepted Kestrel feedback keeps multiple authored layers');
   for (const batch of activeBatches) {
-    for (const attribute of attributesFor(batch)) {
-      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
-      acknowledgeUpdate(attribute);
+    assert.equal(batch.dynamicBufferOwner.bindings.length, 1,
+      'one backing store replaces five per-layer publication owners');
+    assert.equal(batch.dynamicBufferOwner.bindings[0].attribute, batch.backing);
+    assert.equal(batch.backing.stride, 18);
+    assert.equal(batch.backing.isInstancedInterleavedBuffer, true);
+    for (const [attribute, itemSize, offset] of attributesFor(batch)) {
+      assert.equal(attribute.isInterleavedBufferAttribute, true);
+      assert.equal(attribute.data, batch.backing);
+      assert.equal(attribute.itemSize, itemSize);
+      assert.equal(attribute.offset, offset);
     }
+    assert.deepEqual(batch.backing.updateRanges, [{ start: 0, count: batch.backing.array.length }]);
+    assertPackedParity(batch);
+    acknowledgeInitial(batch.backing);
   }
   coordinator.disarm(epoch);
 
+  const publicationsBefore = coordinator.getDiagnostics().updateRangePublications;
   const requestedBefore = coordinator.getDiagnostics().owners
     .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
   plume.update(1 / 60, 0.72, sockets, { a11y: {} });
-  assert.equal(activeBatches.flatMap(attributesFor)
-    .reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 0,
+  assert.equal(activeBatches.reduce((sum, batch) => sum + batch.backing.updateRanges.length, 0), 0,
   'plume writes stay private until the renderer publication point');
 
   epoch = coordinator.arm();
@@ -609,23 +745,58 @@ test('ordinary-flight plume layers publish their written socket prefixes', () =>
   let expectedBytes = 0;
   let fullBytes = 0;
   for (const batch of activeBatches) {
-    for (const attribute of attributesFor(batch)) {
-      assert.deepEqual(attribute.updateRanges, [{
-        start: 0,
-        count: batch.writeCount * attribute.itemSize,
-      }]);
-      expectedBytes += batch.writeCount * attribute.itemSize * Float32Array.BYTES_PER_ELEMENT;
-      fullBytes += attribute.array.byteLength;
-      acknowledgeUpdate(attribute);
-    }
+    assert.deepEqual(batch.backing.updateRanges, [{
+      start: 0,
+      count: batch.writeCount * 18,
+    }]);
+    expectedBytes += batch.writeCount * 18 * Float32Array.BYTES_PER_ELEMENT;
+    fullBytes += batch.backing.array.byteLength;
+    assertPackedParity(batch);
+    acknowledgeUpdate(batch.backing);
   }
   const requestedAfter = coordinator.getDiagnostics().owners
     .reduce((sum, owner) => sum + owner.requestedUploadBytes, 0);
   assert.equal(requestedAfter - requestedBefore, expectedBytes);
   assert.equal(expectedBytes / fullBytes, sockets.length / 20,
     'two ordinary-flight sockets request 90% fewer bytes than the allocated family buffers');
+  assert.equal(
+    coordinator.getDiagnostics().updateRangePublications - publicationsBefore,
+    activeBatches.length,
+    'each active authored layer publishes one range instead of five',
+  );
   coordinator.disarm(epoch);
+
+  const priorBackings = activeBatches.map((batch) => batch.backing);
+  assert.equal(plume.setQualityTier('low'), 'low');
+  for (let index = 0; index < activeBatches.length; index++) {
+    const batch = activeBatches[index];
+    assert.notEqual(batch.backing, priorBackings[index]);
+    assert.equal(Object.hasOwn(priorBackings[index], 'onUploadCallback'), false,
+      'quality replacement retires the old backing callback');
+    assert.equal(batch.mesh.geometry, batch.tierBuffers.low.geo);
+    assert.equal(batch.dynamicBufferOwner.bindings.length, 1);
+    assert.equal(batch.dynamicBufferOwner.bindings[0].attribute, batch.backing);
+    for (const [attribute, itemSize, offset] of attributesFor(batch)) {
+      assert.equal(attribute.data, batch.backing);
+      assert.equal(attribute.itemSize, itemSize);
+      assert.equal(attribute.offset, offset);
+    }
+  }
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const batch of activeBatches) {
+    assert.deepEqual(batch.backing.updateRanges, [{ start: 0, count: batch.backing.array.length }],
+      'the replacement tier receives one complete backing-store upload');
+    acknowledgeInitial(batch.backing);
+  }
+  coordinator.disarm(epoch);
+
+  const currentBackings = activeBatches.map((batch) => batch.backing);
   plume.dispose();
+  for (const backing of currentBackings) {
+    assert.equal(Object.hasOwn(backing, 'onUploadCallback'), false,
+      'plume teardown releases the backing callback exactly once');
+  }
 });
 
 test('signed RCS layers publish only the live impulse prefix', () => {

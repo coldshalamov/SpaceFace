@@ -1,6 +1,7 @@
-import { BufferAttribute } from 'three';
+import { BufferAttribute, InterleavedBuffer } from 'three';
 
 const DEFAULT_UPLOAD_CALLBACK = BufferAttribute.prototype.onUploadCallback;
+const DEFAULT_INTERLEAVED_UPLOAD_CALLBACK = InterleavedBuffer.prototype.onUploadCallback;
 const COORDINATORS = new WeakMap();
 let uploadCallbackBinding = null;
 
@@ -33,9 +34,26 @@ function markOwnerInvalid(owner, message, counter = null) {
   throw new Error(message);
 }
 
+function isTrackableBuffer(attribute) {
+  return !!attribute
+    && (attribute.isBufferAttribute === true || attribute.isInterleavedBuffer === true)
+    && !!attribute.array;
+}
+
+function bufferItemSize(attribute) {
+  const size = attribute.isInterleavedBuffer === true ? attribute.stride : attribute.itemSize;
+  return Math.max(1, Math.floor(Number(size) || 1));
+}
+
+function defaultUploadCallback(attribute) {
+  return attribute.isInterleavedBuffer === true
+    ? DEFAULT_INTERLEAVED_UPLOAD_CALLBACK
+    : DEFAULT_UPLOAD_CALLBACK;
+}
+
 function requireDefaultUploadCallback(attribute, ownerId, name) {
   if (Object.prototype.hasOwnProperty.call(attribute, 'onUploadCallback')
-      || attribute.onUploadCallback !== DEFAULT_UPLOAD_CALLBACK) {
+      || attribute.onUploadCallback !== defaultUploadCallback(attribute)) {
     throw new Error(`${ownerId}:${name} already owns an upload callback`);
   }
   if (!Array.isArray(attribute.updateRanges) || attribute.updateRanges.length !== 0) {
@@ -541,8 +559,8 @@ export function registerDynamicBufferOwner(scene, spec) {
     const source = attributes[index];
     const attribute = source && source.attribute;
     const name = String(source && source.name || `attribute-${index}`);
-    if (!attribute || !attribute.isBufferAttribute || !attribute.array) {
-      throw new TypeError(`${id}:${name} is not a BufferAttribute`);
+    if (!isTrackableBuffer(attribute)) {
+      throw new TypeError(`${id}:${name} is not a BufferAttribute or InterleavedBuffer`);
     }
     requireDefaultUploadCallback(attribute, id, name);
     if (plannedAttributes.has(attribute)) {
@@ -550,7 +568,7 @@ export function registerDynamicBufferOwner(scene, spec) {
     }
     const priorOwner = coordinator.attributeOwners.get(attribute);
     if (priorOwner) throw new Error(`${id}:${name} shares an attribute with ${priorOwner.id}`);
-    const itemSize = Math.max(1, Math.floor(Number(attribute.itemSize) || 1));
+    const itemSize = bufferItemSize(attribute);
     const itemCapacity = Math.floor(attribute.array.length / itemSize);
     const binding = {
       owner,
@@ -695,6 +713,9 @@ export function replaceDynamicBufferAttribute(owner, bindingIndex, attribute, re
   assertDynamicBufferOwnerWritable(owner);
   const binding = owner && owner.bindings[bindingIndex];
   if (!binding) throw new RangeError(`${owner && owner.id || 'owner'} has no tracked attribute ${bindingIndex}`);
+  if (!isTrackableBuffer(attribute)) {
+    throw new TypeError(`${owner.id}:${binding.name} is not a BufferAttribute or InterleavedBuffer`);
+  }
   requireDefaultUploadCallback(attribute, owner.id, binding.name);
   const coordinator = owner.coordinator;
   const priorOwner = coordinator.attributeOwners.get(attribute);
@@ -706,7 +727,7 @@ export function replaceDynamicBufferAttribute(owner, bindingIndex, attribute, re
   coordinator.attributeOwners.delete(binding.attribute);
   if (binding.attribute.onUploadCallback === binding.callback) delete binding.attribute.onUploadCallback;
   binding.attribute = attribute;
-  binding.itemSize = Math.max(1, Math.floor(Number(attribute.itemSize) || 1));
+  binding.itemSize = bufferItemSize(attribute);
   binding.itemCapacity = Math.floor(attribute.array.length / binding.itemSize);
   binding.pending = createDynamicComponentSpan(attribute.array.length);
   binding.touchedSinceCommit = false;
