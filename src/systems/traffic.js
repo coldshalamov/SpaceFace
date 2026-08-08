@@ -48,9 +48,16 @@ import {
 } from './regionalEcology.js';
 import {
   CINDER_SLUICE_SITE_ID,
+  CINDER_SLUICE_TRAFFIC_STAGING_POS,
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+  CERES_ACTIVITY_SERVICE_SLOTS,
+} from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -142,6 +149,59 @@ const TRAFFIC_ROLES = {
   tender:   { ship: 'ship_drifter',  team: 2, speed: 66, archetype: 'passive', weight: 6,
               label: 'Repair Tender', docks: true, trades: false },
 };
+
+const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
+const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
+const CERES_CINDER_HOOK_ID = 'ceres_cinder_sluice_service';
+const CERES_ACTIVITY_CAST = Object.freeze([
+  ...CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots
+    .filter((slot) => slot.id !== CERES_TENDER_SLOT_ID)
+    .map((slot) => Object.freeze({ pocket, slot, service: false }))),
+  ...CERES_ACTIVITY_SERVICE_SLOTS.map((slot) => Object.freeze({ pocket: null, slot, service: true })),
+]);
+const CERES_ACTIVITY_CAST_BY_SLOT_ID = new Map(CERES_ACTIVITY_CAST.map((entry) => [entry.slot.id, entry]));
+const CERES_ACTIVITY_JOB_KINDS = new Set(['hauler', 'miner', 'surveyor', 'patrol', 'salvor']);
+
+function terminalWorldRecord(record) {
+  return !!record && (record.alive === false
+    || record.outcome === 'destroyed'
+    || record.outcome === 'defeated');
+}
+
+function ceresActivityJobSpec(entry) {
+  if (!entry || entry.service || !entry.pocket || !entry.slot) return null;
+  const { pocket, slot } = entry;
+  const route = slot.route;
+  const anchor = pocket.activityAnchor && pocket.activityAnchor.localPos;
+  if (!CERES_ACTIVITY_JOB_KINDS.has(slot.jobKind)
+    || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)
+    || !route || !Number.isFinite(route.durationS) || route.durationS <= 0
+    || !Array.isArray(route.marks) || route.marks.length !== 2) return null;
+  const waypoints = [];
+  for (const mark of route.marks) {
+    if (!mark || typeof mark.id !== 'string' || !mark.id
+      || !mark.offset || !Number.isFinite(mark.offset.x) || !Number.isFinite(mark.offset.z)) return null;
+    const pos = sectorLocalToGlobalForSector({
+      x: anchor.x + mark.offset.x,
+      z: anchor.z + mark.offset.z,
+    }, CERES_ACTIVITY_SECTOR_ID);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    waypoints.push({ id: mark.id, label: mark.id, pos: { x: pos.x, z: pos.z } });
+  }
+  const distance = Math.hypot(
+    waypoints[1].pos.x - waypoints[0].pos.x,
+    waypoints[1].pos.z - waypoints[0].pos.z,
+  );
+  if (!Number.isFinite(distance) || distance <= 0) return null;
+  const speed = distance / route.durationS;
+  if (!Number.isFinite(speed) || speed <= 0) return null;
+  return {
+    kind: slot.jobKind,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    route: waypoints,
+    speed,
+  };
+}
 
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
@@ -302,12 +362,24 @@ export const traffic = {
       this._pruneDead();
       return;
     }
+    const sectorId = (p && p.sectorId)
+      || (this.state.world && this.state.world.currentSectorId);
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._captureCeresActivityCast();
     this._cleanup();
   },
 
   _onSectorEnter(p) {
     const continuous = !!(p && (p.continuous || p.noTeleport));
-    if (continuous) {
+    const requestedSectorId = (p && p.sector && p.sector.id)
+      || (p && p.sectorId)
+      || (this.state.world && this.state.world.currentSectorId)
+      || 'unknown';
+    const repeatedCeresEntry = requestedSectorId === CERES_ACTIVITY_SECTOR_ID
+      && this._active.some((id) => {
+        const entity = liveEntity(this.state, id);
+        return !!entity && entity.data && entity.data.ceresActivityCast === true;
+      });
+    if (continuous || repeatedCeresEntry) {
       // Soft handoff: keep still-alive freighters; only top-up ambient for the new membership.
       this._pruneDead();
     } else {
@@ -315,7 +387,14 @@ export const traffic = {
     }
     const sector = p && p.sector;
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
-    const sectorId = sector.id || (p && p.sectorId) || (this.state.world && this.state.world.currentSectorId) || 'unknown';
+    const sectorId = sector.id || requestedSectorId;
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._retireLegacyCeresTraffic();
+      this._materializeCeresActivityCast(sector);
+      this._ensureNamedLaneContact(sectorId, sector, this._sectorStations());
+      this._applyWorldSiteTrafficHooks(sectorId);
+      return;
+    }
     this._resetRngForSector(sectorId);
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
@@ -414,6 +493,240 @@ export const traffic = {
     this._applyClaimTravelHooks(sectorId);
   },
 
+  _retireLegacyCeresTraffic() {
+    this._ensureState();
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const authoredRecordIds = new Set(CERES_ACTIVITY_CAST.map(({ slot }) => stableRecordId(
+      seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      slot.worldRecordSlotId,
+    )));
+    const worldOwner = this._registry && this._registry.get && this._registry.get('world');
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId
+      ? this.state.world.records.byId
+      : {};
+    // Old saves may contain active random Ceres ambient records. Retire only records that truthfully
+    // identify themselves as traffic; mission/encounter convoy records without trafficRole remain
+    // world-owned. The public world owner writes the terminal state, so traffic never mutates the
+    // records bag or invents a kill/economy receipt.
+    const retiredRecordIds = new Set();
+    for (const [recordId, record] of Object.entries(records)) {
+      const home = record && (record.homeSectorId || record.sectorId);
+      if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
+        || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
+        || terminalWorldRecord(record)) continue;
+      if (worldOwner && typeof worldOwner.markWorldRecordDestroyed === 'function') {
+        worldOwner.markWorldRecordDestroyed(recordId, { outcome: 'destroyed' });
+        this._releaseCeresActivityJob(recordId);
+        retiredRecordIds.add(recordId);
+      }
+    }
+
+    const retiredEntityIds = new Set();
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false || !entity.data || !entity.data.trafficRole) continue;
+      const home = entity.homeSectorId || entity.data.homeSectorId || entity.data.sectorId;
+      if (home !== CERES_ACTIVITY_SECTOR_ID
+        || !retiredRecordIds.has(entity.data.worldRecordId)) continue;
+      retiredEntityIds.add(entity.id);
+      const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
+      if (typeof remove === 'function') remove(entity.id);
+      else entity.alive = false;
+    }
+    if (!retiredEntityIds.size) return;
+    this.state.traffic.freighters = this.state.traffic.freighters
+      .filter((record) => record && !retiredEntityIds.has(record.id));
+    this._active = this._active.filter((id) => !retiredEntityIds.has(id));
+  },
+
+  _releaseCeresActivityJob(recordId) {
+    if (typeof recordId !== 'string' || !recordId) return false;
+    const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+    return typeof release === 'function' ? release(`job:${recordId}`) === true : false;
+  },
+
+  _assignCeresActivityJob(entity, entry) {
+    if (!entity || entity.alive === false || !entity.data || !entry || entry.service) return null;
+    const spec = ceresActivityJobSpec(entry);
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    if (!spec || typeof assign !== 'function') return null;
+    return assign(entity, spec);
+  },
+
+  _materializeCeresActivityCast(sector) {
+    this._ensureState();
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId
+      ? this.state.world.records.byId
+      : {};
+    const prior = this.state.traffic.freighters || [];
+    const authored = [];
+    const authoredSlotIds = new Set(CERES_ACTIVITY_CAST.map(({ slot }) => slot.id));
+
+    for (const entry of CERES_ACTIVITY_CAST) {
+      const { pocket, slot, service } = entry;
+      const recordId = stableRecordId(
+        seed,
+        CERES_ACTIVITY_SECTOR_ID,
+        RECORD_KIND.CONVOY,
+        slot.worldRecordSlotId,
+      );
+      const record = records[recordId] || null;
+      if (terminalWorldRecord(record)) {
+        this._releaseCeresActivityJob(recordId);
+        continue;
+      }
+
+      let entity = entityWithWorldRecord(this.state, recordId);
+      // An active durable record without a live body belongs to world residency. Never additive-
+      // spawn over it; the world owner will rematerialize it when this sector reaches FULL.
+      if (record && !entity) continue;
+
+      const role = slot.presentationRole || 'hauler';
+      const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
+      const localPos = service
+        ? null
+        : {
+            x: pocket.activityAnchor.localPos.x + slot.spawnOffset.x,
+            z: pocket.activityAnchor.localPos.z + slot.spawnOffset.z,
+          };
+      const pos = service
+        ? { x: CINDER_SLUICE_TRAFFIC_STAGING_POS.x, z: CINDER_SLUICE_TRAFFIC_STAGING_POS.z }
+        : sectorLocalToGlobalForSector(localPos, CERES_ACTIVITY_SECTOR_ID);
+      const lawful = slot.lawful === true || role === 'patrol' || role === 'escort';
+      const aiSpec = {
+        archetype: def.archetype,
+        passive: slot.passive !== false,
+        spawnContext: lawful ? 'patrol' : 'convoy_civilian',
+        ...(lawful ? { lawful: true } : {}),
+      };
+      const canonicalSpec = makeShipEntitySpec(def.ship, {
+        team: def.team,
+        factionId: (sector && sector.factionId) || 'faction_free',
+        pos,
+        ai: aiSpec,
+      });
+      canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+
+      if (!entity) entity = this.helpers.spawnEntity(canonicalSpec);
+      if (!entity) continue;
+      this._rehydrateCeresActivityEntity(entity, canonicalSpec, entry, recordId);
+      if (!service) this._assignCeresActivityJob(entity, entry);
+
+      let trafficRecord = prior.find((candidate) => candidate && candidate.id === entity.id);
+      if (!trafficRecord) trafficRecord = {};
+      trafficRecord.id = entity.id;
+      trafficRecord.role = role;
+      trafficRecord.targetId = null;
+      trafficRecord.waitT = Number.isFinite(trafficRecord.waitT) ? trafficRecord.waitT : 0;
+      trafficRecord.nextTradeT = Number.POSITIVE_INFINITY;
+      trafficRecord.orbitPhase = Number.isFinite(trafficRecord.orbitPhase) ? trafficRecord.orbitPhase : 0;
+      trafficRecord.dockSeq = Number.isFinite(entity.data && entity.data.freightDockSeq)
+        ? entity.data.freightDockSeq | 0
+        : (trafficRecord.dockSeq | 0);
+      trafficRecord.manifest = entity.data && entity.data.cargoManifest || trafficRecord.manifest || null;
+      trafficRecord.activityActorSlotId = slot.id;
+      trafficRecord.ceresActivityCast = true;
+      trafficRecord.ceresActivityJobOwned = !service;
+      trafficRecord.worldRecordId = recordId;
+      authored.push(trafficRecord);
+    }
+
+    const legacy = prior.filter((record) => {
+      const entity = record && liveEntity(this.state, record.id);
+      const slotId = (record && record.activityActorSlotId)
+        || (entity && entity.data && entity.data.activityActorSlotId);
+      return !authoredSlotIds.has(slotId);
+    });
+    this.state.traffic.freighters = [...legacy, ...authored];
+    const liveIds = this.state.traffic.freighters
+      .map((record) => record && record.id)
+      .filter((id) => liveEntity(this.state, id));
+    this._active = [...new Set(liveIds)];
+  },
+
+  _rehydrateCeresActivityEntity(entity, canonicalSpec, entry, recordId) {
+    const data = entity.data || (entity.data = {});
+    const canonicalData = canonicalSpec.data || {};
+    const staticFields = [
+      'type', 'factionId', 'team', 'radius', 'mass', 'flightClass', 'flightModel', 'propulsion',
+      'armorFlat', 'shieldRegenRate', 'shieldRegenDelay', 'capMax', 'capRegen',
+      'thrust', 'turnRate', 'maxSpeed', 'drag',
+    ];
+    for (const field of staticFields) {
+      const value = canonicalSpec[field];
+      entity[field] = value && typeof value === 'object' ? { ...value } : value;
+    }
+    entity.cap = Number.isFinite(entity.cap)
+      ? Math.max(0, Math.min(canonicalSpec.capMax, entity.cap))
+      : canonicalSpec.cap;
+    if (!entity.boost || typeof entity.boost !== 'object') {
+      entity.boost = { ...canonicalSpec.boost };
+    } else {
+      const energy = Number.isFinite(entity.boost.energy) ? entity.boost.energy : canonicalSpec.boost.energy;
+      const dashCdT = Number.isFinite(entity.boost.dashCdT) ? entity.boost.dashCdT : 0;
+      entity.boost = {
+        ...canonicalSpec.boost,
+        energy: Math.max(0, Math.min(canonicalSpec.boost.max, energy)),
+        dashCdT: Math.max(0, Math.min(canonicalSpec.boost.dashCd, dashCdT)),
+      };
+    }
+    for (const field of ['defId', 'derived', 'miningBeam', 'fittings', 'appearance', 'livingHull']) {
+      const value = canonicalData[field];
+      if (Array.isArray(value)) data[field] = value.slice();
+      else if (value && typeof value === 'object') data[field] = { ...value };
+      else data[field] = value;
+    }
+    const canonicalWeapons = Array.isArray(canonicalData.weapons) ? canonicalData.weapons : [];
+    const sameLoadout = Array.isArray(data.weapons)
+      && data.weapons.length === canonicalWeapons.length
+      && canonicalWeapons.every((weapon, index) => data.weapons[index]
+        && data.weapons[index].defId === weapon.defId
+        && data.weapons[index].slotIndex === weapon.slotIndex);
+    data.weapons = canonicalWeapons.map((weapon, index) => {
+      if (!sameLoadout) return { ...weapon };
+      const current = data.weapons[index];
+      return {
+        ...weapon,
+        _cooldown: Number.isFinite(current._cooldown) ? Math.max(0, current._cooldown) : 0,
+        _heat: Number.isFinite(current._heat)
+          ? Math.max(0, Math.min(weapon.heatMax, current._heat))
+          : 0,
+      };
+    });
+    if (!data.combat) data.combat = { ...canonicalData.combat };
+    data.ai = { ...(data.ai || {}), ...(canonicalData.ai || {}) };
+    data.factionId = canonicalData.factionId;
+    data.team = canonicalData.team;
+    data.trafficRole = entry.slot.presentationRole || 'hauler';
+    data.trafficLabel = (TRAFFIC_ROLES[data.trafficRole] || TRAFFIC_ROLES.hauler).label;
+    data.role = data.trafficRole;
+    data.worldRecordId = recordId;
+    data.identityKey = entry.slot.worldRecordSlotId;
+    data.durable = true;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    data.activityActorSlotId = entry.slot.id;
+    data.ceresActivityCast = true;
+    data.ceresActivityJobOwned = !entry.service;
+    if (!entry.service) data.intent = null;
+    entity.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+    data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+    data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  },
+
+  _captureCeresActivityCast() {
+    const worldOwner = this._registry && this._registry.get && this._registry.get('world');
+    if (!worldOwner || typeof worldOwner.upsertWorldRecord !== 'function') return 0;
+    let captured = 0;
+    for (const record of this.state.traffic && this.state.traffic.freighters || []) {
+      const entity = record && liveEntity(this.state, record.id);
+      if (!entity || !entity.data || entity.data.ceresActivityCast !== true) continue;
+      if (worldOwner.upsertWorldRecord(entity)) captured += 1;
+    }
+    return captured;
+  },
+
   _applyWorldSiteTrafficHooks(sectorId) {
     if (!sectorId) return 0;
     const owner = this._registry && this._registry.get && this._registry.get('asteroidSites');
@@ -423,6 +736,10 @@ export const traffic = {
     this._ensureState();
     let assigned = 0;
     for (const hook of hooks) {
+      if (sectorId === CERES_ACTIVITY_SECTOR_ID && hook.id === CERES_CINDER_HOOK_ID) {
+        assigned += this._applyCeresServiceHook(hook);
+        continue;
+      }
       const rootWorldRecordId = `${hook.siteId}/root`;
       const root = entityWithWorldRecord(this.state, rootWorldRecordId);
       const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === hook.stationId);
@@ -478,6 +795,55 @@ export const traffic = {
       assigned += 1;
     }
     return assigned;
+  },
+
+  _applyCeresServiceHook(hook) {
+    const rootWorldRecordId = `${hook.siteId}/root`;
+    const root = entityWithWorldRecord(this.state, rootWorldRecordId);
+    const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === hook.stationId);
+    const serviceSlot = CERES_ACTIVITY_SERVICE_SLOTS[0];
+    const serviceRecordId = stableRecordId(
+      (this.state.meta && this.state.meta.seed) || 1,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      serviceSlot.worldRecordSlotId,
+    );
+    let chosen = null;
+    for (const record of this.state.traffic.freighters) {
+      if (!record) continue;
+      const entity = liveEntity(this.state, record.id);
+      const isService = !!entity && entity.data
+        && entity.data.worldRecordId === serviceRecordId
+        && entity.data.activityActorSlotId === serviceSlot.id;
+      if (isService) {
+        chosen = { rec: record, entity };
+        continue;
+      }
+      // R5 cast identity replaces the former random Ceres fallback. Clear only this exact hook;
+      // other sectors and other infrastructure routes keep their existing reassignment policy.
+      if (record.worldSiteRoute && record.worldSiteRoute.hookId === hook.id) delete record.worldSiteRoute;
+      if (entity && entity.data && entity.data.worldSiteTrafficHookId === hook.id) {
+        delete entity.data.worldSiteTrafficHookId;
+      }
+    }
+    if (!chosen || !root || !station) return 0;
+    if (chosen.rec.worldSiteRoute && chosen.rec.worldSiteRoute.hookId === hook.id) return 0;
+    chosen.rec.worldSiteRoute = {
+      hookId: hook.id,
+      siteId: hook.siteId,
+      stationId: hook.stationId,
+      siteWorldRecordId: rootWorldRecordId,
+      endpoint: 'site',
+      label: hook.label,
+      hazardPolicy: hook.hazardPolicy || null,
+      stagingPos: hook.stagingPos && Number.isFinite(hook.stagingPos.x) && Number.isFinite(hook.stagingPos.z)
+        ? { x: hook.stagingPos.x, z: hook.stagingPos.z }
+        : null,
+    };
+    chosen.rec.targetId = root.id;
+    chosen.entity.data.worldSiteTrafficHookId = hook.id;
+    chosen.entity.data.trafficLabel = hook.label || chosen.entity.data.trafficLabel;
+    return 1;
   },
 
   _applyClaimTravelHooks(sectorId) {
@@ -691,6 +1057,34 @@ export const traffic = {
   _ensureNamedLaneContact(sectorId, sector, stations) {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const contact = pickNamedLaneContact(sectorId, seed);
+      if (!contact || contact.id !== 'lane_rell_moisture') return;
+      let miner = null;
+      for (const rec of list) {
+        const entity = rec && liveEntity(this.state, rec.id);
+        if (!entity || !entity.data) continue;
+        if (entity.data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID) {
+          miner = entity;
+          continue;
+        }
+        if (entity.data.namedLaneContactId === contact.id) {
+          delete entity.data.namedLaneContactId;
+          delete entity.data.name;
+          delete entity.data.callsign;
+          delete entity.data.gimmick;
+          delete entity.data.scanLabel;
+          if (entity.data.trafficLabel === contact.callsign) {
+            const role = entity.data.trafficRole;
+            entity.data.trafficLabel = (TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler).label;
+          }
+          if (entity.data.ai && entity.data.ai.name === contact.name) delete entity.data.ai.name;
+        }
+      }
+      if (miner) this._stampNamedLaneContact(miner, contact);
+      return;
+    }
     // Already have a live named contact?
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
@@ -985,6 +1379,16 @@ export const traffic = {
         if (rec && rec.worldSiteRoute) lostWorldSiteRoute = true;
         if (rec && rec.claimTravelRoute) lostClaimTravelRoute = true;
         list.splice(i, 1);
+        continue;
+      }
+      // The seven authored pocket actors yield movement to npcJobsRuntime. A completed one-shot job
+      // releases data.jobId; recommission it from the same immutable activity descriptor before any
+      // ambient role branch can run. The reserved Cinder service slot is excluded and continues to
+      // use only its existing phase-gated worldSiteRoute below.
+      const activityEntry = e.data
+        && CERES_ACTIVITY_CAST_BY_SLOT_ID.get(e.data.activityActorSlotId);
+      if (activityEntry && !activityEntry.service) {
+        if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
@@ -1600,6 +2004,23 @@ export const traffic = {
       || (ent && ent.data && ent.data.trafficRole)
       || null;
     if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
+    if ((ent && ent.data && ent.data.ceresActivityCast === true)
+      || (rec && rec.ceresActivityCast === true)) {
+      // Cast identity is durable world state. Release its movement owner, but do not fabricate a
+      // freight economy receipt: these authored marks deliberately do not claim the generic
+      // field:/dest: receipt bridges.
+      const recordId = (ent && ent.data && ent.data.worldRecordId)
+        || (rec && rec.worldRecordId)
+        || null;
+      this._releaseCeresActivityJob(recordId);
+      if (idx >= 0) list.splice(idx, 1);
+      const activeIdx = this._active.indexOf(p.id);
+      if (activeIdx >= 0) this._active.splice(activeIdx, 1);
+      if (lostWorldSiteRoute) {
+        this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+      }
+      return;
+    }
     if (role && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
       // Non-trading traffic (patrol/escort) — drop tracking only.
       if (idx >= 0) list.splice(idx, 1);
