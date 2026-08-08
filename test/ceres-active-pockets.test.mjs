@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import {
@@ -19,7 +20,10 @@ import {
   ceresActivityPocket,
   distanceFromPocketAnchor,
 } from '../src/data/sectorActivityPockets.js';
-import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import {
+  sectorGlobalOrigin,
+  sectorLocalToGlobalForSector,
+} from '../src/data/sectorCoordinates.js';
 import {
   CERES_THROUGHLINE_BEACON_LOCAL_POS,
   CERES_WRECK_CATHEDRAL_LOCAL_POS,
@@ -41,6 +45,10 @@ import { WEAPONS } from '../src/data/weapons.js';
 import { planFactionPresence } from '../src/data/factionPresence.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import {
+  asteroidFormations,
+  formationBodyKey,
+} from '../src/systems/asteroidFormations.js';
 import { buildSlotList, fits, ships } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
@@ -58,6 +66,28 @@ const EXPECTED_OBJECT_SLOTS = Object.freeze([
   'ceres_ambush_bait_wreck',
   'ceres_cathedral_grave_shard',
 ]);
+
+const EXPECTED_COLLISION_ANCHORS = Object.freeze([
+  Object.freeze({
+    id: 'ceres_throughline_collision_anchor',
+    sourceFieldId: 'f_ceres_1',
+    sourceIndex: 5,
+    offset: Object.freeze({ x: 48, z: 64 }),
+    evidenceEntityId: 9,
+    evidenceRadius: 15.773138417862356,
+  }),
+  Object.freeze({
+    id: 'ceres_ambush_collision_anchor',
+    sourceFieldId: 'f_ceres_2',
+    sourceIndex: 2,
+    offset: Object.freeze({ x: 150, z: 20 }),
+    evidenceEntityId: 38,
+    evidenceRadius: 12.386358419433236,
+  }),
+]);
+
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '910b5aff6f84a065fa399c4116831346c9162e092cefb785844f1b73be3812da';
+const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = '6e9660c489b8b096a671d47239ae4880ba9247b6cb13613fd74401873b3ec209';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
   assert.deepEqual(CERES_ACTIVITY_POCKET_ORDER, EXPECTED_POCKETS);
@@ -194,7 +224,67 @@ test('R5A companion objects are logical world slots, not a second place registry
   }
 });
 
-test('R5B materializes five inert object slots inside the existing Ceres budget', () => {
+test('R5 collision anchors are a separate frozen two-rock physical-lane contract', () => {
+  const collisionAnchors = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.collisionAnchorSlots);
+  assert.equal(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots).length, 5,
+    'collision anchors never expand the five logical-object census');
+  assert.deepEqual(collisionAnchors.map((slot) => ({
+    id: slot.id,
+    sourceFieldId: slot.sourceFieldId,
+    sourceIndex: slot.sourceIndex,
+    offset: slot.offset,
+  })), EXPECTED_COLLISION_ANCHORS.map((slot) => ({
+    id: slot.id,
+    sourceFieldId: slot.sourceFieldId,
+    sourceIndex: slot.sourceIndex,
+    offset: slot.offset,
+  })));
+  assert.equal(collisionAnchors.length, 2);
+  assert.equal(CERES_ACTIVITY_POCKETS.filter((pocket) => pocket.collisionAnchorSlots.length > 0).length, 1);
+
+  const objectIds = new Set(EXPECTED_OBJECT_SLOTS);
+  const selectors = new Set();
+  for (const slot of collisionAnchors) {
+    assert.equal(slot.pocketId, 'ceres_ambush_run');
+    assert.equal(slot.coordinateSpace, 'pocket_anchor_offset_v1');
+    assert.equal(slot.runtimeOwner, 'world');
+    assert.equal(slot.inert, true);
+    assert.equal(slot.countsTowardObjectSlotCensus, false);
+    assert.equal(slot.countsTowardAuthoredCapacity, false);
+    assert.equal(Number.isInteger(slot.sourceIndex) && slot.sourceIndex > 0, true);
+    assert.equal(objectIds.has(slot.id), false);
+    const selector = `${slot.sourceFieldId}:${slot.sourceIndex}`;
+    assert.equal(selectors.has(selector), false);
+    selectors.add(selector);
+    assert.equal(Object.isFrozen(slot), true);
+    assert.equal(Object.isFrozen(slot.offset), true);
+  }
+
+  const pocket = ceresActivityPocket('ceres_ambush_run');
+  const throughlineZone = SECTOR_ZONES[pocket.sectorId].find((zone) => zone.id === pocket.activityAnchor.zoneId);
+  const positions = collisionAnchors.map((slot) => ({
+    x: pocket.activityAnchor.localPos.x + slot.offset.x,
+    z: pocket.activityAnchor.localPos.z + slot.offset.z,
+  }));
+  const pocketDistances = collisionAnchors.map((slot) => Math.hypot(slot.offset.x, slot.offset.z));
+  const zoneDistances = positions.map((pos) => Math.hypot(
+    pos.x - throughlineZone.center.x,
+    pos.z - throughlineZone.center.z,
+  ));
+  assert.deepEqual(positions, [{ x: 3088, z: -856 }, { x: 3190, z: -900 }]);
+  assert.ok(Math.abs(pocketDistances[0] - 80) < 1e-12);
+  assert.ok(Math.abs(pocketDistances[1] - Math.hypot(150, 20)) < 1e-12);
+  assert.ok(Math.abs(zoneDistances[0] - Math.hypot(-67, 99)) < 1e-12);
+  assert.ok(Math.abs(zoneDistances[1] - Math.hypot(35, 55)) < 1e-12);
+  assert.ok(pocketDistances.every((distance) => distance <= 165));
+  assert.ok(zoneDistances.every((distance) => distance <= 165));
+  assert.ok(Math.abs(Math.hypot(
+    positions[1].x - positions[0].x,
+    positions[1].z - positions[0].z,
+  ) - Math.sqrt(12340)) < 1e-12);
+});
+
+test('R5B materializes five inert object slots and two existing-budget collision anchors', () => {
   const first = materializeCeresActivityObjects(47);
   const repeat = materializeCeresActivityObjects(47);
 
@@ -212,6 +302,39 @@ test('R5B materializes five inert object slots inside the existing Ceres budget'
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
   assert.equal(new Set(first.activity.map((row) => row.slotId)).size, EXPECTED_OBJECT_SLOTS.length);
   assert.equal(first.activity.length, EXPECTED_OBJECT_SLOTS.length);
+  assert.deepEqual(first.collisionAnchors.map((row) => row.slotId),
+    EXPECTED_COLLISION_ANCHORS.map((slot) => slot.id));
+  assert.equal(new Set(first.collisionAnchors.map((row) => row.slotId)).size, 2);
+
+  for (const expected of EXPECTED_COLLISION_ANCHORS) {
+    const descriptor = collisionAnchorSlot(expected.id);
+    const row = first.collisionAnchorBySlot[expected.id];
+    const pocket = ceresActivityPocket(descriptor.pocketId);
+    const expectedPos = sectorLocalToGlobalForSector({
+      x: pocket.activityAnchor.localPos.x + descriptor.offset.x,
+      z: pocket.activityAnchor.localPos.z + descriptor.offset.z,
+    }, pocket.sectorId);
+    const field = first.fields.find((entry) => entry.id === descriptor.sourceFieldId);
+    assert.ok(row);
+    assert.equal(field.asteroidIds[descriptor.sourceIndex], row.id,
+      `${descriptor.id} is selected by field id plus zero-based source index`);
+    assert.equal(row.id, expected.evidenceEntityId);
+    assert.equal(row.radius, expected.evidenceRadius);
+    assert.deepEqual(row.pos, { x: expectedPos.x, z: expectedPos.z });
+    assert.equal(row.type, 'asteroid');
+    assert.equal(row.alive, true);
+    assert.equal(row.collides, true);
+    assert.ok(row.mass > 0 && row.hull > 0);
+    assert.ok(row.data.oreHP > 0 && row.data.yieldU > 0 && row.data.respawnSec > 0);
+    assert.ok(Array.isArray(row.data.seams) && row.data.seams.length > 0);
+    assert.equal(row.data.activityCollisionAnchorSlotId, descriptor.id);
+    assert.equal(Object.hasOwn(row.data, 'activityObjectSlotId'), false);
+    const formationId = first.formationByAsteroidId[formationBodyKey(row)];
+    assert.equal(typeof formationId, 'string',
+      'the recomputed live formation model indexes the relocated collision anchor');
+    assert.equal(first.liveFormationIds.includes(formationId), true,
+      'the relocated collision anchor resolves to a live targetable formation');
+  }
 
   const expectedPlaceBySlot = new Map([
     ['ceres_refinery_cargo_pod', 'place_conveyor_barge'],
@@ -285,6 +408,10 @@ test('R5B materializes five inert object slots inside the existing Ceres budget'
     [110, 'ship', 'sector_ceres_belt'],
     [111, 'station', 'sector_helios_prime'],
   ], 'the first entities after Ceres dressing retain their numeric IDs and order');
+  assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
+    'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
+  assert.equal(first.unaffectedAsteroidPositionHash, PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH,
+    'every asteroid except the two exact collision bindings retains its seed-47 position');
 });
 
 test('R5 acceptance entry wires the legal Hornet physics toolkit without claiming acceptance', () => {
@@ -297,6 +424,9 @@ test('R5 acceptance entry wires the legal Hornet physics toolkit without claimin
   assert.equal(entry.shipId, 'ship_hornet');
   assert.equal(entry.loadoutId, 'physics_toolkit');
   assert.equal(entry.cameraZoomWU, 144);
+  assert.equal(entry.fixedSeed, 47);
+  assert.equal(Number.isSafeInteger(entry.fixedSeed), true);
+  assert.ok(entry.fixedSeed >= 1 && entry.fixedSeed <= 0xffffffff);
   assert.equal(entry.moduleGrantPolicy, 'named_loadout_only');
   assert.deepEqual(entry.entryPipeline, ['requestSandboxGame', 'game:new', 'game:started', 'applySandboxSetup']);
   assert.equal(typeof requestSandboxGame, 'function');
@@ -338,6 +468,9 @@ test('R5A contract is deeply immutable at its public data boundaries', () => {
   assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[0].actorSlots[0].route.marks), true);
   assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[0].activityAnchor), true);
   assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[0].activityAnchor.localPos), true);
+  assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[2].collisionAnchorSlots), true);
+  assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[2].collisionAnchorSlots[0]), true);
+  assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[2].collisionAnchorSlots[0].offset), true);
   assert.equal(Object.isFrozen(CERES_ACTIVITY_POCKETS[1].externalSiteRefs[0]), true);
   assert.equal(Object.isFrozen(CERES_ACTIVITY_SERVICE_SLOTS[0].binding), true);
   assert.equal(Object.isFrozen(CERES_REFERENCE_ACCEPTANCE_ENTRY), true);
@@ -357,8 +490,16 @@ function objectSlot(id) {
   return found;
 }
 
+function collisionAnchorSlot(id) {
+  const found = CERES_ACTIVITY_POCKETS
+    .flatMap((pocket) => pocket.collisionAnchorSlots)
+    .find((slot) => slot.id === id);
+  assert.ok(found, `missing collision anchor slot ${id}`);
+  return found;
+}
+
 function materializeCeresActivityObjects(seed) {
-  const sim = createSimulation({ seed, systems: [world, asteroidSites] });
+  const sim = createSimulation({ seed, systems: [world, asteroidSites, asteroidFormations] });
   const { state } = sim;
   let originalMulberry32 = null;
   try {
@@ -391,14 +532,15 @@ function materializeCeresActivityObjects(seed) {
       placePlayer: false,
     });
     sim.step(SIM_DT);
-    const first = captureCeresActivityState(state);
+    const formationsSystem = sim.registry.get('asteroidFormations');
+    const first = captureCeresActivityState(state, formationsSystem.currentModel());
 
     worldSystem.enterSector('sector_ceres_belt', {
       continuous: true,
       noTeleport: true,
       placePlayer: false,
     });
-    const reentry = captureCeresActivityState(state);
+    const reentry = captureCeresActivityState(state, formationsSystem.currentModel());
     return {
       ...first,
       ceresRngDraws: drawCounts.get(ceresContentSeed) || 0,
@@ -410,7 +552,7 @@ function materializeCeresActivityObjects(seed) {
   }
 }
 
-function captureCeresActivityState(state) {
+function captureCeresActivityState(state, formationModel) {
   const all = [...state.entities.values()];
   const entities = all.filter((entity) => {
     if (!entity || entity.alive === false || entity.data?.ceresActivityHarnessPlayer) return false;
@@ -445,6 +587,44 @@ function captureCeresActivityState(state) {
     .sort((left, right) => left.id - right.id);
   const activityBySlot = Object.fromEntries(activity.map((row) => [row.slotId, row]));
   const active = state.world.activeSector;
+  const collisionAnchors = entities
+    .filter((entity) => typeof entity.data?.activityCollisionAnchorSlotId === 'string')
+    .map((entity) => ({
+      id: entity.id,
+      slotId: entity.data.activityCollisionAnchorSlotId,
+      type: entity.type,
+      alive: entity.alive !== false,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      radius: entity.radius,
+      mass: entity.mass,
+      hull: entity.hull,
+      collides: entity.collides === true,
+      data: cloneJson(entity.data),
+    }))
+    .sort((left, right) => left.id - right.id);
+  const collisionAnchorBySlot = Object.fromEntries(collisionAnchors.map((row) => [row.slotId, row]));
+  const asteroids = entities
+    .filter((entity) => entity.type === 'asteroid')
+    .sort((left, right) => left.id - right.id);
+  const origin = sectorGlobalOrigin('sector_ceres_belt');
+  const asteroidInvariantHash = hashJson(asteroids.map((entity) => {
+    const data = cloneJson(entity.data);
+    delete data.activityCollisionAnchorSlotId;
+    return {
+      id: entity.id,
+      type: entity.type,
+      radius: entity.radius,
+      mass: entity.mass,
+      hull: entity.hull,
+      hullMax: entity.hullMax,
+      angVel: entity.angVel,
+      collides: entity.collides,
+      data,
+    };
+  }));
+  const unaffectedAsteroidPositionHash = hashJson(asteroids
+    .filter((entity) => entity.id !== 9 && entity.id !== 38)
+    .map((entity) => [entity.id, entity.pos.x - origin.x, entity.pos.z - origin.z]));
   const entityById = Object.fromEntries([4].map((id) => {
     const entity = state.entities.get(id);
     return [id, entity ? { id, type: entity.type, data: cloneJson(entity.data) } : null];
@@ -462,7 +642,12 @@ function captureCeresActivityState(state) {
     },
     activity,
     activityBySlot,
+    collisionAnchors,
+    collisionAnchorBySlot,
+    formationByAsteroidId: { ...formationModel.byAsteroidId },
+    liveFormationIds: formationModel.formations.map((formation) => formation.id),
     entityById,
+    fields: active.fields.map((field) => ({ id: field.id, asteroidIds: [...field.asteroidIds] })),
     fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
     dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
     unaffectedRngSignature: [103, 104, 106].map(pointSignature),
@@ -470,6 +655,8 @@ function captureCeresActivityState(state) {
       const entity = state.entities.get(id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];
     }),
+    asteroidInvariantHash,
+    unaffectedAsteroidPositionHash,
     fullCeresSignature: entities
       .map((entity) => ({
         id: entity.id,
@@ -499,4 +686,8 @@ function cloneJson(value) {
 
 function round6(value) {
   return Number(Number(value).toFixed(6));
+}
+
+function hashJson(value) {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }

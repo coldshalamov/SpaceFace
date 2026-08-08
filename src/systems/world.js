@@ -176,10 +176,28 @@ function authoredGeologyPlaceForField(fieldDef) {
 const CERES_ACTIVITY_OBJECT_SLOTS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.objectSlots.map((slot) => [slot.id, Object.freeze({ pocket, slot })])
 )));
+const CERES_ACTIVITY_COLLISION_ANCHORS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.collisionAnchorSlots.map((slot) => [
+    `${slot.sourceFieldId}:${slot.sourceIndex}`,
+    Object.freeze({ pocket, slot }),
+  ])
+)));
 
 function ceresActivityObjectBinding(id, toGlobal) {
   const binding = CERES_ACTIVITY_OBJECT_SLOTS.get(id);
   if (!binding) throw new Error(`Missing Ceres activity object slot: ${id}`);
+  return {
+    id: binding.slot.id,
+    pos: toGlobal({
+      x: binding.pocket.activityAnchor.localPos.x + binding.slot.offset.x,
+      z: binding.pocket.activityAnchor.localPos.z + binding.slot.offset.z,
+    }),
+  };
+}
+
+function ceresActivityCollisionAnchorBinding(fieldId, sourceIndex, toGlobal) {
+  const binding = CERES_ACTIVITY_COLLISION_ANCHORS.get(`${fieldId}:${sourceIndex}`);
+  if (!binding) return null;
   return {
     id: binding.slot.id,
     pos: toGlobal({
@@ -1173,6 +1191,16 @@ export const world = {
             (localPos) => this._toGlobal(localPos, sector.id),
           )
           : null;
+        const collisionAnchorBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
+          ? ceresActivityCollisionAnchorBinding(
+            fdef.id,
+            i,
+            (localPos) => this._toGlobal(localPos, sector.id),
+          )
+          : null;
+        if (activityBinding && collisionAnchorBinding) {
+          throw new Error(`Ceres activity bindings overlap at ${fdef.id}:${i}`);
+        }
         const a = this._spawnAsteroid(
           fdef,
           params,
@@ -1181,6 +1209,7 @@ export const world = {
           rng,
           i === 0 ? authoredGeologyPlaceId : null,
           activityBinding,
+          collisionAnchorBinding,
         );
         if (a) {
           this._stampHomeSector(a, sector.id);
@@ -1199,6 +1228,7 @@ export const world = {
     rng,
     authoredGeologyPlaceId = null,
     activityBinding = null,
+    collisionAnchorBinding = null,
   ) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
     // disc-uniform scatter inside the cluster (center is already galactic-global)
@@ -1220,10 +1250,11 @@ export const world = {
     const yieldU = Math.max(1, Math.round(baseYieldU * ecologyYield));
     const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
     const angVel = (rng() - 0.5) * 0.35;
-    // Activity binding substitutes an existing-budget slot only after consuming every original
-    // asteroid draw. It must not alter count, spawn order, geology index 0, or the later stream.
-    const pos = activityBinding && activityBinding.pos
-      ? { x: activityBinding.pos.x, z: activityBinding.pos.z }
+    // Activity bindings substitute existing-budget slots only after consuming every original
+    // asteroid draw. They must not alter count, spawn order, geology index 0, or the later stream.
+    const positionBinding = activityBinding || collisionAnchorBinding;
+    const pos = positionBinding && positionBinding.pos
+      ? { x: positionBinding.pos.x, z: positionBinding.pos.z }
       : scatteredPos;
 
     const ent = this.helpers.spawnEntity({
@@ -1245,6 +1276,9 @@ export const world = {
         } : {}),
         ...(activityBinding && activityBinding.id
           ? { activityObjectSlotId: activityBinding.id }
+          : {}),
+        ...(collisionAnchorBinding && collisionAnchorBinding.id
+          ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
           : {}),
       },
     });

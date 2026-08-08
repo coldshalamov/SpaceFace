@@ -114,6 +114,28 @@ function objectSlot({ id, pocketId, kind, offset, runtimeOwner, targetRef = null
   });
 }
 
+function collisionAnchorSlot({ id, pocketId, sourceFieldId, sourceIndex, offset }) {
+  const distance = Math.hypot(offset.x, offset.z);
+  if (!Number.isInteger(sourceIndex) || sourceIndex <= 0) {
+    throw new Error(`collision anchor ${id} must bind a nonzero integer source index`);
+  }
+  if (distance > CERES_ACTIVITY_BANDS.speedRevealed.maxWU) {
+    throw new Error(`collision anchor ${id} lies outside the accepted activity bands`);
+  }
+  return Object.freeze({
+    id,
+    pocketId,
+    coordinateSpace: 'pocket_anchor_offset_v1',
+    offset,
+    sourceFieldId,
+    sourceIndex,
+    runtimeOwner: 'world',
+    inert: true,
+    countsTowardObjectSlotCensus: false,
+    countsTowardAuthoredCapacity: false,
+  });
+}
+
 function canonicalAnchor({ kind, id, zoneId = null, placeId = null, localPos }) {
   return Object.freeze({
     coordinateSpace: 'sector_local_v1',
@@ -133,6 +155,7 @@ function pocket({
   anchor,
   actorSlots,
   objectSlots,
+  collisionAnchorSlots = [],
   serviceSlotIds = [],
   externalSiteRefs = [],
 }) {
@@ -146,6 +169,7 @@ function pocket({
     bandOrigin: Object.freeze({ kind: 'activity_anchor', anchorId: anchor.id }),
     actorSlots: Object.freeze(actorSlots),
     objectSlots: Object.freeze(objectSlots),
+    collisionAnchorSlots: Object.freeze(collisionAnchorSlots),
     serviceSlotIds: Object.freeze(serviceSlotIds),
     externalSiteRefs: Object.freeze(externalSiteRefs),
     authoredCapacityContribution: actorSlots.length + serviceSlotIds.length,
@@ -192,6 +216,22 @@ const ambushObjects = Object.freeze([
     kind: 'bait_wreck_visual',
     offset: point(82, -18),
     runtimeOwner: 'world',
+  }),
+]);
+const ambushCollisionAnchors = Object.freeze([
+  collisionAnchorSlot({
+    id: 'ceres_throughline_collision_anchor',
+    pocketId: ambushId,
+    sourceFieldId: 'f_ceres_1',
+    sourceIndex: 5,
+    offset: point(48, 64),
+  }),
+  collisionAnchorSlot({
+    id: 'ceres_ambush_collision_anchor',
+    pocketId: ambushId,
+    sourceFieldId: 'f_ceres_2',
+    sourceIndex: 2,
+    offset: point(150, 20),
   }),
 ]);
 const cathedralObjects = Object.freeze([
@@ -424,6 +464,7 @@ export const CERES_ACTIVITY_POCKETS = Object.freeze([
     }),
     actorSlots: ambushActors,
     objectSlots: ambushObjects,
+    collisionAnchorSlots: ambushCollisionAnchors,
   }),
   pocket({
     id: cathedralId,
@@ -463,6 +504,7 @@ export const CERES_REFERENCE_ACCEPTANCE_ENTRY = Object.freeze({
     'wpn_momentum_sink_s',
   ]),
   cameraZoomWU: 144,
+  fixedSeed: 47,
   entryOffset: point(-72, 0),
   entryPipeline: Object.freeze(['requestSandboxGame', 'game:new', 'game:started', 'applySandboxSetup']),
   requiredSystemOperations: Object.freeze([
@@ -484,6 +526,23 @@ if (CERES_AUTHORED_ACTIVITY_SLOT_ORDER.length !== CERES_AUTHORED_ACTIVITY_CAPACI
 }
 if (new Set(CERES_AUTHORED_ACTIVITY_SLOT_ORDER).size !== CERES_AUTHORED_ACTIVITY_SLOT_ORDER.length) {
   throw new Error('Ceres authored activity slot ids must be unique');
+}
+const collisionAnchors = CERES_ACTIVITY_POCKETS.flatMap((pocketEntry) => pocketEntry.collisionAnchorSlots);
+if (collisionAnchors.length !== 2) {
+  throw new Error(`Ceres collision lane requires exactly 2 anchors; got ${collisionAnchors.length}`);
+}
+const collisionAnchorIds = collisionAnchors.map((slot) => slot.id);
+const collisionAnchorSelectors = collisionAnchors.map((slot) => `${slot.sourceFieldId}:${slot.sourceIndex}`);
+const logicalObjectIds = new Set(CERES_ACTIVITY_POCKETS.flatMap(
+  (pocketEntry) => pocketEntry.objectSlots.map((slot) => slot.id),
+));
+const authoredSlotIds = new Set(CERES_AUTHORED_ACTIVITY_SLOT_ORDER);
+if (new Set(collisionAnchorIds).size !== collisionAnchorIds.length
+  || collisionAnchorIds.some((id) => logicalObjectIds.has(id) || authoredSlotIds.has(id))) {
+  throw new Error('Ceres collision anchor ids must be unique and disjoint from authored activity slots');
+}
+if (new Set(collisionAnchorSelectors).size !== collisionAnchorSelectors.length) {
+  throw new Error('Ceres collision anchors must use unique field/index selectors');
 }
 
 export function ceresActivityPocket(id) {

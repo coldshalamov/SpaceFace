@@ -8,8 +8,8 @@
 //   listeners consistent — so the feature you're testing is the feature that ships.
 //
 // Flow:
-//   1. requestSandboxGame(bus, config) stashes the config, then emits game:new (no opts needed —
-//      startNewGame builds the real NEW_GAME world; we mutate after).
+//   1. requestSandboxGame(bus, config) stashes the config, then emits game:new with only a validated
+//      own uint32 seed when present; startNewGame builds the real NEW_GAME world before setup.
 //   2. installSandboxGameStartedHook(bus, ctx) arms a one-shot game:started listener that reads the
 //      stashed config and calls applySandboxSetup. It re-arms itself after each run so the harness
 //      survives multiple launches in one session.
@@ -223,6 +223,7 @@ export const SCENARIO_PRESETS = Object.freeze([
       spawnAtZoneId: ceresAcceptancePocket.activityAnchor.zoneId,
       spawnAtZoneOffset: CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset,
       shipId: CERES_REFERENCE_ACCEPTANCE_ENTRY.shipId,
+      seed: CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed,
       unlockAllTech: true,
       physicsLoadout: CERES_REFERENCE_ACCEPTANCE_ENTRY.loadoutId,
       cameraCandidate: 'physics_study',
@@ -268,11 +269,20 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
 ]);
 
-/** Stash config, then trigger the standard new-game pipeline. The real NEW_GAME world boots;
- *  applySandboxSetup mutates it on game:started. */
+function gameNewOptionsForSandboxConfig(config) {
+  if (!config || typeof config !== 'object'
+    || !Object.prototype.hasOwnProperty.call(config, 'seed')) return {};
+  const seed = config.seed;
+  return Number.isSafeInteger(seed) && seed >= 1 && seed <= 0xffffffff
+    ? { seed }
+    : {};
+}
+
+/** Stash config, then trigger the standard new-game pipeline. The real NEW_GAME world boots with
+ *  only a validated deterministic seed; applySandboxSetup mutates it on game:started. */
 export function requestSandboxGame(bus, config) {
   pendingConfig = config || {};
-  bus.emit('game:new', {});
+  bus.emit('game:new', gameNewOptionsForSandboxConfig(config));
 }
 
 /** Idempotent installer for the game:started hook. Call once during UI init. Re-arms after each

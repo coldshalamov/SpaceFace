@@ -148,6 +148,14 @@ test('recovery launcher exposes the exact eight named playtest scenarios', () =>
     assert.ok(matches[0].config.cameraCandidate, `${id} has repeatable camera framing`);
   }
 
+  const ceres = recoveryPreset('ceres_reference_pocket');
+  assert.equal(Object.hasOwn(ceres.config, 'seed'), true);
+  assert.equal(ceres.config.seed, CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed);
+  for (const preset of SCENARIO_PRESETS.filter((entry) => entry.id !== 'ceres_reference_pocket')) {
+    assert.equal(Object.hasOwn(preset.config, 'seed'), false,
+      `${preset.id} does not inherit the Ceres acceptance seed`);
+  }
+
   assert.deepEqual(SANDBOX_CAMERA_CANDIDATES.map((candidate) => candidate.zoom), [72, 96, 120, 144]);
   assert.deepEqual(SANDBOX_PHYSICS_LOADOUTS.map((loadout) => loadout.id), [
     'starter',
@@ -340,7 +348,8 @@ test('sandbox hook applies the Ceres acceptance entry once and clears a later fa
   const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
   const preset = recoveryPreset('ceres_reference_pocket');
   requestSandboxGame(bus, preset.config);
-  assert.deepEqual(newGames, [{}], 'the launcher enters through the public game:new route');
+  assert.deepEqual(newGames, [{ seed: 47 }],
+    'the Ceres card forwards its fixed seed through the public game:new route');
   bus.emit('game:started', {});
 
   const active = state.player.ownedShips[state.player.activeShipIndex];
@@ -366,6 +375,40 @@ test('sandbox hook applies the Ceres acceptance entry once and clears a later fa
     'the acceptance entry grants only its named physics toolkit',
   );
 
+  const requestAndFail = (config, expected) => {
+    const before = newGames.length;
+    requestSandboxGame(bus, config);
+    assert.equal(newGames.length, before + 1);
+    assert.deepEqual(newGames.at(-1), expected);
+    bus.emit('game:startFailed', { error: 'seed envelope probe' });
+    return newGames.at(-1);
+  };
+  assert.deepEqual(requestAndFail({ scenarioId: 'valid-low', seed: 1 }, { seed: 1 }), { seed: 1 });
+  assert.deepEqual(
+    requestAndFail({ scenarioId: 'valid-high', seed: 0xffffffff }, { seed: 0xffffffff }),
+    { seed: 0xffffffff },
+  );
+  const invalidSeedConfigs = [
+    { scenarioId: 'omitted' },
+    { scenarioId: 'undefined', seed: undefined },
+    { scenarioId: 'null', seed: null },
+    { scenarioId: 'zero', seed: 0 },
+    { scenarioId: 'negative', seed: -1 },
+    { scenarioId: 'fraction', seed: 47.5 },
+    { scenarioId: 'nan', seed: Number.NaN },
+    { scenarioId: 'positive-infinity', seed: Number.POSITIVE_INFINITY },
+    { scenarioId: 'negative-infinity', seed: Number.NEGATIVE_INFINITY },
+    { scenarioId: 'overflow', seed: 0x1_0000_0000 },
+    { scenarioId: 'string', seed: '47' },
+    { scenarioId: 'boolean', seed: true },
+    { scenarioId: 'boxed', seed: new Number(47) },
+    Object.assign(Object.create({ seed: 47 }), { scenarioId: 'inherited' }),
+    recoveryPreset('physics_swarm').config,
+  ];
+  const invalidEnvelopes = invalidSeedConfigs.map((config) => requestAndFail(config, {}));
+  assert.equal(new Set(invalidEnvelopes).size, invalidEnvelopes.length,
+    'every launch receives a fresh game:new options object');
+
   const toastCount = toasts.length;
   requestSandboxGame(bus, { scenarioId: 'physics_swarm' });
   bus.emit('game:startFailed', { error: 'synthetic launch failure' });
@@ -389,6 +432,9 @@ test('Ceres preset derives its anchor-local entry from the activity contract', (
   }, entry.sectorId);
 
   assert.equal(preset.config.shipId, entry.shipId);
+  assert.equal(preset.config.seed, entry.fixedSeed);
+  assert.equal(buildSandboxLaunchConfig(preset.config, { seed: 99 }).seed, entry.fixedSeed,
+    'fine tuning cannot replace the acceptance seed');
   assert.equal(preset.config.physicsLoadout, entry.loadoutId);
   assert.equal(preset.config.unlockAllTech, true);
   assert.equal(Object.hasOwn(preset.config, 'grantAllModules'), false);
