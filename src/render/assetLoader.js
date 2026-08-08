@@ -496,7 +496,15 @@ export async function loadAuthoredPart(url, options = {}) {
 }
 
 export async function preloadAuthoredParts(requests, renderer) {
-  return Promise.all((requests || []).map((request) => loadAuthoredPart(request.url, { ...request, renderer })));
+  const records = [];
+  // GLB fetches are local; decode, transcode, resource registration, and first upload are the costly
+  // operations. Keep one admission in flight so the preparation runway cannot become its own spike.
+  for (const rawRequest of requests || []) {
+    const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
+    if (!request || !request.url) continue;
+    records.push(await loadAuthoredPart(request.url, { ...request, renderer }));
+  }
+  return records;
 }
 
 /**
@@ -515,44 +523,94 @@ export async function preloadAuthoredParts(requests, renderer) {
  * `warmShaders` is injected rather than imported so the residency contract does not depend on the
  * precompile pipeline; callers that have a renderer pass `precompile`'s warm entry point.
  */
-export async function prepareSectorEntry(renderer, sectorId, urls, options = {}) {
+export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, options = {}) {
   const exactSectorId = sectorId == null ? null : String(sectorId);
   if (!exactSectorId) throw new Error('prepareSectorEntry requires a sector id');
-  const requested = [...new Set(urls || [])];
-  const owner = Object.freeze({ type: 'asset-incoming-sector', sectorId: exactSectorId });
+  const requested = [];
+  const seen = new Set();
+  for (const rawRequest of requestsOrUrls || []) {
+    const request = typeof rawRequest === 'string' ? { url: rawRequest, slot: null } : rawRequest;
+    if (!request || !request.url) continue;
+    const normalized = Object.freeze({
+      ...request,
+      url: String(request.url),
+      slot: request.slot == null ? null : String(request.slot),
+    });
+    const key = `${normalized.url}::${normalized.slot || '*'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    requested.push(normalized);
+  }
+  const owner = options.owner || Object.freeze({ type: 'asset-incoming-sector', sectorId: exactSectorId });
+  const residency = options.residency || getAssetResidency(renderer);
+  const isEntryActive = typeof options.isEntryActive === 'function' ? options.isEntryActive : () => true;
+  const releaseOwner = (reason) => {
+    if (residency && typeof residency.releaseOwner === 'function') {
+      residency.releaseOwner(owner, reason);
+    }
+  };
+
+  const cancelled = () => {
+    releaseOwner('sector-prewarm-cancelled');
+    return Object.freeze({
+      schema: 'spaceface.sectorPrepare.v1',
+      sectorId: exactSectorId,
+      resident: 0,
+      rotated: false,
+      cancelled: true,
+      owner,
+    });
+  };
 
   // `loadPart` and `residency` are injectable so the ordering contract can be exercised for real
   // headlessly. A check that re-implemented this body would only prove itself consistent.
   const loadPart = options.loadPart || loadAuthoredPart;
-  const records = await Promise.all(requested.map((url) => loadPart(url, {
-    renderer,
-    sectorId: exactSectorId,
-    residencyOwner: owner,
-    residencyRole: 'sector-prewarm',
-  })));
+  const records = [];
+  let failureReason = 'sector-prewarm-load-failed';
+  try {
+    for (const request of requested) {
+      if (!isEntryActive()) return cancelled();
+      records.push(await loadPart(request.url, {
+        ...request,
+        renderer,
+        sectorId: exactSectorId,
+        residencyOwner: owner,
+        residencyRole: 'sector-prewarm',
+        isResidencyOwnerActive: isEntryActive,
+      }));
+    }
+    if (!isEntryActive()) return cancelled();
 
-  const missing = requested.filter((_, index) => !records[index]);
-  if (missing.length) {
-    throw new AssetContractError(`sector:${exactSectorId}`, [
-      `${missing.length} of ${requested.length} spawnable archetypes did not become resident before `
-      + `scene publish: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`,
-    ]);
+    const missing = requested.filter((_, index) => !records[index]);
+    if (missing.length) {
+      failureReason = 'sector-prewarm-incomplete';
+      throw new AssetContractError(`sector:${exactSectorId}`, [
+        `${missing.length} of ${requested.length} spawnable archetypes did not become resident before `
+        + `scene publish: ${missing.slice(0, 5).map((request) => request.url).join(', ')}${missing.length > 5 ? '…' : ''}`,
+      ]);
+    }
+
+    if (typeof options.warmShaders === 'function') {
+      failureReason = 'sector-prewarm-shader-warm-failed';
+      await options.warmShaders(records.filter(Boolean), exactSectorId);
+    }
+    if (!isEntryActive()) return cancelled();
+
+    // Swap last. Everything above is the "prepare"; this single call is the "then swap".
+    failureReason = 'sector-prewarm-rotate-failed';
+    const rotated = residency ? residency.rotateSector(exactSectorId) : false;
+    return Object.freeze({
+      schema: 'spaceface.sectorPrepare.v1',
+      sectorId: exactSectorId,
+      resident: records.length,
+      rotated,
+      cancelled: false,
+      owner,
+    });
+  } catch (error) {
+    releaseOwner(failureReason);
+    throw error;
   }
-
-  if (typeof options.warmShaders === 'function') {
-    await options.warmShaders(records.filter(Boolean), exactSectorId);
-  }
-
-  // Swap last. Everything above is the "prepare"; this single call is the "then swap".
-  const residency = options.residency || getAssetResidency(renderer);
-  const rotated = residency ? residency.rotateSector(exactSectorId) : false;
-  return Object.freeze({
-    schema: 'spaceface.sectorPrepare.v1',
-    sectorId: exactSectorId,
-    resident: records.length,
-    rotated,
-    owner,
-  });
 }
 
 export async function getAuthoredAssetDiagnostic(renderer, url, slot = null) {

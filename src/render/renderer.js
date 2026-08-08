@@ -17,12 +17,14 @@ import {
 } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
+  authoredPrewarmRequestsForEntities,
   getAuthoredInstancePoolDiagnostics,
   isInitialAuthoredCompositionEntity,
   preloadAuthoredPartLibrary,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
+import { prepareSectorEntry, preloadAuthoredParts } from './assetLoader.js';
 import {
   createAsteroidInstancePool,
   invalidateAsteroidInstancePool,
@@ -246,6 +248,12 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
+}
+
+function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
+  if (!isEntityAuthoredUpgradeRelevant(entity, state)) return false;
+  if (!pendingSectorId) return true;
+  return String(entitySectorId(entity) || '') !== String(pendingSectorId);
 }
 
 function clearEntityMeshReference(entity, mesh) {
@@ -1132,6 +1140,11 @@ export const render = {
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds = new Set();
     this._deferNoncriticalMeshStreaming = false;
+    this._incomingSectorPrewarm = null;
+    this._currentSectorPrewarm = null;
+    this._authoredSectorPrewarmPendingId = null;
+    this._authoredSectorPrewarmPending = null;
+    this._sectorPrewarmGeneration = 0;
     this._firstPlayablePaintScheduled = false;
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
@@ -1494,8 +1507,125 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
+    const sectorPrewarmRequests = (sectorId) => authoredPrewarmRequestsForEntities(state.entityList, {
+      sectorId,
+      playerId: state.playerId,
+    });
+    const releaseSectorPrewarm = (record, reason) => {
+      if (!record || record.active !== true) return 0;
+      record.active = false;
+      return this._assetResidency
+        ? this._assetResidency.releaseOwner(record.owner, reason)
+        : 0;
+    };
+    const appendSectorPrewarmRequests = (record, requests) => {
+      if (!record || record.active !== true) return Promise.resolve([]);
+      const additions = [];
+      for (const request of requests || []) {
+        const key = `${request.url}::${request.slot || '*'}`;
+        if (record.requestKeys.has(key)) continue;
+        record.requestKeys.add(key);
+        record.requests.push(request);
+        additions.push(request);
+      }
+      if (additions.length === 0) return record.promise;
+      record.promise = record.promise.catch((error) => {
+        record.prefetchError = error;
+        return [];
+      }).then(() => {
+        if (record.active !== true) return [];
+        return preloadAuthoredParts(additions.map((request) => ({
+          ...request,
+          residencyOwner: record.owner,
+          residencyRole: 'sector-prewarm',
+          sectorId: record.sectorId,
+          isResidencyOwnerActive: () => record.active === true,
+        })), renderer);
+      });
+      return record.promise;
+    };
+    const beginIncomingSectorPrewarm = (sectorId) => {
+      const exactSectorId = sectorId == null ? null : String(sectorId);
+      if (!exactSectorId) return null;
+      const existing = this._incomingSectorPrewarm;
+      if (existing && existing.active === true && existing.sectorId === exactSectorId) {
+        appendSectorPrewarmRequests(existing, sectorPrewarmRequests(exactSectorId));
+        return existing;
+      }
+      if (existing) releaseSectorPrewarm(existing, 'incoming-sector-prewarm-superseded');
+      const record = {
+        sectorId: exactSectorId,
+        generation: ++this._sectorPrewarmGeneration,
+        owner: Object.freeze({
+          type: 'asset-incoming-sector',
+          sectorId: exactSectorId,
+          generation: this._sectorPrewarmGeneration,
+        }),
+        active: true,
+        requestKeys: new Set(),
+        requests: [],
+        promise: Promise.resolve([]),
+        prefetchError: null,
+      };
+      this._incomingSectorPrewarm = record;
+      appendSectorPrewarmRequests(record, sectorPrewarmRequests(exactSectorId));
+      return record;
+    };
+    const settleSectorPrewarmRequests = async (record) => {
+      // `sector:enter` is followed synchronously by arrival-specific spawns (for example an
+      // interdiction ambush) before the current fixed step unwinds. Yield once, then wait until no
+      // producer has extended the serial chain, so those exact roots join the same prepare/rotate.
+      await Promise.resolve();
+      while (record && record.active === true) {
+        const pending = record.promise;
+        await pending.catch((error) => {
+          record.prefetchError = error;
+          return [];
+        });
+        await Promise.resolve();
+        if (pending === record.promise) return true;
+      }
+      return false;
+    };
+    bus.on('jump:chargeStart', ({ targetSectorId } = {}) => {
+      beginIncomingSectorPrewarm(targetSectorId);
+    });
+    bus.on('jump:chargeAbort', () => {
+      const incoming = this._incomingSectorPrewarm;
+      if (incoming) releaseSectorPrewarm(incoming, 'jump-charge-aborted');
+      this._incomingSectorPrewarm = null;
+    });
+    bus.on('entity:spawned', ({ entity } = {}) => {
+      const pending = this._authoredSectorPrewarmPending;
+      if (!pending || pending.active !== true || !entity) return;
+      const spawnedSectorId = entitySectorId(entity);
+      if (String(spawnedSectorId || '') !== pending.sectorId) return;
+      appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
+        sectorId: pending.sectorId,
+        playerId: state.playerId,
+      }));
+    });
+    bus.on('jump:arrive', ({ sectorId } = {}) => {
+      const pending = this._authoredSectorPrewarmPending;
+      const exactSectorId = sectorId == null ? null : String(sectorId);
+      if (!pending || pending.active !== true || pending.sectorId !== exactSectorId) return;
+      appendSectorPrewarmRequests(pending, sectorPrewarmRequests(exactSectorId));
+    });
     bus.on('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
+      const exactSectorId = sectorId == null ? null : String(sectorId);
+      if (this._currentSectorPrewarm && this._currentSectorPrewarm.sectorId === exactSectorId) {
+        releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-exited');
+        this._currentSectorPrewarm = null;
+      }
+      if (this._incomingSectorPrewarm && this._incomingSectorPrewarm.sectorId === exactSectorId) {
+        releaseSectorPrewarm(this._incomingSectorPrewarm, 'pending-sector-prewarm-exited');
+        this._incomingSectorPrewarm = null;
+      }
+      if (this._authoredSectorPrewarmPendingId === exactSectorId) {
+        this._authoredSectorPrewarmPendingId = null;
+        this._authoredSectorPrewarmPending = null;
+      }
       this._publishAssetResidencyDiagnostics();
     });
     const compileSectorPipelines = (sector) => {
@@ -1516,17 +1646,8 @@ export const render = {
       });
     };
     bus.on('sector:enter', ({ sectorId, sector } = {}) => {
-      if (this._assetResidency) this._assetResidency.rotateSector(sectorId || sector && sector.id);
-      this._publishAssetResidencyDiagnostics();
+      const exactSectorId = String(sectorId || sector && sector.id || '');
       this._meshReconcileDirty = true;
-      // Kick only boundaries inside the authored prefetch runway. Reduced neighbour sectors remain
-      // structurally alive in simulation, but do not decode merely because membership changed.
-      for (const [id, mesh] of this._meshes) {
-        const entity = state.entities.get(id);
-        if (isEntityAuthoredUpgradeRelevant(entity, state)) {
-          requestAuthoredUpgrade(mesh, renderer, scene);
-        }
-      }
       if (cam.snapToPlayer) cam.snapToPlayer();
       const sectorVisualProfile = resolveSectorVisualProfile(sector);
       this._beginSectorPaletteTransition(sector, sectorVisualProfile);
@@ -1543,8 +1664,8 @@ export const render = {
       // played game showed an empty default sky.
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
-      if (state.mode === 'loading') {
-        state.render.pipelinePrecompileReady = gpu.software
+      const pipelinePrecompile = state.mode === 'loading'
+        ? (gpu.software
           ? precompileGlobalPipelines(renderer, scene, cam.obj, {
             incremental: true,
             preparePipelines: compileForCurrentTarget,
@@ -1564,10 +1685,82 @@ export const render = {
           }).catch((error) => {
             console.warn('[render] opening pipeline precompile failed', error);
             return null;
-          });
-      } else {
-        state.render.pipelinePrecompileReady = compileSectorPipelines(sector);
+          }))
+        : compileSectorPipelines(sector);
+
+      if (state.mode === 'loading' || !exactSectorId) {
+        // Run reset/New Game can publish its loading-sector enter without a preceding sector:exit.
+        // Retire every prior preparation generation explicitly so reset cannot strand decoded owners.
+        const stalePrewarms = new Set([
+          this._incomingSectorPrewarm,
+          this._currentSectorPrewarm,
+          this._authoredSectorPrewarmPending,
+        ].filter(Boolean));
+        for (const stale of stalePrewarms) releaseSectorPrewarm(stale, 'loading-sector-prewarm-reset');
+        this._incomingSectorPrewarm = null;
+        this._currentSectorPrewarm = null;
+        this._authoredSectorPrewarmPending = null;
+        this._authoredSectorPrewarmPendingId = null;
+        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        state.render.pipelinePrecompileReady = pipelinePrecompile;
+        this._publishAssetResidencyDiagnostics();
+        return;
       }
+
+      let prewarm = this._incomingSectorPrewarm;
+      if (!prewarm || prewarm.active !== true || prewarm.sectorId !== exactSectorId) {
+        if (prewarm) releaseSectorPrewarm(prewarm, 'incoming-sector-prewarm-mismatch');
+        prewarm = beginIncomingSectorPrewarm(exactSectorId);
+      }
+      appendSectorPrewarmRequests(prewarm, sectorPrewarmRequests(exactSectorId));
+      this._authoredSectorPrewarmPendingId = exactSectorId;
+      this._authoredSectorPrewarmPending = prewarm;
+      const preparation = settleSectorPrewarmRequests(prewarm).then((settled) => {
+        if (!settled) return null;
+        return prepareSectorEntry(renderer, exactSectorId, prewarm.requests.slice(), {
+          owner: prewarm.owner,
+          residency: this._assetResidency,
+          isEntryActive: () => prewarm.active === true
+            && state.world && state.world.currentSectorId === exactSectorId,
+          warmShaders: () => pipelinePrecompile,
+        });
+      }).then((prepared) => {
+        if (!prepared || prepared.cancelled || prewarm.active !== true) return prepared;
+        if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
+          releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-replaced');
+        }
+        this._currentSectorPrewarm = prewarm;
+        if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+        return prepared;
+      }).catch((error) => {
+        // Asset failures keep the established procedural boundary visible. The helper itself never
+        // rotates an incomplete set; this lifecycle-only fallback prevents a failed optional asset
+        // from leaving residency labelled as the sector the player already departed.
+        if (prewarm.active === true && state.world && state.world.currentSectorId === exactSectorId) {
+          if (this._assetResidency) this._assetResidency.rotateSector(exactSectorId);
+          if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
+            releaseSectorPrewarm(this._currentSectorPrewarm, 'failed-sector-prewarm-replaced');
+          }
+          this._currentSectorPrewarm = prewarm;
+          if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+        }
+        console.warn('[render] sector authored prewarm failed; retaining procedural boundaries', error);
+        return null;
+      }).finally(() => {
+        if (this._authoredSectorPrewarmPending === prewarm) {
+          this._authoredSectorPrewarmPendingId = null;
+          this._authoredSectorPrewarmPending = null;
+          this._meshReconcileDirty = true;
+          for (const [id, mesh] of this._meshes) {
+            const entity = state.entities.get(id);
+            if (canRequestAuthoredUpgrade(entity, state, null)) {
+              requestAuthoredUpgrade(mesh, renderer, scene);
+            }
+          }
+        }
+        this._publishAssetResidencyDiagnostics();
+      });
+      state.render.pipelinePrecompileReady = preparation;
     });
     bus.on('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {
@@ -1864,7 +2057,7 @@ export const render = {
       const entity = state.entities.get(id);
       if (!entity || entity.alive === false) continue;
       this._bindPresentationMesh(entity, mesh);
-      if (isEntityAuthoredUpgradeRelevant(entity, state)) {
+      if (canRequestAuthoredUpgrade(entity, state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(mesh, this.renderer, this.scene);
       }
     }
@@ -1896,7 +2089,7 @@ export const render = {
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
-      if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+      if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
       }
       this._shadowReceiversDirty = true;
@@ -1945,7 +2138,7 @@ export const render = {
     this._meshes.set(id, m);
     this.scene.add(m);
     this._bindPresentationMesh(e, m);
-    if (isEntityAuthoredUpgradeRelevant(e, this.state)) {
+    if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
     this._shadowReceiversDirty = true;

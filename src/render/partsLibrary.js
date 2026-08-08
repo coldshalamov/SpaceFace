@@ -338,6 +338,58 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
   return plan;
 }
 
+/**
+ * Exact authored records needed by the entities materialized for one sector.
+ *
+ * This is deliberately derived from live entity identities rather than a curated asset list. Whole
+ * ships, modular selections, explicit places/geology, and physical cargo capsules therefore use the
+ * same selectors as their eventual presentation boundaries. Supplying the slot is important: the
+ * loader cache key is URL + slot, so a slotless prewarm would decode a second generation when the
+ * boundary later requested the same file with its real slot.
+ */
+export function authoredPrewarmRequestsForEntities(entities, options = {}) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  const exactSectorId = options.sectorId == null ? null : String(options.sectorId);
+  const playerId = options.playerId == null ? null : String(options.playerId);
+  const includePlayer = options.includePlayer === true;
+  const requests = [];
+  const seen = new Set();
+
+  for (const entity of entities || []) {
+    if (!entity || entity.alive === false) continue;
+    if (!includePlayer && (entity.isPlayer === true || (playerId && String(entity.id) === playerId))) continue;
+    if (exactSectorId) {
+      const data = entity.data || {};
+      const entitySectorId = entity.homeSectorId || data.homeSectorId || data.sectorId || null;
+      if (String(entitySectorId || '') !== exactSectorId) continue;
+    }
+
+    let plan = {};
+    if (entity.type === 'ship') {
+      plan = authoredPreloadPlanForEntity(entity, options);
+    } else if (hasExplicitAuthoredPayloadPresentation(entity)) {
+      plan = { pod: [AUTHORED_CARGO_CAPSULE_FILE] };
+    } else {
+      const placeFile = placeFileForEntity(entity);
+      if (placeFile) plan = { place: [placeFile] };
+    }
+
+    for (const [slot, files] of Object.entries(plan)) {
+      for (const file of files || []) {
+        if (!file) continue;
+        const url = `${partRoot}${file}`;
+        const key = `${url}::${slot}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        requests.push(Object.freeze({ url, slot }));
+      }
+    }
+  }
+
+  requests.sort((a, b) => a.url.localeCompare(b.url) || a.slot.localeCompare(b.slot));
+  return Object.freeze(requests);
+}
+
 function contractRecords(slot) {
   let records = contractRecordsBySlot.get(slot);
   if (!records) {
