@@ -152,6 +152,7 @@ const CONTACT_SHADOW_POS = new THREE.Vector3();
 const CONTACT_SHADOW_SCALE = new THREE.Vector3();
 const CONTACT_SHADOW_MATRIX = new THREE.Matrix4();
 const CONTACT_SHADOW_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+const CONTACT_SHADOW_MATRIX_BINDING = 0;
 const SHIP_AUX_SHIELD_INITIAL_CAPACITY = 32;
 const SHIP_AUX_NAV_INITIAL_CAPACITY = 64;
 const SHIP_AUX_SHIELD_MATRIX = 0;
@@ -311,10 +312,18 @@ function attachContactShadow(mesh, entity) {
   mesh.userData.hasContactShadow = true;
 }
 
-function createContactShadowPool(scene) {
+export function createContactShadowPool(scene) {
   const pool = { scene, capacity: 0, mesh: null, records: new Map(), seen: new Set() };
   ensureContactShadowCapacity(pool, CONTACT_SHADOW_INITIAL_CAPACITY);
   return pool;
+}
+
+function registerContactShadowDynamicOwner(scene, mesh) {
+  return registerDynamicBufferOwner(scene, {
+    id: `contact-shadow-${mesh.id}`,
+    mesh,
+    attributes: [{ name: 'matrix', attribute: mesh.instanceMatrix }],
+  });
 }
 
 function ensureContactShadowCapacity(pool, desired) {
@@ -331,8 +340,18 @@ function ensureContactShadowCapacity(pool, desired) {
   mesh.userData.sharedContactShadow = true;
   mesh.userData.contactShadowPool = true;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  let dynamicBufferOwner = null;
+  try {
+    dynamicBufferOwner = registerContactShadowDynamicOwner(pool.scene, mesh);
+    if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+  } catch (error) {
+    if (dynamicBufferOwner) unregisterDynamicBufferOwner(dynamicBufferOwner);
+    mesh.dispose();
+    throw error;
+  }
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
+  pool.dynamicBufferOwner = dynamicBufferOwner;
   if (pool.records) pool.records.clear();
   if (previous && pool.scene) {
     pool.scene.remove(previous);
@@ -341,12 +360,13 @@ function ensureContactShadowCapacity(pool, desired) {
   if (pool.scene) pool.scene.add(mesh);
 }
 
-function syncContactShadowPool(pool, frameOrRecords, meshes) {
+export function syncContactShadowPool(pool, frameOrRecords, meshes) {
   if (!pool || !pool.mesh) return;
   const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
     ? frameOrRecords.contactShadows
     : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
   ensureContactShadowCapacity(pool, records.length);
+  assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
   let count = 0;
   let dirty = false;
   const priorRecords = pool.records || (pool.records = new Map());
@@ -370,6 +390,8 @@ function syncContactShadowPool(pool, frameOrRecords, meshes) {
       CONTACT_SHADOW_POS.set(x, -0.5, z);
       CONTACT_SHADOW_SCALE.set(radius, radius, radius);
       CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
+      assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
+      markDynamicBufferItems(pool.dynamicBufferOwner, CONTACT_SHADOW_MATRIX_BINDING, count);
       pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
       if (!prev) {
         prev = { index: count, x, z, radius };
@@ -384,12 +406,16 @@ function syncContactShadowPool(pool, frameOrRecords, meshes) {
   for (const id of priorRecords.keys()) {
     if (!seen.has(id)) priorRecords.delete(id);
   }
-  if (pool.mesh.count !== count) {
-    pool.mesh.count = count;
-    dirty = true;
-  }
   pool.mesh.visible = count > 0;
-  if (dirty) pool.mesh.instanceMatrix.needsUpdate = true;
+  if (pool.dynamicBufferOwner) {
+    commitDynamicBufferOwner(pool.dynamicBufferOwner, count);
+  } else {
+    if (pool.mesh.count !== count) {
+      pool.mesh.count = count;
+      dirty = true;
+    }
+    if (dirty) pool.mesh.instanceMatrix.needsUpdate = true;
+  }
 }
 
 const SHIELD_POOL_VERT = /* glsl */`
