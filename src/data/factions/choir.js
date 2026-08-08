@@ -5,9 +5,11 @@ export const faction = {
   controls: ['fortified zealot sectors', 'relic shrines'],
   fleetClass: 'mercenary',
   relations: { faction_scn: 0.3, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: -0.35, faction_quiet: 0.0, faction_vael: -0.6, faction_free: -0.2, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
+  // Mirrors FACTION_PALETTES["faction_choir"] in src/data/palettes.js, which is what the
+  // renderer actually reads. Two six-key palettes for one faction would drift silently.
   palette: {
-    primary: '#E85FD0', secondary: '#2E1030', accent: '#FFA8EE',
-    hull: '#6A4868', emissive: '#FF6FE0', thruster: '#FFAEEE',
+    primary: '#E85FD0', secondary: '#702060', accent: '#F8A0E8',
+    hull: '#905080', emissive: '#E85FD0', thruster: '#FF80E8',
   },
   shipRoles: [
     { role: 'chorister-wing', weight: 0.45, hullIds: ['ship_wasp', 'ship_hornet', 'ship_drifter'] },

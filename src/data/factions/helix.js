@@ -7,9 +7,11 @@ export const faction = {
   controls: ['contract allocation', 'variance audits', 'dock-deny paperwork'],
   fleetClass: 'none',
   relations: { faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
+  // Mirrors FACTION_PALETTES["faction_helix"] in src/data/palettes.js, which is what the
+  // renderer actually reads. Two six-key palettes for one faction would drift silently.
   palette: {
-    primary: '#8B9CB8', secondary: '#1E2530', accent: '#C8D4E4',
-    hull: '#5A6474', emissive: '#9AB0CC', thruster: '#C0D0E4',
+    primary: '#8B9CB8', secondary: '#465066', accent: '#C5CEDD',
+    hull: '#667085', emissive: '#8B9CB8', thruster: '#A8B7D0',
   },
   shipRoles: [
     { role: 'directorate-courier', weight: 0.45, hullIds: ['ship_kestrel', 'ship_drifter', 'ship_ranger'] },

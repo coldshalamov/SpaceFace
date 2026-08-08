@@ -5,9 +5,11 @@ export const faction = {
   controls: ['lawless sectors', 'ambush lanes'],
   fleetClass: 'pirate',
   relations: { faction_scn: -0.6, faction_mts: -0.35, faction_dmc: -0.35, faction_quiet: 0.2, faction_vael: 0.0, faction_free: 0.0, faction_choir: -0.35, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.5, faction_verge_layers: 0.0 },
+  // Mirrors FACTION_PALETTES["faction_reach"] in src/data/palettes.js, which is what the
+  // renderer actually reads. Two six-key palettes for one faction would drift silently.
   palette: {
-    primary: '#D8334A', secondary: '#2A0E14', accent: '#FF6B7A',
-    hull: '#4A2A30', emissive: '#FF3A52', thruster: '#FF7A6A',
+    primary: '#D8334A', secondary: '#7A1020', accent: '#FF6680',
+    hull: '#C06070', emissive: '#D8334A', thruster: '#FF4466',
   },
   shipRoles: [
     { role: 'raid-pack', weight: 0.5, hullIds: ['ship_hornet', 'ship_wasp', 'ship_drifter'] },

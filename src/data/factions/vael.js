@@ -5,9 +5,11 @@ export const faction = {
   controls: ['far-rim sectors', 'exotic tech', 'unique commodities'],
   fleetClass: 'alien',
   relations: { faction_scn: -0.5, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_free: 0.0, faction_choir: -0.6, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
+  // Mirrors FACTION_PALETTES["faction_vael"] in src/data/palettes.js, which is what the
+  // renderer actually reads. Two six-key palettes for one faction would drift silently.
   palette: {
-    primary: '#2FCFA0', secondary: '#0E2A24', accent: '#7FE8C8',
-    hull: '#3A6656', emissive: '#3FF0B8', thruster: '#8AF0D0',
+    primary: '#2FCFA0', secondary: '#0A5040', accent: '#80EED0',
+    hull: '#204840', emissive: '#2FCFA0', thruster: '#40FFB8',
   },
   shipRoles: [
     { role: 'vael-skiff', weight: 0.45, hullIds: ['ship_kestrel', 'ship_drifter', 'ship_ranger'] },

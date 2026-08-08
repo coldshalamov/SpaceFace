@@ -5,9 +5,11 @@ export const faction = {
   controls: ['scattered neutral waystations'],
   fleetClass: 'independent',
   relations: { faction_scn: 0.0, faction_mts: 0.2, faction_dmc: 0.35, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_choir: -0.2, faction_helix: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },
+  // Mirrors FACTION_PALETTES["faction_free"] in src/data/palettes.js, which is what the
+  // renderer actually reads. Two six-key palettes for one faction would drift silently.
   palette: {
-    primary: '#4ECBE0', secondary: '#12303A', accent: '#9AE6F2',
-    hull: '#4A6E78', emissive: '#5AD8F0', thruster: '#A0E8F5',
+    primary: '#4ECBE0', secondary: '#206070', accent: '#A0EEF8',
+    hull: '#808090', emissive: '#4ECBE0', thruster: '#60D8EE',
   },
   shipRoles: [
     { role: 'frontier-runner', weight: 0.5, hullIds: ['ship_kestrel', 'ship_drifter', 'ship_mule'] },
