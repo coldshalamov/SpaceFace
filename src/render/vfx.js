@@ -104,6 +104,12 @@ import {
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
+import {
+  MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY,
+  createMasslineReleaseArcScratch,
+  resolveMasslineReleaseArcPlan,
+  writeMasslineReleaseArcGeometry,
+} from './masslineReleaseArc.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
 import {
   DEFAULT_VFX_ADMISSION_PRIORITY,
@@ -492,6 +498,7 @@ function emptyVfxSubsystemDiag() {
     projectileTrails: 0,
     miningBeam: 0,
     tetherCable: 0,
+    masslineReleaseArc: 0,
     seamMarkers: 0,
     combatBeams: 0,
     explosions: 0,
@@ -711,6 +718,15 @@ export const vfx = {
     this._doctrineTellStarts = 0;
     this._lastDoctrineTell = null;
     this._doctrineTellScreenScratch = new THREE.Vector3();
+    this._lastMasslineReleaseVfx = {
+      stage: 'idle', targetId: null, endpointCount: 0,
+      classification: null, releaseScore: 0,
+      velocityAxisX: 0, velocityAxisZ: 0,
+      cameraTargetRequested: false,
+    };
+    this._masslineReleaseToken = {
+      active: false, targetId: null, sourceId: null, tick: null,
+    };
 
     // colour scratch objects (reused; no per-event allocation)
     this._c0 = new THREE.Color();
@@ -764,6 +780,7 @@ export const vfx = {
       for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) add(this._tetherCable[key]);
     }
     add(this._arcPreview && this._arcPreview.mesh);
+    add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     if (this._energy) {
@@ -879,6 +896,7 @@ export const vfx = {
     this._initMiningBeam();
     this._initTetherCable();
     this._initArcPreview();
+    this._initMasslineReleaseArc();
     this._initSeamMarkers();
     this._initCombatBeams();
     this._initFieldGeometry();
@@ -1212,6 +1230,8 @@ export const vfx = {
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
 
     add('tether:attached', (p) => this._onTetherLatch(p));
+    add('tether:released', (p) => this._onTetherRelease(p));
+    add('tether:releaseRated', (p) => this._onTetherReleaseRated(p));
     add('tether:broken', (p) => this._onTetherSnap(p));
     add('combat:fire', (p) => this._onFire(p));
     add('combat:beamStop', (p) => this._onBeamStop(p));
@@ -1229,10 +1249,10 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => this._clearStationSideEvents());
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1355,6 +1375,18 @@ export const vfx = {
           slot.obj.position.x += ox;
           slot.obj.position.z += oz;
         }
+      }
+      // The release annulus writes frame-local vertices directly into one shared mesh.
+      const releaseArc = this._masslineReleaseArc;
+      if (releaseArc && releaseArc.mesh && releaseArc.mesh.visible) {
+        const positions = releaseArc.scratch.geometry.positions;
+        const vertexCount = releaseArc.scratch.geometry.vertexCount;
+        for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+          const offset = vertex * 3;
+          positions[offset] += ox;
+          positions[offset + 2] += oz;
+        }
+        releaseArc.mesh.geometry.attributes.position.needsUpdate = true;
       }
       // Ribbon engine trails store history in frame-local sample buffers — shift, then rebuild.
       if (this._ribbonTrails && this._ribbonTrails.size) {
@@ -2517,6 +2549,10 @@ export const vfx = {
     // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
     // audio/contracts, but do not fan it back into the generic presentation particle family.
     if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
+    // R3B owns release shape through the paired retained endpoints, destination annulus, and the
+    // released body's actual-velocity streak. Keep the normalized cue for camera/audio/UI/caption
+    // lanes, but never layer the generic tether ring/particle family over that causal handoff.
+    if (typeof p.id === 'string' && p.id.startsWith('tether.release.')) return;
     const particlesRequested = budgetInt(p.particles);
     const lightsRequested = budgetInt(p.lights);
     if (particlesRequested <= 0 && lightsRequested <= 0) return;
@@ -5264,6 +5300,170 @@ export const vfx = {
     return !!(tether && tether.active && preview && preview.viable);
   },
 
+  // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
+  // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
+  // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
+  _masslineReleaseArc: null,
+  _initMasslineReleaseArc() {
+    if (!this._scene) return;
+    const scratch = createMasslineReleaseArcScratch(MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY);
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.geometry.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.geometry.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.geometry.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.35, 1.35, 1.35),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-massline-release-annulus';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 8;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._masslineReleaseArc = {
+      mesh,
+      scratch,
+      input: {
+        active: false,
+        releaseTarget: null,
+        liveTarget: null,
+        predictor: null,
+        classification: null,
+        releaseScore: 0,
+        radiusPadding: 4,
+        y: 1.5,
+        timeS: 0,
+        reducedMotion: false,
+        reducedFlash: false,
+      },
+      postTarget: {
+        kind: 'entity', source: 'release-rated', targetId: null,
+        pos: { x: NaN, z: NaN }, radius: 0,
+      },
+      fade: 0,
+      ratingAge: Infinity,
+      ratingLife: 0,
+      ratingTargetId: null,
+      ratingClassification: null,
+      ratingScore: 0,
+    };
+  },
+
+  _resetMasslineReleaseArc() {
+    this._resetMasslineReleaseToken();
+    const arc = this._masslineReleaseArc;
+    if (!arc) return;
+    arc.fade = 0;
+    arc.ratingAge = Infinity;
+    arc.ratingLife = 0;
+    arc.ratingTargetId = null;
+    arc.ratingClassification = null;
+    arc.ratingScore = 0;
+    clearMasslineReleaseTarget(arc.postTarget);
+    arc.mesh.visible = false;
+    arc.mesh.material.opacity = 0;
+    arc.mesh.geometry.setDrawRange(0, 0);
+  },
+
+  _resetMasslineReleaseToken() {
+    const token = this._masslineReleaseToken;
+    if (!token) return;
+    token.active = false;
+    token.targetId = null;
+    token.sourceId = null;
+    token.tick = null;
+  },
+
+  _masslineReleaseArcActive() {
+    const arc = this._masslineReleaseArc;
+    if (!arc) return false;
+    if (arc.fade > 0.001 || arc.ratingAge < arc.ratingLife) return true;
+    const tether = this.state.player && this.state.player.tether;
+    const throwState = this.state.massline2 && this.state.massline2.throw;
+    return !!(tether && tether.active
+      && throwState && throwState.armed
+      && throwState.releaseTarget
+      && throwState.solution && throwState.solution.valid === true);
+  },
+
+  _updateMasslineReleaseArc(dt) {
+    const arc = this._masslineReleaseArc;
+    if (!arc) return false;
+    arc.ratingAge += dt;
+    const state = this.state;
+    const tether = state.player && state.player.tether;
+    const throwState = state.massline2 && state.massline2.throw;
+    const postActive = arc.ratingAge < arc.ratingLife;
+    const preActive = !postActive && !!(tether && tether.active
+      && throwState && throwState.armed
+      && throwState.releaseTarget
+      && throwState.solution && throwState.solution.valid === true);
+    const input = arc.input;
+    input.active = postActive || preActive;
+    input.timeS = this._t;
+    input.reducedMotion = masslineReleaseMotionReduced(state && state.settings);
+    input.reducedFlash = masslineReleaseFlashReduced(state && state.settings);
+    input.classification = postActive ? arc.ratingClassification : null;
+    input.releaseScore = postActive ? arc.ratingScore : 0;
+    input.predictor = preActive ? throwState.solution : null;
+
+    if (postActive) {
+      input.releaseTarget = arc.postTarget;
+      input.liveTarget = arc.postTarget.targetId != null ? this._ent(arc.postTarget.targetId) : null;
+    } else if (preActive) {
+      input.releaseTarget = throwState.releaseTarget;
+      input.liveTarget = throwState.releaseTarget.targetId != null
+        ? this._ent(throwState.releaseTarget.targetId)
+        : null;
+    } else {
+      input.releaseTarget = null;
+      input.liveTarget = null;
+    }
+
+    const plan = resolveMasslineReleaseArcPlan(arc.scratch.plan, input);
+    arc.fade = plan.visible
+      ? Math.min(1, arc.fade + dt * 10)
+      : Math.max(0, arc.fade - dt * 8);
+    if (plan.visible) {
+      const geometry = writeMasslineReleaseArcGeometry(arc.scratch.geometry, plan);
+      const positions = geometry.positions;
+      for (let vertex = 0; vertex < geometry.vertexCount; vertex += 1) {
+        const offset = vertex * 3;
+        const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+        positions[offset] = local.x;
+        positions[offset + 2] = local.z;
+      }
+      arc.mesh.geometry.setDrawRange(0, geometry.indexCount);
+      arc.mesh.geometry.attributes.position.needsUpdate = true;
+      arc.mesh.geometry.attributes.color.needsUpdate = true;
+    }
+
+    if (arc.fade <= 0.01) {
+      arc.mesh.visible = false;
+      arc.mesh.material.opacity = 0;
+      arc.mesh.geometry.setDrawRange(0, 0);
+      return false;
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    arc.mesh.material.opacity = arc.fade * accessibility.flashOpacityScale;
+    arc.mesh.visible = true;
+    return true;
+  },
+
   _updateTetherCable(dt) {
     const cable = this._tetherCable;
     if (!cable) return;
@@ -5690,8 +5890,12 @@ export const vfx = {
   },
 
   _onTetherSnap(p) {
+    // Attachment cuts report through tether:broken before tetherGameplay publishes the semantic
+    // ordinary-release pair. A player `tether_cut` must therefore skip the violent snap grammar.
+    if (p && p.reason === 'tether_cut') return false;
     const cable = this._tetherCable;
     if (!cable || !this._scene || !this._tetherBreakMatchesCable(p, cable)) return false;
+    this._resetMasslineReleaseArc();
     const source = this._ent(cable.lastSourceId);
     const target = this._ent(cable.lastTargetId);
     if (!source || !target) return false;
@@ -5768,9 +5972,159 @@ export const vfx = {
     return true;
   },
 
+  // A normal cut is a transfer of visual ownership: the rope recoils for one short beat at both
+  // retained surface endpoints, then the released body's real velocity becomes the dominant line.
+  // This consumes cached render pose and live entity snapshots only; it never selects a camera
+  // target, changes velocity, or manufactures a release when no retained cable identity exists.
+  _onTetherRelease(p) {
+    // A later rating may paint only this exact, successfully rendered release transaction.
+    this._resetMasslineReleaseToken();
+    const cable = this._tetherCable;
+    if (!cable || !this._scene || cable.lastSourceId == null || cable.lastTargetId == null) return false;
+    if (!p || p.targetId == null || !sameTetherIdentity(p.targetId, cable.lastTargetId)) return false;
+    const source = this._ent(cable.lastSourceId);
+    const target = this._ent(cable.lastTargetId);
+    if (!source || !target) return false;
+    const endpoints = cable.endpointScratch || (cable.endpointScratch = {});
+    if (!writeTetherVisualEndpoints(source, target, cable.lastRemote, endpoints)) return false;
+
+    const ux = (endpoints.bx - endpoints.ax) / endpoints.chord;
+    const uz = (endpoints.bz - endpoints.az) / endpoints.chord;
+    const roll = Math.atan2(uz, ux);
+    const priority = 0.88;
+    // Paired anisotropic flashes read as the line's ends springing apart, never as a radial blast.
+    this._spawnSprite(
+      SPR_FLASH, endpoints.ax, 1.15, endpoints.az,
+      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
+      -ux * 18, -uz * 18, 3.2, roll, priority,
+    );
+    this._spawnSprite(
+      SPR_FLASH, endpoints.bx, 1.15, endpoints.bz,
+      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
+      ux * 18, uz * 18, 3.2, roll, priority,
+    );
+
+    cable.fadeRate = TETHER_RELEASE_FADE_RATE;
+    const last = this._lastMasslineReleaseVfx;
+    last.stage = 'release';
+    last.targetId = target.id;
+    last.endpointCount = 2;
+    last.classification = null;
+    last.releaseScore = 0;
+    last.velocityAxisX = 0;
+    last.velocityAxisZ = 0;
+    last.cameraTargetRequested = false;
+    const arc = this._masslineReleaseArc;
+    if (arc) {
+      const captured = this.state.massline2 && this.state.massline2.throw
+        && this.state.massline2.throw.releaseTarget;
+      const postTarget = arc.postTarget;
+      clearMasslineReleaseTarget(postTarget);
+      const capturedEntity = captured && captured.targetId != null
+        ? this._ent(captured.targetId)
+        : null;
+      if (capturedEntity && capturedEntity.alive !== false && capturedEntity.pos
+        && Number.isFinite(capturedEntity.pos.x) && Number.isFinite(capturedEntity.pos.z)) {
+        postTarget.kind = captured.kind || (captured.targetId != null ? 'entity' : 'point');
+        postTarget.source = captured.source || 'release-target';
+        postTarget.targetId = captured.targetId;
+        postTarget.radius = Number.isFinite(captured.radius)
+          ? Math.max(0, captured.radius)
+          : Math.max(0, Number.isFinite(capturedEntity.radius) ? capturedEntity.radius : 0);
+      } else if (captured && captured.pos
+        && Number.isFinite(captured.pos.x) && Number.isFinite(captured.pos.z)) {
+        postTarget.kind = captured.kind || 'point';
+        postTarget.source = captured.source || 'release-target';
+        postTarget.pos.x = captured.pos.x;
+        postTarget.pos.z = captured.pos.z;
+        postTarget.radius = Number.isFinite(captured.radius) ? Math.max(0, captured.radius) : 0;
+      }
+    }
+    const token = this._masslineReleaseToken;
+    token.active = true;
+    token.targetId = target.id;
+    token.sourceId = source.id;
+    token.tick = Number.isFinite(this.state && this.state.tick) ? this.state.tick : null;
+    return true;
+  },
+
+  _onTetherReleaseRated(p) {
+    const token = this._masslineReleaseToken;
+    if (!token || !token.active) return false;
+    const tick = Number.isFinite(this.state && this.state.tick) ? this.state.tick : null;
+    const matches = !!(p && p.targetId != null && p.sourceId != null
+      && token.tick != null && tick === token.tick
+      && sameTetherIdentity(p.targetId, token.targetId)
+      && sameTetherIdentity(p.sourceId, token.sourceId));
+    this._resetMasslineReleaseToken();
+    if (!matches) return false;
+    const target = this._ent(p.targetId);
+    if (!target || target.alive === false || !target.pos || !target.vel
+      || !Number.isFinite(target.vel.x) || !Number.isFinite(target.vel.z)) return false;
+    const speed = Math.hypot(target.vel.x, target.vel.z);
+    const score = clamp01Finite(p.releaseScore);
+    const classification = releaseClassification(p.classification);
+    const axisX = speed > 1e-6 ? target.vel.x / speed : 0;
+    const axisZ = speed > 1e-6 ? target.vel.z / speed : 0;
+
+    if (speed > 1e-6) {
+      const reduced = this._isReduced();
+      const length = (8 + score * 16) * (reduced ? 0.48 : 1);
+      const width = (0.24 + score * 0.22) * (reduced ? 0.72 : 1);
+      const radius = Math.max(0, Number.isFinite(target.radius) ? target.radius : 0);
+      const centerX = target.pos.x - axisX * (radius + length * 0.5);
+      const centerZ = target.pos.z - axisZ * (radius + length * 0.5);
+      const carry = reduced ? 0 : 0.28;
+      this._spawnProjectileTrailStreak(
+        centerX, 0.28, centerZ,
+        reduced ? 0.18 : 0.22,
+        width, length,
+        reduced ? 0.28 : 0.58 + score * 0.22,
+        releaseClassificationColor(classification),
+        target.vel.x * carry, target.vel.z * carry,
+        axisX, axisZ,
+        0.88 + score * 0.08,
+      );
+    }
+
+    const last = this._lastMasslineReleaseVfx;
+    last.stage = 'rated';
+    last.targetId = target.id;
+    last.classification = classification;
+    last.releaseScore = score;
+    last.velocityAxisX = axisX;
+    last.velocityAxisZ = axisZ;
+    last.cameraTargetRequested = false;
+    const arc = this._masslineReleaseArc;
+    if (arc) {
+      const destinationEntity = arc.postTarget.targetId != null
+        ? this._ent(arc.postTarget.targetId)
+        : null;
+      const hasDestination = !!(destinationEntity && destinationEntity.alive !== false
+        && destinationEntity.pos
+        && Number.isFinite(destinationEntity.pos.x) && Number.isFinite(destinationEntity.pos.z))
+        || (Number.isFinite(arc.postTarget.pos.x) && Number.isFinite(arc.postTarget.pos.z));
+      if (hasDestination) {
+        arc.ratingAge = 0;
+        arc.ratingLife = 0.24 + score * 0.24;
+        arc.ratingTargetId = target.id;
+        arc.ratingClassification = classification;
+        arc.ratingScore = score;
+      } else {
+        arc.ratingAge = Infinity;
+        arc.ratingLife = 0;
+        arc.ratingTargetId = null;
+        arc.ratingClassification = null;
+        arc.ratingScore = 0;
+      }
+    }
+    return true;
+  },
+
   // Latch spark at BOTH ends when a tether attaches (tether:attached).
   // Top-50 rank-2: nose + target cyan ring, denser sparks, punchier light (Steam still readable).
   _onTetherLatch(p) {
+    this._resetMasslineReleaseArc();
     this._emitJuiceCue('presentation.tether.attach', p, 1);
     if (!this._scene) return;
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
@@ -7421,6 +7775,11 @@ export const vfx = {
       sub.arcPreview = 1;
     } else {
       sub.arcPreview = 0;
+    }
+    if (this._masslineReleaseArcActive()) {
+      sub.masslineReleaseArc = this._updateMasslineReleaseArc(dt) ? 1 : 0;
+    } else {
+      sub.masslineReleaseArc = 0;
     }
     if (this._stationSideEventsRelevant()) {
       const stationStep = this._consumeCadence(
@@ -9932,6 +10291,46 @@ function oreColor(id) {
   if (id.indexOf('exotic') >= 0 || id.indexOf('xenium') >= 0) return '#ff60c0';
   if (id.indexOf('iron') >= 0 || id.indexOf('ore') >= 0 || id.indexOf('metal') >= 0) return '#c08040';
   return '#d8a050';
+}
+
+function clamp01Finite(value) {
+  if (!Number.isFinite(value)) return 0;
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+function releaseClassification(value) {
+  return value === 'razor' || value === 'clean' || value === 'good' ? value : 'messy';
+}
+
+function releaseClassificationColor(classification) {
+  if (classification === 'razor') return '#ffffff';
+  if (classification === 'clean') return '#d7f7ff';
+  if (classification === 'good') return '#7ce4ff';
+  return '#6f91a0';
+}
+
+function masslineReleaseMotionReduced(settings) {
+  const video = settings && settings.video;
+  const accessibility = settings && settings.accessibility;
+  return !!((video && video.motionReduce)
+    || (accessibility && accessibility.motionPreference === 'reduce'));
+}
+
+function masslineReleaseFlashReduced(settings) {
+  const video = settings && settings.video;
+  const accessibility = settings && settings.accessibility;
+  return !!((video && video.flashReduce)
+    || (accessibility && (accessibility.flashReduce || accessibility.reducedFlash)));
+}
+
+function clearMasslineReleaseTarget(target) {
+  if (!target) return;
+  target.kind = 'point';
+  target.source = 'release-target';
+  target.targetId = null;
+  target.pos.x = NaN;
+  target.pos.z = NaN;
+  target.radius = 0;
 }
 
 // shared radial-gradient glow sprite texture (one canvas for the whole pool)

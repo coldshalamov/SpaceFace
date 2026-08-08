@@ -126,6 +126,162 @@ test('the explicit (non-quiet) call still prefers the hostile on the line', () =
     'an explicit re-target is the player asking; it may take the ship on the line');
 });
 
+test('release target is captured once per latch and only precise live aim intent may replace it', () => {
+  const h = createHarness();
+  const held = makeHostile(200, { x: 0, z: 140 }, { x: 90, z: 0 });
+  const freighter = makeTrader(300, { x: 900, z: 0 }, { x: -12, z: 0 });
+  const patrol = makeHostile(500, { x: -420, z: 80 }, { x: 0, z: 12 });
+  h.add(held, freighter, patrol);
+  h.state.player.targetId = freighter.id;
+  h.state.input.aimWorld = { x: patrol.pos.x, z: patrol.pos.z };
+  h.state.input.aimIntentActive = false;
+  h.latch(held.id, { attachmentId: 'release-target-a' });
+
+  const system = startThrowSystem(h.state);
+  let runtime = stepThrowSystem(system, h.state);
+  assert.deepEqual(runtime.releaseTarget, {
+    kind: 'entity',
+    source: 'selection',
+    targetId: freighter.id,
+    pos: null,
+    radius: 0,
+  });
+  assert.equal(runtime.aimTargetId, freighter.id);
+
+  h.state.player.targetId = patrol.id;
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.equal(runtime.aimTargetId, freighter.id,
+    'auto-target churn and a stale aimWorld cannot continuously retarget a held throw');
+  assert.equal(runtime.releaseTarget.source, 'selection');
+
+  h.state.input.aimIntentActive = true;
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.equal(runtime.aimTargetId, patrol.id,
+    'an active precise pointer may deliberately paint a new release target');
+  assert.equal(runtime.releaseTarget.source, 'pointer');
+
+  h.state.input.aimIntentActive = false;
+  h.state.input.aimWorld = { x: 1700, z: -900 };
+  h.state.player.targetId = freighter.id;
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.equal(runtime.aimTargetId, patrol.id,
+    'the deliberate paint remains authoritative after analog/mouse aim returns neutral');
+  system.destroy();
+});
+
+test('latched precision intent paints the release target before throw-arm is held', () => {
+  const h = createHarness();
+  const held = makeHostile(200, { x: 0, z: 140 }, { x: 90, z: 0 });
+  const freighter = makeTrader(300, { x: 900, z: 0 }, { x: -12, z: 0 });
+  h.add(held, freighter);
+  h.state.player.targetId = freighter.id;
+  h.state.input.aimIntentActive = false;
+  h.latch(held.id, { attachmentId: 'release-target-unarmed' });
+
+  const system = startThrowSystem(h.state);
+  let runtime = stepThrowSystem(system, h.state, false);
+  assert.equal(runtime.releaseTarget.targetId, freighter.id, 'the latch captures selection truth');
+  assert.equal(runtime.solution, null, 'unarmed input must not wake the release solver');
+
+  h.state.input.aimIntentActive = true;
+  h.state.input.aimWorld = { x: 460, z: -340 };
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state, false);
+  assert.deepEqual(runtime.releaseTarget, {
+    kind: 'point', source: 'pointer', targetId: null,
+    pos: { x: 460, z: -340 }, radius: 2,
+  });
+  assert.equal(runtime.solution, null, 'painting alone never arms or solves a throw');
+  const retainedTarget = runtime.releaseTarget;
+  const retainedPoint = runtime.releaseTarget.pos;
+
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state, false);
+  assert.equal(runtime.releaseTarget, retainedTarget,
+    'persistent pointer authority reuses its transient release-target record');
+  assert.equal(runtime.releaseTarget.pos, retainedPoint,
+    'persistent point aim reuses its nested point rather than allocating every fixed tick');
+
+  h.state.input.aimIntentActive = false;
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state, true);
+  assert.equal(runtime.aimSynthetic, true);
+  assert.equal(runtime.solution.sampleTick, h.state.tick,
+    'arming consumes the destination already painted by input ownership');
+  system.destroy();
+});
+
+test('waypoint and pointer-point release targets are transient and reset on latch lifecycle', () => {
+  const h = createHarness();
+  const held = makeHostile(200, { x: 0, z: 140 }, { x: 90, z: 0 });
+  const freighter = makeTrader(300, { x: 900, z: 0 }, { x: -12, z: 0 });
+  h.add(held, freighter);
+  h.state.player.targetId = null;
+  h.state.nav.waypoint = { pos: { x: -640, z: 220 }, arrivalRadius: 24 };
+  h.state.input.aimIntentActive = false;
+  h.latch(held.id, { attachmentId: 'release-target-waypoint' });
+
+  const system = startThrowSystem(h.state);
+  let runtime = stepThrowSystem(system, h.state);
+  assert.deepEqual(runtime.releaseTarget, {
+    kind: 'waypoint',
+    source: 'waypoint',
+    targetId: null,
+    pos: { x: -640, z: 220 },
+    radius: 24,
+  });
+  assert.equal(runtime.aimTargetId, null);
+  assert.equal(runtime.aimSynthetic, true);
+  const waypointSampleTick = runtime.solution.sampleTick;
+  const waypointSampleSequence = runtime.solution.sampleSequence;
+  const waypointInterceptAngle = runtime.solution.interceptAngle;
+
+  h.state.input.aimIntentActive = true;
+  h.state.input.aimWorld = { x: 420, z: -310 };
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.deepEqual(runtime.releaseTarget, {
+    kind: 'point',
+    source: 'pointer',
+    targetId: null,
+    pos: { x: 420, z: -310 },
+    radius: 2,
+  });
+  assert.equal(runtime.solution.sampleTick, h.state.tick,
+    'a fixed-point repaint resamples on the repaint tick instead of retaining the 15 Hz cache');
+  assert.equal(runtime.solution.sampleSequence, waypointSampleSequence + 1);
+  assert.notEqual(runtime.solution.sampleTick, waypointSampleTick);
+  assert.notEqual(runtime.solution.interceptAngle, waypointInterceptAngle,
+    'solver/HUD truth changes with the painted destination on the same tick');
+
+  h.state.player.tether.active = false;
+  h.state.input.aimIntentActive = false;
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.equal(runtime.releaseTarget, null, 'release targets never survive a released line');
+
+  h.state.player.targetId = freighter.id;
+  h.latch(held.id, { attachmentId: 'release-target-b' });
+  h.state.tick += 1;
+  h.state.simTime = h.state.tick / 60;
+  runtime = stepThrowSystem(system, h.state);
+  assert.equal(runtime.releaseTarget.targetId, freighter.id,
+    'a fresh latch may seed from the player selection again');
+  assert.equal(runtime.releaseTarget.source, 'selection');
+  system.destroy();
+});
+
 // ---- harness ----------------------------------------------------------------------------------
 
 function createHarness() {
@@ -180,6 +336,23 @@ function createHarness() {
     return state.massline2.throw;
   };
   return harness;
+}
+
+function startThrowSystem(state) {
+  const system = Object.create(masslineThrow);
+  system.init({
+    state,
+    bus: { on: () => () => {}, emit: () => {} },
+    helpers: {},
+    registry: { get: () => null },
+  });
+  return system;
+}
+
+function stepThrowSystem(system, state, armed = true) {
+  state.input.actions.throwArm = armed;
+  system.update(1 / 60, state);
+  return state.massline2.throw;
 }
 
 // scanner.isHostileToPlayer flags hostility via ai.huntPlayer / forcePlayerTarget / encounter.

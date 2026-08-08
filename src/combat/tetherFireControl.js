@@ -105,9 +105,9 @@ export function tetherPairKinematics(a, b) {
 
 /**
  * THE target-reconciliation rule, in one place so no two consumers can hold different versions of
- * it. `state.player.targetId` (the player's selection, which also aims throws) and
- * `state.player.tether.targetId` (what the line is on) are different questions; this decides when
- * the second one claims the guns.
+ * it. `state.player.targetId` (the player's selection, which may seed a new latch's releaseTarget)
+ * and `state.player.tether.targetId` (what the line is on) are different questions; this decides
+ * when the second one claims the guns. Only current input-owned aim intent repaints a live throw.
  *
  * A line on a hostile SHIP/DRONE owns the guns for as long as it is attached. Asteroids and
  * friendlies deliberately do not — while you are swinging a rock you must still be able to shoot
@@ -267,7 +267,9 @@ export function solutionToleranceRad(targetRadius, distance, forgiveness = ASSIS
  * the line's angular rate, so the solution recurs every revolution.
  *
  * payload: { pos:{x,z}, vel:{x,z} }
- * aim:     { pos:{x,z}, vel?:{x,z}, radius? }  — the throw target (entity or synthetic point)
+ * aim:     { pos:{x,z}, vel?:{x,z}, radius? }  — the caller's captured transient release target
+ *                                                  (entity or synthetic point). This pure solver
+ *                                                  never reads selection, auto-aim, or raw input.
  * opts.omega — signed rotation rate of the payload velocity direction (pass the line omega);
  *              used only for timeToSolution pacing, not correctness.
  *

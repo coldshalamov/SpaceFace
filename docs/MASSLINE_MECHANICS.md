@@ -15,7 +15,10 @@ This document is the current mechanics map for the SpaceFace Massline ladder. It
 - `tether.load` is the presentation load signal. It is separate from physical break strain and lets VFX/audio/UI read tension before the rope is near failure.
 - Snap-catch detects a meaningful sudden load and records it as a player-facing event instead of a silent physics surprise.
 - Reel-pump detects useful reel timing and emits `tether:reelPump` for feedback.
-- Arc preview data predicts a readable sling path from current Massline telemetry. The visual renderer consumes this data but does not compute the mechanic.
+- A new latch captures one transient `state.massline2.throw.releaseTarget` from the valid player selection or waypoint. Selection churn and auto-aim do not steer an armed throw; only a genuine per-tick `aimIntentActive` input may replace the captured destination. The target is presentation/runtime state only and is cleared with the line.
+- The shared throw solver remains the sole release predictor. `tetherGameplay.rateRelease` owns the existing `messy | good | clean | razor` outcome; the HUD and renderer consume predictor and rating truth without recomputing release physics or inventing a grade.
+- The release arc preview is a preallocated world-space annulus at the captured destination. Shape, width, dash cadence, and brightness reinforce the rating without relying on color alone; reduced-motion mode keeps a static directional/readable form.
+- Ordinary release separates the two visible line ends with a short recoil cue. `tether:releaseRated` then hands visual dominance to one pooled streak aligned to the released body's actual retained velocity. Neither cue targets or takes over the camera.
 
 ## Targeting And Threat
 

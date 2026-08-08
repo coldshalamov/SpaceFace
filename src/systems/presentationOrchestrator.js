@@ -90,13 +90,20 @@ export const presentationOrchestrator = {
         material: 'massline',
         magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
       })),
-      this.bus.on('tether:broken', (payload) => this._emitCue('tether.break', payload || {}, {
-        sourceEvent: 'tether:broken',
-        sourceId: payload && payload.actorId,
-        targetId: payload && payload.targetId,
-        material: 'massline',
-        magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
-      })),
+      this.bus.on('tether:broken', (payload) => {
+        // The attachment authority publishes this low-level receipt synchronously before
+        // tetherGameplay publishes the semantic ordinary-release pair. Treating `tether_cut` as a
+        // failure here made a normal pilot release fire the full break camera/audio/UI/VFX recipe
+        // before the release recoil. Other reasons remain genuine line failures or authored cuts.
+        if (payload && payload.reason === 'tether_cut') return false;
+        return this._emitCue('tether.break', payload || {}, {
+          sourceEvent: 'tether:broken',
+          sourceId: payload && payload.actorId,
+          targetId: payload && payload.targetId,
+          material: 'massline',
+          magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
+        });
+      }),
       // Rung 10 — massline threat feedback, the consume half of masslineThreats' rung-09 emit.
       // One cue; severity (0..1) drives magnitude so adapters scale sting/warn intensity, and the
       // threat kind rides the tags for downstream flavor. Sibling of tether.near_break above.

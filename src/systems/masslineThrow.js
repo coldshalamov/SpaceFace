@@ -32,6 +32,7 @@ const FALLBACK = Object.freeze({
   payloadId: null,
   aimTargetId: null,
   aimSynthetic: false,
+  releaseTarget: null,
   solution: null,
   selfSolution: null,
   lastThrow: null,
@@ -47,12 +48,19 @@ export const masslineThrow = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._aimScratch = [];
+    // Pointer authority may persist for many fixed ticks. Keep both possible target shapes resident
+    // so a held mouse/right-stick/touch aim mutates transient truth instead of allocating per tick.
+    this._pointerEntityReleaseTarget = entityReleaseTarget(null, 'pointer');
+    this._pointerPointReleaseTarget = pointReleaseTarget('point', 'pointer', 0, 0, 2);
     this._solutionWasOn = false;
     this._throwArmWasHeld = false;
     this._pendingSnap = null;
     this._throwPrediction = {};
     this._selfPrediction = {};
     this._pendingReleaseValidation = null;
+    this._releaseLatchActive = false;
+    this._releaseLatchPayloadId = null;
+    this._releaseLatchAttachmentId = null;
     // Swing cache: telemetry wipes on the cut tick (the mirror is already inactive when it runs),
     // so the release consumers read last tick's settled swing from here.
     this._swing = null;
@@ -72,6 +80,7 @@ export const masslineThrow = {
     this._settleReleaseValidation(state, runtime);
     if (!massline2Flag('throw') || state.mode !== 'flight') {
       writeIdle(runtime);
+      this._clearReleaseLatch();
       this._throwPrediction = {};
       this._selfPrediction = {};
       this._swing = null;
@@ -84,6 +93,7 @@ export const masslineThrow = {
     const active = !!(player && player.alive && tether && tether.active && tether.targetId != null);
     if (!active) {
       writeIdle(runtime);
+      this._clearReleaseLatch();
       this._throwPrediction = {};
       this._selfPrediction = {};
       this._swing = null;
@@ -94,8 +104,11 @@ export const masslineThrow = {
     const payload = state.entities.get(tether.targetId);
     if (!payload || payload.alive === false || !payload.pos || !payload.vel) {
       writeIdle(runtime);
+      this._clearReleaseLatch();
       return;
     }
+
+    this._syncReleaseTargetOnLatch(state, player, payload, tether, runtime);
 
     // Cache the live swing for the release consumers (see _onManualCut).
     const kin = tetherPairKinematics(player, payload);
@@ -116,6 +129,11 @@ export const masslineThrow = {
     // selected target, consumed by the indicator and release predictor.
     runtime.selfSolution = this._selfSolution(state, player, kin.omega);
 
+    // Precision-input provenance is per tick, not per throw-arm hold. Let a genuine mouse,
+    // gamepad, or touch aim paint the transient destination as soon as the line is latched; the
+    // solver below still stays asleep until the player arms the throw.
+    const aim = this._resolveThrowAim(state, player, payload, runtime);
+
     if (!armed && !this._pendingSnap) {
       runtime.aimTargetId = null;
       runtime.aimSynthetic = false;
@@ -125,10 +143,17 @@ export const masslineThrow = {
       return;
     }
 
-    // Throw aim: entity near the cursor wins, else the selected target (never the payload
-    // itself), else a synthetic point at the cursor — the player always gets SOME solution,
-    // and the indicator shows which aim is armed.
-    const aim = this._resolveThrowAim(state, player, payload);
+    // Release aim is captured once when the line latches. Gun/UI selection may continue to change,
+    // but it never continuously steers an armed throw. Only a current input-owned precision intent
+    // may repaint the release target while the line remains live.
+    if (!aim) {
+      runtime.aimTargetId = null;
+      runtime.aimSynthetic = false;
+      runtime.solution = null;
+      this._throwPrediction = {};
+      this._solutionWasOn = false;
+      return;
+    }
     runtime.aimTargetId = aim.entity ? aim.entity.id : null;
     runtime.aimSynthetic = !aim.entity;
     // Field-aware release (PQ-012): when continuous fields are active, inject a pure sampler so the
@@ -142,7 +167,7 @@ export const masslineThrow = {
       {
         tick: state.tick,
         omega: kin.omega,
-        identity: `${payload.id}:${aim.entity ? aim.entity.id : 'cursor'}`,
+        identity: releasePredictionIdentity(payload.id, runtime.releaseTarget),
         fieldSampler,
       },
     );
@@ -220,9 +245,30 @@ export const masslineThrow = {
     };
   },
 
-  _resolveThrowAim(state, player, payload) {
+  _syncReleaseTargetOnLatch(state, player, payload, tether, runtime) {
+    const attachmentId = tether && tether.attachmentId != null ? tether.attachmentId : null;
+    const isNewLatch = !this._releaseLatchActive
+      || this._releaseLatchPayloadId !== payload.id
+      || (attachmentId != null && this._releaseLatchAttachmentId !== attachmentId);
+    if (!isNewLatch) return;
+
+    this._releaseLatchActive = true;
+    this._releaseLatchPayloadId = payload.id;
+    this._releaseLatchAttachmentId = attachmentId;
+    runtime.releaseTarget = seedReleaseTarget(state, player, payload);
+  },
+
+  _clearReleaseLatch() {
+    this._releaseLatchActive = false;
+    this._releaseLatchPayloadId = null;
+    this._releaseLatchAttachmentId = null;
+  },
+
+  _resolveThrowAim(state, player, payload, runtime) {
     const aimWorld = state.input && state.input.aimWorld;
-    if (aimWorld && Number.isFinite(aimWorld.x) && Number.isFinite(aimWorld.z)) {
+    const preciseAim = !!(state.input && state.input.aimIntentActive === true
+      && aimWorld && Number.isFinite(aimWorld.x) && Number.isFinite(aimWorld.z));
+    if (preciseAim) {
       const candidates = queryNearbyEntities(
         state, { x: aimWorld.x, z: aimWorld.z }, AIM_QUERY_RADIUS, this._aimScratch, state.entityList || [],
       );
@@ -235,19 +281,48 @@ export const masslineThrow = {
         const miss = Math.max(0, Math.hypot(e.pos.x - aimWorld.x, e.pos.z - aimWorld.z) - Math.max(0, finite(e.radius, 0)));
         if (miss <= CURSOR_AIM_GRACE && miss < bestMiss) { best = e; bestMiss = miss; }
       }
-      if (best) return { entity: best, target: { pos: best.pos, vel: best.vel || { x: 0, z: 0 }, radius: best.radius } };
-    }
-    const selectedId = state.player ? state.player.targetId : null;
-    if (selectedId != null && selectedId !== payload.id) {
-      const sel = state.entities.get(selectedId);
-      if (sel && sel.alive !== false && sel.pos) {
-        return { entity: sel, target: { pos: sel.pos, vel: sel.vel || { x: 0, z: 0 }, radius: sel.radius } };
+      if (best) {
+        const target = this._pointerEntityReleaseTarget;
+        target.kind = 'entity';
+        target.source = 'pointer';
+        target.targetId = best.id;
+        target.pos = null;
+        target.radius = 0;
+        runtime.releaseTarget = target;
+      } else {
+        const target = this._pointerPointReleaseTarget;
+        target.kind = 'point';
+        target.source = 'pointer';
+        target.targetId = null;
+        target.pos.x = aimWorld.x;
+        target.pos.z = aimWorld.z;
+        target.radius = 2;
+        runtime.releaseTarget = target;
       }
     }
-    // Synthetic cursor point: zero velocity, token radius (tightest honest tolerance).
-    const px = aimWorld && Number.isFinite(aimWorld.x) ? aimWorld.x : player.pos.x;
-    const pz = aimWorld && Number.isFinite(aimWorld.z) ? aimWorld.z : player.pos.z;
-    return { entity: null, target: { pos: { x: px, z: pz }, vel: { x: 0, z: 0 }, radius: 2 } };
+
+    const releaseTarget = runtime.releaseTarget;
+    if (!releaseTarget) return null;
+    if (releaseTarget.targetId != null) {
+      const entity = state.entities && state.entities.get ? state.entities.get(releaseTarget.targetId) : null;
+      if (!validReleaseEntity(entity, player.id, payload.id)) {
+        runtime.releaseTarget = null;
+        return null;
+      }
+      return {
+        entity,
+        target: { pos: entity.pos, vel: entity.vel || ZERO_VELOCITY, radius: entity.radius },
+      };
+    }
+    const pos = releaseTarget.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) {
+      runtime.releaseTarget = null;
+      return null;
+    }
+    return {
+      entity: null,
+      target: { pos, vel: ZERO_VELOCITY, radius: positive(releaseTarget.radius, 2) },
+    };
   },
 
   // Self-sling solution (case B): the PLAYER is the payload; the aim is the selected target.
@@ -535,6 +610,7 @@ function ensureThrowSubtree(state) {
   if (!root.throw) {
     root.throw = {
       armed: false, payloadId: null, aimTargetId: null, aimSynthetic: false,
+      releaseTarget: null,
       solution: null, selfSolution: null, lastThrow: null, lastSelfSling: null,
       lastReleaseValidation: null,
     };
@@ -624,6 +700,7 @@ function writeIdle(runtime) {
   runtime.payloadId = null;
   runtime.aimTargetId = null;
   runtime.aimSynthetic = false;
+  runtime.releaseTarget = null;
   runtime.solution = null;
   runtime.selfSolution = null;
 }
@@ -631,5 +708,73 @@ function writeIdle(runtime) {
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function positive(v, fb) { return Number.isFinite(v) && v > 0 ? v : fb; }
 function clamp01(v) { return Math.max(0, Math.min(1, finite(v))); }
+
+const ZERO_VELOCITY = Object.freeze({ x: 0, z: 0 });
+
+function seedReleaseTarget(state, player, payload) {
+  const selectedId = state.player ? state.player.targetId : null;
+  if (selectedId != null && selectedId !== payload.id && selectedId !== player.id) {
+    const selected = state.entities && state.entities.get ? state.entities.get(selectedId) : null;
+    if (validReleaseEntity(selected, player.id, payload.id)) {
+      return entityReleaseTarget(selected.id, 'selection');
+    }
+  }
+
+  const waypoint = state.nav && state.nav.waypoint;
+  if (!waypoint) return null;
+  if (waypoint.targetEntityId != null) {
+    const entity = state.entities && state.entities.get ? state.entities.get(waypoint.targetEntityId) : null;
+    if (validReleaseEntity(entity, player.id, payload.id)) {
+      return entityReleaseTarget(entity.id, 'waypoint', 'waypoint');
+    }
+  }
+  if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
+  return pointReleaseTarget(
+    'waypoint',
+    'waypoint',
+    waypoint.pos.x,
+    waypoint.pos.z,
+    positive(waypoint.arrivalRadius, 12),
+  );
+}
+
+function validReleaseEntity(entity, playerId, payloadId) {
+  return !!(entity
+    && entity.id !== playerId
+    && entity.id !== payloadId
+    && entity.alive !== false
+    && entity.pos
+    && Number.isFinite(entity.pos.x)
+    && Number.isFinite(entity.pos.z)
+    && AIMABLE_TYPES.has(entity.type));
+}
+
+function entityReleaseTarget(targetId, source, kind = 'entity') {
+  return { kind, source, targetId, pos: null, radius: 0 };
+}
+
+function pointReleaseTarget(kind, source, x, z, radius) {
+  return {
+    kind,
+    source,
+    targetId: null,
+    pos: { x: finite(x), z: finite(z) },
+    radius: positive(radius, 2),
+  };
+}
+
+function releasePredictionIdentity(payloadId, releaseTarget) {
+  if (!releaseTarget) return `${String(payloadId)}:none`;
+  const kind = String(releaseTarget.kind || 'point');
+  const source = String(releaseTarget.source || 'unknown');
+  if (releaseTarget.targetId != null) {
+    return `${String(payloadId)}:${kind}:${source}:entity:${String(releaseTarget.targetId)}`;
+  }
+  const pos = releaseTarget.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) {
+    return `${String(payloadId)}:${kind}:${source}:invalid`;
+  }
+  return `${String(payloadId)}:${kind}:${source}:point:${String(pos.x)}:${String(pos.z)}`;
+}
 
 export { FALLBACK };

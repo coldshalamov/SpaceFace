@@ -1205,13 +1205,12 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     if (isScannerHostileLock(player, state, cur)) {
       if (quiet) return;
     } else if (quiet && isDeliberateNonHostilePick(player, state, cur)) {
-      // THE THROW DESTINATION. `state.player.targetId` is not only the gun lock — it is the aim
-      // point masslineThrow reads (`src/systems/masslineThrow.js:251-257`), and that resolver
-      // refuses the body already on the line, so re-pointing the selection at the payload silently
-      // downgrades the throw to a synthetic radius-2 cursor point. Grabbing a rock and picking the
-      // freighter you mean to hit is a signature verb; a 0.12s housekeeping refresh must not spend
-      // it. Gun/tether reconciliation is unaffected — `resolvePlayerGunTarget()` derives the gun
-      // target from the tether without this variable.
+      // A deliberate selection can seed the NEXT latch's transient releaseTarget. Once a line is
+      // latched, selection churn and this 0.12s housekeeping refresh no longer steer the armed
+      // throw; only explicit per-tick aim intent may repaint that captured destination. Preserve
+      // the pick anyway because it remains player-owned selection truth for the panel, hails,
+      // orders, self-sling aim, and future latches. Gun/tether reconciliation is unaffected —
+      // `resolvePlayerGunTarget()` derives the gun target from the tether without this variable.
       return;
     }
   } else if (quiet) {

@@ -149,6 +149,45 @@ export function resolveReleaseCue(projection, options = {}) {
   };
 }
 
+// Resolve the world anchor independently from DOM projection. R3B release targets are captured
+// when the line latches (or when a current precision-input intent repaints them), so a fixed point
+// must stay fixed even when gun/UI selection or a stale aimWorld changes underneath the throw.
+// The final payload-ray branch keeps old fixtures and partial runtime states readable.
+export function resolveThrowMarkWorldPoint(throwState, state) {
+  if (!throwState || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  const releaseTarget = throwState.releaseTarget;
+  const targetId = releaseTarget && releaseTarget.targetId != null
+    ? releaseTarget.targetId
+    : throwState.aimTargetId;
+  if (targetId != null) {
+    const entity = state.entities.get(targetId);
+    if (entity && entity.alive !== false && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+      return {
+        x: entity.pos.x + finite(entity.vel && entity.vel.x) * MARK_PREDICTION_S,
+        z: entity.pos.z + finite(entity.vel && entity.vel.z) * MARK_PREDICTION_S,
+        targetKind: releaseTarget && releaseTarget.kind === 'waypoint' ? 'waypoint' : 'entity',
+      };
+    }
+  }
+  if (releaseTarget && releaseTarget.pos
+    && Number.isFinite(releaseTarget.pos.x) && Number.isFinite(releaseTarget.pos.z)) {
+    return {
+      x: releaseTarget.pos.x,
+      z: releaseTarget.pos.z,
+      targetKind: releaseTarget.kind === 'waypoint' ? 'waypoint' : 'point',
+    };
+  }
+  const payload = state.entities.get(throwState.payloadId);
+  const solution = throwState.solution;
+  if (!payload || !payload.pos || !solution || !Number.isFinite(solution.interceptAngle)) return null;
+  return {
+    x: payload.pos.x + Math.cos(solution.interceptAngle) * 220,
+    z: payload.pos.z + Math.sin(solution.interceptAngle) * 220,
+    targetKind: 'point',
+  };
+}
+
 export const masslineHud = {
   id: 'masslineHud',
   name: 'masslineHud',
@@ -412,24 +451,17 @@ export const masslineHud = {
   _updateThrowMark(dom, throwState, state, w2s) {
     const solution = throwState && throwState.armed ? throwState.solution : null;
     if (!solution || !solution.valid) { setStyle(dom.throwEl, 'display', 'none'); return; }
-    const payload = state.entities.get(throwState.payloadId);
-    if (!payload || !payload.pos) { setStyle(dom.throwEl, 'display', 'none'); return; }
     // Place the diamond on the intercept ray at either the aim entity or a fixed reach — the
     // POSITION names the consequence ("the rock goes THERE"), the COLOR names the timing.
-    const aim = throwState.aimTargetId != null ? state.entities.get(throwState.aimTargetId) : null;
-    const px = aim && aim.pos
-      ? aim.pos.x + finite(aim.vel && aim.vel.x) * MARK_PREDICTION_S
-      : payload.pos.x + Math.cos(solution.interceptAngle) * 220;
-    const pz = aim && aim.pos
-      ? aim.pos.z + finite(aim.vel && aim.vel.z) * MARK_PREDICTION_S
-      : payload.pos.z + Math.sin(solution.interceptAngle) * 220;
-    const proj = w2s({ x: px, y: 0, z: pz });
+    const mark = resolveThrowMarkWorldPoint(throwState, state);
+    if (!mark) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    const proj = w2s({ x: mark.x, y: 0, z: mark.z });
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
       viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
       kind: 'throw',
       onSolution: solution.onSolution,
-      targetKind: aim ? 'entity' : 'point',
+      targetKind: mark.targetKind,
     });
     if (!cue.visible) { setStyle(dom.throwEl, 'display', 'none'); return; }
     setStyle(dom.throwEl, 'display', 'block');

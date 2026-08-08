@@ -229,6 +229,39 @@ test('PQ-006 release cues clamp offscreen without visor arcs and keep a static n
   assert.match(waypointCue.ariaLabel, /waypoint/i);
 });
 
+test('R3B HUD anchors fixed release targets at their captured world point', () => {
+  assert.equal(typeof masslineHudModule.resolveThrowMarkWorldPoint, 'function');
+  const payload = { id: 2, pos: { x: 10, z: 20 }, vel: { x: 80, z: 0 } };
+  const movingTarget = { id: 3, pos: { x: 300, z: -40 }, vel: { x: 12, z: 6 } };
+  const state = { entities: new Map([[2, payload], [3, movingTarget]]) };
+  const pointThrow = {
+    payloadId: payload.id,
+    aimTargetId: null,
+    releaseTarget: {
+      kind: 'waypoint', source: 'waypoint', targetId: null,
+      pos: { x: -640, z: 220 }, radius: 24,
+    },
+    solution: { interceptAngle: Math.PI / 2 },
+  };
+  assert.deepEqual(
+    masslineHudModule.resolveThrowMarkWorldPoint(pointThrow, state),
+    { x: -640, z: 220, targetKind: 'waypoint' },
+    'fixed waypoints must not fall back to the payload intercept ray',
+  );
+
+  const entityThrow = {
+    ...pointThrow,
+    aimTargetId: movingTarget.id,
+    releaseTarget: {
+      kind: 'entity', source: 'pointer', targetId: movingTarget.id, pos: null, radius: 0,
+    },
+  };
+  const entityPoint = masslineHudModule.resolveThrowMarkWorldPoint(entityThrow, state);
+  assert.equal(entityPoint.targetKind, 'entity');
+  assert.ok(Math.abs(entityPoint.x - (movingTarget.pos.x + movingTarget.vel.x * (1 / 120))) < 1e-9);
+  assert.ok(Math.abs(entityPoint.z - (movingTarget.pos.z + movingTarget.vel.z * (1 / 120))) < 1e-9);
+});
+
 test('PQ-006 HUD declares static reduced-flash and forced-color release states', () => {
   assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-reduced-flash/);
   assert.match(masslineHudModule.MASSLINE_HUD_CSS, /forced-colors:\s*active[\s\S]*ml2-mark/);

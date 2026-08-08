@@ -1,9 +1,11 @@
 // Auto-target combat mode: G owns weapon lead plus the clutchable draw-to-fly trackpad route.
 //
 // TARGET RECONCILIATION (the "two variables" rule). There are two target-ish values on the player:
-//   state.player.targetId        — the player's SELECTION. Also drives the throw aim
-//                                  (masslineThrow._resolveThrowAim / _resolveSelfAim), the target
-//                                  panel, hails, and wingman attack orders. Not ours to overwrite.
+//   state.player.targetId        — the player's SELECTION. It seeds a newly latched throw's
+//                                  transient releaseTarget and still drives self-sling aim, the
+//                                  target panel, hails, and wingman attack orders. Once latched,
+//                                  only explicit aim intent may repaint the throw destination.
+//                                  Not ours to overwrite.
 //   state.player.tether.targetId — what the Massline is physically attached to.
 // The GUN target is neither of those directly: it is derived from both by resolvePlayerGunTarget()
 // below, and every gunnery consumer (fire path, missile lock, auto-aim, reticle lead) must ask that
