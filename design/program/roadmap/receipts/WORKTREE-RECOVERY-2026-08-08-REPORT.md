@@ -132,10 +132,16 @@ to stop disjoint work.
 
 ## Cleanup receipt
 
-Pending after this report is first committed and pushed:
+Completed on 2026-08-08 after authority commit `c4908e2f` became reachable from
+`origin/master` through `bc314b7c`:
 
-- delete only the exact local branches/tags in the object-pinned deletion ledger;
-- delete `C:\Users\93rob\Documents\GitHub\SpaceFace\_recovery` after resolving that absolute path;
-- verify the primary checkout is still the only registered worktree and the preserved corrupt clone
-  still exists;
-- update this section with exact results in a follow-up commit.
+- deleted all 18 exact local branches/tags in the object-pinned ledger with an expected-object guard;
+  verification found zero remaining ledger refs;
+- resolved and deleted only `C:\Users\93rob\Documents\GitHub\SpaceFace\_recovery`: 347 files,
+  28,589,779 bytes, zero reparse points, and no path remaining afterward;
+- verified the primary checkout is still the only registered worktree;
+- preserved the corrupt independent Grok clone at
+  `C:\Users\93rob\.grok\worktrees\github-spaceface\subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`
+  for `REC-GROK-KES-SALVAGE`;
+- did not delete remote refs, run garbage collection, touch the Git object database, or stage any
+  concurrent writer's files.
