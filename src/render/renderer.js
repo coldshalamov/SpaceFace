@@ -24,7 +24,11 @@ import {
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
-import { prepareSectorEntry, preloadAuthoredParts } from './assetLoader.js';
+import {
+  bindAuthoredAssetPerfCounters,
+  prepareSectorEntry,
+  preloadAuthoredParts,
+} from './assetLoader.js';
 import {
   createAsteroidInstancePool,
   invalidateAsteroidInstancePool,
@@ -866,6 +870,10 @@ export const render = {
     // a boolean read. Counting only — see src/core/perfCounters.js for why no timing lives here.
     if (perfCountersRequested()) {
       const perfCounters = ensurePerfRuntime(state).tier1;
+      // Publish the exact GameState-owned sink before any authored asset runtime can be created.
+      // THREE.WebGLRenderer.state is an unrelated internal WebGL cache and must never be treated as
+      // SpaceFace state merely because it has the same property name.
+      bindAuthoredAssetPerfCounters(renderer, perfCounters);
       perfCounters.setEnabled(true);
       const instrumentedGl = renderer.getContext();
       if (instrumentedGl) installGlInstrumentation(instrumentedGl, perfCounters);

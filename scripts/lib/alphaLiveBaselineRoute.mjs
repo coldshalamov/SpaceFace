@@ -31,10 +31,13 @@ export async function runBrowserPublicRoute({
   dockTimeoutMs = 90_000,
   skipStationHubAcceptance = false,
   seed = null,
+  onAuthoredFlightReady = null,
 } = {}) {
   assert(page, 'public-route runner requires a Playwright page');
   assert(outputDir, 'public-route runner requires a guarded output directory');
   assert(expectedRootUrl, 'public-route runner requires the originally requested canonical root URL');
+  assert(onAuthoredFlightReady == null || typeof onAuthoredFlightReady === 'function',
+    'public-route authored-flight hook must be a function when provided');
 
   const steps = [];
   const urlChecks = [];
@@ -119,6 +122,9 @@ export async function runBrowserPublicRoute({
     assert.equal(launchSnapshot.firstRunSplashVisible, false, 'Launch must leave no first-run splash visible');
     mark('authored-flight-ready', { tick: launchSnapshot.tick, authored: launchSnapshot.authored });
     recordCanonicalUrl('authored-flight-ready');
+    if (onAuthoredFlightReady) {
+      await onAuthoredFlightReady({ page, launchSnapshot });
+    }
 
     phase = 'flight-input';
     const canvas = page.locator('#gl-canvas');

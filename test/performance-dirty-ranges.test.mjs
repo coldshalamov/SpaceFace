@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 
 import {
   DYNAMIC_BUFFER_FULL_SPAN_VARIANT,
   applyDiagnosticVariantToState,
+  assertTier1CountersBooted,
+  cleanupIsolatedElectronProfile,
+  installTier1CountersInitScript,
+  launchIsolatedElectronApplication,
+  reloadElectronWithTier1Counters,
   restoreDiagnosticVariantToState,
   snapshotDiagnosticSettings,
 } from '../scripts/lib/releaseSoakProbe.mjs';
@@ -19,6 +26,8 @@ import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+const routeSource = await readFile(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url), 'utf8');
 
 function windowFixture(variantId, {
   logicalBytes = 12_000,
@@ -81,6 +90,149 @@ test('probe full-span diagnostic variant is explicit and restores the shipped ra
   const restored = restoreDiagnosticVariantToState(state, snapshot);
   assert.equal(restored.restored, true);
   assert.equal(forceFull, false);
+});
+
+function pageHarness(pageRealm) {
+  let initScript = null;
+  return {
+    get initScript() { return initScript; },
+    async addInitScript(script) { initScript = script; },
+    async waitForFunction(predicate, argument, options) {
+      assert.equal(argument, null);
+      assert.ok(Number.isFinite(options.timeout));
+      if (!runInNewContext(`(${predicate.toString()})()`, pageRealm)) {
+        throw new Error('Tier-1 runtime API did not boot');
+      }
+    },
+    async evaluate(predicate) {
+      return JSON.parse(JSON.stringify(runInNewContext(`(${predicate.toString()})()`, pageRealm)));
+    },
+  };
+}
+
+test('Tier-1 acceptance arms an immutable flag and verifies the live sink without a timeout wait', async () => {
+  const pageRealm = {};
+  const page = pageHarness(pageRealm);
+
+  await installTier1CountersInitScript(page);
+  assert.equal(typeof page.initScript, 'function');
+  runInNewContext(`(${page.initScript.toString()})()`, pageRealm);
+  const descriptor = Object.getOwnPropertyDescriptor(pageRealm, '__SPACEFACE_PERF_COUNTERS__');
+  assert.deepEqual(descriptor, {
+    value: true,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+
+  pageRealm.__SPACEFACE_PERF__ = { tier1: { isEnabled: () => true } };
+  assert.deepEqual(
+    await assertTier1CountersBooted(page, { timeoutMs: 1234, phase: 'focused test' }),
+    { flag: descriptor, enabled: true },
+  );
+});
+
+test('Tier-1 readiness fails immediately for missing authority or a disabled replacement sink', async () => {
+  const missingFlagRealm = {
+    __SPACEFACE_PERF__: { tier1: { isEnabled: () => true } },
+  };
+  await assert.rejects(
+    assertTier1CountersBooted(pageHarness(missingFlagRealm), { phase: 'missing flag' }),
+    /lost its immutable install-on-boot authority/,
+  );
+
+  const disabledRealm = {};
+  const disabledPage = pageHarness(disabledRealm);
+  await installTier1CountersInitScript(disabledPage);
+  runInNewContext(`(${disabledPage.initScript.toString()})()`, disabledRealm);
+  disabledRealm.__SPACEFACE_PERF__ = { tier1: { isEnabled: () => false } };
+  await assert.rejects(
+    assertTier1CountersBooted(disabledPage, { phase: 'authored flight admission' }),
+    /counter sink exists but is not enabled/,
+  );
+
+  await assert.rejects(
+    assertTier1CountersBooted(pageHarness({}), { timeoutMs: 25 }),
+    /runtime API did not boot/,
+  );
+});
+
+test('Electron Tier-1 reload owns expected navigation and releases it on failure', async () => {
+  const events = [];
+  const page = {
+    async addInitScript() { events.push('init'); },
+    async reload(options) {
+      events.push(['reload', options]);
+      throw new Error('injected reload failure');
+    },
+  };
+  const tracker = {
+    beginExpectedNavigation(label) {
+      events.push(['begin', label]);
+      return 47;
+    },
+    endExpectedNavigation(token) {
+      events.push(['end', token]);
+      return token === 47;
+    },
+  };
+  await assert.rejects(
+    reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 }),
+    /injected reload failure/,
+  );
+  assert.deepEqual(events, [
+    'init',
+    ['begin', 'tier1-counter-install'],
+    ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
+    ['end', 47],
+  ]);
+});
+
+test('isolated Electron launch rejection removes its unpublished owned profile', async () => {
+  const calls = [];
+  const isolatedLaunch = {
+    options: { args: ['.'] },
+    cleanup(options) { calls.push(options); },
+  };
+  await assert.rejects(
+    launchIsolatedElectronApplication({
+      async launch(options) {
+        assert.equal(options, isolatedLaunch.options);
+        throw new Error('injected launch rejection');
+      },
+    }, isolatedLaunch),
+    /injected launch rejection/,
+  );
+  assert.deepEqual(calls, [{ runtimeClosed: true }]);
+});
+
+test('isolated Electron profile cleanup depends on process shutdown, not acceptance success', () => {
+  const calls = [];
+  const isolatedLaunch = { cleanup(options) { calls.push(options); } };
+  assert.equal(cleanupIsolatedElectronProfile(isolatedLaunch, {
+    pass: false,
+    processCloseConfirmed: true,
+    processExited: true,
+  }), true);
+  assert.deepEqual(calls, [{ runtimeClosed: true }]);
+  assert.equal(cleanupIsolatedElectronProfile({ cleanup() { throw new Error('must not run'); } }, {
+    pass: false,
+    processCloseConfirmed: true,
+    processExited: false,
+  }), false);
+});
+
+test('attribution validates Tier-1 ownership at authored flight admission before route input or sampling', () => {
+  const routeReady = routeSource.indexOf("recordCanonicalUrl('authored-flight-ready');");
+  const routeHook = routeSource.indexOf('await onAuthoredFlightReady({ page, launchSnapshot });', routeReady);
+  const routeInput = routeSource.indexOf("phase = 'flight-input';", routeReady);
+  assert.ok(routeReady >= 0 && routeHook > routeReady && routeInput > routeHook,
+    'the awaited ownership hook must run at authored readiness before player input');
+
+  const callback = probeSource.indexOf("assertTier1CountersBooted(page, { phase: 'authored flight admission' })");
+  const sample = probeSource.indexOf('const { document } = await samplePerformanceAttribution(page', callback);
+  assert.ok(callback >= 0, 'attribution must bind its ownership assertion to authored flight readiness');
+  assert.ok(sample > callback, 'authored-flight ownership must fail before attribution sampling begins');
 });
 
 test('dirty-range comparator requires causal owner and driver byte reduction at unchanged quality', () => {

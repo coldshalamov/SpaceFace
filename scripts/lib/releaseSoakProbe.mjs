@@ -225,6 +225,7 @@ export async function runReleaseSoakProbe({
         childProcess = owned.childProcess;
         processMonitor = owned.processMonitor;
         pageIssueTracker = owned.pageIssueTracker;
+        isolatedLaunch = owned.isolatedLaunch;
       });
       ({ page, electronApp, childProcess, processMonitor, pageIssueTracker, isolatedLaunch } = launched);
       canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
@@ -337,9 +338,7 @@ export async function runReleaseSoakProbe({
     cleanupReport = runtime === 'electron'
       ? await closeOwnedElectronRuntime({ page, electronApp, childProcess, canonicalUrlTracker, processMonitor, rootUrl })
       : await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker });
-    if (runtime === 'electron' && cleanupReport?.pass === true) {
-      isolatedLaunch?.cleanup({ runtimeClosed: true });
-    }
+    if (runtime === 'electron') cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport);
     const cleanup = normalizeCleanup(runtime, cleanupReport);
     const cleanupValidation = validateCleanupEvidence(cleanup, { runtimeKind: runtime });
     const errors = buildErrorEvidence(runtime, pageIssueTracker);
@@ -434,9 +433,7 @@ export async function runReleaseSoakProbe({
         cleanupReport = await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker }).catch(() => null);
       }
     }
-    if (runtime === 'electron' && isolatedLaunch && cleanupReport?.pass === true) {
-      isolatedLaunch.cleanup({ runtimeClosed: true });
-    }
+    if (runtime === 'electron') cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport);
     pageIssueTracker?.stop?.();
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
   }
@@ -461,16 +458,10 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     assert(browserChildProcess, 'browser launch server must expose its owned child process');
     browser = await chromium.connect(browserServer.wsEndpoint());
     const context = await browser.newContext({ viewport, screen: viewport, deviceScaleFactor: 1, locale: 'en-US', colorScheme: 'dark' });
-    if (enableTier1Counters) {
-      await context.addInitScript(() => {
-        Object.defineProperty(window, '__SPACEFACE_PERF_COUNTERS__', {
-          value: true,
-          configurable: false,
-          enumerable: false,
-          writable: false,
-        });
-      });
-    }
+    // Context and page init scripts have the same pre-document guarantee. Keep the context-level
+    // install so any replacement page inherits the immutable measurement authority; the causal
+    // New Game failure was a product-side counter-owner swap, not Playwright injection ordering.
+    if (enableTier1Counters) await installTier1CountersInitScript(context);
     const page = await context.newPage();
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
@@ -489,19 +480,23 @@ async function launchElectron(
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
-  let electronApp;
-  try {
-    // Omit executablePath intentionally. Playwright resolves this already-verified package and,
-    // only on that package-resolution path, installs its Electron readiness loader before app
-    // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
-    electronApp = await electron.launch(isolatedLaunch.options);
-  } catch (error) {
-    throw error;
-  }
+  // Omit executablePath intentionally. Playwright resolves this already-verified package and,
+  // only on that package-resolution path, installs its Electron readiness loader before app
+  // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
+  const electronApp = await launchIsolatedElectronApplication(electron, isolatedLaunch);
   const processMonitor = createElectronProcessMonitor({ electronApp, childProcess: electronApp.process() });
   const childProcess = processMonitor.childProcess;
   const pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp);
-  onOwnership({ electronApp, processMonitor, childProcess, pageIssueTracker });
+  // Publish every cleanup handle before firstWindow/init/reload can fail. The caller's outer finally
+  // then owns both the runtime and its isolated profile even if setup never returns a launch record.
+  onOwnership({
+    electronApp,
+    processMonitor,
+    childProcess,
+    pageIssueTracker,
+    isolatedLaunch,
+    runtimeProvisioning,
+  });
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
   installCspSafePlaywrightPolling(page);
@@ -509,15 +504,7 @@ async function launchElectron(
     // Electron creates its first page as part of app startup, before Playwright can install an init
     // script. Reload the same canonical route once inside the same owned runtime after arming the
     // install-on-boot counter flag. This does not spend another runtime launch or change its URL.
-    await page.addInitScript(() => {
-      Object.defineProperty(window, '__SPACEFACE_PERF_COUNTERS__', {
-        value: true,
-        configurable: false,
-        enumerable: false,
-        writable: false,
-      });
-    });
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await reloadElectronWithTier1Counters(page, pageIssueTracker);
   }
   return {
     electronApp,
@@ -528,6 +515,92 @@ async function launchElectron(
     isolatedLaunch,
     runtimeProvisioning,
   };
+}
+
+export async function installTier1CountersInitScript(target) {
+  assert(target && typeof target.addInitScript === 'function', 'Tier-1 counters require an init-script seam');
+  await target.addInitScript(() => {
+    Object.defineProperty(globalThis, '__SPACEFACE_PERF_COUNTERS__', {
+      value: true,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+  });
+}
+
+export async function assertTier1CountersBooted(page, { timeoutMs = 30_000, phase = 'boot' } = {}) {
+  assert(page && typeof page.waitForFunction === 'function' && typeof page.evaluate === 'function',
+    'Tier-1 counters require a page readiness seam');
+  // Wait only for the runtime API to exist. If it exists but is disabled or owned by the wrong
+  // state, waiting longer cannot heal it and merely burns the full route timeout.
+  await page.waitForFunction(() => (
+    typeof globalThis.__SPACEFACE_PERF__?.tier1?.isEnabled === 'function'
+  ), null, { timeout: timeoutMs });
+  const status = await page.evaluate(() => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__SPACEFACE_PERF_COUNTERS__');
+    return {
+      flag: descriptor ? {
+        value: descriptor.value,
+        configurable: descriptor.configurable,
+        enumerable: descriptor.enumerable,
+        writable: descriptor.writable,
+      } : null,
+      enabled: globalThis.__SPACEFACE_PERF__?.tier1?.isEnabled?.() === true,
+    };
+  });
+  assert.deepEqual(status.flag, {
+    value: true,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  }, `Tier-1 ${phase} lost its immutable install-on-boot authority`);
+  assert.equal(status.enabled, true, `Tier-1 ${phase} counter sink exists but is not enabled`);
+  return status;
+}
+
+export async function reloadElectronWithTier1Counters(page, pageIssueTracker, { timeoutMs = 90_000 } = {}) {
+  assert(pageIssueTracker
+    && typeof pageIssueTracker.beginExpectedNavigation === 'function'
+    && typeof pageIssueTracker.endExpectedNavigation === 'function',
+  'Tier-1 Electron reload requires expected-navigation ownership');
+  // Installing an init script is not navigation. Arm expected-cancellation authority only for the
+  // exact reload so unrelated in-flight requests cannot inherit the waiver if installation fails.
+  await installTier1CountersInitScript(page);
+  const navigationToken = pageIssueTracker.beginExpectedNavigation('tier1-counter-install');
+  try {
+    return await page.reload({ waitUntil: 'domcontentloaded', timeout: timeoutMs });
+  } finally {
+    assert.equal(pageIssueTracker.endExpectedNavigation(navigationToken), true,
+      'Tier-1 Electron reload must release its expected-navigation token');
+  }
+}
+
+export async function launchIsolatedElectronApplication(electron, isolatedLaunch) {
+  assert(electron && typeof electron.launch === 'function', 'isolated Electron launch requires Playwright Electron');
+  assert(isolatedLaunch && isolatedLaunch.options && typeof isolatedLaunch.cleanup === 'function',
+    'isolated Electron launch requires an owned profile');
+  try {
+    return await electron.launch(isolatedLaunch.options);
+  } catch (error) {
+    // A rejected Playwright launch returned no ElectronApplication owner. Match the canonical
+    // lifecycle probe's proof: no runtime handle was published, so the owned profile is idle and
+    // may be removed immediately rather than leaking from a failed pre-ownership launch.
+    isolatedLaunch.cleanup({ runtimeClosed: true });
+    throw error;
+  }
+}
+
+export function cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport) {
+  if (!isolatedLaunch || !cleanupReport) return false;
+  // Profile deletion requires the canonical paired shutdown proof: process exit plus ChildProcess
+  // close/stdio drain. Overall acceptance may still fail for route or evidence reasons, and a force
+  // close may still provide this exact pair, but one partial lifecycle flag is never sufficient.
+  const runtimeClosed = cleanupReport.processExited === true
+    && cleanupReport.processCloseConfirmed === true;
+  if (!runtimeClosed) return false;
+  isolatedLaunch.cleanup({ runtimeClosed: true });
+  return true;
 }
 
 async function runSoakCycle(page, { index, outputDir, log }) {
@@ -3618,12 +3691,15 @@ async function runPerformanceAttributionProbe({
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      if (enableTier1Counters) await assertTier1CountersBooted(page, { phase: 'initial boot' });
     } else {
       const launched = await launchElectron(root, (owned) => {
         electronApp = owned.electronApp;
         childProcess = owned.childProcess;
         processMonitor = owned.processMonitor;
         pageIssueTracker = owned.pageIssueTracker;
+        isolatedLaunch = owned.isolatedLaunch;
+        electronRuntime = owned.runtimeProvisioning;
       }, taskId, { enableTier1Counters });
       ({
         page,
@@ -3649,6 +3725,7 @@ async function runPerformanceAttributionProbe({
         'Electron attribution must remain on its launcher-owned canonical root',
       );
       await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
+      if (enableTier1Counters) await assertTier1CountersBooted(page, { phase: 'initial boot' });
     }
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
@@ -3667,6 +3744,9 @@ async function runPerformanceAttributionProbe({
         // The performance route validates the active station shell through its Market tab and
         // trade controls below. Do not apply the shared baseline's legacy stationHub DOM contract.
         skipStationHubAcceptance: true,
+        onAuthoredFlightReady: enableTier1Counters
+          ? () => assertTier1CountersBooted(page, { phase: 'authored flight admission' })
+          : null,
       });
     } catch (error) {
       // The market/hub route is binding when requested. For flight-only attribution, a live
@@ -3687,6 +3767,9 @@ async function runPerformanceAttributionProbe({
       doLog('[attribution] docked market UI is blocked; continuing only requested flight routes from proven docked state');
     }
     assert.equal(routeResult?.pass === true, true, 'public route must pass for attribution matrix');
+    // The route hook above checks the exact admission boundary. Reassert once more after the full
+    // public route so no later UI/travel transition can publish a vacuous attribution sample.
+    if (enableTier1Counters) await assertTier1CountersBooted(page, { phase: 'post-public-route' });
     assert.equal(await isDocked(page), true, 'public route must finish docked');
     if (routes.includes('docked_market_ui')) await ensureMarketOpen(page);
 
@@ -3884,9 +3967,7 @@ async function runPerformanceAttributionProbe({
         rootUrl,
       }).catch(() => null);
     }
-    if (runtimeKind === 'electron' && isolatedLaunch && cleanupReport?.pass === true) {
-      isolatedLaunch.cleanup({ runtimeClosed: true });
-    }
+    if (runtimeKind === 'electron') cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport);
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
   }
 }

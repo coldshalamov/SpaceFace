@@ -11,7 +11,6 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { createRenderPackageLoader } from './renderPackageLoader.js';
 import {
   renderPackagePilotForAssetId,
@@ -371,6 +370,39 @@ function installWorkerFailureDrain(worker, MessageEventImpl) {
 const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
 
 const authoredAssetRuntimeRegistry = createAuthoredAssetRuntimeRegistry(createRuntime);
+const authoredAssetPerfCountersByRenderer = new WeakMap();
+
+/**
+ * Bind authored-asset instrumentation to the real GameState counter sink that owns this renderer.
+ *
+ * THREE.WebGLRenderer also exposes a `.state` property, but that object is Three's internal WebGL
+ * state cache — it is not SpaceFace GameState. Inferring counter ownership from that similarly named
+ * property creates a second disabled perf runtime and replaces `window.__SPACEFACE_PERF__` during
+ * New Game asset admission. The renderer system therefore publishes the exact sink once, before any
+ * authored runtime can be created, and every asset/package counter reads only this explicit binding.
+ */
+export function bindAuthoredAssetPerfCounters(renderer, counters) {
+  if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) {
+    throw new TypeError('authored-asset perf counters require a renderer owner');
+  }
+  if (!counters || typeof counters.isEnabled !== 'function') {
+    throw new TypeError('authored-asset perf counters require a Tier-1 counter sink');
+  }
+  const current = authoredAssetPerfCountersByRenderer.get(renderer);
+  if (current) {
+    if (current !== counters) throw new Error('authored-asset perf counter owner cannot change after binding');
+    return current;
+  }
+  if (authoredAssetRuntimeRegistry.peek(renderer)) {
+    throw new Error('authored-asset perf counters must bind before the renderer runtime is created');
+  }
+  authoredAssetPerfCountersByRenderer.set(renderer, counters);
+  return counters;
+}
+
+function boundPerfCountersForRenderer(renderer) {
+  return renderer ? authoredAssetPerfCountersByRenderer.get(renderer) || null : null;
+}
 
 /**
  * Explicit authored-asset lifetime for preview roots and other non-entity render surfaces.
@@ -703,11 +735,9 @@ function runtimeFor(renderer) {
   return authoredAssetRuntimeRegistry.get(renderer);
 }
 
-/** Tier-1 causal counter sink for this renderer's state, or null when counting is off. */
+/** Tier-1 causal counter sink explicitly owned by this renderer, or null when counting is off. */
 function tier1CountersForRenderer(renderer) {
-  const state = renderer && renderer.state;
-  if (!state) return null;
-  const tier1 = ensurePerfRuntime(state).tier1;
+  const tier1 = boundPerfCountersForRenderer(renderer);
   return tier1 && tier1.isEnabled() ? tier1 : null;
 }
 
@@ -736,7 +766,7 @@ async function createRuntime(renderer) {
   const residency = getAssetResidency(renderer);
   const renderPackages = createRenderPackageLoader({
     residency,
-    counters: renderer && renderer.state ? ensurePerfRuntime(renderer.state).tier1 : null,
+    counters: boundPerfCountersForRenderer(renderer),
     configureGltfLoader: async (loader) => {
       await attachRuntimeDecoders(loader, renderer, decoders, disposableDecoders);
     },
