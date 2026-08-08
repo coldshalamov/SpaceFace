@@ -264,6 +264,34 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
 }
 
+/**
+ * Service render residency without turning the ordinary distance poll into a full reconciliation.
+ * Full scans remain the event-driven safety net; queued boundaries keep the established two-build
+ * cadence between scans.
+ */
+export function serviceRenderMeshResidency(owner, frameDt) {
+  if (!owner || owner._deferNoncriticalMeshStreaming) return 'deferred';
+  owner._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+  let pollDue = false;
+  if (owner._renderResidencyPollS <= 0) {
+    owner._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
+    pollDue = true;
+  }
+  if (owner._meshReconcileDirty) {
+    owner.reconcileMeshes();
+    return 'full';
+  }
+  if (pollDue) {
+    owner.reconcileMeshResidency();
+    return 'poll';
+  }
+  if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) {
+    owner._drainPendingMeshBuilds();
+    return 'drain';
+  }
+  return 'idle';
+}
+
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
   if (!isEntityAuthoredUpgradeRelevant(entity, state)) return false;
   if (!pendingSectorId) return true;
@@ -1249,6 +1277,16 @@ export const render = {
     this._meshBuildQueue = [];
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds = new Set();
+    this._meshResidencyShipCandidates = [];
+    this._meshResidencyOtherCandidates = [];
+    this._meshResidencySweep = {
+      meshVisits: 0,
+      entityVisits: 0,
+      queuedShips: 0,
+      queuedOther: 0,
+      evicted: 0,
+      built: 0,
+    };
     this._deferNoncriticalMeshStreaming = false;
     this._incomingSectorPrewarm = null;
     this._currentSectorPrewarm = null;
@@ -2171,9 +2209,94 @@ export const render = {
         requestAuthoredUpgrade(mesh, this.renderer, this.scene);
       }
     }
-    this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
-    if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
+    // This call completed the requested full safety scan. Any remaining queue is a bounded build
+    // drain, not a reason to repeat the four collection passes on every following display frame.
+    this._meshReconcileDirty = false;
+    if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
+      this._initialMeshReconcileComplete = true;
+    }
     this._publishAssetResidencyDiagnostics();
+    return built;
+  },
+
+  // Ordinary-flight distance polling needs the same admission/eviction policy as the full safety
+  // scan, but not its redundant entity-to-mesh rebinding or separate ship/world passes. Keep one
+  // mesh ownership pass (so missed destroy events still self-heal) and one retained entity pass;
+  // collect candidates into retained arrays to preserve ship-first build order without allocation.
+  reconcileMeshResidency() {
+    const state = this.state;
+    const shipCandidates = this._meshResidencyShipCandidates;
+    const otherCandidates = this._meshResidencyOtherCandidates;
+    const stats = this._meshResidencySweep;
+    shipCandidates.length = 0;
+    otherCandidates.length = 0;
+    stats.meshVisits = 0;
+    stats.entityVisits = 0;
+    stats.queuedShips = 0;
+    stats.queuedOther = 0;
+    stats.evicted = 0;
+    stats.built = 0;
+
+    for (const [id, mesh] of this._meshes) {
+      stats.meshVisits++;
+      const entity = state.entities.get(id);
+      if (!entity || entity.alive === false
+          || !isEntityRenderRelevant(entity, state, RENDER_STREAM_EVICT_RADIUS)) {
+        this._unbindPresentationMesh(id, mesh);
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+        this.scene.remove(mesh);
+        disposeObject(mesh);
+        this._meshes.delete(id);
+        this._shadowReceiversDirty = true;
+        clearEntityMeshReference(entity, mesh);
+        stats.evicted++;
+        continue;
+      }
+      if (canRequestAuthoredUpgrade(entity, state, this._authoredSectorPrewarmPendingId)) {
+        requestAuthoredUpgrade(mesh, this.renderer, this.scene);
+      }
+    }
+
+    const entities = state.entityList;
+    for (let index = 0; index < entities.length; index++) {
+      const entity = entities[index];
+      stats.entityVisits++;
+      if (!entity || this._meshes.has(entity.id)
+          || !isEntityRenderRelevant(entity, state)) continue;
+      if (entity.type === 'ship') shipCandidates.push(entity);
+      else otherCandidates.push(entity);
+    }
+    for (let index = 0; index < shipCandidates.length; index++) {
+      enqueueMeshBuildCandidate(
+        shipCandidates[index],
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+    }
+    for (let index = 0; index < otherCandidates.length; index++) {
+      enqueueMeshBuildCandidate(
+        otherCandidates[index],
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+    }
+    stats.queuedShips = shipCandidates.length;
+    stats.queuedOther = otherCandidates.length;
+    shipCandidates.length = 0;
+    otherCandidates.length = 0;
+    stats.built = this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET);
+    this._publishAssetResidencyDiagnostics();
+    return stats;
+  },
+
+  _drainPendingMeshBuilds() {
+    const built = this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET);
+    if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
+      this._initialMeshReconcileComplete = true;
+    }
+    if (built > 0) this._publishAssetResidencyDiagnostics();
     return built;
   },
 
@@ -2731,16 +2854,9 @@ export const render = {
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
     if (this._adaptive) this._adaptive.update(frameDt);
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
-    // toward them. A low-frequency residency poll admits/evicts views and starts authored prefetch
-    // as distance thresholds are crossed without putting a full entity scan in every frame.
-    if (!this._deferNoncriticalMeshStreaming) {
-      this._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
-      if (this._renderResidencyPollS <= 0) {
-        this._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
-        this._meshReconcileDirty = true;
-      }
-      if (this._meshReconcileDirty) this.reconcileMeshes();
-    }
+    // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
+    // event-recovery scan and redundant presentation rebinding during ordinary settled flight.
+    serviceRenderMeshResidency(this, frameDt);
     updateShipPitchPresentation(this.state, frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
