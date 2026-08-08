@@ -1403,6 +1403,13 @@ export function createHud(ctx, alerts) {
     'background:#d7e6ff;border-radius:1px;opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
   root.appendChild(proTick);
   let _proAlpha = 0;   // smooth-damped opacity so it eases in/out, never pops
+  // The moving-flight path projects two points every visible frame. Keep both input and output
+  // records per HUD instance so high-refresh play does not manufacture four short-lived objects
+  // per frame; A and B must remain distinct until their screen-space delta is consumed.
+  const progradeWorldA = { x: 0, y: 0, z: 0 };
+  const progradeWorldB = { x: 0, y: 0, z: 0 };
+  const progradeScreenA = { x: 0, y: 0, onScreen: false };
+  const progradeScreenB = { x: 0, y: 0, onScreen: false };
 
   // Per-weapon heat bars. Built once per ship load, updated per frame.
   const wpnHeatsWrap = document.createElement('div');
@@ -3952,8 +3959,14 @@ export function createHud(ctx, alerts) {
           const k = (p.radius || 6) * 3;
           const inv = 1 / (spd || 1);
           const ux = vel.x * inv, uz = vel.z * inv;
-          const A = helpers.worldToScreen({ x: p.pos.x, y: 0, z: p.pos.z });
-          const B = helpers.worldToScreen({ x: p.pos.x + ux * k, y: 0, z: p.pos.z + uz * k });
+          progradeWorldA.x = p.pos.x;
+          progradeWorldA.y = 0;
+          progradeWorldA.z = p.pos.z;
+          progradeWorldB.x = p.pos.x + ux * k;
+          progradeWorldB.y = 0;
+          progradeWorldB.z = p.pos.z + uz * k;
+          const A = helpers.worldToScreen(progradeWorldA, progradeScreenA);
+          const B = helpers.worldToScreen(progradeWorldB, progradeScreenB);
           let dx = B.x - A.x, dy = B.y - A.y;
           const dl = Math.hypot(dx, dy);
           if (A.onScreen && dl > 0.001) {

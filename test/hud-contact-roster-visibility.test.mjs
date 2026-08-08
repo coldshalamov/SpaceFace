@@ -96,7 +96,82 @@ test('mounted HUD roster stays visible, capped, clickable, and rebuild-free at h
   }
 });
 
-function mountHudFixture() {
+test('moving prograde projection retains exact per-HUD records at high refresh', () => {
+  let expectedPresentation = null;
+  for (const fps of [60, 144, 240]) {
+    const calls = [];
+    const inputIdentities = new Set();
+    const outputIdentities = new Set();
+    const worldToScreen = (point, out) => {
+      assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained projection output`);
+      inputIdentities.add(point);
+      outputIdentities.add(out);
+      out.x = 960 + point.x;
+      out.y = 540 + point.z;
+      out.onScreen = true;
+      calls.push({
+        input: { x: point.x, y: point.y, z: point.z },
+        output: { x: out.x, y: out.y, onScreen: out.onScreen },
+      });
+      return out;
+    };
+    const fixture = mountHudFixture({ worldToScreen, targetId: null });
+    try {
+      const frames = fps * 2;
+      for (let frame = 0; frame < frames; frame += 1) {
+        fixture.state.simTime += 1 / fps;
+        fixture.state.tick += 1;
+        if (frame < fps) {
+          fixture.player.pos.x = 20 * ((frame + 1) / fps);
+          fixture.player.pos.z = 0;
+          fixture.player.vel.x = 20;
+          fixture.player.vel.z = 0;
+        } else {
+          fixture.player.pos.x = 100;
+          fixture.player.pos.z = 200 + 20 * ((frame - fps + 1) / fps);
+          fixture.player.vel.x = 0;
+          fixture.player.vel.z = 20;
+        }
+        fixture.hud.frame(1 / fps);
+      }
+
+      assert.equal(calls.length, frames * 2, `${fps} FPS projects exactly A and B once per frame`);
+      assert.equal(inputIdentities.size, 2, `${fps} FPS retains exactly two world-point records`);
+      assert.equal(outputIdentities.size, 2, `${fps} FPS retains exactly two screen-result records`);
+      const [screenA, screenB] = outputIdentities;
+      assert.notEqual(screenA, screenB, `${fps} FPS keeps A and B outputs distinct through delta math`);
+      assert.deepEqual(calls.slice(-2), [
+        {
+          input: { x: 100, y: 0, z: 220 },
+          output: { x: 1060, y: 760, onScreen: true },
+        },
+        {
+          input: { x: 100, y: 0, z: 256 },
+          output: { x: 1060, y: 796, onScreen: true },
+        },
+      ], `${fps} FPS republishes the moved/turned A and B scalar coordinates`);
+      const prograde = fixture.document.querySelector('.sf-protick');
+      const presentation = {
+        transform: prograde.style.transform,
+        opacity: prograde.style.opacity,
+      };
+      assert.equal(presentation.transform,
+        'translate3d(1060.0px,800.0px,0) translate(-4px,-1px) rotate(90.0deg)',
+        `${fps} FPS preserves the exact moved/turned prograde placement and heading`);
+      if (expectedPresentation == null) expectedPresentation = presentation;
+      else assert.deepEqual(presentation, expectedPresentation,
+        `${fps} FPS preserves the same final prograde placement and visibility`);
+      assert.equal(prograde.style.opacity, '0.900', `${fps} FPS leaves the moving prograde cue visible`);
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
+function mountHudFixture({
+  worldToScreen = () => ({ x: 960, y: 540, onScreen: true }),
+  targetId = 'selected',
+} = {}) {
   const globals = {
     document: globalThis.document,
     window: globalThis.window,
@@ -145,7 +220,7 @@ function mountHudFixture() {
   const state = {
     mode: 'flight', playerId: player.id, entities: new Map(entityList.map((e) => [e.id, e])), entityList,
     player: {
-      targetId: selected.id,
+      targetId: targetId === 'selected' ? selected.id : targetId,
       credits: 0,
       cargo: { items: {}, usedVolume: 0, capVolume: 40 },
       weaponRange: 900,
@@ -167,10 +242,10 @@ function mountHudFixture() {
   const mounted = hud.createHud({
     state,
     bus,
-    helpers: { worldToScreen: () => ({ x: 960, y: 540, onScreen: true }) },
+    helpers: { worldToScreen },
   }, null);
   return {
-    state, bus, hud: mounted, document, contacts,
+    state, player, bus, hud: mounted, document, contacts,
     restore() {
       globalThis.document = globals.document;
       globalThis.window = globals.window;
