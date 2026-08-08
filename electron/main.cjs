@@ -287,6 +287,26 @@ function isCanonicalGameUrl(candidate, gameUrl) {
   catch { return false; }
 }
 
+function isCommittedCanonicalLoadAbort(
+  code,
+  rejectedUrl,
+  win,
+  gameUrl,
+  canonicalLoadCommitted,
+  initialCanonicalLoadPending,
+) {
+  if (initialCanonicalLoadPending !== true
+    || canonicalLoadCommitted !== true
+    || (code !== 'ERR_ABORTED' && code !== -3)
+    || !isCanonicalGameUrl(rejectedUrl, gameUrl)
+    || !win || win.isDestroyed()
+    || !win.webContents || win.webContents.isDestroyed()) {
+    return false;
+  }
+  try { return isCanonicalGameUrl(win.webContents.getURL(), gameUrl); }
+  catch { return false; }
+}
+
 function receiptText(value) {
   return String(value || '').slice(0, 500);
 }
@@ -331,7 +351,16 @@ async function createWindow() {
     },
   });
   const gameUrl = `http://127.0.0.1:${port}/`;
+  let canonicalLoadCommitted = false;
+  let initialCanonicalLoadPending = false;
   installWindowSecurity(win, gameUrl);
+  // BrowserWindow.loadURL() can reject with ERR_ABORTED when the already-committed canonical page
+  // reloads itself before Electron settles the original promise. That is no longer a startup
+  // failure, but every pre-commit, foreign-URL, destroyed-window, and non-abort rejection remains
+  // fatal. Observe the main-frame commit directly rather than inferring it from promise timing.
+  win.webContents.on('did-finish-load', () => {
+    if (isCanonicalGameUrl(win.webContents.getURL(), gameUrl)) canonicalLoadCommitted = true;
+  });
   bindWindowLifecycle(win);
   win.removeMenu();
   win.once('ready-to-show', () => {
@@ -344,6 +373,14 @@ async function createWindow() {
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
     if (!isMainFrame) return;
+    if (isCommittedCanonicalLoadAbort(
+      code,
+      url,
+      win,
+      gameUrl,
+      canonicalLoadCommitted,
+      initialCanonicalLoadPending,
+    )) return;
     receipt('navigation-failed', { code, message, url });
   });
   win.webContents.on('console-message', (details) => {
@@ -354,7 +391,25 @@ async function createWindow() {
   });
   // One player-facing launch URL: Electron and a browser tab both boot the same game route.
   // Release-only debug stripping is handled by the production bundle, not by a gameplay URL flag.
-  await win.loadURL(gameUrl);
+  initialCanonicalLoadPending = true;
+  try {
+    await win.loadURL(gameUrl);
+  } catch (error) {
+    if (!isCommittedCanonicalLoadAbort(
+      error && error.code,
+      error && error.url,
+      win,
+      gameUrl,
+      canonicalLoadCommitted,
+      initialCanonicalLoadPending,
+    )) throw error;
+    receipt('canonical-reload-aborted-after-commit', {
+      code: error.code,
+      url: win.webContents.getURL(),
+    });
+  } finally {
+    initialCanonicalLoadPending = false;
+  }
   // win.webContents.openDevTools();
 }
 

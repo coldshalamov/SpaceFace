@@ -43,6 +43,7 @@ async function loadMain({
   platform = 'win32',
   activateBeforeServerReady = 0,
   failWindowLoads = 0,
+  windowLoadFailure = null,
   allowStartupFailure = false,
 } = {}) {
   const windows = [];
@@ -70,6 +71,7 @@ async function loadMain({
   });
 
   function FakeBrowserWindow(options) {
+    let currentUrl = 'about:blank';
     const webContents = emitter({
       destroyed: false,
       windowOpenHandler: null,
@@ -78,6 +80,7 @@ async function loadMain({
         setPermissionRequestHandler(handler) { security.permissionRequestHandler = handler; },
       },
       isDestroyed() { return this.destroyed; },
+      getURL() { return currentUrl; },
       setWindowOpenHandler(handler) { this.windowOpenHandler = handler; },
       send(channel, command) {
         assert.equal(channel, CHANNEL);
@@ -104,11 +107,33 @@ async function loadMain({
       blur() { this.focused = false; this.emit('blur'); },
       async loadURL(url) {
         this.loadedUrl = url;
+        currentUrl = url;
         if (failWindowLoads > 0) {
           failWindowLoads -= 1;
           throw new Error('injected window load failure');
         }
+        if (windowLoadFailure?.phase === 'before-commit') {
+          const error = Object.assign(new Error('injected pre-commit navigation failure'), {
+            code: windowLoadFailure.code,
+            url: windowLoadFailure.rejectedUrl || currentUrl,
+          });
+          webContents.emit('did-fail-load', {}, error.code, error.message, error.url, true);
+          throw error;
+        }
         webContents.emit('did-finish-load');
+        if (windowLoadFailure?.phase === 'after-commit') {
+          currentUrl = windowLoadFailure.currentUrl || currentUrl;
+          if (windowLoadFailure.destroyWindow) {
+            this.destroyed = true;
+            webContents.destroyed = true;
+          }
+          const error = Object.assign(new Error('injected post-commit navigation failure'), {
+            code: windowLoadFailure.code,
+            url: windowLoadFailure.rejectedUrl || currentUrl,
+          });
+          webContents.emit('did-fail-load', {}, error.code, error.message, error.url, true);
+          throw error;
+        }
       },
     });
     windows.push(win);
@@ -410,6 +435,55 @@ test('a coalesced macOS window failure is classified fatally exactly once', asyn
   });
   assert.equal(h.receipts.filter((entry) => entry.status === 'startup-failed').length, 1);
   assert.deepEqual(h.serverStats.exits, [1]);
+});
+
+test('a committed canonical reload abort settles startup without hiding real failures', async () => {
+  for (const code of ['ERR_ABORTED', -3]) {
+    const h = await loadMain({
+      windowLoadFailure: { phase: 'after-commit', code },
+      allowStartupFailure: true,
+    });
+    assert.deepEqual(h.serverStats.exits, [], `canonical committed ${code} must not exit`);
+    assert.equal(h.receipts.filter((entry) => entry.status === 'navigation-failed').length, 0);
+    assert.equal(h.receipts.filter((entry) => entry.status === 'startup-failed').length, 0);
+    assert.equal(h.receipts.filter((entry) => entry.status === 'canonical-reload-aborted-after-commit').length, 1);
+  }
+
+  const fatalCases = [
+    { phase: 'before-commit', code: 'ERR_ABORTED' },
+    { phase: 'after-commit', code: 'ERR_FAILED' },
+    {
+      phase: 'after-commit',
+      code: 'ERR_ABORTED',
+      currentUrl: 'https://example.invalid/',
+    },
+    {
+      phase: 'after-commit',
+      code: 'ERR_ABORTED',
+      rejectedUrl: 'https://example.invalid/',
+    },
+    { phase: 'after-commit', code: 'ERR_ABORTED', destroyWindow: true },
+  ];
+  for (const windowLoadFailure of fatalCases) {
+    const h = await loadMain({ windowLoadFailure, allowStartupFailure: true });
+    assert.deepEqual(h.serverStats.exits, [1], JSON.stringify(windowLoadFailure));
+    assert.equal(h.receipts.filter((entry) => entry.status === 'navigation-failed').length, 1);
+    assert.equal(h.receipts.filter((entry) => entry.status === 'startup-failed').length, 1);
+    assert.equal(h.receipts.filter((entry) => entry.status === 'canonical-reload-aborted-after-commit').length, 0);
+  }
+
+  const later = await loadMain();
+  later.win.webContents.emit(
+    'did-fail-load',
+    {},
+    -3,
+    'ERR_ABORTED',
+    later.win.loadedUrl,
+    true,
+  );
+  assert.equal(later.receipts.filter((entry) => entry.status === 'navigation-failed').length, 1);
+  assert.equal(later.receipts.filter((entry) => entry.status === 'startup-failed').length, 0);
+  assert.equal(later.receipts.filter((entry) => entry.status === 'canonical-reload-aborted-after-commit').length, 0);
 });
 
 test('window hide, minimize, focus, and blur publish normalized lifecycle states', async () => {

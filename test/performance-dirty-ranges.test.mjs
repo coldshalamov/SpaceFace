@@ -433,6 +433,11 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
     assert.ok(manifest.commandArgs.includes(`--runtime=${manifest.runtimeKind}`));
     assert.ok(manifest.commandArgs.includes('--acceptance'));
     assert.ok(manifest.scenarioPaths.includes('scripts/lib/performanceScenarioDriver.mjs'));
+    assert.ok(manifest.fastGateCommands.some((command) => (
+      command.includes('test/electron-shell-lifecycle.test.mjs')
+    )));
+    assert.ok(manifest.regressionSourcePaths.includes('test/electron-shell-lifecycle.test.mjs'));
+    assert.ok(manifest.productionSourcePaths.includes('electron/main.cjs'));
   }
   assert.equal(browserManifest.runtimeKind, 'browser');
   assert.equal(electronManifest.runtimeKind, 'electron');

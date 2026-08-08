@@ -25,7 +25,7 @@ export const PERFORMANCE_DIRTY_RANGES_SOURCE_IDENTITY = Object.freeze({
 });
 
 const FAST_GATES = Object.freeze([
-  'node --test test/dynamic-buffer-ranges.test.mjs test/performance-dirty-ranges.test.mjs',
+  'node --test test/dynamic-buffer-ranges.test.mjs test/electron-shell-lifecycle.test.mjs test/performance-dirty-ranges.test.mjs',
   'node --test test/vfx-instanced-sprite-pool.test.mjs test/trail-streak-instancing.test.mjs',
   'npm run check:render-hotpath',
 ]);
@@ -37,12 +37,14 @@ const SCENARIO_PATHS = Object.freeze([
 
 const REGRESSION_PATHS = Object.freeze([
   'test/dynamic-buffer-ranges.test.mjs',
+  'test/electron-shell-lifecycle.test.mjs',
   'test/performance-dirty-ranges.test.mjs',
   'test/trail-streak-instancing.test.mjs',
   'test/vfx-instanced-sprite-pool.test.mjs',
 ]);
 
 const PRODUCTION_PATHS = Object.freeze([
+  'electron/main.cjs',
   'src/core/perfCounters.js',
   'src/core/perfRuntime.js',
   'src/render/combat/instancedSpritePool.js',
