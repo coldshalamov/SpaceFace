@@ -5,10 +5,10 @@
 queueId: PHYSICS-AS-SPECTACLE-PROGRAM
 lifecycle: claimed
 acceptance: unproven
-packetRevision: 1
+packetRevision: 2
 owner: user-authorized program; integrator assigns exact-path leaf leases
 baseRequirement: re-read current master, NOW.md, and the recovery dependency state before every leaf
-foundation: MASSLINE-PRESENTATION-UVP plus published VFX corrections 0c615a98 and priority admission ae2b2887
+foundation: MASSLINE-PRESENTATION-UVP plus published recovery, causal-receipt, priority-admission, and cause-VFX leaves
 ```
 
 ## Outcome and truth boundary
@@ -33,6 +33,15 @@ Lifecycle and acceptance remain separate:
   by `6b7fdc27`. It restores production VFX contracts; it does not establish any G0–G7 claim.
 - Published commit `ae2b2887` implements causal priority/admission infrastructure. It is a prerequisite
   already on master, not proof that the R8 route, saturated scene, or hero-event discriminator passes.
+- Published commits `6a929571`, `194dc1a8`, `c99d1c1a`, and `b4e40e19` are the independently accepted
+  R0 Sandbox, R1 camera, R2 orbit-control, and R4 physics-combat leaves. R3, R5, and the five-minute
+  Ceres gate remain open.
+- Published receipt chain `b90a9225` through `e6b9a47c` implements immutable kill truth and carries
+  combat-owned collision provenance/direction. Published cause-VFX chain `fc6eacfd` through
+  `a6dc06a8` consumes those contact receipts while adding priority-aware structural streak admission
+  and five deterministic destruction profiles. These are source/focused proof only; they do not
+  claim the Ceres route, a headed
+  discriminator pass, or G0-G7 acceptance.
 - Published runtime-table correction `bae27489` is available to a future frozen candidate. Exact
   authored admission on default New Game in hardware Browser and Electron remains unproven, so G0 is
   open and all later visual gates remain open.
@@ -78,23 +87,21 @@ five-minute Ceres gate and the R8 showcase have current accepted evidence.
 
 - [x] The user authorized this unified program and its global art direction.
 - [x] The retained Massline UVP foundation and published VFX prerequisite commits are on master.
-- [ ] R0, R1, R2/R3, R4, R5, and the five-minute Ceres gate are accepted at the candidate base.
+- [x] R0, R1, R2, and R4 are independently accepted and published at the current base.
+- [ ] R3, R5, and the five-minute Ceres gate are accepted at the candidate base.
 - [ ] G0 authored admission passes on default New Game in both hardware Browser and Electron.
 - [ ] Each implementation leaf has a fresh exact-path lease, entry baseline, cost model, and focused
       characterization before editing.
 - [ ] The R8 candidate has an exact start fingerprint and a frozen end fingerprint for evidence.
 
-Current coordinated foreign boundaries must be refreshed before every leaf. At packet revision 1:
+Current coordinated foreign boundaries must be refreshed before every leaf. At packet revision 2:
 
-- R0 owns `src/ui/sandbox/sandboxSetup.js`, `src/ui/screens/sandbox.js`, and
-  `test/sandbox-recovery-launcher.test.mjs`.
-- R4 owns `src/data/weapons.js`, `src/systems/weapons.js`, `src/combat/impulseKernel.js`, and
-  `test/sf10-physics-weapons.test.mjs`.
-- R1 recovery has reserved its coordinated candidate set: `src/render/camera.js`,
-  `scripts/check-camera-composition.mjs`, `scripts/check-camera-velocity-language.mjs`,
-  `design/graphics-sprints/CAMERA_VISIBLE_BUBBLE.md`, and at most one newly declared focused
-  camera-envelope test. `cameraDirector.js` and `velocityLanguage.js` remain excluded unless current
-  route evidence expands that lease. Re-check the exact live set before any camera mutation.
+- R0, R1, R2, and R4 are released production truth, not continuing umbrella leases.
+- Active R3 acquisition/release work remains exact-path recovery work until its reviewed hashes
+  publish. The thrown-body leaf must follow R3B and may not race its shared
+  `src/render/vfx.js` or `src/render/masslinePresentation.js` seams.
+- The accepted R1 camera selection is `194dc1a8`; later camera work must fresh-diff it and preserve
+  exact manual zoom, damped physics-earned opening, safe composition, and reduced-motion behavior.
 - The render-package loader/runtime-table work is released, not a continuing umbrella lease. Fresh
   diff and coordination are still required before later asset/runtime overlap.
 
@@ -122,17 +129,30 @@ Before expansion, confirm the published presentation foundations still hold on t
 ### Dev-only Physics Presentation Range
 
 Keep `massline-live` as focused functional proof and leave the existing Massline practice preset and
-shipping gameplay state unchanged. Add a separate dev-only `physicsPresentationRange` Sandbox
-configuration only after R0 releases its owner paths. The range must launch through real New Game and
-canonical writers.
+shipping gameplay state unchanged. R0 is released, but add the separate dev-only
+`physicsPresentationRange` only after R3 and R5 publish **and** the five-minute Ceres gate is
+accepted. Released R0 makes the canonical Hornet and `physics_toolkit` available, but the current
+`ceres_reference_pocket` preset still uses the default player/loadout and is not Ceres acceptance.
+R5 must compose that five-minute acceptance launch with Hornet plus `physics_toolkit`; the later
+range must use the same legal hull/loadout. Never force the M-class concussion cannon onto the
+S-slot Kestrel. Production Ceres pockets, actors, and props remain normal-route and ship-agnostic;
+Sandbox supplies only the acceptance hull/loadout through real New Game and canonical writers.
 
-Build inside the measured camera bubble: anchor and collision terrain about 45–50 WU forward and
-about 120 WU across, plus smaller obstacles, several `wasp_swarmer` targets, one
-`bruiser_brawler`, field tools, and `wpn_concussion_cannon_m`.
+Build against the accepted R1 camera-local bands documented in
+[`CAMERA_VISIBLE_BUBBLE.md`](../../../graphics-sprints/CAMERA_VISIBLE_BUBBLE.md):
+
+- 0-95 WU is the always-visible inner collision/work lane;
+- 95-125 WU is the normal moving frame;
+- 125-165 WU is speed-revealed continuation/payoff space;
+- beyond about 165 WU is approach/radar space and does not count as immediate activity.
+
+The old 45-50 WU bubble is historical evidence only. Place the primary anchor, collision terrain,
+smaller obstacles, several `wasp_swarmer` targets, one `bruiser_brawler`, field tools, and the legal
+Hornet `wpn_concussion_cannon_m` toolkit inside the current bands.
 
 Initial live visual cast:
 
-- player Kestrel;
+- player Hornet with `physics_toolkit`;
 - accepted Lark courier;
 - Ashline Dart/Wasp target;
 - Hornet patrol;
@@ -149,21 +169,21 @@ bloom-off and grayscale sheets, a force-shape sheet, and a causal fling storyboa
 | Domain | Current owner/seam | Required use or narrow extension |
 |---|---|---|
 | physics | Flight V3 / SG-02 / Rapier authority | Read real position, velocity, contact, and force outcomes; never add presentation physics. |
-| damage/death | `src/systems/combat.js` → `entity:killed` | Combat kernel remains the only death owner; add one optional immutable presentation receipt. |
-| collision provenance | `src/systems/collisionConsequences.js` → `combat:collisionConsequence` | Preserve real contact position, surface, normal, incoming direction, target velocity, causality, and severity through death. |
+| damage/death | `src/systems/combat.js` → `entity:killed` | Combat kernel remains the only death owner; consume the published optional immutable presentation receipt. |
+| collision provenance | `src/systems/collisionConsequences.js` → `combat:collisionConsequence` | Published receipt flow preserves real contact position, surface, normal axis, causal direction, target velocity, causality, and severity through death. |
 | cue normalization | `src/systems/presentationAdapters.js`, `src/presentation/cueSchema.js` | Preserve importance, player causality, target relevance, proximity, severity, and derived admission priority end to end. |
-| VFX admission/lifecycle | `src/render/vfx.js`, `src/render/combat/phasedExplosions.js` | Consume receipts and live snapshots; reserve the current player-caused hero event and degrade distant ambient effects first. |
+| VFX admission/lifecycle | `src/render/vfx.js`, `src/render/combat/phasedExplosions.js` | Published bounded pools consume receipts/live snapshots, preserve causal priority, and implement the five cause profiles; dense headed proof remains open. |
 | speed language | `src/render/velocityLanguage.js` | Retain the four-band classifier and `VL_BOOST_BIAS = 0`; add one bounded exceptional-speed output. |
-| camera | `src/render/camera.js` and the accepted R1 selection | Consume speed/causal presentation only; remain damped, interruptible, reduced-motion aware, and never take control. |
+| camera | `src/render/camera.js` at accepted R1 `194dc1a8` | Preserve exact player choice, safe composition, damped physics-earned opening, reduced-motion suppression, and no control takeover. |
 | fields/release | existing Well, Repulsor, Momentum Sink, tether and release events | Preserve physics and existing geometry; add only missing presentation consumers. |
-| Sandbox | R0-owned Sandbox launch/setup seams | Add the dev-only range after R0 release; do not create a shipping state fork. |
+| Sandbox | released R0 Sandbox launch/setup seams | Add the dev-only range only after R3, R5, and accepted five-minute Ceres evidence; do not create a shipping state fork. |
 | HUD | `src/ui/hud.js` and existing accessibility/settings seams | Reorder transient presentation without mutating simulation or hiding essential status. |
 | authored assets | visual-asset production/release pipeline | Promote later waves individually through G0–G7; manifests and runtime maps outrank prose. |
 
 ### Optional kill presentation receipt
 
-`entity:killed.presentation` is optional and versioned. Existing callers receive generic defaults;
-there are no save fields and no second damage/destruction owner.
+Published `entity:killed.presentation` is optional and versioned. Existing callers receive generic
+defaults; there are no save fields and no second damage/destruction owner.
 
 ```text
 version: 1
@@ -190,7 +210,8 @@ every presentation adapter into admission.
 
 ### Phase 0 — dependency and candidate truth
 
-- [ ] Complete and accept R0 through R5 plus the five-minute Ceres gate in controlling order.
+- [x] Complete, independently accept, and publish R0, R1, R2, and R4.
+- [ ] Complete R3, then R5 and the five-minute Ceres gate in controlling order.
 - [ ] Freeze exact Browser/Electron candidate fingerprints and pass G0.
 - [ ] Reconfirm the retained UVP and published corrective VFX/priority contracts without rewriting
       their history.
@@ -208,19 +229,20 @@ every presentation adapter into admission.
 
 ### Phase 2 — cause → trajectory → consequence
 
-- [ ] Add the optional immutable `entity:killed.presentation` receipt and compatibility coverage.
-- [ ] Carry real contact provenance through combat-owned death to presentation.
+- [x] Add the optional immutable `entity:killed.presentation` receipt and compatibility coverage
+      (`b90a9225`, hardened through `e6b9a47c`).
+- [x] Carry real contact provenance through combat-owned death to presentation.
 - [ ] Add a translational thrown-body trail driven by actual target velocity; keep rotational spin
       ribbons and hull smear as separate tumble cues.
-- [ ] Refine collision consequence reads:
+- [x] Refine collision consequence reads in the pooled source/focused implementation:
   - low — sparks, local dust, small debris, brief instability;
   - medium — directional compression, fragments, rebound/tumble;
   - catastrophic — contact flash, momentum-inheriting breakup, terrain response, secondary internal
     event, and persistent residue.
-- [ ] Add generic, kinetic weapon, explosive weapon, terrain collision, and ship collision profiles to
-      the existing phased-explosion lifecycle.
-- [ ] Never destroy before real contact. Fragment velocity inherits target motion and killing
-      direction.
+- [x] Add generic, kinetic weapon, explosive weapon, terrain collision, and ship collision profiles to
+      the existing phased-explosion lifecycle (`fc6eacfd`, hardened through `a6dc06a8`).
+- [x] Never destroy before real contact. Fragment velocity inherits target motion and killing
+      direction. Headed discriminator/route acceptance remains open.
 
 ### Phase 3 — signature force and motion language
 
@@ -286,8 +308,9 @@ Promote these waves in order, each independently through G0–G7:
 4. Wreck Cathedral, catcher, and fence facilities.
 
 Apply reusable manufacturer/faction grammar across hulls, engines, weapons, props, and structures;
-do not substitute isolated repainting for identity. The accepted courier Lark remains the showcase
-ship throughout.
+do not substitute isolated repainting for identity. The accepted courier Lark remains the courier
+identity in the showcase cast; the Hornet is the acceptance player hull. Neither may be replaced by
+the stopped-Lark express-liner donor.
 
 ### Phase 6 — technical finish after composition works
 
@@ -301,11 +324,14 @@ migration or a default render-graph flip.
 
 ## Write and ownership budget
 
-The current authority-consolidation transaction owns only:
+The completed original authority-admission transaction owned only:
 
 - `CANONICAL_BUILD_MAP.md`;
 - `design/program/roadmap/active/README.md`;
 - `design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`.
+
+Packet revision 2 is a one-file evidence refresh of this packet only. It does not reopen or advance
+the Canonical map, active README, `NOW.md`, queue state, route acceptance, or whole-program status.
 
 No implementation agent inherits a subsystem-wide lease from this umbrella. Before each leaf, list
 the exact current owner files and focused tests, fresh-diff them, coordinate shared camera/HUD/VFX/
