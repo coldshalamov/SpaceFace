@@ -28,6 +28,10 @@ test('live asset proof respects spatial streaming while forbidding visible subst
     'the live probe must reject zero-matrix and hidden pool membership as route proof');
   assert.match(source, /submittedSlotCount/,
     'the report exposes currently submitted slots per exact scene pool chunk');
+  assert.match(source, /await render\.warmPostProcess\(\)/,
+    'forced presentation must use the production-owned renderer epoch so dynamic buffers publish before upload');
+  assert.doesNotMatch(source, /render\.renderer\.render\(render\.scene, render\.camera\)/,
+    'the live probe must not bypass dynamic-buffer publication through the exposed raw renderer');
 });
 
 test('Electron normal route proves authored release identities without an artificial drain', () => {

@@ -876,6 +876,9 @@ async function forceShipRender(cdp) {
     const state = sf && sf.state || null;
     const render = state && state.render || null;
     if (!state || !render || !render.scene || !render.renderer || !render.camera) return;
+    if (typeof render.warmPostProcess !== 'function') {
+      throw new Error('authored asset probe requires the production-owned render epoch');
+    }
     for (const entity of state.entityList || []) {
       if (!entity || entity.type !== 'ship' || !entity.mesh) continue;
       entity.mesh.traverse((object) => { if (object) object.frustumCulled = false; });
@@ -886,7 +889,7 @@ async function forceShipRender(cdp) {
         partsLibrary.syncAuthoredInstancePools(render.scene);
       }
     } catch (_) {}
-    render.renderer.render(render.scene, render.camera);
+    await render.warmPostProcess();
   })()`);
 }
 
