@@ -177,6 +177,10 @@ export const collisionConsequences = {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
+    // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
+    // live body/contact truth before that call so the sole death owner can publish an immutable
+    // presentation receipt without querying a retired entity or inventing collision provenance.
+    const collisionPresentation = buildCollisionPresentationProvenance(target, receipt);
     const packet = scalarHitToDamagePacket({
       damage: receipt.impactDamage,
       damageType: 'kinetic',
@@ -185,6 +189,7 @@ export const collisionConsequences = {
         kind: sourceKind,
         weaponId: receipt.provenance.weaponId,
         impulseProvenance: receipt.provenance.tag,
+        collisionPresentation,
       },
     });
     packet.flags = { allowAnyTarget: true };
@@ -300,6 +305,40 @@ function playerRamPlateImpact(entity, playerId, tick) {
       appliedTick: tick,
     },
   };
+}
+
+function buildCollisionPresentationProvenance(target, receipt) {
+  return Object.freeze({
+    position: freezeTransientPoint(receipt && receipt.pos),
+    direction: freezeTransientDirection(target && target.vel),
+    normal: freezeTransientDirection(receipt && receipt.normal),
+    surface: collisionPresentationSurface(receipt && receipt.surface),
+    targetVelocity: freezeTransientPoint(target && target.vel),
+    impact: Object.freeze({
+      deltaV: nonNegativeFinite(receipt && receipt.deltaV),
+      exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),
+      impactDamage: nonNegativeFinite(receipt && receipt.impactDamage),
+    }),
+  });
+}
+
+function collisionPresentationSurface(value) {
+  return value === 'terrain' || value === 'craft' || value === 'structure' ? value : null;
+}
+
+function freezeTransientPoint(value) {
+  return Object.freeze({ x: finite(value && value.x), z: finite(value && value.z) });
+}
+
+function freezeTransientDirection(value) {
+  const x = finite(value && value.x);
+  const z = finite(value && value.z);
+  const length = Math.hypot(x, z);
+  return length > 1e-9 ? Object.freeze({ x: x / length, z: z / length }) : null;
+}
+
+function nonNegativeFinite(value) {
+  return Math.max(0, finite(value));
 }
 
 function clamp(value, lo, hi) {

@@ -12,6 +12,18 @@ function finite(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+const EXPLOSION_CAUSES = new Set([
+  'generic',
+  'kinetic',
+  'explosive',
+  'terrain_collision',
+  'ship_collision',
+]);
+
+function normalizeExplosionCause(value) {
+  return EXPLOSION_CAUSES.has(value) ? value : 'generic';
+}
+
 // Explosion layout needs authored irregularity, but Math.random() made the same destruction receipt
 // produce a different silhouette in every capture and could occasionally collapse all lobes into a
 // soft disc. This integer mixer gives each resident event a repeatable, allocation-free pattern.
@@ -98,6 +110,12 @@ export class PhasedExplosionLifecycle {
       radius: 3,
       dirX: 1,
       dirZ: 0,
+      cause: 'generic',
+      hasNormal: false,
+      normalX: 0,
+      normalZ: 0,
+      targetVelocityX: 0,
+      targetVelocityZ: 0,
       sourceType: null,
     }));
   }
@@ -150,6 +168,24 @@ export class PhasedExplosionLifecycle {
     entry.radius = Math.max(1, finite(input.radius, 3));
     entry.dirX = dx;
     entry.dirZ = dz;
+    entry.cause = normalizeExplosionCause(input.cause);
+    const normal = input.normal || null;
+    let nx = finite(normal && normal.x, 0);
+    let nz = finite(normal && normal.z, 0);
+    const normalLength = Math.hypot(nx, nz);
+    entry.hasNormal = normalLength > 1e-8;
+    if (entry.hasNormal) {
+      nx /= normalLength;
+      nz /= normalLength;
+    } else {
+      nx = 0;
+      nz = 0;
+    }
+    entry.normalX = nx;
+    entry.normalZ = nz;
+    const targetVelocity = input.targetVelocity || null;
+    entry.targetVelocityX = finite(targetVelocity && targetVelocity.x, 0);
+    entry.targetVelocityZ = finite(targetVelocity && targetVelocity.z, 0);
     entry.sourceType = input.sourceType || null;
     return entry;
   }
@@ -184,6 +220,12 @@ export class PhasedExplosionLifecycle {
     entry.priority = DEFAULT_VFX_ADMISSION_PRIORITY;
     entry.phaseIndex = 0;
     entry.age = 0;
+    entry.cause = 'generic';
+    entry.hasNormal = false;
+    entry.normalX = 0;
+    entry.normalZ = 0;
+    entry.targetVelocityX = 0;
+    entry.targetVelocityZ = 0;
     entry.sourceType = null;
     this.activeCount = Math.max(0, this.activeCount - 1);
   }

@@ -39,6 +39,14 @@ const RECOVERY_BERTH_CLEARANCE_WU = 140;
 /** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
 export const UNDOCK_INVULN_S = 8;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
+const KILL_PRESENTATION_CAUSES = new Set([
+  'generic',
+  'kinetic',
+  'explosive',
+  'terrain_collision',
+  'ship_collision',
+]);
+const KILL_PRESENTATION_SURFACES = new Set(['terrain', 'craft', 'structure']);
 const BEAM_QUERY_RADIUS_PAD = 256;
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
@@ -307,6 +315,112 @@ function firstLiveStation(state) {
   return null;
 }
 
+/**
+ * Build the transient presentation-only view of a combat-owned death. The receipt is deliberately
+ * derived from the lethal packet and live target snapshot; it is never stored on state/entities and
+ * it cannot create damage, contact, causality, or a second death path.
+ */
+export function buildKillPresentationReceipt(state, target, killerId, lethal = {}) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const hit = packet && packet.hit && typeof packet.hit === 'object' ? packet.hit : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  const surface = normalizeKillSurface(collision && collision.surface);
+  const cause = collision
+    ? collisionCause(surface)
+    : weaponKillCause(lethal, packet);
+  const position = freezeKillPoint(
+    collision && collision.position || hit && hit.pos || target && target.pos,
+  );
+  const direction = freezeKillDirection(
+    collision
+      ? collision.direction
+      : hit && hit.approach || lethal && lethal.direction,
+  );
+  const normal = freezeKillDirection(
+    collision
+      ? collision.normal
+      : hit && hit.normal || lethal && lethal.normal,
+  );
+  const targetVelocity = freezeKillPoint(
+    collision && collision.targetVelocity || target && target.vel,
+  );
+  const impact = freezeKillImpact(collision && collision.impact);
+  return Object.freeze({
+    version: 1,
+    cause: KILL_PRESENTATION_CAUSES.has(cause) ? cause : 'generic',
+    position,
+    direction,
+    normal,
+    surface,
+    targetVelocity,
+    playerCaused: !!state && killerId === state.playerId,
+    impact,
+  });
+}
+
+function collisionPresentationProvenance(lethal, packet) {
+  const origin = lethal && lethal.origin;
+  const source = packet && packet.source;
+  if (!origin || origin.kind !== 'collision' || !source || typeof source.kind !== 'string'
+    || !source.kind.startsWith('collision_')) return null;
+  const value = source.collisionPresentation;
+  return value && typeof value === 'object' ? value : null;
+}
+
+function collisionCause(surface) {
+  if (surface === 'craft') return 'ship_collision';
+  if (surface === 'terrain' || surface === 'structure') return 'terrain_collision';
+  return 'generic';
+}
+
+function weaponKillCause(lethal, packet) {
+  const origin = lethal && lethal.origin;
+  const source = packet && packet.source;
+  const authoredOrigin = origin && origin.kind === 'weapon';
+  const authoredPacket = source && source.kind === 'weapon';
+  if (!authoredOrigin && !authoredPacket) return 'generic';
+  const weaponId = authoredOrigin
+    ? (origin.weaponId ?? origin.id ?? (source && source.weaponId))
+    : source.weaponId;
+  const definition = weaponId == null ? null : WPN.get(weaponId);
+  if (!definition) return 'generic';
+  if (definition.damageType === 'kinetic') return 'kinetic';
+  if (definition.damageType === 'explosive') return 'explosive';
+  return 'generic';
+}
+
+function normalizeKillSurface(value) {
+  return KILL_PRESENTATION_SURFACES.has(value) ? value : null;
+}
+
+function freezeKillPoint(value) {
+  return Object.freeze({
+    x: Number.isFinite(value && value.x) ? value.x : 0,
+    z: Number.isFinite(value && value.z) ? value.z : 0,
+  });
+}
+
+function freezeKillDirection(value) {
+  const x = Number.isFinite(value && value.x) ? value.x : 0;
+  const z = Number.isFinite(value && value.z) ? value.z : 0;
+  const length = Math.hypot(x, z);
+  if (!(length > 1e-9)) return null;
+  return Object.freeze({ x: x / length, z: z / length });
+}
+
+function freezeKillImpact(value) {
+  if (!value || typeof value !== 'object') return null;
+  return Object.freeze({
+    deltaV: finiteKillMetric(value.deltaV),
+    exchangedMomentum: finiteKillMetric(value.exchangedMomentum),
+    impactDamage: finiteKillMetric(value.impactDamage),
+  });
+}
+
+function finiteKillMetric(value) {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
 export const combat = {
   name: 'combat',
   init(ctx) {
@@ -450,10 +564,12 @@ export const combat = {
     // ambient enemies have neither tag and retain the normal combat reward path below.
     const missionOwnsReward = d.missionId != null || d.missionTag != null;
     const factionLawful = !!(d.ai && d.ai.lawful);
+    const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
       factionId: t.factionId, factionLawful, bountyCr: d.bountyCr || 0,
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
+      presentation,
     });
     // World event, not a player event: this fires for EVERY entity killed, so with no position it hit
     // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the

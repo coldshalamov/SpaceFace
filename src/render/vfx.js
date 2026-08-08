@@ -2897,9 +2897,22 @@ export const vfx = {
 
   _queueExplosion(p, classId) {
     if (!this._scene || !this._explosions) return false;
-    const pos = this._posFrom(p, p && p.id);
+    const presentation = p && p.presentation && typeof p.presentation === 'object'
+      ? p.presentation
+      : null;
+    const pos = presentation && presentation.position
+      ? presentation.position
+      : this._posFrom(p, p && p.id);
     if (!pos) return false;
-    const direction = p && (p.direction || p.vel || p.approach) || null;
+    const direction = presentation && Object.hasOwn(presentation, 'direction')
+      ? presentation.direction
+      : p && (p.direction || p.vel || p.approach) || null;
+    const normal = presentation && Object.hasOwn(presentation, 'normal')
+      ? presentation.normal
+      : p && p.normal || null;
+    const targetVelocity = presentation && Object.hasOwn(presentation, 'targetVelocity')
+      ? presentation.targetVelocity
+      : p && (p.targetVelocity || p.vel) || null;
     const admission = deriveVfxAdmissionMetadata(p || {}, this.state);
     const entry = this._explosions.start({
       classId,
@@ -2907,6 +2920,9 @@ export const vfx = {
       z: pos.z,
       radius: Math.max(2, Number(p && p.radius) || 6),
       direction,
+      normal,
+      targetVelocity,
+      cause: presentation && presentation.cause || p && p.cause || 'generic',
       sourceType: p && (p.type || p.victimClass) || null,
       priority: admission.admissionPriority,
     });
