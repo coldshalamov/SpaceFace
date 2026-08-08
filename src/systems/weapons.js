@@ -10,7 +10,12 @@
 import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { resolveWeaponImpulseForHit, readRecentImpulseProvenance, recordImpulseProvenance } from '../combat/impulseKernel.js';
+import {
+  resolveWeaponImpulseForHit,
+  readRecentImpulseProvenance,
+  readRecentImpulseProvenanceHistory,
+  recordImpulseProvenance,
+} from '../combat/impulseKernel.js';
 import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -34,6 +39,16 @@ const RCS_DISRUPT_CONTROL = Object.freeze({
   force: Object.freeze({ x: 0, y: 0, z: 0 }),
   torque: Object.freeze({ x: 0, y: 0, z: 0 }),
   source: 'rcs_disruptor',
+});
+
+// A data-authored impulse weapon may reserve a short post-hit drift beat for NPCs. The fresh
+// provenance receipt selects the weapon def; no weapon-id branch or serialized status is needed.
+const NPC_COUNTERTHRUST_TRIGGER_MAXAGE_TICKS = 8;
+const NPC_COUNTERTHRUST_RECOVERY_CONTROL = Object.freeze({
+  mode: 'concussion_recovery',
+  force: Object.freeze({ x: 0, y: 0, z: 0 }),
+  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
+  source: 'weapon_impulse_recovery',
 });
 
 // MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
@@ -101,6 +116,8 @@ export const weapons = {
     // SF-10 RCS-disruptor suppression windows, keyed by target entity. Transient (never serialized):
     // a WeakMap keyed on the live entity graph, so reloads bring fresh entities and an empty map.
     this._rcsDisrupt = new WeakMap();
+    // The Concussion counterthrust delay follows the same transient/save-safe ownership model.
+    this._npcCounterthrustRecovery = new WeakMap();
     this._diag = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
@@ -201,11 +218,13 @@ export const weapons = {
     // 3) beam release → one precise stop receipt for each mount that stopped firing.
     this._emitStoppedBeams();
     // 4) physics-weapon consequences (SF-10): tick deployed vector mines (arm → proximity → radial
-    // impulse) and the RCS-disruptor turn-suppression windows. Both are strict no-ops in the node
-    // golden — they gate on weaponImpulseConsequences, which the 47a scenario pins OFF — so they
+    // impulse), the Concussion post-hit drift beat, and RCS-disruptor turn-suppression windows. All
+    // are strict no-ops in the node golden — they gate on weaponImpulseConsequences, which the 47a
+    // scenario pins OFF — so they
     // cannot perturb the frozen sim hash. weapons is the last control-writer before physics, so the
     // disruptor's control override is the authoritative command for the tick.
     this._tickVectorMines(dt, state);
+    this._tickNpcCounterthrustRecovery(state);
     this._tickRcsDisruption(state);
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
@@ -911,6 +930,40 @@ export const weapons = {
         sourceId: d.ownerId, targetId: null, flashReduced: false,
       });
       this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // --- SF-10 Concussion cannon: bounded NPC counterthrust recovery ------------------------------
+  // A direct impulse hit already writes velocity/torque through physics authority. This post-AI
+  // control override only prevents an NPC from cancelling that displacement on the following tick;
+  // it never touches velocity and never applies to the player. The window is authored on the weapon
+  // def and anchored to appliedTick, so rereading the same provenance cannot extend it indefinitely.
+  _tickNpcCounterthrustRecovery(state) {
+    if (!combatFlag('weaponImpulseConsequences')) return;
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    if (!ships) return;
+    const tick = state.tick || 0;
+    if (!this._npcCounterthrustRecovery) this._npcCounterthrustRecovery = new WeakMap();
+    for (const s of ships) {
+      if (!s || s.type !== 'ship' || !s.alive || s.id === state.playerId) continue;
+      const history = readRecentImpulseProvenanceHistory(s, tick, NPC_COUNTERTHRUST_TRIGGER_MAXAGE_TICKS);
+      let maxUntil = -1;
+      for (const prov of history) {
+        const def = this._byId.get(prov.weaponId);
+        const delayS = def && def.npcCounterthrustDelayS;
+        if (Number.isFinite(delayS) && delayS > 0 && prov.tag === def.impulseProvenance) {
+          const windowTicks = Math.max(1, Math.round(delayS * 60));
+          maxUntil = Math.max(maxUntil, prov.appliedTick + windowTicks);
+        }
+      }
+      const cur = this._npcCounterthrustRecovery.get(s);
+      if (maxUntil >= tick && (!cur || maxUntil > cur.until)) {
+        this._npcCounterthrustRecovery.set(s, { until: maxUntil });
+      }
+      const latch = this._npcCounterthrustRecovery.get(s);
+      if (!latch) continue;
+      if (tick > latch.until) { this._npcCounterthrustRecovery.delete(s); continue; }
+      writePhysicsControl(s, NPC_COUNTERTHRUST_RECOVERY_CONTROL);
     }
   },
 

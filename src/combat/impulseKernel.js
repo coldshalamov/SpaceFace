@@ -2,9 +2,12 @@
 //
 // This module computes identity and receipts only. It never mutates entity motion, health, combat
 // state, or presentation. Runtime consumers must route its outputs through the physics/combat
-// owners. Recent impulse attribution is held in a WeakMap so save/replay entity graphs stay clean.
+// owners. Recent impulse attribution is held in WeakMaps so save/replay entity graphs stay clean.
 
 const RECENT_IMPULSES = new WeakMap();
+const RECENT_IMPULSE_HISTORY = new WeakMap();
+const EMPTY_IMPULSE_HISTORY = Object.freeze([]);
+const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
 
 export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
 
@@ -50,6 +53,10 @@ export function recordImpulseProvenance(entity, input = {}) {
     magnitude: nonNegative(input.magnitude),
   });
   RECENT_IMPULSES.set(entity, record);
+  const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
+  const next = history.slice(Math.max(0, history.length - IMPULSE_PROVENANCE_HISTORY_LIMIT + 1));
+  next.push(record);
+  RECENT_IMPULSE_HISTORY.set(entity, Object.freeze(next));
   return record;
 }
 
@@ -61,14 +68,40 @@ export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_
   const maxAge = nonNegativeInteger(maxAgeTicks);
   const age = now - record.appliedTick;
   if (age < 0 || age > maxAge) {
-    RECENT_IMPULSES.delete(entity);
+    clearImpulseProvenance(entity);
     return null;
   }
   return record;
 }
 
+// Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when
+// another hit becomes the compatibility/latest record. Filtering is destructive just like the
+// latest reader's stale path, but it never changes which record the latest reader returns.
+export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+  if (!entity || typeof entity !== 'object') return EMPTY_IMPULSE_HISTORY;
+  const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
+  if (history.length === 0) return history;
+  const now = nonNegativeInteger(tick);
+  const maxAge = nonNegativeInteger(maxAgeTicks);
+  const recent = history.filter((record) => {
+    const age = now - record.appliedTick;
+    return age >= 0 && age <= maxAge;
+  });
+  if (recent.length === history.length) return history;
+  if (recent.length === 0) {
+    RECENT_IMPULSE_HISTORY.delete(entity);
+    return EMPTY_IMPULSE_HISTORY;
+  }
+  const frozen = Object.freeze(recent);
+  RECENT_IMPULSE_HISTORY.set(entity, frozen);
+  return frozen;
+}
+
 export function clearImpulseProvenance(entity) {
-  if (entity && typeof entity === 'object') RECENT_IMPULSES.delete(entity);
+  if (entity && typeof entity === 'object') {
+    RECENT_IMPULSES.delete(entity);
+    RECENT_IMPULSE_HISTORY.delete(entity);
+  }
 }
 
 export function resolveCollisionConsequence(input = {}) {

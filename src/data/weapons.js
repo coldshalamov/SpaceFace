@@ -180,12 +180,14 @@ export const WEAPONS = [
     // Wasp clears the kernel tumbleDeltaV (18), so the ship is thrown and TUMBLES the instant it meets
     // terrain — the wall impact is its own receipted terrain-damage event. 400 ÷ 150 ≈ 2.7 wu/s on a
     // gunship is below staggerDeltaV (3), so heavies are unmoved. The kill comes from the environment,
-    // not the gun; this is deliberately NOT a DPS weapon (STEP 9 forbidden shortcut #1).
+    // not the gun; this is deliberately NOT a DPS weapon (STEP 9 forbidden shortcut #1). NPCs take
+    // one short authored recovery beat before counterthrust resumes; player control is never delayed.
     id: 'wpn_concussion_cannon_m', name: 'Concussion Cannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 26000, requiresTech: 'tech_kinetic_drivers',
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 560, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
     impulsePerHit: 400, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    npcCounterthrustDelayS: 0.5,
   },
   {
     // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull
