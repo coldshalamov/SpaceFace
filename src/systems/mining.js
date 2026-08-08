@@ -268,7 +268,14 @@ export const mining = {
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
     if (component && component.active === false) {
-      return { ok: false, duplicate: false, reason: component.inactiveReason || 'operation-unavailable', moved: 0 };
+      const reason = component.inactiveReason || 'operation-unavailable';
+      this.bus.emit('beam:denied', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: component.verb || 'extract',
+        reason,
+      });
+      return { ok: false, duplicate: false, reason, moved: 0 };
     }
     if (!component || !component.verb || !component.operationId
       || !sites || typeof sites.applyWorldSiteBeamOperation !== 'function') {

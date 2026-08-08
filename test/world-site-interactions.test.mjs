@@ -10,6 +10,7 @@ import {
   operationForWorldSiteComponent,
   worldSiteOperationReadiness,
 } from '../src/systems/worldSiteKernel.js';
+import { mining } from '../src/systems/mining.js';
 
 const SITE_ID = 'world_site_helios_relay';
 
@@ -97,6 +98,30 @@ test('authored site component descriptors expose stable identity and declared be
     componentId: 'relay_core',
     operationId: 'repair_relay_core',
   });
+});
+
+test('beaming a dependency-blocked component announces the refusal instead of swallowing it', () => {
+  const state = authoredState();
+  const braceEntity = componentEntity('cargo_brace');
+  const descriptor = describeEntity(state, braceEntity);
+  const component = descriptor.components.find((entry) => entry.componentId === 'cargo_brace');
+  assert.equal(component.active, false, 'fixture must present a dependency-blocked component');
+  assert.equal(component.inactiveReason, 'dependency-incomplete');
+
+  const denials = [];
+  const system = Object.create(mining);
+  system.bus = { emit: (name, payload) => { if (name === 'beam:denied') denials.push(payload); } };
+  system.registry = { get: () => ({ applyWorldSiteBeamOperation: () => ({ ok: true, moved: 1 }) }) };
+
+  const result = system._runWorldSiteBeam(
+    state.entities.get(1), braceEntity, descriptor, { dps: 18 }, 1 / 60, state,
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'dependency-incomplete');
+  assert.equal(denials.length, 1, 'an inactive component must emit exactly one denial per beam tick');
+  assert.equal(denials[0].reason, 'dependency-incomplete');
+  assert.equal(denials[0].targetId, braceEntity.id);
 });
 
 test('authored components never advertise dependency-blocked, unavailable, or completed operations', () => {
