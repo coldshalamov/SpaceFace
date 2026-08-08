@@ -161,8 +161,11 @@ Initial live visual cast:
 Candidate remasters are not on the showcase critical path. Author only three initial support
 families: Dart breakup pieces, rock chips/dust, and one shared directional-force shape kit.
 
-Art-bible deliverables for this range are a value/radiance ladder, five-role material bill,
-bloom-off and grayscale sheets, a force-shape sheet, and a causal fling storyboard.
+The pre-gate authority and evidence contract for these deliverables is
+[`PHYSICS_AS_SPECTACLE_ART_BIBLE.md`](../../../PHYSICS_AS_SPECTACLE_ART_BIBLE.md): a value/radiance
+ladder, five-role material bill, bloom-off and grayscale sheets, force-shape sheet, causal fling
+storyboard, and the three initial support-family briefs. The link records the contract only; it does
+not advance this packet's dependency, phase, or G0-G7 checkoffs.
 
 ## Live seams and interface changes
 
