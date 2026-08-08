@@ -3,15 +3,17 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  VELOCITY_LANGUAGE_FLAGS,
   VELOCITY_BAND,
   VL_BOOST_BIAS,
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
   publishVelocityLanguage,
   readOwnedExceptionalSpeed,
   resolveExceptionalSpeed,
+  resolveRegionCrossfade,
   velocityBandDrive,
 } from '../src/render/velocityLanguage.js';
-import { feel } from '../src/render/feel.js';
+import { feel, speedLineDriveLegacy } from '../src/render/feel.js';
 import {
   PHYSICS_EARNED_SPEED_ZOOM_MAX,
   SPEED_ZOOM_MAX,
@@ -51,6 +53,100 @@ test('exceptional-speed classifier is bounded, physics-owned, and boost-independ
   assert.equal(boosted.count, unboosted.count);
   assert.equal(velocityBandDrive(0, 100, false, false, true).exceptionalSpeed, 0,
     'silent/default drive must carry an explicit zero scalar');
+});
+
+test('velocity and region resolvers fully overwrite caller-owned records without value drift', () => {
+  const driveOut = {};
+  const driveCases = [
+    [0, 100, false, false, true],
+    [175, 100, false, false, true],
+    [350, 100, true, false, true],
+    [900, 100, true, true, true],
+    [NaN, 100, false, false, true],
+  ];
+  for (const args of driveCases) {
+    const expected = velocityBandDrive(...args);
+    const actual = velocityBandDrive(...args, driveOut);
+    assert.strictEqual(actual, driveOut);
+    assert.deepEqual(actual, expected);
+  }
+
+  const legacyOut = {};
+  const legacyExpected = speedLineDriveLegacy(135, 100, true, true);
+  assert.strictEqual(speedLineDriveLegacy(135, 100, true, true, legacyOut), legacyOut);
+  assert.deepEqual(legacyOut, legacyExpected);
+
+  const regionOut = {};
+  const regionCases = [
+    [{ x: 0, z: 0 }, null],
+    [{ x: 0, z: 0 }, { candidates: ['sector_helios_prime'] }],
+    [{ x: 6400, z: 5200 }, { crossfadeWU: 900 }],
+    [{ x: NaN, z: Infinity }, null],
+  ];
+  for (const [position, options] of regionCases) {
+    const expected = resolveRegionCrossfade(position, options);
+    const actual = resolveRegionCrossfade(position, options, regionOut);
+    assert.strictEqual(actual, regionOut);
+    assert.deepEqual(actual, expected);
+  }
+});
+
+test('feel retains live velocity and region records across high-refresh publication', () => {
+  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
+  const savedRegions = VELOCITY_LANGUAGE_FLAGS.regionVolumes;
+  VELOCITY_LANGUAGE_FLAGS.bands = true;
+  VELOCITY_LANGUAGE_FLAGS.regionVolumes = true;
+  try {
+    const player = {
+      id: 17,
+      pos: { x: 0, z: 0 },
+      vel: { x: 210, z: 35 },
+      maxSpeed: 100,
+      flags: { boosting: false },
+      _flightFrame: { governor: { physicsEarned: true } },
+    };
+    const state = {
+      playerId: player.id,
+      entities: new Map([[player.id, player]]),
+      camera: { tilt: 60 },
+      settings: { video: { motionReduce: false } },
+      render: {},
+    };
+    const system = Object.create(feel);
+    system.state = state;
+    system._slCanvas = { isConnected: true, style: { opacity: '0' } };
+    system._slCtx = {};
+    system._slOpacity = 0;
+    system._slGrain = 0;
+
+    system._updateSpeedLines(0);
+    const node = state.render.velocityLanguage;
+    const driveIdentity = node.drive;
+    const regionIdentity = node.region;
+    assert.strictEqual(driveIdentity, system._velocityDriveScratch);
+    assert.strictEqual(regionIdentity, system._regionCrossfadeScratch);
+
+    for (let frame = 1; frame <= 240; frame++) {
+      player.vel.x = 120 + (frame % 181);
+      player.vel.z = (frame % 17) - 8;
+      player.pos.x = frame * 37;
+      player.pos.z = frame * -19;
+      system._updateSpeedLines(0);
+      assert.strictEqual(node.drive, driveIdentity);
+      assert.strictEqual(node.region, regionIdentity);
+    }
+
+    const speed = Math.hypot(player.vel.x, player.vel.z);
+    assert.deepEqual(
+      { ...node.drive },
+      velocityBandDrive(speed, player.maxSpeed, false, false, true),
+    );
+    assert.deepEqual({ ...node.region }, resolveRegionCrossfade(player.pos));
+    assert.equal(node.frame, 241);
+  } finally {
+    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
+    VELOCITY_LANGUAGE_FLAGS.regionVolumes = savedRegions;
+  }
 });
 
 test('feel publishes an owner-bound exceptional scalar and reduced motion zeros it', () => {

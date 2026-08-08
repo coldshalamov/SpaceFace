@@ -136,11 +136,18 @@ const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x
 // The flag defaults ON in the browser, so the four-band language is what actually runs in the game;
 // the legacy branch is what runs under node, which is why the existing pins still describe it.
 // Read at CALL TIME — a cached flag cannot be opted into by a headless test.
-export function speedLineDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned = false) {
+export function speedLineDrive(
+  speed,
+  maxSpeed,
+  boosting,
+  motionReduce,
+  physicsEarned = false,
+  out = null,
+) {
   if (velocityLanguageFlag('bands')) {
-    return velocityBandDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned);
+    return velocityBandDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned, out);
   }
-  const drive = speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce);
+  const drive = speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce, out);
   drive.exceptionalSpeed = motionReduce
     ? 0
     : resolveExceptionalSpeed(speed, maxSpeed, physicsEarned);
@@ -149,7 +156,7 @@ export function speedLineDrive(speed, maxSpeed, boosting, motionReduce, physicsE
 
 // The Slice 0 bounded drive, verbatim. Exported so the probe can assert the legacy branch directly
 // without having to toggle a global, and so this file states plainly which numbers are historical.
-export function speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce) {
+export function speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce, out = null) {
   const maxSpd = Math.max(1, Number.isFinite(maxSpeed) ? maxSpeed : 1);
   const speedRatio = Number.isFinite(speed) ? Math.max(0, speed) / maxSpd : 0;
 
@@ -194,7 +201,15 @@ export function speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce) {
   // roll, with every other factor (edge fade, centre bias, centre gate) bounded by 1.
   const maxAlpha = clampTo(targetOpacity * SL_BRIGHT_MAX, SL_ALPHA_MAX);
 
-  return { speedRatio, intensity, targetOpacity, count, lenScale, flowSpeed, maxAlpha };
+  const drive = out || {};
+  drive.speedRatio = speedRatio;
+  drive.intensity = intensity;
+  drive.targetOpacity = targetOpacity;
+  drive.count = count;
+  drive.lenScale = lenScale;
+  drive.flowSpeed = flowSpeed;
+  drive.maxAlpha = maxAlpha;
+  return drive;
 }
 
 // How much a streak segment is allowed to draw, given its closest approach to screen centre.
@@ -219,6 +234,9 @@ export const feel = {
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
+    this._velocityDriveScratch = {};
+    this._legacyDriveScratch = {};
+    this._regionCrossfadeScratch = {};
     this._fovPunch = 0;       // current additive fov offset (deg)
     this._vig = 0;            // current vignette opacity (0..1)
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
@@ -326,7 +344,12 @@ export const feel = {
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
     const physicsEarned = !!(player && player._flightFrame && player._flightFrame.governor
       && player._flightFrame.governor.physicsEarned === true);
-    const drive = speedLineDrive(speed, maxSpd, boosting, mr, physicsEarned);
+    // The live/browser and compatibility drives have different shapes, so each gets one retained
+    // record. A runtime kill-switch toggle cannot leave band-only fields on the legacy record.
+    const driveScratch = velocityLanguageFlag('bands')
+      ? (this._velocityDriveScratch || (this._velocityDriveScratch = {}))
+      : (this._legacyDriveScratch || (this._legacyDriveScratch = {}));
+    const drive = speedLineDrive(speed, maxSpd, boosting, mr, physicsEarned, driveScratch);
 
     // Region volumes (D7, second half). `player.pos` is GLOBAL (`global_v1`) — world.js spawns
     // entities through `_toGlobal`, and the render frame membrane converts to the rebased draw frame
@@ -335,7 +358,8 @@ export const feel = {
     // frame rebases every 8192 WU, and a region blend keyed on a rebasing frame would jump.
     let region = null;
     if (velocityLanguageFlag('regionVolumes') && player && player.pos) {
-      region = resolveRegionCrossfade(player.pos);
+      const regionScratch = this._regionCrossfadeScratch || (this._regionCrossfadeScratch = {});
+      region = resolveRegionCrossfade(player.pos, null, regionScratch);
     }
 
     // ONE PRODUCER. Published before every early return below, so a consumer never sees a stale

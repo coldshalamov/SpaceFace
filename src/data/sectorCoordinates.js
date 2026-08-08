@@ -66,6 +66,11 @@ export const CORRIDOR_SECTOR_IDS = Object.freeze([
   ...FRONTIER_SECTOR_IDS,
 ]);
 
+// Membership ties are lexicographic, while the authored corridor order serves navigation and
+// residency. Keep both contracts without copying/sorting the immutable default list every render
+// frame; custom candidate lists are still copied below so callers never observe an in-place sort.
+const SORTED_CORRIDOR_SECTOR_IDS = Object.freeze(CORRIDOR_SECTOR_IDS.slice().sort());
+
 /** Live residency tiers for the M2a streaming foundation. */
 export const RESIDENCY_TIER = Object.freeze({
   FULL: 'FULL',
@@ -162,7 +167,9 @@ export function sectorMembershipAtGlobal(globalPos, candidates = CORRIDOR_SECTOR
   let bestId = null;
   let bestD2 = Infinity;
   // Scan in sorted id order so equal distances pick the lexicographically smaller id.
-  const ordered = list.slice().sort();
+  const ordered = list === CORRIDOR_SECTOR_IDS
+    ? SORTED_CORRIDOR_SECTOR_IDS
+    : list.slice().sort();
   for (const id of ordered) {
     const o = sectorGlobalOrigin(id);
     const dx = px - o.x;

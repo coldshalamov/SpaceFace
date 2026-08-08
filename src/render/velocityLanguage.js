@@ -208,30 +208,30 @@ export function resolveExceptionalSpeed(speed, maxSpeed, physicsEarned = false) 
 // ---------------------------------------------------------------------------------------------
 
 /** The silent record. Band 0, and the answer to every non-finite input. */
-function silentRecord(speedRatio, effectiveRatio) {
-  return {
-    schema: 'velocity_language_v1',
-    speedRatio: Number.isFinite(speedRatio) ? speedRatio : 0,
-    effectiveRatio: Number.isFinite(effectiveRatio) ? effectiveRatio : 0,
-    band: VELOCITY_BAND.LOCAL,
+function silentRecord(speedRatio, effectiveRatio, out = null) {
+  const rec = out || {};
+  rec.schema = 'velocity_language_v1';
+  rec.speedRatio = Number.isFinite(speedRatio) ? speedRatio : 0;
+  rec.effectiveRatio = Number.isFinite(effectiveRatio) ? effectiveRatio : 0;
+  rec.band = VELOCITY_BAND.LOCAL;
     // particles
-    count: 0,
-    targetOpacity: 0,
-    maxAlpha: 0,
-    lenScale: 0,
-    flowSpeed: 0,
-    widthScale: 0,
-    composite: VL_COMPOSITE,
+  rec.count = 0;
+  rec.targetOpacity = 0;
+  rec.maxAlpha = 0;
+  rec.lenScale = 0;
+  rec.flowSpeed = 0;
+  rec.widthScale = 0;
+  rec.composite = VL_COMPOSITE;
     // world
-    parallaxGain: 0,
-    smear: 0,
+  rec.parallaxGain = 0;
+  rec.smear = 0;
     // field
-    grain: 0,
+  rec.grain = 0;
     // camera (published for the camera lane; this module never applies it)
-    cameraLeadWU: 0,
-    shakeScale: 1,
-    exceptionalSpeed: 0,
-  };
+  rec.cameraLeadWU = 0;
+  rec.shakeScale = 1;
+  rec.exceptionalSpeed = 0;
+  return rec;
 }
 
 /**
@@ -255,28 +255,37 @@ export function resolveVelocityBand(effectiveRatio) {
  * @param {number} maxSpeed  the hull's governed COMBAT speed, WU/s — the 1x reference for the bands
  * @param {boolean} boosting
  * @param {boolean} motionReduce
- * @returns {object} a plain (unfrozen, allocation-per-call) record; see silentRecord for the shape
+ * @param {boolean} physicsEarned
+ * @param {object|null} [out] caller-owned record; omitted calls retain the allocating public API
+ * @returns {object} the complete drive record; see silentRecord for the shape
  */
-export function velocityBandDrive(speed, maxSpeed, boosting, motionReduce, physicsEarned = false) {
+export function velocityBandDrive(
+  speed,
+  maxSpeed,
+  boosting,
+  motionReduce,
+  physicsEarned = false,
+  out = null,
+) {
   const maxSpd = Math.max(1, Number.isFinite(maxSpeed) ? maxSpeed : 1);
   // Screen at the entry point. A NaN or Infinity anywhere downstream would otherwise clamp to the
   // WRONG end on the descending ramps (count and alpha both fall with speed above band 2), so the
   // overlay would fail bright at exactly the moment the physics went wrong.
-  if (!Number.isFinite(speed) || !Number.isFinite(maxSpeed)) return silentRecord(0, 0);
+  if (!Number.isFinite(speed) || !Number.isFinite(maxSpeed)) return silentRecord(0, 0, out);
 
   const speedRatio = Math.max(0, speed) / maxSpd;
   // VL_BOOST_BIAS is 0 — see its doc comment. Boost must NOT manufacture particles below 1x.
   const r = speedRatio + (boosting ? VL_BOOST_BIAS : 0);
-  if (!Number.isFinite(r)) return silentRecord(speedRatio, 0);
+  if (!Number.isFinite(r)) return silentRecord(speedRatio, 0, out);
 
   if (r <= VL_BAND1_AT) {
     // Band 0. Nothing at all — and this is a hard return, not a ramp that happens to reach zero, so
     // no future edit can leak a stray mote into the combat readout.
-    return silentRecord(speedRatio, r);
+    return silentRecord(speedRatio, r, out);
   }
 
   const band = resolveVelocityBand(r);
-  const rec = silentRecord(speedRatio, r);
+  const rec = silentRecord(speedRatio, r, out);
   rec.band = band;
 
   if (band === VELOCITY_BAND.MODERATE) {
@@ -397,36 +406,37 @@ export const REGION_CROSSFADE_WU = 1500;
  * @param {{x:number,z:number}} globalPos GLOBAL position (`global_v1`) — NEVER a render-frame or
  *   sector-local position. The render frame is rebased every 8192 WU, so feeding it here would make
  *   the region blend jump at every rebase.
- * @param {{candidates?:ReadonlyArray<string>, crossfadeWU?:number}} [options]
+ * @param {{candidates?:ReadonlyArray<string>, crossfadeWU?:number}|null} [options]
+ * @param {object|null} [out] caller-owned record; omitted calls retain the allocating public API
  */
-export function resolveRegionCrossfade(globalPos, options = {}) {
+export function resolveRegionCrossfade(globalPos, options = null, out = null) {
   const px = globalPos && Number.isFinite(globalPos.x) ? globalPos.x : 0;
   const pz = globalPos && Number.isFinite(globalPos.z) ? globalPos.z : 0;
-  const halfWidth = Number.isFinite(options.crossfadeWU) && options.crossfadeWU > 0
+  const halfWidth = Number.isFinite(options && options.crossfadeWU) && options.crossfadeWU > 0
     ? options.crossfadeWU
     : REGION_CROSSFADE_WU;
-  const candidates = Array.isArray(options.candidates) && options.candidates.length
+  const candidates = Array.isArray(options && options.candidates) && options.candidates.length
     ? options.candidates
     : CORRIDOR_SECTOR_IDS;
 
-  const idle = {
-    schema: 'region_crossfade_v1',
-    sectorId: null,
-    nextSectorId: null,
-    blend: 0,
-    signedBoundaryWU: Infinity,
-    crossfadeWU: halfWidth,
-    approaching: false,
-  };
+  const rec = out || {};
+  rec.schema = 'region_crossfade_v1';
+  rec.sectorId = null;
+  rec.nextSectorId = null;
+  rec.blend = 0;
+  rec.signedBoundaryWU = Infinity;
+  rec.crossfadeWU = halfWidth;
+  rec.approaching = false;
 
   // Membership comes from the SHIPPED Voronoi resolver, not a local re-derivation, so this cannot
   // drift from the world/residency systems or from deepSpaceAddress — three components disagreeing
   // about which cell the player is in is a worse bug than any palette artifact.
-  const homeId = sectorMembershipAtGlobal({ x: px, z: pz }, candidates);
-  if (!homeId) return idle;
+  const homeId = sectorMembershipAtGlobal(globalPos, candidates);
+  if (!homeId) return rec;
 
   const home = sectorGlobalOrigin(homeId);
-  if (!home || !Number.isFinite(home.x) || !Number.isFinite(home.z)) return idle;
+  if (!home || !Number.isFinite(home.x) || !Number.isFinite(home.z)) return rec;
+  rec.sectorId = homeId;
 
   // Nearest OTHER origin. Tie-broken by id, matching sectorMembershipAtGlobal's own tiebreak — if
   // the two disagreed, a player on a three-cell corner would blend toward a region the addressing
@@ -447,33 +457,28 @@ export function resolveRegionCrossfade(globalPos, options = {}) {
     }
   }
   if (!otherId || !otherOrigin) {
-    return { ...idle, sectorId: homeId };
+    return rec;
   }
+  rec.nextSectorId = otherId;
 
   const abx = otherOrigin.x - home.x;
   const abz = otherOrigin.z - home.z;
   const abLen = Math.sqrt(abx * abx + abz * abz);
   if (!(abLen > 0)) {
     // Two distinct ids authored at one origin. Degenerate — report home, never divide by it.
-    return { ...idle, sectorId: homeId, nextSectorId: otherId };
+    return rec;
   }
 
   const signedBoundaryWU = (bestSq - dHomeSq) / (2 * abLen);
-  if (!Number.isFinite(signedBoundaryWU)) return { ...idle, sectorId: homeId, nextSectorId: otherId };
+  if (!Number.isFinite(signedBoundaryWU)) return rec;
 
   const blend = clamp01(0.5 - signedBoundaryWU / (2 * halfWidth));
-
-  return {
-    schema: 'region_crossfade_v1',
-    sectorId: homeId,
-    nextSectorId: otherId,
-    /** 0 = wholly this region, 0.5 = on the boundary, 1 = wholly the neighbour. */
-    blend,
-    /** Perpendicular distance to the Voronoi bisector; positive inside `sectorId`. */
-    signedBoundaryWU,
-    crossfadeWU: halfWidth,
-    approaching: blend > 0,
-  };
+  /** 0 = wholly this region, 0.5 = on the boundary, 1 = wholly the neighbour. */
+  rec.blend = blend;
+  /** Perpendicular distance to the Voronoi bisector; positive inside `sectorId`. */
+  rec.signedBoundaryWU = signedBoundaryWU;
+  rec.approaching = blend > 0;
+  return rec;
 }
 
 // ---------------------------------------------------------------------------------------------
