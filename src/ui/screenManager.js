@@ -13,7 +13,7 @@
 
 import { createTimeEffects } from '../core/timeEffects.js';
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station']);
+const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station', 'sandbox']);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
 export function createScreenManager(ctx) {

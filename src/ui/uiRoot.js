@@ -22,6 +22,8 @@ import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorC
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
+import { IS_DEV } from '../core/devMode.js';
+import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -73,6 +75,9 @@ const SCREEN_MODULES = [
   { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
+  // DEV ONLY — Sandbox testing harness (src/ui/screens/sandbox.js). Conditionally spread so the
+  // dynamic import and the module never enter build/web when IS_DEV folds false at build time.
+  ...(IS_DEV ? [{ path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' }] : []),
 ];
 
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -321,6 +326,12 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+
+    // DEV: arm the sandbox game:started hook (no-op unless a sandbox launch is pending). Resolved via
+    // a thunk because ctx continues to be enriched after init(); the hook reads ctx at fire time.
+    if (IS_DEV) {
+      installSandboxGameStartedHook(this.bus, () => this.ctx);
+    }
 
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the

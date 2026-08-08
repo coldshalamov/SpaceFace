@@ -6,6 +6,7 @@
 
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { IS_DEV } from '../../core/devMode.js';
 
 const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
@@ -239,6 +240,16 @@ export const mainMenuScreen = {
     col.appendChild(bArchive);
     bArchive.addEventListener('click', () => { requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); });
 
+    // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features (weapons, drilling,
+    // sectors) without playing for an hour. Stripped from production builds via IS_DEV (which folds
+    // to false when __SPACEFACE_PRODUCTION__ is defined). See src/ui/screens/sandbox.js.
+    let bSandbox = null;
+    if (IS_DEV) {
+      bSandbox = button('Sandbox');
+      col.appendChild(bSandbox);
+      bSandbox.addEventListener('click', () => pushWhenReady(ctx, 'sandbox', 'Sandbox'));
+    }
+
     bNew.addEventListener('click', () => pushWhenReady(ctx, 'newGame', 'New Game'));
     bContinue.addEventListener('click', () => {
       const latest = latestSave(readSaveIndex(ctx));
@@ -255,7 +266,7 @@ export const mainMenuScreen = {
     bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
     bSettings.addEventListener('click', () => pushWhenReady(ctx, 'settings', 'Settings'));
 
-    refs = { bNew, bContinue, bLoad, bSettings, saveSummary };
+    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox };
     this._render(ctx);
   },
 
@@ -264,6 +275,7 @@ export const mainMenuScreen = {
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
+    if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
     const latest = latestSave(readSaveIndex(ctx));
     refs.bContinue.disabled = !latest;
     refs.saveSummary.classList.toggle('has-save', !!latest);
