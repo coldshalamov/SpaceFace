@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES } from '../data/palettes.js';
-import { paletteWithShipAppearance } from '../core/shipAppearance.js';
+import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
@@ -34,6 +34,11 @@ import {
   registerDynamicBufferOwner,
   unregisterDynamicBufferOwner,
 } from './dynamicBufferRanges.js';
+import {
+  createWebGlDisposeListenerProvenance,
+  describeWebGlDisposeListenerProvenance,
+  mergeWebGlDisposeListenerProvenance,
+} from './contextResourceLifecycle.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -56,6 +61,7 @@ const INSTANCE_FAR_CULL_RADIUS = 9000;
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const EMPTY_ARRAY = Object.freeze([]);
+const EMPTY_AUTHORED_DISPOSE_PROBE_RECEIPT = Object.freeze({ captured: false, listener: null });
 const HIDDEN_INSTANCE_OWNER_FRAME = Object.freeze({ frame: 0, visible: false });
 const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
@@ -68,6 +74,8 @@ const ownerReleaseState = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
 const bootstrapResidencyOwnersByRenderer = new WeakMap();
+const authoredInstancedMeshDisposeRegistrationByRenderer = new WeakMap();
+const authoredInstancedMeshDisposeProbeByRenderer = new WeakMap();
 const contractRecordsBySlot = new Map();
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -154,6 +162,316 @@ export function invalidatePartsLibraryCaches(renderer) {
 export function syncAuthoredInstancePools(scene, opts = {}) {
   const state = scene && sceneStates.get(scene);
   return state ? syncSceneState(state, opts) : null;
+}
+
+/**
+ * Capture Three's renderer/context-generation disposal callbacks without relying on Function.name.
+ * A private zero-count InstancedMesh is rendered once through the real renderer into a private
+ * target. Its geometry, main/shadow materials, sampled texture, target, and object cannot receive
+ * foreign listeners, so every captured callback is exact provenance even after minification.
+ */
+export function beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer) {
+  if (!scene || typeof scene.add !== 'function' || !renderer) return null;
+  const currentRegistration = authoredInstancedMeshDisposeRegistrationByRenderer.get(renderer);
+  if (currentRegistration?.complete === true) return null;
+  if (authoredInstancedMeshDisposeProbeByRenderer.has(renderer)) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, 0,
+    0.5, -0.5, 0,
+    0, 0.5, 0,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
+    0, 0,
+    1, 0,
+    0.5, 1,
+  ], 2));
+  const texture = new THREE.DataTexture(
+    new Uint8Array([255, 255, 255, 255]),
+    1,
+    1,
+    THREE.RGBAFormat,
+  );
+  texture.needsUpdate = true;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  const material = new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 });
+  material.colorWrite = false;
+  material.depthTest = false;
+  material.depthWrite = false;
+  const probe = new THREE.InstancedMesh(geometry, material, 1);
+  probe.name = 'SF_PrivateInstancedMeshDisposeRegistrationProbe';
+  probe.count = 0;
+  probe.visible = true;
+  probe.frustumCulled = false;
+  probe.castShadow = true;
+  probe.userData.spacefacePrivateContextProbe = true;
+
+  const probeScene = new THREE.Scene();
+  const probeCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  probeCamera.position.set(0, 0, 2);
+  probeCamera.lookAt(0, 0, 0);
+  probeCamera.updateMatrixWorld(true);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0);
+  directionalLight.castShadow = true;
+  directionalLight.position.set(0, 0, 2);
+  directionalLight.target.position.set(0, 0, 0);
+  directionalLight.shadow.mapSize.set(1, 1);
+  const pointLight = new THREE.PointLight(0xffffff, 0, 4);
+  pointLight.castShadow = true;
+  pointLight.position.set(0, 0, 2);
+  pointLight.shadow.mapSize.set(1, 1);
+  probeScene.add(probe, directionalLight, directionalLight.target, pointLight);
+
+  const renderTarget = new THREE.WebGLRenderTarget(1, 1, {
+    depthBuffer: true,
+    stencilBuffer: false,
+  });
+  renderTarget.texture.generateMipmaps = false;
+
+  const receipt = {
+    captured: createWebGlDisposeListenerProvenance(),
+    captureErrors: [],
+    directionalLight,
+    ended: false,
+    geometry,
+    material,
+    pointLight,
+    probe,
+    probeCamera,
+    probeScene,
+    renderTarget,
+    renderer,
+    scene,
+    texture,
+  };
+  const capturePrivateRegistration = (resource, key) => {
+    const addEventListener = resource.addEventListener;
+    Object.defineProperty(resource, 'addEventListener', {
+      configurable: true,
+      writable: true,
+      value(type, listener) {
+        if (type === 'dispose') receipt.captured[key].add(listener);
+        return addEventListener.call(this, type, listener);
+      },
+    });
+  };
+  capturePrivateRegistration(probe, 'instancedMeshes');
+  capturePrivateRegistration(geometry, 'geometries');
+  capturePrivateRegistration(material, 'materials');
+  capturePrivateRegistration(texture, 'textures');
+  capturePrivateRegistration(renderTarget, 'renderTargets');
+  authoredInstancedMeshDisposeProbeByRenderer.set(renderer, receipt);
+
+  const canRenderProbe = typeof renderer.render === 'function'
+    && typeof renderer.setRenderTarget === 'function';
+  if (canRenderProbe) {
+    const previousTarget = typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null;
+    const previousCubeFace = typeof renderer.getActiveCubeFace === 'function'
+      ? renderer.getActiveCubeFace()
+      : 0;
+    const previousMipmapLevel = typeof renderer.getActiveMipmapLevel === 'function'
+      ? renderer.getActiveMipmapLevel()
+      : 0;
+    const shadowMap = renderer.shadowMap || null;
+    const previousShadowState = shadowMap ? {
+      autoUpdate: shadowMap.autoUpdate,
+      enabled: shadowMap.enabled,
+      needsUpdate: shadowMap.needsUpdate,
+    } : null;
+    try {
+      if (shadowMap) {
+        shadowMap.enabled = true;
+        shadowMap.autoUpdate = true;
+        shadowMap.needsUpdate = true;
+      }
+      renderer.setRenderTarget(renderTarget, 0, 0);
+      renderer.render(probeScene, probeCamera);
+    } catch (error) {
+      receipt.captureErrors.push(String(error?.message || error));
+    } finally {
+      try {
+        renderer.setRenderTarget(previousTarget, previousCubeFace, previousMipmapLevel);
+      } catch (error) {
+        receipt.captureErrors.push(`render-target restore failed: ${String(error?.message || error)}`);
+      }
+      if (shadowMap && previousShadowState) {
+        shadowMap.enabled = previousShadowState.enabled;
+        shadowMap.autoUpdate = previousShadowState.autoUpdate;
+        shadowMap.needsUpdate = previousShadowState.needsUpdate;
+      }
+    }
+  }
+  return receipt;
+}
+
+export function endAuthoredInstanceMeshDisposeRegistrationProbe(receipt) {
+  if (!receipt || receipt.ended === true) {
+    return EMPTY_AUTHORED_DISPOSE_PROBE_RECEIPT;
+  }
+  receipt.ended = true;
+  const {
+    captured,
+    captureErrors,
+    directionalLight,
+    geometry,
+    material,
+    pointLight,
+    probe,
+    probeScene,
+    renderTarget,
+    renderer,
+    texture,
+  } = receipt;
+  let registration = renderer
+    ? authoredInstancedMeshDisposeRegistrationByRenderer.get(renderer)
+    : null;
+  if (!registration) {
+    registration = createWebGlDisposeListenerProvenance();
+    registration.captureErrors = [];
+  }
+  mergeWebGlDisposeListenerProvenance(registration, captured);
+  registration.captureErrors.push(...captureErrors);
+  const provenanceStatus = describeWebGlDisposeListenerProvenance(registration);
+  registration.complete = provenanceStatus.complete;
+  if (renderer && Object.values(provenanceStatus.listenerCounts).some((count) => count > 0)) {
+    authoredInstancedMeshDisposeRegistrationByRenderer.set(renderer, registration);
+  }
+  if (renderer && authoredInstancedMeshDisposeProbeByRenderer.get(renderer) === receipt) {
+    authoredInstancedMeshDisposeProbeByRenderer.delete(renderer);
+  }
+
+  // Probe cleanup must never mask the caller's render failure. Exhaust every private resource and
+  // report capture state; the next draw retries automatically when no listener was registered.
+  try { probe?.removeFromParent?.(); } catch (_) { /* private cleanup only */ }
+  try { probe?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { directionalLight?.shadow?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { pointLight?.shadow?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { renderTarget?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { geometry?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { material?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { texture?.dispose?.(); } catch (_) { /* preserve caller render result/error */ }
+  try { probeScene?.clear?.(); } catch (_) { /* preserve caller render result/error */ }
+  const listener = captured.instancedMeshes.values().next().value || null;
+  return {
+    captured: listener !== null,
+    captureErrors: registration.captureErrors.slice(),
+    complete: registration.complete,
+    listener,
+    provenanceStatus,
+    registration,
+  };
+}
+
+/**
+ * Detached package-pool targets are not reachable from the live scene while a sector boundary is
+ * being prepared. Three attaches one object-level disposal listener when an InstancedMesh reaches
+ * an actual render. Its Function.name is not stable in the shipped minified bundle, so the renderer
+ * captures the exact callback identity with a private probe. Detach only that proven old-context
+ * identity; foreign listeners remain untouched and the first restored draw captures the successor.
+ */
+export function prepareAuthoredInstancePoolsForContextLoss(scene, renderer) {
+  const state = scene && sceneStates.get(scene);
+  const provenance = renderer
+    ? authoredInstancedMeshDisposeRegistrationByRenderer.get(renderer)
+    : null;
+  const roots = [];
+  const seenRoots = new Set();
+  const addRoot = (root) => {
+    if (!root || seenRoots.has(root)) return;
+    seenRoots.add(root);
+    roots.push(root);
+  };
+  addRoot(scene);
+  if (!state) {
+    if (renderer) authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+    return {
+      provenance: provenance || createWebGlDisposeListenerProvenance(),
+      provenanceStatus: describeWebGlDisposeListenerProvenance(provenance),
+      roots,
+    };
+  }
+  for (const preparedRoots of state.preparedAuthoredRoots?.values() || EMPTY_ARRAY) {
+    for (const root of preparedRoots) addRoot(root);
+  }
+  const chunks = new Set(state.retiringChunks || EMPTY_ARRAY);
+  for (const pool of state.pools.values()) {
+    for (const chunk of pool.chunks) chunks.add(chunk);
+  }
+  for (const chunk of chunks) {
+    const mesh = chunk && chunk.mesh;
+    if (!mesh) continue;
+    addRoot(mesh);
+  }
+  if (renderer) authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+  return {
+    provenance: provenance || createWebGlDisposeListenerProvenance(),
+    provenanceStatus: describeWebGlDisposeListenerProvenance(provenance),
+    roots,
+  };
+}
+
+function registerPreparedAuthoredRoot(scene, boundary, root) {
+  if (!scene || !boundary || !root) return false;
+  const state = sceneState(scene);
+  let roots = state.preparedAuthoredRoots.get(boundary);
+  if (!roots) {
+    roots = new Set();
+    state.preparedAuthoredRoots.set(boundary, roots);
+  }
+  roots.add(root);
+  return true;
+}
+
+function unregisterPreparedAuthoredRoot(scene, boundary, root) {
+  const state = scene && sceneStates.get(scene);
+  const roots = state?.preparedAuthoredRoots?.get(boundary);
+  if (!roots) return false;
+  roots.delete(root);
+  if (roots.size === 0) state.preparedAuthoredRoots.delete(boundary);
+  return true;
+}
+
+function registerPreparedAuthoredAdmission(scene, boundary, authored) {
+  const root = authored?.root;
+  if (!root) return false;
+  const contextRoots = new Set([root]);
+  for (const object of authored.ownerLocalObjects || EMPTY_ARRAY) contextRoots.add(object);
+  for (const geometry of authored.ownerLocalGeometries || EMPTY_ARRAY) contextRoots.add(geometry);
+  for (const material of authored.ownerLocalMaterials || EMPTY_ARRAY) contextRoots.add(material);
+  for (const instance of authored.renderPackageInstances || EMPTY_ARRAY) {
+    if (instance?.root) contextRoots.add(instance.root);
+    for (const node of instance?.planNodes || EMPTY_ARRAY) contextRoots.add(node);
+  }
+  let registered = false;
+  for (const contextRoot of contextRoots) {
+    registered = registerPreparedAuthoredRoot(scene, boundary, contextRoot) || registered;
+  }
+  if (!registered) return false;
+  authored.preparedContextRoots = [...contextRoots];
+  authored.preparedScene = scene;
+  authored.preparedBoundary = boundary;
+  return true;
+}
+
+function unregisterPreparedAuthoredAdmission(authored) {
+  if (!authored) return false;
+  let removed = false;
+  for (const contextRoot of authored.preparedContextRoots || [authored.root]) {
+    removed = unregisterPreparedAuthoredRoot(
+      authored.preparedScene,
+      authored.preparedBoundary,
+      contextRoot,
+    ) || removed;
+  }
+  authored.preparedContextRoots = null;
+  authored.preparedScene = null;
+  authored.preparedBoundary = null;
+  return removed;
 }
 
 export function getAuthoredInstancePoolDiagnostics(scene) {
@@ -339,6 +657,74 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
   return plan;
 }
 
+/** Keep sector preparation on the same complete-body selector as the installed visual factory.
+ * Hostile and traffic roles already select complete bodies inside wholeShipVisualForEntity; this
+ * covers the two def-driven production bodies whose factory selection is intentionally stricter. */
+export function requiresProductionWholeShipForEntity(entity) {
+  if (!entity || entity.type !== 'ship' || !entity.data) return false;
+  const defId = entity.data.defId;
+  return (entity.isPlayer === true && defId === 'ship_kestrel') || defId === 'ship_wasp';
+}
+
+/**
+ * Stable identity for the exact authored composition selected for one entity. Sector-entry staging
+ * captures this before any decode/composition work and refuses to publish if gameplay changes the
+ * hull, fitted hardware, traffic/hostile role, or authored place envelope while that work is in
+ * flight. Dynamic pose, damage, and job state are deliberately excluded: they are applied by the
+ * live presentation boundary after publication and must not invalidate an otherwise reusable root.
+ */
+export function authoredCompositionFingerprintForEntity(entity, options = {}) {
+  if (!entity) return 'missing';
+  const data = entity.data || {};
+  const requiredWholeShip = options.requiredWholeShip === true
+    || requiresProductionWholeShipForEntity(entity);
+  const weapons = Array.isArray(data.weapons)
+    ? data.weapons.map((weapon) => ({
+        defId: weapon && weapon.defId || null,
+        facing: weapon && weapon.facing || null,
+        size: weapon && weapon.size || null,
+      }))
+    : [];
+  const fittings = Array.isArray(data.fittings) ? data.fittings.map(String) : [];
+  return JSON.stringify({
+    id: entity.id == null ? null : String(entity.id),
+    type: entity.type || null,
+    team: entity.team == null ? null : entity.team,
+    factionId: entity.factionId || null,
+    radius: Number.isFinite(Number(entity.radius)) ? Number(entity.radius) : null,
+    requiredWholeShip,
+    selector: {
+      defId: data.defId || null,
+      lootTableId: data.lootTableId || null,
+      trafficRole: data.trafficRole || null,
+      placeId: data.placeId || null,
+      assetId: data.assetId || null,
+      landmarkGlb: data.landmarkGlb || null,
+      archetypeGlb: data.archetypeGlb || null,
+      claimSpecId: data.claimSpecId || null,
+      claimOwned: data.claimOwned === true,
+      placeScale: Number.isFinite(Number(data.placeScale)) ? Number(data.placeScale) : null,
+      placeTargetRadius: Number.isFinite(Number(data.placeTargetRadius))
+        ? Number(data.placeTargetRadius)
+        : null,
+      visualRadius: Number.isFinite(Number(data.visualRadius)) ? Number(data.visualRadius) : null,
+      dockRadius: Number.isFinite(Number(data.dockRadius)) ? Number(data.dockRadius) : null,
+      stationRadius: Number.isFinite(Number(data.stationRadius)) ? Number(data.stationRadius) : null,
+      authoredGeologySkin: data.authoredGeologySkin === true,
+      typeId: data.typeId || null,
+      tint: data.tint == null ? null : data.tint,
+      paletteClass: data.paletteClass || null,
+      authoredPayloadAssetId: data.authoredPayloadAssetId || null,
+      payloadStableId: data.payloadStableId || null,
+      appearancePresent: !!data.appearance && typeof data.appearance === 'object',
+      appearance: shipAppearanceSignature(data.appearance, data.defId || null),
+      fittings,
+      weapons,
+    },
+    plan: authoredPreloadPlanForEntity(entity, { ...options, requiredWholeShip }),
+  });
+}
+
 /**
  * Exact authored records needed by the entities materialized for one sector.
  *
@@ -367,7 +753,11 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
 
     let plan = {};
     if (entity.type === 'ship') {
-      plan = authoredPreloadPlanForEntity(entity, options);
+      plan = authoredPreloadPlanForEntity(entity, {
+        ...options,
+        requiredWholeShip: options.requiredWholeShip === true
+          || requiresProductionWholeShipForEntity(entity),
+      });
     } else if (hasExplicitAuthoredPayloadPresentation(entity)) {
       plan = { pod: [AUTHORED_CARGO_CAPSULE_FILE] };
     } else {
@@ -645,8 +1035,10 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   const trigger = firstRenderable(fallbackRoot);
   const previousBeforeRender = trigger && trigger.onBeforeRender;
   let armed = true;
-  const startAuthoredUpgrade = (renderer, scene) => {
-    if (!armed) return;
+  const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const existing = boundary.userData.authoredUpgradePromise;
+    if (existing) return existing;
+    if (!armed) return null;
     if (!renderer || !scene) return;
     armed = false;
     if (trigger) trigger.onBeforeRender = previousBeforeRender;
@@ -658,9 +1050,10 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       libraryScope: options.libraryScope,
       bootstrapPlan: options.bootstrapPlan,
       ...residencyOptionsForBoundary(entity, boundary, renderer),
+      ...requestOptions,
     };
     boundary.userData.authoredAssetState = 'loading';
-    enqueueBoundaryUpgrade(scene, {
+    const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
       fallbackRoot,
       entity,
@@ -672,6 +1065,8 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         syncActiveSurface(boundary, active);
       },
     });
+    boundary.userData.authoredUpgradePromise = completion;
+    return completion;
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
   if (trigger) {
@@ -739,7 +1134,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const update = activeRoot?.userData?.updateLod;
     if (typeof update === 'function') update(level);
   };
-  boundary.userData.requestAuthoredUpgrade = (renderer, scene) => {
+  boundary.userData.requestAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const existing = boundary.userData.authoredUpgradePromise;
+    if (existing) return existing;
     if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return false;
     boundary.userData.authoredAssetState = 'loading';
     const residency = residencyOptionsForBoundary(entity, boundary, renderer);
@@ -747,9 +1144,10 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
       ...residency,
+      ...requestOptions,
     };
     const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
-    return enqueueBoundaryUpgrade(scene, {
+    const completion = enqueueBoundaryUpgrade(scene, {
       key: `payload:${entity.data.payloadStableId || entity.id}`,
       boundary,
       entity,
@@ -767,6 +1165,8 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
         setActiveRoot,
       ),
     });
+    boundary.userData.authoredUpgradePromise = completion;
+    return completion;
   };
 
   return boundary;
@@ -863,11 +1263,23 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       error,
     );
   }
+  registerPreparedAuthoredAdmission(scene, boundary, authored);
+  let authoredDisposed = false;
+  const disposePreparedCargoCapsule = () => {
+    if (authoredDisposed) return false;
+    disposeDetachedAuthoredCargoCapsule(authored.root);
+    unregisterPreparedAuthoredAdmission(authored);
+    authoredDisposed = true;
+    return true;
+  };
+  if (options.deferBoundaryPublication === true) {
+    installPreparedBoundaryDisposer(boundary, disposePreparedCargoCapsule);
+  }
   boundary.userData.authoredAssetState = 'compiling-pipelines';
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    disposeDetachedAuthoredCargoCapsule(authored.root);
+    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
     return failAuthoredCargoCapsuleAdmission(
       boundary,
       fallbackRoot,
@@ -878,7 +1290,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     );
   }
   if (!boundary.parent) {
-    disposeDetachedAuthoredCargoCapsule(authored.root);
+    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-after-pipeline-compile');
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
@@ -889,6 +1301,7 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     authored,
     entity,
     setActiveRoot,
+    options,
   );
 }
 
@@ -918,12 +1331,13 @@ function commitAuthoredCargoCapsuleBoundary(
   authored,
   entity,
   setActiveRoot,
+  options = {},
 ) {
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  unregisterPreparedAuthoredAdmission(authored);
   setActiveRoot(authored.root);
   releaseDetachedCargoCapsuleSubstrate(fallbackRoot);
-  boundary.userData.authoredAssetState = 'authored';
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
@@ -932,7 +1346,17 @@ function commitAuthoredCargoCapsuleBoundary(
   boundary.userData.__socketCache = new Map();
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
-  setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+  const publish = () => {
+    boundary.userData.authoredAssetState = 'authored';
+    setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+    return true;
+  };
+  if (options.deferBoundaryPublication === true) {
+    boundary.userData.authoredAssetState = 'authored-prepared';
+    installPreparedBoundaryPublisher(boundary, publish);
+  } else {
+    publish();
+  }
   return true;
 }
 
@@ -1166,21 +1590,30 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
   const trigger = firstRenderable(fallbackRoot);
-  const startAuthoredUpgrade = (renderer, scene) => {
-    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
+  const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const existing = boundary.userData.authoredUpgradePromise;
+    if (existing) return existing;
+    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return null;
     boundary.userData.authoredAssetState = 'loading';
-    enqueueBoundaryUpgrade(scene, {
+    const residency = residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer);
+    const upgradeOptions = {
+      releaseMode,
+      loadAuthoredPart: options.loadAuthoredPart,
+      admissionEntity: options.liveEntity || entity,
+      ...residency,
+      ...requestOptions,
+    };
+    const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: options.liveEntity || entity,
-      run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
-        releaseMode,
-        loadAuthoredPart: options.loadAuthoredPart,
-        admissionEntity: options.liveEntity || entity,
-        ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer),
-      }, setActiveVisualRoot),
+      run: () => upgradePlaceBoundary(
+        boundary, fallbackRoot, entity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+      ),
       renderer,
-      options: { releaseMode, ...residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer) },
+      options: upgradeOptions,
     });
+    boundary.userData.authoredUpgradePromise = completion;
+    return completion;
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
@@ -1253,20 +1686,28 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     if (controller && typeof controller.update === 'function') controller.update(liveEntity, simTime, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
-  const startAuthoredUpgrade = (renderer, scene) => {
-    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return;
+  const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const existing = boundary.userData.authoredUpgradePromise;
+    if (existing) return existing;
+    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return null;
     boundary.userData.authoredAssetState = 'loading';
-    enqueueBoundaryUpgrade(scene, {
+    const upgradeOptions = {
+      releaseMode,
+      loadAuthoredPart: options.loadAuthoredPart,
+      ...residencyOptionsForBoundary(entity, boundary, renderer),
+      ...requestOptions,
+    };
+    const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
       entity,
-      run: () => upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, {
-        releaseMode,
-        loadAuthoredPart: options.loadAuthoredPart,
-        ...residencyOptionsForBoundary(entity, boundary, renderer),
-      }, setActiveVisualRoot),
+      run: () => upgradePlaceBoundary(
+        boundary, fallbackRoot, entity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+      ),
       renderer,
-      options: { releaseMode, ...residencyOptionsForBoundary(entity, boundary, renderer) },
+      options: upgradeOptions,
     });
+    boundary.userData.authoredUpgradePromise = completion;
+    return completion;
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
@@ -1289,6 +1730,8 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 function authoredAdmissionStarted(state) {
   return state === 'loading'
     || state === 'compiling-pipelines'
+    || state === 'authored-prepared'
+    || state === 'same-semantic-fallback-prepared'
     || state === 'authored'
     || state === 'authored-with-cleanup-error'
     || state === 'same-semantic-fallback';
@@ -1355,18 +1798,41 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     );
   }
 
+  registerPreparedAuthoredAdmission(scene, boundary, authored);
+  let authoredDisposed = false;
+  const disposePreparedPlace = () => {
+    if (authoredDisposed) return false;
+    disposeDetachedPlaceFallback(authored.root);
+    authored.root.clear();
+    unregisterPreparedAuthoredAdmission(authored);
+    authoredDisposed = true;
+    return true;
+  };
+  if (options.deferBoundaryPublication === true) {
+    installPreparedBoundaryDisposer(boundary, disposePreparedPlace);
+  }
+
   boundary.userData.authoredAssetState = 'compiling-pipelines';
   const completeAdmission = async () => {
     try {
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
-      try { disposeDetachedPlaceFallback(authored.root); } catch { /* best-effort detached cleanup */ }
+      try {
+        await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          'Prepared authored place cleanup failed after pipeline admission failure',
+          { cause: error },
+        );
+      }
       return failAuthoredPlaceAdmission(
         boundary, fallbackRoot, entity, renderer, options, setActive,
         'place-pipeline-compile-failed', error,
       );
     }
     if (!boundary.parent) {
+      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
       return false;
     }
@@ -1376,12 +1842,13 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       authored,
       setActive,
       options.admissionEntity || entity,
+      options,
     );
   };
   if (options.overlapAuthoredPipelineCompile === true) {
     const pending = completeAdmission();
     boundary.userData.authoredPipelineReady = pending;
-    return true;
+    return pending;
   }
   return completeAdmission();
 }
@@ -1398,7 +1865,6 @@ function failAuthoredPlaceAdmission(
     fallbackRoot.userData.authoredVisualRoot = 'procedural-geology-fallback';
     if (error?.message) fallbackRoot.userData.authoredFallbackReason = error.message;
     setActive(fallbackRoot);
-    boundary.userData.authoredAssetState = 'same-semantic-fallback';
     boundary.userData.authoredReadableFallbackRetained = true;
     boundary.userData.authoredVisualRoot = 'procedural-geology-fallback';
     boundary.userData.authoredFallbackReason = reason;
@@ -1408,7 +1874,17 @@ function failAuthoredPlaceAdmission(
       assetBoundary: 'same-semantic procedural geology fallback',
       gracefulFallback: true,
     };
-    setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
+    const publish = () => {
+      boundary.userData.authoredAssetState = 'same-semantic-fallback';
+      setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
+      return true;
+    };
+    if (options.deferBoundaryPublication === true) {
+      boundary.userData.authoredAssetState = 'same-semantic-fallback-prepared';
+      installPreparedBoundaryPublisher(boundary, publish);
+    } else {
+      publish();
+    }
     if (error) console.warn('[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
     return false;
   }
@@ -1422,14 +1898,15 @@ function failAuthoredPlaceAdmission(
   return false;
 }
 
-function commitAuthoredPlaceBoundary(boundary, fallbackRoot, authored, setActive, admissionEntity) {
+function commitAuthoredPlaceBoundary(
+  boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
+) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
-  boundary.userData.authoredAssetState = 'authored';
-  setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -1439,6 +1916,18 @@ function commitAuthoredPlaceBoundary(boundary, fallbackRoot, authored, setActive
   boundary.userData.assetId = authored.root.userData.assetId;
   boundary.userData.renderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map();
+
+  const publish = () => {
+    boundary.userData.authoredAssetState = 'authored';
+    setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
+    return true;
+  };
+  if (options.deferBoundaryPublication === true) {
+    boundary.userData.authoredAssetState = 'authored-prepared';
+    installPreparedBoundaryPublisher(boundary, publish);
+  } else {
+    publish();
+  }
 
   try { disposeDetachedPlaceFallback(fallbackRoot); }
   catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
@@ -2117,8 +2606,14 @@ function placeFileForEntity(entity) {
 
 export function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
-  if (!job || !job.boundary || state.byBoundary.has(job.boundary)) return;
-  if (!boundaryBelongsToScene(job.boundary, scene)) return;
+  if (!job || !job.boundary) return Promise.resolve({ status: 'invalid-upgrade-request' });
+  const boundaryJob = state.byBoundary.get(job.boundary);
+  if (boundaryJob) return boundaryJob.completion;
+  if (!boundaryBelongsToScene(job.boundary, scene)) {
+    return Promise.resolve({ status: 'cancelled-before-queue', boundary: job.boundary });
+  }
+  let resolveCompletion;
+  const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
     ...job,
     priority: authoredUpgradePriority(job),
@@ -2126,13 +2621,22 @@ export function enqueueBoundaryUpgrade(scene, job) {
     sequence: state.nextSequence++,
     assetUrls: authoredUpgradeAssetUrls(job),
     estimatedBytes: authoredUpgradeEstimatedBytes(job),
+    completion,
+    resolveCompletion,
+    completionSettled: false,
+    lifecycle: 'queued',
   };
   const keyedJob = state.byKey.get(queuedJob.key);
   if (keyedJob) {
-    if (jobStillNeeded(state, keyedJob)) return;
-    const staleIndex = state.jobs.indexOf(keyedJob);
-    if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
-    cancelQueuedJob(state, keyedJob);
+    if (jobStillNeeded(state, keyedJob)) return keyedJob.completion;
+    if (keyedJob.lifecycle === 'queued') {
+      const staleIndex = state.jobs.indexOf(keyedJob);
+      if (staleIndex >= 0) state.jobs.splice(staleIndex, 1);
+      cancelQueuedJob(state, keyedJob);
+    }
+    // An admitted job owns its decode/compile/upload group until its all-settled completion. Leave
+    // it running; the serial lane holds this replacement queued, and the identity-guarded map
+    // cleanup below cannot delete the replacement when the old job finally settles.
   }
   const insertionIndex = state.jobs.findIndex((candidate) => candidate.priority > queuedJob.priority);
   if (insertionIndex < 0) state.jobs.push(queuedJob);
@@ -2141,6 +2645,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   state.byKey.set(queuedJob.key, queuedJob);
   if (!state.running) processUpgradeQueue(state);
   else scheduleNextUpgradeFrame(state);
+  return completion;
 }
 
 function upgradeQueueState(scene) {
@@ -2247,7 +2752,9 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
       : null,
     prepareAuthoredGpuResidency: liveState && liveState.render
       && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
-      ? (root) => liveState.render.prepareAuthoredGpuResidency(root)
+      ? (root, admissionOptions = {}) => liveState.render.prepareAuthoredGpuResidency(root, {
+          isActive: admissionOptions.isResidencyOwnerActive,
+        })
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
   };
@@ -2319,6 +2826,8 @@ function cleanupQueuedJob(state, job) {
 }
 
 function cancelQueuedJob(state, job) {
+  if (!job || job.lifecycle === 'in-flight' || job.lifecycle === 'settled') return false;
+  job.lifecycle = 'cancelled';
   cleanupQueuedJob(state, job);
   const residency = job && job.renderer && getAssetResidency(job.renderer);
   if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
@@ -2326,6 +2835,20 @@ function cancelQueuedJob(state, job) {
     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
   }
   recordUpgradeCancellation(state, job);
+  settleUpgradeJob(job, 'cancelled-before-load');
+  return true;
+}
+
+function settleUpgradeJob(job, status, result = null, error = null) {
+  if (!job || job.completionSettled) return false;
+  job.completionSettled = true;
+  job.resolveCompletion({
+    status: status || 'completed',
+    result,
+    error: error || null,
+    boundary: job.boundary || null,
+  });
+  return true;
 }
 
 function scheduleUpgradeFrame(callback) {
@@ -2372,6 +2895,7 @@ function admitNextUpgradeJob(state) {
     return;
   }
 
+  job.lifecycle = 'in-flight';
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
   // One entity admission per frame. Composition commits remain serial in every mode because they
@@ -2389,11 +2913,15 @@ function admitNextUpgradeJob(state) {
       job.setActive,
       job.prefetchPromise,
     );
-  Promise.resolve().then(run).then(() => {
+  let result = null;
+  let failure = null;
+  Promise.resolve().then(run).then((value) => {
+    result = value;
     diagnostic.status = job.boundary && job.boundary.userData
       ? job.boundary.userData.authoredAssetState || 'completed'
       : 'completed';
   }).catch((error) => {
+    failure = error;
     diagnostic.status = 'fallback-after-error';
     diagnostic.error = error && error.message ? error.message : String(error);
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
@@ -2402,8 +2930,10 @@ function admitNextUpgradeJob(state) {
   })
     .finally(() => {
       state.inFlight--;
+      job.lifecycle = 'settled';
       finishUpgradeDiagnostic(state, job, diagnostic);
       cleanupQueuedJob(state, job);
+      settleUpgradeJob(job, diagnostic.status, result, failure);
       scheduleNextUpgradeFrame(state);
     });
   scheduleNextUpgradeFrame(state);
@@ -2679,6 +3209,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // Admission must compile the exact material state used by the first visible draw. These same
   // idempotent policies also run at the presentation boundary, but applying them only after this
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
+  assertAuthoredVisualPreparationActive(options, 'before-material-policy');
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
   const tier1 = tier1CausalCounters();
@@ -2690,14 +3221,25 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   const pipelines = typeof preparePipelines === 'function'
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };
+  assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
   const gpuResidency = typeof prepareResidency === 'function'
-    ? await prepareResidency(root)
+    ? await prepareResidency(root, {
+        isResidencyOwnerActive: options.isResidencyOwnerActive,
+      })
     : { skipped: true, reason: 'GPU residency uploader unavailable' };
+  assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
   return {
     skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
     pipelines,
     gpuResidency,
   };
+}
+
+function assertAuthoredVisualPreparationActive(options, phase) {
+  const isActive = options && options.isResidencyOwnerActive;
+  if (typeof isActive === 'function' && isActive() !== true) {
+    throw new Error(`Authored visual preparation owner became inactive ${phase}`);
+  }
 }
 
 async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
@@ -2708,9 +3250,22 @@ async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
   for (const admission of poolAdmissions) {
     preparations.push(prepareRenderPackagePoolAdmission(admission, options));
   }
-  const [rootPreparation] = await Promise.all(preparations);
-  for (const admission of poolAdmissions) activateRenderPackagePoolAdmission(admission);
-  return rootPreparation;
+  // A first rejection must not release an owner while sibling compile/upload work is still touching
+  // its resources. Settle the complete admission group, then either fail/clean it as one unit or
+  // publish every prepared pool. Sector-entry staging deliberately defers that publication so an
+  // incoming hidden owner cannot suppress a current-sector direct candidate during jump charge.
+  const outcomes = await Promise.allSettled(preparations);
+  const failures = outcomes.filter((outcome) => outcome.status === 'rejected');
+  if (failures.length) {
+    throw new AggregateError(
+      failures.map((outcome) => outcome.reason),
+      'Authored ship pipeline admission failed',
+    );
+  }
+  if (options.deferPackagePoolActivation !== true) {
+    for (const admission of poolAdmissions) activateRenderPackagePoolAdmission(admission);
+  }
+  return outcomes[0].value;
 }
 
 export async function retryAuthoredPartLibrary(renderer, options = {}) {
@@ -2726,9 +3281,9 @@ export async function retryAuthoredPartLibrary(renderer, options = {}) {
 
 async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive, prefetchedLibrary = null) {
   let swapped = false;
+  let authored = null;
   try {
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
-    let authored;
     const compositionStartedAtMs = monotonicNow();
     try {
       authored = buildComposedShip(entity, library, scene, boundary, options);
@@ -2742,7 +3297,13 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       boundary.userData.authoredVisualRoot = 'none-build-failed';
       setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
       releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable');
-      return;
+      return false;
+    }
+    registerPreparedAuthoredAdmission(scene, boundary, authored);
+    if (options.deferBoundaryPublication === true) {
+      installPreparedBoundaryDisposer(boundary, () => (
+        disposePreparedShipBoundaryResources(boundary, authored)
+      ));
     }
     boundary.userData.authoredAssetState = 'compiling-pipelines';
     const completeAdmission = async () => {
@@ -2758,7 +3319,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       await pipelineReady;
       const commitStartedAtMs = monotonicNow();
       try {
-        swapped = commitAuthoredBoundary(
+        swapped = await commitAuthoredBoundary(
           boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
         );
       } finally {
@@ -2770,38 +3331,148 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       return swapped;
     };
     if (options.overlapAuthoredPipelineCompile === true) {
-      const pending = completeAdmission().catch((error) => {
-        handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error);
+      const pending = completeAdmission().catch(async (error) => {
+        await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
-      return;
+      return pending;
     }
-    await completeAdmission();
+    return await completeAdmission();
   } catch (error) {
-    handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error);
+    await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+    return false;
   }
 }
 
-function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error) {
+async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null) {
   if (!swapped) {
     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
-    releaseOwnerInstances(boundary);
+    const cleanupErrors = [];
+    const preparedDisposal = disposePreparedAuthoredBoundary(boundary);
+    if (preparedDisposal !== false) {
+      try { await preparedDisposal; } catch (cleanupError) { cleanupErrors.push(cleanupError); }
+    } else {
+      try { await releaseOwnerInstances(boundary); } catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      if (authored && authored.root) {
+        try { await disposePreparedAuthoredShip(authored); } catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      }
+    }
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
     console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
+    if (cleanupErrors.length) {
+      throw new AggregateError([error, ...cleanupErrors], 'Authored composition failure cleanup failed', {
+        cause: error,
+      });
+    }
   } else {
     boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
     console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
   }
 }
 
-function commitAuthoredBoundary(
+async function disposePreparedAuthoredShip(authored) {
+  const root = authored && authored.root;
+  if (!root) return false;
+  if (authored.preparedCleanupComplete === true) return false;
+  const completed = authored.preparedCleanupCompleted || new Set();
+  authored.preparedCleanupCompleted = completed;
+  const cleanupErrors = [];
+  const attempt = async (key, cleanup) => {
+    if (completed.has(key)) return;
+    try {
+      await cleanup();
+      completed.add(key);
+    }
+    catch (error) { cleanupErrors.push(error); }
+  };
+  for (const instance of authored.renderPackageInstances || EMPTY_ARRAY) {
+    await attempt(instance, () => instance?.dispose?.('authored-ship-preparation-failed'));
+  }
+  for (const object of authored.ownerLocalObjects || EMPTY_ARRAY) {
+    await attempt(object, () => object?.dispose?.());
+  }
+  for (const geometry of authored.ownerLocalGeometries || EMPTY_ARRAY) {
+    await attempt(geometry, () => geometry?.dispose?.());
+  }
+  for (const material of authored.ownerLocalMaterials || EMPTY_ARRAY) {
+    await attempt(material, () => material?.dispose?.());
+  }
+  await attempt(root, () => root.clear());
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, 'Prepared authored ship cleanup failed');
+  }
+  unregisterPreparedAuthoredAdmission(authored);
+  authored.preparedCleanupComplete = true;
+  return true;
+}
+
+async function disposePreparedShipBoundaryResources(boundary, authored) {
+  const cleanupErrors = [];
+  try { await releaseOwnerInstances(boundary); } catch (error) { cleanupErrors.push(error); }
+  try { await disposePreparedAuthoredShip(authored); } catch (error) { cleanupErrors.push(error); }
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, 'Prepared authored boundary cleanup failed');
+  }
+  return true;
+}
+
+function installPreparedBoundaryDisposer(boundary, dispose) {
+  if (!boundary?.userData || typeof dispose !== 'function') return false;
+  let completion = null;
+  boundary.userData.__disposePreparedAuthoredBoundary = () => {
+    if (completion) return completion;
+    completion = Promise.resolve().then(dispose).then(
+      (result) => {
+        delete boundary.userData.__disposePreparedAuthoredBoundary;
+        return result !== false;
+      },
+      (error) => {
+        completion = null;
+        throw error;
+      },
+    );
+    completion.catch(() => null);
+    return completion;
+  };
+  return true;
+}
+
+export function disposePreparedAuthoredBoundary(boundary) {
+  const dispose = boundary?.userData?.__disposePreparedAuthoredBoundary;
+  return typeof dispose === 'function' ? dispose() : false;
+}
+
+/** Publish an exact boundary prepared while its final scene owner was hidden. Package-pool proxy
+ * activation and presentation admission are deliberately one transaction at the reveal boundary. */
+export function publishPreparedAuthoredBoundary(boundary) {
+  const publish = boundary && boundary.userData && boundary.userData.__publishPreparedAuthoredBoundary;
+  if (typeof publish === 'function') return publish();
+  const state = boundary && boundary.userData && boundary.userData.authoredAssetState;
+  return state === 'authored' || state === 'same-semantic-fallback';
+}
+
+function installPreparedBoundaryPublisher(boundary, publish) {
+  let published = false;
+  boundary.userData.__publishPreparedAuthoredBoundary = () => {
+    if (published) return true;
+    const result = publish();
+    if (result === false) return false;
+    published = true;
+    delete boundary.userData.__publishPreparedAuthoredBoundary;
+    return true;
+  };
+}
+
+async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
   if (!boundary.parent) {
-    if (preparedAuthored) releaseOwnerInstances(boundary);
+    if (preparedAuthored) {
+      await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
+    }
     return false; // destroyed while assets or GPU programs were in flight
   }
 
@@ -2812,8 +3483,15 @@ function commitAuthoredBoundary(
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
     return false;
   }
+  if (options.deferBoundaryPublication === true
+      && typeof boundary.userData.__disposePreparedAuthoredBoundary !== 'function') {
+    installPreparedBoundaryDisposer(boundary, () => (
+      disposePreparedShipBoundaryResources(boundary, authored)
+    ));
+  }
   if (!boundary.parent) {
-    releaseOwnerInstances(boundary);
+    if (options.deferBoundaryPublication === true) await disposePreparedAuthoredBoundary(boundary);
+    else await disposePreparedShipBoundaryResources(boundary, authored);
     return false;
   }
 
@@ -2826,10 +3504,9 @@ function commitAuthoredBoundary(
   // is never a live readability layer and cannot turn a box or blue-clay body into a different ship.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
 
-  boundary.userData.authoredAssetState = 'authored';
-  setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
@@ -2840,9 +3517,24 @@ function commitAuthoredBoundary(
   boundary.userData.assetId = authored.root.userData.assetId;
   boundary.userData.renderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
-  if (typeof options.onSwap === 'function') {
-    try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
-    catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
+
+  const publish = () => {
+    for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
+      activateRenderPackagePoolAdmission(admission);
+    }
+    boundary.userData.authoredAssetState = 'authored';
+    setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+    if (typeof options.onSwap === 'function') {
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
+      catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
+    }
+    return true;
+  };
+  if (options.deferBoundaryPublication === true) {
+    boundary.userData.authoredAssetState = 'authored-prepared';
+    installPreparedBoundaryPublisher(boundary, publish);
+  } else {
+    publish();
   }
 
   try { disposeDetachedObject(fallbackRoot); }
@@ -3246,6 +3938,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const bindings = createBindings();
   const mutableMaterials = new Map();
   const staticBatches = createStaticBatchCollector(hull, bindings);
+  const ownerLocalFallbackRoots = [];
   const fallbackParts = [];
   const usedParts = [];
   const authoredSlots = {};
@@ -3287,7 +3980,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('cockpit', cockpitRecord);
   } else {
-    buildFallbackCockpit(hull, materials, cockpitPlacement);
+    ownerLocalFallbackRoots.push(buildFallbackCockpit(hull, materials, cockpitPlacement));
     fallbackParts.push('cockpit');
   }
 
@@ -3314,6 +4007,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
       bindings.driveFans.push(drive.fan);
       bindings.driveCores.push(drive.driveCore);
       bindings.drivePlumes.push(drive.plume);
+      ownerLocalFallbackRoots.push(drive.root);
     }
     fallbackParts.push('engine');
   }
@@ -3334,7 +4028,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
       instantiatePart(finRecord, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     } else {
-      buildFallbackFin(hull, materials, placement);
+      ownerLocalFallbackRoots.push(buildFallbackFin(hull, materials, placement));
     }
   }
   if (finRecord) noteUsed('fin', finRecord);
@@ -3395,7 +4089,9 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   }
   } // end !wholeShip — complete production bodies own their visible weapon/pod/gear/greeble roles
 
-  if (!bindings.navLights.length) buildFallbackNavLights(hull, materials, bindings);
+  if (!bindings.navLights.length) {
+    ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
+  }
   ensureStandardSockets(hull);
   staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
@@ -3447,6 +4143,40 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   boundsProxy.userData.keepSeparate = true;
   hull.add(boundsProxy);
 
+  const ownerLocalGeometries = new Set([boundsProxy.geometry]);
+  const ownerLocalMaterials = new Set([
+    ...Object.values(materials),
+    ...mutableMaterials.values(),
+    shieldBubble.material,
+    boundsProxy.material,
+  ].filter(Boolean));
+  const ownerLocalObjects = new Set();
+  const renderPackageInstances = [];
+  for (const fallbackRoot of ownerLocalFallbackRoots.filter(Boolean)) {
+    fallbackRoot.traverse((object) => {
+      if (typeof object.dispose === 'function') ownerLocalObjects.add(object);
+      const geometry = object.geometry;
+      if (geometry && geometry.userData?.spacefaceSharedFallback !== true) {
+        ownerLocalGeometries.add(geometry);
+      }
+      const objectMaterials = object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material])
+        : EMPTY_ARRAY;
+      for (const material of objectMaterials) {
+        if (material && material.userData?.spacefaceSharedAsset !== true) {
+          ownerLocalMaterials.add(material);
+        }
+      }
+    });
+  }
+  root.traverse((object) => {
+    if (object.userData?.spacefaceStaticBatch === true && object.geometry) {
+      ownerLocalGeometries.add(object.geometry);
+    }
+    const instance = object.userData?.renderPackageInstance;
+    if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
+  });
+
   root.userData.renderContract = {
     version: 1,
     coordinateSystem: '+X forward, +Y up, +Z starboard; normalized assembly scaled to entity radius',
@@ -3466,6 +4196,10 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts,
     wholeShip,
     packagePoolAdmissions: [...bindings.packagePoolAdmissions],
+    ownerLocalObjects: [...ownerLocalObjects],
+    ownerLocalGeometries: [...ownerLocalGeometries],
+    ownerLocalMaterials: [...ownerLocalMaterials],
+    renderPackageInstances,
   };
 }
 
@@ -4996,7 +5730,20 @@ function allocateInstance(scene, owner, proxy, geometry, material, label, option
     throw error;
   }
 
-  const release = () => releaseInstanceSlot(state, pool, slot);
+  const release = () => {
+    const retirements = [];
+    if (slot.released) {
+      const chunk = slot.chunk;
+      if (chunk && !chunk.retired && state.retiringChunks.has(chunk)) {
+        retirements.push(scheduleRetiredInstanceChunkFinalization(
+          state, pool, chunk, chunk.packageAdmission, null,
+        ));
+      }
+    } else {
+      releaseInstanceSlot(state, pool, slot, { retirements });
+    }
+    return retirements.length ? Promise.all(retirements) : true;
+  };
   const rollback = () => releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
   try {
     registerOwnerRelease(owner, release);
@@ -5030,8 +5777,8 @@ function releaseInstanceSlot(state, pool, slot, options = {}) {
     chunk.mesh.visible = chunk.mesh.count > 0;
     commitInstanceChunkMatrix(chunk);
   } finally {
-    const collapsed = options.skipPackageCollapse !== true && collapsePackagePoolIfUnique(state, pool);
-    if (!collapsed) retireInstancePoolIfEmpty(state, pool);
+    const collapsed = options.skipPackageCollapse !== true && collapsePackagePoolIfUnique(state, pool, options);
+    if (!collapsed) retireInstancePoolIfEmpty(state, pool, options);
   }
   return true;
 }
@@ -5102,38 +5849,123 @@ function packagePoolSlots(pool) {
   return slots;
 }
 
-function collapsePackagePoolIfUnique(state, pool) {
+function collapsePackagePoolIfUnique(state, pool, options = {}) {
   const slots = packagePoolSlots(pool);
   if (!slots.length || new Set(slots.map((slot) => slot.owner)).size >= 2) return false;
   const candidate = slots[0].packageCandidate;
   for (const slot of slots) restoreDirectPackageMesh(slot.proxy, false);
   for (const slot of slots) {
-    releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
+    releaseInstanceSlot(state, pool, slot, {
+      skipPackageCollapse: true,
+      retirements: options.retirements,
+    });
   }
   if (candidate?.owner?.parent) installPackagePoolCandidate(state, candidate);
   return true;
 }
 
-function retireInstancePoolIfEmpty(state, pool) {
+function retireInstancePoolIfEmpty(state, pool, options = {}) {
   if (!pool || pool.chunks.some((chunk) => chunk.slots.size > 0)) return false;
-  for (const chunk of pool.chunks) {
-    if (chunk.packageAdmission) {
-      chunk.packageAdmission.cancelled = true;
-      chunk.packageAdmission.slots.clear();
-      chunk.packageAdmission = null;
+  const retirements = Array.isArray(options.retirements) ? options.retirements : null;
+  if (pool.retirementPending) {
+    if (retirements) {
+      for (const chunk of pool.chunks) {
+        if (chunk.retirementPromise) retirements.push(chunk.retirementPromise);
+      }
     }
-    state.affectedChunks.delete(chunk);
-    unregisterDynamicBufferOwner(chunk.dynamicBufferOwner);
-    chunk.dynamicBufferOwner = null;
-    chunk.mesh.removeFromParent();
-    chunk.mesh.dispose();
-    chunk.slots.clear();
-    chunk.visibleIndices.clear();
-    chunk.free.length = 0;
+    return true;
   }
-  pool.chunks.length = 0;
+  pool.retirementPending = true;
   if (state.pools.get(pool.key) === pool) state.pools.delete(pool.key);
+  const immediateErrors = [];
+  for (const chunk of [...pool.chunks]) {
+    state.retiringChunks.add(chunk);
+    const admission = chunk.packageAdmission || null;
+    if (admission) {
+      admission.cancelled = true;
+      admission.slots.clear();
+      delete chunk.mesh.userData.spacefacePackageAdmissionPending;
+    }
+    if (admission && admission.preparation && !admission.prepared) {
+      // GPU compilation/upload still owns this exact target. Logical cancellation is immediate, but
+      // object/dynamic-buffer disposal must wait for that admitted work to settle.
+      const retirement = scheduleRetiredInstanceChunkFinalization(
+        state, pool, chunk, admission, admission.preparation,
+      );
+      if (retirements) retirements.push(retirement);
+    } else {
+      try { finalizeRetiredInstanceChunk(state, pool, chunk, admission); }
+      catch (error) { immediateErrors.push(error); }
+    }
+  }
+  if (immediateErrors.length) {
+    throw new AggregateError(immediateErrors, `Instance pool ${pool.key} retirement failed`);
+  }
   return true;
+}
+
+function scheduleRetiredInstanceChunkFinalization(state, pool, chunk, admission, barrier) {
+  if (!chunk || chunk.retired) return Promise.resolve(chunk);
+  if (chunk.retirementSettling && chunk.retirementPromise) return chunk.retirementPromise;
+  chunk.retirementSettling = true;
+  const ready = barrier
+    ? Promise.resolve(barrier).then(() => null, () => null)
+    : Promise.resolve();
+  const retirement = ready.then(() => finalizeRetiredInstanceChunk(state, pool, chunk, admission));
+  chunk.retirementPromise = retirement.then(
+    (value) => {
+      chunk.retirementSettling = false;
+      chunk.retirementError = null;
+      return value;
+    },
+    (error) => {
+      chunk.retirementSettling = false;
+      chunk.retirementError = error;
+      throw error;
+    },
+  );
+  chunk.retirementPromise.catch(() => null);
+  return chunk.retirementPromise;
+}
+
+function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
+  if (!chunk || chunk.retired) return chunk;
+  const cleanupErrors = [];
+  const attempt = (cleanup) => {
+    try { cleanup(); }
+    catch (error) { cleanupErrors.push(error); }
+  };
+  if (chunk.dynamicBufferOwner) {
+    attempt(() => {
+      unregisterDynamicBufferOwner(chunk.dynamicBufferOwner);
+      chunk.dynamicBufferOwner = null;
+    });
+  }
+  if (chunk.meshRemoved !== true) {
+    attempt(() => {
+      chunk.mesh.removeFromParent();
+      chunk.meshRemoved = true;
+    });
+  }
+  if (chunk.meshDisposed !== true) {
+    attempt(() => {
+      chunk.mesh.dispose();
+      chunk.meshDisposed = true;
+    });
+  }
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, `Instance chunk ${chunk.mesh?.name || chunk.ordinal} cleanup failed`);
+  }
+  chunk.retired = true;
+  if (chunk.packageAdmission === admission) chunk.packageAdmission = null;
+  state.affectedChunks.delete(chunk);
+  state.retiringChunks.delete(chunk);
+  chunk.slots.clear();
+  chunk.visibleIndices.clear();
+  chunk.free.length = 0;
+  const index = pool.chunks.indexOf(chunk);
+  if (index >= 0) pool.chunks.splice(index, 1);
+  return chunk;
 }
 
 function writeInstanceChunkMatrix(chunk, index, matrix) {
@@ -5341,6 +6173,8 @@ function sceneState(scene) {
       activeFrameOwners: new Set(),
       nextFrameOwners: new Set(),
       affectedChunks: new Set(),
+      retiringChunks: new Set(),
+      preparedAuthoredRoots: new Map(),
       frameRecordsByOwner: new Map(),
       cullContext: createInstanceCullContext(),
       cameraState: { initialized: false, present: false, values: new Float64Array(32) },
@@ -5567,10 +6401,10 @@ function isOwnerInCullContext(owner, context, stats) {
 function registerOwnerRelease(owner, release) {
   let state = ownerReleaseState.get(owner);
   if (!state) {
-    state = { releases: new Set() };
+    state = { releases: new Set(), pending: new Set(), errors: [] };
     state.listener = () => {
-      for (const fn of [...state.releases]) fn();
-      state.releases.clear();
+      const errors = drainOwnerReleaseCallbacks(state);
+      if (errors.length) throw new AggregateError(errors, 'Authored instance owner release failed');
     };
     owner.addEventListener('removed', state.listener);
     ownerReleaseState.set(owner, state);
@@ -5580,9 +6414,50 @@ function registerOwnerRelease(owner, release) {
 
 function releaseOwnerInstances(owner) {
   const state = ownerReleaseState.get(owner);
-  if (!state) return;
-  for (const fn of [...state.releases]) fn();
+  if (!state) return Promise.resolve(true);
+  drainOwnerReleaseCallbacks(state);
+  const settlement = (async () => {
+    while (state.pending.size) await Promise.allSettled([...state.pending]);
+    if (state.errors.length) {
+      const errors = state.errors.splice(0);
+      throw new AggregateError(errors, 'Authored instance owner cleanup failed');
+    }
+    return true;
+  })();
+  settlement.catch(() => null);
+  return settlement;
+}
+
+function drainOwnerReleaseCallbacks(state) {
+  const callbacks = [...state.releases];
   state.releases.clear();
+  const synchronousErrors = [];
+  for (const release of callbacks) {
+    try {
+      const result = release();
+      if (!result || typeof result.then !== 'function') continue;
+      let observed = null;
+      observed = Promise.resolve(result).then(
+        (value) => {
+          state.pending.delete(observed);
+          return value;
+        },
+        (error) => {
+          state.pending.delete(observed);
+          state.errors.push(error);
+          state.releases.add(release);
+          throw error;
+        },
+      );
+      observed.catch(() => null);
+      state.pending.add(observed);
+    } catch (error) {
+      synchronousErrors.push(error);
+      state.errors.push(error);
+      state.releases.add(release);
+    }
+  }
+  return synchronousErrors;
 }
 
 /**
@@ -6208,7 +7083,7 @@ function buildFallbackEngine(hull, placement, materials, palette, index) {
   group.name = `GLTFKit_Fallback_Engine_${index}`;
   applyPlacementTransform(group, placement);
   hull.add(group);
-  return kit.buildDrive(group, {
+  const drive = kit.buildDrive(group, {
     name: `GLTFKit_Drive_${index}`,
     position: [0, 0, 0],
     radius: 0.12,
@@ -6218,6 +7093,8 @@ function buildFallbackEngine(hull, placement, materials, palette, index) {
     coreColor: '#ffffff',
     driveGlowOpacity: 0.55,
   });
+  drive.root = group;
+  return drive;
 }
 
 function buildFallbackFin(hull, materials, placement) {
@@ -6258,11 +7135,16 @@ function buildFallbackNavLights(hull, materials, bindings) {
   lights.userData.spacefaceTags = { damageRole: 'navLight' };
   hull.add(lights);
   bindings.navLights.push(lights);
+  return lights;
 }
 
 function getFallbackNavLightGeometry() {
   if (!fallbackNavLightGeometry) {
     fallbackNavLightGeometry = new THREE.SphereGeometry(0.025, 8, 6);
+    fallbackNavLightGeometry.userData = {
+      ...(fallbackNavLightGeometry.userData || {}),
+      spacefaceSharedFallback: true,
+    };
     fallbackNavLightGeometry.dispose = () => {};
   }
   return fallbackNavLightGeometry;

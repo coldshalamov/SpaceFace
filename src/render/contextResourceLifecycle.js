@@ -4,15 +4,63 @@
 // restored. Resources rendered before the loss still retain dispose listeners from the old
 // managers, however. If a later sector transition disposes one of those resources, the stale
 // listener attempts to delete its old buffer/program/VAO through the restored context and Chromium
-// reports INVALID_OPERATION. Detach only Three's renderer-owned dispose listeners while the old
-// context is lost; the restored renderer reattaches fresh listeners when each resource is used.
+// reports INVALID_OPERATION. Function names are not provenance: release minification renames Three's
+// callbacks and a foreign listener can have the same name. The renderer-generation probe records the
+// exact opaque callback identities instead; context loss consumes that provenance once.
 
-const THREE_GPU_DISPOSE_LISTENER_NAMES = Object.freeze(new Set([
-  'onGeometryDispose',
-  'onMaterialDispose',
-  'onTextureDispose',
-  'onRenderTargetDispose',
-]));
+export const WEBGL_DISPOSE_LISTENER_KINDS = Object.freeze([
+  'instancedMeshes',
+  'geometries',
+  'materials',
+  'textures',
+  'renderTargets',
+]);
+
+const WEBGL_DISPOSE_LISTENER_MINIMUMS = Object.freeze({
+  instancedMeshes: 1,
+  geometries: 1,
+  // WebGLRenderer and WebGLShadowMap own distinct material-disposal callbacks.
+  materials: 2,
+  textures: 1,
+  renderTargets: 1,
+});
+
+export function createWebGlDisposeListenerProvenance() {
+  return {
+    instancedMeshes: new Set(),
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set(),
+    renderTargets: new Set(),
+  };
+}
+
+export function mergeWebGlDisposeListenerProvenance(target, source) {
+  const merged = target || createWebGlDisposeListenerProvenance();
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const listeners = source?.[kind];
+    if (!listeners || typeof listeners[Symbol.iterator] !== 'function') continue;
+    for (const listener of listeners) {
+      if (typeof listener === 'function') merged[kind].add(listener);
+    }
+  }
+  return merged;
+}
+
+export function describeWebGlDisposeListenerProvenance(provenance) {
+  const listenerCounts = {};
+  const missingKinds = [];
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const count = provenance?.[kind] instanceof Set ? provenance[kind].size : 0;
+    listenerCounts[kind] = count;
+    if (count < WEBGL_DISPOSE_LISTENER_MINIMUMS[kind]) missingKinds.push(kind);
+  }
+  return {
+    complete: missingKinds.length === 0,
+    missingKinds,
+    listenerCounts,
+  };
+}
 
 export function deferWebGlContextRestore(rebuild, enqueue = enqueueRestoreMicrotask) {
   if (typeof rebuild !== 'function') {
@@ -77,35 +125,49 @@ export function collectContextLossRoots({
   return roots.filter(Boolean);
 }
 
-export function detachStaleWebGlDisposeListeners(roots) {
+export function detachStaleWebGlDisposeListeners(roots, provenance) {
   const seenObjects = new Set();
   const seenResources = new Set();
+  const provenanceStatus = describeWebGlDisposeListenerProvenance(provenance);
   const counts = {
     objects: 0,
+    instancedMeshes: 0,
     geometries: 0,
     materials: 0,
     textures: 0,
     renderTargets: 0,
     listenersDetached: 0,
+    provenanceComplete: provenanceStatus.complete,
+    provenanceMissingKinds: provenanceStatus.missingKinds,
+    provenanceListenerCounts: provenanceStatus.listenerCounts,
+  };
+
+  const detachExactListeners = (resource, kind) => {
+    const provenListeners = provenance?.[kind];
+    if (!resource || !(provenListeners instanceof Set) || provenListeners.size === 0) return;
+    for (const listener of provenListeners) {
+      if (resource.hasEventListener?.('dispose', listener) !== true) continue;
+      resource.removeEventListener('dispose', listener);
+      counts.listenersDetached++;
+    }
   };
 
   const visitResource = (resource) => {
     if (!resource || typeof resource !== 'object' || seenResources.has(resource)) return;
     seenResources.add(resource);
-    if (resource.isBufferGeometry) counts.geometries++;
-    else if (resource.isMaterial) counts.materials++;
-    else if (resource.isTexture) counts.textures++;
-    else if (resource.isWebGLRenderTarget) counts.renderTargets++;
-    else return;
-
-    const listeners = Array.isArray(resource._listeners?.dispose)
-      ? resource._listeners.dispose.slice()
-      : [];
-    for (const listener of listeners) {
-      if (!THREE_GPU_DISPOSE_LISTENER_NAMES.has(listener?.name)) continue;
-      resource.removeEventListener?.('dispose', listener);
-      counts.listenersDetached++;
-    }
+    if (resource.isBufferGeometry) {
+      counts.geometries++;
+      detachExactListeners(resource, 'geometries');
+    } else if (resource.isMaterial) {
+      counts.materials++;
+      detachExactListeners(resource, 'materials');
+    } else if (resource.isTexture) {
+      counts.textures++;
+      detachExactListeners(resource, 'textures');
+    } else if (resource.isWebGLRenderTarget) {
+      counts.renderTargets++;
+      detachExactListeners(resource, 'renderTargets');
+    } else return;
 
     if (resource.isMaterial) {
       for (const [key, value] of Object.entries(resource)) {
@@ -123,6 +185,10 @@ export function detachStaleWebGlDisposeListeners(roots) {
     if (!object || typeof object !== 'object' || seenObjects.has(object)) return;
     seenObjects.add(object);
     counts.objects++;
+    if (object.isInstancedMesh) {
+      counts.instancedMeshes++;
+      detachExactListeners(object, 'instancedMeshes');
+    }
     visitResource(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) visitResource(material);
     visitResource(object.customDepthMaterial);

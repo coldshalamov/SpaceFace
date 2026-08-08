@@ -17,10 +17,16 @@ import {
 } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
+  authoredCompositionFingerprintForEntity,
   authoredPrewarmRequestsForEntities,
+  beginAuthoredInstanceMeshDisposeRegistrationProbe,
+  disposePreparedAuthoredBoundary,
+  endAuthoredInstanceMeshDisposeRegistrationProbe,
   getAuthoredInstancePoolDiagnostics,
   isInitialAuthoredCompositionEntity,
   preloadAuthoredPartLibrary,
+  prepareAuthoredInstancePoolsForContextLoss,
+  publishPreparedAuthoredBoundary,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
@@ -805,11 +811,853 @@ function getPooledNavLightSources(root) {
   return sources;
 }
 
-function requestAuthoredUpgrade(mesh, renderer, scene) {
+export const SECTOR_BOUNDARY_PREPARATION_STATE = Object.freeze({
+  reserved: 'RESERVED',
+  mountedHidden: 'MOUNTED_HIDDEN',
+  preparing: 'PREPARING',
+  ready: 'READY',
+  publishing: 'PUBLISHING',
+  live: 'LIVE',
+  aborting: 'ABORTING',
+  disposed: 'DISPOSED',
+});
+
+export function isLiveSectorBoundaryRecordCurrent(prepared, options = {}) {
+  if (prepared?.state !== SECTOR_BOUNDARY_PREPARATION_STATE.live
+      || prepared.cleanupBlocked === true) return false;
+  const current = options.entities?.get(prepared.id);
+  const boundary = options.meshes?.get(prepared.id);
+  const fingerprint = typeof options.fingerprintForEntity === 'function'
+    ? options.fingerprintForEntity(current)
+    : prepared.fingerprint;
+  const expectedSectorId = options.sectorId == null ? null : String(options.sectorId);
+  return !!current
+    && current === prepared.entity
+    && current.alive !== false
+    && (!expectedSectorId || String(entitySectorId(current) || '') === expectedSectorId)
+    && boundary === prepared.boundary
+    && current.mesh === prepared.boundary
+    && fingerprint === prepared.fingerprint
+    && (typeof options.isEligible !== 'function' || options.isEligible(current) === true);
+}
+
+export function pruneSettledSectorBoundaryRecords(records, options = {}) {
+  if (!records || typeof records.delete !== 'function') return records;
+  for (const record of records) {
+    if (!record || (record.state === SECTOR_BOUNDARY_PREPARATION_STATE.disposed
+      && record.cleanupBlocked !== true)) {
+      records.delete(record);
+      options.onPruned?.(record);
+      continue;
+    }
+    if (record.state === SECTOR_BOUNDARY_PREPARATION_STATE.live
+        && record.cleanupBlocked !== true
+        && typeof options.isLiveRecordCurrent === 'function'
+        && options.isLiveRecordCurrent(record) !== true) {
+      records.delete(record);
+      options.onPruned?.(record);
+    }
+  }
+  return records;
+}
+
+export function reconcileSettledSectorBoundaryRecords(records, options = {}) {
+  if (!records || typeof records.delete !== 'function') return records;
+  for (const prepared of [...records]) {
+    if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.ready
+        || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.live) continue;
+    const current = options.entities?.get(prepared?.id);
+    const expectedEntityInvalidation = !current
+      || current !== prepared?.entity
+      || current.alive === false
+      || (options.sectorId != null
+        && String(entitySectorId(current) || '') !== String(options.sectorId))
+      || prepared?.abortReason === 'entity-destroyed-during-sector-prewarm'
+      || prepared?.abortReason === 'ship-appearance-changed-during-sector-prewarm'
+      || prepared?.abortReason === 'ship-rebuild-during-sector-prewarm';
+    const currentPreparation = typeof options.currentRecordForId === 'function'
+      ? options.currentRecordForId(prepared?.id)
+      : null;
+    const safelySuperseded = currentPreparation && currentPreparation !== prepared;
+    if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.disposed
+        && prepared.cleanupBlocked !== true
+        && (expectedEntityInvalidation || safelySuperseded)) {
+      records.delete(prepared);
+      continue;
+    }
+    throw prepared?.cleanupError
+      || prepared?.restoreError
+      || prepared?.error
+      || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not prepared`);
+  }
+  return records;
+}
+
+export async function settleSectorBoundaryRecordSnapshot(records, options = {}) {
+  const snapshot = new Set([...(records || [])]);
+  const admitted = [...snapshot];
+  if (typeof options.settleRecords === 'function') await options.settleRecords(snapshot);
+  reconcileSettledSectorBoundaryRecords(snapshot, options);
+  if (records && typeof records.delete === 'function') {
+    for (const prepared of admitted) {
+      if (!snapshot.has(prepared)) records.delete(prepared);
+    }
+  }
+  return snapshot;
+}
+
+export function snapshotSectorPrewarmPopulation(record) {
+  return {
+    promise: record?.promise || null,
+    revision: Number(record?.boundaryRevision) || 0,
+    boundaryRecords: new Set([...(record?.boundaryRecords || [])]),
+    liveBoundaryEntries: new Map(record?.liveBoundaryPromises || []),
+    boundaryMembership: [...(record?.boundaryRecords || [])].map((prepared) => ({
+      id: prepared?.id,
+      entity: prepared?.entity,
+      record: prepared,
+      fingerprint: prepared?.fingerprint,
+    })),
+    liveBoundaryMembership: [...(record?.liveBoundaryPromises || [])].map(([id, entry]) => ({
+      id,
+      entity: entry?.entity,
+      entry,
+      fingerprint: entry?.fingerprint,
+    })),
+  };
+}
+
+function sectorPrewarmPopulationMatches(record, snapshot) {
+  if (!record
+      || !snapshot
+      || record.promise !== snapshot.promise
+      || (Number(record.boundaryRevision) || 0) !== snapshot.revision) return false;
+  const boundaryRecords = record.boundaryRecords || new Set();
+  if (boundaryRecords.size !== snapshot.boundaryMembership.length) return false;
+  for (const member of snapshot.boundaryMembership) {
+    if (!boundaryRecords.has(member.record)
+        || member.record?.id !== member.id
+        || member.record?.entity !== member.entity
+        || member.record?.fingerprint !== member.fingerprint) return false;
+  }
+  const liveBoundaryEntries = record.liveBoundaryPromises || new Map();
+  if (liveBoundaryEntries.size !== snapshot.liveBoundaryMembership.length) return false;
+  for (const member of snapshot.liveBoundaryMembership) {
+    if (liveBoundaryEntries.get(member.id) !== member.entry
+        || member.entry?.entity !== member.entity
+        || member.entry?.fingerprint !== member.fingerprint) return false;
+  }
+  return true;
+}
+
+function failClosedSectorPrewarm(error, code = 'SPACEFACE_SECTOR_PREWARM_INVARIANT') {
+  const exactError = error instanceof Error ? error : new Error(String(error));
+  exactError.code = exactError.code || code;
+  exactError.preventSectorFallbackRotation = true;
+  return exactError;
+}
+
+function sectorPrewarmGenerationEnvelopeMatches(record, current) {
+  const recordSectorId = record?.sectorId == null ? null : String(record.sectorId);
+  const currentSectorId = current?.sectorId == null ? null : String(current.sectorId);
+  const complete = record?.active === true
+    && current?.record === record
+    && Number.isFinite(record?.generation)
+    && Number.isFinite(current?.generation)
+    && Number.isFinite(record?.preparationEpoch)
+    && Number.isFinite(current?.preparationEpoch)
+    && Number.isFinite(record?.contextGeneration)
+    && Number.isFinite(current?.contextGeneration)
+    && typeof record?.preparationSignature === 'string'
+    && record.preparationSignature.length > 0
+    && typeof current?.preparationSignature === 'string'
+    && current.preparationSignature.length > 0
+    && typeof current?.contextLost === 'boolean'
+    && recordSectorId != null
+    && currentSectorId != null;
+  return complete
+    && record.generation === current.generation
+    && record.preparationEpoch === current.preparationEpoch
+    && record.contextGeneration === current.contextGeneration
+    && record.preparationSignature === current.preparationSignature
+    && recordSectorId === currentSectorId
+    && current.contextLost === false;
+}
+
+/** Promote cleanup failures discovered while unwinding an otherwise optional admission failure.
+ * abortRecords intentionally returns allSettled outcomes, so the caller must inspect both those
+ * outcomes and the retained records before it can safely clear the generation or rotate residency. */
+export function promoteSectorPrewarmAbortQuarantine(records, outcomes, originalError) {
+  const blockedRecords = [...(records || [])].filter((record) => (
+    record?.cleanupBlocked === true
+      || record?.state === SECTOR_BOUNDARY_PREPARATION_STATE.aborting
+      || record?.cleanupError
+      || record?.restoreError
+  ));
+  const rejected = [...(outcomes || [])]
+    .filter((outcome) => outcome?.status === 'rejected')
+    .map((outcome) => outcome.reason);
+  if (blockedRecords.length === 0 && rejected.length === 0) return originalError;
+  const failures = [
+    originalError,
+    ...rejected,
+    ...blockedRecords.flatMap((record) => [record.cleanupError, record.restoreError].filter(Boolean)),
+  ].filter(Boolean);
+  return failClosedSectorPrewarm(
+    new AggregateError(failures, 'Sector prewarm abort cleanup entered quarantine', {
+      cause: originalError,
+    }),
+    'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE',
+  );
+}
+
+/** Refuse fallback residency rotation once the preparation generation no longer owns the exact
+ * renderer/context envelope in which it started. Settings, resize, context loss, and supersession
+ * can invalidate that envelope without first flipping record.active; checking only active/sector
+ * would let a raw async rejection rotate an obsolete generation. */
+export function promoteSectorPrewarmGenerationInvalidation(record, current, originalError) {
+  if (sectorPrewarmGenerationEnvelopeMatches(record, current)) return originalError;
+  const cause = originalError instanceof Error ? originalError : new Error(String(originalError));
+  return failClosedSectorPrewarm(
+    new Error('Sector prewarm renderer generation changed before fallback residency rotation', {
+      cause,
+    }),
+    'SPACEFACE_SECTOR_PREWARM_GENERATION_INVALIDATED',
+  );
+}
+
+export function createSectorPrewarmCertification(record, snapshot, current) {
+  if (!sectorPrewarmGenerationEnvelopeMatches(record, current)
+      || !sectorPrewarmPopulationMatches(record, snapshot)) return null;
+  return Object.freeze({
+    record,
+    snapshot,
+    sectorId: String(record.sectorId),
+    generation: record.generation,
+    preparationEpoch: record.preparationEpoch,
+    contextGeneration: record.contextGeneration,
+    preparationSignature: record.preparationSignature,
+    revision: snapshot.revision,
+  });
+}
+
+export function sectorPrewarmCertificationIsCurrent(record, certification, current = {}) {
+  if (!certification
+      || certification.record !== record
+      || certification.snapshot == null
+      || certification.sectorId !== String(record?.sectorId ?? '')
+      || certification.generation !== record?.generation
+      || certification.preparationEpoch !== record?.preparationEpoch
+      || certification.contextGeneration !== record?.contextGeneration
+      || certification.preparationSignature !== record?.preparationSignature
+      || certification.revision !== (Number(record?.boundaryRevision) || 0)
+      || !sectorPrewarmGenerationEnvelopeMatches(record, current)
+      || !sectorPrewarmPopulationMatches(record, certification.snapshot)) return false;
+  if (typeof current.validatePopulation === 'function') {
+    try {
+      if (current.validatePopulation(record, certification.snapshot) !== true) return false;
+    } catch (_) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Settle one moving sector-prewarm population to an identity-stable fixpoint. Target-sector spawn
+ * events may add or replace exact boundaries while decode/GPU admission is awaiting; cardinality is
+ * insufficient because equal-size churn can still substitute a different owner. Publication runs
+ * only after the same promise, boundary identities, and live-entry identities survive a full settle,
+ * then repeats if a producer extends the population during the asynchronous publish itself. */
+export async function settleSectorPrewarmPopulationFixpoint(record, options = {}) {
+  const maxPasses = Number.isInteger(options.maxPasses) && options.maxPasses > 0
+    ? options.maxPasses
+    : 64;
+  const isActive = () => record?.active === true
+    && (typeof options.isActive !== 'function' || options.isActive(record) === true);
+  const awaitActivePhase = async (phase) => {
+    try {
+      await phase();
+    } catch (error) {
+      if (error?.preventSectorFallbackRotation === true) throw error;
+      if (!isActive()) return false;
+      throw error;
+    }
+    return isActive();
+  };
+  record.certification = null;
+  await Promise.resolve();
+  for (let pass = 0; pass < maxPasses && isActive(); pass++) {
+    if (typeof options.refreshPopulation === 'function') {
+      if (!await awaitActivePhase(() => options.refreshPopulation(
+        record,
+        { pass, phase: 'before-settle' },
+      ))) return false;
+    }
+    const snapshot = snapshotSectorPrewarmPopulation(record);
+    if (typeof options.settlePrefetch === 'function') {
+      if (!await awaitActivePhase(() => options.settlePrefetch(snapshot.promise, snapshot))) return false;
+    }
+    if (typeof options.settleBoundaryRecords === 'function') {
+      if (!await awaitActivePhase(() => options.settleBoundaryRecords(
+        snapshot.boundaryRecords,
+        snapshot,
+      ))) return false;
+    }
+    if (typeof options.settleLiveBoundaryEntries === 'function') {
+      if (!await awaitActivePhase(() => options.settleLiveBoundaryEntries(
+        [...snapshot.liveBoundaryEntries.values()],
+        snapshot,
+      ))) return false;
+    }
+    if (typeof options.refreshPopulation === 'function') {
+      if (!await awaitActivePhase(() => options.refreshPopulation(
+        record,
+        { pass, phase: 'after-settle' },
+      ))) return false;
+    }
+    await Promise.resolve();
+    if (!isActive()) return false;
+    if (!sectorPrewarmPopulationMatches(record, snapshot)) continue;
+    if (typeof options.publishBoundaryRecords === 'function') {
+      if (!await awaitActivePhase(() => options.publishBoundaryRecords(
+        snapshot.boundaryRecords,
+        snapshot,
+      ))) return false;
+      if (typeof options.refreshPopulation === 'function') {
+        if (!await awaitActivePhase(() => options.refreshPopulation(
+          record,
+          { pass, phase: 'after-publish' },
+        ))) return false;
+      }
+      await Promise.resolve();
+      if (!isActive()) return false;
+      if (!sectorPrewarmPopulationMatches(record, snapshot)) continue;
+    }
+    if (typeof options.validatePopulation === 'function') {
+      if (!await awaitActivePhase(() => options.validatePopulation(record, snapshot))) return false;
+      await Promise.resolve();
+      if (!isActive()) return false;
+      if (!sectorPrewarmPopulationMatches(record, snapshot)) continue;
+    }
+    if (!isActive()) return false;
+    if (typeof options.certifyPopulation === 'function') {
+      let certification;
+      try {
+        certification = options.certifyPopulation(record, snapshot);
+      } catch (error) {
+        if (!isActive()) return false;
+        throw error;
+      }
+      if (!isActive()) return false;
+      if (!certification || typeof certification.then === 'function') {
+        throw failClosedSectorPrewarm(
+          new Error('Sector prewarm final population did not produce a synchronous certification'),
+          'SPACEFACE_SECTOR_PREWARM_CERTIFICATION_MISSING',
+        );
+      }
+      record.certification = certification;
+    }
+    return true;
+  }
+  if (!isActive()) return false;
+  throw failClosedSectorPrewarm(
+    new Error(`Sector prewarm population did not stabilize within ${maxPasses} deterministic passes`),
+    'SPACEFACE_SECTOR_PREWARM_FIXPOINT_EXHAUSTED',
+  );
+}
+
+/** Publish exactly one settled boundary snapshot. READY records must all publish successfully;
+ * already-LIVE records are idempotent members from an earlier fixpoint pass. Any other state is a
+ * fail-closed admission error rather than a silently omitted hidden reservation. */
+export async function publishSectorBoundaryRecordSnapshot(records, options = {}) {
+  if (typeof options.publishRecords !== 'function') {
+    throw new TypeError('publishSectorBoundaryRecordSnapshot requires publishRecords');
+  }
+  const candidates = [];
+  for (const prepared of records || []) {
+    if (prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.live) continue;
+    if (prepared?.state !== SECTOR_BOUNDARY_PREPARATION_STATE.ready) {
+      throw failClosedSectorPrewarm(prepared?.cleanupError
+        || prepared?.restoreError
+        || prepared?.error
+        || new Error(`Incoming authored boundary ${prepared?.id ?? 'unknown'} was not ready to publish`));
+    }
+    candidates.push(prepared);
+  }
+  const published = await options.publishRecords(candidates);
+  if (!Array.isArray(published)
+      || published.length !== candidates.length
+      || published.some((value) => value !== true)) {
+    throw failClosedSectorPrewarm(
+      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish`),
+    );
+  }
+  return true;
+}
+
+const ACCEPTED_LIVE_AUTHORED_STATES = new Set([
+  'authored',
+  'same-semantic-fallback',
+]);
+
+/** Assert that the stable preparation population is an exact cover of the authoritative live
+ * target-sector census. This rejects both omissions and stale LIVE supersets: a previously
+ * published record is evidence only while its exact entity, boundary, fingerprint, and mesh map
+ * identity still agree with the current world. */
+export function validateSectorPrewarmPopulationCoverage(record, options = {}) {
+  const fail = (message, error = null) => {
+    throw failClosedSectorPrewarm(
+      error || new Error(message),
+      'SPACEFACE_SECTOR_PREWARM_INCOMPLETE_PUBLICATION',
+    );
+  };
+  const eligibleById = new Map();
+  for (const entity of options.entityList || []) {
+    if (!entity || typeof options.isEligible !== 'function' || options.isEligible(entity) !== true) continue;
+    if (options.entities?.get(entity.id) !== entity) {
+      fail(`Incoming authored entity ${entity.id} was not authoritative in the entity map`);
+    }
+    if (eligibleById.has(entity.id)) {
+      fail(`Incoming authored entity ${entity.id} appeared more than once in the target census`);
+    }
+    eligibleById.set(entity.id, entity);
+  }
+
+  const covered = new Map();
+  for (const prepared of record?.boundaryRecords || []) {
+    if (prepared?.cleanupBlocked === true
+        || prepared?.state !== SECTOR_BOUNDARY_PREPARATION_STATE.live) {
+      fail(
+        `Incoming authored boundary ${prepared?.id ?? 'unknown'} remained ${prepared?.state || 'unknown'} after publish`,
+        prepared?.cleanupError || prepared?.restoreError || prepared?.error,
+      );
+    }
+    if (!eligibleById.has(prepared.id)
+        || !isLiveSectorBoundaryRecordCurrent(prepared, options)) {
+      fail(`Published authored boundary ${prepared.id} no longer matched the authoritative entity and mesh census`);
+    }
+    if (covered.has(prepared.id)) {
+      fail(`Incoming authored entity ${prepared.id} had more than one published preparation owner`);
+    }
+    covered.set(prepared.id, prepared);
+  }
+
+  for (const [id, entry] of record?.liveBoundaryPromises || []) {
+    const current = options.entities?.get(id);
+    const boundary = options.meshes?.get(id);
+    const fingerprint = typeof options.fingerprintForEntity === 'function'
+      ? options.fingerprintForEntity(current)
+      : entry?.fingerprint;
+    const exact = eligibleById.get(id) === current
+      && current === entry?.entity
+      && current?.alive !== false
+      && boundary === entry?.boundary
+      && current?.mesh === entry?.boundary
+      && fingerprint === entry?.fingerprint
+      && entry?.preparationEpoch === options.preparationEpoch
+      && entry?.contextGeneration === options.contextGeneration
+      && entry?.preparationSignature === options.preparationSignature
+      && options.contextLost !== true
+      && ACCEPTED_LIVE_AUTHORED_STATES.has(boundary?.userData?.authoredAssetState);
+    if (!exact) {
+      fail(`Live authored boundary ${id} no longer matched the certified renderer generation`);
+    }
+    if (covered.has(id)) {
+      fail(`Incoming authored entity ${id} had both prepared and live admission owners`);
+    }
+    covered.set(id, entry);
+  }
+
+  if (covered.size !== eligibleById.size) {
+    const missing = [...eligibleById.keys()].filter((id) => !covered.has(id));
+    fail(`Incoming authored census was missing exact coverage for ${missing.join(', ') || 'unknown owners'}`);
+  }
+  return true;
+}
+
+export async function settleLiveSectorBoundaryAdmissions(entries, options = {}) {
+  const candidates = [...(entries || [])].filter(Boolean);
+  const outcomes = await Promise.allSettled(candidates.map((entry) => entry.promise));
+  const failures = [];
+  for (let index = 0; index < candidates.length; index++) {
+    const entry = candidates[index];
+    const current = options.entities?.get(entry.id);
+    const expectedSectorId = entry.sectorId == null ? null : String(entry.sectorId);
+    if (!current
+        || current !== entry.entity
+        || current.alive === false
+        || (expectedSectorId && String(entitySectorId(current) || '') !== expectedSectorId)) {
+      continue;
+    }
+    const outcome = outcomes[index];
+    if (outcome.status === 'rejected') {
+      failures.push(outcome.reason);
+      continue;
+    }
+    entry.receipt = outcome.value;
+    const boundary = options.meshes?.get(entry.id);
+    const fingerprint = typeof options.fingerprintForEntity === 'function'
+      ? options.fingerprintForEntity(current)
+      : entry.fingerprint;
+    const authoredState = boundary?.userData?.authoredAssetState;
+    const envelopeComplete = Number.isFinite(Number(entry.preparationEpoch))
+      && Number.isFinite(Number(entry.contextGeneration))
+      && typeof entry.preparationSignature === 'string'
+      && entry.preparationSignature.length > 0;
+    if (!boundary
+        || boundary !== entry.boundary
+        || current.mesh !== entry.boundary
+        || fingerprint !== entry.fingerprint
+        || !envelopeComplete
+        || entry.preparationEpoch !== options.preparationEpoch
+        || entry.contextGeneration !== options.contextGeneration
+        || entry.preparationSignature !== options.preparationSignature
+        || options.contextLost === true
+        || !ACCEPTED_LIVE_AUTHORED_STATES.has(authoredState)) {
+      failures.push(entry.receipt?.error || new Error(
+        `Live authored boundary ${entry.id} did not finish exact admission `
+          + `(receipt=${entry.receipt?.status || 'missing'}, state=${authoredState || 'missing'})`,
+      ));
+    }
+  }
+  if (failures.length) {
+    const detail = failures.map((error) => error?.message || String(error)).join('; ');
+    throw new AggregateError(failures, `Live authored sector-boundary admission failed: ${detail}`);
+  }
+  return true;
+}
+
+export function authoredBoundaryPreparationSignature(renderer, state, contextGeneration = 0) {
+  const canvas = renderer && renderer.domElement;
+  return JSON.stringify({
+    contextGeneration,
+    width: Number(canvas && canvas.width) || 0,
+    height: Number(canvas && canvas.height) || 0,
+    pixelRatio: Number(renderer && renderer.getPixelRatio && renderer.getPixelRatio()) || 1,
+    outputColorSpace: renderer && renderer.outputColorSpace || null,
+    toneMapping: renderer && renderer.toneMapping || null,
+    shadows: !!(renderer && renderer.shadowMap && renderer.shadowMap.enabled),
+    video: state && state.settings && state.settings.video || {},
+  });
+}
+
+/**
+ * Generation-owned hidden-boundary lifecycle. The manager is dependency-injected so its ordering and
+ * failure atomicity can be proven without constructing a WebGLRenderer. Production supplies the real
+ * visual factory, scene, authored admission queue, presentation binding, and disposal functions.
+ */
+export function createSectorBoundaryGenerationManager(options = {}) {
+  const records = new Map();
+  const states = SECTOR_BOUNDARY_PREPARATION_STATE;
+  const startBudgetPerTurn = Math.max(0, Number(options.startBudgetPerTurn) || 0);
+  const pendingStarts = [];
+  let pendingStartHead = 0;
+  let startTurnScheduled = false;
+
+  const disposeRecord = (record) => {
+    if (!record || record.state === states.live) return Promise.resolve(record);
+    if (record.cleanupPromise) return record.cleanupPromise;
+    record.cleaned = true;
+    record.cleanupPromise = (async () => {
+      record.state = states.aborting;
+      if (record.boundary) {
+        try { await options.disposeBoundary?.(record); }
+        catch (error) { record.cleanupError = error; }
+      }
+      try { options.restoreEntity?.(record); }
+      catch (error) { record.restoreError = error; }
+      if (record.cleanupError || record.restoreError) {
+        record.cleanupBlocked = true;
+        record.state = states.aborting;
+        return record;
+      }
+      if (records.get(record.id) === record) records.delete(record.id);
+      record.state = states.disposed;
+      return record;
+    })();
+    return record.cleanupPromise;
+  };
+
+  const startRecord = async (record) => {
+    if (!record.active) return disposeRecord(record);
+    try {
+      options.captureBeforeStart?.(record);
+      record.beforeStartCaptured = true;
+      record.boundary = options.buildBoundary(record);
+      if (!record.boundary) throw new Error(`No render boundary for ${record.id}`);
+      if (!record.active) return disposeRecord(record);
+      options.mountBoundary(record);
+      record.state = states.mountedHidden;
+      if (!record.active) return disposeRecord(record);
+      record.state = states.preparing;
+      record.preparation = Promise.resolve(options.requestPreparation(record));
+      record.receipt = await record.preparation;
+      if (!record.active) return disposeRecord(record);
+      if (options.isPrepared && options.isPrepared(record) !== true) {
+        throw new Error(`Authored boundary ${record.id} did not reach prepared admission`);
+      }
+      record.state = states.ready;
+      return record;
+    } catch (error) {
+      record.error = error;
+      record.active = false;
+      return disposeRecord(record);
+    }
+  };
+
+  const scheduleStartTurn = () => {
+    if (startTurnScheduled || pendingStartHead >= pendingStarts.length) return;
+    startTurnScheduled = true;
+    const schedule = typeof options.scheduleNextStartTurn === 'function'
+      ? options.scheduleNextStartTurn
+      : scheduleSectorBoundaryBuildTurn;
+    schedule(() => {
+      startTurnScheduled = false;
+      const end = Math.min(pendingStarts.length, pendingStartHead + startBudgetPerTurn);
+      while (pendingStartHead < end) {
+        const pending = pendingStarts[pendingStartHead++];
+        Promise.resolve(startRecord(pending.record)).then(pending.resolve, pending.reject);
+      }
+      if (pendingStartHead >= pendingStarts.length) {
+        pendingStarts.length = 0;
+        pendingStartHead = 0;
+      }
+      scheduleStartTurn();
+    });
+  };
+
+  const scheduleRecordStart = (record) => {
+    if (startBudgetPerTurn <= 0) return startRecord(record);
+    return new Promise((resolve, reject) => {
+      pendingStarts.push({ record, resolve, reject });
+      scheduleStartTurn();
+    });
+  };
+
+  const reserve = (spec = {}) => {
+    const id = spec.id ?? spec.entity?.id;
+    if (id == null || id === '') return null;
+    const prior = records.get(id);
+    if (prior && prior.active && prior.generation === spec.generation && prior.entity === spec.entity) {
+      return prior;
+    }
+    if (prior) {
+      prior.active = false;
+      if (prior.state !== states.disposed && prior.state !== states.live) prior.state = states.aborting;
+    }
+    const record = {
+      ...spec,
+      id,
+      active: true,
+      cleaned: false,
+      cleanupPromise: null,
+      boundary: null,
+      preparation: null,
+      receipt: null,
+      error: null,
+      state: states.reserved,
+    };
+    records.set(id, record);
+    const priorCleanup = prior && prior.state !== states.live
+      ? Promise.resolve(prior.settled).then(() => disposeRecord(prior))
+      : Promise.resolve(prior);
+    record.settled = priorCleanup.then((cleanedPrior) => {
+      if (cleanedPrior
+          && cleanedPrior.state !== states.disposed
+          && cleanedPrior.state !== states.live) {
+        throw new AggregateError(
+          [cleanedPrior.cleanupError, cleanedPrior.restoreError].filter(Boolean),
+          `Prior authored boundary ${id} could not be retired safely`,
+        );
+      }
+      return scheduleRecordStart(record);
+    }).catch((error) => {
+      record.active = false;
+      record.error = error;
+      record.cleanupError = error;
+      record.cleanupBlocked = true;
+      record.state = states.aborting;
+      throw error;
+    });
+    return record;
+  };
+
+  const abort = (record, reason = 'sector-boundary-aborted') => {
+    if (!record || record.state === states.live || record.state === states.disposed) {
+      return Promise.resolve(record);
+    }
+    record.abortReason = reason;
+    record.active = false;
+    record.state = states.aborting;
+    return Promise.resolve(record.settled).then(() => disposeRecord(record));
+  };
+
+  const publish = async (record) => {
+    if (!record) return false;
+    await record.settled;
+    if (record.state === states.live) return true;
+    if (!record.active || record.state !== states.ready || options.validate?.(record) !== true) {
+      await abort(record, record.abortReason || 'sector-boundary-stale-before-publish');
+      return false;
+    }
+    record.state = states.publishing;
+    try {
+      if (options.publishBoundary(record) === false) {
+        throw new Error(`Authored boundary ${record.id} publication was declined`);
+      }
+      record.state = states.live;
+      record.active = false;
+      if (records.get(record.id) === record) records.delete(record.id);
+      return true;
+    } catch (error) {
+      record.error = error;
+      record.active = false;
+      await disposeRecord(record);
+      return false;
+    }
+  };
+
+  return {
+    reserve,
+    publish,
+    abort,
+    abortEntity(id, reason) {
+      return abort(records.get(id), reason);
+    },
+    abortRecords(iterable, reason) {
+      return Promise.allSettled([...(iterable || [])].map((record) => abort(record, reason)));
+    },
+    abortAll(reason) {
+      return Promise.allSettled([...records.values()].map((record) => abort(record, reason)));
+    },
+    settleRecords(iterable) {
+      return Promise.allSettled([...(iterable || [])].map((record) => (
+        Promise.resolve(record && record.settled).then(() => record?.cleanupPromise || record)
+      )));
+    },
+    publishRecords(iterable) {
+      return Promise.all([...(iterable || [])].map((record) => publish(record)));
+    },
+    has(id) {
+      return records.has(id);
+    },
+    get(id) {
+      return records.get(id) || null;
+    },
+    inspect() {
+      return [...records.values()].map((record) => ({
+        id: record.id,
+        sectorId: record.sectorId,
+        generation: record.generation,
+        state: record.state,
+        active: record.active,
+      }));
+    },
+  };
+}
+
+function scheduleSectorBoundaryBuildTurn(callback) {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(callback);
+  else setTimeout(callback, 0);
+}
+
+/** Transactionally attach one prepared hidden boundary to render/presentation ownership. Binding
+ * hooks are allowed to mutate and then throw, so every attempted owner is rolled back independently
+ * before the original failure escapes to the generation manager. */
+export function publishPreparedSectorBoundary(record, options = {}) {
+  const entity = record && record.entity;
+  const boundary = record && record.boundary;
+  const id = record?.id ?? entity?.id;
+  if (!entity || !boundary || id == null || id === '') return false;
+  boundary.visible = false;
+  if (options.publishAuthoredBoundary?.(boundary) === false) return false;
+  options.seatBoundary?.(record);
+
+  entity.mesh = boundary;
+  entity.view = { root: boundary };
+  options.meshes?.set(id, boundary);
+  try {
+    record.presentationBindingAttempted = true;
+    const presentationBound = options.bindPresentationMesh?.(entity, boundary);
+    if (presentationBound === false) {
+      throw new Error(`Prepared boundary ${id} could not bind presentation ownership`);
+    }
+    record.asteroidBindingAttempted = true;
+    options.registerAsteroid?.(entity, boundary);
+    options.markShadowReceiversDirty?.();
+    boundary.visible = true;
+    return true;
+  } catch (error) {
+    boundary.visible = false;
+    const rollbackErrors = [];
+    try {
+      options.unbindPresentationMesh?.(id, boundary);
+      record.presentationBindingAttempted = false;
+    }
+    catch (cleanupError) { rollbackErrors.push(cleanupError); }
+    try {
+      options.releaseAsteroid?.(id);
+      record.asteroidBindingAttempted = false;
+    }
+    catch (cleanupError) { rollbackErrors.push(cleanupError); }
+    try {
+      if (options.meshes?.get(id) === boundary) options.meshes.delete(id);
+    } catch (cleanupError) { rollbackErrors.push(cleanupError); }
+    clearEntityMeshReference(entity, boundary);
+    try { options.markShadowReceiversDirty?.(); }
+    catch (cleanupError) { rollbackErrors.push(cleanupError); }
+    if (rollbackErrors.length) {
+      throw new AggregateError([error, ...rollbackErrors], `Prepared boundary ${id} rollback failed`, {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+}
+
+/** Exhaust the exact prepared-boundary ownership journal before falling back to ordinary Object3D
+ * teardown. Authored roots clear their owner-local resources first, so the generic traversal sees
+ * only the remaining procedural substrate and cannot replace a failed cleanup with a second owner. */
+export async function disposePreparedSectorBoundary(record, options = {}) {
+  const boundary = record?.boundary;
+  const id = record?.id ?? record?.entity?.id;
+  if (!boundary || id == null || id === '') return false;
+  const cleanupErrors = [];
+  const attempt = async (cleanup) => {
+    try { await cleanup(); }
+    catch (error) { cleanupErrors.push(error); }
+  };
+  boundary.visible = false;
+  if (record.presentationBindingAttempted) {
+    await attempt(() => options.unbindPresentationMesh?.(id, boundary));
+  }
+  if (record.asteroidBindingAttempted) {
+    await attempt(() => options.releaseAsteroid?.(id));
+  }
+  await attempt(() => {
+    if (options.meshes?.get(id) === boundary) options.meshes.delete(id);
+  });
+  await attempt(() => options.removeBoundary?.(boundary));
+  await attempt(() => options.disposePreparedBoundary?.(boundary));
+  await attempt(() => options.disposeBoundaryObject?.(boundary));
+  await attempt(() => clearEntityMeshReference(record.entity, boundary));
+  await attempt(() => options.markShadowReceiversDirty?.());
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, `Prepared boundary ${id} cleanup failed`);
+  }
+  record.presentationBindingAttempted = false;
+  record.asteroidBindingAttempted = false;
+  return true;
+}
+
+function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
-  if (typeof request !== 'function') return;
-  try { request(renderer, scene); }
-  catch (error) { console.warn('[render] authored asset upgrade request failed', error); }
+  if (typeof request !== 'function') return Promise.resolve({ status: 'no-authored-upgrade' });
+  try { return Promise.resolve(request(renderer, scene, options)); }
+  catch (error) {
+    console.warn('[render] authored asset upgrade request failed', error);
+    return Promise.resolve({ status: 'authored-upgrade-request-threw', error });
+  }
 }
 
 // Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
@@ -994,7 +1842,10 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         this._contextLost = true;
+        this._authoredPreparationEpoch++;
+        this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
+        const preparedPoolResources = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
         const contextRoots = collectContextLossRoots({
           scene,
           environment: this._envMap,
@@ -1003,7 +1854,11 @@ export const render = {
           renderGraph: this._renderGraph,
           entities: state.entityList,
         });
-        const detachReceipt = detachStaleWebGlDisposeListeners(contextRoots);
+        contextRoots.push(...preparedPoolResources.roots);
+        const detachReceipt = detachStaleWebGlDisposeListeners(
+          contextRoots,
+          preparedPoolResources.provenance,
+        );
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;
         if (this._assetResidency) this._assetResidency.handleContextLost();
@@ -1301,6 +2156,102 @@ export const render = {
     this._authoredSectorPrewarmPendingId = null;
     this._authoredSectorPrewarmPending = null;
     this._sectorPrewarmGeneration = 0;
+    this._authoredPreparationEpoch = 0;
+    this._sectorBoundaryPreparations = createSectorBoundaryGenerationManager({
+      startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
+      scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn,
+      captureBeforeStart: (record) => {
+        record.presentationAdmissionBefore = record.entity?.presentationAdmission;
+      },
+      buildBoundary: (record) => this.vf.build(record.entity),
+      mountBoundary: (record) => {
+        const boundary = record.boundary;
+        const entity = record.entity;
+        const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
+        boundary.position.set(local.x, 0, local.z);
+        boundary.rotation.y = -entity.rot;
+        if (entity.type === 'ship' || entity.type === 'station') {
+          attachContactShadow(boundary, entity);
+          syncShadowCasterPolicy(
+            boundary,
+            boundary.userData && boundary.userData.lod ? boundary.userData.lod.level : null,
+          );
+        }
+        boundary.visible = false;
+        scene.add(boundary);
+      },
+      requestPreparation: (record) => requestAuthoredUpgrade(record.boundary, renderer, scene, {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+        residencyRole: 'sector-prepared-boundary',
+        sectorId: record.sectorId,
+        isResidencyOwnerActive: () => record.active === true
+          && record.boundary && record.boundary.parent === scene
+          && record.entity && record.entity.alive !== false,
+      }),
+      isPrepared: (record) => {
+        const authoredState = record.boundary?.userData?.authoredAssetState;
+        return authoredState === 'authored-prepared'
+          || authoredState === 'same-semantic-fallback-prepared';
+      },
+      validate: (record) => record.prewarm?.active === true
+        && record.generation === record.prewarm.generation
+        && record.entity?.alive !== false
+        && state.entities.get(record.id) === record.entity
+        && String(entitySectorId(record.entity) || '') === record.sectorId
+        && String(state.world?.currentSectorId || '') === record.sectorId
+        && record.fingerprint === authoredCompositionFingerprintForEntity(record.entity)
+        && record.preparationEpoch === this._authoredPreparationEpoch
+        && record.contextGeneration === this._contextRecovery.generation
+        && record.preparationSignature === authoredBoundaryPreparationSignature(
+          renderer, state, this._contextRecovery.generation,
+        )
+        && this._contextLost !== true
+        && record.boundary?.parent === scene
+        && !this._meshes.has(record.id)
+        && !record.entity.mesh,
+      publishBoundary: (record) => {
+        return publishPreparedSectorBoundary(record, {
+          publishAuthoredBoundary: publishPreparedAuthoredBoundary,
+          seatBoundary: ({ entity, boundary }) => {
+            const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
+            boundary.position.set(local.x, 0, local.z);
+            boundary.rotation.y = -entity.rot;
+          },
+          meshes: this._meshes,
+          bindPresentationMesh: (entity, boundary) => this._bindPresentationMesh(entity, boundary),
+          unbindPresentationMesh: (id, boundary) => this._unbindPresentationMesh(id, boundary),
+          registerAsteroid: (entity, boundary) => (
+            registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, boundary)
+          ),
+          releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
+          markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+        });
+      },
+      disposeBoundary: (record) => disposePreparedSectorBoundary(record, {
+        unbindPresentationMesh: (id, boundary) => this._unbindPresentationMesh(id, boundary),
+        releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
+        meshes: this._meshes,
+        removeBoundary: (boundary) => { if (boundary.parent === scene) scene.remove(boundary); },
+        disposePreparedBoundary: disposePreparedAuthoredBoundary,
+        disposeBoundaryObject: disposeObject,
+        markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+      }),
+      restoreEntity: (record) => {
+        const entity = record.entity;
+        if (!record.beforeStartCaptured
+            || !entity
+            || state.entities.get(record.id) !== entity
+            || this._meshes.has(record.id)) return;
+        if (record.presentationAdmissionBefore === undefined) delete entity.presentationAdmission;
+        else entity.presentationAdmission = record.presentationAdmissionBefore;
+        this._meshReconcileDirty = true;
+      },
+    });
+    state.render.sectorBoundaryPrewarm = {
+      inspect: () => this._sectorBoundaryPreparations.inspect(),
+    };
     this._firstPlayablePaintScheduled = false;
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
@@ -1422,11 +2373,14 @@ export const render = {
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
       const dynamicBufferEpoch = dynamicBuffers.arm();
+      let disposeRegistrationProbe = null;
       try {
+        disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
         return this.bloom && state.settings.video.bloom !== false
           ? this.bloom.render(scene, cam.obj)
           : renderer.render(scene, cam.obj);
       } finally {
+        endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
     };
@@ -1469,14 +2423,22 @@ export const render = {
       deferAutoFlush: () => state.mode === 'loading',
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
     });
-    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject) => (
-      prepareStartupGpuResidency(renderer, subject, {
-        yieldToMain: yieldToBrowser,
+    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((entry) => (
+      prepareStartupGpuResidency(renderer, entry.subject, {
+        yieldToMain: async () => {
+          await yieldToBrowser();
+          if (typeof entry.isActive === 'function' && entry.isActive() !== true) {
+            throw new Error('Authored GPU residency owner became inactive before texture upload');
+          }
+        },
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       })
     ));
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.prepareAuthoredGpuResidency = (subject) => gpuResidencyAdmissions.prepare(subject);
+    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => gpuResidencyAdmissions.prepare({
+      subject,
+      isActive: options.isActive,
+    });
     state.render.waitForAuthoredGpuResidency = () => gpuResidencyAdmissions.waitForPending();
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileCurrent(scene);
@@ -1516,7 +2478,9 @@ export const render = {
         const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
         const video = state.settings && state.settings.video || {};
         const dynamicBufferEpoch = dynamicBuffers.arm();
+        let disposeRegistrationProbe = null;
         try {
+          disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
           if (video.renderGraph && this._ensureRenderGraph()) {
             this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
           } else if (this.bloom && video.bloom !== false) {
@@ -1526,6 +2490,7 @@ export const render = {
             renderer.render(scene, cam.obj);
           }
         } finally {
+          endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
           dynamicBuffers.disarm(dynamicBufferEpoch);
         }
         result.openingFrame = {
@@ -1567,6 +2532,7 @@ export const render = {
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
     bus.on('world:residency', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
+      this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
       const m = this._meshes.get(id);
       if (m) {
         this._unbindPresentationMesh(id, m);
@@ -1580,7 +2546,14 @@ export const render = {
     // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
     // build new, re-seat from the entity's live transform.
-    bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
+    bus.on('ship:appearanceChanged', ({ id }) => {
+      if (this._sectorBoundaryPreparations?.has(id)) {
+        this._sectorBoundaryPreparations.abortEntity(id, 'ship-appearance-changed-during-sector-prewarm');
+        this._meshReconcileDirty = true;
+        return;
+      }
+      render.rebuildShipMesh(id);
+    });
     bus.on('ship:livingHullChanged', ({ id, livingHull } = {}) => {
       if (id !== state.playerId || !this._livingHullPresentation) return;
       const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
@@ -1624,6 +2597,8 @@ export const render = {
     if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
     this._videoSettingsOff = bus.on('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
+      this._authoredPreparationEpoch++;
+      this._sectorBoundaryPreparations?.abortAll('video-settings-changed-during-sector-prewarm');
       const vd = state.settings.video;
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
@@ -1667,9 +2642,250 @@ export const render = {
       sectorId,
       playerId: state.playerId,
     });
+    const reviseSectorPrewarmPopulation = (record, count = 1) => {
+      if (!record || count <= 0) return;
+      record.boundaryRevision = (Number(record.boundaryRevision) || 0) + count;
+      record.certification = null;
+    };
+    const sectorPrewarmEntityIsEligible = (record, entity) => !!record
+      && !!entity
+      && entity.alive !== false
+      && entity.id !== state.playerId
+      && String(entitySectorId(entity) || '') === record.sectorId
+      && authoredPrewarmRequestsForEntities([entity], {
+        sectorId: record.sectorId,
+        playerId: state.playerId,
+      }).length > 0;
+    const sectorPrewarmCoverageOptions = (record) => ({
+      entities: state.entities,
+      entityList: state.entityList,
+      meshes: this._meshes,
+      sectorId: record.sectorId,
+      playerId: state.playerId,
+      fingerprintForEntity: authoredCompositionFingerprintForEntity,
+      isEligible: (entity) => sectorPrewarmEntityIsEligible(record, entity),
+      preparationEpoch: this._authoredPreparationEpoch,
+      contextGeneration: this._contextRecovery.generation,
+      preparationSignature: authoredBoundaryPreparationSignature(
+        renderer, state, this._contextRecovery.generation,
+      ),
+      contextLost: this._contextLost === true,
+    });
+    const validateCurrentSectorPrewarmPopulation = (record) => {
+      for (const request of sectorPrewarmRequests(record.sectorId)) {
+        const key = `${request.url}::${request.slot || '*'}`;
+        if (!record.requestKeys?.has(key)) {
+          throw failClosedSectorPrewarm(
+            new Error(`Incoming authored request ${key} joined after the certified warm set`),
+            'SPACEFACE_SECTOR_PREWARM_INCOMPLETE_PUBLICATION',
+          );
+        }
+      }
+      return record.stageBoundaries === false
+        || validateSectorPrewarmPopulationCoverage(record, sectorPrewarmCoverageOptions(record));
+    };
+    const currentSectorPrewarmEnvelope = (record) => ({
+      record: this._authoredSectorPrewarmPending,
+      sectorId: record?.sectorId,
+      generation: this._sectorPrewarmGeneration,
+      preparationEpoch: this._authoredPreparationEpoch,
+      contextGeneration: this._contextRecovery.generation,
+      preparationSignature: authoredBoundaryPreparationSignature(
+        renderer, state, this._contextRecovery.generation,
+      ),
+      contextLost: this._contextLost === true,
+    });
+    const certifiedSectorPrewarmIsCurrent = (record) => sectorPrewarmCertificationIsCurrent(
+      record,
+      record?.certification,
+      {
+        ...currentSectorPrewarmEnvelope(record),
+        validatePopulation: validateCurrentSectorPrewarmPopulation,
+      },
+    );
+    const stageSectorPrewarmBoundaries = (record, entities = state.entityList) => {
+      if (!record || record.active !== true || record.stageBoundaries === false) return record;
+      if (!record.boundaryRecords) record.boundaryRecords = new Set();
+      if (!record.liveBoundaryPromises) record.liveBoundaryPromises = new Map();
+      if (!Number.isFinite(record.boundaryRevision)) record.boundaryRevision = 0;
+      let prunedRecords = 0;
+      pruneSettledSectorBoundaryRecords(record.boundaryRecords, {
+        isLiveRecordCurrent: (prepared) => isLiveSectorBoundaryRecordCurrent(prepared, {
+          ...sectorPrewarmCoverageOptions(record),
+          isEligible: (entity) => sectorPrewarmEntityIsEligible(record, entity),
+        }),
+        onPruned: () => { prunedRecords++; },
+      });
+      reviseSectorPrewarmPopulation(record, prunedRecords);
+      const eligibleIds = new Set();
+      for (const entity of entities || []) {
+        if (!sectorPrewarmEntityIsEligible(record, entity)) continue;
+        eligibleIds.add(entity.id);
+        const liveBoundary = this._meshes.get(entity.id);
+        if (liveBoundary) {
+          const publishedRecord = [...record.boundaryRecords].find((prepared) => (
+            prepared?.id === entity.id
+              && prepared.entity === entity
+              && prepared.boundary === liveBoundary
+              && prepared.state === SECTOR_BOUNDARY_PREPARATION_STATE.live
+          ));
+          if (publishedRecord) {
+            if (record.liveBoundaryPromises.delete(entity.id)) {
+              reviseSectorPrewarmPopulation(record);
+            }
+            continue;
+          }
+          const existingLiveEntry = record.liveBoundaryPromises.get(entity.id);
+          const currentFingerprint = authoredCompositionFingerprintForEntity(entity);
+          if (!existingLiveEntry
+              || existingLiveEntry.entity !== entity
+              || existingLiveEntry.boundary !== liveBoundary
+              || existingLiveEntry.fingerprint !== currentFingerprint) {
+            const liveEntry = {
+              id: entity.id,
+              entity,
+              boundary: liveBoundary,
+              sectorId: record.sectorId,
+              fingerprint: currentFingerprint,
+              preparationEpoch: this._authoredPreparationEpoch,
+              contextGeneration: this._contextRecovery.generation,
+              preparationSignature: authoredBoundaryPreparationSignature(
+                renderer, state, this._contextRecovery.generation,
+              ),
+              promise: null,
+            };
+            liveEntry.promise = requestAuthoredUpgrade(liveBoundary, renderer, scene, {
+              residencyRole: 'sector-prepared-live-boundary',
+              sectorId: record.sectorId,
+              isResidencyOwnerActive: () => record.active === true
+                && state.entities.get(liveEntry.id) === liveEntry.entity
+                && this._meshes.get(liveEntry.id) === liveEntry.boundary
+                && liveEntry.entity.mesh === liveEntry.boundary
+                && liveEntry.entity.alive !== false
+                && liveEntry.preparationEpoch === this._authoredPreparationEpoch
+                && liveEntry.contextGeneration === this._contextRecovery.generation
+                && liveEntry.preparationSignature === authoredBoundaryPreparationSignature(
+                  renderer, state, this._contextRecovery.generation,
+                )
+                && this._contextLost !== true,
+            });
+            record.liveBoundaryPromises.set(entity.id, liveEntry);
+            reviseSectorPrewarmPopulation(record);
+          }
+          continue;
+        }
+        if (record.liveBoundaryPromises.delete(entity.id)) {
+          reviseSectorPrewarmPopulation(record);
+        }
+        const prepared = this._sectorBoundaryPreparations.reserve({
+          id: entity.id,
+          entity,
+          sectorId: record.sectorId,
+          generation: record.generation,
+          prewarm: record,
+          fingerprint: authoredCompositionFingerprintForEntity(entity),
+          preparationEpoch: this._authoredPreparationEpoch,
+          contextGeneration: this._contextRecovery.generation,
+          preparationSignature: authoredBoundaryPreparationSignature(
+            renderer, state, this._contextRecovery.generation,
+          ),
+        });
+        if (prepared && !record.boundaryRecords.has(prepared)) {
+          record.boundaryRecords.add(prepared);
+          reviseSectorPrewarmPopulation(record);
+        }
+      }
+      for (const id of [...record.liveBoundaryPromises.keys()]) {
+        if (!eligibleIds.has(id) && record.liveBoundaryPromises.delete(id)) {
+          reviseSectorPrewarmPopulation(record);
+        }
+      }
+      return record;
+    };
+    const settleSectorBoundaryPreparations = async (record, options = {}) => {
+      if (!record || record.active !== true) return false;
+      return settleSectorPrewarmPopulationFixpoint(record, {
+        isActive: () => record.contextGeneration === this._contextRecovery.generation
+          && record.preparationEpoch === this._authoredPreparationEpoch
+          && record.preparationSignature === authoredBoundaryPreparationSignature(
+            renderer, state, this._contextRecovery.generation,
+          )
+          && this._contextLost !== true,
+        refreshPopulation: () => {
+          appendSectorPrewarmRequests(record, sectorPrewarmRequests(record.sectorId));
+          if (record.stageBoundaries !== false) stageSectorPrewarmBoundaries(record);
+        },
+        settlePrefetch: options.includePrefetch === true
+          ? async (pending) => {
+            await Promise.resolve(pending).catch((error) => {
+              record.prefetchError = error;
+              return [];
+            });
+          }
+          : null,
+        settleBoundaryRecords: async (boundarySnapshot) => {
+          const admitted = [...boundarySnapshot];
+          try {
+            await settleSectorBoundaryRecordSnapshot(boundarySnapshot, {
+              settleRecords: (records) => this._sectorBoundaryPreparations.settleRecords(records),
+              entities: state.entities,
+              sectorId: record.sectorId,
+              currentRecordForId: (id) => this._sectorBoundaryPreparations.get(id),
+            });
+          } catch (error) {
+            if ([...boundarySnapshot].some((prepared) => (
+              prepared?.cleanupBlocked === true
+                || prepared?.state === SECTOR_BOUNDARY_PREPARATION_STATE.aborting
+            ))) {
+              throw failClosedSectorPrewarm(error, 'SPACEFACE_SECTOR_PREWARM_CLEANUP_QUARANTINE');
+            }
+            throw error;
+          }
+          // Reconciliation intentionally works on the stable-attempt snapshot. Propagate only its
+          // proven removals to the live population; additions remain visible to the identity check.
+          for (const prepared of admitted) {
+            if (!boundarySnapshot.has(prepared)) record.boundaryRecords?.delete(prepared);
+          }
+        },
+        settleLiveBoundaryEntries: (liveEntries) => settleLiveSectorBoundaryAdmissions(liveEntries, {
+          entities: state.entities,
+          meshes: this._meshes,
+          fingerprintForEntity: authoredCompositionFingerprintForEntity,
+          preparationEpoch: this._authoredPreparationEpoch,
+          contextGeneration: this._contextRecovery.generation,
+          preparationSignature: authoredBoundaryPreparationSignature(
+            renderer, state, this._contextRecovery.generation,
+          ),
+          contextLost: this._contextLost === true,
+        }),
+        publishBoundaryRecords: options.publish === true
+          ? (boundarySnapshot) => publishSectorBoundaryRecordSnapshot(boundarySnapshot, {
+            publishRecords: (records) => this._sectorBoundaryPreparations.publishRecords(records),
+            sectorId: record.sectorId,
+          })
+          : null,
+        validatePopulation: options.publish === true
+          ? () => validateCurrentSectorPrewarmPopulation(record)
+          : null,
+        certifyPopulation: options.publish === true
+          ? (currentRecord, snapshot) => {
+            validateCurrentSectorPrewarmPopulation(currentRecord);
+            return createSectorPrewarmCertification(
+              currentRecord,
+              snapshot,
+              currentSectorPrewarmEnvelope(currentRecord),
+            );
+          }
+          : null,
+      });
+    };
     const releaseSectorPrewarm = (record, reason) => {
       if (!record || record.active !== true) return 0;
       record.active = false;
+      record.boundaryAbort = this._sectorBoundaryPreparations.abortRecords(
+        record.boundaryRecords,
+        reason,
+      );
       return this._assetResidency
         ? this._assetResidency.releaseOwner(record.owner, reason)
         : 0;
@@ -1685,6 +2901,7 @@ export const render = {
         additions.push(request);
       }
       if (additions.length === 0) return record.promise;
+      reviseSectorPrewarmPopulation(record, additions.length);
       record.promise = record.promise.catch((error) => {
         record.prefetchError = error;
         return [];
@@ -1700,12 +2917,25 @@ export const render = {
       });
       return record.promise;
     };
-    const beginIncomingSectorPrewarm = (sectorId) => {
+    const beginIncomingSectorPrewarm = (sectorId, options = {}) => {
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!exactSectorId) return null;
+      const stageBoundaries = options.stageBoundaries !== false;
       const existing = this._incomingSectorPrewarm;
       if (existing && existing.active === true && existing.sectorId === exactSectorId) {
+        existing.stageBoundaries = stageBoundaries;
         appendSectorPrewarmRequests(existing, sectorPrewarmRequests(exactSectorId));
+        if (stageBoundaries) {
+          stageSectorPrewarmBoundaries(existing);
+        } else if (existing.boundaryRecords?.size) {
+          const retiredCount = existing.boundaryRecords.size;
+          existing.boundaryAbort = this._sectorBoundaryPreparations.abortRecords(
+            existing.boundaryRecords,
+            'continuous-sector-entry-uses-runtime-reconcile',
+          );
+          existing.boundaryRecords.clear();
+          reviseSectorPrewarmPopulation(existing, retiredCount);
+        }
         return existing;
       }
       if (existing) releaseSectorPrewarm(existing, 'incoming-sector-prewarm-superseded');
@@ -1718,31 +2948,30 @@ export const render = {
           generation: this._sectorPrewarmGeneration,
         }),
         active: true,
+        preparationEpoch: this._authoredPreparationEpoch,
+        contextGeneration: this._contextRecovery.generation,
+        preparationSignature: authoredBoundaryPreparationSignature(
+          renderer, state, this._contextRecovery.generation,
+        ),
         requestKeys: new Set(),
         requests: [],
         promise: Promise.resolve([]),
         prefetchError: null,
+        stageBoundaries,
+        boundaryRevision: 0,
+        boundaryRecords: new Set(),
+        liveBoundaryPromises: new Map(),
+        certification: null,
+        rotationCertificationRequired: false,
       };
       this._incomingSectorPrewarm = record;
       appendSectorPrewarmRequests(record, sectorPrewarmRequests(exactSectorId));
+      if (stageBoundaries) stageSectorPrewarmBoundaries(record);
       return record;
     };
-    const settleSectorPrewarmRequests = async (record) => {
-      // `sector:enter` is followed synchronously by arrival-specific spawns (for example an
-      // interdiction ambush) before the current fixed step unwinds. Yield once, then wait until no
-      // producer has extended the serial chain, so those exact roots join the same prepare/rotate.
-      await Promise.resolve();
-      while (record && record.active === true) {
-        const pending = record.promise;
-        await pending.catch((error) => {
-          record.prefetchError = error;
-          return [];
-        });
-        await Promise.resolve();
-        if (pending === record.promise) return true;
-      }
-      return false;
-    };
+    const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
+      includePrefetch: true,
+    });
     bus.on('jump:chargeStart', ({ targetSectorId } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
     });
@@ -1752,20 +2981,28 @@ export const render = {
       this._incomingSectorPrewarm = null;
     });
     bus.on('entity:spawned', ({ entity } = {}) => {
-      const pending = this._authoredSectorPrewarmPending;
-      if (!pending || pending.active !== true || !entity) return;
+      if (!entity) return;
       const spawnedSectorId = entitySectorId(entity);
-      if (String(spawnedSectorId || '') !== pending.sectorId) return;
+      const pending = this._authoredSectorPrewarmPending?.active === true
+        && this._authoredSectorPrewarmPending.sectorId === String(spawnedSectorId || '')
+        ? this._authoredSectorPrewarmPending
+        : (this._incomingSectorPrewarm?.active === true
+          && this._incomingSectorPrewarm.sectorId === String(spawnedSectorId || '')
+          ? this._incomingSectorPrewarm
+          : null);
+      if (!pending) return;
       appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
         sectorId: pending.sectorId,
         playerId: state.playerId,
       }));
+      stageSectorPrewarmBoundaries(pending, [entity]);
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const pending = this._authoredSectorPrewarmPending;
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!pending || pending.active !== true || pending.sectorId !== exactSectorId) return;
       appendSectorPrewarmRequests(pending, sectorPrewarmRequests(exactSectorId));
+      stageSectorPrewarmBoundaries(pending);
     });
     bus.on('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
@@ -1801,7 +3038,7 @@ export const render = {
         return null;
       });
     };
-    bus.on('sector:enter', ({ sectorId, sector } = {}) => {
+    bus.on('sector:enter', ({ sectorId, sector, continuous } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       this._meshReconcileDirty = true;
       if (cam.snapToPlayer) cam.snapToPlayer();
@@ -1864,31 +3101,87 @@ export const render = {
       }
 
       let prewarm = this._incomingSectorPrewarm;
+      const stageExactBoundaries = continuous !== true;
       if (!prewarm || prewarm.active !== true || prewarm.sectorId !== exactSectorId) {
         if (prewarm) releaseSectorPrewarm(prewarm, 'incoming-sector-prewarm-mismatch');
-        prewarm = beginIncomingSectorPrewarm(exactSectorId);
+        prewarm = beginIncomingSectorPrewarm(exactSectorId, {
+          stageBoundaries: stageExactBoundaries,
+        });
+      } else if (prewarm.stageBoundaries !== stageExactBoundaries) {
+        prewarm = beginIncomingSectorPrewarm(exactSectorId, {
+          stageBoundaries: stageExactBoundaries,
+        });
       }
       appendSectorPrewarmRequests(prewarm, sectorPrewarmRequests(exactSectorId));
-      this._authoredSectorPrewarmPendingId = exactSectorId;
+      if (stageExactBoundaries) stageSectorPrewarmBoundaries(prewarm);
+      // Exact hidden boundaries suppress ordinary authored upgrades only on intentional charge
+      // entries. Continuous crossings keep the established spatial runway + two-build drain live.
+      this._authoredSectorPrewarmPendingId = stageExactBoundaries ? exactSectorId : null;
       this._authoredSectorPrewarmPending = prewarm;
       const preparation = settleSectorPrewarmRequests(prewarm).then((settled) => {
-        if (!settled) return null;
+        if (!settled) {
+          if (prewarm.active === true) releaseSectorPrewarm(prewarm, 'sector-prewarm-generation-invalidated');
+          return null;
+        }
         return prepareSectorEntry(renderer, exactSectorId, prewarm.requests.slice(), {
           owner: prewarm.owner,
           residency: this._assetResidency,
           isEntryActive: () => prewarm.active === true
-            && state.world && state.world.currentSectorId === exactSectorId,
-          warmShaders: () => pipelinePrecompile,
+            && state.world
+            && state.world.currentSectorId === exactSectorId
+            && sectorPrewarmGenerationEnvelopeMatches(
+              prewarm,
+              currentSectorPrewarmEnvelope(prewarm),
+            )
+            && (prewarm.rotationCertificationRequired !== true
+              || certifiedSectorPrewarmIsCurrent(prewarm)),
+          warmShaders: async () => {
+            prewarm.rotationCertificationRequired = true;
+            prewarm.certification = null;
+            await pipelinePrecompile;
+            const settled = await settleSectorBoundaryPreparations(prewarm, {
+              includePrefetch: true,
+              publish: true,
+            });
+            if (!settled && prewarm.active === true) {
+              releaseSectorPrewarm(prewarm, 'sector-prewarm-generation-invalidated');
+            }
+          },
         });
       }).then((prepared) => {
-        if (!prepared || prepared.cancelled || prewarm.active !== true) return prepared;
+        if (!prepared) return prepared;
+        if (prepared.cancelled) {
+          if (prewarm.active === true) {
+            releaseSectorPrewarm(prewarm, 'sector-prewarm-final-certification-invalidated');
+          }
+          if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+          return prepared;
+        }
+        if (prewarm.active !== true) return prepared;
         if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
           releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-replaced');
         }
         this._currentSectorPrewarm = prewarm;
         if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
         return prepared;
-      }).catch((error) => {
+      }).catch(async (error) => {
+        const abortingRecords = new Set(prewarm.boundaryRecords || []);
+        const abortOutcomes = await this._sectorBoundaryPreparations.abortRecords(
+          abortingRecords,
+          'sector-prewarm-preparation-failed',
+        );
+        error = promoteSectorPrewarmAbortQuarantine(abortingRecords, abortOutcomes, error);
+        error = promoteSectorPrewarmGenerationInvalidation(
+          prewarm,
+          currentSectorPrewarmEnvelope(prewarm),
+          error,
+        );
+        if (error?.preventSectorFallbackRotation !== true) prewarm.boundaryRecords?.clear();
+        if (error?.preventSectorFallbackRotation === true) {
+          releaseSectorPrewarm(prewarm, 'sector-prewarm-invariant-failed');
+          console.error('[render] sector authored prewarm invariant failed; residency was not rotated', error);
+          throw error;
+        }
         // Asset failures keep the established procedural boundary visible. The helper itself never
         // rotates an incomplete set; this lifecycle-only fallback prevents a failed optional asset
         // from leaving residency labelled as the sector the player already departed.
@@ -2119,6 +3412,7 @@ export const render = {
   },
 
   clearAllMeshes(keepPlayer) {
+    this._sectorBoundaryPreparations?.abortAll('render-mesh-clear');
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
       this._unbindPresentationMesh(id, m);
@@ -2204,7 +3498,8 @@ export const render = {
       this._meshes,
       this._meshBuildQueuedIds,
       this._meshBuildQueue,
-      (entity) => isEntityRenderRelevant(entity, state),
+      (entity) => !this._sectorBoundaryPreparations?.has(entity.id)
+        && isEntityRenderRelevant(entity, state),
     );
     const built = this._drainMeshBuildQueue(buildBudget);
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
@@ -2270,6 +3565,7 @@ export const render = {
       const entity = entities[index];
       stats.entityVisits++;
       if (!entity || this._meshes.has(entity.id)
+          || this._sectorBoundaryPreparations?.has(entity.id)
           || !isEntityRenderRelevant(entity, state)) continue;
       if (entity.type === 'ship') shipCandidates.push(entity);
       else otherCandidates.push(entity);
@@ -2315,6 +3611,7 @@ export const render = {
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
+          || this._sectorBoundaryPreparations?.has(id)
           || !isEntityRenderRelevant(e, this.state)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
@@ -2352,6 +3649,11 @@ export const render = {
   // cached in the factory (never disposed), so only the per-entity Object3D graph is freed here —
   // exactly the same lifecycle the per-entity disposer in disposeObject() already assumes.
   rebuildShipMesh(id) {
+    if (this._sectorBoundaryPreparations?.has(id)) {
+      this._sectorBoundaryPreparations.abortEntity(id, 'ship-rebuild-during-sector-prewarm');
+      this._meshReconcileDirty = true;
+      return;
+    }
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
@@ -2938,8 +4240,13 @@ export const render = {
     // render graph composites with contact-depth AO.
     const postFrameToken = frameOrigin ? beginPostRenderTargetFrameOrigin(frameOrigin) : 0;
     let dynamicBufferEpoch = null;
+    let disposeRegistrationProbe = null;
     try {
       dynamicBufferEpoch = this._dynamicBuffers.arm();
+      disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(
+        this.scene,
+        this.renderer,
+      );
       if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
         this._lastRenderPath = 'renderGraph';
         const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
@@ -2962,6 +4269,7 @@ export const render = {
         }
       }
     } finally {
+      endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
       if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
       if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
     }
@@ -3280,7 +4588,17 @@ export const render = {
   },
 
   onResize() {
+    const before = authoredBoundaryPreparationSignature(
+      this.renderer, this.state, this._contextRecovery?.generation || 0,
+    );
     this._applySize();
+    const after = authoredBoundaryPreparationSignature(
+      this.renderer, this.state, this._contextRecovery?.generation || 0,
+    );
+    if (before !== after) {
+      this._authoredPreparationEpoch++;
+      this._sectorBoundaryPreparations?.abortAll('render-target-resized-during-sector-prewarm');
+    }
     this.cam.onResize();
     if (this.spaceBg && this.spaceBg.onResize) this.spaceBg.onResize();
   },
@@ -3464,8 +4782,12 @@ function disposeObject(obj) {
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
-    if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();
-    else if (c.geometry && !(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))) c.geometry.dispose();
+    if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function') c.dispose();
+    if (!c.isBatchedMesh
+        && c.geometry
+        && !(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))) {
+      c.geometry.dispose();
+    }
     if (c.material && !(c.userData && c.userData.sharedContactShadow)) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
   });
 }

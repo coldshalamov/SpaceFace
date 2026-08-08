@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Prove sector entry is prepare-then-swap, not swap-then-demand-load.
+// Prove sector entry is prepare-then-publish, not publish-then-compose/upload.
 //
 // The ordering IS the contract. If the rotate lands before the incoming sector's archetypes are
-// resident, the player is already flying in a sector whose assets are still decoding, uploading and
-// compiling shaders — each arriving in a frame least able to absorb it. A check that only asserted
-// "everything ended up resident" would pass either way, so this asserts the *order*, by driving the
-// real `prepareSectorEntry` through its injection seams and reading the journal it produces.
+// resident and its exact boundary is not composed, uploaded, and pool-prepared, the player is already
+// flying in a sector whose first visible authored roots are still doing admission work. A check that
+// only asserted "everything ended up resident" would pass either way, so this asserts the order by
+// driving the real `prepareSectorEntry` and checking the production boundary-generation wiring.
 
 import { readFileSync } from 'node:fs';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
@@ -192,14 +192,108 @@ function manifestDerivedRequests() {
 
 function productionWiring() {
   const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const partsSource = readFileSync(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  const sourceSlice = (startToken, endToken) => {
+    const start = source.indexOf(startToken);
+    const end = start >= 0 ? source.indexOf(endToken, start + startToken.length) : -1;
+    return start >= 0 && end >= 0 ? source.slice(start, end) : '';
+  };
+  const probeIsGuarded = (slice, disarmToken) => {
+    const begin = slice.indexOf('beginAuthoredInstanceMeshDisposeRegistrationProbe(');
+    const end = slice.indexOf('endAuthoredInstanceMeshDisposeRegistrationProbe(', begin);
+    const guardedTry = begin >= 0 ? slice.lastIndexOf('try {', begin) : -1;
+    const guardedFinally = end >= 0 ? slice.lastIndexOf('finally {', end) : -1;
+    const disarm = end >= 0 ? slice.indexOf(disarmToken, end) : -1;
+    return guardedTry >= 0 && guardedTry < begin
+      && guardedFinally > begin && guardedFinally < end
+      && disarm > end;
+  };
   check('jump charge opens the production preparation runway',
     /bus\.on\('jump:chargeStart',[\s\S]*beginIncomingSectorPrewarm\(targetSectorId\)/.test(source));
-  check('sector entry refreshes the live target set and calls the real prepare-then-swap helper',
+  check('incoming exact entities reserve generation-owned hidden boundaries',
+    /stageSectorPrewarmBoundaries[\s\S]*_sectorBoundaryPreparations\.reserve\(\{[\s\S]*generation: record\.generation[\s\S]*fingerprint: authoredCompositionFingerprintForEntity/.test(source));
+  check('hidden boundary construction retains the ordinary two-build frame budget',
+    /startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET/.test(source)
+      && /scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn/.test(source));
+  check('ordinary reconcile and residency drain exclude every reserved entity id',
+    (source.match(/_sectorBoundaryPreparations\?\.has\(/g) || []).length >= 4,
+    `${(source.match(/_sectorBoundaryPreparations\?\.has\(/g) || []).length} reservation guards`);
+  check('hidden admission prepares exact package pools without publishing them',
+    /requestAuthoredUpgrade\(record\.boundary, renderer, scene, \{[\s\S]*deferPackagePoolActivation: true,[\s\S]*deferBoundaryPublication: true/.test(source)
+      && /Promise\.allSettled\(preparations\)/.test(partsSource));
+  check('sector entry refreshes the live target set and calls the real prepare-then-publish helper',
     /appendSectorPrewarmRequests\(prewarm, sectorPrewarmRequests\(exactSectorId\)\)[\s\S]*prepareSectorEntry\(renderer, exactSectorId/.test(source));
   check('arrival-time spawns extend the same preparation generation',
     /bus\.on\('jump:arrive',[\s\S]*appendSectorPrewarmRequests\(pending, sectorPrewarmRequests\(exactSectorId\)\)/.test(source));
-  check('target authored upgrades wait for the matching preparation generation',
-    /_authoredSectorPrewarmPending === prewarm[\s\S]*requestAuthoredUpgrade/.test(source));
+  check('exact boundary fixpoint settlement and publication finish inside the pre-rotation warm gate',
+    /const settleSectorBoundaryPreparations = async \(record, options = \{\}\) => \{[\s\S]*settleSectorPrewarmPopulationFixpoint\(record, \{[\s\S]*refreshPopulation:[\s\S]*publishBoundaryRecords:[\s\S]*validatePopulation:/.test(source)
+      && /warmShaders: async \(\) => \{[\s\S]*await pipelinePrecompile;[\s\S]*await settleSectorBoundaryPreparations\(prewarm, \{[\s\S]*includePrefetch: true,[\s\S]*publish: true,/.test(source));
+  check('fixpoint tracks identity revisions and rescans after settle and publish',
+    /boundaryRevision: 0/.test(source)
+      && /const reviseSectorPrewarmPopulation = \(record, count = 1\)/.test(source)
+      && /record\.boundaryRevision = \(Number\(record\.boundaryRevision\) \|\| 0\) \+ count;/.test(source)
+      && /phase: 'after-settle'/.test(source)
+      && /phase: 'after-publish'/.test(source)
+      && /sectorPrewarmPopulationMatches\(record, snapshot\)/.test(source));
+  check('rejecting fixpoint phases and stale renderer envelopes cannot rotate residency',
+    /const awaitActivePhase = async \(phase\) => \{[\s\S]*catch \(error\) \{[\s\S]*if \(!isActive\(\)\) return false;[\s\S]*throw error;/.test(source)
+      && (source.match(/await awaitActivePhase\(/g) || []).length >= 8
+      && /error = promoteSectorPrewarmGenerationInvalidation\([\s\S]*prewarm,[\s\S]*currentSectorPrewarmEnvelope\(prewarm\),[\s\S]*error,[\s\S]*\);[\s\S]*if \(error\?\.preventSectorFallbackRotation !== true\) prewarm\.boundaryRecords\?\.clear\(\);/.test(source));
+  check('final pre-rotation barrier requires an exact certified population and renderer envelope',
+    /certifyPopulation: options\.publish === true[\s\S]*createSectorPrewarmCertification\([\s\S]*currentSectorPrewarmEnvelope\(currentRecord\)/.test(source)
+      && /validateCurrentSectorPrewarmPopulation = \(record\) => \{[\s\S]*sectorPrewarmRequests\(record\.sectorId\)[\s\S]*record\.requestKeys\?\.has\(key\)/.test(source)
+      && /isEntryActive: \(\) => prewarm\.active === true[\s\S]*sectorPrewarmGenerationEnvelopeMatches\([\s\S]*prewarm,[\s\S]*currentSectorPrewarmEnvelope\(prewarm\)[\s\S]*prewarm\.rotationCertificationRequired !== true[\s\S]*certifiedSectorPrewarmIsCurrent\(prewarm\)/.test(source)
+      && /warmShaders: async \(\) => \{[\s\S]*prewarm\.rotationCertificationRequired = true;[\s\S]*prewarm\.certification = null;[\s\S]*settleSectorBoundaryPreparations/.test(source)
+      && /if \(prepared\.cancelled\) \{[\s\S]*releaseSectorPrewarm\(prewarm, 'sector-prewarm-final-certification-invalidated'\);[\s\S]*_incomingSectorPrewarm === prewarm[\s\S]*_incomingSectorPrewarm = null;/.test(source));
+  check('stale LIVE records are pruned only against the authoritative entity and mesh census',
+    /export function isLiveSectorBoundaryRecordCurrent[\s\S]*current === prepared\.entity[\s\S]*boundary === prepared\.boundary[\s\S]*fingerprint === prepared\.fingerprint/.test(source)
+      && /pruneSettledSectorBoundaryRecords\(record\.boundaryRecords, \{[\s\S]*isLiveRecordCurrent:[\s\S]*isLiveSectorBoundaryRecordCurrent[\s\S]*onPruned:[\s\S]*reviseSectorPrewarmPopulation\(record, prunedRecords\)/.test(source)
+      && /validateSectorPrewarmPopulationCoverage\(record, sectorPrewarmCoverageOptions\(record\)\)/.test(source));
+  check('fixpoint exhaustion and cleanup quarantine cannot rotate fallback residency',
+    /SPACEFACE_SECTOR_PREWARM_FIXPOINT_EXHAUSTED/.test(source)
+      && /preventSectorFallbackRotation = true/.test(source)
+      && /const abortOutcomes = await this\._sectorBoundaryPreparations\.abortRecords\(/.test(source)
+      && /error = promoteSectorPrewarmAbortQuarantine\(abortingRecords, abortOutcomes, error\);[\s\S]*if \(error\?\.preventSectorFallbackRotation !== true\) prewarm\.boundaryRecords\?\.clear\(\);/.test(source)
+      && /if \(error\?\.preventSectorFallbackRotation === true\) \{[\s\S]*releaseSectorPrewarm\(prewarm, 'sector-prewarm-invariant-failed'\);[\s\S]*throw error;[\s\S]*rotateSector\(exactSectorId\)/.test(source));
+  check('publication binds the prepared identity and flips visibility last',
+    /publishBoundary: \(record\) => \{[\s\S]*publishPreparedSectorBoundary\(record, \{/.test(source)
+      && /export function publishPreparedSectorBoundary[\s\S]*boundary\.visible = false;[\s\S]*options\.meshes\?\.set\(id, boundary\);[\s\S]*boundary\.visible = true;/.test(source));
+  check('continuous sector entry keeps exact roots on ordinary reconciliation',
+    /bus\.on\('sector:enter', \(\{ sectorId, sector, continuous \} = \{\}\)/.test(source)
+      && /const stageExactBoundaries = continuous !== true;/.test(source)
+      && /stageBoundaries: stageExactBoundaries/.test(source)
+      && /if \(stageExactBoundaries\) stageSectorPrewarmBoundaries\(prewarm\);/.test(source)
+      && /_authoredSectorPrewarmPendingId = stageExactBoundaries \? exactSectorId : null;/.test(source));
+  check('context loss includes detached prepared instance targets',
+    /prepareAuthoredInstancePoolsForContextLoss\(scene, renderer\)/.test(source)
+      && /contextRoots\.push\(\.\.\.preparedPoolResources\.roots\)/.test(source)
+      && /detachStaleWebGlDisposeListeners\([\s\S]*preparedPoolResources\.provenance/.test(source));
+  check('actual render boundaries capture complete minification-stable GPU disposal provenance',
+    (source.match(/beginAuthoredInstanceMeshDisposeRegistrationProbe\(/g) || []).length >= 3
+      && (source.match(/endAuthoredInstanceMeshDisposeRegistrationProbe\(/g) || []).length >= 3
+      && /prepareAuthoredInstancePoolsForContextLoss\(scene, renderer\)/.test(source)
+      && /new THREE\.WebGLRenderTarget\(1, 1/.test(partsSource)
+      && /probe\.castShadow = true/.test(partsSource)
+      && /capturePrivateRegistration\(renderTarget, 'renderTargets'\)/.test(partsSource));
+  check('every probe allocation is inside the render-state cleanup guard',
+    probeIsGuarded(
+      sourceSlice('state.render.warmPostProcess = () => {', 'const compileForCurrentTarget'),
+      'dynamicBuffers.disarm(',
+    )
+      && probeIsGuarded(
+        sourceSlice('const openingFrameStarted', 'result.openingFrame = {'),
+        'dynamicBuffers.disarm(',
+      )
+      && probeIsGuarded(
+        sourceSlice('drawPreparedFrame() {', 'renderFrame(alpha, frameDt'),
+        'this._dynamicBuffers.disarm(',
+      ));
+  check('context, settings, and target-size changes invalidate prepared generations',
+    /abortAll\('webgl-context-lost'\)/.test(source)
+      && /abortAll\('video-settings-changed-during-sector-prewarm'\)/.test(source)
+      && /abortAll\('render-target-resized-during-sector-prewarm'\)/.test(source));
+  check('entity-scoped invalidation prunes only successfully disposed boundaries',
+    /export function reconcileSettledSectorBoundaryRecords[\s\S]*prepared\?\.state === SECTOR_BOUNDARY_PREPARATION_STATE\.disposed[\s\S]*prepared\.cleanupBlocked !== true[\s\S]*expectedEntityInvalidation \|\| safelySuperseded/.test(source));
 }
 
 await completeEntry();
@@ -210,5 +304,5 @@ await rejectedWarmEntry();
 manifestDerivedRequests();
 productionWiring();
 
-console.log(`\n${failures === 0 ? 'sector prewarm: prepare-then-swap holds' : `${failures} assertion(s) failed`}`);
+console.log(`\n${failures === 0 ? 'sector prewarm: prepare-then-publish holds' : `${failures} assertion(s) failed`}`);
 if (failures > 0) process.exit(1);

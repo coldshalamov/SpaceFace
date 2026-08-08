@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
 
@@ -12,14 +13,21 @@ import {
   prepareRenderPackageBlueprint,
 } from '../src/render/assetLoader.js';
 import {
+  beginAuthoredInstanceMeshDisposeRegistrationProbe,
   buildAuthoredPlaceProp,
+  disposePreparedAuthoredBoundary,
+  endAuthoredInstanceMeshDisposeRegistrationProbe,
   invalidatePartsLibraryCaches,
   preloadAuthoredPartLibrary,
+  prepareAuthoredInstancePoolsForContextLoss,
+  prepareAuthoredVisualPipelines,
+  publishPreparedAuthoredBoundary,
   syncAuthoredInstancePools,
   upgradeAuthoredPlaceBoundaryForProbe,
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
+import { detachStaleWebGlDisposeListeners } from '../src/render/contextResourceLifecycle.js';
 import {
   RENDER_PACKAGE_PILOTS,
   renderPackagePilotForAssetId,
@@ -57,6 +65,203 @@ if (!globalThis.document) {
       };
     },
   };
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, resolve, reject };
+}
+
+let minifiedThreeRendererModulePromise = null;
+
+function createEventCanvas() {
+  const listeners = new Map();
+  return {
+    width: 4,
+    height: 4,
+    style: {},
+    addEventListener(type, listener) {
+      let bucket = listeners.get(type);
+      if (!bucket) listeners.set(type, (bucket = new Set()));
+      bucket.add(listener);
+    },
+    removeEventListener(type, listener) {
+      listeners.get(type)?.delete(listener);
+    },
+    setAttribute() {},
+    emit(type, event = {}) {
+      for (const listener of [...(listeners.get(type) || [])]) listener.call(this, event);
+    },
+  };
+}
+
+function createDeterministicWebGl2Context(canvas) {
+  let nextConstant = 1;
+  const constants = new Map([['SAMPLER_2D', 0x8b5e]]);
+  const namesByConstant = new Map([[0x8b5e, 'SAMPLER_2D']]);
+  const constant = (name) => {
+    if (!constants.has(name)) {
+      while (namesByConstant.has(nextConstant)) nextConstant++;
+      constants.set(name, nextConstant);
+      namesByConstant.set(nextConstant, name);
+      nextConstant++;
+    }
+    return constants.get(name);
+  };
+  const parameterValues = {
+    ALIASED_LINE_WIDTH_RANGE: new Float32Array([1, 1]),
+    ALIASED_POINT_SIZE_RANGE: new Float32Array([1, 64]),
+    IMPLEMENTATION_COLOR_READ_FORMAT: 0x1908,
+    IMPLEMENTATION_COLOR_READ_TYPE: 0x1401,
+    MAX_COMBINED_TEXTURE_IMAGE_UNITS: 32,
+    MAX_CUBE_MAP_TEXTURE_SIZE: 4096,
+    MAX_FRAGMENT_UNIFORM_VECTORS: 1024,
+    MAX_SAMPLES: 4,
+    MAX_TEXTURE_IMAGE_UNITS: 16,
+    MAX_TEXTURE_SIZE: 4096,
+    MAX_UNIFORM_BUFFER_BINDINGS: 24,
+    MAX_VARYING_VECTORS: 16,
+    MAX_VERTEX_ATTRIBS: 16,
+    MAX_VERTEX_TEXTURE_IMAGE_UNITS: 16,
+    MAX_VERTEX_UNIFORM_VECTORS: 1024,
+    RENDERER: 'SpaceFace deterministic WebGL2 probe',
+    SHADING_LANGUAGE_VERSION: 'WebGL GLSL ES 3.00 deterministic',
+    VENDOR: 'SpaceFace',
+    VERSION: 'WebGL 2.0 deterministic',
+  };
+  const context = {
+    canvas,
+    drawingBufferHeight: canvas.height,
+    drawingBufferWidth: canvas.width,
+    checkFramebufferStatus: () => constant('FRAMEBUFFER_COMPLETE'),
+    clientWaitSync: () => constant('CONDITION_SATISFIED'),
+    createBuffer: () => ({}),
+    createFramebuffer: () => ({}),
+    createProgram: () => ({}),
+    createQuery: () => ({}),
+    createRenderbuffer: () => ({}),
+    createSampler: () => ({}),
+    createShader: () => ({}),
+    createTexture: () => ({}),
+    createVertexArray: () => ({}),
+    fenceSync: () => ({}),
+    getActiveAttrib: () => null,
+    getActiveUniform: () => ({ name: 'map', type: 0x8b5e, size: 1 }),
+    getAttribLocation: () => 0,
+    getContextAttributes: () => ({
+      alpha: true,
+      antialias: false,
+      depth: true,
+      failIfMajorPerformanceCaveat: false,
+      powerPreference: 'default',
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false,
+      stencil: false,
+    }),
+    getError: () => constant('NO_ERROR'),
+    getExtension: () => null,
+    getParameter(value) {
+      return parameterValues[namesByConstant.get(value)] ?? 0;
+    },
+    getProgramInfoLog: () => '',
+    getProgramParameter(_program, value) {
+      const name = namesByConstant.get(value);
+      if (name === 'ACTIVE_ATTRIBUTES') return 0;
+      if (name === 'ACTIVE_UNIFORMS') return 1;
+      if (name === 'LINK_STATUS' || name === 'VALIDATE_STATUS') return true;
+      return true;
+    },
+    getQueryParameter: () => true,
+    getShaderInfoLog: () => '',
+    getShaderParameter: () => true,
+    getShaderPrecisionFormat: () => ({ precision: 23, rangeMax: 127, rangeMin: 127 }),
+    getSupportedExtensions: () => [],
+    getUniformLocation: () => ({}),
+    isContextLost: () => false,
+  };
+  return new Proxy(context, {
+    get(target, property) {
+      if (property in target) return target[property];
+      if (typeof property === 'string' && /^[A-Z0-9_]+$/.test(property)) return constant(property);
+      if (typeof property === 'string') {
+        const noop = () => {};
+        target[property] = noop;
+        return noop;
+      }
+      return undefined;
+    },
+  });
+}
+
+async function createActualMinifiedThreeRenderer() {
+  if (!minifiedThreeRendererModulePromise) {
+    minifiedThreeRendererModulePromise = build({
+      bundle: true,
+      format: 'esm',
+      legalComments: 'none',
+      minify: true,
+      platform: 'browser',
+      stdin: {
+        contents: "export { WebGLRenderer } from 'three';",
+        loader: 'js',
+        resolveDir: process.cwd(),
+        sourcefile: 'spaceface-minified-three-probe.mjs',
+      },
+      target: 'es2022',
+      treeShaking: true,
+      write: false,
+    }).then(async (result) => {
+      const code = result.outputFiles[0].text;
+      const url = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}#three-r184-minified`;
+      return import(url);
+    });
+  }
+  const { WebGLRenderer } = await minifiedThreeRendererModulePromise;
+  const canvas = createEventCanvas();
+  const context = createDeterministicWebGl2Context(canvas);
+  const renderer = new WebGLRenderer({ canvas, context });
+  renderer.setSize(4, 4, false);
+  return { canvas, renderer };
+}
+
+function captureSimulatedRendererInstancedMeshDisposeRegistration(
+  renderer,
+  scene,
+  listener,
+  resourceListeners = {},
+) {
+  const probe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
+  assert.ok(probe?.probe?.isInstancedMesh);
+  probe.probe.addEventListener('dispose', listener);
+  if (resourceListeners.geometry) {
+    probe.geometry.addEventListener('dispose', resourceListeners.geometry);
+  }
+  if (resourceListeners.material) {
+    probe.material.addEventListener('dispose', resourceListeners.material);
+  }
+  if (resourceListeners.shadowMaterial) {
+    probe.material.addEventListener('dispose', resourceListeners.shadowMaterial);
+  }
+  if (resourceListeners.texture) {
+    probe.texture.addEventListener('dispose', resourceListeners.texture);
+  }
+  if (resourceListeners.renderTarget) {
+    probe.renderTarget.addEventListener('dispose', resourceListeners.renderTarget);
+  }
+  const receipt = endAuthoredInstanceMeshDisposeRegistrationProbe(probe);
+  assert.strictEqual(receipt.listener, listener);
+  return receipt;
+}
+
+function detachPreparedContextLossResources(scene, renderer) {
+  const prepared = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
+  const detached = detachStaleWebGlDisposeListeners(prepared.roots, prepared.provenance);
+  return { ...prepared, ...detached };
 }
 
 test('one-root runtime metadata mirrors GLTFLoader wrapper, name ordering, mesh cache, and binding', () => {
@@ -385,6 +590,112 @@ test('production render-package instances bypass runtime geometry preparation on
   });
   assert.equal(directMeshes.length, 1);
   assert.strictEqual(directMeshes[0].geometry, geometry, 'package instance shares its immutable decoded buffer');
+
+  const gatedEntity = { ...entity, id: 'pilot_debris_gated', data: { ...entity.data } };
+  const gatedBoundary = buildAuthoredPlaceProp(gatedEntity, { releaseMode: true });
+  const gatedFallback = gatedBoundary.children[0];
+  const pipelineGate = deferred();
+  scene.add(gatedBoundary);
+  let gatedSettled = false;
+  const gatedAdmission = upgradeAuthoredPlaceBoundaryForProbe(
+    gatedBoundary,
+    gatedFallback,
+    gatedEntity,
+    'places/place_debris_chunk.glb',
+    {},
+    scene,
+    {
+      releaseMode: true,
+      loadAuthoredPart: async () => record,
+      overlapAuthoredPipelineCompile: true,
+      prepareAuthoredPipelines: async () => pipelineGate.promise,
+    },
+  );
+  gatedAdmission.then(() => { gatedSettled = true; });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(gatedSettled, false,
+    'overlapped place admission does not report completion while exact GPU work is pending');
+  pipelineGate.resolve({ skipped: false });
+  assert.equal(await gatedAdmission, true);
+  assert.equal(gatedSettled, true);
+});
+
+test('prepared place cleanup failure cannot publish the same-semantic fallback', async () => {
+  const entity = {
+    id: 'prepared-geology-cleanup-failure',
+    type: 'asteroid',
+    alive: true,
+    radius: 12,
+    data: {
+      placeId: 'place_debris_chunk',
+      placeTargetRadius: 12,
+      authoredGeologySkin: true,
+    },
+  };
+  const fallbackRoot = new THREE.Group();
+  const boundary = buildAuthoredPlaceProp(entity, { fallbackRoot, releaseMode: true });
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const sourceGeometry = new THREE.BoxGeometry(4, 2, 3);
+  const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x7a7168 });
+  const record = {
+    url: 'assets/ships/release/parts/places/place_debris_chunk.glb',
+    assetId: 'place_debris_chunk',
+    slot: 'place',
+    bounds: { size: [4, 2, 3], center: [0, 0, 0] },
+    primitives: [{
+      key: 'debris:cleanup-failure',
+      name: 'LOD0_Debris_Material_Hull',
+      geometry: sourceGeometry,
+      material: sourceMaterial,
+      matrix: new THREE.Matrix4(),
+      tags: Object.freeze({ lod: 'lod0', tint: 'none', instance: true }),
+    }],
+    markers: [],
+  };
+  let stagedRoot = null;
+  let failingGeometry = null;
+  let restoreDispose = null;
+
+  const admission = upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_debris_chunk.glb',
+    {},
+    scene,
+    {
+      releaseMode: true,
+      deferBoundaryPublication: true,
+      loadAuthoredPart: async () => record,
+      prepareAuthoredPipelines: async (root) => {
+        stagedRoot = root;
+        root.traverse((object) => {
+          if (!failingGeometry && object.geometry) failingGeometry = object.geometry;
+        });
+        assert.ok(failingGeometry);
+        restoreDispose = failingGeometry.dispose;
+        failingGeometry.dispose = () => { throw new Error('injected prepared-place cleanup refusal'); };
+        throw new Error('injected prepared-place pipeline failure');
+      },
+    },
+  );
+
+  await assert.rejects(admission, /Prepared authored place cleanup failed/);
+  assert.ok(stagedRoot);
+  assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+  assert.notEqual(boundary.userData.authoredAssetState, 'same-semantic-fallback-prepared');
+  assert.equal(typeof boundary.userData.__disposePreparedAuthoredBoundary, 'function',
+    'the failed cleanup remains retryable for the generation manager');
+
+  failingGeometry.dispose = restoreDispose;
+  assert.equal(await disposePreparedAuthoredBoundary(boundary), true);
+  assert.equal(stagedRoot.children.length, 0);
+  assert.equal(boundary.userData.__disposePreparedAuthoredBoundary, undefined);
+  scene.remove(boundary);
+  sourceGeometry.dispose();
+  sourceMaterial.dispose();
 });
 
 test('repeated package-backed ship roots promote only eligible rigid surfaces into scene pools', async () => {
@@ -510,6 +821,600 @@ test('repeated package-backed ship roots promote only eligible rigid surfaces in
   }
 });
 
+test('hidden sector preparation defers package-pool promotion until exact boundary publication', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const dynamicBuffers = createDynamicBufferCoordinator(scene);
+  const fixture = await packageShipFixture();
+  const preparedPoolTargets = [];
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-hidden-sector-preparation-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) {
+        assert.equal(subject.parent, null);
+        assert.equal(subject.count, 0);
+        preparedPoolTargets.push(subject);
+      }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('package-current-sector-owner', 0, renderer, scene, options);
+    const currentInstance = authoredPackageInstance(current);
+    const currentEligible = currentInstance.nodes.get('eligible');
+    assert.equal(currentEligible.isMesh, true);
+
+    const incoming = startPackageShip(
+      'package-incoming-sector-owner',
+      40,
+      renderer,
+      scene,
+      options,
+      {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+      },
+    );
+    incoming.visible = false;
+    const completion = incoming.userData.authoredUpgradePromise;
+    assert.ok(completion && typeof completion.then === 'function');
+    assert.strictEqual(
+      incoming.userData.requestAuthoredUpgrade(renderer, scene, {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+      }),
+      completion,
+      'one boundary exposes one stable admission settlement promise',
+    );
+    const receipt = await completion;
+    assert.equal(receipt.error, null);
+    assert.equal(receipt.result, true);
+    assert.equal(incoming.userData.authoredAssetState, 'authored-prepared');
+
+    const incomingInstance = authoredPackageInstance(incoming);
+    const incomingEligible = incomingInstance.nodes.get('eligible');
+    assert.equal(currentEligible.isMesh, true,
+      'hidden preparation cannot promote the already-live direct candidate');
+    assert.equal(incomingEligible.isMesh, true,
+      'the prepared owner stays direct until publication activates the pool transaction');
+    assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 1,
+      'the detached GPU backing is range-owned before publication without submitting a draw');
+    assert.equal(preparedPoolTargets.length, 1, 'the exact eventual pool target is GPU-prepared once');
+    assert.equal(preparedPoolTargets[0].parent, null);
+    assert.equal(preparedPoolTargets[0].count, 0);
+
+    assert.equal(publishPreparedAuthoredBoundary(incoming), true);
+    assert.equal(incoming.userData.authoredAssetState, 'authored');
+    syncAuthoredInstancePools(scene);
+    const pools = scene.children.filter((object) => object.userData?.spacefaceInstancePool);
+    assert.deepEqual(pools, preparedPoolTargets,
+      'publication activates the same prepared target rather than rebuilding it');
+    assert.equal(pools[0].count, 1,
+      'the hidden incoming owner submits no slot before the final reveal');
+    incoming.visible = true;
+    syncAuthoredInstancePools(scene);
+    assert.equal(pools[0].count, 2);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 1);
+    assert.strictEqual(currentInstance.nodes.get('eligible'), currentEligible);
+    assert.strictEqual(incomingInstance.nodes.get('eligible'), incomingEligible);
+    assert.equal(currentEligible.isMesh, false);
+    assert.equal(incomingEligible.isMesh, false);
+
+    assert.equal(publishPreparedAuthoredBoundary(incoming), true,
+      'prepared-boundary publication is idempotent');
+    assert.equal(scene.children.filter((object) => object.userData?.spacefaceInstancePool).length, 1);
+    scene.remove(incoming);
+    assert.equal(currentEligible.isMesh, true,
+      'owner removal collapses the pool back to the surviving live direct candidate');
+    assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
+    scene.remove(current);
+  } finally {
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
+test('preparing ship cleanup failure remains journaled for generation quarantine and retry', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const fixture = await packageShipFixture({ includeAuthoredNavLights: false });
+  let stagedRoot = null;
+  let failingGeometry = null;
+  let restoreGeometryDispose = null;
+  let failingNavObject = null;
+  let restoreNavObjectDispose = null;
+  let navObjectDisposeAttempts = 0;
+  let fallbackNavMaterialDisposals = 0;
+  let staleNavObjectDisposals = 0;
+  let staleGeometryDisposals = 0;
+  let preparedRootWasContextVisible = false;
+  let failedResourcesWereContextVisible = false;
+  let detachedContextListeners = 0;
+  const contextDisposeListener = (event) => {
+    if (event.target === failingNavObject) staleNavObjectDisposals++;
+  };
+  const geometryContextDisposeListener = (event) => {
+    if (event.target === failingGeometry) staleGeometryDisposals++;
+  };
+  Object.defineProperty(geometryContextDisposeListener, 'name', { configurable: true, value: 'r' });
+  captureSimulatedRendererInstancedMeshDisposeRegistration(
+    renderer,
+    scene,
+    contextDisposeListener,
+    { geometry: geometryContextDisposeListener },
+  );
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-preparing-cleanup-retry-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (!subject?.isGroup) return { skipped: false };
+      stagedRoot = subject;
+      const boundsProxy = subject.getObjectByName('GLTFKit_BoundsProxy');
+      failingGeometry = boundsProxy?.geometry || null;
+      assert.ok(failingGeometry);
+      const fallbackNavLights = subject.getObjectByName('GLTFKit_Nav_Lights');
+      assert.ok(fallbackNavLights?.isInstancedMesh,
+        'a whole-ship package without authored nav tags uses the owner-local fallback light material');
+      fallbackNavLights.addEventListener('dispose', contextDisposeListener);
+      failingGeometry.addEventListener('dispose', geometryContextDisposeListener);
+      failingNavObject = fallbackNavLights;
+      restoreNavObjectDispose = fallbackNavLights.dispose.bind(fallbackNavLights);
+      fallbackNavLights.dispose = () => {
+        navObjectDisposeAttempts++;
+        if (navObjectDisposeAttempts === 1) {
+          throw new Error('injected preparing ship object cleanup refusal');
+        }
+        return restoreNavObjectDispose();
+      };
+      const originalNavMaterialDispose = fallbackNavLights.material.dispose.bind(fallbackNavLights.material);
+      fallbackNavLights.material.dispose = () => {
+        fallbackNavMaterialDisposals++;
+        originalNavMaterialDispose();
+      };
+      restoreGeometryDispose = failingGeometry.dispose;
+      failingGeometry.dispose = () => { throw new Error('injected preparing ship cleanup refusal'); };
+      throw new Error('injected preparing ship pipeline failure');
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const boundary = startPackageShip(
+      'package-preparing-cleanup-retry',
+      0,
+      renderer,
+      scene,
+      options,
+      {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+      },
+    );
+    const receipt = await boundary.userData.authoredUpgradePromise;
+
+    assert.ok(stagedRoot);
+    assert.ok(receipt.error instanceof AggregateError);
+    assert.match(receipt.error.message, /cleanup failed/i);
+    assert.equal(typeof boundary.userData.__disposePreparedAuthoredBoundary, 'function',
+      'a failed PREPARING cleanup remains owned by the boundary journal');
+    assert.equal(stagedRoot.children.length, 0,
+      'cleanup exhausts later graph teardown even though one resource disposer failed');
+    const contextReceipt = detachPreparedContextLossResources(scene, renderer);
+    preparedRootWasContextVisible = contextReceipt.roots.includes(stagedRoot);
+    failedResourcesWereContextVisible = contextReceipt.roots.includes(failingNavObject)
+      && contextReceipt.roots.includes(failingGeometry);
+    detachedContextListeners = contextReceipt.listenersDetached;
+    assert.equal(preparedRootWasContextVisible, true,
+      'the detached authored root remains discoverable after a cleanup-blocked graph clear');
+    assert.equal(failedResourcesWereContextVisible, true,
+      'failed owner-local resources remain explicit context-loss roots after graph teardown');
+    assert.equal(detachedContextListeners, 2,
+      'context loss detaches exact object and geometry callbacks from the blocked prepared owner');
+    assert.equal(staleNavObjectDisposals, 0);
+    assert.equal(staleGeometryDisposals, 0);
+    assert.equal(navObjectDisposeAttempts, 1);
+    assert.equal(fallbackNavMaterialDisposals, 1,
+      'owner-local fallback material cleanup is not skipped by an earlier resource failure');
+
+    failingGeometry.dispose = restoreGeometryDispose;
+    assert.equal(await disposePreparedAuthoredBoundary(boundary), true);
+    assert.equal(stagedRoot.children.length, 0);
+    assert.equal(navObjectDisposeAttempts, 2);
+    assert.equal(fallbackNavMaterialDisposals, 1,
+      'retrying the failed journal does not redispose resources that already completed cleanup');
+    assert.equal(staleNavObjectDisposals, 0);
+    assert.equal(staleGeometryDisposals, 0);
+    assert.equal(boundary.userData.__disposePreparedAuthoredBoundary, undefined);
+    scene.remove(boundary);
+  } finally {
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
+test('context loss detaches only the minified Three InstancedMesh listener captured by a private render probe', async () => {
+  const webglObjectsSource = await readFile(new URL(
+    '../node_modules/three/src/renderers/webgl/WebGLObjects.js',
+    import.meta.url,
+  ), 'utf8');
+  const transformed = await transform(webglObjectsSource, {
+    format: 'esm',
+    minify: true,
+    target: 'es2022',
+  });
+  const minifiedModuleUrl = `data:text/javascript;base64,${Buffer.from(transformed.code).toString('base64')}`;
+  const { WebGLObjects: MinifiedWebGLObjects } = await import(minifiedModuleUrl);
+
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const geometry = new THREE.SphereGeometry(0.1, 6, 4);
+  const material = new THREE.MeshBasicMaterial();
+  const navLights = new THREE.InstancedMesh(geometry, material, 2);
+  navLights.name = 'GLTFKit_Nav_Lights';
+  scene.add(navLights);
+
+  let anonymousForeignDisposals = 0;
+  let sameNamedForeignDisposals = 0;
+  let asyncForeignDisposals = 0;
+  const anonymousForeign = () => { anonymousForeignDisposals++; };
+  Object.defineProperty(anonymousForeign, 'name', { configurable: true, value: '' });
+  const sameNamedForeign = () => { sameNamedForeignDisposals++; };
+  navLights.addEventListener('dispose', anonymousForeign);
+  navLights.addEventListener('dispose', sameNamedForeign);
+
+  const releasedObjects = [];
+  const removedAttributes = [];
+  let frame = 0;
+  const createMinifiedObjects = () => MinifiedWebGLObjects(
+    { ARRAY_BUFFER: 0x8892 },
+    { get: (_object, objectGeometry) => objectGeometry, update() {} },
+    {
+      update() {},
+      remove(attribute) { removedAttributes.push(attribute); },
+    },
+    { releaseStatesOfObject(object) { releasedObjects.push(object); } },
+    { render: { frame: ++frame } },
+  );
+
+  const firstObjects = createMinifiedObjects();
+  const firstProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
+  assert.ok(firstProbe?.probe?.isInstancedMesh);
+  firstObjects.update(firstProbe.probe);
+  firstObjects.update(navLights);
+  const firstExactListener = navLights._listeners.dispose.find((listener) => (
+    listener !== anonymousForeign && listener !== sameNamedForeign
+  ));
+  assert.equal(typeof firstExactListener, 'function');
+  assert.notEqual(firstExactListener.name, 'onInstancedMeshDispose',
+    'the real esbuild-minified Three registration no longer retains its source function name');
+  Object.defineProperty(sameNamedForeign, 'name', {
+    configurable: true,
+    value: firstExactListener.name,
+  });
+  assert.equal(sameNamedForeign.name, firstExactListener.name,
+    'a foreign listener may share the minified callback name without sharing provenance');
+  assert.equal(endAuthoredInstanceMeshDisposeRegistrationProbe(firstProbe).listener, firstExactListener);
+  releasedObjects.length = 0;
+  removedAttributes.length = 0;
+
+  const firstReceipt = detachPreparedContextLossResources(scene, renderer);
+  assert.ok(firstReceipt.roots.includes(scene));
+  assert.equal(firstReceipt.listenersDetached, 1);
+  assert.equal(navLights.hasEventListener('dispose', anonymousForeign), true);
+  assert.equal(navLights.hasEventListener('dispose', sameNamedForeign), true);
+  navLights.dispose();
+  assert.equal(anonymousForeignDisposals, 1);
+  assert.equal(sameNamedForeignDisposals, 1);
+  assert.equal(releasedObjects.includes(navLights), false,
+    'the old renderer-context callback cannot run during later target disposal');
+
+  const secondObjects = createMinifiedObjects();
+  const secondProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
+  secondObjects.update(secondProbe.probe);
+  secondObjects.update(navLights);
+  const secondExactListener = navLights._listeners.dispose.find((listener) => (
+    listener !== anonymousForeign && listener !== sameNamedForeign
+  ));
+  assert.equal(typeof secondExactListener, 'function');
+  assert.notStrictEqual(secondExactListener, firstExactListener,
+    'a restored renderer generation owns a distinct exact callback identity');
+  assert.equal(endAuthoredInstanceMeshDisposeRegistrationProbe(secondProbe).listener, secondExactListener);
+  releasedObjects.length = 0;
+  removedAttributes.length = 0;
+
+  assert.equal(detachPreparedContextLossResources(scene, renderer).listenersDetached, 1);
+  navLights.dispose();
+  assert.equal(anonymousForeignDisposals, 2);
+  assert.equal(sameNamedForeignDisposals, 2);
+  assert.equal(releasedObjects.includes(navLights), false);
+
+  const asyncForeign = () => { asyncForeignDisposals++; };
+  await prepareAuthoredVisualPipelines(scene, {
+    prepareAuthoredPipelines: async () => {
+      await Promise.resolve();
+      navLights.addEventListener('dispose', asyncForeign);
+      return { skipped: false };
+    },
+  });
+  assert.equal(detachPreparedContextLossResources(scene, renderer).listenersDetached, 0,
+    'foreign listeners added during asynchronous admission are never renderer provenance');
+  navLights.dispose();
+  assert.equal(anonymousForeignDisposals, 3);
+  assert.equal(sameNamedForeignDisposals, 3);
+  assert.equal(asyncForeignDisposals, 1);
+  geometry.dispose();
+  material.dispose();
+});
+
+test('completed renderer provenance reuses one no-probe receipt without frame allocation', () => {
+  const first = endAuthoredInstanceMeshDisposeRegistrationProbe(null);
+  const second = endAuthoredInstanceMeshDisposeRegistrationProbe(null);
+  const alreadyEnded = endAuthoredInstanceMeshDisposeRegistrationProbe({ ended: true });
+
+  assert.strictEqual(second, first);
+  assert.strictEqual(alreadyEnded, first);
+  assert.deepEqual(first, { captured: false, listener: null });
+  assert.equal(Object.isFrozen(first), true);
+});
+
+test('private renderer-generation probe captures actual minified Three disposal producers', async () => {
+  const { canvas, renderer } = await createActualMinifiedThreeRenderer();
+  const scene = new THREE.Scene();
+  const originalShadowState = { ...renderer.shadowMap };
+  const priorTarget = new THREE.WebGLRenderTarget(1, 1);
+  renderer.setRenderTarget(priorTarget, 4, 2);
+
+  const firstProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
+  assert.strictEqual(renderer.getRenderTarget(), priorTarget,
+    'the private render target never escapes the capture boundary');
+  assert.equal(renderer.getActiveCubeFace(), 4);
+  assert.equal(renderer.getActiveMipmapLevel(), 2);
+  assert.deepEqual({
+    autoUpdate: renderer.shadowMap.autoUpdate,
+    enabled: renderer.shadowMap.enabled,
+    needsUpdate: renderer.shadowMap.needsUpdate,
+  }, {
+    autoUpdate: originalShadowState.autoUpdate,
+    enabled: originalShadowState.enabled,
+    needsUpdate: originalShadowState.needsUpdate,
+  },
+    'the one-time private shadow path restores renderer shadow state');
+  const firstCapture = endAuthoredInstanceMeshDisposeRegistrationProbe(firstProbe);
+  assert.equal(firstCapture.complete, true);
+  assert.deepEqual(firstCapture.captureErrors, []);
+  assert.deepEqual(firstCapture.provenanceStatus.listenerCounts, {
+    instancedMeshes: 1,
+    geometries: 1,
+    materials: 2,
+    textures: 1,
+    renderTargets: 1,
+  });
+  const listenerSets = (registration) => ({
+    instancedMeshes: [...registration.instancedMeshes],
+    geometries: [...registration.geometries],
+    materials: [...registration.materials],
+    textures: [...registration.textures],
+    renderTargets: [...registration.renderTargets],
+  });
+  const firstListeners = listenerSets(firstCapture.registration);
+  const sourceCallbackNames = new Set([
+    'onGeometryDispose',
+    'onInstancedMeshDispose',
+    'onMaterialDispose',
+    'onRenderTargetDispose',
+    'onTextureDispose',
+  ]);
+  for (const [kind, listeners] of Object.entries(firstListeners)) {
+    for (const listener of listeners) {
+      assert.equal(sourceCallbackNames.has(listener.name), false,
+        `${kind} uses an opaque identity emitted by the actual minified Three producer`);
+    }
+  }
+  renderer.setRenderTarget(null);
+  priorTarget.dispose();
+
+  const texture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  texture.needsUpdate = true;
+  const material = new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, 0,
+    0.5, -0.5, 0,
+    0, 0.5, 0,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
+    0, 0,
+    1, 0,
+    0.5, 1,
+  ], 2));
+  const target = new THREE.WebGLRenderTarget(1, 1);
+  const mesh = new THREE.InstancedMesh(geometry, material, 1);
+  mesh.count = 0;
+  mesh.castShadow = true;
+  mesh.frustumCulled = false;
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  camera.position.set(0, 0, 2);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const light = new THREE.DirectionalLight(0xffffff, 0);
+  light.castShadow = true;
+  light.position.set(0, 0, 2);
+  light.shadow.mapSize.set(1, 1);
+  scene.add(mesh, light, light.target);
+  let foreignDisposals = 0;
+  const foreign = () => { foreignDisposals++; };
+  Object.defineProperty(foreign, 'name', {
+    configurable: true,
+    value: firstListeners.instancedMeshes[0].name,
+  });
+  const attachForeign = () => {
+    for (const resource of [mesh, geometry, material, texture, target]) {
+      resource.addEventListener('dispose', foreign);
+    }
+  };
+  attachForeign();
+  renderer.shadowMap.enabled = true;
+  renderer.setRenderTarget(target);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+
+  const exactResources = (listeners) => [
+    [mesh, listeners.instancedMeshes],
+    [geometry, listeners.geometries],
+    [material, listeners.materials],
+    [texture, listeners.textures],
+    [target, listeners.renderTargets],
+  ];
+  for (const [resource, exactListeners] of exactResources(firstListeners)) {
+    assert.equal(resource.hasEventListener('dispose', foreign), true);
+    for (const listener of exactListeners) {
+      assert.equal(resource.hasEventListener('dispose', listener), true,
+        'the same actual renderer generation owns the live resource registration');
+    }
+  }
+
+  const firstPrepared = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
+  const firstDetach = detachStaleWebGlDisposeListeners(
+    [...firstPrepared.roots, target],
+    firstPrepared.provenance,
+  );
+  assert.equal(firstDetach.provenanceComplete, true);
+  assert.equal(firstDetach.listenersDetached, 6);
+  for (const [resource, exactListeners] of exactResources(firstListeners)) {
+    assert.equal(resource.hasEventListener('dispose', foreign), true);
+    for (const listener of exactListeners) {
+      assert.equal(resource.hasEventListener('dispose', listener), false);
+    }
+  }
+
+  canvas.emit('webglcontextlost', { preventDefault() {} });
+  canvas.emit('webglcontextrestored');
+  const secondProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
+  assert.ok(secondProbe, 'consumed old-generation ownership requires a fresh private probe');
+  const secondCapture = endAuthoredInstanceMeshDisposeRegistrationProbe(secondProbe);
+  assert.equal(secondCapture.complete, true);
+  assert.notStrictEqual(secondCapture.registration, firstCapture.registration,
+    'the restored context owns a fresh provenance receipt even when a callback identity is stable');
+  assert.deepEqual(secondCapture.provenanceStatus.listenerCounts, {
+    instancedMeshes: 1,
+    geometries: 1,
+    materials: 2,
+    textures: 1,
+    renderTargets: 1,
+  });
+  const secondListeners = listenerSets(secondCapture.registration);
+  renderer.shadowMap.enabled = true;
+  renderer.setRenderTarget(target);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  for (const [resource, exactListeners] of exactResources(secondListeners)) {
+    assert.equal(resource.hasEventListener('dispose', foreign), true);
+    for (const listener of exactListeners) {
+      assert.equal(resource.hasEventListener('dispose', listener), true,
+        'the restored generation re-registers every callback it owns');
+    }
+  }
+
+  const secondPrepared = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
+  const secondDetach = detachStaleWebGlDisposeListeners(
+    [...secondPrepared.roots, target],
+    secondPrepared.provenance,
+  );
+  assert.equal(secondDetach.provenanceComplete, true);
+  assert.equal(secondDetach.listenersDetached, 6);
+  for (const resource of [mesh, geometry, material, texture, target]) {
+    assert.equal(resource.hasEventListener('dispose', foreign), true);
+  }
+
+  scene.remove(mesh);
+  scene.remove(light, light.target);
+  mesh.dispose();
+  geometry.dispose();
+  material.dispose();
+  texture.dispose();
+  target.dispose();
+  light.shadow.dispose();
+  renderer.dispose();
+  assert.equal(foreignDisposals, 5,
+    'only the same-named foreign callbacks remain when live resources are finally disposed');
+});
+
+test('discarding a prepared hidden owner retires its detached pool without touching the live candidate', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const dynamicBuffers = createDynamicBufferCoordinator(scene);
+  const fixture = await packageShipFixture();
+  let preparedTarget = null;
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-hidden-sector-abort-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) preparedTarget = subject;
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('package-abort-current', 0, renderer, scene, options);
+    const currentEligible = authoredPackageInstance(current).nodes.get('eligible');
+    const incoming = startPackageShip(
+      'package-abort-incoming',
+      40,
+      renderer,
+      scene,
+      options,
+      {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+      },
+    );
+    incoming.visible = false;
+    await incoming.userData.authoredUpgradePromise;
+    assert.equal(incoming.userData.authoredAssetState, 'authored-prepared');
+    assert.ok(preparedTarget);
+    assert.equal(preparedTarget.parent, null);
+    assert.equal(preparedTarget.count, 0);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 1);
+    let disposals = 0;
+    preparedTarget.addEventListener('dispose', () => { disposals++; });
+
+    scene.remove(incoming);
+    assert.equal(disposals, 1, 'the unpublished detached target retires with its hidden owner');
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
+    assert.equal(currentEligible.isMesh, true);
+    assert.equal(currentEligible.visible, true);
+    assert.equal(currentEligible.userData.spacefacePackagePoolCandidate, true);
+    scene.remove(current);
+  } finally {
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
 test('package pool allocation failure leaves the accepted first surface direct and retryable', async () => {
   const renderer = {};
   const scene = new THREE.Scene();
@@ -599,6 +1504,18 @@ test('package pool activation failure rolls back committed matrices and direct m
   try {
     const first = await admitPackageShip('package-activation-a', 0, renderer, scene, options);
     const firstEligible = authoredPackageInstance(first).nodes.get('eligible');
+    let sharedGeometryDisposeCalls = 0;
+    let sharedMaterialDisposeCalls = 0;
+    const sharedGeometryDispose = firstEligible.geometry.dispose;
+    const sharedMaterialDispose = firstEligible.material.dispose;
+    firstEligible.geometry.dispose = function countedSharedGeometryDispose() {
+      sharedGeometryDisposeCalls++;
+      return sharedGeometryDispose.call(this);
+    };
+    firstEligible.material.dispose = function countedSharedMaterialDispose() {
+      sharedMaterialDisposeCalls++;
+      return sharedMaterialDispose.call(this);
+    };
     const failed = await requestPackageShip('package-activation-b', 40, renderer, scene, options);
 
     assert.equal(failed.userData.authoredAssetState, 'unavailable');
@@ -612,6 +1529,12 @@ test('package pool activation failure rolls back committed matrices and direct m
     assert.equal(firstEligible.userData.spacefaceInstancePoolChunk, undefined);
     assert.equal(firstEligible.userData.spacefaceInstancePoolSlot, undefined);
     assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(sharedGeometryDisposeCalls, 0,
+      'failed sibling preparation never disposes canonical geometry owned by the live ship');
+    assert.equal(sharedMaterialDisposeCalls, 0,
+      'failed sibling preparation never disposes a shared live material');
+    firstEligible.geometry.dispose = sharedGeometryDispose;
+    firstEligible.material.dispose = sharedMaterialDispose;
 
     const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
     const admissionBody = source.slice(
@@ -641,6 +1564,16 @@ test('removing one owner during package pool admission restores the live direct 
   const fixture = await packageShipFixture();
   let exactTarget = null;
   let releasePoolPreparation;
+  let gpuResidencyCalls = 0;
+  let staleObjectDisposals = 0;
+  const contextDisposeListener = (event) => {
+    if (event.target === exactTarget) staleObjectDisposals++;
+  };
+  captureSimulatedRendererInstancedMeshDisposeRegistration(
+    renderer,
+    scene,
+    contextDisposeListener,
+  );
   const poolPreparation = new Promise((resolve) => { releasePoolPreparation = resolve; });
   const options = {
     releaseMode: true,
@@ -654,13 +1587,17 @@ test('removing one owner during package pool admission restores the live direct 
       }
       return { skipped: false };
     },
-    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+    prepareAuthoredGpuResidency: async () => {
+      gpuResidencyCalls++;
+      return { skipped: false };
+    },
   };
   const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
   await preloadAuthoredPartLibrary(renderer, options);
 
   try {
     const first = await admitPackageShip('package-pending-a', 0, renderer, scene, options);
+    const gpuResidencyCallsBeforeIncoming = gpuResidencyCalls;
     const firstEligible = authoredPackageInstance(first).nodes.get('eligible');
     const pending = startPackageShip('package-pending-b', 40, renderer, scene, options);
     for (let turn = 0; turn < 80 && !exactTarget; turn++) {
@@ -670,7 +1607,12 @@ test('removing one owner during package pool admission restores the live direct 
     assert.equal(exactTarget.parent, null);
     assert.equal(exactTarget.count, 0);
     let disposals = 0;
-    exactTarget.addEventListener('dispose', () => { disposals++; });
+    const disposeExactTarget = exactTarget.dispose.bind(exactTarget);
+    exactTarget.dispose = () => {
+      disposals++;
+      return disposeExactTarget();
+    };
+    exactTarget.addEventListener('dispose', contextDisposeListener);
 
     scene.remove(pending);
     assert.equal(firstEligible.isMesh, true);
@@ -679,17 +1621,231 @@ test('removing one owner during package pool admission restores the live direct 
     assert.equal(firstEligible.userData.spacefaceInstancePoolChunk, undefined);
     assert.equal(firstEligible.userData.spacefaceInstancePoolSlot, undefined);
     assert.equal(exactTarget.parent, null);
-    assert.equal(disposals, 1, 'pending unique-owner collapse retires the detached chunk');
-    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(disposals, 0, 'logical cancellation cannot dispose a target still owned by GPU prep');
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 1,
+      'the backing owner remains valid through the admitted preparation barrier');
+    const contextReceipt = detachPreparedContextLossResources(scene, renderer);
+    assert.ok(contextReceipt.roots.includes(exactTarget),
+      'context loss retains visibility of a logically retired target until its prep barrier settles');
+    assert.equal(contextReceipt.listenersDetached, 1);
 
     releasePoolPreparation();
+    await pending.userData.authoredUpgradePromise;
     await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(disposals, 1, 'the cancelled detached target retires once after GPU prep settles');
+    assert.equal(staleObjectDisposals, 0, 'old-context InstancedMesh cleanup was detached before disposal');
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(gpuResidencyCalls, gpuResidencyCallsBeforeIncoming + 1,
+      'owner cancellation after root compile prevents the detached pool from starting residency upload');
     assert.equal(firstEligible.isMesh, true, 'late preparation completion cannot re-promote the survivor');
     assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
     scene.remove(first);
   } finally {
     releasePoolPreparation();
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
+test('deferred pool retirement remains discoverable and retryable after object cleanup refusal', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const dynamicBuffers = createDynamicBufferCoordinator(scene);
+  const fixture = await packageShipFixture();
+  const poolPreparation = deferred();
+  let exactTarget = null;
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-retirement-cleanup-retry-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) {
+        exactTarget = subject;
+        await poolPreparation.promise;
+      }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('package-retirement-current', 0, renderer, scene, options);
+    const pending = startPackageShip(
+      'package-retirement-pending',
+      40,
+      renderer,
+      scene,
+      options,
+      {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+      },
+    );
+    pending.visible = false;
+    for (let turn = 0; turn < 80 && !exactTarget; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.ok(exactTarget);
+    const realDispose = exactTarget.dispose.bind(exactTarget);
+    let disposeAttempts = 0;
+    exactTarget.dispose = () => {
+      disposeAttempts++;
+      if (disposeAttempts === 1) throw new Error('injected retired target dispose refusal');
+      return realDispose();
+    };
+
+    scene.remove(pending);
+    poolPreparation.resolve();
+    const receipt = await pending.userData.authoredUpgradePromise;
+    assert.ok(receipt.error instanceof AggregateError);
+    assert.match(receipt.error.message, /cleanup failed/i);
+    assert.equal(disposeAttempts, 1);
+    assert.ok(detachPreparedContextLossResources(scene, renderer).roots.includes(exactTarget),
+      'a failed retired target remains registered for context-loss listener detachment');
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0,
+      'successful earlier cleanup steps are retained while only the failed object disposal retries');
+    assert.equal(typeof pending.userData.__disposePreparedAuthoredBoundary, 'function');
+
+    assert.equal(await disposePreparedAuthoredBoundary(pending), true);
+    assert.equal(disposeAttempts, 2);
+    assert.equal(detachPreparedContextLossResources(scene, renderer).roots.includes(exactTarget), false);
+    assert.equal(pending.userData.__disposePreparedAuthoredBoundary, undefined);
+    scene.remove(current);
+  } finally {
+    poolPreparation.resolve();
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
+test('removing the current owner during hidden preparation leaves the incoming root direct', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const dynamicBuffers = createDynamicBufferCoordinator(scene);
+  const fixture = await packageShipFixture();
+  const poolPreparation = deferred();
+  let exactTarget = null;
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-current-owner-pending-removal-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) {
+        exactTarget = subject;
+        await poolPreparation.promise;
+      }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('package-current-pending-remove', 0, renderer, scene, options);
+    const incoming = startPackageShip('package-incoming-pending-survivor', 40, renderer, scene, options);
+    for (let turn = 0; turn < 80 && !exactTarget; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.ok(exactTarget);
+    let disposals = 0;
+    exactTarget.addEventListener('dispose', () => { disposals++; });
+
+    scene.remove(current);
+    assert.strictEqual(incoming.parent, scene);
+    assert.equal(disposals, 0);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 1);
+
+    poolPreparation.resolve();
+    await incoming.userData.authoredUpgradePromise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const incomingEligible = authoredPackageInstance(incoming).nodes.get('eligible');
+    assert.equal(disposals, 1);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(incomingEligible.isMesh, true, 'late settlement cannot promote the sole survivor');
+    assert.equal(incomingEligible.userData.spacefacePackagePoolCandidate, true);
+    assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
+    scene.remove(incoming);
+  } finally {
+    poolPreparation.resolve();
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
+test('removing the current owner from a READY hidden pool keeps later publication direct', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const dynamicBuffers = createDynamicBufferCoordinator(scene);
+  const fixture = await packageShipFixture();
+  let exactTarget = null;
+  let staleObjectDisposals = 0;
+  const minifiedObjectDispose = (event) => {
+    if (event.target === exactTarget) staleObjectDisposals++;
+  };
+  captureSimulatedRendererInstancedMeshDisposeRegistration(
+    renderer,
+    scene,
+    minifiedObjectDispose,
+  );
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-ready-current-owner-removal-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) {
+        exactTarget = subject;
+        subject.addEventListener('dispose', minifiedObjectDispose);
+      }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('package-ready-current-remove', 0, renderer, scene, options);
+    const incoming = startPackageShip(
+      'package-ready-incoming-survivor',
+      40,
+      renderer,
+      scene,
+      options,
+      {
+        deferPackagePoolActivation: true,
+        deferBoundaryPublication: true,
+        overlapAuthoredPipelineCompile: false,
+      },
+    );
+    incoming.visible = false;
+    await incoming.userData.authoredUpgradePromise;
+    assert.equal(incoming.userData.authoredAssetState, 'authored-prepared');
+    assert.ok(exactTarget);
+    const incomingEligible = authoredPackageInstance(incoming).nodes.get('eligible');
+    assert.equal(detachPreparedContextLossResources(scene, renderer).listenersDetached, 1);
+
+    scene.remove(current);
+    assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0);
+    assert.equal(staleObjectDisposals, 0);
+    assert.equal(incomingEligible.isMesh, true);
+    assert.equal(publishPreparedAuthoredBoundary(incoming), true);
+    incoming.visible = true;
+    syncAuthoredInstancePools(scene);
+    assert.equal(incoming.userData.authoredAssetState, 'authored');
+    assert.equal(incomingEligible.isMesh, true);
+    assert.equal(scene.children.some((object) => object.userData?.spacefaceInstancePool), false);
+    scene.remove(incoming);
+  } finally {
     for (const child of [...scene.children]) scene.remove(child);
     invalidatePartsLibraryCaches(renderer);
     restoreRuntime();
@@ -710,7 +1866,7 @@ async function requestPackageShip(id, x, renderer, scene, options) {
   return boundary;
 }
 
-function startPackageShip(id, x, renderer, scene, options) {
+function startPackageShip(id, x, renderer, scene, options, requestOptions = {}) {
   const entity = {
     id,
     type: 'ship',
@@ -734,7 +1890,7 @@ function startPackageShip(id, x, renderer, scene, options) {
   entity.mesh = boundary;
   boundary.position.x = x;
   scene.add(boundary);
-  boundary.userData.requestAuthoredUpgrade(renderer, scene);
+  boundary.userData.requestAuthoredUpgrade(renderer, scene, requestOptions);
   return boundary;
 }
 
@@ -769,7 +1925,7 @@ function installAuthoredAdmissionRuntime(scene, options) {
   };
 }
 
-async function packageShipFixture() {
+async function packageShipFixture({ includeAuthoredNavLights = true } = {}) {
   const heliosMetadata = JSON.parse(await readFile(new URL(
     '../assets/ships/release/render-packages/helios-span/render-package.json', import.meta.url,
   ), 'utf8'));
@@ -784,7 +1940,7 @@ async function packageShipFixture() {
   add('transparent', {}, (mesh) => { mesh.material = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5 }); });
   add('canopy', { canopy: true });
   add('drive', { drive: 'core' });
-  add('nav', { damageRole: 'navLight' });
+  if (includeAuthoredNavLights) add('nav', { damageRole: 'navLight' });
   add('sensor', { damageRole: 'sensor' });
   add('armor', { damageRole: 'armor' });
   add(realSecondary.name, realSecondary.tags);
