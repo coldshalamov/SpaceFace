@@ -304,3 +304,49 @@ test('PresentationJournal publishes transform records only for changed poses', (
   assert.equal(sequence, 2);
   assert.equal(readRecord(journal, sequence).x, 2.5);
 });
+
+test('PresentationJournal terminal close drains retained records and rejects every late operation', () => {
+  const journal = createPresentationJournal(4);
+  const ship = entity(1, { x: 2 });
+  journal.recordSpawn(1, ship);
+  ship.pos.x = 3;
+  journal.recordTransform(2, ship);
+
+  assert.equal(journal.close(), true);
+  assert.equal(journal.close(), false, 'terminal close must be idempotent');
+  assert.equal(journal.isClosed(), true);
+  assert.equal(journal.getPendingCount(), 0);
+  assert.equal(journal.getWriteSequence(), 2, 'terminal close preserves sequence identity');
+
+  const diagnostics = journal.getDiagnostics();
+  assert.equal(diagnostics.closed, true);
+  assert.equal(diagnostics.closeCount, 1);
+  assert.equal(diagnostics.pendingAtClose, 2);
+  assert.equal(diagnostics.discardedOnClose, 2);
+  assert.equal(diagnostics.pending, 0);
+  assert.equal(diagnostics.retainedRecordCapacity, 0);
+  assert.equal(diagnostics.entityCapacity, 0);
+
+  const lateOperations = [
+    () => journal.recordSpawn(3, entity(2)),
+    () => journal.recordDestroy(3, ship),
+    () => journal.recordTransform(3, ship),
+    () => journal.recordTransformIfChanged(3, ship),
+    () => journal.recordVisual(3, ship),
+    () => journal.copySequence(1, createPresentationJournalRecord()),
+    () => journal.hasRange(0, 0),
+    () => journal.visitRange(0, 0, createPresentationJournalRecord(), () => {}),
+    () => journal.discardThrough(2),
+    () => journal.requestRebuild('late'),
+    () => journal.rebuildFrom([ship], 3),
+  ];
+  for (const operation of lateOperations) {
+    assert.throws(operation, /PresentationJournal is closed/);
+  }
+
+  const rebuilding = createPresentationJournal(2);
+  rebuilding.requestRebuild('run-transition');
+  assert.equal(rebuilding.close(), true);
+  assert.equal(rebuilding.needsRebuild(), false);
+  assert.equal(rebuilding.getDiagnostics().rebuildRequired, false);
+});

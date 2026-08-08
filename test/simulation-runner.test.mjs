@@ -176,3 +176,135 @@ test('prepareWithoutAdvance and interpolationAlpha retain the existing accumulat
   assert.ok(Math.abs(runner.interpolationAlpha() - 0.375) < 1e-12);
   assert.equal(state.tick, 0);
 });
+
+test('SimulationRunner terminal close drains bounded work and rejects every late operation', () => {
+  const state = createState();
+  const runner = createSimulationRunner(state, createRegistry(state));
+  runner.advance(LOOP_FIXED_DT * 2.1, 1);
+  assert.equal(runner.getPendingCompletedTickCount(), 2);
+  const tickAtClose = state.tick;
+
+  assert.equal(runner.close(), true);
+  assert.equal(runner.close(), false, 'terminal close must be idempotent');
+  assert.equal(runner.isClosed(), true);
+  assert.equal(runner.getPendingCompletedTickCount(), 0);
+  assert.equal(state.tick, tickAtClose);
+
+  const diagnostics = runner.getDiagnostics();
+  assert.equal(diagnostics.closed, true);
+  assert.equal(diagnostics.closeCount, 1);
+  assert.equal(diagnostics.pendingCompletedTicks, 0);
+  assert.equal(diagnostics.completedTicksPendingAtClose, 2);
+  assert.equal(diagnostics.completedTicksDiscardedOnClose, 2);
+  assert.equal(diagnostics.inputPendingAtClose, 0);
+  assert.equal(diagnostics.retainedCompletedTickCapacity, 0);
+  assert.equal(diagnostics.inputCommandSnapshots.pending, 0);
+
+  const lateOperations = [
+    () => runner.advance(LOOP_FIXED_DT, 1),
+    () => runner.prepareWithoutAdvance(),
+    () => runner.interpolationAlpha(),
+    () => runner.consumeLatestCompletedTick({}),
+    () => runner.alignJournalCursor(0),
+    () => runner.setLifecycleGeneration(2),
+  ];
+  for (const operation of lateOperations) {
+    assert.throws(operation, /SimulationRunner is closed/);
+  }
+  assert.equal(state.tick, tickAtClose, 'late operations cannot advance authoritative state');
+});
+
+test('SimulationRunner reports residual input truth and retries close after cancellation becomes legal', () => {
+  const state = createState();
+  let pending = 1;
+  let allowCancel = false;
+  const fakeInputQueue = {
+    capacity: 1,
+    reserve() {},
+    capture() {},
+    consume() {},
+    cancel(sequence) {
+      if (!allowCancel || sequence !== 1 || pending === 0) return false;
+      pending = 0;
+      return true;
+    },
+    getPendingCount: () => pending,
+    getDiagnostics: () => ({
+      capacity: 1,
+      pending,
+      lastReservedSequence: 1,
+      sentinel: 'owned-input',
+    }),
+  };
+  const runner = createSimulationRunner(state, createRegistry(state), {
+    inputCommandSnapshots: fakeInputQueue,
+  });
+
+  assert.throws(() => runner.close(), /left 1 input snapshot pending/);
+  let diagnostics = runner.getDiagnostics();
+  assert.equal(diagnostics.closed, true, 'failed close still makes authoritative advance terminal');
+  assert.equal(diagnostics.closeComplete, false);
+  assert.equal(diagnostics.closeAttemptCount, 1);
+  assert.equal(diagnostics.closeFailureCount, 1);
+  assert.equal(diagnostics.inputPendingAtClose, 1);
+  assert.equal(diagnostics.inputResidualPending, 1);
+  assert.equal(diagnostics.inputCommandSnapshots.pending, 1);
+  assert.equal(diagnostics.inputCommandSnapshots.sentinel, 'owned-input');
+  assert.throws(() => runner.advance(LOOP_FIXED_DT, 1), /SimulationRunner is closed/);
+
+  allowCancel = true;
+  assert.equal(runner.close(), true, 'a later close may finish the quarantined terminal queue');
+  assert.equal(runner.close(), false);
+  diagnostics = runner.getDiagnostics();
+  assert.equal(diagnostics.closeComplete, true);
+  assert.equal(diagnostics.closeAttemptCount, 2);
+  assert.equal(diagnostics.inputResidualPending, 0);
+  assert.equal(diagnostics.inputCommandSnapshots.pending, 0);
+  assert.equal(diagnostics.inputCommandSnapshots.pendingAtClose, 1);
+});
+
+test('SimulationRunner fails the in-flight completion when registry work closes it reentrantly', () => {
+  const state = createState();
+  let runner = null;
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+      runner.close();
+    },
+  };
+  runner = createSimulationRunner(state, registry);
+
+  assert.throws(() => runner.advance(LOOP_FIXED_DT, 1), /SimulationRunner is closed/);
+  assert.equal(state.tick, 1, 'already-executed authoritative work is not replayed or hidden');
+  assert.equal(state.accumulator, 0, 'the failed frame cannot commit a new accumulator phase');
+  assert.equal(runner.getPendingCompletedTickCount(), 0);
+  const diagnostics = runner.getDiagnostics();
+  assert.equal(diagnostics.completedSequence, 0);
+  assert.equal(diagnostics.inputPendingAtClose, 1);
+  assert.equal(diagnostics.inputSnapshotsCancelledOnClose, 1);
+  assert.equal(diagnostics.inputCommandSnapshots.pending, 0);
+});
+
+test('SimulationRunner rechecks terminal state after input observation', () => {
+  const state = createState();
+  let runner = null;
+  let observerCalls = 0;
+  runner = createSimulationRunner(state, createRegistry(state), {
+    onInputCommandSnapshot() {
+      observerCalls++;
+      runner.close();
+    },
+  });
+
+  assert.throws(() => runner.advance(LOOP_FIXED_DT, 1), /SimulationRunner is closed/);
+  assert.equal(observerCalls, 1);
+  assert.equal(runner.getPendingCompletedTickCount(), 0);
+  assert.equal(runner.getDiagnostics().completedSequence, 0);
+  assert.equal(runner.getDiagnostics().inputPendingAtClose, 1);
+  assert.equal(runner.getDiagnostics().inputCommandSnapshots.pending, 0);
+  assert.equal(runner.getDiagnostics().closeComplete, false);
+  assert.equal(runner.close(), true, 'the consuming lease settles before terminal retry');
+  assert.equal(runner.getDiagnostics().closeComplete, true);
+});

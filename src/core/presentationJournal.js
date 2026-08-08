@@ -165,6 +165,14 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let rebuildRequestCount = 0;
   let rebuildCount = 0;
   let rebuildFailureCount = 0;
+  let closed = false;
+  let closeCount = 0;
+  let pendingAtClose = 0;
+  let discardedOnClose = 0;
+
+  function assertOpen() {
+    if (closed) throw new Error('PresentationJournal is closed');
+  }
 
   function growMetadata(entityId) {
     if (entityId < generations.length) return;
@@ -207,6 +215,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function requestRebuild(reason = 'requested') {
+    assertOpen();
     rebuildRequestCount++;
     rebuildRequired = true;
     rebuildReason = typeof reason === 'string' && reason ? reason : 'requested';
@@ -307,10 +316,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function recordSpawn(tick, entity) {
+    assertOpen();
     return publishSpawn(tick, entity, false);
   }
 
   function recordDestroy(tick, source) {
+    assertOpen();
     if (!prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(source);
     if (entityId === 0 || rebuildRequired) return 0;
@@ -384,6 +395,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function recordTransform(tick, entity) {
+    assertOpen();
     return recordCoalescible(
       PRESENTATION_JOURNAL_KINDS.TRANSFORM,
       tick,
@@ -393,10 +405,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function recordTransformIfChanged(tick, entity) {
+    assertOpen();
     return poseChanged(entity) ? recordTransform(tick, entity) : 0;
   }
 
   function recordVisual(tick, entity) {
+    assertOpen();
     return recordCoalescible(
       PRESENTATION_JOURNAL_KINDS.VISUAL,
       tick,
@@ -406,6 +420,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function copySequence(sequence, target) {
+    assertOpen();
     const slot = retainedSlot(sequence);
     if (!slot) return false;
     copyRecord(target, slot);
@@ -413,6 +428,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function hasRange(startExclusive, endInclusive) {
+    assertOpen();
     if (!Number.isSafeInteger(startExclusive) || !Number.isSafeInteger(endInclusive)
       || startExclusive < 0 || endInclusive < startExclusive) return false;
     if (startExclusive === endInclusive) return true;
@@ -423,6 +439,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function visitRange(startExclusive, endInclusive, target, visitor) {
+    assertOpen();
     if (typeof visitor !== 'function') {
       throw new TypeError('PresentationJournal visitRange requires a visitor');
     }
@@ -441,6 +458,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function discardThrough(sequence) {
+    assertOpen();
     if (!Number.isSafeInteger(sequence) || sequence < 0) return 0;
     let discarded = 0;
     while (count > 0 && records[read].sequence <= sequence) {
@@ -454,6 +472,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function rebuildFrom(entities, tick) {
+    assertOpen();
     if (!Array.isArray(entities) || !Number.isSafeInteger(tick) || tick < 0) {
       rebuildFailureCount++;
       requestRebuild('invalid-rebuild-source');
@@ -507,6 +526,26 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     return true;
   }
 
+  function close() {
+    if (closed) return false;
+    closed = true;
+    closeCount++;
+    pendingAtClose = count;
+    discardedOnClose += count;
+    clearRetained();
+    records.length = 0;
+    generations = new Uint32Array(0);
+    activeGenerations = new Uint32Array(0);
+    revisions = new Uint32Array(0);
+    lastTransformSequence = new Float64Array(0);
+    lastVisualSequence = new Float64Array(0);
+    highestEntityId = 0;
+    lastRecordTick = -1;
+    rebuildRequired = false;
+    rebuildReason = null;
+    return true;
+  }
+
   return {
     capacity: size,
     recordSpawn,
@@ -520,6 +559,8 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     discardThrough,
     requestRebuild,
     rebuildFrom,
+    close,
+    isClosed: () => closed,
     needsRebuild: () => rebuildRequired,
     getWriteSequence: () => writeSequence,
     getOldestSequence: () => count > 0 ? records[read].sequence : 0,
@@ -529,8 +570,13 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     getLastRebuildEnd: () => lastRebuildEnd,
     getDiagnostics() {
       return {
+        closed,
+        closeCount,
+        pendingAtClose,
+        discardedOnClose,
         capacity: size,
-        entityCapacity: generations.length - 1,
+        retainedRecordCapacity: records.length,
+        entityCapacity: Math.max(0, generations.length - 1),
         pending: count,
         writeSequence,
         oldestSequence: count > 0 ? records[read].sequence : 0,

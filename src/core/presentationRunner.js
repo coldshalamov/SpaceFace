@@ -37,6 +37,103 @@ function createCompletedTickRecord() {
   };
 }
 
+function teardownMessage(error) {
+  if (error instanceof Error && typeof error.message === 'string' && error.message) {
+    return error.message;
+  }
+  return String(error);
+}
+
+/**
+ * Build the one-shot runtime shutdown transaction used by main.js. Each phase is attempted once in
+ * strict ownership order, and failures are returned as scalar receipts so navigation teardown never
+ * has to retain or rethrow foreign Error objects.
+ */
+export function createPresentationRuntimeCloser({
+  stopPresentation = null,
+  detachProducers = null,
+  closeSimulation = null,
+  closeJournal = null,
+} = {}) {
+  let finalReceipt = null;
+  let activeReceipt = null;
+  let closing = false;
+  let stopAttempted = false;
+  let detachAttempted = false;
+  let presentationStopped = false;
+  let producersDetached = false;
+  let simulationClosed = false;
+  let journalClosed = false;
+  const permanentErrors = [];
+
+  return function closePresentationRuntime() {
+    if (finalReceipt) return finalReceipt;
+    if (closing) return activeReceipt;
+
+    const result = {
+      closed: false,
+      presentationStopped,
+      producersDetached,
+      simulationClosed,
+      journalClosed,
+      errorCount: 0,
+      errors: [...permanentErrors],
+    };
+
+    // Publish the in-flight receipt before invoking callbacks so a reentrant close observes the
+    // same transaction. Only a fully closed receipt is cached permanently; bounded transport
+    // phases may need a later retry after an in-flight lease settles.
+    activeReceipt = result;
+    closing = true;
+
+    function attempt(stage, callback, onSuccess, { persistent = false } = {}) {
+      try {
+        if (typeof callback === 'function') callback();
+        onSuccess();
+      } catch (error) {
+        const receiptError = Object.freeze({ stage, message: teardownMessage(error) });
+        result.errors.push(receiptError);
+        if (persistent) permanentErrors.push(receiptError);
+      }
+    }
+
+    if (!stopAttempted) {
+      stopAttempted = true;
+      attempt('stopPresentation', stopPresentation, () => {
+        presentationStopped = true;
+      }, { persistent: true });
+    }
+    if (!detachAttempted) {
+      detachAttempted = true;
+      attempt('detachProducers', detachProducers, () => {
+        producersDetached = true;
+      }, { persistent: true });
+    }
+    if (!simulationClosed) {
+      attempt('closeSimulation', closeSimulation, () => {
+        simulationClosed = true;
+      });
+    }
+    if (simulationClosed && !journalClosed) {
+      attempt('closeJournal', closeJournal, () => {
+        journalClosed = true;
+      });
+    }
+
+    result.presentationStopped = presentationStopped;
+    result.producersDetached = producersDetached;
+    result.simulationClosed = simulationClosed;
+    result.journalClosed = journalClosed;
+    result.errorCount = result.errors.length;
+    result.closed = simulationClosed && journalClosed;
+    Object.freeze(result.errors);
+    Object.freeze(result);
+    closing = false;
+    if (result.closed) finalReceipt = result;
+    return result;
+  };
+}
+
 /**
  * Start presentation scheduling around one explicit SimulationRunner.
  * Dependencies are injectable so lifecycle policy can be verified without real timers or DOM work.
@@ -85,6 +182,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   let destroyed = false;
+  let transportClosed = false;
   let frameHandle = null;
   let last = nowMs();
   let lifecycleState = requestedState();
@@ -162,6 +260,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     journalRebuildCount: 0,
     journalRebuildFailureCount: 0,
     acknowledgedJournalSequence,
+    destroyed: false,
+    transportClosed: false,
+    stopCount: 0,
+    transportCloseAttemptCount: 0,
+    transportCloseCount: 0,
+    teardownErrorCount: 0,
+    lastTeardownErrorStage: null,
+    lastTeardownErrorMessage: null,
   };
 
   simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
@@ -176,6 +282,79 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (frameHandle === null) return;
     if (typeof cancelFrame === 'function') cancelFrame(frameHandle);
     frameHandle = null;
+  }
+
+  function recordTeardownError(stage, error, errors) {
+    diagnostics.teardownErrorCount++;
+    diagnostics.lastTeardownErrorStage = stage;
+    diagnostics.lastTeardownErrorMessage = teardownMessage(error);
+    errors.push(error);
+  }
+
+  function stop() {
+    if (destroyed) return false;
+    destroyed = true;
+    diagnostics.destroyed = true;
+    diagnostics.stopCount++;
+    const errors = [];
+
+    const handle = frameHandle;
+    frameHandle = null;
+    if (handle !== null && typeof cancelFrame === 'function') {
+      try {
+        cancelFrame(handle);
+      } catch (error) {
+        recordTeardownError('cancelFrame', error, errors);
+      }
+    }
+    if (visibilityTarget && typeof visibilityTarget.removeEventListener === 'function') {
+      try {
+        visibilityTarget.removeEventListener('visibilitychange', onVisibilityChange);
+      } catch (error) {
+        recordTeardownError('removeVisibilityListener', error, errors);
+      }
+    }
+    const unsubscribe = unsubscribeLifecycle;
+    unsubscribeLifecycle = null;
+    if (unsubscribe) {
+      try {
+        unsubscribe();
+      } catch (error) {
+        recordTeardownError('unsubscribeLifecycle', error, errors);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new AggregateError(errors, 'PresentationRunner stop failed');
+    }
+    return true;
+  }
+
+  function close() {
+    if (transportClosed) return false;
+    diagnostics.transportCloseAttemptCount++;
+    const errors = [];
+    try {
+      stop();
+    } catch (error) {
+      errors.push(error);
+    }
+    let simulationClosed = false;
+    try {
+      simulationRunner.close?.();
+      simulationClosed = true;
+    } catch (error) {
+      recordTeardownError('closeSimulation', error, errors);
+    }
+    if (simulationClosed) {
+      transportClosed = true;
+      diagnostics.transportClosed = true;
+      diagnostics.transportCloseCount++;
+    }
+    if (errors.length > 0) {
+      throw new AggregateError(errors, 'PresentationRunner close failed');
+    }
+    return true;
   }
 
   function recordState(next, reason) {
@@ -278,12 +457,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function onVisibilityChange() {
+    if (destroyed) return;
     diagnostics.visibilityState = visibilityTarget?.visibilityState || 'unavailable';
     documentHidden = diagnostics.visibilityState === 'hidden';
     synchronizeLifecycle('document-visibility');
   }
 
   function onShellLifecycle(command) {
+    if (destroyed) return;
     if (!command || !isShellState(command.state)
       || !Number.isSafeInteger(command.sequence) || command.sequence <= 0) {
       diagnostics.invalidShellCommandCount++;
@@ -497,7 +678,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
       diagnostics.renderUpdates++;
       renderedSnapshot = true;
-      if (presentationAccepted) acknowledgePresentedJournal();
+      if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
+      else if (presentationAccepted) acknowledgePresentedJournal();
       else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
@@ -521,6 +703,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
     }
 
+    // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
+    // transition after its audio/listener/transport owners have already been destroyed.
+    if (destroyed) return;
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
       diagnostics.restoreFrameCount++;
       diagnostics.restoreTarget = null;
@@ -549,18 +734,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   return {
     simulationRunner,
-    destroy() {
-      if (destroyed) return;
-      destroyed = true;
-      cancelScheduledFrame();
-      if (visibilityTarget && typeof visibilityTarget.removeEventListener === 'function') {
-        visibilityTarget.removeEventListener('visibilitychange', onVisibilityChange);
-      }
-      if (unsubscribeLifecycle) {
-        try { unsubscribeLifecycle(); } catch (_) { /* teardown stays best-effort */ }
-        unsubscribeLifecycle = null;
-      }
-    },
+    stop,
+    close,
+    destroy: close,
     isSuspended: () => suspended,
     getLifecycleState: () => lifecycleState,
     getPresentationFrame: () => presentationFrame,

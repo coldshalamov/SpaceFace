@@ -8,6 +8,7 @@ import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
+import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
@@ -154,11 +155,25 @@ async function boot() {
       state, bus, registry, runTransitionGuard, payload || {},
     );
     let loopController = null;
+    const closeRuntime = createPresentationRuntimeCloser({
+      stopPresentation() {
+        const errors = [];
+        try { loadingPresenter.destroy(); } catch (error) { errors.push(error); }
+        try { loopController?.stop?.(); } catch (error) { errors.push(error); }
+        if (errors.length > 0) {
+          throw new AggregateError(errors, 'Presentation listener teardown failed');
+        }
+      },
+      detachProducers: () => registry.destroy(),
+      closeSimulation: () => loopController?.close?.(),
+      closeJournal: () => presentationJournal.close(),
+    });
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
-        try { loadingPresenter.destroy(); } catch (_) {}
-        try { if (loopController) loopController.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
-        try { registry.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
+        const receipt = closeRuntime();
+        if (receipt.errorCount > 0) {
+          console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+        }
       });
     }
 

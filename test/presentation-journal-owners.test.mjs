@@ -69,3 +69,30 @@ test('core publishes presentation identity, visual, transform, destroy, and run 
     core.destroy();
   }
 });
+
+test('core detaches every journal producer before terminal close', () => {
+  const state = createGameState(54321);
+  const bus = createBus();
+  const presentationJournal = createPresentationJournal(8);
+  const helpers = {};
+  core.init({ state, bus, helpers, presentationJournal });
+
+  const ship = helpers.spawnEntity({
+    type: 'ship',
+    pos: { x: 0, z: 0 },
+    ttl: Infinity,
+    data: {},
+  });
+  core.destroy();
+  presentationJournal.close();
+
+  assert.doesNotThrow(() => bus.emit('ship:appearanceChanged', { id: ship.id }));
+  assert.doesNotThrow(() => bus.emit('game:new', {}));
+  assert.equal(presentationJournal.getDiagnostics().closed, true);
+  assert.equal(presentationJournal.getDiagnostics().pending, 0);
+  assert.throws(
+    () => presentationJournal.recordVisual(state.tick, ship),
+    /PresentationJournal is closed/,
+    'direct late publication must fail even after producer detachment',
+  );
+});

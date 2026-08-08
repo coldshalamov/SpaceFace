@@ -98,14 +98,14 @@ export function createSimulationRunner(state, registry, deps = {}) {
       ? deps.completedTickCapacity
       : DEFAULT_COMPLETED_TICK_CAPACITY),
   );
-  const presentationJournal = deps.presentationJournal || null;
+  let presentationJournal = deps.presentationJournal || null;
   const inputCommandSnapshotCapacity = Math.max(
     maxSteps,
     Math.floor(Number.isFinite(deps.inputCommandSnapshotCapacity)
       ? deps.inputCommandSnapshotCapacity
       : completedTickCapacity),
   );
-  const inputCommandSnapshots = deps.inputCommandSnapshots
+  let inputCommandSnapshots = deps.inputCommandSnapshots
     || createInputCommandSnapshotQueue(inputCommandSnapshotCapacity);
   if (typeof inputCommandSnapshots.reserve !== 'function'
     || typeof inputCommandSnapshots.capture !== 'function'
@@ -137,12 +137,29 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let lastInputObserverError = null;
   let committedJournalSequence = 0;
   let journalCursorAlignmentCount = 0;
+  let closed = false;
+  let closeComplete = false;
+  let closeCount = 0;
+  let closeAttemptCount = 0;
+  let closeFailureCount = 0;
+  let completedTicksPendingAtClose = 0;
+  let completedTicksDiscardedOnClose = 0;
+  let inputPendingAtClose = 0;
+  let inputResidualPending = 0;
+  let inputSnapshotsCancelledOnClose = 0;
+  let inputCancellationFailureCount = 0;
+  let closedInputCommandSnapshotDiagnostics = null;
+
+  function assertOpen() {
+    if (closed) throw new Error('SimulationRunner is closed');
+  }
 
   const inputTickBoundary = {
     sequence: 0,
     targetTick: 0,
     publishedSequence: 0,
     publishInputCommand(input, actualTick) {
+      assertOpen();
       if (this.publishedSequence !== 0) {
         inputBoundaryErrorCount++;
         throw new Error(`InputCommandSnapshot ${this.sequence} published more than once`);
@@ -198,6 +215,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
   }
 
   function stepSimulation(dt) {
+    assertOpen();
+    const commandSnapshots = inputCommandSnapshots;
     // Reserve both publications before advancing authoritative state. Exhaustion therefore fails
     // closed rather than advancing a tick whose command or completion record cannot be represented.
     const slot = reserveCompletedTick();
@@ -206,7 +225,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
       ? state.tick
       : completedSequence;
     const targetTick = currentTick + 1;
-    inputCommandSnapshots.reserve(nextInputSequence, targetTick, lifecycleGeneration);
+    commandSnapshots.reserve(nextInputSequence, targetTick, lifecycleGeneration);
     inputTickBoundary.sequence = nextInputSequence;
     inputTickBoundary.targetTick = targetTick;
     inputTickBoundary.publishedSequence = 0;
@@ -216,14 +235,16 @@ export function createSimulationRunner(state, registry, deps = {}) {
 
     try {
       registry.step(dt, inputTickBoundary);
+      assertOpen();
       if (inputTickBoundary.publishedSequence !== nextInputSequence) {
         inputBoundaryErrorCount++;
         throw new Error(`InputCommandSnapshot ${nextInputSequence} was not published`);
       }
-      const observerError = inputCommandSnapshots.consume(
+      const observerError = commandSnapshots.consume(
         nextInputSequence,
         onInputCommandSnapshot,
       );
+      assertOpen();
       inputSequence = nextInputSequence;
       publishCompletedTick(slot, nextInputSequence, journalStart, journalSequence());
       if (observerError) {
@@ -233,12 +254,13 @@ export function createSimulationRunner(state, registry, deps = {}) {
           : String(observerError);
       }
     } catch (error) {
-      if (inputCommandSnapshots.cancel(nextInputSequence)) inputSnapshotCancelCount++;
+      if (commandSnapshots.cancel(nextInputSequence)) inputSnapshotCancelCount++;
       throw error;
     }
   }
 
   function prepareWithoutAdvance() {
+    assertOpen();
     advanceResult.steps = 0;
     advanceResult.shedBacklog = false;
     advanceResult.shedSteps = 0;
@@ -248,10 +270,83 @@ export function createSimulationRunner(state, registry, deps = {}) {
     return advanceResult;
   }
 
+  function close() {
+    if (closeComplete) return false;
+    closeAttemptCount++;
+    if (!closed) {
+      closed = true;
+      closeCount++;
+      completedTicksPendingAtClose = completedCount;
+      completedTicksDiscardedOnClose += completedCount;
+      completedRead = 0;
+      completedWrite = 0;
+      completedCount = 0;
+      completedTicks.length = 0;
+      const initialPending = inputCommandSnapshots?.getPendingCount?.();
+      const initialDiagnostics = inputCommandSnapshots?.getDiagnostics?.() || null;
+      inputPendingAtClose = Number.isFinite(initialPending)
+        ? Math.max(0, Math.floor(initialPending))
+        : Math.max(0, Math.floor(Number(initialDiagnostics?.pending) || 0));
+      presentationJournal = null;
+      inputTickBoundary.sequence = 0;
+      inputTickBoundary.targetTick = 0;
+      inputTickBoundary.publishedSequence = 0;
+    }
+
+    const commandSnapshots = inputCommandSnapshots;
+    const before = commandSnapshots?.getDiagnostics?.() || null;
+    const currentPending = commandSnapshots?.getPendingCount?.();
+    let remaining = Number.isFinite(currentPending)
+      ? Math.max(0, Math.floor(currentPending))
+      : Math.max(0, Math.floor(Number(before?.pending) || 0));
+    let attempts = 0;
+    const attemptCap = Math.max(1, Number(commandSnapshots?.capacity) || inputCommandSnapshotCapacity);
+    while (remaining > 0 && attempts < attemptCap) {
+      const snapshotDiagnostics = commandSnapshots?.getDiagnostics?.() || null;
+      const sequence = snapshotDiagnostics?.lastReservedSequence;
+      if (!Number.isSafeInteger(sequence)
+        || typeof commandSnapshots?.cancel !== 'function'
+        || commandSnapshots.cancel(sequence) !== true) {
+        inputCancellationFailureCount++;
+        break;
+      }
+      inputSnapshotsCancelledOnClose++;
+      attempts++;
+      const nextPending = commandSnapshots?.getPendingCount?.();
+      remaining = Number.isFinite(nextPending)
+        ? Math.max(0, Math.floor(nextPending))
+        : Math.max(0, remaining - 1);
+    }
+    const after = commandSnapshots?.getDiagnostics?.() || before || {};
+    const reportedRemaining = commandSnapshots?.getPendingCount?.();
+    const diagnosticRemaining = Number(after?.pending);
+    inputResidualPending = Number.isFinite(reportedRemaining)
+      ? Math.max(0, Math.floor(reportedRemaining))
+      : (Number.isFinite(diagnosticRemaining)
+        ? Math.max(0, Math.floor(diagnosticRemaining))
+        : remaining);
+    if (inputResidualPending > 0) {
+      closeFailureCount++;
+      throw new Error(
+        `SimulationRunner close left ${inputResidualPending} input snapshot pending`,
+      );
+    }
+    closedInputCommandSnapshotDiagnostics = {
+      ...after,
+      closed: true,
+      pendingAtClose: inputPendingAtClose,
+      pending: 0,
+    };
+    inputCommandSnapshots = null;
+    closeComplete = true;
+    return true;
+  }
+
   return {
     fixedDt,
     maxSteps,
     advance(frameDt, timeScale = state.timeScale) {
+      assertOpen();
       advanceFixedTimestep(
         state.accumulator,
         frameDt,
@@ -266,11 +361,13 @@ export function createSimulationRunner(state, registry, deps = {}) {
     },
     prepareWithoutAdvance,
     interpolationAlpha() {
+      assertOpen();
       const accumulator = Number.isFinite(state.accumulator) ? state.accumulator : 0;
       const alpha = accumulator / fixedDt;
       return alpha < 0 ? 0 : (alpha > 1 ? 1 : alpha);
     },
     consumeLatestCompletedTick(out) {
+      assertOpen();
       if (!out || typeof out !== 'object') {
         throw new TypeError('consumeLatestCompletedTick requires a caller-owned output object');
       }
@@ -290,6 +387,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
       return consumed;
     },
     alignJournalCursor(sequence) {
+      assertOpen();
       if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > journalSequence()) {
         throw new RangeError(`SimulationRunner journal cursor is invalid (${sequence})`);
       }
@@ -301,26 +399,42 @@ export function createSimulationRunner(state, registry, deps = {}) {
       return committedJournalSequence;
     },
     setLifecycleGeneration(value) {
+      assertOpen();
       lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
     },
+    close,
+    isClosed: () => closed,
     getLifecycleGeneration: () => lifecycleGeneration,
     getPendingCompletedTickCount: () => completedCount,
     getDiagnostics() {
       return {
+        closed,
+        closeComplete,
+        closeCount,
+        closeAttemptCount,
+        closeFailureCount,
+        completedTicksPendingAtClose,
+        completedTicksDiscardedOnClose,
+        inputPendingAtClose,
+        inputResidualPending,
+        inputSnapshotsCancelledOnClose,
+        inputCancellationFailureCount,
         fixedDt,
         maxSteps,
         completedTickCapacity,
         completedSequence,
         inputSequence,
-        inputCommandSnapshotCapacity: inputCommandSnapshots.capacity
+        inputCommandSnapshotCapacity: inputCommandSnapshots?.capacity
           || inputCommandSnapshotCapacity,
         inputBoundaryCaptureCount,
         inputBoundaryErrorCount,
         inputSnapshotCancelCount,
         inputObserverErrorCount,
         lastInputObserverError,
-        inputCommandSnapshots: inputCommandSnapshots.getDiagnostics?.() || null,
+        inputCommandSnapshots: inputCommandSnapshots?.getDiagnostics?.()
+          || closedInputCommandSnapshotDiagnostics,
         pendingCompletedTicks: completedCount,
+        retainedCompletedTickCapacity: completedTicks.length,
         consumedTickCount,
         skippedPresentationTicks,
         overflowCount,
