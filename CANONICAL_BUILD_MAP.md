@@ -48,7 +48,15 @@ but no changed visible zone may inherit a DCC default. Claim
 the exact source/candidate paths first. The catalog is routing evidence, not permission to merge old
 branches, promote candidates, or bypass G0-G7 acceptance.
 
-Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task.
+**Massline presentation UVP (tumble body language / force neon / fling feel):** presentation-only
+work that sells sustained control loss and neon force against grey hulls starts at
+[`design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md`](./design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md).
+That packet owns the multi-pass plan, write budget, and non-goals; pure mappers live under
+`src/render/masslinePresentation.js`. It does **not** reopen closed PQ-023 gold-corridor acceptance
+and must not rewrite physics/tumble immunity. For ordinary admitted queue work, still use
+`program-dispatch` above.
+
+Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, or the massline presentation UVP packet when that is the explicit task.
 
 ## 2. Product north star
 

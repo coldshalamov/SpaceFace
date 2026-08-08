@@ -103,6 +103,8 @@ import {
 } from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
+import { resolveForceNeonScale } from './masslinePresentation.js';
+import { shipPitchCandidates } from './shipPitchPresentation.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
@@ -1802,8 +1804,15 @@ export const vfx = {
       if (sock) origin = sock;
     }
     if (!origin) return;
-    const base = this._dirAngle(p.dir, p.ownerId);
+    let base = this._dirAngle(p.dir, p.ownerId);
     const owner = this._ent(p.ownerId);
+    // Off-axis muzzle scatter while tumbling — guns whip with the thrash.
+    const scatter = owner && owner.presentation && owner.presentation.tumble
+      ? Math.max(0, owner.presentation.tumble.muzzleScatter || 0)
+      : 0;
+    if (scatter > 0.05) {
+      base += (Math.random() - 0.5) * scatter * 1.1;
+    }
     const profile = this._muzzleProfile(p, owner);
     if (p.continuous === true && p.to && this._combatBeams) {
       const startsBefore = this._combatBeams.startCount;
@@ -2589,11 +2598,53 @@ export const vfx = {
     }
     // Massline Wave M2: throw release = hot amber whip-crack streaking along the exit direction;
     // tumble = ragged white/red spill (RCS puffs losing the argument).
+    // UVP neon pass: force cues scale above hull-neutral via resolveForceNeonScale.
     if (id === 'massline.throw' || lane.includes('massline_throw')) {
-      return presentationStyle('#fff2d0', '#ffb347', SPR_FLASH, { spread: 0.35, lightPeak: 4.2, lightDistance: 170, speed0: 58, speedJitter: 44, size0: 2.0, size1: 0.15 });
+      const neon = resolveForceNeonScale('throw', this._forceNeonMetrics());
+      return presentationStyle('#fff8e8', '#ffb347', SPR_FLASH, {
+        spread: 0.35,
+        lightPeak: 4.2 * neon.lightPeak,
+        lightDistance: 170 + neon.coreWhite * 40,
+        speed0: 58 * neon.particleBoost,
+        speedJitter: 44,
+        size0: 2.0 * (0.9 + neon.coreWhite * 0.35),
+        size1: 0.15,
+        spriteOpacity: Math.min(1, 0.72 * neon.energy),
+      });
     }
-    if (id === 'ship.tumble' || lane.includes('massline_tumble')) {
-      return presentationStyle('#ffe2d6', '#ff5a48', SPR_PUFF, { radial: true, lightPeak: 2.6, lightDistance: 120, speed0: 22, speedJitter: 40, life0: 0.5, size0: 1.6, size1: 0.25, drag: 1.4 });
+    if (id === 'ship.tumble' || lane.includes('massline_tumble') || id === 'ship.tumble.recover') {
+      const neon = resolveForceNeonScale('tumble', this._forceNeonMetrics({
+        rcsThrash: lane.includes('recover') ? 0.2 : 0.7,
+      }));
+      return presentationStyle('#ffe2d6', '#ff5a48', SPR_PUFF, {
+        radial: true,
+        lightPeak: 2.6 * neon.lightPeak,
+        lightDistance: 120,
+        speed0: 22 * neon.particleBoost,
+        speedJitter: 40,
+        life0: 0.5,
+        size0: 1.6 * neon.energy * 0.55,
+        size1: 0.25,
+        drag: 1.4,
+      });
+    }
+    if (id === 'tether.whip_impact' || lane.includes('whip_impact') || lane.includes('whip')) {
+      const neon = resolveForceNeonScale('whip', this._forceNeonMetrics({
+        severity: p && p.magnitude != null ? Number(p.magnitude) / 100 : 0.6,
+        rating: p && p.rating,
+      }));
+      return presentationStyle('#ffffff', '#ff8a40', SPR_FLASH, {
+        radial: true,
+        lightPeak: 3.4 * neon.lightPeak,
+        lightDistance: 160 + neon.coreWhite * 50,
+        speed0: 48 * neon.particleBoost,
+        speedJitter: 52,
+        life0: 0.28,
+        size0: 1.9 * neon.energy * 0.5,
+        size1: 0.12,
+        drag: 1.2,
+        spriteOpacity: Math.min(1, 0.7 * neon.energy),
+      });
     }
     // SF-10 vector-mine detonation — a fast cool-blue radial SHOVE (an impulse front driven outward),
     // deliberately a punch-flash burst rather than a primary ring (graphics-checkpoint reject list),
@@ -4630,6 +4681,9 @@ export const vfx = {
     // The core carries HEAT and the halo carries COLOUR. The core intensity is deliberately high
     // enough that the filament clips through ACES — that white centre against the coloured falloff
     // is the whole "liquid neon" read (grammar §9.2) and is what the old flat 4.8-7.4 could not do.
+    // UVP force-neon: taut / loaded lines push energy above hull-neutral; slack stays quieter.
+    const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
+    const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
     const ribbonFrame = {
       time: visualTime,
       color: this._ctmp,
@@ -4642,10 +4696,10 @@ export const vfx = {
       whip: whipEnv,
       overload,
       reel: cable.reelGlow,
-      pulseSpeed: 2.8 + l * 1.4 + cable.reelGlow * 4.8,
+      pulseSpeed: 2.8 + l * 1.4 + cable.reelGlow * 4.8 + neon.coreWhite * 1.2,
       // Core: the filament cross-section (pow 9-18) concentrates almost all of this into the middle
       // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
-      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + whipEnv * 2.1) * radiance,
+      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + whipEnv * 2.1) * radiance * neonMul,
       opacity: (taut ? 0.74 : 0.62) * cable.fade,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
@@ -4654,7 +4708,7 @@ export const vfx = {
       // Halo: wide and coloured. Its centre needs to clear the bright-pass threshold so the rope
       // gets a real bloom skirt, but only its centre — push this higher and the sheath saturates
       // across its whole width and the cable stops being a cable and becomes a plume.
-      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + whipEnv * 1.7) * radiance,
+      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + whipEnv * 1.7) * radiance * neonMul,
       opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + whipEnv * 0.16) * cable.fade,
     });
     cable.band.material.color.copy(this._ctmp);
@@ -5014,19 +5068,22 @@ export const vfx = {
     if (!this._scene || !p || !p.pos) return;
     const pos = p.pos;
     const r = Math.max(4, p.radius || 12);
-    // white core + palette shockwave, radius-scaled (spec2/02 §3)
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, r * 0.6, r * 2.2, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.55, r * 0.4, r * 3.5, 0.85, 0.0, '#39d0ff', 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.70, r * 0.6, r * 4.5, 0.55, 0.0, '#ffb35c', 0, 0);
+    const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
+    const op = Math.min(1, 0.85 * neon.energy * 0.55);
+    // white core + palette shockwave, radius-scaled (spec2/02 §3) — neon-boosted force layer
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, r * 0.6 * neon.energy * 0.55, r * 2.2 * neon.energy * 0.5, 1.0, 0.0, '#ffffff', 0, 0);
+    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.55, r * 0.4, r * 3.5 * neon.particleBoost * 0.7, Math.min(1, 0.85 * neon.energy * 0.5), 0.0, '#39d0ff', 0, 0);
+    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.70, r * 0.6, r * 4.5 * neon.particleBoost * 0.7, Math.min(1, 0.55 * neon.energy * 0.55), 0.0, '#ffb35c', 0, 0);
     this._c0.set('#ffffff'); this._c1.set('#39d0ff');
-    const burst = Math.max(10, Math.round(24 * (this._burst || 1)));
+    const burst = Math.max(10, Math.round(24 * (this._burst || 1) * neon.particleBoost));
     for (let k = 0; k < burst; k++) {
       const a = Math.random() * Math.PI * 2;
-      const v = 20 + Math.random() * 55;
+      const v = (20 + Math.random() * 55) * neon.particleBoost;
       this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.25 + Math.random() * 0.25, 1.8, 0.0, this._c0, this._c1, 2.0, 0, 0);
+        0.25 + Math.random() * 0.25, 1.8 * neon.energy * 0.55, 0.0, this._c0, this._c1, 2.0, 0, 0);
     }
-    this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 6.0, 8, 220);
+    this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 6.0 * neon.lightPeak, 8, 220 + neon.coreWhite * 40);
+    void op;
   },
 
   // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /
@@ -6553,6 +6610,8 @@ export const vfx = {
     } else {
       sub.tetherCable = 0;
     }
+    // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
+    this._updateTumbleBodyLanguageVfx(dt);
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -7574,7 +7633,14 @@ export const vfx = {
     let brake = 0;
     if (retroOnly || reverse > 0.05) brake = Math.min(1, 0.35 + speedDrive * 0.65);
     else if (throttle < 0.08 && speedDrive > 0.2) brake = Math.min(1, speedDrive * 0.55);
-    const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
+    let drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
+    // Dead thruster look when presentation marks drive-disabled / tumbling thrash fade-out.
+    const tumblePres = e.presentation && e.presentation.tumble;
+    if (tumblePres && Number.isFinite(tumblePres.deadThruster) && tumblePres.deadThruster > 0.05) {
+      const kill = Math.max(0, Math.min(1, tumblePres.deadThruster));
+      drive *= (1 - kill * 0.92);
+      boost *= (1 - kill);
+    }
     out.drive = drive;
     out.throttle = throttle;
     out.speed = speed;
@@ -7585,6 +7651,90 @@ export const vfx = {
     out.retroOnly = retroOnly;
     out.brake = brake;
     return out;
+  },
+
+  _forceNeonMetrics(extra = {}) {
+    const settings = this.state && this.state.settings || {};
+    return {
+      motionReduce: !!(settings.video && settings.video.motionReduce),
+      flashReduce: !!(settings.accessibility && settings.accessibility.flashReduce),
+      ...extra,
+    };
+  },
+
+  /**
+   * Continuous tumble / drift body-language VFX. Reads presentation intent written by
+   * updateShipPitchPresentation; never writes sim. Cadence-gated thrash puffs + spin ribbons.
+   */
+  _updateTumbleBodyLanguageVfx(dt) {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
+    if (!this._tumbleVfxCd) this._tumbleVfxCd = new Map();
+    const reduced = this._isReduced();
+    const list = shipPitchCandidates(this.state);
+    const cd = this._tumbleVfxCd;
+    for (const e of list) {
+      if (!e || !e.alive || !e.pos) continue;
+      if (e.id === this.state.playerId) continue;
+      const tumble = e.presentation && e.presentation.tumble;
+      if (!tumble || (tumble.mode !== 'tumbling' && tumble.mode !== 'drifting' && !tumble.recovering)) {
+        if (cd.has(e.id)) cd.delete(e.id);
+        continue;
+      }
+      const thrash = Math.max(0, tumble.rcsThrash || 0);
+      const ribbon = Math.max(0, tumble.spinRibbon || 0);
+      if (thrash < 0.08 && ribbon < 0.12 && !tumble.recovering) continue;
+      const hz = Math.max(4, tumble.thrashCadenceHz || 8);
+      const period = 1 / hz;
+      let age = cd.get(e.id) || 0;
+      age += Math.max(0, dt || 0);
+      if (age < period) {
+        cd.set(e.id, age);
+        continue;
+      }
+      cd.set(e.id, age - period);
+      const neon = resolveForceNeonScale('tumble.continuous', this._forceNeonMetrics({
+        rcsThrash: thrash,
+        poseIntensity: tumble.poseIntensity,
+      }));
+      const r = Math.max(3, e.radius || 6);
+      const ang = (e.rot || 0) + (e.angVel || 0) * 0.08;
+      // Frantic RCS thrash: alternating side puffs that weaken as thrash falls (then-failing).
+      if (thrash > 0.08 && !reduced) {
+        const side = (Math.sin((e.id || 0) + age * 17) > 0 ? 1 : -1);
+        const px = e.pos.x + Math.cos(ang + side * 1.2) * r * 0.7;
+        const pz = e.pos.z + Math.sin(ang + side * 1.2) * r * 0.7;
+        const vx = Math.cos(ang + side * 1.2) * (12 + thrash * 28) * neon.particleBoost;
+        const vz = Math.sin(ang + side * 1.2) * (12 + thrash * 28) * neon.particleBoost;
+        this._spawnSprite(SPR_PUFF, px, 0.05, pz, 0.22 + thrash * 0.18, 0.9 * thrash + 0.4, 2.2,
+          0.35 + thrash * 0.35, 0, '#ffe0d0', vx, vz);
+      }
+      // Spin ribbon: short directional streak opposite angular motion.
+      if (ribbon > 0.15) {
+        const tx = -Math.sin(ang) * (18 + ribbon * 40);
+        const tz = Math.cos(ang) * (18 + ribbon * 40);
+        this._c0.set('#ffe2d6');
+        this._c1.set('#ff5a48');
+        this._spawnParticle(
+          e.pos.x, e.pos.z,
+          tx * 0.35, tz * 0.35,
+          0.18 + ribbon * 0.2,
+          1.2 * neon.energy * 0.5, 0.05,
+          this._c0, this._c1,
+          1.3, 0, 0,
+        );
+      }
+      // Recover settle flash once when recovering starts (very light).
+      if (tumble.recovering && thrash < 0.05 && ribbon < 0.25 && age < period * 1.5) {
+        this._spawnSprite(SPR_FLASH, e.pos.x, 0, e.pos.z, 0.12, r * 0.3, r * 1.1, 0.35, 0, '#dfefff', 0, 0);
+      }
+    }
+    // Bound map growth: drop ids for dead entities occasionally.
+    if (cd.size > 48) {
+      for (const id of cd.keys()) {
+        const ent = this.state.entities && this.state.entities.get(id);
+        if (!ent || !ent.alive) cd.delete(id);
+      }
+    }
   },
 
   // Approximate commanded throttle for the plume: forward input, forward speed, or boost blend.

@@ -26,6 +26,7 @@ import {
   velocityBandDrive,
   velocityLanguageFlag,
 } from './velocityLanguage.js';
+import { resolveMasslineFeelPunch } from './masslinePresentation.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
@@ -745,6 +746,68 @@ export const feel = {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
     });
+
+    // Massline UVP fling feel — pure resolveMasslineFeelPunch; motionReduce suppresses vestibular.
+    bus.on('tether:releaseRated', (p) => {
+      const classification = p && (p.classification || p.tier || p.rating);
+      this._applyMasslineFeelPunch({
+        type: classification ? `tether.release.${classification}` : 'tether.release',
+        rating: classification,
+        tier: classification,
+      }, p);
+    });
+    bus.on('massline:tumbled', (p) => {
+      const victim = p && state.entities && state.entities.get(p.victimId);
+      const important = !!(victim && (
+        victim.data && (victim.data.named || victim.data.ace || victim.data.displayName)
+        || victim.flags && (victim.flags.named || victim.flags.ace || victim.flags.boss)
+        || /ace|named|captain|boss/i.test(String(victim.name || victim.id || ''))
+      ));
+      this._applyMasslineFeelPunch({
+        type: 'massline.tumbled',
+        important,
+        named: important,
+        ace: !!(victim && victim.flags && victim.flags.ace),
+      }, p);
+    });
+    bus.on('massline:tumbleEnd', (p) => {
+      this._applyMasslineFeelPunch({ type: 'massline.tumbleEnd' }, p);
+    });
+    bus.on('tether:whipImpact', (p) => {
+      this._applyMasslineFeelPunch({
+        type: 'tether.whip_impact',
+        rating: p && p.rating,
+        severity: p && p.severity,
+      }, p);
+    });
+  },
+
+  _applyMasslineFeelPunch(event, raw) {
+    if (this.state.mode !== 'flight' || !this._modalClear()) return;
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    const punch = resolveMasslineFeelPunch(event, {
+      motionReduce: !!mr,
+      mode: this.state.mode,
+    });
+    if (!punch) return;
+    if (punch.hsDur > 0 || punch.fov > 0 || punch.vig > 0) {
+      this._trigger(punch.hsDur || 0, punch.fov || 0, punch.vig || 0, punch.vig > 0 ? 'hit' : null);
+    }
+    if (punch.trauma > 0) {
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.addTrauma === 'function') {
+        let trauma = punch.trauma;
+        // Distance falloff for whip impacts with world pos.
+        if (raw && raw.pos && event && String(event.type || '').includes('whip')) {
+          const player = this.state.entities && this.state.entities.get(this.state.playerId);
+          if (player && player.pos) {
+            const d2 = (player.pos.x - raw.pos.x) ** 2 + (player.pos.z - raw.pos.z) ** 2;
+            trauma = d2 <= 400 * 400 ? trauma : Math.min(trauma, trauma * ((400 * 400) / d2));
+          }
+        }
+        ctrl.addTrauma(trauma);
+      }
+    }
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).

@@ -1,5 +1,14 @@
 // Render-only craft pitch lean over CoreSystem's maintained ship/drone domain.
 // Every craft remains updated while far-culled so returning to presentation cannot reveal stale lean.
+//
+// Massline UVP: when combat reports status_tumbling or drive-disabled, bank/pitch are driven by
+// pure tumble body language (multi-axis thrash) instead of thrust lean. Physics is not written here.
+import {
+  readControlLossPresentation,
+  resolveTumbleBodyLanguage,
+  resolveTumbleRecoverPose,
+} from './masslinePresentation.js';
+
 export function shipPitchCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.shipLike)) {
@@ -19,35 +28,138 @@ export function shipEngineDrive(entity) {
   return Math.max(0, Math.min(1, (speed / maxSpd) * Math.max(0, align)));
 }
 
-/** Update the cosmetic pitch cue without scanning unrelated authoritative entity types. */
+function flightPitchTarget(entity) {
+  const boosting = !!(entity.flags && entity.flags.boosting);
+  const drive = shipEngineDrive(entity);
+  let target = 0;
+  if (boosting) target = -0.13;
+  else if (drive > 0.75) target = -0.055;
+  else if (drive > 0.35) target = -0.025;
+  if (!boosting && drive > 0.3 && entity.vel) {
+    const vx = entity.vel.x, vz = entity.vel.z;
+    const speed = Math.hypot(vx, vz);
+    if (speed > 8) {
+      const hx = Math.cos(entity.rot), hz = Math.sin(entity.rot);
+      const align = (vx * hx + vz * hz) / Math.max(1, speed);
+      if (align < -0.35) target = 0.07;
+    }
+  }
+  return target;
+}
+
+function ensurePresentation(entity) {
+  if (!entity.presentation || typeof entity.presentation !== 'object') {
+    entity.presentation = {};
+  }
+  return entity.presentation;
+}
+
+/**
+ * Update cosmetic pitch/bank. Thrust lean for normal flight; multi-axis thrash for tumble/drift.
+ * Attaches entity.presentation.tumble intent for VFX consumers (RCS thrash, dead thruster, ribbons).
+ */
 export function updateShipPitchPresentation(state, frameDt) {
   const dt = Math.min(0.05, Math.max(0, frameDt));
   const rate = 6.0;
   let updated = 0;
+  const now = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  const motionReduce = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
 
   for (const entity of shipPitchCandidates(state)) {
     if (!entity.alive || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
     if (entity.flags && entity.flags.docked) continue;
-    const boosting = !!(entity.flags && entity.flags.boosting);
-    const drive = shipEngineDrive(entity);
-    let target = 0;
-    if (boosting) target = -0.13;
-    else if (drive > 0.75) target = -0.055;
-    else if (drive > 0.35) target = -0.025;
-    if (!boosting && drive > 0.3 && entity.vel) {
-      const vx = entity.vel.x, vz = entity.vel.z;
-      const speed = Math.hypot(vx, vz);
-      if (speed > 8) {
-        const hx = Math.cos(entity.rot), hz = Math.sin(entity.rot);
-        const align = (vx * hx + vz * hz) / Math.max(1, speed);
-        if (align < -0.35) target = 0.07;
-      }
-    }
+
+    const flightPitch = flightPitchTarget(entity);
     if (entity.pitch == null) entity.pitch = 0;
-    entity.pitch += (target - entity.pitch) * (1 - Math.exp(-rate * dt));
-    if (Math.abs(entity.pitch) < 0.0005 && Math.abs(target) < 0.0005) entity.pitch = 0;
+    if (entity.bank == null) entity.bank = 0;
+
+    const loss = readControlLossPresentation(state, entity);
+    const pres = ensurePresentation(entity);
+    const recover = pres.tumbleRecover;
+
+    if (recover && Number.isFinite(recover.until) && now < recover.until) {
+      const ageS = Math.max(0, now - finite(recover.startedAt, now));
+      const body = resolveTumbleRecoverPose({
+        ageS,
+        windowS: Math.max(0.05, finite(recover.until, now) - finite(recover.startedAt, now)),
+        fromBank: finite(recover.fromBank, entity.bank),
+        fromPitch: finite(recover.fromPitch, entity.pitch),
+        flightBank: 0,
+        flightPitch,
+      });
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      pres.tumble = body;
+      if (!body.recovering) delete pres.tumbleRecover;
+      updated++;
+      continue;
+    }
+
+    if (loss.mode === 'tumbling' || loss.mode === 'drifting') {
+      const body = resolveTumbleBodyLanguage({
+        mode: loss.mode,
+        angVel: entity.angVel,
+        spin: loss.spin,
+        simTime: now,
+        elapsedS: loss.elapsedS,
+        remainS: loss.remainS,
+        motionReduce,
+        phaseBias: Number(entity.id) % 17,
+        flightBank: entity.bank,
+        flightPitch,
+      });
+      // Own bank/pitch for the thrash window (last presentation writer before mesh pose apply).
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      // Remember thrash pose so recover can ease out when status clears next frames.
+      pres._lastTumbleBank = body.bank;
+      pres._lastTumblePitch = body.pitch;
+      pres.tumble = body;
+      if (loss.mode === 'tumbling') {
+        pres.wasTumbling = true;
+      }
+      updated++;
+      continue;
+    }
+
+    // Transition: was tumbling last frames, status cleared → start recover settle.
+    if (pres.wasTumbling) {
+      pres.wasTumbling = false;
+      pres.tumbleRecover = {
+        startedAt: now,
+        until: now + 0.35,
+        fromBank: finite(pres._lastTumbleBank, entity.bank),
+        fromPitch: finite(pres._lastTumblePitch, entity.pitch),
+      };
+      const body = resolveTumbleRecoverPose({
+        ageS: 0,
+        windowS: 0.35,
+        fromBank: pres.tumbleRecover.fromBank,
+        fromPitch: pres.tumbleRecover.fromPitch,
+        flightBank: 0,
+        flightPitch,
+      });
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      pres.tumble = body;
+      updated++;
+      continue;
+    }
+
+    // Normal thrust lean (pitch only; bank remains flight-owned).
+    entity.pitch += (flightPitch - entity.pitch) * (1 - Math.exp(-rate * dt));
+    if (Math.abs(entity.pitch) < 0.0005 && Math.abs(flightPitch) < 0.0005) entity.pitch = 0;
+    if (pres.tumble) {
+      pres.tumble = resolveTumbleBodyLanguage({ mode: 'idle', flightBank: entity.bank, flightPitch: entity.pitch });
+    }
     updated++;
   }
 
   return updated;
+}
+
+function finite(v, fb = 0) {
+  return Number.isFinite(v) ? v : fb;
 }
