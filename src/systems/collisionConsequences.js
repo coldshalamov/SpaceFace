@@ -121,7 +121,7 @@ export const collisionConsequences = {
     if (!receipt) return;
 
     if (receipt.control !== 'none') this._beginControl(target, receipt);
-    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, receipt) : null;
+    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
     if (receipt.control === 'tumble') this._scheduleTumbleStatus(target, receipt);
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
@@ -173,14 +173,14 @@ export const collisionConsequences = {
     });
   },
 
-  _routeImpactDamage(target, receipt) {
+  _routeImpactDamage(target, other, receipt) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
-    const collisionPresentation = buildCollisionPresentationProvenance(target, receipt);
+    const collisionPresentation = buildCollisionPresentationProvenance(target, other, receipt);
     const packet = scalarHitToDamagePacket({
       damage: receipt.impactDamage,
       damageType: 'kinetic',
@@ -307,10 +307,10 @@ function playerRamPlateImpact(entity, playerId, tick) {
   };
 }
 
-function buildCollisionPresentationProvenance(target, receipt) {
+function buildCollisionPresentationProvenance(target, other, receipt) {
   return Object.freeze({
     position: freezeTransientPoint(receipt && receipt.pos),
-    direction: freezeTransientDirection(target && target.vel),
+    direction: freezeIncomingCollisionDirection(target, other, receipt),
     normal: freezeTransientDirection(receipt && receipt.normal),
     surface: collisionPresentationSurface(receipt && receipt.surface),
     targetVelocity: freezeTransientPoint(target && target.vel),
@@ -322,6 +322,21 @@ function buildCollisionPresentationProvenance(target, receipt) {
   });
 }
 
+function freezeIncomingCollisionDirection(target, other, receipt) {
+  // Direction follows the causal body's travel relative to the contacted body. A Ram Plate makes
+  // the counterpart causal, so a moving rammer still reads on a stationary victim. Otherwise the
+  // consequence target carries the prior impulse provenance and its motion into terrain/structure
+  // is causal. The SG-02 normal remains a separate unoriented contact axis; it never supplies sign.
+  const counterpartCaused = receipt && receipt.provenance
+    && receipt.provenance.actorId === (other && other.id);
+  const sourceVelocity = counterpartCaused ? other && other.vel : target && target.vel;
+  const contactedVelocity = counterpartCaused ? target && target.vel : other && other.vel;
+  return freezeTransientDirectionComponents(
+    finite(sourceVelocity && sourceVelocity.x) - finite(contactedVelocity && contactedVelocity.x),
+    finite(sourceVelocity && sourceVelocity.z) - finite(contactedVelocity && contactedVelocity.z),
+  );
+}
+
 function collisionPresentationSurface(value) {
   return value === 'terrain' || value === 'craft' || value === 'structure' ? value : null;
 }
@@ -331,8 +346,13 @@ function freezeTransientPoint(value) {
 }
 
 function freezeTransientDirection(value) {
-  const x = finite(value && value.x);
-  const z = finite(value && value.z);
+  return freezeTransientDirectionComponents(
+    finite(value && value.x),
+    finite(value && value.z),
+  );
+}
+
+function freezeTransientDirectionComponents(x, z) {
   const length = Math.hypot(x, z);
   return length > 1e-9 ? Object.freeze({ x: x / length, z: z / length }) : null;
 }

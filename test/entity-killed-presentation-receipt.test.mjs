@@ -256,7 +256,7 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
     terrainSystem.destroy();
     terrainBus.clear();
 
-    const ramTarget = ship(19, 1, { hull: 1, vx: 18, vz: 6 });
+    const ramTarget = ship(19, 1, { hull: 1, vx: 0, vz: 0 });
     const ramState = killState(ramTarget);
     const ramPlayer = ramState.entities.get(ramState.playerId);
     ramPlayer.vel = { x: 90, z: 0 };
@@ -281,7 +281,9 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
     assert.equal(ramKills[0].presentation.cause, 'ship_collision');
     assert.equal(ramKills[0].presentation.surface, 'craft');
     assert.equal(ramKills[0].presentation.playerCaused, true);
-    assert.deepEqual(ramKills[0].presentation.targetVelocity, { x: 18, z: 6 });
+    assert.deepEqual(ramKills[0].presentation.targetVelocity, { x: 0, z: 0 });
+    assert.deepEqual(ramKills[0].presentation.direction, { x: 1, z: 0 },
+      'a moving Ram-Plate counterpart supplies the killing direction even when the victim was stationary');
 
     ramSystem.destroy();
     ramBus.clear();
@@ -370,10 +372,18 @@ test('phased lifecycle normalizes, saturates, resets, and drains causal resident
   assert.equal(replacement.normalZ, 0);
   assert.equal(replacement.targetVelocityX, 0);
   assert.equal(replacement.targetVelocityZ, 0);
+  assert.equal(replacement.dirX, 1);
+  assert.equal(replacement.dirZ, 0);
 
-  const draining = lifecycle.start({ cause: 'ship_collision', priority: 0.7 });
+  const draining = lifecycle.start({
+    cause: 'ship_collision',
+    direction: { x: 0, z: -1 },
+    priority: 0.7,
+  });
   lifecycle.update(10, () => {});
   assert.equal(lifecycle.activeCount, 0);
   assert.equal(draining.active, false);
   assert.equal(draining.cause, 'generic');
+  assert.equal(draining.dirX, 1);
+  assert.equal(draining.dirZ, 0);
 });

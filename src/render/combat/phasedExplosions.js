@@ -220,6 +220,8 @@ export class PhasedExplosionLifecycle {
     entry.priority = DEFAULT_VFX_ADMISSION_PRIORITY;
     entry.phaseIndex = 0;
     entry.age = 0;
+    entry.dirX = 1;
+    entry.dirZ = 0;
     entry.cause = 'generic';
     entry.hasNormal = false;
     entry.normalX = 0;
