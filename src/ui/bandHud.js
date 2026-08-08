@@ -77,20 +77,27 @@ export function createBandHud(ctx, options = {}) {
       : sourceId === 'landmark_quiessence' ? 'QUIET MEMORIAL'
         : channel && channel.label || 'OFF';
     const meter = channelId ? signalMeter(strength, silence) : '---';
-    const renderSignature = [hidden, channelId || '', effectiveId || '', sourceId || '',
-      strength, silence, label, meter].join('|');
+    const text = `BAND  ${label}  ${meter}`;
+    const dataOff = channelId ? 'false' : 'true';
+    const dataSilence = silence ? 'true' : 'false';
+    const ariaLabel = channelId
+      ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}. Activate for next channel.`
+      : 'Band tuner, off. Activate for next channel.';
+    const effectiveChannel = effectiveId || 'off';
+    // Signal strength is published at 5 Hz, but the chip renders four threshold buckets. Key the
+    // cache to the exact DOM projection so within-bucket strength changes do not repaint identical
+    // text and attributes while every visible/accessibility transition still invalidates it.
+    const renderSignature = JSON.stringify([hidden, text, dataOff, dataSilence, ariaLabel, effectiveChannel]);
     if (renderSignature === lastRenderSignature) return;
     lastRenderSignature = renderSignature;
     root.hidden = hidden;
-    button.textContent = `BAND  ${label}  ${meter}`;
-    button.setAttribute('data-off', channelId ? 'false' : 'true');
-    button.setAttribute('data-silence', silence ? 'true' : 'false');
-    button.setAttribute('aria-label', channelId
-      ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}. Activate for next channel.`
-      : 'Band tuner, off. Activate for next channel.');
+    button.textContent = text;
+    button.setAttribute('data-off', dataOff);
+    button.setAttribute('data-silence', dataSilence);
+    button.setAttribute('aria-label', ariaLabel);
     button.setAttribute('aria-keyshortcuts', 'Shift+O');
     button.setAttribute('title', '[ Shift+O ] Cycle Band channel');
-    button.setAttribute('data-effective-channel', effectiveId || 'off');
+    button.setAttribute('data-effective-channel', effectiveChannel);
   }
 
   function destroy() {

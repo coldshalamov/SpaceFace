@@ -22,10 +22,14 @@ class MiniClassList {
 class MiniElement {
   constructor(tagName) {
     this.tagName = String(tagName).toUpperCase(); this.children = []; this.parentNode = null;
-    this.attributes = new Map(); this.listeners = new Map(); this.style = {}; this.hidden = false;
-    this.textContent = ''; this.className = ''; this.classList = new MiniClassList(this);
-    this.attributeWrites = 0;
+    this.attributes = new Map(); this.listeners = new Map(); this.style = {}; this._hidden = false;
+    this._textContent = ''; this.className = ''; this.classList = new MiniClassList(this);
+    this.attributeWrites = 0; this.hiddenWrites = 0; this.textWrites = 0;
   }
+  get hidden() { return this._hidden; }
+  set hidden(value) { this.hiddenWrites += 1; this._hidden = !!value; }
+  get textContent() { return this._textContent; }
+  set textContent(value) { this.textWrites += 1; this._textContent = String(value); }
   appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
   removeChild(child) { this.children = this.children.filter((item) => item !== child); child.parentNode = null; }
   remove() { if (this.parentNode) this.parentNode.removeChild(this); }
@@ -91,6 +95,83 @@ test('Band HUD is one compact non-modal chip and emits tuner intent without muta
   assert.equal(hud.root.hidden, false);
   hud.destroy();
   assert.equal(host.children.includes(hud.root), false);
+});
+
+test('Band HUD invalidates only when its rendered signal projection changes', () => {
+  const documentRef = fakeDocument();
+  const host = new MiniElement('div');
+  host.id = 'hud';
+  documentRef.body.appendChild(host);
+  const bus = createBus();
+  const state = {
+    mode: 'flight',
+    ui: { docked: false },
+    bandRadio: { channelId: 'concord_bulletin', signalStrength: 0.4 },
+  };
+  const hud = uiModule.createBandHud({ state, bus }, { documentRef, host });
+  const status = (signalStrength, overrides = {}) => bus.emit('band:status', {
+    channelId: 'concord_bulletin',
+    effectiveChannelId: 'concord_bulletin',
+    sourceId: 'station_broadcast',
+    signalStrength,
+    silence: false,
+    ...overrides,
+  });
+  const writes = () => ({
+    hidden: hud.root.hiddenWrites,
+    text: hud.button.textWrites,
+    attributes: hud.button.attributeWrites,
+  });
+
+  status(0.4);
+  const readableWrites = writes();
+  for (const strength of [0.41, 0.5, 0.7]) status(strength);
+  hud.update();
+  assert.deepEqual(writes(), readableWrites,
+    '5 Hz strength changes inside the readable bucket do not repaint identical DOM values');
+  assert.match(hud.button.textContent, /\|\|\./);
+  assert.match(hud.button.getAttribute('aria-label'), /readable signal/i);
+
+  status(0.37);
+  assert.match(hud.button.textContent, /\|\.\./);
+  assert.match(hud.button.getAttribute('aria-label'), /weak signal/i);
+  const weakWrites = writes();
+  status(0.38);
+  assert.notDeepEqual(writes(), weakWrites, '0.38 threshold crossing repaints the meter and ARIA label');
+  assert.match(hud.button.textContent, /\|\|\./);
+  assert.match(hud.button.getAttribute('aria-label'), /readable signal/i);
+
+  status(0.71);
+  const upperReadableWrites = writes();
+  status(0.72);
+  assert.notDeepEqual(writes(), upperReadableWrites, '0.72 threshold crossing repaints the strong bucket');
+  assert.match(hud.button.textContent, /\|\|\|/);
+  assert.match(hud.button.getAttribute('aria-label'), /strong signal/i);
+
+  const undockedWrites = writes();
+  state.ui.docked = true;
+  hud.update();
+  assert.equal(hud.root.hidden, true);
+  assert.notDeepEqual(writes(), undockedWrites, 'docking visibility still invalidates the rendered projection');
+
+  const dockedWrites = writes();
+  state.ui.docked = false;
+  hud.update();
+  assert.equal(hud.root.hidden, false);
+  assert.notDeepEqual(writes(), dockedWrites, 'undocking visibility still invalidates the rendered projection');
+
+  const visibleConcordWrites = writes();
+  status(0.72, { effectiveChannelId: 'pitborn_dispatch' });
+  assert.equal(hud.button.getAttribute('data-effective-channel'), 'pitborn_dispatch');
+  assert.notDeepEqual(writes(), visibleConcordWrites,
+    'an otherwise-identical effective-channel transition still paints its data attribute');
+
+  const activeWrites = writes();
+  status(0, { channelId: null, effectiveChannelId: null, sourceId: null });
+  assert.match(hud.button.textContent, /OFF/);
+  assert.equal(hud.button.getAttribute('data-off'), 'true');
+  assert.notDeepEqual(writes(), activeWrites, 'turning the Band off still paints the off contract');
+  hud.destroy();
 });
 
 function param(value = 0) {
