@@ -28,7 +28,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { createChaseCamera } from '../src/render/camera.js';
+import {
+  CHASE_ZOOM_DEFAULT,
+  createChaseCamera,
+} from '../src/render/camera.js';
 import {
   VELOCITY_BAND,
   VL_BAND3_AT,
@@ -202,6 +205,24 @@ function steadyFocusOffset(state, camera) {
   return sum / samples;
 }
 
+function cameraDistance(state, camera) {
+  return camera.obj.position.distanceTo(state.camera.focus);
+}
+
+function makeZoomEnvelopeState(speed, physicsEarned, motionReduce = false) {
+  const { state, player } = makeState(motionReduce, null);
+  state.camera.zoom = CHASE_ZOOM_DEFAULT;
+  player.vel.x = speed;
+  player._flightFrame = { governor: { physicsEarned } };
+  return { state, player, camera: createChaseCamera(state) };
+}
+
+function settleCameraDistance(state, camera, frames = 360) {
+  camera.snapToPlayer();
+  for (let i = 0; i < frames; i++) camera.follow(DT);
+  return cameraDistance(state, camera);
+}
+
 check('extreme-speed lead shifts the chase focus along the velocity vector by ~cameraLeadWU', () => {
   const extremeDrive = velocityBandDrive(VL_TAPER_END * MAX_SPEED, MAX_SPEED, false, false);
   assert.ok(extremeDrive.cameraLeadWU > 0, 'precondition: extreme drive must publish a lead');
@@ -228,6 +249,48 @@ check('extreme-speed lead shifts the chase focus along the velocity vector by ~c
     `(offsetWith=${offsetWith.toFixed(3)} offsetWithout=${offsetWithout.toFixed(3)})`);
   // And the sign is correct — lead is FORWARDS along the velocity vector (+X here), never backwards.
   assert.ok(delta > 0, 'camera lead must shift the focus FORWARDS along the velocity vector');
+});
+
+check('physics-earned overspeed opens farther than ordinary max thrust, then returns smoothly', () => {
+  const ordinary = makeZoomEnvelopeState(MAX_SPEED, false);
+  const ordinaryDistance = settleCameraDistance(ordinary.state, ordinary.camera);
+
+  const earned = makeZoomEnvelopeState(MAX_SPEED * 2, true);
+  const earnedDistance = settleCameraDistance(earned.state, earned.camera);
+  assert.ok(earnedDistance >= ordinaryDistance * 1.12,
+    `physics-earned 2x speed should open at least 12% farther (${earnedDistance.toFixed(3)} vs ` +
+    `${ordinaryDistance.toFixed(3)} WU)`);
+
+  earned.player._flightFrame.governor.physicsEarned = false;
+  const returnSamples = [];
+  for (let i = 0; i < 60; i++) {
+    earned.camera.follow(DT);
+    returnSamples.push(cameraDistance(earned.state, earned.camera));
+  }
+  assert.ok(returnSamples[0] > earnedDistance * 0.98,
+    'clearing earned provenance must ease rather than snap the camera inward on one frame');
+  assert.ok(returnSamples[12] < earnedDistance - 0.5 && returnSamples[12] > ordinaryDistance,
+    'the return should make visible progress while retaining an intermediate composition');
+  for (let i = 1; i < returnSamples.length; i++) {
+    assert.ok(returnSamples[i] <= returnSamples[i - 1] + 0.02,
+      `return path must not rebound outward (${returnSamples[i - 1].toFixed(3)} -> ` +
+      `${returnSamples[i].toFixed(3)} WU at sample ${i})`);
+  }
+  for (let i = 0; i < 360; i++) earned.camera.follow(DT);
+  const settledReturn = cameraDistance(earned.state, earned.camera);
+  assert.ok(Math.abs(settledReturn - ordinaryDistance) < 0.5,
+    `camera should settle back to ordinary framing (${settledReturn.toFixed(3)} vs ` +
+    `${ordinaryDistance.toFixed(3)} WU)`);
+});
+
+check('motionReduce suppresses the earned pullback but retains ordinary max-speed framing', () => {
+  const ordinary = makeZoomEnvelopeState(MAX_SPEED, false);
+  const ordinaryDistance = settleCameraDistance(ordinary.state, ordinary.camera);
+  const earnedReduced = makeZoomEnvelopeState(MAX_SPEED * 2, true, true);
+  const earnedReducedDistance = settleCameraDistance(earnedReduced.state, earnedReduced.camera);
+  assert.ok(Math.abs(earnedReducedDistance - ordinaryDistance) < 0.5,
+    `motionReduce should suppress only the earned extension and retain ordinary max framing ` +
+    `(${earnedReducedDistance.toFixed(3)} vs ${ordinaryDistance.toFixed(3)} WU)`);
 });
 
 check('camera lead is ZERO under motionReduce (the prompt requirement, end-to-end)', () => {

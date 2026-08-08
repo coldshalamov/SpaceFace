@@ -333,9 +333,9 @@ await check('§5.5: No unbounded loops or per-frame allocations in vfx hot paths
 // ------------------------------------------------------------------------------
 // Camera / constants contract (§2)
 // ------------------------------------------------------------------------------
-await check('camera: default zoom fallback is 72 wu', () => {
+await check('camera: fresh-run recovery framing defaults to 144 wu', () => {
   const s = createGameState(1);
-  assert(s.camera.zoom === 72, `gameState zoom ${s.camera.zoom} !== 72`);
+  assert(s.camera.zoom === 144, `gameState zoom ${s.camera.zoom} !== 144`);
 });
 
 await check('camera: look-ahead constants present', () => {

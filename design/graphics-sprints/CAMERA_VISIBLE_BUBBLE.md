@@ -1,110 +1,125 @@
 <!-- LIFETIME: DURABLE -->
-# The visible ground-plane bubble is ~45-50 units deep, at rest and at cruise
+# R1 visible gameplay bubble: ~93–125 WU normally, ~145–164 WU when physics-earned
 
-**Measured 2026-08-05, headless real-GPU Chrome, 1920x1080, seed 12345, `sector_helios_prime`,
-across three scenarios at three different speeds.** This is the most load-bearing number found so
-far in the expansion program, and it invalidates an assumption several earlier lanes reasoned from.
+The professional-recovery R1 scale reset supersedes the old 72-WU close chase as normal gameplay
+framing. The selected base is **144 WU**, fixed-heading and position-following exactly as before. Speed
+still opens the scene smoothly; a second, wider envelope is reachable only while Flight V3 reports
+real physics-earned overspeed.
 
----
+This document separates browser evidence from deterministic projection evidence. A source check or a
+projection calculation does not substitute for the final normal-play motion clip.
 
-## The measurement
+## Candidate selection — real browser frames
 
-Screen y of a point on the ground plane (`y = 0`) directly ahead of the player, in a 1080-tall frame.
-`fwdEdge` is the greatest forward distance still inside the frame.
+**Captured 2026-08-08, Chrome, 1600×1000, production game route through the R0 Sandbox launcher.**
+The matched candidates used the same 50-degree FOV and 60-degree fixed-heading tilt.
 
-| scenario | player speed | cam y / z | **fwdEdge** | z=0 | z=45 | z=100 | z=200 | z=400 |
-|---|---|---|---|---|---|---|---|---|
-| `idle` | 0 | 54.9 / -31.7 | **45** | 540 | 14 | -345 | -688 | -983 |
-| `cruise` | 34 | 59.1 / -34.1 | **50** | 540 | 43 | -308 | -652 | -956 |
-| `cruise-boost` | 53 | 59.8 / -33.8 | **45** | 419 | 11 | -280 | -567 | -822 |
+| candidate | route / player hull | measured player width | composition result |
+|---|---|---:|---|
+| 120 WU | Ceres / Hitch starter | ~16–20% | too tight for the normal recovery frame |
+| 144 WU | Planet Sling / Hitch starter at ~40 WU/s | **~10.6%** | inside the R1 normal-play target; reticle remains legible |
+| 144 WU | visual stress / Hornet | ~15–16% | large hull remains readable with a landmark and three-plus actor silhouettes |
 
-The player projects to screen centre in the parked and cruise cases, which confirms the projection is
-being read correctly.
+The Hornet is materially larger on screen than the starter and is not the normal new-game sizing
+reference. The 144-WU candidate was selected because the starter lands inside the required 8–12%
+band while the stress scene still keeps the player, aiming reticle, a large structure/landmark and at
+least three actors in one frame. Actor lighting and identity remain presentation work; the camera now
+gives that work room to exist.
 
-> **The forward visible ground-plane depth is 45-50 world units, and it does not materially change
-> with speed.**
+The reviewed local evidence files were:
 
-This was worth checking specifically, because the camera has speed-zoom (`_dynamicZoom`, `zoomBias`,
-`ZOOM_LERP` in `src/render/camera.js`) and a first measurement taken only at `SPD 0` would have been
-the tightest the camera ever is. It isn't: the rig moves from 54.9 to 59.8 units up between parked
-and boosting — about 9% — and the ground-plane depth is flat across that range.
+- `.devshots/recovery/r0-ceres-pocket-live.png`
+- `.devshots/recovery/r0-planet-sling-live.png`
+- `.devshots/recovery/r0-visual-stress-live.png`
+- `.devshots/recovery/r0-physics-swarm-live.png`
 
-Frame width: the 28-unit-wide player hull occupies ~23% of frame width, so the visible strip is
-roughly **120 units across** at the player's own depth.
+These ignored captures are evidence for candidate selection, not durable release artifacts.
 
-### One number in the probe is NOT trustworthy — do not quote it
+## Exact R1 camera envelope — deterministic production projection
 
-The same probe also scanned laterally and returned 50 / 490 / 760 for the three scenarios. **Ignore
-those.** Points far out on the ground plane sit near the horizon where the projection is
-near-degenerate; the same probe returned screen x values like `1979270` for real asteroids. A
-scan-for-the-largest-in-range-value is not robust there, and the apparent speed correlation is an
-artifact of that degeneracy, not a widening view. Only the forward ladder — where the projected
-values are smooth and monotonic — is reliable.
+**Measured 2026-08-08 against `createChaseCamera`, 1600×1000, FOV 50, tilt 60 degrees, no threat,
+tether, aim or director bias.** The real Three.js perspective camera was allowed to settle for ten
+seconds, then ground-plane points were projected through its final matrix. `fwdEdge` is the greatest
+distance directly ahead whose ground point remains inside the viewport.
 
-## What is therefore invisible
+| state | speed / hull max | provenance | settled distance | **fwdEdge** | 28-WU reference width |
+|---|---:|---|---:|---:|---:|
+| idle | 0× | ordinary | 126.72 WU | **93.25 WU** | 14.81% |
+| ordinary max thrust | 1× | ordinary | 169.92 WU | **125.00 WU** | 11.04% |
+| earned sling | 2× | `governor.physicsEarned` | 196.56 WU | **144.75 WU** | 9.55% |
+| exceptional earned sling | 3×+ | `governor.physicsEarned` | 223.20 WU | **164.25 WU** | 8.41% |
 
-At the same instant, in the same frame:
+The 28-WU row is a geometry reference retained from the original measurement, not a claim about every
+authored hull. Runtime asset bounds are why the matched starter and Hornet browser widths above remain
+the player-facing selection evidence.
 
-* The four nearest asteroids sat at **678, 794, 889 and 995** world units. All projected far above
-  the top of the frame.
-* The HUD's own **Local Contacts** panel listed five derelicts at **261-995** units. None of them
-  can appear on screen.
-* The five live NPC jobs sat at **1083, 1694, 1841, 3815 and 13491** units from the player.
+### Shipped math
 
-The things the game tells the player are "local" are, without exception, off-screen. What is actually
-visible is whatever lies inside ~50 units ahead, plus the skybox, the hero planet, and any object
-tall or large enough to clear the horizon.
+- Normal base: `144 WU`.
+- Idle-to-hull-max factor: `0.88× → 1.18×`.
+- Unearned overspeed remains capped at `1.18×`; raw speed does not fabricate physics provenance.
+- Physics-earned overspeed eases from `1.18×` at 1× hull speed to a bounded `1.55×` at 3×.
+- The target is sampled at 8 Hz and the actual camera distance damps at 1.4/s, so clearing earned
+  provenance returns monotonically through intermediate compositions instead of cutting inward.
+- Fresh GameState and every `game:new` reset use 144 WU by construction. A later explicit
+  `camera:zoom` choice of 72/96/120/etc. is exact and is never remapped by the render controller.
+- The camera still calls `lookAt(focus)` and never follows player yaw.
 
-## Consequence for content
+Focused behavioral proof compares the real follow controller at ordinary max, earned 2× speed and
+the complete return. At 2× the settled earned distance is at least 12% wider than ordinary max; after
+provenance clears, no sample rebounds outward and the camera settles within 0.5 WU of ordinary framing.
 
-Density has to be authored at the scale the camera can see:
+## Density assumptions after R1
 
-* **~50 units of forward depth** is the working radius. Anything a player is meant to *notice* has to
-  arrive inside it, or come to them.
-* Objects at 200-1000 units are map and radar content. They are legitimate — they populate Local
-  Contacts, the minimap, and the sense of a place having extent — but they contribute **nothing to
-  the frame** and must not be counted as visual density.
-* "More traffic per sector" does not help on its own if the traffic disperses over a 4200-unit sector
-  radius. Six more hulls spread evenly across that area put approximately zero of them on screen.
-  What matters is hulls, structures and events near the player's actual position.
-* Conversely this is cheap: filling a 120-unit-wide strip needs very few objects. The gate is
-  placement, not budget.
+World population must now be authored against the following camera-local bands:
 
-This is also why the NPC work-signature layer's draw range is 300 and not the 500-2000 the research
-reports for shipped space games (`RESEARCH_work_signatures.md`). That band is real, but it comes from
-games with free or cockpit cameras — EVE, Elite, X4. Reasoning from it directly produced draw ranges
-of 1500 and then 2000, both of which faithfully drew signals **hundreds of pixels above the top of
-the screen** while the diagnostic counters reported them as `drawn`. A counter that increments when a
-spawn function returns non-null is not evidence that anything is visible.
+- **0–95 WU ahead:** always visible even at rest. Put the immediate work verb, close hazard, tether
+  candidate and nearest actor here.
+- **95–125 WU ahead:** normal moving-play space. A local work pocket should place its primary
+  structure and at least three interacting actors inside this combined band rather than distributing
+  them over a sector disc.
+- **125–165 WU ahead:** speed-revealed space. Use it for the next anchor, collision consequence,
+  pursuit continuation or environmental payoff that earned velocity opens into view.
+- **Beyond ~165 WU:** radar/map and approach content under the ordinary chase. Large/tall landmarks
+  may still silhouette above the ground-plane horizon, but they do not count as immediate activity.
 
-## An untested hypothesis, flagged as such
+The new normal visible strip is roughly twice as deep as the old one, but it is still tiny relative to
+jobs or structures spaced hundreds or thousands of units apart. R5/R6 Ceres work therefore still
+needs deliberate camera-local pocket projection. The camera reset makes a dense pocket possible; it
+does not make sector-scale scattering visible.
 
-It is tempting to say this explains the program's standing puzzle — that twelve controlled
-single-lever experiments all returned exactly 2.25/5 while a real EVE frame scored 3.63 through the
-same harness (`EXPANSION_PROGRAM.md` §1) — on the grounds that those levers change how existing
-content is lit, and inside the visible strip there is often nothing to light.
+Draw ranges and activity counters remain insufficient evidence. An entity contributes to visual
+density only when its actual bounds project into the supported camera and remain readable in motion.
 
-**That is a hypothesis, not a result.** No frame has been scored through the grader as part of this
-measurement. §5 of the standing brief names precisely this failure mode: a plausible lesson written
-into the codebase before it was measured ("idle unfairly depresses vfx" was committed as a comment
-and then refuted by a capture that scored *lower*).
+## Historical baseline — superseded by R1
 
-The test that would settle it: score two frames through the existing grader that differ **only** in
-how much authored content sits inside the visible strip, holding lighting, materials, post and camera
-fixed. If the populated frame moves off 2.25 on `composition` or `background` while every previous
-single-lever change did not, the hypothesis survives. Until someone runs that, this section is a
-question.
+The pre-R1 measurement was captured 2026-08-05 in real-GPU Chrome at 1920×1080, seed 12345,
+`sector_helios_prime`, with the 72-WU base:
 
-## How to re-measure
+| scenario | player speed | camera y / z | forward edge |
+|---|---:|---:|---:|
+| idle | 0 | 54.9 / -31.7 | 45 WU |
+| cruise | 34 | 59.1 / -34.1 | 50 WU |
+| cruise-boost | 53 | 59.8 / -33.8 | 45 WU |
 
-`scripts/capture-gameplay.mjs --evalAfter`, which awaits its promise so a probe can let frames elapse
-before reading render state. Use a scenario that actually moves the ship — `cruise`, not `idle` or
-`boost`; the harness's own `report.motion.speed` confirms it moved, and `boost`/`combat-vfx` assign
-`state.input` directly, which `systems/input.js` overwrites every frame.
+The 28-WU player reference occupied about 23% of frame width and the strip was roughly 120 WU across
+at player depth. Nearby asteroids at 678–995 WU, Local Contacts at 261–995 WU and NPC jobs at
+1083–13491 WU were all outside that frame. Those observations remain valid evidence for why the reset
+was necessary; their **45–50 WU density assumption is no longer current**.
 
-```bash
-node scripts/capture-gameplay.mjs 8161 --scenario cruise --warmup 18000 --duration 4000 --width 1920 --height 1080 --evalAfter "(async()=>{const s=window.SF.state;const T=window.SF.THREE;const cam=s.render.camera;await new Promise(r=>requestAnimationFrame(r));const v=new T.Vector3();const o={};for(const D of [0,45,100,200,400]){v.set(0,0,D);v.project(cam);o['z'+D]=Math.round((-v.y*0.5+0.5)*1080);}return JSON.stringify(o);})()"
-```
+The old lateral scan values of 50 / 490 / 760 remain invalid. Points near the ground-plane horizon
+produced near-degenerate screen X values, so only monotonic forward scans and projected real bounds
+should be used.
 
-Re-run after any change to `src/render/camera.js`, the default FOV, or the chase offset. If the
-bubble ever changes depth, every density judgement above changes with it.
+## Re-measurement contract
+
+Re-run the matched browser capture and deterministic projection after any change to:
+
+- `src/render/camera.js` base distance, speed envelope, tilt, damping or safe composition;
+- default FOV;
+- player ship identity or normal-route asset bounds;
+- a density decision that assumes a camera-local range.
+
+For the browser pass, record candidate/source hash, viewport, route, speed, physics provenance,
+projected player bounds, actor/landmark bounds, reticle visibility and a motion segment covering
+pullback plus return. Do not approve from a still alone.

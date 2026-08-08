@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 
 import {
   CAMERA_ZOOM_MAX,
+  CHASE_ZOOM_DEFAULT,
+  PHYSICS_EARNED_SPEED_RATIO_MAX,
+  PHYSICS_EARNED_SPEED_ZOOM_MAX,
   SPEED_ZOOM_MAX,
   SPEED_ZOOM_MIN,
   SPEED_ZOOM_SAMPLE_INTERVAL,
   clampFocusToPlayerSafeRect,
   recenterBiasScale,
   resolveChaseComposition,
+  resolveInitialChaseZoom,
   resolveSpeedZoomFactor,
 } from '../src/render/camera.js';
 
@@ -113,10 +117,27 @@ assert.ok(recenterBiasScale(0.383, 0.4) > 0.99, 'recenter should barely move on 
 near(recenterBiasScale(0, 0.4), 0, 'recenter should end fully player-centered');
 
 near(CAMERA_ZOOM_MAX, 330, 'manual camera zoom-out should extend 50 percent beyond the previous 220 ceiling');
+near(CHASE_ZOOM_DEFAULT, 144, 'normal gameplay should use the selected wide 144 WU framing');
+near(resolveInitialChaseZoom(undefined), CHASE_ZOOM_DEFAULT,
+  'missing camera state should fall back to recovery framing');
+near(resolveInitialChaseZoom(72), 72,
+  'an explicit 72 WU camera selection should retain its exact zoom semantics');
+near(resolveInitialChaseZoom(96), 96,
+  'an explicit non-default camera selection should retain its exact zoom semantics');
 assert.ok(SPEED_ZOOM_SAMPLE_INTERVAL >= 0.1, 'speed zoom target should sample at low cadence, not retarget every render frame');
 near(resolveSpeedZoomFactor(0, 120), SPEED_ZOOM_MIN, 'idle speed zoom should keep the tight low-speed factor');
 assert.ok(resolveSpeedZoomFactor(60, 120) > 1, 'mid/high speed should naturally widen past base zoom');
 near(resolveSpeedZoomFactor(120, 120), SPEED_ZOOM_MAX, 'ship max speed should reach the speed zoom-out cap');
-near(resolveSpeedZoomFactor(480, 120), SPEED_ZOOM_MAX, 'boost/cruise speeds should stay capped instead of over-zooming');
+near(resolveSpeedZoomFactor(240, 120, false), SPEED_ZOOM_MAX,
+  'unearned overspeed should stay at the ordinary speed zoom cap');
+assert.ok(resolveSpeedZoomFactor(240, 120, true) >= SPEED_ZOOM_MAX * 1.12,
+  'physics-earned velocity should open the scene materially beyond ordinary max-thrust framing');
+assert.ok(resolveSpeedZoomFactor(360, 120, true) > resolveSpeedZoomFactor(240, 120, true),
+  'the physics-earned envelope should continue widening across meaningful overspeed');
+near(resolveSpeedZoomFactor(PHYSICS_EARNED_SPEED_RATIO_MAX * 120, 120, true),
+  PHYSICS_EARNED_SPEED_ZOOM_MAX,
+  'the physics-earned envelope should reach its bounded wide cap at the published ratio');
+near(resolveSpeedZoomFactor(99_999, 120, true), PHYSICS_EARNED_SPEED_ZOOM_MAX,
+  'extreme physics velocity should remain bounded');
 
 console.log('Camera composition checks OK');

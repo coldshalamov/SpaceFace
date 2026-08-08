@@ -51,11 +51,14 @@ export const CAMERA_ZOOM_MIN = 45;
 export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
 export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
-export const SPEED_ZOOM_MAX = 1.18;  // high-speed factor
+export const SPEED_ZOOM_MAX = 1.18;  // ordinary hull-max factor
+export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 1.55;
+export const PHYSICS_EARNED_SPEED_RATIO_MAX = 3;
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
-// Top-50 rank-13 chase juice: default frame sits closer so hull bank/nose read in stills.
-// Spec2/02 §2 previously used 88 wu; close chase keeps the same system with a tighter default.
-const DEFAULT_ZOOM = 72;            // wu — chase distance (readable ship at store-still scale)
+// R1 gameplay-scale reset: 144 WU is the selected normal framing. At 1600×1000 the starter hull
+// occupies ~10.6% of frame width while a nearby structure and three actors can share the view. The
+// GameState schema owns the same fresh-run default; explicit runtime camera:zoom choices remain exact.
+const DEFAULT_ZOOM = 144;
 export const CHASE_ZOOM_DEFAULT = DEFAULT_ZOOM;
 export const CHASE_ZOOM_CLOSE = 58; // optional tighter profile (settings.video.chaseClose)
 
@@ -244,10 +247,20 @@ export function clampFocusToPlayerSafeRect(focus, player, options = {}, out = nu
   return result;
 }
 
-export function resolveSpeedZoomFactor(speed, maxSpeed) {
+export function resolveSpeedZoomFactor(speed, maxSpeed, physicsEarned = false) {
   const shipMax = Math.max(1, finiteOr(maxSpeed, 120));
-  const speedRatio = clamp01(finiteOr(speed, 0) / shipMax);
-  return SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
+  const speedRatio = Math.max(0, finiteOr(speed, 0) / shipMax);
+  const ordinaryRatio = Math.min(1, speedRatio);
+  const ordinaryFactor = SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * ordinaryRatio;
+  if (!physicsEarned || speedRatio <= 1) return ordinaryFactor;
+  const earnedT = clamp01((speedRatio - 1) / (PHYSICS_EARNED_SPEED_RATIO_MAX - 1));
+  const smoothEarnedT = earnedT * earnedT * (3 - 2 * earnedT);
+  return ordinaryFactor + (PHYSICS_EARNED_SPEED_ZOOM_MAX - ordinaryFactor) * smoothEarnedT;
+}
+
+export function resolveInitialChaseZoom(zoom) {
+  const requested = finiteOr(zoom, DEFAULT_ZOOM);
+  return Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, requested));
 }
 
 // Entity types that can be battlefield threat context. Flyby Focus leases ships AND drones
@@ -259,8 +272,9 @@ function isComposableThreatType(entity) {
 }
 
 // A live Flyby Focus lease names the contact the GAME has decided the player is dealing with right
-// now: it slows time to 50%, reassigns state.player.targetId, and opens the latch window. But the
-// lease is granted on pass GEOMETRY (proximity + closing speed, flybyFocus.js:173-213), not on the
+// now: state.player.flybyFocus.targetId is its dedicated lease authority while Focus slows time to
+// 50% and opens the latch window. The lease is granted on pass GEOMETRY (proximity + closing speed,
+// flybyFocus.js:173-213), not on the
 // leased ship having targeted the player, so a genuine high-speed pass by a hostile whose combat
 // target is someone else read as ambient traffic here and could leave the frame for the whole
 // three-second window.
@@ -439,6 +453,7 @@ export function createChaseCamera(state) {
   // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
   const cam = new THREE.PerspectiveCamera(state.settings.video.fov || 50, window.innerWidth / window.innerHeight, 1, 14000);
   const c = state.camera;
+  c.zoom = resolveInitialChaseZoom(c.zoom);
   c.shakeOffset = new THREE.Vector3();
   c.focus = new THREE.Vector3();
   const tiltRad = (c.tilt || 60) * Math.PI / 180;
@@ -538,7 +553,7 @@ export function createChaseCamera(state) {
     const px = _playerLocalScratch.x;
     const pz = _playerLocalScratch.z;
     c.focus.set(px, 0, pz);
-    _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+    _dynamicZoom = resolveBaseZoom();
     _dynamicNear = 1;
     if (cam.near !== 1) {
       cam.near = 1;
@@ -624,6 +639,7 @@ export function createChaseCamera(state) {
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
       let playerSpeed = 0;
+      let physicsEarnedSpeed = false;
       let directorOwnsComposition = false;
       if (p && p.pos) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
@@ -638,6 +654,8 @@ export function createChaseCamera(state) {
         const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
         const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
         playerSpeed = Math.hypot(vx, vz);
+        physicsEarnedSpeed = !!(p._flightFrame && p._flightFrame.governor
+          && p._flightFrame.governor.physicsEarned === true);
         const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW
           && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
@@ -747,7 +765,8 @@ export function createChaseCamera(state) {
       }
 
       // --- dynamic zoom ---
-      // Rank-13: chaseClose setting forces a tighter base; otherwise honor c.zoom (default 72).
+      // chaseClose forces a tighter accessibility/profile choice; otherwise honor the exact c.zoom
+      // selection, whose fresh-run schema default is the R1 144-WU recovery frame.
       const baseZoom = resolveBaseZoom();
       let targetZoom = baseZoom;
       if (p && p.pos) {
@@ -755,7 +774,13 @@ export function createChaseCamera(state) {
         // from raw velocity noise. The actual distance still eases every frame through _dynamicZoom.
         _speedZoomSampleT -= frameDt;
         if (_speedZoomSampleT <= 0) {
-          _speedZoomFactor = resolveSpeedZoomFactor(playerSpeed, p.maxSpeed || 120);
+          // Reduced motion keeps the ordinary 0.88..1.18 speed framing but suppresses the larger
+          // physics-earned pullback, matching the existing Massline release-camera contract.
+          _speedZoomFactor = resolveSpeedZoomFactor(
+            playerSpeed,
+            p.maxSpeed || 120,
+            physicsEarnedSpeed && !isMotionReduced(state),
+          );
           _speedZoomSampleT = SPEED_ZOOM_SAMPLE_INTERVAL;
         }
         targetZoom = baseZoom * _speedZoomFactor;
