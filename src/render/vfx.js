@@ -7632,7 +7632,7 @@ export const vfx = {
     // of lie as firing the wrong RCS jet. Damped rather than hard-zeroed so a hard brake at speed
     // still shows a residual thermal glow instead of snapping to black.
     if (retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
-    const boost = e.flags && e.flags.boosting ? 1 : 0;
+    let boost = e.flags && e.flags.boosting ? 1 : 0;
     const cruising = e.id === this.state.playerId
       && this.state.player
       && this.state.player.cruise
@@ -7644,6 +7644,7 @@ export const vfx = {
     else if (throttle < 0.08 && speedDrive > 0.2) brake = Math.min(1, speedDrive * 0.55);
     let drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
     // Dead thruster look when presentation marks drive-disabled / tumbling thrash fade-out.
+    // boost must be `let` — deadThruster path multiplies it in place for the out.boost write.
     const tumblePres = e.presentation && e.presentation.tumble;
     if (tumblePres && Number.isFinite(tumblePres.deadThruster) && tumblePres.deadThruster > 0.05) {
       const kill = Math.max(0, Math.min(1, tumblePres.deadThruster));

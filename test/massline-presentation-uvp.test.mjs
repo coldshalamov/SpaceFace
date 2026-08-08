@@ -182,6 +182,46 @@ test('continuous VFX plan consumes hullBlur alongside thrash and spin ribbons', 
   assert.equal(idlePlan.spawnHullBlur, false, 'idle mode never spawns hull blur');
 });
 
+test('_engineDriveFor applies deadThruster kill without throwing and near-zeros drive', () => {
+  // Drive the shipped vfx._engineDriveFor path with a realistic boosting craft.
+  const host = {
+    state: { playerId: 1, input: null },
+    _driveScratch: {
+      drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+    },
+    _mainDriveDemandScratch: { main: 0, reverse: 0, retroOnly: false },
+    _actuatorsFor() { return null; },
+    _rcsScaleFor() { return 1; },
+  };
+  const entity = {
+    id: 42,
+    vel: { x: 80, z: 0 },
+    rot: 0,
+    maxSpeed: 100,
+    flags: { boosting: true },
+    _flightFrame: { throttle: 1, maxSpeed: 100, forwardSpeed: 80 },
+    presentation: { tumble: { deadThruster: 1, mode: 'drifting' } },
+  };
+  let threw = false;
+  let out;
+  try {
+    out = vfx._engineDriveFor.call(host, entity);
+  } catch (err) {
+    threw = true;
+    out = { error: String(err && err.message || err) };
+  }
+  assert.equal(threw, false, `deadThruster path must not throw: ${out && out.error}`);
+  assert.ok(out.drive < 0.12, `drive must near-zero under full deadThruster, got ${out.drive}`);
+  assert.equal(out.boost, 0, 'boost presentation flag must be killed with deadThruster=1');
+
+  // Control: without dead thruster, boosting craft still shows drive/boost.
+  entity.presentation = { tumble: { deadThruster: 0, mode: 'idle' } };
+  const live = vfx._engineDriveFor.call(host, entity);
+  assert.ok(live.drive > 0.5, `live drive should remain high without kill, got ${live.drive}`);
+  assert.equal(live.boost, 1);
+});
+
 test('tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)', () => {
   // Drive the shipped vfx._presentationStyle path with a minimal this-binding.
   const host = {
