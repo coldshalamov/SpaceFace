@@ -24,6 +24,10 @@ const FALLBACK_DUST = '#35406a';
 const FAR = { count: 2, factor: 0.22, tile: 3000, y: -140, size: 3000 };
 const MID = { count: 1400, factor: 0.55, tile: 560, y: -40 };
 const NEAR = { count: 700, factor: 1.35, tile: 460, y: 26 };
+const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
+const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
+const MID_SPIN_PARAMS_ATTRIBUTE = 'aParallaxSpinParams';
+const MID_SPIN_SHADER_KEY = 'spaceface-parallax-mid-debris-gpu-spin-v1';
 const EMPTY_OBJECT = {};
 
 const DUST_VERTEX = `
@@ -97,10 +101,7 @@ class ParallaxLayers {
     this._paletteActive = false;
 
     this._matrix = new THREE.Matrix4();
-    this._quat = new THREE.Quaternion();
-    this._axis = new THREE.Vector3();
     this._pos = new THREE.Vector3();
-    this._scale = new THREE.Vector3();
     this._screenDir = new THREE.Vector2(0, -1);
     this._lastVelX = 0;
     this._lastVelZ = 1;
@@ -209,27 +210,36 @@ class ParallaxLayers {
       depthTest: true,
       fog: false,
     });
+    this._debrisSpinUniforms = {
+      primaryTime: { value: 0 },
+      tailTime: { value: 0 },
+    };
+    configureMidDebrisGpuSpin(material, this._debrisSpinUniforms);
+
+    const spinAxes = new Float32Array(MID.count * 3);
+    const spinParams = new Float32Array(MID.count * 3);
+    geometry.setAttribute(
+      MID_SPIN_AXIS_ATTRIBUTE,
+      new THREE.InstancedBufferAttribute(spinAxes, 3).setUsage(THREE.StaticDrawUsage),
+    );
+    geometry.setAttribute(
+      MID_SPIN_PARAMS_ATTRIBUTE,
+      new THREE.InstancedBufferAttribute(spinParams, 3).setUsage(THREE.StaticDrawUsage),
+    );
+
     const mesh = new THREE.InstancedMesh(geometry, material, MID.count);
     mesh.name = 'Parallax_MidDebris_Instances';
     mesh.renderOrder = -6;
     mesh.frustumCulled = false;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
     group.add(mesh);
 
     this._debrisMesh = mesh;
-    this._debrisX = new Float32Array(MID.count);
-    this._debrisZ = new Float32Array(MID.count);
-    this._debrisRadius = new Float32Array(MID.count);
-    this._debrisAxisX = new Float32Array(MID.count);
-    this._debrisAxisY = new Float32Array(MID.count);
-    this._debrisAxisZ = new Float32Array(MID.count);
-    this._debrisSpeed = new Float32Array(MID.count);
-    this._debrisAngle = new Float32Array(MID.count);
 
     const rnd = makeRand(0x47a2e1);
     for (let i = 0; i < MID.count; i++) {
-      this._debrisX[i] = (rnd() - 0.5) * MID.tile;
-      this._debrisZ[i] = (rnd() - 0.5) * MID.tile;
+      const x = (rnd() - 0.5) * MID.tile;
+      const z = (rnd() - 0.5) * MID.tile;
       // Size distribution, not a uniform size. Three independent reviews in a row named the same
       // deficiency — "almost no middle layer" — while this band was 1,400 near-identical 1-unit
       // specks. Reference frames build their middle layer from fine particulate PLUS a handful of
@@ -242,24 +252,34 @@ class ParallaxLayers {
       // Tail capped at ~5 rather than ~9: the layer's material is additive, so a very large instance
       // reads as a flat glowing polygon instead of a solid silhouette. This keeps the scale variation
       // that makes the band read as a layer while staying inside what additive blending can sell.
-      this._debrisRadius[i] = 0.45 + r * r * r * 4.5;
+      const radius = 0.45 + r * r * r * 4.5;
       let ax = rnd() * 2 - 1;
       let ay = rnd() * 2 - 1;
       let az = rnd() * 2 - 1;
       const len = Math.hypot(ax, ay, az) || 1;
       ax /= len; ay /= len; az /= len;
-      this._debrisAxisX[i] = ax;
-      this._debrisAxisY[i] = ay;
-      this._debrisAxisZ[i] = az;
-      this._debrisSpeed[i] = 0.035 + rnd() * 0.09;
-      this._debrisAngle[i] = rnd() * Math.PI * 2;
+      const speed = 0.035 + rnd() * 0.09;
+      const phase = rnd() * Math.PI * 2;
+
+      const offset = i * 3;
+      spinAxes[offset] = ax;
+      spinAxes[offset + 1] = ay;
+      spinAxes[offset + 2] = az;
+      spinParams[offset] = phase;
+      spinParams[offset + 1] = speed;
+      spinParams[offset + 2] = i < MID_LOW_COUNT ? 0 : 1;
+
+      this._pos.set(x, MID.y, z);
+      this._matrix.makeScale(radius, radius, radius);
+      this._matrix.setPosition(this._pos);
+      mesh.setMatrixAt(i, this._matrix);
     }
+    mesh.instanceMatrix.needsUpdate = true;
 
     this.scene.add(group);
     this.groups.push(group);
     this._layers.push({ group, factor: MID.factor, tile: MID.tile });
     this._midGroup = group;
-    this._updateDebris(0);
   }
 
   _createNearMotes() {
@@ -331,7 +351,7 @@ class ParallaxLayers {
     this._motionReduce = motionReduce;
 
     const farCount = low ? Math.max(1, Math.floor(FAR.count * 0.5)) : FAR.count;
-    const midCount = low ? Math.max(1, Math.floor(MID.count * 0.5)) : MID.count;
+    const midCount = low ? MID_LOW_COUNT : MID.count;
     let nearCount = low ? Math.max(1, Math.floor(NEAR.count * 0.5)) : NEAR.count;
     if (motionReduce) nearCount = Math.max(1, Math.floor(nearCount * 0.5));
 
@@ -384,19 +404,10 @@ class ParallaxLayers {
 
   _updateDebris(dt) {
     const mesh = this._debrisMesh;
-    if (!mesh) return;
-    const count = mesh.count;
-    for (let i = 0; i < count; i++) {
-      this._debrisAngle[i] += this._debrisSpeed[i] * dt;
-      this._axis.set(this._debrisAxisX[i], this._debrisAxisY[i], this._debrisAxisZ[i]);
-      this._quat.setFromAxisAngle(this._axis, this._debrisAngle[i]);
-      this._pos.set(this._debrisX[i], MID.y, this._debrisZ[i]);
-      const s = this._debrisRadius[i];
-      this._scale.set(s, s, s);
-      this._matrix.compose(this._pos, this._quat, this._scale);
-      mesh.setMatrixAt(i, this._matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
+    const uniforms = this._debrisSpinUniforms;
+    if (!mesh || !uniforms || dt <= 0) return;
+    if (mesh.count > 0) uniforms.primaryTime.value += dt;
+    if (mesh.count > MID_LOW_COUNT) uniforms.tailTime.value += dt;
   }
 
   _updateMoteStretch(dt) {
@@ -427,6 +438,64 @@ class ParallaxLayers {
     const len = Math.hypot(sx, sy) || 1;
     this._screenDir.set(sx / len, sy / len);
   }
+}
+
+function configureMidDebrisGpuSpin(material, uniforms) {
+  const originalOnBeforeCompile = material.onBeforeCompile;
+  const originalProgramCacheKey = material.customProgramCacheKey();
+  material.onBeforeCompile = function parallaxMidDebrisGpuSpin(shader, renderer) {
+    if (typeof originalOnBeforeCompile === 'function') {
+      originalOnBeforeCompile.call(this, shader, renderer);
+    }
+    shader.uniforms.uParallaxPrimaryTime = uniforms.primaryTime;
+    shader.uniforms.uParallaxTailTime = uniforms.tailTime;
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <common>',
+      [
+        '#include <common>',
+        `attribute vec3 ${MID_SPIN_AXIS_ATTRIBUTE};`,
+        `attribute vec3 ${MID_SPIN_PARAMS_ATTRIBUTE};`,
+        'uniform float uParallaxPrimaryTime;',
+        'uniform float uParallaxTailTime;',
+        'vec3 sfRotateParallaxDebris(vec3 point, vec3 axis, float angle) {',
+        '  float c = cos(angle);',
+        '  float s = sin(angle);',
+        '  return point * c + cross(axis, point) * s + axis * dot(axis, point) * (1.0 - c);',
+        '}',
+      ].join('\n'),
+      'common declarations',
+    );
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      [
+        '#include <begin_vertex>',
+        `float sfParallaxTime = mix(uParallaxPrimaryTime, uParallaxTailTime, ${MID_SPIN_PARAMS_ATTRIBUTE}.z);`,
+        `float sfParallaxAngle = ${MID_SPIN_PARAMS_ATTRIBUTE}.x + ${MID_SPIN_PARAMS_ATTRIBUTE}.y * sfParallaxTime;`,
+        `transformed = sfRotateParallaxDebris(transformed, ${MID_SPIN_AXIS_ATTRIBUTE}, sfParallaxAngle);`,
+      ].join('\n'),
+      'local vertex rotation',
+    );
+  };
+  material.customProgramCacheKey = () => `${originalProgramCacheKey}|${MID_SPIN_SHADER_KEY}`;
+  material.userData = {
+    ...(material.userData || {}),
+    spacefaceParallaxMidDebrisGpuSpin: {
+      version: 1,
+      axisAttribute: MID_SPIN_AXIS_ATTRIBUTE,
+      paramsAttribute: MID_SPIN_PARAMS_ATTRIBUTE,
+      uniforms,
+    },
+  };
+  material.needsUpdate = true;
+}
+
+function replaceRequiredShaderSource(source, needle, replacement, label) {
+  if (typeof source !== 'string' || !source.includes(needle)) {
+    throw new Error(`[render] parallax mid-debris shader contract changed: missing ${label}`);
+  }
+  return source.replace(needle, replacement);
 }
 
 function readPalette(state) {

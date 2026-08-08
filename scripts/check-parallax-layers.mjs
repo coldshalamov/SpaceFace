@@ -16,11 +16,11 @@ assert.equal(typeof parallaxLayers.init, 'function', 'parallaxLayers.init export
 assert.equal(typeof parallaxLayers.update, 'function', 'parallaxLayers.update export missing');
 assert.equal(typeof parallaxLayers.dispose, 'function', 'parallaxLayers.dispose export missing');
 
-checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 2, mid: 120, near: 200 });
-checkStack({ particleQuality: 'low', motionReduce: false }, { far: 1, mid: 60, near: 100 });
-checkStack({ particleQuality: 'low', motionReduce: true }, { far: 1, mid: 60, near: 50 });
+checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 2, mid: 1400, near: 700 });
+checkStack({ particleQuality: 'low', motionReduce: false }, { far: 1, mid: 700, near: 350 });
+checkStack({ particleQuality: 'low', motionReduce: true }, { far: 1, mid: 700, near: 175 });
 
-console.log('Parallax layers OK: exports, 3 groups, quality counts, reduced-motion mote cap');
+console.log('Parallax layers OK: exports, 3 groups, quality counts, static GPU debris spin, reduced-motion mote cap');
 
 function checkStack(video, expected) {
   const scene = new THREE.Scene();
@@ -42,11 +42,31 @@ function checkStack(video, expected) {
   assert.equal(mid.userData.activeCount, expected.mid, `${video.particleQuality}: mid count`);
   assert.equal(mid.children[0].isInstancedMesh, true, `${video.particleQuality}: mid layer should be instanced`);
   assert.equal(mid.children[0].count, expected.mid, `${video.particleQuality}: mid mesh count`);
+  assert.equal(mid.children[0].instanceMatrix.usage, THREE.StaticDrawUsage,
+    `${video.particleQuality}: mid matrices should be static`);
+  assert.equal(mid.children[0].instanceMatrix.array.byteLength, 89_600,
+    `${video.particleQuality}: authored mid allocation should remain 1,400 matrices`);
+  const spinAxis = mid.children[0].geometry.getAttribute('aParallaxSpinAxis');
+  const spinParams = mid.children[0].geometry.getAttribute('aParallaxSpinParams');
+  assert.equal(spinAxis?.count, 1400, `${video.particleQuality}: spin axes should cover authored capacity`);
+  assert.equal(spinParams?.count, 1400, `${video.particleQuality}: spin parameters should cover authored capacity`);
   assert.equal(near.userData.activeCount, expected.near, `${video.particleQuality}: near count`);
   assert.equal(near.children[0].isPoints, true, `${video.particleQuality}: near layer should be points`);
   assert.equal(near.children[0].geometry.drawRange.count, expected.near, `${video.particleQuality}: near draw range`);
 
+  const matrixVersion = mid.children[0].instanceMatrix.version;
+  const matrixBytes = mid.children[0].instanceMatrix.array.slice();
+  const spinUniforms = mid.children[0].material.userData.spacefaceParallaxMidDebrisGpuSpin?.uniforms;
+  assert.ok(spinUniforms, `${video.particleQuality}: GPU spin uniforms missing`);
   parallaxLayers.update(1 / 60);
+  assert.equal(mid.children[0].instanceMatrix.version, matrixVersion,
+    `${video.particleQuality}: steady animation must not request a matrix upload`);
+  assert.deepEqual(mid.children[0].instanceMatrix.array, matrixBytes,
+    `${video.particleQuality}: steady animation must not rewrite matrix bytes`);
+  assert.equal(spinUniforms.primaryTime.value, 1 / 60,
+    `${video.particleQuality}: visible primary debris clock should advance`);
+  assert.equal(spinUniforms.tailTime.value, expected.mid === 1400 ? 1 / 60 : 0,
+    `${video.particleQuality}: hidden upper-half debris clock should pause`);
   if (video.motionReduce) {
     assert.equal(near.children[0].material.uniforms.uStretch.value, 1, 'reduced motion disables boost stretch');
   } else {
