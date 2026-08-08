@@ -1254,7 +1254,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1270,6 +1270,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Structure_Core",
           "role": "structure",
           "spaceface.semanticRole": "dock_structure_core",
           "spacefaceRenderPackageSemantic": {
@@ -1293,13 +1294,8 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -1309,40 +1305,45 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "rubber"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
       }
     ],
-    "nodeCount": 13,
+    "nodeCount": 14,
     "primitives": [
       {
         "canopy": false,
@@ -1365,7 +1366,7 @@
           1
         ],
         "name": "LOD0_Dock_Material_Accent",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1392,7 +1393,7 @@
           1
         ],
         "name": "LOD0_Dock_Material_Decal",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
           "canopy": false,
           "decal": true,
@@ -1420,33 +1421,6 @@
           1
         ],
         "name": "LOD0_Dock_Material_Floor",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Dock_Material_Glass",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1473,7 +1447,7 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Hull",
+        "name": "LOD0_Dock_Material_Glass",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1500,7 +1474,7 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Mechanical",
+        "name": "LOD0_Dock_Material_Hull",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1527,7 +1501,7 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Radiator",
+        "name": "LOD0_Dock_Material_Mechanical",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1554,7 +1528,7 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Rubber",
+        "name": "LOD0_Dock_Material_Radiator",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1581,7 +1555,7 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Safety",
+        "name": "LOD0_Dock_Material_Rubber",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1608,8 +1582,35 @@
           0,
           1
         ],
-        "name": "LOD0_Dock_Material_Structure",
+        "name": "LOD0_Dock_Material_Safety",
         "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Dock_Material_Structure",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"

@@ -9,10 +9,10 @@
 //
 // A real GLTFLoader decode would drag in KTX2/BasisU transcoding, which needs a WebGL context and so
 // cannot run in the compiler. So we rebuild exactly the node graph GLTFLoader would materialise —
-// one Object3D per glTF node, children in declaration order, `extras` surfaced as `userData`, meshes
-// as THREE.Mesh with a placeholder geometry and a material carrying the authored *name* — and derive
-// from that. This is the same reconstruction `check-render-package-instance-plan.mjs` already runs
-// against all 26 shipping packages.
+// one scene Group plus one Object3D per glTF node, children in declaration order, `extras` surfaced
+// as `userData`, meshes as THREE.Mesh with a placeholder geometry and a material carrying the
+// authored *name* — and derive from that. This is the same reconstruction
+// `check-render-package-instance-plan.mjs` runs against every shipping package.
 //
 // The reconstruction cannot silently diverge from the real decode: every table entry carries the
 // node's `name` alongside its `planIndex`, and the shipping binder asserts the two agree against the
@@ -37,9 +37,10 @@ export function readGlbJson(buffer) {
 /**
  * Rebuild the scene graph GLTFLoader would produce for this document.
  *
- * Multi-root scenes matter: GLTFLoader returns a Group wrapping the roots, and the flat instance
- * plan's index 0 is that Group. A single-root scene has no wrapper. Getting this wrong shifts every
- * plan index by one, so it mirrors the loader's rule exactly.
+ * GLTFLoader r184 always returns a Group for a glTF scene, even when the scene declares one root.
+ * The flat instance plan's index 0 is that Group. It also reserves the sanitised scene name and
+ * assigns scene extras before requesting node dependencies, so mirror that order exactly: getting
+ * any of it wrong can shift plan indices or unique node names and bind runtime metadata incorrectly.
  */
 export function sceneFromGlbJson(json) {
   const nodes = json.nodes || [];
@@ -77,10 +78,10 @@ export function sceneFromGlbJson(json) {
   //
   // The ordering is settled by GLTFLoader's own comment at loadNode:
   //   "reserve node's name before its dependencies, so the root has the intended name."
-  // The node claims its name FIRST, then its mesh. So for a single-primitive mesh — where the node
-  // *is* the mesh and is renamed to the node name afterwards — the node keeps the raw authored name
-  // and the mesh's suffixed name is discarded. Mesh-derived names only survive on multi-primitive
-  // meshes, whose sibling Meshes take `name`, `name_1`, `name_2`, … in primitive order.
+  // loadNode then requests child nodes synchronously while loadMesh names materialise asynchronously.
+  // Reserve the whole node tree first, then claim mesh names in dependency order. Even a named
+  // single-primitive node still consumes its mesh name before _loadNodeShallow overwrites the final
+  // object.name. Shared mesh dependencies consume names once and clone the already-named object.
   const namesUsed = new Map();
   const claimName = (name) => {
     const sanitized = sanitize(name);
@@ -101,45 +102,75 @@ export function sceneFromGlbJson(json) {
    * every subsequent plan index. Child meshes take their userData from the MESH def; the node def's
    * extras land on the node itself.
    */
-  const buildMeshObject = (meshIndex, nodeIsNamed) => {
+  const meshReferences = new Map();
+  for (const record of nodes) {
+    if (record?.mesh === undefined) continue;
+    meshReferences.set(record.mesh, (meshReferences.get(record.mesh) || 0) + 1);
+  }
+  const meshDependencies = new Map();
+  const meshUses = new Map();
+
+  const buildMeshDependency = (meshIndex) => {
+    if (meshDependencies.has(meshIndex)) return meshDependencies.get(meshIndex);
     const meshDef = meshes[meshIndex] || {};
     const primitives = meshDef.primitives || [];
-    const single = primitives.length === 1;
     const built = primitives.map((primitive) => {
       const mesh = new THREE.Mesh(geometryFor(primitive), materialFor(primitive));
-      // A single-primitive mesh *becomes* the node and is renamed to the node's name, so its own
-      // name never reaches the runtime and must not consume a slot the node already took. Only
-      // multi-primitive siblings — and an unnamed node's lone mesh — keep mesh-derived names.
-      if (!single || !nodeIsNamed) mesh.name = claimName(meshDef.name || `mesh_${meshIndex}`);
+      mesh.name = claimName(meshDef.name || `mesh_${meshIndex}`);
       if (meshDef.extras) mesh.userData = { ...meshDef.extras };
       return mesh;
     });
-    if (built.length === 1) return built[0];
-    const group = new THREE.Group();
-    for (const mesh of built) group.add(mesh);
-    return group;
+    const dependency = built.length === 1 ? built[0] : new THREE.Group();
+    if (built.length !== 1) {
+      for (const mesh of built) dependency.add(mesh);
+    }
+    meshDependencies.set(meshIndex, dependency);
+    return dependency;
   };
 
-  const build = (index) => {
+  const meshObjectForNode = (meshIndex) => {
+    const dependency = buildMeshDependency(meshIndex);
+    if ((meshReferences.get(meshIndex) || 0) <= 1) return dependency;
+    const object = dependency.clone(true);
+    const use = meshUses.get(meshIndex) || 0;
+    meshUses.set(meshIndex, use + 1);
+    object.name += `_instance_${use}`;
+    return object;
+  };
+
+  const reserveNode = (index) => {
     const record = nodes[index];
-    // Reserve the node's name before its mesh dependency, exactly as GLTFLoader does.
     const nodeName = record.name ? claimName(record.name) : '';
+    return {
+      record,
+      nodeName,
+      children: (record.children || []).map(reserveNode),
+    };
+  };
+
+  const materializeNode = ({ record, nodeName, children }) => {
     const object = record.mesh === undefined
       ? new THREE.Object3D()
-      : buildMeshObject(record.mesh, !!record.name);
-    if (record.name) object.name = nodeName;
-    if (record.extras) object.userData = { ...object.userData, ...record.extras };
+      : meshObjectForNode(record.mesh);
+    if (record.name) {
+      object.userData.name = record.name;
+      object.name = nodeName;
+    }
+    if (record.extras && typeof record.extras === 'object') Object.assign(object.userData, record.extras);
     applyNodeTransform(object, record);
-    for (const child of record.children || []) object.add(build(child));
+    for (const child of children) object.add(materializeNode(child));
     return object;
   };
 
   const sceneRecord = (json.scenes || [])[json.scene ?? 0];
   const roots = (sceneRecord && sceneRecord.nodes) || [];
-  if (roots.length === 1) return build(roots[0]);
   const scene = new THREE.Group();
-  scene.name = (sceneRecord && sceneRecord.name) || 'Scene';
-  for (const root of roots) scene.add(build(root));
+  if (sceneRecord?.name) scene.name = claimName(sceneRecord.name);
+  if (sceneRecord?.extras && typeof sceneRecord.extras === 'object') {
+    scene.userData = { ...sceneRecord.extras };
+  }
+  const reservedRoots = roots.map(reserveNode);
+  for (const root of reservedRoots) scene.add(materializeNode(root));
   return scene;
 }
 

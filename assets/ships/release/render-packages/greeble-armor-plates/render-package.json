@@ -305,16 +305,16 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 8,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 9,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 13,
+    "nodeCount": 14,
     "primitives": [
       {
         "canopy": false,
@@ -337,7 +337,7 @@
           1
         ],
         "name": "greeble_armor_plates_Material_Hull_Merged",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false
         }
@@ -363,7 +363,7 @@
           1
         ],
         "name": "greeble_armor_plates_Material_Mechanical_Merged",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false
         }

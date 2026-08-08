@@ -400,9 +400,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       }
@@ -415,21 +416,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 16,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 17,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
+        "planIndex": 18,
         "role": "hull"
       }
     ],
-    "nodeCount": 18,
+    "nodeCount": 19,
     "primitives": [
       {
         "canopy": false,
@@ -452,7 +453,7 @@
           1
         ],
         "name": "Radiator_Status",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false
         }
@@ -478,7 +479,7 @@
           1
         ],
         "name": "fin_radiator_grid_Material_Mechanical_Merged",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false
         }
@@ -504,7 +505,7 @@
           1
         ],
         "name": "fin_radiator_grid_Material_Hull_Merged",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "canopy": false
         }

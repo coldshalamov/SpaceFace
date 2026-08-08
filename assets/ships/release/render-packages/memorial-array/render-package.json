@@ -1448,7 +1448,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1464,6 +1464,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Structure_Core",
           "role": "structure",
           "spaceface": {
             "forward": [
@@ -1492,11 +1493,6 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
         "role": "hull"
       },
@@ -1513,12 +1509,12 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
@@ -1538,12 +1534,12 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
@@ -1563,10 +1559,15 @@
       {
         "allowTextures": true,
         "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
         "role": "service"
       }
     ],
-    "nodeCount": 18,
+    "nodeCount": 19,
     "primitives": [
       {
         "canopy": false,
@@ -1589,7 +1590,7 @@
           1
         ],
         "name": "LOD0_Memorial_Candle_Optic",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
@@ -1618,35 +1619,6 @@
           1
         ],
         "name": "LOD0_Memorial_Frame_Coat",
-        "planIndex": 3,
-        "tags": {
-          "bevelRadiusM": 0.05,
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Memorial_Inscribed_Bronze",
         "planIndex": 4,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1675,7 +1647,7 @@
           0,
           1
         ],
-        "name": "LOD0_Memorial_Recovered_Hull",
+        "name": "LOD0_Memorial_Inscribed_Bronze",
         "planIndex": 5,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1704,7 +1676,7 @@
           0,
           1
         ],
-        "name": "LOD0_Memorial_Service_Alloy",
+        "name": "LOD0_Memorial_Recovered_Hull",
         "planIndex": 6,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1733,13 +1705,13 @@
           0,
           1
         ],
-        "name": "LOD1_Memorial_Candle_Optic",
+        "name": "LOD0_Memorial_Service_Alloy",
         "planIndex": 7,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1762,7 +1734,7 @@
           0,
           1
         ],
-        "name": "LOD1_Memorial_Frame_Coat",
+        "name": "LOD1_Memorial_Candle_Optic",
         "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1791,7 +1763,7 @@
           0,
           1
         ],
-        "name": "LOD1_Memorial_Inscribed_Bronze",
+        "name": "LOD1_Memorial_Frame_Coat",
         "planIndex": 9,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1820,7 +1792,7 @@
           0,
           1
         ],
-        "name": "LOD1_Memorial_Recovered_Hull",
+        "name": "LOD1_Memorial_Inscribed_Bronze",
         "planIndex": 10,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1849,7 +1821,7 @@
           0,
           1
         ],
-        "name": "LOD1_Memorial_Service_Alloy",
+        "name": "LOD1_Memorial_Recovered_Hull",
         "planIndex": 11,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1878,13 +1850,13 @@
           0,
           1
         ],
-        "name": "LOD2_Memorial_Candle_Optic",
+        "name": "LOD1_Memorial_Service_Alloy",
         "planIndex": 12,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -1907,7 +1879,7 @@
           0,
           1
         ],
-        "name": "LOD2_Memorial_Frame_Coat",
+        "name": "LOD2_Memorial_Candle_Optic",
         "planIndex": 13,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1936,7 +1908,7 @@
           0,
           1
         ],
-        "name": "LOD2_Memorial_Inscribed_Bronze",
+        "name": "LOD2_Memorial_Frame_Coat",
         "planIndex": 14,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1965,7 +1937,7 @@
           0,
           1
         ],
-        "name": "LOD2_Memorial_Recovered_Hull",
+        "name": "LOD2_Memorial_Inscribed_Bronze",
         "planIndex": 15,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1994,8 +1966,37 @@
           0,
           1
         ],
-        "name": "LOD2_Memorial_Service_Alloy",
+        "name": "LOD2_Memorial_Recovered_Hull",
         "planIndex": 16,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Memorial_Service_Alloy",
+        "planIndex": 17,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,

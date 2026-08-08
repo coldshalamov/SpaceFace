@@ -792,7 +792,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -808,6 +808,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Structure_Core",
           "role": "structure",
           "socket": true,
           "spaceface": {
@@ -838,13 +839,8 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "geology"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -854,25 +850,30 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
         "role": "geology"
       }
     ],
-    "nodeCount": 10,
+    "nodeCount": 11,
     "primitives": [
       {
         "canopy": false,
@@ -895,7 +896,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Mechanical",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
@@ -924,35 +925,6 @@
           1
         ],
         "name": "LOD0_Merged_Material_Rock",
-        "planIndex": 3,
-        "tags": {
-          "bevelRadiusM": 0.05,
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Merged_Material_Warm",
         "planIndex": 4,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -981,13 +953,13 @@
           0,
           1
         ],
-        "name": "LOD1_Merged_Material_Mechanical",
+        "name": "LOD0_Merged_Material_Warm",
         "planIndex": 5,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -1010,7 +982,7 @@
           0,
           1
         ],
-        "name": "LOD1_Merged_Material_Rock",
+        "name": "LOD1_Merged_Material_Mechanical",
         "planIndex": 6,
         "tags": {
           "bevelRadiusM": 0.05,
@@ -1039,8 +1011,37 @@
           0,
           1
         ],
-        "name": "LOD2_Merged_Material_Mechanical",
+        "name": "LOD1_Merged_Material_Rock",
         "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.05,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Mechanical",
+        "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,
@@ -1069,7 +1070,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Rock",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "bevelRadiusM": 0.05,
           "canopy": false,

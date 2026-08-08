@@ -815,11 +815,6 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
         "role": "accent"
       },
@@ -857,9 +852,14 @@
         "allowTextures": true,
         "planIndex": 9,
         "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "accent"
       }
     ],
-    "nodeCount": 10,
+    "nodeCount": 11,
     "primitives": [
       {
         "canopy": false,
@@ -882,32 +882,6 @@
           1
         ],
         "name": "DET_corporate_polish_band",
-        "planIndex": 1,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "DET_fusion_coil_ring",
         "planIndex": 2,
         "tags": {
           "canopy": false
@@ -933,7 +907,7 @@
           0,
           1
         ],
-        "name": "DET_lattice_strut_a",
+        "name": "DET_fusion_coil_ring",
         "planIndex": 3,
         "tags": {
           "canopy": false
@@ -959,7 +933,7 @@
           0,
           1
         ],
-        "name": "engine_plasma_ring_Material_Mechanical_Merged",
+        "name": "DET_lattice_strut_a",
         "planIndex": 4,
         "tags": {
           "canopy": false
@@ -985,8 +959,34 @@
           0,
           1
         ],
-        "name": "HOOK_DRIVE_CORE",
+        "name": "engine_plasma_ring_Material_Mechanical_Merged",
         "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE",
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -1031,7 +1031,7 @@
           1
         ],
         "name": "HOOK_DRIVE_FAN",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "drive": "fan",
@@ -1076,7 +1076,7 @@
           1
         ],
         "name": "HOOK_DRIVE_PLUME",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "drive": "plume",
@@ -1121,7 +1121,7 @@
           1
         ],
         "name": "LOD0_ENGINE_PLASMA_RING_MAIN",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1150,7 +1150,7 @@
           1
         ],
         "name": "Plasma_Ring_Outer",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false
         }

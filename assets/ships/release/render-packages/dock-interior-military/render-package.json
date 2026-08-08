@@ -4153,9 +4153,14 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 1,
-        "tags": {},
-        "userData": {}
+        "planIndex": 2,
+        "tags": {
+          "chamfered": true,
+          "tint": "hull"
+        },
+        "userData": {
+          "name": "HOOK_Emissive"
+        }
       },
       {
         "matrix": [
@@ -4177,12 +4182,15 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
+          "chamfered": true,
           "socket": true,
-          "socketRole": "attachment"
+          "socketRole": "attachment",
+          "tint": "hull"
         },
         "userData": {
+          "name": "SOCKET_Structure_Core",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Structure_Core",
             "recordIds": [
@@ -4202,13 +4210,8 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 3,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 4,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4238,7 +4241,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4258,12 +4261,12 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -4298,7 +4301,7 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4318,7 +4321,7 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4333,12 +4336,12 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -4348,22 +4351,22 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 35,
+        "planIndex": 34,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4388,12 +4391,12 @@
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4408,12 +4411,12 @@
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4433,22 +4436,22 @@
       {
         "allowTextures": true,
         "planIndex": 49,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 50,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 51,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 52,
+        "planIndex": 51,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -4464,9 +4467,14 @@
         "allowTextures": true,
         "planIndex": 55,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 56,
+    "nodeCount": 57,
     "primitives": [
       {
         "canopy": false,
@@ -4489,9 +4497,11 @@
           1
         ],
         "name": "Deck_Main",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4515,9 +4525,11 @@
           1
         ],
         "name": "Pad_Strip_X",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4541,9 +4553,11 @@
           1
         ],
         "name": "Pad_Strip_Z",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4567,9 +4581,11 @@
           1
         ],
         "name": "Pad_Corner_L",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4593,9 +4609,11 @@
           1
         ],
         "name": "Pad_Corner_R",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4619,9 +4637,11 @@
           1
         ],
         "name": "Pad_Corner_F",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4645,9 +4665,11 @@
           1
         ],
         "name": "Pad_Corner_B",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4671,9 +4693,11 @@
           1
         ],
         "name": "Wall_Port",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4697,9 +4721,11 @@
           1
         ],
         "name": "Wall_Stbd_A",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4723,9 +4749,11 @@
           1
         ],
         "name": "Wall_Stbd_B",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4749,9 +4777,11 @@
           1
         ],
         "name": "Bulkhead_Fwd",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4775,9 +4805,11 @@
           1
         ],
         "name": "Bay_Glass",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4801,9 +4833,11 @@
           1
         ],
         "name": "Gantry_A",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4827,9 +4861,11 @@
           1
         ],
         "name": "Gantry_B",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4853,9 +4889,11 @@
           1
         ],
         "name": "Gantry_C",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4879,9 +4917,11 @@
           1
         ],
         "name": "Crane_Boom",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4905,9 +4945,11 @@
           1
         ],
         "name": "Crane_Tower",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4931,9 +4973,11 @@
           1
         ],
         "name": "Clamp_Port",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4957,9 +5001,11 @@
           1
         ],
         "name": "Clamp_Stbd",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -4983,9 +5029,11 @@
           1
         ],
         "name": "Light_Port",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5009,9 +5057,11 @@
           1
         ],
         "name": "Light_Stbd",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5035,9 +5085,11 @@
           1
         ],
         "name": "Pipe_A",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5061,9 +5113,11 @@
           1
         ],
         "name": "Pipe_B",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5087,9 +5141,11 @@
           1
         ],
         "name": "Catwalk",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5113,9 +5169,11 @@
           1
         ],
         "name": "BaySil_A",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5139,9 +5197,11 @@
           1
         ],
         "name": "BaySil_B",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5165,9 +5225,11 @@
           1
         ],
         "name": "BaySil_C",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5191,9 +5253,11 @@
           1
         ],
         "name": "Vent_A",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5217,9 +5281,11 @@
           1
         ],
         "name": "Vent_B",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5243,9 +5309,11 @@
           1
         ],
         "name": "Greeble_0",
-        "planIndex": 32,
+        "planIndex": 33,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5269,9 +5337,11 @@
           1
         ],
         "name": "Greeble_1",
-        "planIndex": 33,
+        "planIndex": 34,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5295,9 +5365,11 @@
           1
         ],
         "name": "Greeble_2",
-        "planIndex": 34,
+        "planIndex": 35,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5321,9 +5393,11 @@
           1
         ],
         "name": "Greeble_3",
-        "planIndex": 35,
+        "planIndex": 36,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5347,9 +5421,11 @@
           1
         ],
         "name": "Greeble_4",
-        "planIndex": 36,
+        "planIndex": 37,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5373,9 +5449,11 @@
           1
         ],
         "name": "Greeble_5",
-        "planIndex": 37,
+        "planIndex": 38,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5399,9 +5477,11 @@
           1
         ],
         "name": "Greeble_6",
-        "planIndex": 38,
+        "planIndex": 39,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5425,9 +5505,11 @@
           1
         ],
         "name": "Greeble_7",
-        "planIndex": 39,
+        "planIndex": 40,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5451,9 +5533,11 @@
           1
         ],
         "name": "Greeble_8",
-        "planIndex": 40,
+        "planIndex": 41,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5477,9 +5561,11 @@
           1
         ],
         "name": "Greeble_9",
-        "planIndex": 41,
+        "planIndex": 42,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5503,9 +5589,11 @@
           1
         ],
         "name": "Greeble_10",
-        "planIndex": 42,
+        "planIndex": 43,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5529,9 +5617,11 @@
           1
         ],
         "name": "Greeble_11",
-        "planIndex": 43,
+        "planIndex": 44,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5555,9 +5645,11 @@
           1
         ],
         "name": "Greeble_12",
-        "planIndex": 44,
+        "planIndex": 45,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5581,9 +5673,11 @@
           1
         ],
         "name": "Greeble_13",
-        "planIndex": 45,
+        "planIndex": 46,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5607,9 +5701,11 @@
           1
         ],
         "name": "Greeble_14",
-        "planIndex": 46,
+        "planIndex": 47,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5633,9 +5729,11 @@
           1
         ],
         "name": "Greeble_15",
-        "planIndex": 47,
+        "planIndex": 48,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5659,9 +5757,11 @@
           1
         ],
         "name": "Greeble_16",
-        "planIndex": 48,
+        "planIndex": 49,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5685,9 +5785,11 @@
           1
         ],
         "name": "Greeble_17",
-        "planIndex": 49,
+        "planIndex": 50,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5711,9 +5813,11 @@
           1
         ],
         "name": "Greeble_18",
-        "planIndex": 50,
+        "planIndex": 51,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5737,9 +5841,11 @@
           1
         ],
         "name": "Greeble_19",
-        "planIndex": 51,
+        "planIndex": 52,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5763,9 +5869,11 @@
           1
         ],
         "name": "Greeble_20",
-        "planIndex": 52,
+        "planIndex": 53,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5789,9 +5897,11 @@
           1
         ],
         "name": "Greeble_21",
-        "planIndex": 53,
+        "planIndex": 54,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5815,9 +5925,11 @@
           1
         ],
         "name": "Greeble_22",
-        "planIndex": 54,
+        "planIndex": 55,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       },
       {
@@ -5841,9 +5953,11 @@
           1
         ],
         "name": "Greeble_23",
-        "planIndex": 55,
+        "planIndex": 56,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "tint": "hull"
         }
       }
     ],

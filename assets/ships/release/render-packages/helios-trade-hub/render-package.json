@@ -4937,6 +4937,7 @@
           "socketRole": "structure_core"
         },
         "userData": {
+          "name": "SOCKET_Structure_Core",
           "spaceface": {
             "keep": true,
             "role": "structure_core",

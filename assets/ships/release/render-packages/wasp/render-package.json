@@ -1388,7 +1388,7 @@
       ]
     },
     "hidden": [
-      1
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -1412,12 +1412,13 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "socket": true,
           "socketRole": "camera"
         },
         "userData": {
+          "name": "SOCKET_Camera_Focus",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1451,12 +1452,13 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "socket": true,
           "socketRole": "cargo"
         },
         "userData": {
+          "name": "SOCKET_Cargo_Ventral",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1490,12 +1492,13 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "socket": true,
           "socketRole": "engine"
         },
         "userData": {
+          "name": "SOCKET_Engine_Main",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1529,12 +1532,13 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "socket": true,
           "socketRole": "mining"
         },
         "userData": {
+          "name": "SOCKET_Mining_Front",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1568,12 +1572,13 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_RCS_Port",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1607,12 +1612,13 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_RCS_Starboard",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1646,12 +1652,13 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
         },
         "userData": {
+          "name": "SOCKET_Trail_Main",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1685,12 +1692,13 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
         },
         "userData": {
+          "name": "SOCKET_Trail_Port",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1724,12 +1732,13 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
         },
         "userData": {
+          "name": "SOCKET_Trail_Starboard",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1763,12 +1772,13 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketRole": "utility"
         },
         "userData": {
+          "name": "SOCKET_Utility_Dorsal",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1802,12 +1812,13 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketRole": "weapon"
         },
         "userData": {
+          "name": "SOCKET_Weapon_Front",
           "socket": true,
           "spaceface": {
             "socket": true
@@ -1833,46 +1844,46 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 1,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
         "role": "warning"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -1895,7 +1906,7 @@
           1
         ],
         "name": "LOD0_Accent",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -1925,7 +1936,7 @@
           1
         ],
         "name": "LOD0_Hull_Armor",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -1955,7 +1966,7 @@
           1
         ],
         "name": "LOD0_Canopy",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -1985,7 +1996,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2015,7 +2026,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2045,7 +2056,7 @@
           1
         ],
         "name": "LOD0_Thruster",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2075,7 +2086,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,

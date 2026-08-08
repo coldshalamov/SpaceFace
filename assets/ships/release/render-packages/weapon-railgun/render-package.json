@@ -521,9 +521,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -547,7 +548,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -563,6 +564,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Muzzle",
           "role": "weapon",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
@@ -583,26 +585,26 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
+        "planIndex": 10,
         "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
         "role": "accent"
       }
     ],
-    "nodeCount": 19,
+    "nodeCount": 20,
     "primitives": [
       {
         "canopy": false,
@@ -625,7 +627,7 @@
           1
         ],
         "name": "Rail_Breech",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -651,7 +653,7 @@
           1
         ],
         "name": "Rail_Accent_Slit",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false
         }
@@ -677,7 +679,7 @@
           1
         ],
         "name": "weapon_railgun_Material_Mechanical_Merged",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "canopy": false
         }
@@ -703,7 +705,7 @@
           1
         ],
         "name": "weapon_railgun_Material_Accent_Merged",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "canopy": false
         }

@@ -399,9 +399,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       }
@@ -414,21 +415,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 5,
+        "planIndex": 6,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 6,
+        "planIndex": 7,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "hull"
       }
     ],
-    "nodeCount": 12,
+    "nodeCount": 13,
     "primitives": [
       {
         "canopy": false,
@@ -451,7 +452,7 @@
           1
         ],
         "name": "greeble_nav_lights_Material_Accent_Merged",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false
         }
@@ -477,7 +478,7 @@
           1
         ],
         "name": "greeble_nav_lights_Material_Mechanical_Merged",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false
         }
@@ -503,7 +504,7 @@
           1
         ],
         "name": "Nav_Base",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false
         }

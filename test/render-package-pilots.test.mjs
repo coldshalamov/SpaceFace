@@ -6,6 +6,11 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 
 import { derivePilotSemanticManifest } from '../scripts/build-render-package-pilots.mjs';
+import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
+import {
+  deriveAuthoredRuntimeTable,
+  prepareRenderPackageBlueprint,
+} from '../src/render/assetLoader.js';
 import {
   buildAuthoredPlaceProp,
   invalidatePartsLibraryCaches,
@@ -53,6 +58,134 @@ if (!globalThis.document) {
     },
   };
 }
+
+test('one-root runtime metadata mirrors GLTFLoader wrapper, name ordering, mesh cache, and binding', () => {
+  const assetContract = { assetId: 'fixture_single_root', slot: 'hull' };
+  const json = {
+    asset: { version: '2.0', extras: { spacefaceAsset: assetContract } },
+    scene: 0,
+    scenes: [{
+      name: 'Single Root',
+      extras: { spacefaceAsset: assetContract },
+      nodes: [0],
+    }],
+    nodes: [
+      {
+        name: 'Parent Root',
+        mesh: 0,
+        extras: { name: 'extras-overrode-parent', authored: 'parent' },
+        children: [1, 2],
+      },
+      { name: 'SOCKET Collision', extras: { authored: 'named-child' } },
+      {
+        name: 'Single Parent',
+        mesh: 1,
+        children: [3, 4, 5, 6],
+      },
+      { name: 'Single Mesh', extras: { authored: 'single-named-child' } },
+      { mesh: 2 },
+      { mesh: 2 },
+      {
+        name: 'MOUNT Engine Left',
+        extras: { name: 'extras-overrode-marker', authored: 'override-marker' },
+      },
+    ],
+    meshes: [
+      {
+        name: 'SOCKET Collision',
+        primitives: [
+          { attributes: { POSITION: 0 }, material: 0 },
+          { attributes: { POSITION: 0 }, material: 0 },
+        ],
+      },
+      {
+        name: 'Single Mesh',
+        primitives: [{ attributes: { POSITION: 0 }, material: 0 }],
+      },
+      {
+        name: 'Single Mesh',
+        primitives: [{ attributes: { POSITION: 0 }, material: 0 }],
+      },
+    ],
+    materials: [{ name: 'Material_Hull' }],
+  };
+
+  const scene = sceneFromGlbJson(json);
+  assert.equal(scene.isGroup, true, 'GLTFLoader always returns a scene Group');
+  assert.equal(scene.name, 'Single_Root', 'scene names are sanitised and reserved before node names');
+  assert.deepEqual(scene.userData, { spacefaceAsset: assetContract }, 'scene extras reach userData');
+  assert.equal(scene.children.length, 1);
+  const parent = scene.children[0];
+  assert.equal(parent.name, 'Parent_Root');
+  assert.equal(parent.userData.name, 'extras-overrode-parent',
+    'node extras override the raw authored userData.name injected by GLTFLoader');
+  assert.deepEqual(parent.children.slice(0, 2).map((mesh) => mesh.name), ['SOCKET_Collision_1', 'SOCKET_Collision_2'],
+    'named child reserves the unsuffixed name before parent multi-primitive mesh materialisation');
+  assert.equal(parent.children[2].name, 'SOCKET_Collision');
+  assert.equal(parent.children[2].userData.name, 'SOCKET Collision',
+    'named nodes retain the unsanitised authored name in userData when extras do not override it');
+
+  const singleParent = parent.children[3];
+  assert.equal(singleParent.name, 'Single_Parent');
+  assert.equal(singleParent.userData.name, 'Single Parent');
+  assert.equal(singleParent.children[0].name, 'Single_Mesh');
+  assert.equal(singleParent.children[0].userData.name, 'Single Mesh');
+  assert.equal(singleParent.children[1].name, 'Single_Mesh_2_instance_0',
+    'a named single-primitive parent still reserves and discards Single_Mesh_1');
+  assert.equal(singleParent.children[2].name, 'Single_Mesh_2_instance_1',
+    'shared mesh clones use r184 per-dependency instance suffixes without claiming another unique name');
+  assert.notEqual(singleParent.children[1], singleParent.children[2]);
+  assert.equal(singleParent.children[1].geometry, singleParent.children[2].geometry);
+  assert.equal(singleParent.children[1].material, singleParent.children[2].material);
+  assert.equal(singleParent.children[3].name, 'MOUNT_Engine_Left');
+  assert.equal(singleParent.children[3].userData.name, 'extras-overrode-marker');
+
+  const sourceUrl = 'assets/ships/release/parts/hulls/fixture_single_root.glb';
+  const table = deriveAuthoredRuntimeTable(scene, {
+    url: sourceUrl,
+    slot: 'hull',
+    assetId: assetContract.assetId,
+  });
+  assert.equal(table.nodeCount, 10, 'runtime table includes scene Group, mesh wrappers, and authored nodes');
+  assert.deepEqual(table.primitives.map((entry) => entry.planIndex), [2, 3, 5, 7, 8]);
+  assert.deepEqual(table.primitives.map((entry) => entry.name), [
+    'SOCKET_Collision_1',
+    'SOCKET_Collision_2',
+    'Single_Parent',
+    'Single_Mesh_2_instance_0',
+    'Single_Mesh_2_instance_1',
+  ]);
+  assert.deepEqual(table.markers.map((entry) => entry.planIndex), [4, 9]);
+  assert.equal(table.markers[0].userData.name, 'SOCKET Collision',
+    'derived marker metadata retains normal authored node userData.name');
+  assert.equal(table.markers[0].userData.authored, 'named-child');
+  assert.equal(table.markers[1].userData.name, 'extras-overrode-marker',
+    'derived marker metadata retains the node-extras override order');
+  assert.equal(table.markers[1].userData.authored, 'override-marker');
+
+  const entries = [];
+  const appendPlan = (source, parentIndex = -1) => {
+    const planIndex = entries.length;
+    entries.push({ source, parentIndex });
+    for (const child of source.children) appendPlan(child, planIndex);
+  };
+  appendPlan(scene);
+  const plan = { entries };
+  const blueprint = prepareRenderPackageBlueprint({
+    assetId: 'sf.render.fixture-single-root',
+    runtimeAssetId: assetContract.assetId,
+    sourceUrl,
+    slot: 'hull',
+  }, { scene, asset: json.asset }, { runtime: table }, { plan });
+  assert.equal(blueprint.primitives.length, 5);
+  assert.deepEqual(blueprint.primitives.map((entry) => entry.name), table.primitives.map((entry) => entry.name));
+  assert.equal(blueprint.primitives[0].geometry, parent.children[0].geometry,
+    'shipping preparation binds wrapper-shifted runtime indices to the real primitive meshes');
+  assert.deepEqual(blueprint.markers.map((entry) => entry.userData.name), [
+    'SOCKET Collision',
+    'extras-overrode-marker',
+  ], 'shipping preparation preserves normal and extras-overridden marker userData.name');
+});
 
 test('production package build rejects runtime asset identity drift', async () => {
   await assert.rejects(

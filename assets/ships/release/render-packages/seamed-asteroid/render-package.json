@@ -2220,7 +2220,7 @@
           1
         ],
         "name": "SOCKET_Scan_Target",
-        "planIndex": 33,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2236,6 +2236,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Scan_Target",
           "role": "scan",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Scan_Target",
@@ -2256,11 +2257,6 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 9,
         "role": "geology"
       },
@@ -2277,7 +2273,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
@@ -2302,12 +2298,12 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "geology"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -2327,7 +2323,7 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
@@ -2352,12 +2348,12 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "geology"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -2377,10 +2373,15 @@
       {
         "allowTextures": true,
         "planIndex": 32,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 34,
+    "nodeCount": 35,
     "primitives": [
       {
         "canopy": false,
@@ -2403,7 +2404,7 @@
           1
         ],
         "name": "LOD0_Seamed_Material_Fracture",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2430,33 +2431,6 @@
           1
         ],
         "name": "LOD0_Seamed_Material_Mineral",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Seamed_Material_Regolith",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2483,7 +2457,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_Strata",
+        "name": "LOD0_Seamed_Material_Regolith",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2510,7 +2484,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyAlloy_00",
+        "name": "LOD0_Seamed_Material_Strata",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -2537,7 +2511,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyAlloy_01",
+        "name": "LOD0_Seamed_Material_SurveyAlloy_00",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2564,7 +2538,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyAlloy_02",
+        "name": "LOD0_Seamed_Material_SurveyAlloy_01",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2591,7 +2565,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyAlloy_03",
+        "name": "LOD0_Seamed_Material_SurveyAlloy_02",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2618,7 +2592,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyAlloy_04",
+        "name": "LOD0_Seamed_Material_SurveyAlloy_03",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2645,7 +2619,7 @@
           0,
           1
         ],
-        "name": "LOD0_Seamed_Material_SurveyMarking",
+        "name": "LOD0_Seamed_Material_SurveyAlloy_04",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2672,11 +2646,11 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_Fracture",
+        "name": "LOD0_Seamed_Material_SurveyMarking",
         "planIndex": 18,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2699,7 +2673,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_Mineral",
+        "name": "LOD1_Seamed_Material_Fracture",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -2726,7 +2700,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_Regolith",
+        "name": "LOD1_Seamed_Material_Mineral",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -2753,7 +2727,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_Strata",
+        "name": "LOD1_Seamed_Material_Regolith",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -2780,7 +2754,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyAlloy_00",
+        "name": "LOD1_Seamed_Material_Strata",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -2807,7 +2781,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyAlloy_01",
+        "name": "LOD1_Seamed_Material_SurveyAlloy_00",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -2834,7 +2808,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyAlloy_02",
+        "name": "LOD1_Seamed_Material_SurveyAlloy_01",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -2861,7 +2835,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyAlloy_03",
+        "name": "LOD1_Seamed_Material_SurveyAlloy_02",
         "planIndex": 25,
         "tags": {
           "canopy": false,
@@ -2888,7 +2862,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyAlloy_04",
+        "name": "LOD1_Seamed_Material_SurveyAlloy_03",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -2915,7 +2889,7 @@
           0,
           1
         ],
-        "name": "LOD1_Seamed_Material_SurveyMarking",
+        "name": "LOD1_Seamed_Material_SurveyAlloy_04",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -2942,11 +2916,11 @@
           0,
           1
         ],
-        "name": "LOD2_Seamed_Material_Fracture",
+        "name": "LOD1_Seamed_Material_SurveyMarking",
         "planIndex": 28,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -2969,7 +2943,7 @@
           0,
           1
         ],
-        "name": "LOD2_Seamed_Material_Mineral",
+        "name": "LOD2_Seamed_Material_Fracture",
         "planIndex": 29,
         "tags": {
           "canopy": false,
@@ -2996,7 +2970,7 @@
           0,
           1
         ],
-        "name": "LOD2_Seamed_Material_Regolith",
+        "name": "LOD2_Seamed_Material_Mineral",
         "planIndex": 30,
         "tags": {
           "canopy": false,
@@ -3023,7 +2997,7 @@
           0,
           1
         ],
-        "name": "LOD2_Seamed_Material_Strata",
+        "name": "LOD2_Seamed_Material_Regolith",
         "planIndex": 31,
         "tags": {
           "canopy": false,
@@ -3050,8 +3024,35 @@
           0,
           1
         ],
-        "name": "LOD2_Seamed_Material_SurveyAlloy_00",
+        "name": "LOD2_Seamed_Material_Strata",
         "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Seamed_Material_SurveyAlloy_00",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"

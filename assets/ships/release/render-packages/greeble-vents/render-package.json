@@ -305,16 +305,16 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 17,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
+        "planIndex": 18,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 18,
+    "nodeCount": 19,
     "primitives": [
       {
         "canopy": false,
@@ -337,7 +337,7 @@
           1
         ],
         "name": "greeble_vents_Material_Hull_Merged",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false
         }
@@ -363,7 +363,7 @@
           1
         ],
         "name": "greeble_vents_Material_Mechanical_Merged",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "canopy": false
         }

@@ -387,21 +387,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 4,
+        "planIndex": 5,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 16,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 17,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 17,
+    "nodeCount": 18,
     "primitives": [
       {
         "canopy": false,
@@ -424,7 +424,7 @@
           1
         ],
         "name": "Skid_Replacement_Foot",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
           "canopy": false
         }
@@ -450,7 +450,7 @@
           1
         ],
         "name": "skid_trio_Material_Hull_Merged",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false
         }
@@ -476,7 +476,7 @@
           1
         ],
         "name": "skid_trio_Material_Mechanical_Merged",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false
         }

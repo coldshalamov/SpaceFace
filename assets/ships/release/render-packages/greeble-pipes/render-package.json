@@ -387,21 +387,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
+        "planIndex": 15,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 16,
         "role": "accent"
       }
     ],
-    "nodeCount": 16,
+    "nodeCount": 17,
     "primitives": [
       {
         "canopy": false,
@@ -424,7 +424,7 @@
           1
         ],
         "name": "Pipe_Base",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -450,7 +450,7 @@
           1
         ],
         "name": "greeble_pipes_Material_Mechanical_Merged",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "canopy": false
         }
@@ -476,7 +476,7 @@
           1
         ],
         "name": "greeble_pipes_Material_Accent_Merged",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false
         }

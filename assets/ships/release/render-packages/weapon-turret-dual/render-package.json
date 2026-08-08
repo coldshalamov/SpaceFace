@@ -824,7 +824,7 @@
           1
         ],
         "name": "HOOK_Spin",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {},
         "userData": {
           "axis": [
@@ -832,6 +832,7 @@
             1,
             0
           ],
+          "name": "HOOK_Spin",
           "spacefaceHook": true
         }
       },
@@ -855,9 +856,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -881,7 +883,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -897,6 +899,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Muzzle",
           "role": "weapon",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
@@ -917,18 +920,13 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -947,16 +945,21 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 24,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 24,
+    "nodeCount": 25,
     "primitives": [
       {
         "canopy": false,
@@ -979,7 +982,7 @@
           1
         ],
         "name": "Turret_Base",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -1005,32 +1008,6 @@
           1
         ],
         "name": "Turret_Head",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0.2,
-          0.58,
-          0,
-          1
-        ],
-        "name": "Turret_Barrel_-062",
         "planIndex": 4,
         "tags": {
           "canopy": false
@@ -1056,7 +1033,7 @@
           0,
           1
         ],
-        "name": "Turret_Muzzle_-062",
+        "name": "Turret_Barrel_-062",
         "planIndex": 5,
         "tags": {
           "canopy": false
@@ -1082,7 +1059,7 @@
           0,
           1
         ],
-        "name": "Turret_Barrel_062",
+        "name": "Turret_Muzzle_-062",
         "planIndex": 6,
         "tags": {
           "canopy": false
@@ -1108,8 +1085,34 @@
           0,
           1
         ],
-        "name": "Turret_Muzzle_062",
+        "name": "Turret_Barrel_062",
         "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.2,
+          0.58,
+          0,
+          1
+        ],
+        "name": "Turret_Muzzle_062",
+        "planIndex": 8,
         "tags": {
           "canopy": false
         }
@@ -1135,7 +1138,7 @@
           1
         ],
         "name": "Turret_Charge_Block",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false
         }
@@ -1161,7 +1164,7 @@
           1
         ],
         "name": "weapon_turret_dual_Material_Mechanical_Merged",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "canopy": false
         }

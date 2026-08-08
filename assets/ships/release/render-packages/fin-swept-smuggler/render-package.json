@@ -400,9 +400,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       }
@@ -415,21 +416,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 11,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 12,
+    "nodeCount": 13,
     "primitives": [
       {
         "canopy": false,
@@ -452,7 +453,7 @@
           1
         ],
         "name": "Swept_Blade",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -478,7 +479,7 @@
           1
         ],
         "name": "Swept_Edge",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false
         }
@@ -504,7 +505,7 @@
           1
         ],
         "name": "fin_swept_smuggler_Material_Mechanical_Merged",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false
         }

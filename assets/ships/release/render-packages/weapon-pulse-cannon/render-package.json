@@ -447,9 +447,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -473,7 +474,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -489,6 +490,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Muzzle",
           "role": "weapon",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
@@ -509,21 +511,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 8,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 22,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 23,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 23,
+    "nodeCount": 24,
     "primitives": [
       {
         "canopy": false,
@@ -546,7 +548,7 @@
           1
         ],
         "name": "Pulse_Muzzle_Glow",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false
         }
@@ -572,7 +574,7 @@
           1
         ],
         "name": "weapon_pulse_cannon_Material_Hull_Merged",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "canopy": false
         }
@@ -598,7 +600,7 @@
           1
         ],
         "name": "weapon_pulse_cannon_Material_Mechanical_Merged",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "canopy": false
         }

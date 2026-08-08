@@ -1598,7 +1598,7 @@
       ]
     },
     "hidden": [
-      1
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -1622,12 +1622,13 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_Emissive",
           "spaceface.socketRole": "emissive",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Emissive",
@@ -1658,12 +1659,13 @@
           1
         ],
         "name": "SOCKET_Gate_Aperture",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_Gate_Aperture",
           "spaceface.socketRole": "gate_aperture",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Gate_Aperture",
@@ -1694,12 +1696,13 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_Structure_Core",
           "spaceface.socketRole": "structure_core",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Structure_Core",
@@ -1720,86 +1723,86 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "glass"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
+        "planIndex": 9,
         "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
+        "planIndex": 10,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 11,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
         "role": "hull"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -1822,7 +1825,7 @@
           1
         ],
         "name": "LOD0_Station_Material_Accent",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1851,35 +1854,6 @@
           1
         ],
         "name": "LOD0_Station_Material_Glass",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Station_Material_Hull",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1908,7 +1882,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Mechanical",
+        "name": "LOD0_Station_Material_Hull",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1937,7 +1911,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Warm",
+        "name": "LOD0_Station_Material_Mechanical",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1966,12 +1940,12 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Accent",
+        "name": "LOD0_Station_Material_Warm",
         "planIndex": 7,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1",
+          "lod": "lod0",
           "tint": "hull"
         }
       },
@@ -1995,7 +1969,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Glass",
+        "name": "LOD1_Station_Material_Accent",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2024,7 +1998,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Hull",
+        "name": "LOD1_Station_Material_Glass",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2053,7 +2027,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Mechanical",
+        "name": "LOD1_Station_Material_Hull",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2082,7 +2056,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Warm",
+        "name": "LOD1_Station_Material_Mechanical",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2111,12 +2085,12 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Accent",
+        "name": "LOD1_Station_Material_Warm",
         "planIndex": 12,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2",
+          "lod": "lod1",
           "tint": "hull"
         }
       },
@@ -2140,7 +2114,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Glass",
+        "name": "LOD2_Station_Material_Accent",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2169,7 +2143,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Hull",
+        "name": "LOD2_Station_Material_Glass",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2198,7 +2172,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Mechanical",
+        "name": "LOD2_Station_Material_Hull",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2227,8 +2201,37 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Warm",
+        "name": "LOD2_Station_Material_Mechanical",
         "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "chamfered": true,

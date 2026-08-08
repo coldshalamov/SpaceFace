@@ -1208,12 +1208,16 @@
           1
         ],
         "name": "MOUNT_COCKPIT",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
+          "chamfered": true,
           "mount": "cockpit",
-          "mountKey": "cockpit"
+          "mountKey": "cockpit",
+          "tint": "hull"
         },
-        "userData": {}
+        "userData": {
+          "name": "MOUNT_COCKPIT"
+        }
       },
       {
         "matrix": [
@@ -1235,12 +1239,16 @@
           1
         ],
         "name": "MOUNT_ENGINE_L",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
+          "chamfered": true,
           "mount": "engine",
-          "mountKey": "engine_l"
+          "mountKey": "engine_l",
+          "tint": "hull"
         },
-        "userData": {}
+        "userData": {
+          "name": "MOUNT_ENGINE_L"
+        }
       },
       {
         "matrix": [
@@ -1262,12 +1270,16 @@
           1
         ],
         "name": "MOUNT_ENGINE_R",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
+          "chamfered": true,
           "mount": "engine",
-          "mountKey": "engine_r"
+          "mountKey": "engine_r",
+          "tint": "hull"
         },
-        "userData": {}
+        "userData": {
+          "name": "MOUNT_ENGINE_R"
+        }
       },
       {
         "matrix": [
@@ -1289,12 +1301,16 @@
           1
         ],
         "name": "MOUNT_FIN_L",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
+          "chamfered": true,
           "mount": "fin",
-          "mountKey": "fin_l"
+          "mountKey": "fin_l",
+          "tint": "hull"
         },
-        "userData": {}
+        "userData": {
+          "name": "MOUNT_FIN_L"
+        }
       },
       {
         "matrix": [
@@ -1316,12 +1332,16 @@
           1
         ],
         "name": "MOUNT_FIN_R",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
+          "chamfered": true,
           "mount": "fin",
-          "mountKey": "fin_r"
+          "mountKey": "fin_r",
+          "tint": "hull"
         },
-        "userData": {}
+        "userData": {
+          "name": "MOUNT_FIN_R"
+        }
       },
       {
         "matrix": [
@@ -1343,12 +1363,15 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
+          "chamfered": true,
           "socket": true,
-          "socketRole": "vfx"
+          "socketRole": "vfx",
+          "tint": "hull"
         },
         "userData": {
+          "name": "SOCKET_Trail_Main",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
@@ -1378,12 +1401,15 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
+          "chamfered": true,
           "socket": true,
-          "socketRole": "weapon"
+          "socketRole": "weapon",
+          "tint": "hull"
         },
         "userData": {
+          "name": "SOCKET_Weapon_Front",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Weapon_Front",
             "recordIds": [
@@ -1402,23 +1428,18 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -1433,12 +1454,12 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1459,9 +1480,14 @@
         "allowTextures": true,
         "planIndex": 12,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -1484,7 +1510,7 @@
           1
         ],
         "name": "LOD0_DET_anomaly_vein",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1513,35 +1539,6 @@
           1
         ],
         "name": "LOD0_DET_ashfall_oxidation",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_DET_boss_signal_spire",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -1570,7 +1567,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_cathedral_rib",
+        "name": "LOD0_DET_boss_signal_spire",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -1599,7 +1596,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_cathedral_rib001",
+        "name": "LOD0_DET_cathedral_rib",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -1628,7 +1625,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_dread_panel",
+        "name": "LOD0_DET_cathedral_rib001",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -1657,7 +1654,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_dungeon_port",
+        "name": "LOD0_DET_dread_panel",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1686,7 +1683,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_vault_keel",
+        "name": "LOD0_DET_dungeon_port",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1715,7 +1712,7 @@
           0,
           1
         ],
-        "name": "LOD0_DET_wreck_scar",
+        "name": "LOD0_DET_vault_keel",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1744,7 +1741,7 @@
           0,
           1
         ],
-        "name": "LOD0_HULL_CAPITAL_MAIN",
+        "name": "LOD0_DET_wreck_scar",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -1773,8 +1770,37 @@
           0,
           1
         ],
-        "name": "LOD1_HULL_CAPITAL_SILHOUETTE",
+        "name": "LOD0_HULL_CAPITAL_MAIN",
         "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HULL_CAPITAL_SILHOUETTE",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1803,7 +1829,7 @@
           1
         ],
         "name": "LOD2_HULL_CAPITAL_SILHOUETTE",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "chamfered": true,

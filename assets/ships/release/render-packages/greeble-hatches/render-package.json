@@ -387,21 +387,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 19,
+        "planIndex": 20,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 20,
+        "planIndex": 21,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 22,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 22,
+    "nodeCount": 23,
     "primitives": [
       {
         "canopy": false,
@@ -424,7 +424,7 @@
           1
         ],
         "name": "Hatch_Handle",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "canopy": false
         }
@@ -450,7 +450,7 @@
           1
         ],
         "name": "greeble_hatches_Material_Hull_Merged",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "canopy": false
         }
@@ -476,7 +476,7 @@
           1
         ],
         "name": "greeble_hatches_Material_Mechanical_Merged",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "canopy": false
         }

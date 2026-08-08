@@ -1828,6 +1828,7 @@
             0,
             0
           ],
+          "name": "MOUNT_Child",
           "role": "plume",
           "spacefaceMount": true,
           "spacefaceRenderPackageSemantic": {

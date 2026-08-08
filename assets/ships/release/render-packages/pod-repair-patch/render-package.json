@@ -387,21 +387,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 22,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 23,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 24,
+        "planIndex": 25,
         "role": "hull"
       }
     ],
-    "nodeCount": 25,
+    "nodeCount": 26,
     "primitives": [
       {
         "canopy": false,
@@ -424,7 +424,7 @@
           1
         ],
         "name": "pod_repair_patch_Material_Accent_Merged",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "canopy": false
         }
@@ -450,7 +450,7 @@
           1
         ],
         "name": "pod_repair_patch_Material_Mechanical_Merged",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "canopy": false
         }
@@ -476,7 +476,7 @@
           1
         ],
         "name": "Repair_Patch",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "canopy": false
         }

@@ -2423,7 +2423,7 @@
       ]
     },
     "hidden": [
-      1
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -2447,7 +2447,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2463,6 +2463,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Camera_Focus",
           "role": "camera",
           "spaceface": {
             "forward": [
@@ -2503,7 +2504,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2519,6 +2520,7 @@
             -1,
             0
           ],
+          "name": "SOCKET_Cargo_Ventral",
           "role": "cargo",
           "spaceface": {
             "forward": [
@@ -2559,7 +2561,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2575,6 +2577,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Engine_Main",
           "role": "engine",
           "spaceface": {
             "forward": [
@@ -2615,7 +2618,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2631,6 +2634,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Mining_Front",
           "role": "mining",
           "spaceface": {
             "forward": [
@@ -2671,7 +2675,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2687,6 +2691,7 @@
             0,
             -1
           ],
+          "name": "SOCKET_RCS_Port",
           "role": "vfx",
           "spaceface": {
             "forward": [
@@ -2727,7 +2732,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2743,6 +2748,7 @@
             0,
             1
           ],
+          "name": "SOCKET_RCS_Starboard",
           "role": "vfx",
           "spaceface": {
             "forward": [
@@ -2783,7 +2789,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2799,6 +2805,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Trail_Main",
           "role": "vfx",
           "spaceface": {
             "forward": [
@@ -2839,7 +2846,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 31,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2855,6 +2862,7 @@
             1,
             0
           ],
+          "name": "SOCKET_Utility_Dorsal",
           "role": "utility",
           "spaceface": {
             "forward": [
@@ -2895,7 +2903,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 32,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2911,6 +2919,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Weapon_Front",
           "role": "weapon",
           "spaceface": {
             "forward": [
@@ -2940,83 +2949,78 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
         "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 8,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 9,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -3026,35 +3030,40 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 22,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 33,
+    "nodeCount": 34,
     "primitives": [
       {
         "canopy": false,
@@ -3077,7 +3086,7 @@
           1
         ],
         "name": "LOD0_Gun_Assembly",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3108,7 +3117,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3157,7 +3166,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_FAN",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3206,7 +3215,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Cyan",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3236,7 +3245,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Glass",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -3266,7 +3275,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Hull",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3296,7 +3305,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Mechanical",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3326,7 +3335,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Warm",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3356,7 +3365,7 @@
           1
         ],
         "name": "LOD1_Gun_Assembly",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3387,7 +3396,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3436,7 +3445,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_FAN",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3485,7 +3494,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Cyan",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3515,7 +3524,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Glass",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -3545,7 +3554,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Hull",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3575,7 +3584,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Mechanical",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3605,7 +3614,7 @@
           1
         ],
         "name": "LOD2_Gun_Assembly",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3636,7 +3645,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3685,7 +3694,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_FAN",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3734,7 +3743,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Cyan",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3764,7 +3773,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Glass",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -3794,7 +3803,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Hull",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3824,7 +3833,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Mechanical",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,

@@ -522,9 +522,10 @@
           1
         ],
         "name": "HOOK_Spin",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {},
         "userData": {
+          "name": "HOOK_Spin",
           "spacefaceHook": true
         }
       },
@@ -548,9 +549,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -574,7 +576,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -590,6 +592,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Mining_Front",
           "role": "mining",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Mining_Front",
@@ -610,26 +613,26 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
+        "planIndex": 2,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
+        "planIndex": 5,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 6,
+        "planIndex": 7,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 11,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 11,
+    "nodeCount": 12,
     "primitives": [
       {
         "canopy": false,
@@ -652,7 +655,7 @@
           1
         ],
         "name": "Drone_Body",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -678,7 +681,7 @@
           1
         ],
         "name": "Drone_Drill",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
           "canopy": false
         }
@@ -704,7 +707,7 @@
           1
         ],
         "name": "Drone_Beam_Head",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false
         }
@@ -730,7 +733,7 @@
           1
         ],
         "name": "place_mining_drone_Material_Mechanical_Merged",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false
         }

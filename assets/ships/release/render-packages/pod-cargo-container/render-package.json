@@ -399,7 +399,7 @@
           1
         ],
         "name": "MOUNT_Child",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "mountKey": "true",
           "socketForward": [
@@ -415,6 +415,7 @@
             0,
             0
           ],
+          "name": "MOUNT_Child",
           "role": "stack",
           "spacefaceMount": true
         }
@@ -428,21 +429,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
+        "planIndex": 2,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
+        "planIndex": 10,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
+        "planIndex": 20,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -465,7 +466,7 @@
           1
         ],
         "name": "Cargo_ID_Plate",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -491,7 +492,7 @@
           1
         ],
         "name": "Cargo_Shell",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false
         }
@@ -517,7 +518,7 @@
           1
         ],
         "name": "pod_cargo_container_Material_Mechanical_Merged",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "canopy": false
         }

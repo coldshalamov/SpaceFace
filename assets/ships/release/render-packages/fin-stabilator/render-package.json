@@ -399,9 +399,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       }
@@ -414,21 +415,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 11,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 13,
         "role": "accent"
       }
     ],
-    "nodeCount": 13,
+    "nodeCount": 14,
     "primitives": [
       {
         "canopy": false,
@@ -451,7 +452,7 @@
           1
         ],
         "name": "fin_stabilator_Material_Hull_Merged",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false
         }
@@ -477,7 +478,7 @@
           1
         ],
         "name": "fin_stabilator_Material_Mechanical_Merged",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false
         }
@@ -503,7 +504,7 @@
           1
         ],
         "name": "fin_stabilator_Material_Accent_Merged",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false
         }

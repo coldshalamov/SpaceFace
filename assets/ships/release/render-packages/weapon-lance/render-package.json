@@ -446,9 +446,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -472,7 +473,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -488,6 +489,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Muzzle",
           "role": "weapon",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
@@ -508,21 +510,21 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 16,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
+        "planIndex": 17,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
+        "planIndex": 18,
         "role": "accent"
       }
     ],
-    "nodeCount": 18,
+    "nodeCount": 19,
     "primitives": [
       {
         "canopy": false,
@@ -545,7 +547,7 @@
           1
         ],
         "name": "weapon_lance_Material_Hull_Merged",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false
         }
@@ -571,7 +573,7 @@
           1
         ],
         "name": "weapon_lance_Material_Mechanical_Merged",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false
         }
@@ -597,7 +599,7 @@
           1
         ],
         "name": "weapon_lance_Material_Accent_Merged",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "canopy": false
         }

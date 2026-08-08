@@ -1702,7 +1702,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1718,6 +1718,7 @@
             0,
             1
           ],
+          "name": "SOCKET_Camera_Focus",
           "role": "camera",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
@@ -1738,18 +1739,13 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 5,
+        "planIndex": 6,
         "role": "geology"
       },
       {
         "allowTextures": true,
-        "planIndex": 6,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 7,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1759,7 +1755,7 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "geology"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -1774,12 +1770,12 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1789,7 +1785,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "geology"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -1804,12 +1800,12 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1819,15 +1815,20 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "geology"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
         "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "geology"
       }
     ],
-    "nodeCount": 27,
+    "nodeCount": 28,
     "primitives": [
       {
         "canopy": false,
@@ -1850,7 +1851,7 @@
           1
         ],
         "name": "LOD0_Graffiti_Material_FreshBreak",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1877,33 +1878,6 @@
           1
         ],
         "name": "LOD0_Graffiti_Material_Hardware",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Graffiti_Material_PaintBone",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -1930,7 +1904,7 @@
           0,
           1
         ],
-        "name": "LOD0_Graffiti_Material_PaintRed",
+        "name": "LOD0_Graffiti_Material_PaintBone",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -1957,7 +1931,7 @@
           0,
           1
         ],
-        "name": "LOD0_Graffiti_Material_Recess",
+        "name": "LOD0_Graffiti_Material_PaintRed",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -1984,7 +1958,7 @@
           0,
           1
         ],
-        "name": "LOD0_Graffiti_Material_Regolith",
+        "name": "LOD0_Graffiti_Material_Recess",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2011,11 +1985,11 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_FreshBreak",
+        "name": "LOD0_Graffiti_Material_Regolith",
         "planIndex": 11,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2038,7 +2012,7 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_Hardware",
+        "name": "LOD1_Graffiti_Material_FreshBreak",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -2065,7 +2039,7 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_PaintBone",
+        "name": "LOD1_Graffiti_Material_Hardware",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2092,7 +2066,7 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_PaintRed",
+        "name": "LOD1_Graffiti_Material_PaintBone",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2119,7 +2093,7 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_Recess",
+        "name": "LOD1_Graffiti_Material_PaintRed",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2146,7 +2120,7 @@
           0,
           1
         ],
-        "name": "LOD1_Graffiti_Material_Regolith",
+        "name": "LOD1_Graffiti_Material_Recess",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2173,11 +2147,11 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_FreshBreak",
+        "name": "LOD1_Graffiti_Material_Regolith",
         "planIndex": 17,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -2200,7 +2174,7 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_Hardware",
+        "name": "LOD2_Graffiti_Material_FreshBreak",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -2227,7 +2201,7 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_PaintBone",
+        "name": "LOD2_Graffiti_Material_Hardware",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -2254,7 +2228,7 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_PaintRed",
+        "name": "LOD2_Graffiti_Material_PaintBone",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -2281,7 +2255,7 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_Recess",
+        "name": "LOD2_Graffiti_Material_PaintRed",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -2308,8 +2282,35 @@
           0,
           1
         ],
-        "name": "LOD2_Graffiti_Material_Regolith",
+        "name": "LOD2_Graffiti_Material_Recess",
         "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Graffiti_Material_Regolith",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod2"

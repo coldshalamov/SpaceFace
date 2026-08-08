@@ -1427,7 +1427,7 @@
       ]
     },
     "hidden": [
-      1
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -1451,7 +1451,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1462,6 +1462,7 @@
           "socketRole": "camera_focus"
         },
         "userData": {
+          "name": "SOCKET_Camera_Focus",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1501,7 +1502,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1512,6 +1513,7 @@
           "socketRole": "cargo_ventral"
         },
         "userData": {
+          "name": "SOCKET_Cargo_Ventral",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1551,7 +1553,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1562,6 +1564,7 @@
           "socketRole": "engine_exhaust"
         },
         "userData": {
+          "name": "SOCKET_Engine_Main",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1601,7 +1604,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1612,6 +1615,7 @@
           "socketRole": "mining_emitter"
         },
         "userData": {
+          "name": "SOCKET_Mining_Front",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1651,7 +1655,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1662,6 +1666,7 @@
           "socketRole": "rcs_port"
         },
         "userData": {
+          "name": "SOCKET_RCS_Port",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1701,7 +1706,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1712,6 +1717,7 @@
           "socketRole": "rcs_starboard"
         },
         "userData": {
+          "name": "SOCKET_RCS_Starboard",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1751,7 +1757,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1762,6 +1768,7 @@
           "socketRole": "engine_trail"
         },
         "userData": {
+          "name": "SOCKET_Trail_Main",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1801,7 +1808,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1812,6 +1819,7 @@
           "socketRole": "utility_dorsal"
         },
         "userData": {
+          "name": "SOCKET_Utility_Dorsal",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1851,7 +1859,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1862,6 +1870,7 @@
           "socketRole": "weapon_muzzle"
         },
         "userData": {
+          "name": "SOCKET_Weapon_Front",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -1893,51 +1902,51 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 1,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 5,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 6,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 8,
-        "role": "repair"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
+        "role": "repair"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
         "role": "rubber"
       }
     ],
-    "nodeCount": 19,
+    "nodeCount": 20,
     "primitives": [
       {
         "canopy": false,
@@ -1960,7 +1969,7 @@
           1
         ],
         "name": "LOD2_static_Accent_FrontierCyan",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -1987,33 +1996,6 @@
           1
         ],
         "name": "LOD2_static_ArmorDark",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_static_BrushedMetal",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2040,7 +2022,7 @@
           0,
           1
         ],
-        "name": "LOD2_static_Emissive_DriveCore",
+        "name": "LOD2_static_BrushedMetal",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2067,7 +2049,7 @@
           0,
           1
         ],
-        "name": "LOD2_static_Hull",
+        "name": "LOD2_static_Emissive_DriveCore",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2094,7 +2076,7 @@
           0,
           1
         ],
-        "name": "LOD2_static_Mechanical",
+        "name": "LOD2_static_Hull",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2121,7 +2103,7 @@
           0,
           1
         ],
-        "name": "LOD2_static_RepairGreen",
+        "name": "LOD2_static_Mechanical",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2148,8 +2130,35 @@
           0,
           1
         ],
-        "name": "LOD2_static_Rubber",
+        "name": "LOD2_static_RepairGreen",
         "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_static_Rubber",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod2"

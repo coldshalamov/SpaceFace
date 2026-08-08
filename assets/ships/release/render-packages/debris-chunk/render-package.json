@@ -1808,7 +1808,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1824,6 +1824,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Tether_Massline",
           "role": "tether",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Tether_Massline",
@@ -1845,13 +1846,8 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 5,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -1861,12 +1857,12 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1876,17 +1872,17 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "accent"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -1896,12 +1892,12 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1911,35 +1907,40 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "accent"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
         "role": "radiator"
       }
     ],
-    "nodeCount": 26,
+    "nodeCount": 27,
     "primitives": [
       {
         "canopy": false,
@@ -1962,7 +1963,7 @@
           1
         ],
         "name": "LOD0_Debris_Material_Accent",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1989,7 +1990,7 @@
           1
         ],
         "name": "LOD0_Debris_Material_Cable",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2016,7 +2017,7 @@
           1
         ],
         "name": "LOD0_Debris_Material_Decal",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "decal": true,
@@ -2044,33 +2045,6 @@
           1
         ],
         "name": "LOD0_Debris_Material_Hull",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Debris_Material_Insulation",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2097,7 +2071,7 @@
           0,
           1
         ],
-        "name": "LOD0_Debris_Material_Mechanical",
+        "name": "LOD0_Debris_Material_Insulation",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2124,7 +2098,7 @@
           0,
           1
         ],
-        "name": "LOD0_Debris_Material_Radiator",
+        "name": "LOD0_Debris_Material_Mechanical",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2151,11 +2125,11 @@
           0,
           1
         ],
-        "name": "LOD1_Debris_Material_Accent",
+        "name": "LOD0_Debris_Material_Radiator",
         "planIndex": 12,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2178,7 +2152,7 @@
           0,
           1
         ],
-        "name": "LOD1_Debris_Material_Cable",
+        "name": "LOD1_Debris_Material_Accent",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2205,8 +2179,35 @@
           0,
           1
         ],
-        "name": "LOD1_Debris_Material_Decal",
+        "name": "LOD1_Debris_Material_Cable",
         "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Debris_Material_Decal",
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "decal": true,
@@ -2234,33 +2235,6 @@
           1
         ],
         "name": "LOD1_Debris_Material_Hull",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD1_Debris_Material_Insulation",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2287,7 +2261,7 @@
           0,
           1
         ],
-        "name": "LOD1_Debris_Material_Mechanical",
+        "name": "LOD1_Debris_Material_Insulation",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2314,7 +2288,7 @@
           0,
           1
         ],
-        "name": "LOD1_Debris_Material_Radiator",
+        "name": "LOD1_Debris_Material_Mechanical",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -2341,8 +2315,35 @@
           0,
           1
         ],
-        "name": "LOD2_Debris_Material_Accent",
+        "name": "LOD1_Debris_Material_Radiator",
         "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Debris_Material_Accent",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2369,7 +2370,7 @@
           1
         ],
         "name": "LOD2_Debris_Material_Decal",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "decal": true,
@@ -2397,33 +2398,6 @@
           1
         ],
         "name": "LOD2_Debris_Material_Hull",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod2"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD2_Debris_Material_Mechanical",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -2450,8 +2424,35 @@
           0,
           1
         ],
-        "name": "LOD2_Debris_Material_Radiator",
+        "name": "LOD2_Debris_Material_Mechanical",
         "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Debris_Material_Radiator",
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod2"

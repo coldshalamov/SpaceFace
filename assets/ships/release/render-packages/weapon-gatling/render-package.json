@@ -839,7 +839,7 @@
           1
         ],
         "name": "HOOK_Spin",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {},
         "userData": {
           "axis": [
@@ -847,6 +847,7 @@
             0,
             0
           ],
+          "name": "HOOK_Spin",
           "spacefaceHook": true
         }
       },
@@ -870,9 +871,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -896,7 +898,7 @@
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -912,6 +914,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Muzzle",
           "role": "weapon",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
@@ -931,18 +934,13 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -956,7 +954,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 6,
         "role": "mechanical"
       },
       {
@@ -966,11 +964,16 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
         "role": "accent"
       }
     ],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -993,7 +996,7 @@
           1
         ],
         "name": "DET_ammo_feed",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -1019,32 +1022,6 @@
           1
         ],
         "name": "DET_heat_disc",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "DET_mount_rail",
         "planIndex": 3,
         "tags": {
           "canopy": false
@@ -1070,7 +1047,7 @@
           0,
           1
         ],
-        "name": "DET_scuff_plate",
+        "name": "DET_mount_rail",
         "planIndex": 4,
         "tags": {
           "canopy": false
@@ -1096,8 +1073,34 @@
           0,
           1
         ],
-        "name": "Gatling_Housing",
+        "name": "DET_scuff_plate",
         "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Gatling_Housing",
+        "planIndex": 6,
         "tags": {
           "canopy": false
         }
@@ -1123,7 +1126,7 @@
           1
         ],
         "name": "Gatling_Barrel_Cluster",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false
         }
@@ -1149,7 +1152,7 @@
           1
         ],
         "name": "Gatling_Coils_Merged",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false
         }
@@ -1175,7 +1178,7 @@
           1
         ],
         "name": "Gatling_Muzzle",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false
         }

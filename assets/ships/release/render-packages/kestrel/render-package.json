@@ -2270,7 +2270,7 @@
       ]
     },
     "hidden": [
-      1
+      2
     ],
     "legacyPart": false,
     "markers": [
@@ -2294,7 +2294,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2305,6 +2305,7 @@
           "socketRole": "camera_focus"
         },
         "userData": {
+          "name": "SOCKET_Camera_Focus",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2344,7 +2345,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2355,6 +2356,7 @@
           "socketRole": "cargo_ventral"
         },
         "userData": {
+          "name": "SOCKET_Cargo_Ventral",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2394,7 +2396,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 24,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2405,6 +2407,7 @@
           "socketRole": "engine_exhaust"
         },
         "userData": {
+          "name": "SOCKET_Engine_Main",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2444,7 +2447,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 25,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2455,6 +2458,7 @@
           "socketRole": "mining_emitter"
         },
         "userData": {
+          "name": "SOCKET_Mining_Front",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2494,7 +2498,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 26,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2505,6 +2509,7 @@
           "socketRole": "rcs_port"
         },
         "userData": {
+          "name": "SOCKET_RCS_Port",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2544,7 +2549,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 27,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2555,6 +2560,7 @@
           "socketRole": "rcs_starboard"
         },
         "userData": {
+          "name": "SOCKET_RCS_Starboard",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2594,7 +2600,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 28,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2605,6 +2611,7 @@
           "socketRole": "engine_trail"
         },
         "userData": {
+          "name": "SOCKET_Trail_Main",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2644,7 +2651,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 29,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2655,6 +2662,7 @@
           "socketRole": "utility_dorsal"
         },
         "userData": {
+          "name": "SOCKET_Utility_Dorsal",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2694,7 +2702,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 30,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2705,6 +2713,7 @@
           "socketRole": "weapon_muzzle"
         },
         "userData": {
+          "name": "SOCKET_Weapon_Front",
           "socket": true,
           "spaceface": {
             "forward": [
@@ -2741,96 +2750,96 @@
     "materialProfiles": [
       {
         "allowTextures": false,
-        "planIndex": 1,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "warning"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 5,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "engine_ceramic"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 13,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 6,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "engine_ceramic"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 16,
-        "role": "radiator"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "repair"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
+        "role": "repair"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
         "role": "rubber"
       }
     ],
-    "nodeCount": 31,
+    "nodeCount": 32,
     "primitives": [
       {
         "canopy": false,
@@ -2853,7 +2862,7 @@
           1
         ],
         "name": "LOD0_static_Accent_FrontierCyan",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2880,33 +2889,6 @@
           1
         ],
         "name": "LOD0_static_Accent_WarningOrange",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_static_ArmorDark",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2933,7 +2915,7 @@
           0,
           1
         ],
-        "name": "LOD0_static_BrushedMetal",
+        "name": "LOD0_static_ArmorDark",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2960,8 +2942,35 @@
           0,
           1
         ],
-        "name": "LOD0_static_Decal_BorrowedTime",
+        "name": "LOD0_static_BrushedMetal",
         "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_static_Decal_BorrowedTime",
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "decal": true,
@@ -2989,34 +2998,6 @@
           1
         ],
         "name": "LOD0_static_Decal_Hazard",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "decal": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_static_Decal_Stencils",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3044,10 +3025,11 @@
           0,
           1
         ],
-        "name": "LOD0_static_Emissive_Cyan",
+        "name": "LOD0_static_Decal_Stencils",
         "planIndex": 9,
         "tags": {
           "canopy": false,
+          "decal": true,
           "lod": "lod0"
         }
       },
@@ -3071,7 +3053,7 @@
           0,
           1
         ],
-        "name": "LOD0_static_Emissive_DriveCore",
+        "name": "LOD0_static_Emissive_Cyan",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -3098,7 +3080,7 @@
           0,
           1
         ],
-        "name": "LOD0_static_Emissive_Orange",
+        "name": "LOD0_static_Emissive_DriveCore",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -3125,8 +3107,35 @@
           0,
           1
         ],
-        "name": "LOD0_static_EngineCeramic",
+        "name": "LOD0_static_Emissive_Orange",
         "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_static_EngineCeramic",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3153,7 +3162,7 @@
           1
         ],
         "name": "LOD0_static_Glass_Canopy",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": true,
           "lod": "lod0"
@@ -3180,33 +3189,6 @@
           1
         ],
         "name": "LOD0_static_Hull",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_static_Mechanical",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -3233,7 +3215,7 @@
           0,
           1
         ],
-        "name": "LOD0_static_Radiator",
+        "name": "LOD0_static_Mechanical",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -3260,7 +3242,7 @@
           0,
           1
         ],
-        "name": "LOD0_static_RepairGreen",
+        "name": "LOD0_static_Radiator",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -3287,8 +3269,35 @@
           0,
           1
         ],
-        "name": "LOD0_static_Rubber",
+        "name": "LOD0_static_RepairGreen",
         "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_static_Rubber",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"

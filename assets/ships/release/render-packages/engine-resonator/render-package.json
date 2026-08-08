@@ -1325,11 +1325,6 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 1,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 2,
         "role": "accent"
       },
@@ -1376,12 +1371,12 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1396,10 +1391,15 @@
       {
         "allowTextures": true,
         "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
         "role": "hull"
       }
     ],
-    "nodeCount": 22,
+    "nodeCount": 23,
     "primitives": [
       {
         "canopy": false,
@@ -1422,7 +1422,7 @@
           1
         ],
         "name": "DET_anomaly_facet_plate",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {
           "canopy": false
         }
@@ -1448,32 +1448,6 @@
           1
         ],
         "name": "DET_crystal_fracture",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "DET_emissive_port",
         "planIndex": 3,
         "tags": {
           "canopy": false
@@ -1499,7 +1473,7 @@
           0,
           1
         ],
-        "name": "DET_oxidized_rib",
+        "name": "DET_emissive_port",
         "planIndex": 4,
         "tags": {
           "canopy": false
@@ -1525,7 +1499,7 @@
           0,
           1
         ],
-        "name": "DET_phase_seam",
+        "name": "DET_oxidized_rib",
         "planIndex": 5,
         "tags": {
           "canopy": false
@@ -1551,7 +1525,7 @@
           0,
           1
         ],
-        "name": "DET_resonance_port",
+        "name": "DET_phase_seam",
         "planIndex": 6,
         "tags": {
           "canopy": false
@@ -1577,7 +1551,7 @@
           0,
           1
         ],
-        "name": "DET_resonance_ring",
+        "name": "DET_resonance_port",
         "planIndex": 7,
         "tags": {
           "canopy": false
@@ -1603,7 +1577,7 @@
           0,
           1
         ],
-        "name": "DET_veil_stencil",
+        "name": "DET_resonance_ring",
         "planIndex": 8,
         "tags": {
           "canopy": false
@@ -1629,7 +1603,7 @@
           0,
           1
         ],
-        "name": "DET_violet_bleed_vein",
+        "name": "DET_veil_stencil",
         "planIndex": 9,
         "tags": {
           "canopy": false
@@ -1655,7 +1629,7 @@
           0,
           1
         ],
-        "name": "DET_violet_vein",
+        "name": "DET_violet_bleed_vein",
         "planIndex": 10,
         "tags": {
           "canopy": false
@@ -1681,7 +1655,7 @@
           0,
           1
         ],
-        "name": "engine_resonator_Material_Mechanical_Merged",
+        "name": "DET_violet_vein",
         "planIndex": 11,
         "tags": {
           "canopy": false
@@ -1707,8 +1681,34 @@
           0,
           1
         ],
-        "name": "HOOK_DRIVE_CORE",
+        "name": "engine_resonator_Material_Mechanical_Merged",
         "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -1753,7 +1753,7 @@
           1
         ],
         "name": "HOOK_DRIVE_FAN",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "drive": "fan",
@@ -1798,7 +1798,7 @@
           1
         ],
         "name": "HOOK_DRIVE_PLUME",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "drive": "plume",
@@ -1843,7 +1843,7 @@
           1
         ],
         "name": "LOD0_ENGINE_RESONATOR_MAIN",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "chamfered": true,

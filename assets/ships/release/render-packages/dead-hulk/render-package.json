@@ -1798,7 +1798,7 @@
           1
         ],
         "name": "SOCKET_Hazard_Core",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1814,6 +1814,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Hazard_Core",
           "role": "hazard_core",
           "spaceface.kind": "socket",
           "spacefaceRenderPackageSemantic": {
@@ -1850,7 +1851,7 @@
           1
         ],
         "name": "SOCKET_Salvage_Core",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1866,6 +1867,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Salvage_Core",
           "role": "salvage_core",
           "spaceface.kind": "socket",
           "spacefaceRenderPackageSemantic": {
@@ -1891,18 +1893,13 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 3,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -1917,27 +1914,27 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 8,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
         "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "glass"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -1952,16 +1949,16 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 18,
+        "planIndex": 16,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
         "role": "hull"
       },
       {
@@ -1978,9 +1975,14 @@
         "allowTextures": true,
         "planIndex": 21,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
       }
     ],
-    "nodeCount": 24,
+    "nodeCount": 25,
     "primitives": [
       {
         "canopy": false,
@@ -2003,7 +2005,7 @@
           1
         ],
         "name": "LOD0_Hulk_Material_Armor",
-        "planIndex": 2,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2030,33 +2032,6 @@
           1
         ],
         "name": "LOD0_Hulk_Material_Glass",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Hulk_Material_Heat",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2083,7 +2058,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Hull",
+        "name": "LOD0_Hulk_Material_Heat",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2110,7 +2085,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Insulation",
+        "name": "LOD0_Hulk_Material_Hull",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2137,7 +2112,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Service",
+        "name": "LOD0_Hulk_Material_Insulation",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2164,7 +2139,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hulk_Material_Structural",
+        "name": "LOD0_Hulk_Material_Service",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2191,11 +2166,11 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Armor",
-        "planIndex": 10,
+        "name": "LOD0_Hulk_Material_Structural",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2218,7 +2193,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Glass",
+        "name": "LOD1_Hulk_Material_Armor",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -2245,7 +2220,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Heat",
+        "name": "LOD1_Hulk_Material_Glass",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -2272,7 +2247,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Hull",
+        "name": "LOD1_Hulk_Material_Heat",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2299,7 +2274,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Insulation",
+        "name": "LOD1_Hulk_Material_Hull",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2326,7 +2301,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Service",
+        "name": "LOD1_Hulk_Material_Insulation",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2353,7 +2328,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hulk_Material_Structural",
+        "name": "LOD1_Hulk_Material_Service",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2380,11 +2355,11 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Armor",
-        "planIndex": 18,
+        "name": "LOD1_Hulk_Material_Structural",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -2407,7 +2382,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Heat",
+        "name": "LOD2_Hulk_Material_Armor",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -2434,7 +2409,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Hull",
+        "name": "LOD2_Hulk_Material_Heat",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -2461,8 +2436,35 @@
           0,
           1
         ],
-        "name": "LOD2_Hulk_Material_Structural",
+        "name": "LOD2_Hulk_Material_Hull",
         "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hulk_Material_Structural",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod2"

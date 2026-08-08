@@ -2338,12 +2338,13 @@
           1
         ],
         "name": "SOCKET_Flythrough_Entry",
-        "planIndex": 32,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_Flythrough_Entry",
           "spaceface": {
             "clearanceHeightM": 58,
             "clearanceWidthM": 72,
@@ -2380,12 +2381,13 @@
           1
         ],
         "name": "SOCKET_Flythrough_Exit",
-        "planIndex": 33,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_Flythrough_Exit",
           "spaceface": {
             "clearanceHeightM": 58,
             "clearanceWidthM": 72,
@@ -2422,12 +2424,13 @@
           1
         ],
         "name": "SOCKET_TheMarker",
-        "planIndex": 34,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
         },
         "userData": {
+          "name": "SOCKET_TheMarker",
           "spaceface": {
             "lightColor": "amber",
             "semanticMarker": true,
@@ -2458,126 +2461,126 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 3,
-        "role": "maintenance_mark"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 4,
-        "role": "heat_affected_alloy"
+        "role": "maintenance_mark"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "copper_coil"
+        "role": "heat_affected_alloy"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "signal"
+        "role": "copper_coil"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "exposed_alloy"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
+        "role": "exposed_alloy"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
-        "role": "maintenance_mark"
+        "planIndex": 11,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "heat_affected_alloy"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "copper_coil"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "exposed_alloy"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
         "role": "maintenance_mark"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 14,
         "role": "heat_affected_alloy"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 15,
         "role": "copper_coil"
       },
       {
         "allowTextures": true,
-        "planIndex": 24,
+        "planIndex": 16,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 25,
+        "planIndex": 17,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 18,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 19,
         "role": "exposed_alloy"
       },
       {
         "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "maintenance_mark"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "heat_affected_alloy"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "copper_coil"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 28,
+        "role": "exposed_alloy"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 40,
+    "nodeCount": 41,
     "primitives": [
       {
         "canopy": false,
@@ -2600,7 +2603,7 @@
           1
         ],
         "name": "LOD0_AccentConcordBlueBurned",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -2628,34 +2631,6 @@
           1
         ],
         "name": "LOD0_ArmorScorched",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_ConduitCopper",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2683,7 +2658,7 @@
           0,
           1
         ],
-        "name": "LOD0_EmissiveColdEmergency",
+        "name": "LOD0_ConduitCopper",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2711,7 +2686,7 @@
           0,
           1
         ],
-        "name": "LOD0_EmissiveMarkerAmber",
+        "name": "LOD0_EmissiveColdEmergency",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2739,7 +2714,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull",
+        "name": "LOD0_EmissiveMarkerAmber",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2767,7 +2742,7 @@
           0,
           1
         ],
-        "name": "LOD0_InteriorExposedAlloy",
+        "name": "LOD0_Hull",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2795,7 +2770,7 @@
           0,
           1
         ],
-        "name": "LOD0_MechanicalExposed",
+        "name": "LOD0_InteriorExposedAlloy",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2823,12 +2798,12 @@
           0,
           1
         ],
-        "name": "LOD1_AccentConcordBlueBurned",
-        "planIndex": 12,
+        "name": "LOD0_MechanicalExposed",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1"
+          "lod": "lod0"
         }
       },
       {
@@ -2851,7 +2826,7 @@
           0,
           1
         ],
-        "name": "LOD1_ArmorScorched",
+        "name": "LOD1_AccentConcordBlueBurned",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -2879,7 +2854,7 @@
           0,
           1
         ],
-        "name": "LOD1_ConduitCopper",
+        "name": "LOD1_ArmorScorched",
         "planIndex": 14,
         "tags": {
           "canopy": false,
@@ -2907,7 +2882,7 @@
           0,
           1
         ],
-        "name": "LOD1_EmissiveColdEmergency",
+        "name": "LOD1_ConduitCopper",
         "planIndex": 15,
         "tags": {
           "canopy": false,
@@ -2935,7 +2910,7 @@
           0,
           1
         ],
-        "name": "LOD1_EmissiveMarkerAmber",
+        "name": "LOD1_EmissiveColdEmergency",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -2963,7 +2938,7 @@
           0,
           1
         ],
-        "name": "LOD1_Hull",
+        "name": "LOD1_EmissiveMarkerAmber",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -2991,7 +2966,7 @@
           0,
           1
         ],
-        "name": "LOD1_InteriorExposedAlloy",
+        "name": "LOD1_Hull",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -3019,7 +2994,7 @@
           0,
           1
         ],
-        "name": "LOD1_MechanicalExposed",
+        "name": "LOD1_InteriorExposedAlloy",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -3047,12 +3022,12 @@
           0,
           1
         ],
-        "name": "LOD2_AccentConcordBlueBurned",
-        "planIndex": 21,
+        "name": "LOD1_MechanicalExposed",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2"
+          "lod": "lod1"
         }
       },
       {
@@ -3075,7 +3050,7 @@
           0,
           1
         ],
-        "name": "LOD2_ArmorScorched",
+        "name": "LOD2_AccentConcordBlueBurned",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -3103,7 +3078,7 @@
           0,
           1
         ],
-        "name": "LOD2_ConduitCopper",
+        "name": "LOD2_ArmorScorched",
         "planIndex": 23,
         "tags": {
           "canopy": false,
@@ -3131,7 +3106,7 @@
           0,
           1
         ],
-        "name": "LOD2_EmissiveColdEmergency",
+        "name": "LOD2_ConduitCopper",
         "planIndex": 24,
         "tags": {
           "canopy": false,
@@ -3159,7 +3134,7 @@
           0,
           1
         ],
-        "name": "LOD2_EmissiveMarkerAmber",
+        "name": "LOD2_EmissiveColdEmergency",
         "planIndex": 25,
         "tags": {
           "canopy": false,
@@ -3187,7 +3162,7 @@
           0,
           1
         ],
-        "name": "LOD2_Hull",
+        "name": "LOD2_EmissiveMarkerAmber",
         "planIndex": 26,
         "tags": {
           "canopy": false,
@@ -3215,7 +3190,7 @@
           0,
           1
         ],
-        "name": "LOD2_InteriorExposedAlloy",
+        "name": "LOD2_Hull",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3243,8 +3218,36 @@
           0,
           1
         ],
-        "name": "LOD2_MechanicalExposed",
+        "name": "LOD2_InteriorExposedAlloy",
         "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalExposed",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "chamfered": true,

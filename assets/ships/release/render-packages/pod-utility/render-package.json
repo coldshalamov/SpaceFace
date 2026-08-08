@@ -473,9 +473,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 1,
+        "planIndex": 2,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       },
@@ -499,7 +500,7 @@
           1
         ],
         "name": "MOUNT_Child",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "mountKey": "true",
           "socketForward": [
@@ -515,6 +516,7 @@
             0,
             0
           ],
+          "name": "MOUNT_Child",
           "role": "utility-child",
           "spacefaceMount": true
         }
@@ -528,26 +530,26 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 13,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
+        "planIndex": 15,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 16,
         "role": "hull"
       }
     ],
-    "nodeCount": 16,
+    "nodeCount": 17,
     "primitives": [
       {
         "canopy": false,
@@ -570,7 +572,7 @@
           1
         ],
         "name": "pod_utility_Material_Accent_Merged",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false
         }
@@ -596,7 +598,7 @@
           1
         ],
         "name": "pod_utility_Material_Mechanical_Merged",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false
         }
@@ -622,7 +624,7 @@
           1
         ],
         "name": "Utility_Band",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "canopy": false
         }
@@ -648,7 +650,7 @@
           1
         ],
         "name": "Utility_Shell",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false
         }

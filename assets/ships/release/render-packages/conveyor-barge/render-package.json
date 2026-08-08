@@ -646,11 +646,12 @@
           1
         ],
         "name": "HOOK_DRIVE_PLUME",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "drive": "plume"
         },
         "userData": {
+          "name": "HOOK_DRIVE_PLUME",
           "spacefaceHook": true,
           "spaceface_hook": "HOOK_DRIVE_PLUME"
         }
@@ -675,7 +676,7 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "damageRole": "navLight",
           "socketForward": [
@@ -692,6 +693,7 @@
             0,
             0
           ],
+          "name": "HOOK_Emissive",
           "role": "emissive",
           "spacefaceHook": true,
           "spaceface_hook": "HOOK_Emissive"
@@ -717,11 +719,13 @@
           1
         ],
         "name": "Barge_Status_-75",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "damageRole": "navLight"
         },
-        "userData": {}
+        "userData": {
+          "name": "Barge_Status_-7.5"
+        }
       },
       {
         "matrix": [
@@ -743,11 +747,13 @@
           1
         ],
         "name": "Barge_Status_75",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "damageRole": "navLight"
         },
-        "userData": {}
+        "userData": {
+          "name": "Barge_Status_7.5"
+        }
       },
       {
         "matrix": [
@@ -769,7 +775,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -785,6 +791,7 @@
             0,
             0
           ],
+          "name": "SOCKET_Trail_Main",
           "role": "vfx",
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
@@ -805,31 +812,31 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 5,
+        "planIndex": 6,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 8,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
-        "role": "accent"
+        "planIndex": 9,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 15,
+    "nodeCount": 16,
     "primitives": [
       {
         "canopy": false,
@@ -852,7 +859,7 @@
           1
         ],
         "name": "Barge_Hull",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -881,7 +888,7 @@
           1
         ],
         "name": "Barge_Drive_Core",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -929,7 +936,7 @@
           1
         ],
         "name": "Barge_Drive_Nozzle",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -977,7 +984,7 @@
           1
         ],
         "name": "place_conveyor_barge_Material_Accent_Merged",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1006,7 +1013,7 @@
           1
         ],
         "name": "place_conveyor_barge_Material_Mechanical_Merged",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "chamfered": true,

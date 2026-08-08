@@ -474,9 +474,10 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true
         }
       }
@@ -489,26 +490,26 @@
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 3,
+        "planIndex": 4,
         "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
+        "planIndex": 14,
         "role": "accent"
       }
     ],
-    "nodeCount": 14,
+    "nodeCount": 15,
     "primitives": [
       {
         "canopy": false,
@@ -531,7 +532,7 @@
           1
         ],
         "name": "Antenna_Loop",
-        "planIndex": 3,
+        "planIndex": 4,
         "tags": {
           "canopy": false
         }
@@ -557,32 +558,6 @@
           1
         ],
         "name": "greeble_antennas_Material_Hull_Merged",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "greeble_antennas_Material_Mechanical_Merged",
         "planIndex": 11,
         "tags": {
           "canopy": false
@@ -608,8 +583,34 @@
           0,
           1
         ],
+        "name": "greeble_antennas_Material_Mechanical_Merged",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
         "name": "Antenna_Beacon",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": false
         }

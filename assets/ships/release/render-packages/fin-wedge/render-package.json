@@ -1132,6 +1132,7 @@
         "planIndex": 6,
         "tags": {},
         "userData": {
+          "name": "HOOK_Emissive",
           "spacefaceHook": true,
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "HOOK_Emissive",

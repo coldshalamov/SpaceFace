@@ -24,6 +24,8 @@ import { dirname, resolve } from 'node:path';
 
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
+import { prepareRenderPackageBlueprint } from '../src/render/assetLoader.js';
+import { renderPackagePilotForAssetId } from '../src/render/renderPackageManifest.js';
 import { readGlbJson as readGlbJsonChunk, sceneFromGlbJson as buildDecodedScene } from './lib/renderPackageRuntimeTable.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -58,14 +60,36 @@ function sceneFromGlbJson(json) {
 async function checkPackage(id) {
   const dir = resolve(PACKAGE_DIR, id);
   const metadata = JSON.parse(readFileSync(resolve(dir, 'render-package.json'), 'utf8'));
-  const { scene, nodeCount } = sceneFromGlbJson(readGlbJson(resolve(dir, 'render.glb')));
+  const glbJson = readGlbJson(resolve(dir, 'render.glb'));
+  const { scene, nodeCount } = sceneFromGlbJson(glbJson);
+  const decoded = { scene, asset: glbJson.asset || {} };
+  const pilot = renderPackagePilotForAssetId(metadata.assetId);
+  if (!pilot) throw new Error(`shipping manifest has no pilot binding for ${metadata.assetId}`);
 
   const loader = createRenderPackageLoader({
-    loadGlb: async () => ({ scene }),
+    loadGlb: async () => decoded,
     residency: createAssetResidencyRegistry(),
+    prepareDecoded(loadedDecoded, packageMetadata, _renderUrl, plan) {
+      return prepareRenderPackageBlueprint(pilot, loadedDecoded, packageMetadata, { plan });
+    },
   });
   try {
     const loaded = await loader.load(metadata, { baseUrl: 'file:///packages/' });
+
+    // Exercise the exact shipping runtime-table binder. The prior checker validated semantic
+    // locators and instance structure but never consumed metadata.runtime, so the compiler and
+    // checker could agree with each other while every production planIndex was wrong.
+    if (!loaded.prepared) throw new Error('shipping runtime blueprint was not prepared');
+    if (loaded.prepared.primitives.length !== metadata.runtime.primitives.length) {
+      throw new Error(
+        `runtime blueprint bound ${loaded.prepared.primitives.length} primitives, expected ${metadata.runtime.primitives.length}`,
+      );
+    }
+    if (loaded.prepared.markers.length !== metadata.runtime.markers.length) {
+      throw new Error(
+        `runtime blueprint bound ${loaded.prepared.markers.length} markers, expected ${metadata.runtime.markers.length}`,
+      );
+    }
 
     // The plan must cover the whole graph — a plan shorter than the graph would mean instances
     // silently lose nodes.
