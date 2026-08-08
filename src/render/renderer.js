@@ -99,7 +99,14 @@ import {
   detachStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
 } from './contextResourceLifecycle.js';
-import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
+import {
+  assertDynamicBufferOwnerWritable,
+  commitDynamicBufferOwner,
+  createDynamicBufferCoordinator,
+  markDynamicBufferItems,
+  registerDynamicBufferOwner,
+  unregisterDynamicBufferOwner,
+} from './dynamicBufferRanges.js';
 import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
   willEntityEnterAuthoredUpgradeRunway,
@@ -147,6 +154,12 @@ const CONTACT_SHADOW_MATRIX = new THREE.Matrix4();
 const CONTACT_SHADOW_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
 const SHIP_AUX_SHIELD_INITIAL_CAPACITY = 32;
 const SHIP_AUX_NAV_INITIAL_CAPACITY = 64;
+const SHIP_AUX_SHIELD_MATRIX = 0;
+const SHIP_AUX_SHIELD_COLOR = 1;
+const SHIP_AUX_SHIELD_FLASH = 2;
+const SHIP_AUX_SHIELD_BASE = 3;
+const SHIP_AUX_NAV_MATRIX = 0;
+const SHIP_AUX_NAV_COLOR = 1;
 const SHIP_AUX_NAV_GEOMETRY = new THREE.SphereGeometry(0.025, 8, 6);
 SHIP_AUX_NAV_GEOMETRY.dispose = () => {};
 const SHIP_AUX_LOCAL_MATRIX = new THREE.Matrix4();
@@ -455,6 +468,30 @@ function createNavLightAuxMaterial() {
   });
 }
 
+function registerShieldAuxDynamicOwner(scene, mesh) {
+  return registerDynamicBufferOwner(scene, {
+    id: `ship-aux-shield-${mesh.id}`,
+    mesh,
+    attributes: [
+      { name: 'matrix', attribute: mesh.instanceMatrix },
+      { name: 'color', attribute: mesh.instanceColor },
+      { name: 'flash', attribute: mesh.geometry.getAttribute('instanceFlash') },
+      { name: 'base', attribute: mesh.geometry.getAttribute('instanceBase') },
+    ],
+  });
+}
+
+function registerNavAuxDynamicOwner(scene, mesh) {
+  return registerDynamicBufferOwner(scene, {
+    id: `ship-aux-nav-${mesh.id}`,
+    mesh,
+    attributes: [
+      { name: 'matrix', attribute: mesh.instanceMatrix },
+      { name: 'color', attribute: mesh.instanceColor },
+    ],
+  });
+}
+
 function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
   if (!pool || desired <= pool.capacity) return;
   const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : SHIP_AUX_SHIELD_INITIAL_CAPACITY);
@@ -484,8 +521,19 @@ function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
     if (previousFlash) geometry.getAttribute('instanceFlash').array.set(previousFlash.array.subarray(0, preserveCount));
     if (previousBase) geometry.getAttribute('instanceBase').array.set(previousBase.array.subarray(0, preserveCount));
   }
+  let dynamicBufferOwner = null;
+  try {
+    dynamicBufferOwner = registerShieldAuxDynamicOwner(scene, mesh);
+    if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+  } catch (error) {
+    if (dynamicBufferOwner) unregisterDynamicBufferOwner(dynamicBufferOwner);
+    geometry.dispose();
+    mesh.dispose();
+    throw error;
+  }
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
+  pool.dynamicBufferOwner = dynamicBufferOwner;
   if (previous && scene) {
     scene.remove(previous);
     if (previous.geometry && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
@@ -516,8 +564,18 @@ function ensureNavLightAuxCapacity(pool, desired, scene, preserveCount = 0) {
       mesh.instanceColor.array.set(previous.instanceColor.array.subarray(0, preserveCount * 3));
     }
   }
+  let dynamicBufferOwner = null;
+  try {
+    dynamicBufferOwner = registerNavAuxDynamicOwner(scene, mesh);
+    if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+  } catch (error) {
+    if (dynamicBufferOwner) unregisterDynamicBufferOwner(dynamicBufferOwner);
+    mesh.dispose();
+    throw error;
+  }
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
+  pool.dynamicBufferOwner = dynamicBufferOwner;
   if (previous && scene) {
     scene.remove(previous);
     if (previous.geometry && previous.geometry !== SHIP_AUX_NAV_GEOMETRY && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
@@ -559,16 +617,22 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
         const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
         const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
         bubble.updateWorldMatrix(true, false);
-        if (writeInstanceMatrixIfChanged(shieldMesh, shieldCount, bubble.matrixWorld)) shieldMatrixDirty = true;
+        if (writeInstanceMatrixIfChanged(
+          shieldMesh, shieldCount, bubble.matrixWorld,
+          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_MATRIX,
+        )) shieldMatrixDirty = true;
         const color = uniforms && uniforms.uColor && uniforms.uColor.value;
         if (writeInstanceColorIfChanged(
           shieldMesh, shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
+          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_COLOR,
         )) shieldColorDirty = true;
         if (writeScalarAttributeIfChanged(
           flashAttr, shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0,
+          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_FLASH,
         )) shieldFlashDirty = true;
         if (writeScalarAttributeIfChanged(
           baseAttr, shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
+          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_BASE,
         )) shieldBaseDirty = true;
         shieldCount++;
       }
@@ -590,8 +654,14 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       for (let i = 0; i < sourceCount; i++) {
         source.getMatrixAt(i, SHIP_AUX_LOCAL_MATRIX);
         SHIP_AUX_WORLD_MATRIX.multiplyMatrices(source.matrixWorld, SHIP_AUX_LOCAL_MATRIX);
-        if (writeInstanceMatrixIfChanged(navMesh, navCount, SHIP_AUX_WORLD_MATRIX)) navMatrixDirty = true;
-        if (writeInstanceColorIfChanged(navMesh, navCount, SHIP_AUX_COLOR)) navColorDirty = true;
+        if (writeInstanceMatrixIfChanged(
+          navMesh, navCount, SHIP_AUX_WORLD_MATRIX,
+          pool.nav.dynamicBufferOwner, SHIP_AUX_NAV_MATRIX,
+        )) navMatrixDirty = true;
+        if (writeInstanceColorIfChanged(
+          navMesh, navCount, SHIP_AUX_COLOR,
+          pool.nav.dynamicBufferOwner, SHIP_AUX_NAV_COLOR,
+        )) navColorDirty = true;
         navCount++;
       }
     }
@@ -600,30 +670,40 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   const shieldMesh = pool.shield.mesh;
   const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
   const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
-  if (shieldMesh.count !== shieldCount) shieldMesh.count = shieldCount;
   shieldMesh.visible = shieldCount > 0;
-  if (shieldMatrixDirty) shieldMesh.instanceMatrix.needsUpdate = true;
-  if (shieldColorDirty && shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
-  if (shieldFlashDirty) flashAttr.needsUpdate = true;
-  if (shieldBaseDirty) baseAttr.needsUpdate = true;
+  if (pool.shield.dynamicBufferOwner) {
+    commitDynamicBufferOwner(pool.shield.dynamicBufferOwner, shieldCount);
+  } else {
+    if (shieldMesh.count !== shieldCount) shieldMesh.count = shieldCount;
+    if (shieldMatrixDirty) shieldMesh.instanceMatrix.needsUpdate = true;
+    if (shieldColorDirty && shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
+    if (shieldFlashDirty) flashAttr.needsUpdate = true;
+    if (shieldBaseDirty) baseAttr.needsUpdate = true;
+  }
 
   const navMesh = pool.nav.mesh;
-  if (navMesh.count !== navCount) navMesh.count = navCount;
   navMesh.visible = navCount > 0;
-  if (navMatrixDirty) navMesh.instanceMatrix.needsUpdate = true;
-  if (navColorDirty && navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
+  if (pool.nav.dynamicBufferOwner) {
+    commitDynamicBufferOwner(pool.nav.dynamicBufferOwner, navCount);
+  } else {
+    if (navMesh.count !== navCount) navMesh.count = navCount;
+    if (navMatrixDirty) navMesh.instanceMatrix.needsUpdate = true;
+    if (navColorDirty && navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
+  }
 
   pool.entityPasses = 1;
   pool.entitiesVisited = entitiesVisited;
 }
 
-function writeInstanceMatrixIfChanged(mesh, index, matrix, epsilon = 1e-6) {
+function writeInstanceMatrixIfChanged(mesh, index, matrix, dynamicBufferOwner = null, bindingIndex = 0, epsilon = 1e-6) {
   const target = mesh && mesh.instanceMatrix && mesh.instanceMatrix.array;
   const source = matrix && matrix.elements;
   if (!target || !source) return false;
   const offset = index * 16;
   for (let i = 0; i < 16; i++) {
     if (Math.abs(target[offset + i] - source[i]) > epsilon) {
+      assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+      markDynamicBufferItems(dynamicBufferOwner, bindingIndex, index);
       mesh.setMatrixAt(index, matrix);
       return true;
     }
@@ -631,20 +711,24 @@ function writeInstanceMatrixIfChanged(mesh, index, matrix, epsilon = 1e-6) {
   return false;
 }
 
-function writeInstanceColorIfChanged(mesh, index, color, epsilon = 1e-6) {
+function writeInstanceColorIfChanged(mesh, index, color, dynamicBufferOwner = null, bindingIndex = 0, epsilon = 1e-6) {
   const target = mesh && mesh.instanceColor && mesh.instanceColor.array;
   if (!target || !color) return false;
   const offset = index * 3;
   if (Math.abs(target[offset] - color.r) <= epsilon
       && Math.abs(target[offset + 1] - color.g) <= epsilon
       && Math.abs(target[offset + 2] - color.b) <= epsilon) return false;
+  assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+  markDynamicBufferItems(dynamicBufferOwner, bindingIndex, index);
   mesh.setColorAt(index, color);
   return true;
 }
 
-function writeScalarAttributeIfChanged(attribute, index, value, epsilon = 1e-6) {
+function writeScalarAttributeIfChanged(attribute, index, value, dynamicBufferOwner = null, bindingIndex = 0, epsilon = 1e-6) {
   if (!attribute || !attribute.array) return false;
   if (Math.abs(attribute.array[index] - value) <= epsilon) return false;
+  assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+  markDynamicBufferItems(dynamicBufferOwner, bindingIndex, index);
   attribute.setX(index, value);
   return true;
 }
