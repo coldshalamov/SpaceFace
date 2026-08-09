@@ -230,3 +230,70 @@ For physics-heavy work, ask four questions early:
 2. Which existing systems can couple to it without a special case?
 3. What counterplay or failure mode keeps it from becoming a button that wins?
 4. What cue makes mass, force, risk, and ownership legible without requiring hidden telemetry?
+
+For visual work, do not instruct agents to make less. Require the exact authored identity, stable transforms and sockets, appropriate LOD/HLOD, bounded residency, normal-camera review, and one measured route. Placeholder clay is diagnostic only; it is not a shipping style.
+
+## 7. Verification that converges
+
+Choose the proof layer through [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). The
+finite review and validation state machine lives in
+[`00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md). Its essential rules
+are:
+
+- focused deterministic checks precede broad or live probes;
+- every packet names its lab scenario and executor before L3, or records why the claim is not
+  representable headlessly and what smallest lab/schema gap prevents it;
+- a broker manifest uses `requiresScenario` when an eligible lab scenario already exists, binding
+  that scenario's fresh pass to the current candidate before a Browser/Electron claim is minted;
+- each predeclared acceptance cell receives at most one attempt per candidate digest, while a campaign
+  claim may contain several distinct cells;
+- a product, harness, or nondeterminism failure must be reduced to a seconds-scale regression before
+  another affected acceptance attempt;
+- unchanged failure fingerprints block reruns;
+- evidence review closes with discovery, repair, and a causal re-review rather than a succession of
+  open-ended fresh audits; use a separate reviewer when one exists, but a solo integrator may issue
+  the verdict from retained evidence and must disclose that it is a self-review;
+- unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
+- every execution ends `PASS`, `FAIL`, `BLOCKED`, or `DEFERRED` with an exact-revision receipt.
+
+Certification remains fail-fast. A diagnostic route may collect several independent recoverable
+failures in one run, but it must abort when boot, navigation, or observation authority is lost and
+its aggregate report cannot promote acceptance.
+
+The repository already contains a validation broker. New expensive routes should add a manifest and
+use it instead of inventing another retry loop.
+
+## 8. Performance is part of design
+
+Every packet that can add per-frame work, entities, colliders, DOM, particles, materials, textures, asset admission, save payload, or queries must declare a cost model before implementation and report matched before/after evidence at acceptance.
+
+Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density.
+
+Feature code should be naturally bounded:
+
+- no unbounded per-frame scans or append-only journals;
+- no unmeasured or avoidable per-frame allocation in hot paths;
+- no hidden screen continuing expensive render or DOM work;
+- no duplicated asset loads or material programs for equivalent roles;
+- no gameplay entity published before its authored identity and interaction envelope are ready;
+- no save serializer whose cost grows without an explicit cap and evidence.
+
+## 9. Documentation and instruction hygiene
+
+Documentation has a declared lifetime:
+
+- `STABLE` files route and define durable contracts; they contain no live snapshots.
+- `VOLATILE` files contain leases/current state, a refresh base, and an expiry condition.
+- `ACTIVE_PACKET` files guide one admitted packet and retire into evidence when done.
+- `GENERATED` files are rebuilt from code.
+- `HISTORICAL` files can explain a decision but cannot direct implementation unless explicitly reactivated.
+
+An agent's preference is not a repository rule. New automatic instructions or checks are admitted only when they protect determinism, save compatibility, state ownership, security, accessibility, licensing/provenance, a measured performance invariant, or a demonstrated player-facing contract. Do not fossilize taste through CSS-property bans, palette allowlists, fixed technique counts, arbitrary geometry ceilings, source-string scans, or “never do X” prose that lacks an observed failure.
+
+Run `node scripts/check-program-docs.mjs` after changing the program control surfaces.
+
+## 10. Checkoff
+
+The feature agent updates its active packet checklist and returns a receipt. The integrator alone updates global lifecycle/acceptance state, queue fields, generated indexes, and shared status pages after verifying the exact candidate revision.
+
+A receipt must say what changed, what passed, what route was observed, what performance profile was measured, what remains unproven, and which follow-ups were deliberately excluded. “Tests pass” is not a substitute for those facts; neither is a screenshot a substitute for simulation truth.
