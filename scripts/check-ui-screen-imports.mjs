@@ -2,6 +2,7 @@
 // This catches broken relative imports before the dynamic browser registry silently skips a screen.
 import { readFileSync } from 'node:fs';
 import { BINDINGS } from '../src/ui/bindings.js';
+import { controlPrompt } from '../src/ui/controlPrompts.js';
 
 const checks = [
   ['../src/ui/screens/stationHub.js', 'stationHub'],
@@ -95,6 +96,7 @@ const commsSrc = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'u
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
 const mainSrc = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
+const onboardingSrc = readFileSync(new URL('../src/systems/onboarding.js', import.meta.url), 'utf8');
 const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
@@ -281,7 +283,8 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
 // second navigation instruction. Assert only the binding-backed labels hud.js actually renders,
 // then assert the complete flight-control route through controlPrompts.js.
 //
-// `BINDINGS.dock.label` is asserted on controlPromptsSrc below and NOT on hudSrc, for the same
+// `BINDINGS.dock.label` is asserted through the dedicated near-dock route below and NOT on hudSrc,
+// for the same
 // reason as localmap: `40ab48d3` ("Retire permanent flight-control keybind bar") deliberately
 // removed the always-on DOCK/DRILL keycap strip from hud.js — those are general keys learned from
 // Settings/Help, not a hotbar — and handed the dock route to controlPrompts.js. This exemption was
@@ -296,7 +299,6 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !uiRootSrc.includes("controlPrompt('flight', 'kbm')")
   || !uiRootSrc.includes("controlPrompt('flight', 'gamepad')")
   || !controlPromptsSrc.includes("import { BINDINGS } from './bindings.js'")
-  || !controlPromptsSrc.includes('BINDINGS.dock.label')
   || !controlPromptsSrc.includes('BINDINGS.localmap.label')
   || !controlPromptsSrc.includes('BINDINGS.starmap.label')
   || !controlPromptsSrc.includes('BINDINGS.codex.label')) {
@@ -307,6 +309,18 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   fail++;
 } else {
   console.log('ok   flight HUD - dock/localmap/starmap/missionLog/codex labels read the binding registry');
+  ok++;
+}
+const stationKbmPrompt = controlPrompt('station', 'kbm');
+if (!onboardingSrc.includes("import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js'")
+  || !onboardingSrc.includes("if (this._dockControlInRange) mode = 'station'")
+  || !onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')
+  || !stationKbmPrompt.includes(`${BINDINGS.dock.label} dock`)
+  || !stationKbmPrompt.includes(`${BINDINGS.dock.label}/Esc undock`)) {
+  console.log('FAIL station control prompt - near-dock mode must render the binding-backed dock/undock route');
+  fail++;
+} else {
+  console.log('ok   station control prompt - near-dock mode renders the binding-backed dock/undock route');
   ok++;
 }
 {

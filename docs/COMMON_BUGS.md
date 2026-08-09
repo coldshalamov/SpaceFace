@@ -314,7 +314,14 @@ the performance truth.
 - The `typeof window` heat vent in `weapons.js:31` preserves determinism — don't "fix" it.
 - `canonicalStringify` (`simSnapshot.js`) is the hash basis — changing serialization breaks all goldens.
 
-**Current known-stale goldens:** the 47a goldens are stale by design — sim state shape grew (scanner, discovery, tether runtime, mining seams) and Mining 2.0's fracture changed how the recorded tape plays out, tripping the "should exercise projectile collision" coverage precondition. Determinism itself held at every same-shape comparison (`hashEqual:true`, `firstDivergentTick:null`). The re-record is a deliberate named batch (see `design/BUILD_PLAN_2_0.md` "Golden/tape note"). The hashEqual:true comparison (same shape) is the pass bar while pending.
+**Current 47-A golden status (2026-08-09):** both envelopes have deliberate, deterministic
+records. The legacy envelope is `CONTENT_ONLY`. The V3 envelope is intentionally
+`MOTION_CHANGED`: commit `37e4d74c` made spawned ships honor their authored drive families, moving
+14 entity motion fields and 12 corresponding physics-body position/velocity fields, changing
+Massline break timing from tick 173 to 190, and allowing one additional projectile hit. The exact
+causal evidence is recorded in `test/47a.telemetry.v3.expected.json`; this is an accepted gameplay
+change, not a bookkeeping repin. A future red golden still requires the procedure in §10d—same-shape
+determinism alone does not authorize changing an expected hash.
 
 **If your change is a legitimate sim-shape change:** describe in your PR how you preserved or will re-record goldens.
 
