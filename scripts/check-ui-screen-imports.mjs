@@ -280,8 +280,14 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
 // always-mounted control prompt below owns that route so one objective does not compete with a
 // second navigation instruction. Assert only the binding-backed labels hud.js actually renders,
 // then assert the complete flight-control route through controlPrompts.js.
+//
+// `BINDINGS.dock.label` is asserted on controlPromptsSrc below and NOT on hudSrc, for the same
+// reason as localmap: `40ab48d3` ("Retire permanent flight-control keybind bar") deliberately
+// removed the always-on DOCK/DRILL keycap strip from hud.js — those are general keys learned from
+// Settings/Help, not a hotbar — and handed the dock route to controlPrompts.js. This exemption was
+// already applied to localmap in the same pass and dock was missed, which left the check red on
+// master. Do not re-add it here without also restoring the retired strip.
 if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
-  || !hudSrc.includes('BINDINGS.dock.label')
   || !hudSrc.includes('BINDINGS.starmap.label')
   || !hudSrc.includes('BINDINGS.missionLog.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
