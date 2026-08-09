@@ -35,7 +35,7 @@ blender --background --factory-startup --python tools/blender/build_wreck_afterm
 | **Ore freighter** | 6 pieces + 3 state variants | Open ring-frame trunk. Navigable gap **inside** the hull. |
 | **Patrol corvette** | 5 pieces + 2 state variants | Plated monocoque. Carries the `military` / restricted-salvage law. |
 | **Passenger liner** | 5 pieces + 2 state variants | Pressure vessel. Outward decompression petal. |
-| **Aftermath component kit** | 8 components | 8–22 m, sized against `WRECK_RADIUS = 9`. |
+| **Aftermath component kit** | 8 components | Authored TARGET 8–22 m against `WRECK_RADIUS = 9`; **3 of 8 ship outside it** (24.15–27.80 m). See the size-band breach table in §9. |
 | **Shared fragment kit** | 6 fragments | One kit for all families, not one per family. |
 | **Mining barge** | ✗ **not built** | Specified in fiction §5. |
 | **Survey ship** | ✗ **not built** | Specified in fiction §5. |
@@ -85,7 +85,7 @@ and it is the only class flagged `restricted: true`.
 | `fresh` | `*__fresh` variants | Incandescent break metal, live arcing, hard vent jets, debris still close in |
 | `battlefield` | base assets (state `cooling`) | Fires out or guttering, heat surviving only in thick sections |
 | `ancient` | `*__derelict` variants | No heat, no light, no venting; paint chalked, insulation embrittled |
-| `debris` | the **fragment kit** | The no-provenance default; 4–9 m pieces with no story attached |
+| `debris` | the **fragment kit** | The no-provenance default; TARGET 4–9 m pieces with no story attached (`frag_strut_shard` ships at 10.59 m — see §9) |
 | `military` | **corvette family** (any state) | `restricted: true`. `wreck_corvette_forward__stripped_heavy` is evidence of the crime, not a scrap story |
 
 Report entries for corvette assets carry `"wreckClass": "military"` and `"restricted": true`
@@ -100,8 +100,11 @@ directly, so a promotion lane can key off the JSON rather than off filename conv
 - [`visualFactory.js:2887`](../../../src/render/visualFactory.js:2887) builds every runtime
   `type: 'wreck'` entity **procedurally**, driven off `entity.radius`, which
   [`aftermathWrecks.js:23`](../../../src/systems/aftermathWrecks.js:23) pins at `WRECK_RADIUS = 9`.
-  The eight aftermath components are authored at 8–22 m precisely so they are a **drop-in
-  replacement candidate** for that procedural output. Making the swap is a separate, consented
+  The eight aftermath components TARGET 8–22 m precisely so they are a **drop-in
+  replacement candidate** for that procedural output. **Three missed that target** —
+  `aft_weapon_spar` 27.80 m, `aft_engine_section` 24.68 m, `aft_radiator_panel` 24.15 m — so the
+  drop-in claim does not currently hold for those three, and the size-band breach table in §9
+  governs over this paragraph. Making the swap is a separate, consented
   change — it touches a live render path and is not part of this delivery.
 - The three hero families are a **new size class (60–200 m) with no current runtime consumer**.
   Nothing spawns them today. The nearest existing hook is the `landmarkGlb` field used in

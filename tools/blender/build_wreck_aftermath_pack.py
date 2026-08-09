@@ -4,9 +4,14 @@
 SpaceFace has one 700 m hero wreck (the Cathedral) and then a cliff: a single anonymous 65 m
 `place_dead_hulk` carrying every other wreck role in the game, a single anonymous 30 m
 `place_debris_chunk`, and a procedural ~18 m `buildWreck()`. Nothing in the world says "that used to
-be a freighter". This tool builds the missing rows: six identifiable vessel-class hero wrecks with
-separated sections and a state ladder, an ordinary-aftermath component kit so a routine fight can
-leave believable remains, and a shared fragment kit.
+be a freighter". This tool builds the missing rows: THREE identifiable vessel-class hero wrecks with
+separated sections and a state ladder — ore freighter, patrol corvette, passenger liner — an
+ordinary-aftermath component kit so a routine fight can leave believable remains, and a shared
+fragment kit.
+
+The fiction specifies SIX hull families (§5). Three are built here; the mining barge, survey ship and
+smuggler/pirate carrier are authored as specification only, with identity and cause of death but no
+geometry. Do not read "six" anywhere in this file as a count of what exists.
 
 The audit proving none of this duplicates or touches a leased asset is
 assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md. The Wreck Cathedral,
@@ -1839,9 +1844,13 @@ def build_aft_dock_collar(state='stripped'):
 # ===========================================================================
 # SHARED FRAGMENT KIT (fiction §6)
 #
-# SHARED across all six families, not authored per-family: at the size a fragment occupies on
-# screen there is no legibility to be gained from making it family-specific, and six near-identical
-# kits would be six times the review surface for no player-visible gain.
+# SHARED across every family, not authored per-family: at the size a fragment occupies on
+# screen there is no legibility to be gained from making it family-specific, and one near-identical
+# kit per family would be N times the review surface for no player-visible gain.
+#
+# "All six families" is what the FICTION specifies (§5). Only THREE are built — ore freighter,
+# corvette, liner — so this kit is currently shared across three, sized to serve six if the
+# remaining hulls are ever authored. Do not read the six as a count of what exists.
 #
 # The dormant foundry trio (scenery_wreck_fragment_v01..v03) covers similar ideas at 0.5-7 m; see
 # EXISTING_COVERAGE.md §2. These are authored at 4-9 m with drift specs and pack materials, and do
@@ -2603,6 +2612,7 @@ def main():
             path = OUT_SOURCE / f'{vid}.glb'
             sha = export_glb(root, path)
             found, missing = verify_sockets(path, meta.get('sockets') or [])
+            gaps = measure_gaps(root, meta.get('gapProbes') or [])
             report['assets'].append({
                 'id': vid, 'family': meta['family'], 'kind': 'state-variant', 'state': st,
                 'was': meta['was'], 'reads': meta['reads'],
@@ -2613,9 +2623,23 @@ def main():
                 'tris': tri_count(root), 'sizeM': [round(v, 2) for v in size],
                 'sockets': found, 'socketsMissing': missing,
                 'floatingMarks': check_attachment(root),
-                'gaps': [], 'drift': meta.get('drift'),
+                'gaps': gaps, 'drift': meta.get('drift'),
                 'shipFrameOriginM': meta.get('shipFrameOriginM'),
             })
+            # State variants used to compute `missing` and `check_attachment`, hard-code `gaps: []`,
+            # and then drop every result on the floor: nothing was appended to the three failure
+            # arrays. That made socketFailures/gapFailures/floatingMarkFailures VACUOUSLY empty for
+            # 7 of 37 assets - 19% of the pack - while five of those variants ADVERTISE an
+            # INTERACTION_* navigable-gap socket, so the pack's headline traversability claim was
+            # unmeasured on exactly the files a promotion lane consumes. Measure the gaps for real
+            # and aggregate all three like every other asset.
+            if missing:
+                report['socketFailures'].append({'id': vid, 'missing': missing})
+            for g in gaps:
+                if not g['pass']:
+                    report['gapFailures'].append({'id': vid, **g})
+            for f in report['assets'][-1]['floatingMarks']:
+                report['floatingMarkFailures'].append({'id': vid, **f})
             log(f'{vid}: {[round(v, 1) for v in size]} m - {tri_count(root)} tris')
 
     report['renderFailures'] = RENDER_FAILURES
@@ -2629,7 +2653,25 @@ def main():
             json.dumps(report, indent=2) + '\n', encoding='utf-8')
     log(f"built {report['assetCount']} assets - socket failures: "
         f"{len(report['socketFailures'])} - gap failures: {len(report['gapFailures'])}"
-        f" - floating marks: {len(report['floatingMarkFailures'])}")
+        f" - floating marks: {len(report['floatingMarkFailures'])}"
+        f" - render failures: {len(report['renderFailures'])}")
+
+    # FAIL CLOSED. These four arrays were documented as "assertions" while the build exited 0 no
+    # matter what they contained: a rebuild with a missing socket, a 36 m gap on a 28 m hull, or a
+    # lamp floating in vacuum wrote all 37 GLBs, wrote a report, and returned success. Nothing
+    # outside this file checks them either — a repo-wide grep for the four names finds no caller.
+    # An assertion that cannot fail a build is not an assertion, so make them one.
+    failed = {k: report[k] for k in
+              ('socketFailures', 'gapFailures', 'floatingMarkFailures', 'renderFailures')
+              if report.get(k)}
+    if failed:
+        for name, rows in failed.items():
+            log(f'FAIL {name}: {len(rows)}')
+            for row in rows[:10]:
+                log(f'  {row}')
+        raise SystemExit(
+            'wreck pack build failed its own assertions: '
+            + ', '.join(f'{k}={len(v)}' for k, v in failed.items()))
 
 
 if __name__ == '__main__':
