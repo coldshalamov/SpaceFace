@@ -10,8 +10,9 @@ candidateCommit: f66f6768
 ## What this closes
 
 The R5 Ceres reference pocket and its five-minute acceptance harness landed on master on 2026-08-08
-across seven commits — `7fa9452b`, `8efbc4de`, `78300365`, `42d008cd`, `5a67a236`, `f050670b`,
-`0f44b94b` — adding `src/data/sectorActivityPockets.js`, roughly 425 lines to `src/systems/traffic.js`,
+across **twelve** material commits — `7fa9452b`, `8efbc4de`, `2785b131`, `e1b295c2`, `eef2f59a`,
+`7f8941d2`, `78300365`, `be47da74`, `42d008cd`, `5a67a236`, `f050670b`, `0f44b94b` (an earlier draft
+of this receipt named only seven and understated the surface) — adding `src/data/sectorActivityPockets.js`, roughly 425 lines to `src/systems/traffic.js`,
 changes to `src/systems/world.js`, sandbox wiring, and a ~7,400-line acceptance harness under
 `scripts/lib/ceresFiveMinuteAcceptance.mjs`.
 
@@ -34,9 +35,17 @@ check it.** PQ-045 gives that chain a machine-visible home as `dependsOn` edges.
 ## What was admitted
 
 - `tasks[]` row **PQ-045**, `state: ready`, `canonical: ['R5','R5A']`, `aliases: ['R5']`,
-  `dependsOn: ['PQ-020']`. The alias mechanism is the one PQ-020 (`aliases: ['SF-21']`) and PQ-025
+  **`dependsOn: []`**. The alias mechanism is the one PQ-020 (`aliases: ['SF-21']`) and PQ-025
   (`aliases: ['SF-33']`) already use; an earlier reading that the `/^PQ-\d{3}$/` id regex made R5
   unrepresentable was wrong — that regex constrains only the id token.
+
+  An earlier draft of this receipt recorded `dependsOn: ['PQ-020']`, which the queue does not say.
+  The edge was authored and then deliberately removed: PQ-020 is `focused_green`, and a hard
+  dependency on it makes every PQ-045 leaf permanently un-dispatchable. PQ-020 remains the owner of
+  Ceres geography and route; that relationship lives in the PQ-045 `sources` list and in the leaf
+  chain's own ordering, not in a blocking edge.
+- A **`design/program/NOW.md` lease row** for PQ-045, added without disturbing any other lane's rows.
+  A first pass claimed this row while leaving it unwritten; the claim and the row now agree.
 - Ten `dispatchUnits[]` leaves at priorities 250–259, ordered so the cheap high-value repairs precede
   any art promotion.
 
@@ -70,8 +79,9 @@ claimant does not discover it by clobbering.
 
 ## Honest residuals
 
-- `design/program/NOW.md` remains past its expiry; its full refresh is a separate integrator action
-  over roughly 40 lease rows and is listed as A2 in
+- `design/program/NOW.md` now carries a PQ-045 row, but the board as a whole **remains past its
+  expiry**. Adding one row is not a refresh; revalidating roughly 40 lease rows against 300+ commits
+  is a separate integrator action, listed as A2 in
   [`ADMISSION_ROUTE.md`](../../../reference-sector/ADMISSION_ROUTE.md).
 - No acceptance is claimed for the landed R5 code. It is now *admitted*, not *accepted*: the
   five-minute gate is still `PENDING` with both machine-evidence blobs missing.

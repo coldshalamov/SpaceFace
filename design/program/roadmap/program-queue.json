@@ -5037,7 +5037,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-045-retro-admission-REPORT.md"
       ],
-      "brief": "Bind commits 7fa9452b..0f44b94b (sectorActivityPockets.js, traffic.js, world.js, sandbox wiring, the five-minute harness) to a queue row, an active packet and a NOW.md lease. Closed by this admission."
+      "brief": "Bind the twelve material R5 commits 7fa9452b, 8efbc4de, 2785b131, e1b295c2, eef2f59a, 7f8941d2, 78300365, be47da74, 42d008cd, 5a67a236, f050670b, 0f44b94b (sectorActivityPockets.js, traffic.js, world.js, sandbox wiring, the five-minute harness) to a queue row, an active packet and a NOW.md lease. Closed by this admission."
     },
     {
       "id": "PQ-045.choreography-repair",
@@ -5229,7 +5229,7 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "blocker": "The gate has never produced machine evidence and its preflight fails closed on a dirty candidate (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN); it also needs browser-gpu and validation-broker, which no admitted unit currently reserves.",
+      "blocker": "Both machine-evidence blobs are missing and the gate has never run; the capture also needs a clean candidate, because preflight fails closed on a dirty tree (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN). This unit itself reserves browser-gpu and validation-broker, so the mutexes are represented in the control plane; what is missing is a clean tree and its two upstream implementation leaves.",
       "brief": "Both machine-evidence blobs are missing and the gate has never run. Preflight fails closed on a dirty candidate (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN), so this needs a clean tree or a pinned worktree. Fixed seed 47, 18,000 ticks, four-pocket sequence."
     },
     {

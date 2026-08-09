@@ -18,9 +18,10 @@ inferred.
 **The R5 Ceres reference pocket and its five-minute acceptance harness are already on master, and
 were never admitted.**
 
-Seven commits on 2026-08-08 (`7fa9452b`, `8efbc4de`, `78300365`, `42d008cd`, `5a67a236`, `f050670b`,
-`0f44b94b`) added `src/data/sectorActivityPockets.js`, ~425 lines to `src/systems/traffic.js`, changes
-to `src/systems/world.js`, sandbox wiring, and a ~7,400-line acceptance harness. Against that:
+Twelve material R5 commits (`7fa9452b`, `8efbc4de`, `2785b131`, `e1b295c2`, `eef2f59a`, `7f8941d2`,
+`78300365`, `be47da74`, `42d008cd`, `5a67a236`, `f050670b`, `0f44b94b`) added
+`src/data/sectorActivityPockets.js`, ~425 lines to `src/systems/traffic.js`, changes to
+`src/systems/world.js`, sandbox wiring, and a ~7,400-line acceptance harness. Against that:
 
 | Control surface | R5 representation |
 |---|---|
@@ -48,9 +49,15 @@ on unadmitted production code would make every downstream acceptance claim unadm
 | Claim-ready Ceres unit exists | `node scripts/program-dispatch.mjs --next` | `PQ-022.refinery-reauthor-h1` — **no R5 unit exists**; `selectNextPacket` returns `null` |
 | Control plane green | `node scripts/check-program-docs.mjs` | **FAIL, exit 1, 12 errors** |
 | Ceres gate has evidence | `npm run check:ceres:five-minute` | **PENDING** — both machine blobs missing |
-| Fast gate green | `npm run check:baseline` | **FAIL, 8/11 green in 67.5 s** — see §2.1 |
+| Fast gate green | `npm run check:baseline` | **REPAIRED — 11/11 green.** It read FAIL, 8/11 when this section was written; see §2.1 |
 
-### 2.1 `check:baseline` is red on master, and it is not the dirty tree
+> **STATUS, 2026-08-09.** This document was written as a *proposal*, and most of it has since been
+> carried out. Read §5's status column, not the surrounding prose, for what is done: A0, A1, A3–A6
+> A7 and A8 are performed; A2 is **partial** (a PQ-045 row was added to `NOW.md`; the board-wide refresh
+> was not done); A9 remains open. The prose is preserved as the reasoning that produced them,
+> not as a description of current state.
+
+### 2.1 `check:baseline` WAS red on master, and it was not the dirty tree — repaired 2026-08-09
 
 Three links fail: `sim`, `sim-v3`, `ui-screen-imports`.
 
@@ -133,23 +140,23 @@ SF-33 already use. There is no schema obstacle.
 
 ---
 
-## 5. Proposed admission — nine artifacts, in dependency order
+## 5. Admission — ten artifacts, in dependency order
 
 The integrator alone may perform these (`design/program/AGENTS.md:13`;
-`CANONICAL_BUILD_MAP.md:24-27`). Listed as a proposal, not an action.
+`CANONICAL_BUILD_MAP.md:24-27`). Written as a proposal; the Status column records what has since been performed.
 
-| # | Artifact | Kind | Why it is first |
-|---|---|---|---|
-| **A0** | **Repair or evidence-re-record the three `check:baseline` reds** (`sim`, `sim-v3`, `ui-screen-imports`) | repair | **prerequisite to everything below** — until it lands, no packet can attribute its own exit state (§2.1) |
-| A1 | `PACKET_TEMPLATE.md` heading fix | repair | every later packet depends on it (§3) |
-| A2 | `NOW.md` full refresh — `baseCommit` → HEAD, revalidate every lease, resolve the `blender` contradiction | repair | nothing can claim a green control plane until this lands |
-| A3 | `program-queue.json` — new `tasks[]` row **PQ-045**, `aliases:['R5']`, `canonical:['R5A']` | admission | gives R5 an id |
-| A4 | `design/program/roadmap/active/PQ-045.md` from the repaired template | admission | 9 machine-required H2 sections |
-| A5 | Retroactive receipt for `7fa9452b..0f44b94b` | evidence | makes the landed code admitted rather than orphaned |
-| A6 | `dispatchUnits[]` leaves under PQ-045 (below) | admission | the actual claimable work |
-| A7 | A queue unit for the **five-minute Ceres gate** reserving `browser-gpu` + `validation-broker` | admission | today nothing reserves them |
-| A8 | R5 → gate → R8 chain expressed as `dependsOn` on the PQ-045 units | admission | moves the chain out of an unparsed file (§1) |
-| A9 | `CANONICAL_BUILD_MAP.md` stable-route paragraph (PR #91's `CANONICAL_BUILD_MAP_INSERT.md`) | routing | front door |
+| # | Artifact | Kind | Status | Why it is first |
+|---|---|---|---|---|
+| **A0** | **Repair or evidence-re-record the three `check:baseline` reds** (`sim`, `sim-v3`, `ui-screen-imports`) | repair | **DONE** | **prerequisite to everything below** — until it lands, no packet can attribute its own exit state (§2.1) |
+| A1 | `PACKET_TEMPLATE.md` heading fix | repair | **DONE** | every later packet depends on it (§3) |
+| A2 | `NOW.md` full refresh — `baseCommit` → HEAD, revalidate every lease, resolve the `blender` contradiction | repair | **PARTIAL** | nothing can claim a green control plane until this lands |
+| A3 | `program-queue.json` — new `tasks[]` row **PQ-045**, `aliases:['R5']`, `canonical:['R5A']` | admission | **DONE** | gives R5 an id |
+| A4 | `design/program/roadmap/active/PQ-045.md` from the repaired template | admission | **DONE** | 9 machine-required H2 sections |
+| A5 | Retroactive receipt for the twelve material R5 commits (`7fa9452b` … `0f44b94b`) | evidence | **DONE** | makes the landed code admitted rather than orphaned |
+| A6 | `dispatchUnits[]` leaves under PQ-045 (below) | admission | **DONE** | the actual claimable work |
+| A7 | A queue unit for the **five-minute Ceres gate** reserving `browser-gpu` + `validation-broker` | admission | **DONE** | today nothing reserves them |
+| A8 | R5 → gate → R8 chain expressed as `dependsOn` on the PQ-045 units | admission | **DONE** | moves the chain out of an unparsed file (§1) |
+| A9 | `CANONICAL_BUILD_MAP.md` stable-route paragraph (PR #91's `CANONICAL_BUILD_MAP_INSERT.md`) | routing | **OPEN** | front door |
 
 ### Proposed leaf units under PQ-045
 

@@ -28,7 +28,7 @@ worth more to the next lane than a silently dropped one.
 |---|---|---|---|---|---|
 | 1 | NPC Activity Pack — 15 GLBs, 12 occupational families | `assets/incubator/npc_activity_pack/` | yes (`28529c34`) | **no** | yes — `evidence/REVIEW-independent-2026-08-08.md` (controlling) |
 | 2 | Everyday Space Kit — 46 GLBs, 6 families | `assets/incubator/everyday_space_kit/` | yes (`a811d0a8`) | **no** | yes — verdict appended to `evidence/REVIEW-round-1.md` (controlling) |
-| 3 | Wreck & Aftermath Pack — 37 GLBs, 3 of 6 hull families | `assets/incubator/wreck_aftermath_pack/` | **no — intent-to-add only** | **no** | **none — this review is the first** |
+| 3 | Wreck & Aftermath Pack — 37 GLBs, 3 of 6 hull families | `assets/incubator/wreck_aftermath_pack/` | yes (`14074be8`) | **no** | this review, landed with the pack |
 | 4 | Microevent library — 58 events, 8 categories | `design/incubator/microevent_library/` | yes (`b1e7b7a5`) | **no** (data only) | self-audit only (`SYSTEMS_AUDIT.md`) |
 | 5 | VFX NEXT — 12 effect families | `src/vfxnext/` + `_vfxlab.html` | yes (`7933bbde`, `e776bf11`) | **no** (by design) | **none — this review is the first** |
 
@@ -39,7 +39,7 @@ means the honest count of player-facing value delivered by prompts 1–5 is **ze
 value of this pass is deciding which small subset earns the cost of promotion.
 
 The three review gaps are unevenly important. Prompt 3's pack is the one that is *both* unreviewed
-*and* uncommitted, and prompt 5's library is the one that turns out to carry a latent hazard. Those
+*and* undurable at the time of review, and prompt 5's library is the one that carried a latent hazard. Those
 two got the deepest scrutiny below.
 
 ---
@@ -73,8 +73,9 @@ The fix is *not* a new `TRAFFIC_ROLES` entry, as first diagnosed. Job eligibilit
 separate `slot.jobKind` field (`traffic.js:223`), so a slot may carry
 `presentationRole: 'ore_carrier'` while keeping `jobKind: 'hauler'`, needing only new keys in
 `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE` / `WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE`. **But** without a matching
-`TRAFFIC_ROLES` entry there is a silent fallback: `traffic.js:669`
-(`TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler`) hands the actor hauler's ship/team/speed/archetype,
+`TRAFFIC_ROLES` entry there is a silent fallback — `TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler`, at
+`traffic.js:543` / `:759` / `:880` and three further sites (an earlier draft cited `:669`, which is
+inside an unrelated function). It hands the actor hauler's ship/team/speed/archetype,
 `traffic.js:785` labels it "Cargo Hauler", and `src/systems/scanner.js:1341-1348` matches no branch.
 The barge would look new and read as a hauler in every UI surface.
 
@@ -256,19 +257,33 @@ capture evidence backing every budget claim in `VFX_NEXT.md` cannot go stale lou
 
 ---
 
-## 3. Corrections to prompt 1–5 documentation — **all applied**
+## 3. Corrections to prompt 1–5 documentation — status per row
 
 These are the "improve them" actions. All are documentation, builder or presentation-code fixes; none
-touches a GLB. **Every row below has landed**; `check:baseline` is 11/11 green after them.
+touches a GLB. **They did not all land, and an earlier draft of this section claimed they did.** The
+accurate status:
+
+- **Landed:** C1, C3, C5, C9, C10, C11, C12, C13.
+- **Landed but understated when first written:** **C2** — the "predates 21 of 37 GLBs, including every
+  asset governed by its own bands" framing was wrong on both halves (it is 25, and three of the eight
+  breachers predate the doc); the accurate form is *each document predates every asset whose band it
+  commits to*. **C4** — first specified and NOT applied, then applied in a later pass, and only in this
+  revision does it also compute real gap measurements for state variants instead of hard-coding
+  `gaps: []`. **C6** — the "only CAPABILITY row with `first15` dependents" justification was false
+  (six qualify); the cite fix itself is correct and landed.
+- **Deliberately NOT applied, and tracked as debt:** **C7** and **C8** are id *renames*
+  (`sectorZones.slot` → `sectorZones`, `comms.ambientToast` → `comms.ambientLine`). Only the
+  audit-row prose was corrected; the ids still live in `microevent.schema.json` and 14 catalog
+  references, and a "Known label debt" section in `SYSTEMS_AUDIT.md` records the exact counts.
 
 | # | File | Change | Why |
 |---|---|---|---|
 | C1 | `assets/incubator/wreck_aftermath_pack/INTEGRATION.md` | Replace "No KTX2 / Meshopt" with "**No texture data at all** (`images=0`, `textures=0` in all 37); KTX2/Meshopt therefore not yet applicable" | Current wording implies textures exist |
-| C2 | same | Add the eight band breaches as a named table; state that `INTEGRATION.md`/`EXISTING_COVERAGE.md` predate 21 of 37 GLBs | The bands are asserted against numbers the docs never saw |
+| C2 | same | Add the eight band breaches as a named table; state the exact chronology — `INTEGRATION.md` predates **25 of 37** GLBs, and, precisely, **each document predates every asset whose band it commits to** (`INTEGRATION.md` states the component and fragment bands and postdates all 14 of those GLBs; `EXISTING_COVERAGE.md` states the debris band and predates the entire build) | The bands are asserted against numbers the docs never saw. An earlier draft of this row said "21 of 37, including every asset governed by its own bands" — wrong on both halves: it is 25, and three of the eight breachers predate the doc |
 | C3 | same | Add a row: 1,891 meshes / 0 LODs / 0 instancing as a named promotion blocker | Currently unnamed |
 | C4 | `tools/blender/build_wreck_aftermath_pack.py` | Make the three failure arrays fail the build (nonzero exit); include state variants in all three aggregations | "Assertion" that cannot fail is not an assertion |
 | C5 | `assets/incubator/wreck_aftermath_pack/evidence/build-report-{liner,corvette,ore_freighter}.json` | Delete, or add a `superseded: true` field and name them in `INTEGRATION.md` | 13/23 hashes disagree with disk |
-| C6 | `design/incubator/microevent_library/SYSTEMS_AUDIT.md` | Fix `salvage.strip` to name `src/data/salvageActions.js` (`actionForWreck`) and `src/systems/salvageActions.js:33` (`salvagePool`) | Only CAPABILITY row with `first15` exposure |
+| C6 | `design/incubator/microevent_library/SYSTEMS_AUDIT.md` | Fix `salvage.strip`: `actionForWreck` is imported from **`src/data/salvageActions.js`**, not the `src/systems/` file the row cited, and `salvagePool` is at `src/systems/salvageActions.js:33`. The row also credited `salvage:completed` to that module, which never listens for or emits it — it comes from `src/systems/mining.js:897` | The cite landed on no relevant code, and the producer was misattributed. **Not** because it is the only CAPABILITY row with `first15` exposure — an earlier draft said that and it is false, **six rows qualify** |
 | C7 | same | Drop the `.slot` suffix from `sectorZones.slot`; point slot vocabulary at `src/data/sectorActivityPockets.js` | Suffix names nothing |
 | C8 | same | Relabel `comms.ambientToast` → `comms.ambientLine`, cite `comms.js:229` / `comms:popup` | Module is right, presentation name is wrong |
 | C9 | `design/incubator/microevent_library/build-microevent-bible.mjs` | Assert `standard === 18` and `blocked === 5`, or stop calling the tier math "validator-enforced" | Two of four numbers are emergent |
@@ -330,6 +345,7 @@ Ceres has exactly **two** anonymous wreck-visual object slots — `ceres_ambush_
 plus the 704 m Wreck Cathedral, which is a hero site under `PQ-018` and **not** available to this pack.
 Selection is sized to those two slots and their immediate dressing, nothing more.
 
+
 REAUTHOR: `wreck_ore_freighter_hopper`, `deb_ore_freighter_hopper_lid`, `wreck_liner_bow`,
 `wreck_liner_boatbay`, `deb_liner_hull_panel`, `aft_armor_slab`, `frag_grating_sheet`.
 PROXY ONLY: `wreck_liner_drum__derelict`. REJECT 10 (the corvette family entire — its plated-monocoque
@@ -340,7 +356,7 @@ freighter bow set). DEFER 19.
 six-family wreck program out of the reference-sector chunk, and the existence of a half-finished one
 reinforces that ruling rather than overturning it.
 
-### 4.4 VFX — 5 recipes ported, 0 code promoted
+### 4.4 VFX — 5 recipes SELECTED for porting, 0 code promoted
 
 Nothing from `src/vfxnext/` ships as code. What ships is the **recipe** re-implemented against the
 live owner's existing pools.

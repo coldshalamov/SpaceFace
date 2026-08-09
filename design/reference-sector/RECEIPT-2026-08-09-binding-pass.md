@@ -141,24 +141,38 @@ always-on DOCK/DRILL keycap strip from `hud.js` and handed the dock route to `co
 pass exempted `localmap` from the `hudSrc` assertion and missed `dock`. `controlPromptsSrc` is still
 asserted to carry `BINDINGS.dock.label`, so coverage is unchanged.
 
-The 47-A goldens were re-recorded to the evidence standard **the files themselves set**, not
-overwritten:
+> **CORRECTED BY `11b5c73e`. The V3 half of this re-record was wrong, and the paragraph below is
+> retained only as the record of how it went wrong.** Independent review re-ran the comparison with
+> `--flight-system v3` — which I never did — and V3 returns **`MOTION_CHANGED`**, not `CONTENT_ONLY`.
+> The committed truth is: **33,335 → 33,532 fields, CHANGED 40, ADDED 197**, with **14 entity motion
+> fields plus 12 body motion fields moved**, `tether:broken` **173 → 190**, `ship:thrust`
+> **720 → 648**, and `projectile:hit` / `combat:damage` **8 → 9**. Motion did move; the golden's own
+> notes say `MOTION_CHANGED` means **stop**, and I re-recorded through it.
+>
+> The mechanism of my error is worth keeping: every measurement I took was of the **default** flight
+> variant. `sim-golden-diff.mjs` was run with no arguments and `sf-sim inspect` without
+> `--flight-system v3`, and I then wrote a zero-motion claim into **both** goldens. Worse, I recorded
+> `projectile:hit` 8 → 9 and explained it as *"a flight-model change shifted a target track"* — which
+> **is** motion changing — and did not notice that my explanation contradicted my conclusion in the
+> same commit. `11b5c73e` owns the corrected V3 envelope.
+
+The 47-A goldens were re-recorded to the evidence standard **the files themselves set** — correctly
+for the default variant, and, as above, **not** for V3:
 
 1. the `c8ec3cdf` tree was exported with `git archive` and re-run — it **reproduced the prior hash
    exactly**, proving the old envelope was correct and the harness deterministic;
 2. full tick-720 snapshots diffed field by field (33,373 → 33,570 fields): **CHANGED 6, ADDED 197,
-   REMOVED 0**, with **zero** entity `pos`/`vel`/`rot`/`angVel` fields moved and entity count unchanged
-   at 10 — the physics contract is bit-identical;
-3. `scripts/sim-golden-diff.mjs`, the repo's own purpose-built tool named in the golden's notes, was
-   run independently and returned **`VERDICT: CONTENT_ONLY`**, agreeing with the manual diff.
+   REMOVED 0**, with zero entity `pos`/`vel`/`rot`/`angVel` fields moved and entity count unchanged
+   at 10. **This holds for the default variant only.**
+3. `scripts/sim-golden-diff.mjs` returned **`VERDICT: CONTENT_ONLY`** — again, **default variant
+   only**, because it was invoked with no flight-system argument.
 
-What moved: five `$.economy` fields on one commodity at one station; 194 purely additive
-`data.derived.propulsion.*` fields on 6 entities from `37e4d74c`; 3 added story fields. V3 only,
-`projectile:hit` and `combat:damage` 8 → 9 plus their two downstream cues — with **`combat:fire`
-unchanged at 17**, so the same shots were fired and one more connected.
+What moved in the default variant: five `$.economy` fields on one commodity at one station; 194
+purely additive `data.derived.propulsion.*` fields on 6 entities from `37e4d74c`; 3 added story
+fields.
 
-This also closes a question the first pass left open: a clean `git archive` HEAD tree and the dirty
-primary produce the **same** hash, so the concurrent uncommitted lane does not move it.
+The "a clean `git archive` HEAD tree and the dirty primary produce the same hash" observation stands
+for the default variant and was never established for V3.
 
 ## What is now claimable
 
