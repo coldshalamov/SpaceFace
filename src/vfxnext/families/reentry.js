@@ -44,14 +44,23 @@ function heatColor(k) {
 export const reentry = {
   id: 'reentry',
   title: 'Atmospheric reentry',
-  budget: { sparks: 420, smoke: 18, debris: 26, fronts: 2, ribbons: 12, lights: 1 },
+  // Ribbon budget is STEADY-STATE OCCUPANCY and was measured, not guessed. An earlier draft
+  // declared 12 while actually holding ~79: the streamer loop alone ran at 44 Hz with a 1.3 s life
+  // (44 x 1.3 = 57 concurrent), so a SINGLE reentry saturated the whole 64-ribbon pool. Same class
+  // of bug as unbounded light churn — an open-ended sustained spawn rate against a fixed pool.
+  // Rate x lifetime is the number that matters; keep it under the declared figure.
+  budget: { sparks: 420, smoke: 18, debris: 26, fronts: 2, ribbons: 22, lights: 1 },
   _acc: 0,
   _wakeAcc: 0,
   _shedAcc: 0,
+  _puffAcc: 0,
   _capAt: 0,
   _wake: -1,
 
-  begin() { this._acc = 0; this._wakeAcc = 0; this._shedAcc = 0; this._capAt = 0; this._wake = -1; },
+  begin() {
+    this._acc = 0; this._wakeAcc = 0; this._shedAcc = 0; this._puffAcc = 0;
+    this._capAt = 0; this._wake = -1;
+  },
   end(stage) {
     if (this._wake >= 0) stage.ribbons.alive[this._wake] = 0;
     this._wake = -1;
@@ -110,7 +119,7 @@ export const reentry = {
         colorA: 0xffffff, colorB: hot,
         axisX: hx, axisY: hy, axisZ: hz,
         seed: hash01(f.seed, 11), priority: 3,
-        coneCos: -1, thickness: 0.55, mode: MODE_PLANE,
+        thickness: 0.55, mode: MODE_PLANE,
       });
     }
 
@@ -140,7 +149,7 @@ export const reentry = {
       );
     }
 
-    this._wakeAcc += (10 + sev * 34) * dt * stage.quality;
+    this._wakeAcc += (5 + sev * 11) * dt * stage.quality;   // ~16 Hz at peak
     while (this._wakeAcc >= 1) {
       this._wakeAcc -= 1;
       const idx = Math.floor(now * 991);
@@ -151,7 +160,7 @@ export const reentry = {
         y: f.py + (hash01(f.seed, idx + 43) - 0.5) * R,
         z: f.pz + (hash01(f.seed, idx + 44) - 0.5) * R,
         vx: f.vx + _dir[0] * back, vy: f.vy + _dir[1] * back, vz: f.vz + _dir[2] * back,
-        life: 0.5 + sev * 0.8, width: R * (0.16 + sev * 0.22), drag: 0.25,
+        life: 0.35 + sev * 0.45, width: R * (0.16 + sev * 0.22), drag: 0.25,
         colorHead: hot, colorTail: 0x1a0400, priority: 1.5,
       });
     }
@@ -200,14 +209,17 @@ export const reentry = {
           axisZ: hash01(f.seed, idx + 72) - 0.5,
           drag: 0.5, priority: 2.5,
         });
-        // Every shed fragment gets its own burning trail. This is the signature image of reentry
-        // breakup and the reason the ribbon budget for this family is the library's largest.
-        stage.ribbons.spawn({
-          x: f.px, y: f.py, z: f.pz, vx, vy, vz,
-          life: 1.1 + hash01(f.seed, idx + 73) * 0.8,
-          width: R * 0.20, drag: 0.5,
-          colorHead: 0xffe9c0, colorTail: 0x220600, priority: 2.5,
-        });
+        // Trails on ALTERNATE shed fragments. Every fragment having one is the signature image of
+        // reentry breakup, but it is also what pushed this family past the pool on its own; half the
+        // fragments trailing reads the same at gameplay distance and costs half the ribbons.
+        if (hash01(f.seed, idx + 74) < 0.5) {
+          stage.ribbons.spawn({
+            x: f.px, y: f.py, z: f.pz, vx, vy, vz,
+            life: 0.55 + hash01(f.seed, idx + 73) * 0.35,
+            width: R * 0.20, drag: 0.5,
+            colorHead: 0xffe9c0, colorTail: 0x220600, priority: 2.5,
+          });
+        }
         // Cinders trailing the fragment.
         for (let k = 0; k < 3; k++) {
           coneSample(_dir, -hx, -hy, -hz, 0.9, f.seed, idx + 80 + k);
@@ -223,8 +235,17 @@ export const reentry = {
         }
       }
 
-      const puffRate = (sev - 0.55) / 0.45 * 6 * stage.quality;
-      if (hash01(f.seed, Math.floor(now * 60)) < puffRate * dt * 10) {
+      // ACCUMULATOR, not a probability gate. The previous form was
+      //   if (hash01(seed, floor(now*60)) < puffRate * dt * 10)
+      // whose right-hand side reaches 1.0 at peak severity, so the test was ALWAYS true and this
+      // spawned a puff every frame: ~60 Hz against a ~4 s lifetime held 181 puffs where the family
+      // declares 18. Third instance of one bug class in this library (field light churn, reentry
+      // ribbons, this): an unbounded sustained rate against a fixed pool. For a sustained emitter
+      // rate x lifetime is the only number that matters — compute it, do not eyeball it.
+      const puffRate = (sev - 0.55) / 0.45 * 3.2 * stage.quality;   // ~3 Hz x ~3 s = ~10 concurrent
+      this._puffAcc += puffRate * dt;
+      while (this._puffAcc >= 1) {
+        this._puffAcc -= 1;
         coneSample(_dir, -hx, -hy, -hz, 0.5, f.seed, Math.floor(now * 60) + 7);
         stage.smoke.spawn(now, {
           x: f.px - hx * R * 3, y: f.py - hy * R * 3, z: f.pz - hz * R * 3,

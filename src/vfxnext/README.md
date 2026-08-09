@@ -120,13 +120,14 @@ must not break.
 
 ## Running it
 
-Interactive lab (dev server on 8123 via `npm run start`):
+Interactive lab. Use the `sf-verify` port from `.claude/launch.json` (8161, `autoPort: true`) rather
+than 8123, which is the primary dev-server port and is pinned:
 
 ```bash
-node server.js 8123
+node server.js 8161
 ```
 
-then open `http://localhost:8123/_vfxlab.html`. Every control is also a query parameter, so a view is
+then open `http://localhost:8161/_vfxlab.html`. Every control is also a query parameter, so a view is
 a URL. Camera distance defaults to **110 wu — the R1 normal-play band, and the only distance at which
 an effect may be approved.**
 

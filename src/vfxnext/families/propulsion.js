@@ -245,7 +245,7 @@ export const speedExtreme = {
         colorA: 0x9fc4ff, colorB: 0x18306a,
         axisX: hx, axisY: hy, axisZ: hz,
         seed: hash01(f.seed, 99), priority: 1,
-        coneCos: -1, thickness: 0.1, mode: 0,
+        thickness: 0.1, mode: 0,
       });
     }
   },

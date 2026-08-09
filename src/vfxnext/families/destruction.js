@@ -55,7 +55,7 @@ export const destructionLight = {
       colorA: 0xfff4e0, colorB: f.sheathColor,
       axisX: f.hasAxis ? f.ax : 0, axisY: f.hasAxis ? f.ay : 1, axisZ: f.hasAxis ? f.az : 0,
       seed: hash01(f.seed, 2), priority: 5,
-      coneCos: -1, thickness: 0.65, mode: MODE_PLANE,
+      thickness: 0.65, mode: MODE_PLANE,
     });
 
     // 2 — BALLISTIC PIECES. The brief asks for "several ballistic pieces"; several is the right
@@ -223,7 +223,7 @@ export const explosionHeavy = {
         colorA: 0xffffff, colorB: 0xff8a30,
         axisX: ax, axisY: ay, axisZ: az,
         seed: hash01(ff.seed, 2), priority: 9,
-        coneCos: -1, thickness: 0.9, mode: MODE_PLANE,
+        thickness: 0.9, mode: MODE_PLANE,
       });
       // The trailing wave. It must be a genuinely SLOWER, SMALLER second front — not a soft copy of
       // the first at the same radius. Two fronts sharing a radius with a low thickness exponent
@@ -236,7 +236,7 @@ export const explosionHeavy = {
         colorA: 0xff8a2c, colorB: 0x2a0800,
         axisX: ax, axisY: ay, axisZ: az,
         seed: hash01(ff.seed, 3), priority: 7,
-        coneCos: -1, thickness: 0.8, mode: MODE_PLANE,
+        thickness: 0.8, mode: MODE_PLANE,
       });
     });
 
@@ -378,7 +378,7 @@ export const explosionHeavy = {
             axisY: hash01(ff.seed, k + 61) - 0.5,
             axisZ: hash01(ff.seed, k + 62) - 0.5,
             seed: hash01(ff.seed, k + 63), priority: 5,
-            coneCos: -1, thickness: 0.7, mode: MODE_PLANE,
+            thickness: 0.7, mode: MODE_PLANE,
           });
           st.lights.spawn({
             x: dx, y: dy, z: dz, color: 0xff9a40,

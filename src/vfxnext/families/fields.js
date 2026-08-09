@@ -147,7 +147,7 @@ export const fieldAttractor = {
         colorA: 0x2f6cff, colorB: 0xffffff,
         axisX: 0, axisY: 1, axisZ: 0,
         seed: hash01(f.seed, 4), priority: 3,
-        coneCos: -1, thickness: 0.85, mode: MODE_PLANE,
+        thickness: 0.85, mode: MODE_PLANE,
       });
     }
 
@@ -247,7 +247,7 @@ export const fieldRepulsor = {
           colorA: 0xffffff, colorB: 0xff7a1e,
           axisX: _p[0], axisY: _p[1], axisZ: _p[2],
           seed: hash01(f.seed, k + 20), priority: 3,
-          coneCos: -1, thickness: 0.45, mode: MODE_DOME,
+          thickness: 0.45, mode: MODE_DOME,
         });
       }
     }

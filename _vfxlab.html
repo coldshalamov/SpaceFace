@@ -381,10 +381,13 @@ function resetScenario() {
   nextFire = SCENARIOS[current].at ?? 0;
 }
 
+let appliedConcurrent = 1;
+
 function step(dt) {
   const scn = SCENARIOS[current];
   const famId = familyIdOf(scn) || current;
   simTime += dt;
+  appliedConcurrent = scn.kind === 'oneshot' ? P.n : 1;
 
   if (scn.kind === 'oneshot') {
     while (simTime >= nextFire) {
@@ -392,13 +395,12 @@ function step(dt) {
       nextFire += scn.period;
     }
   } else {
-    for (let i = 0; i < P.n; i++) {
-      // Concurrency for sustained families needs distinct hold slots; the stage keys them by id,
-      // so the lab suffixes the id. This is the per-emitter-state limitation called out in
-      // families/propulsion.js made visible rather than hidden.
-      stage.hold(famId, scn.build(simTime, i, rng));
-      if (i > 0) break;
-    }
+    // SUSTAINED FAMILIES ARE SINGLE-INSTANCE. stage.hold keys by family id, and the families carry
+    // per-family emission accumulators, so `concurrent` cannot apply here. Report the applied value
+    // instead of silently ignoring the requested one — otherwise a `dense` capture of a sustained
+    // family looks like a 6x saturation probe while actually testing one instance.
+    appliedConcurrent = 1;
+    stage.hold(famId, scn.build(simTime, 0, rng));
   }
   stage.update(dt, camera);
 }
@@ -536,6 +538,7 @@ if (CAPTURE) {
   syncTitle();
   window.__vfxlabReady = true;
   window.__vfxlabCost = stage.cost();
+  window.__vfxlabApplied = { concurrentRequested: P.n, concurrentApplied: appliedConcurrent, sustained: SCENARIOS[current].kind === 'sustained' };
 } else {
   buildUi();
   syncTitle();

@@ -15,7 +15,7 @@
 // the difference between illustrating physics and inventing it.
 
 import { KIND_FLASH, KIND_SPARK, KIND_EMBER, KIND_PUFF } from '../core/gpuAged.js';
-import { MODE_PLANE } from '../core/solids.js';
+import { MODE_PLANE, MODE_DOME } from '../core/solids.js';
 import { coneSample, hash01, emissionSign } from '../core/force.js';
 
 const _dir = new Float32Array(3);
@@ -70,7 +70,7 @@ export const impactNormal = {
       colorA: 0xfff0d0, colorB: f.sheathColor,
       axisX: nx, axisY: ny, axisZ: nz,
       seed: hash01(f.seed, 2), priority: 2,
-      coneCos: -1, thickness: 0.85, mode: MODE_PLANE,
+      thickness: 0.85, mode: MODE_PLANE,
     });
 
     // 3 — the spall cone. THE read of this family. Tight enough to have a direction, wide enough
@@ -167,7 +167,7 @@ export const impactConcussion = {
       kind: KIND_FLASH, seed: hash01(f.seed, 1), priority: 6,
     });
 
-    // 2 — THE SHOCK DISC. Oriented normal to the force path, wedged toward the direction of travel
+    // 2 — THE SHOCK DISC. Oriented normal to the force path, bowed forward along it
     // when one is known and left as a full disc when only an unoriented axis exists. This is the
     // family's identity; delete it and this becomes a large normal impact.
     const axX = f.hasDir ? f.dx : f.ax;
@@ -181,9 +181,11 @@ export const impactConcussion = {
       colorA: 0xffffff, colorB: f.sheathColor,
       axisX: axX, axisY: axY, axisZ: axZ,
       seed: hash01(f.seed, 3), priority: 6,
-      // Full disc when the sign is unknown; a signed hit narrows into a wedge along the force path.
-      coneCos: f.hasDir ? 0.12 : -1,
-      thickness: 0.75, mode: MODE_PLANE,
+      // THE CAUSALITY BRANCH, made visible. A signed hit bows the front FORWARD along the force
+      // path (DOME); an unoriented contact axis gets a flat, symmetric plate (PLANE) because the
+      // receipt does not license picking a side. Compare the lab's impact_concussion and
+      // impact_collision_axis cells: this is the difference they exist to show.
+      thickness: 0.75, mode: f.hasDir ? MODE_DOME : MODE_PLANE,
     });
 
     // 3 — a second, slower front slightly behind: the pressure wash trailing the leading edge.
@@ -197,7 +199,7 @@ export const impactConcussion = {
         colorA: ff.sheathColor, colorB: 0x120404,
         axisX: axX, axisY: axY, axisZ: axZ,
         seed: hash01(ff.seed, 4), priority: 3,
-        coneCos: -1, thickness: 0.2, mode: MODE_PLANE,
+        thickness: 0.2, mode: MODE_PLANE,
       });
     });
 

@@ -65,7 +65,7 @@ export const masslineLatch = {
       colorA: 0xffffff, colorB: f.sheathColor,
       axisX: f.dx, axisY: f.dy, axisZ: f.dz,
       seed: hash01(f.seed, 3), priority: 5,
-      coneCos: -1, thickness: 0.95, mode: MODE_PLANE,
+      thickness: 0.95, mode: MODE_PLANE,
     });
 
     // 3 — THE TRAVELLING PULSE. Runs ship -> anchor over ~0.2 s. The ribbon substrate walks it
@@ -223,7 +223,7 @@ export const masslineRelease = {
         colorA: 0xffffff, colorB: 0xc03cff,
         axisX: f.dx, axisY: f.dy, axisZ: f.dz,
         seed: hash01(f.seed, e + 10), priority: 4,
-        coneCos: -1, thickness: 0.9, mode: MODE_PLANE,
+        thickness: 0.9, mode: MODE_PLANE,
       });
     }
 

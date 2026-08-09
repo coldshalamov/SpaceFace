@@ -130,7 +130,7 @@ export function inheritedSpeed(f) { return Math.hypot(f.vx, f.vy, f.vz); }
 
 /** Writes an orthonormal basis around the record's axis into `out` (9 floats: right, up, axis).
  *  Allocation-free; `out` is a caller-owned Float32Array(9). The axis is the third row so a family
- *  can build an oriented disc/wedge without constructing a Matrix4. */
+ *  can build an oriented disc without constructing a Matrix4. */
 export function axisBasis(f, out) {
   const ax = f.ax, ay = f.ay, az = f.az;
   // Pick the world axis least aligned with `axis` so the cross product stays well-conditioned.

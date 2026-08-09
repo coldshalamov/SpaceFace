@@ -23,7 +23,7 @@ Code and promotion notes: [`src/vfxnext/README.md`](../../src/vfxnext/README.md)
 | uniform round particle bursts | every matter-emitting family routes through `coneSample()` with a cos-weighted cap; there is no isotropic burst anywhere in the library |
 | weak impacts | impact flash is 75 ms, not 300; the concussion flash *collapses* while the front expands, so two things are never growing at once |
 | tiny effects at normal camera scale | 110 wu is the lab's DEFAULT camera and the only distance at which a capture may approve an effect; near zoom is explicitly diagnostic |
-| same visual language for unrelated phenomena | fronts are axis-oriented meshes, so concussion (wedge normal to force path), repulsor (convex dome, empty centre) and reentry (bow shock across the flow) cannot collapse into one round flash |
+| same visual language for unrelated phenomena | fronts are axis-oriented meshes, so concussion (compression disc normal to the force path), repulsor (convex dome, empty centre) and reentry (bow shock across the flow) cannot collapse into one round flash |
 | insufficient aftermath | embers live 2–6 s and drift on inherited velocity; debris lives 2–6 s; the heavy explosion's last cook-off is at 1.70 s |
 | dark effects lost against dark environments | every family is captured on `bg 0.03` **and** `bg 0.62`; the harness fails a cell that renders empty |
 
@@ -36,34 +36,58 @@ done properly beats nineteen sketched.
 
 From `.devshots/vfxnext/captures.json`, 75 cells, peak live occupancy across the whole sheet:
 
-| substrate | peak | cap | peak cell |
-|---|---:|---:|---|
-| sparks | 960 | 2048 | `explosion_heavy__dense` |
-| smoke | 181 | 256 | `reentry-breakup__normal-dark` |
-| debris | 273 | 384 | `explosion_heavy__dense` |
-| fronts | 12 | 48 | `impact_concussion__dense` |
-| **ribbons** | **64** | **64** | `reentry-breakup__dense` |
-| **lights** | **4** | **4** | `impact_normal__dense` |
+| substrate | peak | cap | peak cell | concurrency applied |
+|---|---:|---:|---|---:|
+| sparks | 960 | 2048 | `explosion_heavy__dense` | ×6 |
+| smoke | 36 | 256 | `explosion_heavy__dense` | ×6 |
+| debris | 273 | 384 | `explosion_heavy__dense` | ×6 |
+| fronts | 12 | 48 | `impact_concussion__dense` | ×6 |
+| ribbons | 36 | 64 | `explosion_heavy__dense` | ×6 |
+| **lights** | **4** | **4** | `impact_normal__dense` | ×6 |
 
 Draw calls attributable to VFX: **5, constant**, independent of effect count.
 
-### Two substrates saturate, and it is reported rather than hidden
+### `dense` does not multiply sustained families — and the manifest says so
 
-At the `dense` condition (six concurrent instances of one family) **ribbons and event lights hit
-their caps.** The arithmetic is straightforward and was not a surprise: reentry declares 12 ribbons
-each, so six of them want 72 against a pool of 64; six impacts want 6 lights against a pool of 4.
+`stage.hold()` keys by family id and the sustained families carry per-family emission accumulators,
+so only ONE instance of a sustained family can be held. The `dense` condition therefore multiplies
+one-shots (impacts, destruction, latch, release) and **leaves sustained families at ×1** (thruster,
+speed, tension, both fields, reentry). Every cell records `concurrentRequested` and
+`concurrentApplied`, so a saturation number can never be misread as a 6× result. `reentry-breakup`'s
+`dense` and `normal-dark` cells are byte-identical, which is the proof.
+
+This matters because it changed a conclusion. An earlier reading of this sheet attributed a 64/64
+ribbon saturation to "six reentries"; the applied concurrency was 1, so **a single reentry was
+saturating the whole pool** — a much worse result, and a real bug rather than an expected limit.
+
+### One bug class, three times
+
+Every sustained emitter is a **rate against a fixed pool**, and steady-state occupancy is
+`rate × lifetime`. Eyeballing the rate produced the same failure three times, and each was only
+visible in the measured sheet:
+
+| where | declared | actual | cause |
+|---|---:|---:|---|
+| field lights | 1 | ~5 | per-frame spawn at 0.09 s life against a pool of 4 |
+| reentry ribbons | 12 | ~79 | streamer loop at 44 Hz × 1.3 s life |
+| reentry smoke | 18 | 181 | a probability gate, `hash01(...) < rate * dt * 10`, whose right side reaches 1.0 at peak severity — **always true**, so it spawned every frame |
+
+All three are fixed and re-measured; the table above is post-fix. The rule that came out of it is
+written into the families: for a sustained emitter, compute `rate × lifetime` against the declared
+budget rather than tuning the rate by eye.
+
+### The remaining saturation is the real one
+
+**Event lights hit 4/4** with six concurrent impacts, and this one is not a bug to fix here.
+`EVENT_LIGHT_POOL_SIZE = 6` in `src/render/vfx.js` is the budget for the **entire live game**; a
+heavy explosion in this library asks for 3. Two heavy explosions plus any other lit effect will not
+fit, and no pool tuning inside this library changes that. It is a live-game budget question the
+integration task has to answer explicitly, and it is the single most likely reason a promotion gets
+rejected.
 
 Saturation degrades by priority eviction — the cheapest, oldest resident dies and the hero event
-keeps its slot — so the failure mode is "an ambient trail is missing", not a stall or a visual
-glitch. But two consequences matter for promotion:
-
-* **Six concurrent reentries is not a supported scenario.** One or two is.
-* **`EVENT_LIGHT_POOL_SIZE = 6` is the real ceiling.** The live game has six lights *in total*. A
-  heavy explosion here asks for 3. Two heavy explosions plus any other lit effect will not fit, and
-  no amount of pool tuning inside this library changes that — it is a live-game budget question that
-  the integration task has to answer explicitly.
-
-Dense is a diagnostic condition, not an acceptance one. It exists to find exactly this.
+keeps its slot — so the failure mode is "an ambient light is missing", not a stall. Dense is a
+diagnostic condition, not an acceptance one. It exists to find exactly this.
 
 ## 3. The five substrates
 
@@ -81,9 +105,9 @@ burning fuel produced a field of small white dots where a fireball belonged.
 
 ## 4. Findings
 
-Five of these were found by looking at gameplay-scale captures, not by reading the code. All five
-produce plausible-looking output that is simply wrong, which is the argument for the capture harness
-existing at all.
+These were found by looking at gameplay-scale captures and at measured pool occupancy, not by reading
+the code. Each produces plausible-looking output that is simply wrong, which is the argument for the
+capture harness existing at all.
 
 **1 — `smoothstep(hi, lo, x)` is undefined in GLSL.** Used in four places to mean "1 at the centre,
 0 at the edge". The spec leaves the result undefined when `edge0 >= edge1`; ANGLE/D3D returns ~0.
@@ -114,7 +138,17 @@ and 10 large puffs all produced the same pale translucent dome. Heavy-explosion 
 small wisps and the fireball body is carried by `KIND_FIRE` cores instead. **Anyone adding a smoke
 plume later will reach for the same wrong model.**
 
-**6 — the heavy explosion had a 400 ms hole in the middle of itself.** Flash died at 0.16 s, first
+**6 — the front's "directional wedge" was geometrically incoherent.** It faded the disc toward a
+force direction measured as `vLocalDir.x` — the ring's local `+right`, which comes from
+`cross(worldUp, axis)` and is an ARBITRARY in-plane reference with no relation to the force path.
+Worse, the disc already lies in the plane *perpendicular* to the force, so no sector of it can point
+along the force at all. Removed. The signed/unsigned distinction is now carried by MODE instead: a
+signed receipt bows the front FORWARD along the force path (`MODE_DOME`), an unoriented axis gets a
+flat symmetric plate (`MODE_PLANE`). Compare the lab's `impact_concussion` and
+`impact_collision_axis` cells — the unsigned one emits both ways about the axis, the signed one
+biases along it.
+
+**7 — the heavy explosion had a 400 ms hole in the middle of itself.** Flash died at 0.16 s, first
 secondary fired at 0.55 s, and nothing carried the interval. A `COMBUSTION` beat at 0.10 s now does.
 Found by reading the beat sheet against a capture, and it is the reason the beat sheet is written out
 as a table in the source.
@@ -127,7 +161,7 @@ counted against the live `EVENT_LIGHT_POOL_SIZE = 6`.
 | # | family | primary form | motion grammar | causality inputs | sparks | debris | ribbons | lights |
 |---|---|---|---|---|---:|---:|---:|---:|
 | 1 | `impact_normal` | spall cone + contact ring on the surface | 75 ms flash, cone opposing the projectile, embers persist ~1 s | `dir` signed, `v` inherited, surface normal | 34 | 4 | 0 | 1 |
-| 2 | `impact_concussion` | **compression front** normal to the force path | flash collapses while the front expands; second slower wash behind | `dir` **or** `axis`, `impulse` drives debris kick | 62 | 14 | 4 | 1 |
+| 2 | `impact_concussion` | **compression front** normal to the force path, bowed forward when the direction is signed | flash collapses while the front expands; second slower wash behind | `dir` **or** `axis`, `impulse` drives debris kick | 62 | 14 | 4 | 1 |
 | 3 | `destruction_light` | breakup + engine flare-out | 8 ballistic pieces in a size ladder; drive over-runs along the hull's own heading, then cuts | `v` inherited, `dir` if the lethal receipt has one | 70 | 22 | 8 | 1 |
 | 4 | `explosion_heavy` | 8-beat sheet, not one sprite | flash → front → combustion → breakup → plume → 3 weakening offset secondaries → embers | as above; every beat carries the same record, so the whole event travels with the wreck | 220 | 46 | 10 | 3 |
 | 5 | `thruster_boost` | plume whose **structure** changes at the boost knee | cone narrows, exhaust accelerates, shock beads appear, turbulence rises — three separate channels | `severity` = throttle, `dir` = thrust, `v` | 170 | 0 | 2 | 1 |
@@ -136,8 +170,8 @@ counted against the live `EVENT_LIGHT_POOL_SIZE = 6`.
 | 8 | `massline_tension` | a line that stays a line | width moves only 1.0×→1.35×; load is carried by core brightness, shiver frequency and shed sparks | `impulse` = tension 0..1 | 90 | 0 | 2 | 0 |
 | 9 | `massline_release` | snap at both ends + recoil along the line | burst aimed by **retained velocity**, streak length scaling with it | `v` retained, `impulse` = tension at break | 84 | 0 | 4 | 1 |
 | 10 | `field_attractor` | concave intake, compact framed anchor, **contracting** ring | tangential velocity + centripetal acceleration = a real decaying arc; tracers grow as they crowd inward | `pos`, `radius`, `severity` | 300 | 0 | 0 | 1 |
-| 11 | `field_repulsor` | convex dome, **clear centre**, outward ribs | zero tangential component, outward acceleration = straight radial divergence; tracers thin as they leave | `pos`, `radius`, `severity` | 300 | 0 | 3 | 1 |
-| 12 | `reentry` | standing bow shock ahead of the hull | severity ramp 0→1 over ~22 s: wake lengthens before anything brightens; shedding only past 0.55 | `v` = **relative** velocity, `severity` = ramp | 420 | 26 | 12 | 1 |
+| 11 | `field_repulsor` | convex dome, **clear centre**, outward ribs | zero tangential component, outward acceleration = straight radial divergence; tracers thin as they leave | `pos`, `radius`, `severity` | 300 | 0 | 0 | 1 |
+| 12 | `reentry` | standing bow shock ahead of the hull | severity ramp 0→1 over ~22 s: wake lengthens before anything brightens; shedding only past 0.55 | `v` = **relative** velocity, `severity` = ramp | 420 | 26 | 22 | 1 |
 
 Families 10 and 11 are the library's legibility test: same volume, same cost, same substrates. Their
 motions come from different physics (centripetal vs divergent acceleration), not different art, so

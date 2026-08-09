@@ -150,6 +150,7 @@ async function main() {
       await page.goto(url, { waitUntil: 'load' });
       await page.waitForFunction(() => window.__vfxlabReady === true, null, { timeout: READY_TIMEOUT_MS });
       const cost = await page.evaluate(() => window.__vfxlabCost);
+      const applied = await page.evaluate(() => window.__vfxlabApplied);
       const buf = await page.screenshot({ path: file, type: 'png' });
 
       const errs = consoleErrors.slice(before);
@@ -164,7 +165,12 @@ async function main() {
       cells.push({
         cell: name, family: entry.fx, condition: condition.id,
         acceptanceView: condition.acceptance,
-        t: entry.t, cam: condition.cam, bg: condition.bg, concurrent: condition.n,
+        t: entry.t, cam: condition.cam, bg: condition.bg,
+        concurrentRequested: condition.n,
+        // Sustained families are single-instance (stage.hold keys by id), so `dense` does not
+        // multiply them. Recorded so a saturation number is never misread as a 6x result.
+        concurrentApplied: applied ? applied.concurrentApplied : condition.n,
+        sustained: applied ? applied.sustained : false,
         note: entry.note,
         url: url.replace(server.baseUrl, '{server}'),
         file: path.relative(ROOT, file).replace(/\\/g, '/'),

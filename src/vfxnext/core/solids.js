@@ -170,17 +170,15 @@ const FRONT_VERT = /* glsl */`
   attribute vec2 aSize;   // x = radius at birth, y = radius at death
   attribute vec3 aColorA;
   attribute vec3 aColorB;
-  attribute vec4 aParams; // x = coneCos (-1 = full disc), y = seed, z = thickness, w = mode
+  attribute vec4 aParams; // x = unused, y = seed, z = thickness, w = mode
   attribute vec3 aAxis;   // front normal — the force path
 
   varying float vAcross;   // 0 at the inner rim, 1 at the outer rim — computed, NOT from uv
   varying vec3  vColor;
   varying float vAge;
   varying float vAlpha;
-  varying float vConeCos;
   varying float vThick;
   varying float vMode;
-  varying vec3  vLocalDir;
 
   // RingGeometry's inner radius, mirrored here. THREE.RingGeometry does NOT emit radial UVs — it
   // emits a planar (x,y)->[0,1]^2 projection — so reading uv.x as "across the annulus" turns the
@@ -195,7 +193,7 @@ const FRONT_VERT = /* glsl */`
     vAge = age;
     if (age < 0.0 || age > 1.0) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); vAlpha = 0.0; return; }
     vAlpha = 1.0;
-    vConeCos = aParams.x; vThick = aParams.z; vMode = aParams.w;
+    vThick = aParams.z; vMode = aParams.w;
 
     vec3 axis = normalize(aAxis + vec3(1e-5));
     vec3 up = abs(axis.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
@@ -209,13 +207,13 @@ const FRONT_VERT = /* glsl */`
     // The ring geometry is authored in XY with |position| in [inner, 1].
     vec2 rc = position.xy;
     float rr = length(rc);
-    vec2 dirXY = rr > 1e-5 ? rc / rr : vec2(1.0, 0.0);
-    vLocalDir = vec3(dirXY, 0.0);
     vAcross = clamp((rr - RING_INNER) / (1.0 - RING_INNER), 0.0, 1.0);
 
-    // MODE 1 = dome: lift the rim along the axis so the front reads as a convex pressure shell
-    // rather than a flat plate. This is the Repulsor's authored form (bible §6: convex dome,
-    // empty centre, outward ribs).
+    // MODE 1 = dome: lift the rim along the axis so the front bows FORWARD along the force path,
+    // reading as a convex pressure shell rather than a flat plate. This is the Repulsor's authored
+    // form (bible §6: convex dome, empty centre, outward ribs), and it is also how a SIGNED impact
+    // is distinguished from an unoriented one: bowed = the receipt knew which way the force went,
+    // flat and symmetric = it did not.
     float dome = vMode > 0.5 ? (1.0 - rr * rr) * radius * 0.55 * ease : 0.0;
 
     vec3 wp = aOrigin
@@ -233,10 +231,8 @@ const FRONT_FRAG = /* glsl */`
   varying vec3  vColor;
   varying float vAge;
   varying float vAlpha;
-  varying float vConeCos;
   varying float vThick;
   varying float vMode;
-  varying vec3  vLocalDir;
 
   uniform float uIntensity;
 
@@ -254,15 +250,14 @@ const FRONT_FRAG = /* glsl */`
     float k = mix(3.0, 13.0, vThick);
     float wall = pow(across, k) * (1.0 - smoothstep(0.955, 1.0, across));
 
-    // Directional wedge: fade the front away from the force path. coneCos = -1 leaves a full disc.
-    float wedge = 1.0;
-    if (vConeCos > -0.999) {
-      float c = vLocalDir.x; // angle around the ring vs the +right reference
-      wedge = smoothstep(vConeCos - 0.35, vConeCos + 0.15, c);
-    }
-
+    // NO DIRECTIONAL WEDGE. An earlier version faded the front toward a "force direction" measured
+    // as vLocalDir.x — the ring's local +right, which comes from cross(worldUp, axis) and is an
+    // ARBITRARY in-plane reference with no relation to the force path. Worse, the disc already lies
+    // in the plane perpendicular to the force, so no sector of it can point along the force at all.
+    // The signed/unsigned distinction is carried by MODE (bowed forward vs flat) instead, which is
+    // geometrically coherent and reads at gameplay distance.
     float fade = pow(1.0 - vAge, 1.7) * smoothstep(0.0, 0.06, vAge);
-    float a = wall * wedge * fade * uIntensity;
+    float a = wall * fade * uIntensity;
     if (a <= 0.003) discard;
     // Hot leading edge, coloured body. The white rim line is what makes the front read at 110 WU;
     // across peaks at the outer edge, so the whiteness belongs there, not in the middle.
@@ -272,8 +267,13 @@ const FRONT_FRAG = /* glsl */`
   }
 `;
 
-/** Front shapes. PLANE is a flat compression disc (concussion, contact). DOME lifts the rim along
- *  the axis into a convex pressure shell (repulsor, per bible §6 "convex dome, empty centre"). */
+/** Front shapes, and the ONLY way this substrate expresses direction.
+ *
+ *  PLANE — a flat compression disc, symmetric about its axis. Correct when the receipt supplies an
+ *          UNORIENTED axis (`combat:collisionConsequence`) and picking a side would be invented.
+ *  DOME  — the rim lifts along +axis into a convex shell bowed FORWARD along the force path.
+ *          Correct when the receipt supplies a signed direction, and the authored form for the
+ *          repulsor (bible §6: "convex dome, empty centre"). */
 export const MODE_PLANE = 0;
 export const MODE_DOME = 1;
 
@@ -292,7 +292,7 @@ export function createFrontSubstrate(capacity = 48) {
   sub.mesh.renderOrder = 11;
 
   // The generic substrate packs (kind, seed, spin, drag) into aParams; the front shader reads that
-  // same vec4 as (coneCos, seed, thickness, mode). Rather than make every family remember the
+  // same vec4 as (unused, seed, thickness, mode). Rather than make every family remember the
   // aliasing, front spawns go through a named entry point. Fields are copied explicitly — an object
   // spread here would put an allocation back into the spawn path we just spent a file avoiding.
   sub.spawnFront = function spawnFront(now, o) {
@@ -305,7 +305,7 @@ export function createFrontSubstrate(capacity = 48) {
       axisX: o.axisX, axisY: o.axisY, axisZ: o.axisZ,
       priority: o.priority || 0,
       // aParams aliasing, in one place:
-      kind: o.coneCos === undefined ? -1 : o.coneCos,  // -1 = full disc, else cos of the wedge
+      kind: 0,                                          // unused by the front shader
       seed: o.seed || 0,
       spin: o.thickness === undefined ? 0.5 : o.thickness, // 0 = soft wash, 1 = hard wall
       drag: o.mode === undefined ? MODE_PLANE : o.mode,
