@@ -61,6 +61,7 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
@@ -99,6 +100,86 @@ function ceresActivitySlot(slotId) {
   }
   return null;
 }
+
+function ceresActivityActorDescriptor(slotId) {
+  for (const pocket of CERES_ACTIVITY_POCKETS) {
+    for (const slot of pocket.actorSlots) {
+      if (slot && slot.id === slotId) return { pocket, slot };
+    }
+  }
+  return null;
+}
+
+// PQ-045 first split: only these five already-materialized, traffic-owned relationships gain a
+// physical target. This is intentionally not a generic targetRef interpreter. `activity:*`,
+// `actor:*`, and the tender's not-yet-materialized service berth remain authored-route fallbacks.
+const CERES_REAL_TARGET_SPECS = Object.freeze([
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_hauler',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_hauler',
+    routeId: 'ceres_refinery_freight_loop',
+    jobKind: NPC_JOB_KIND.HAULER,
+    waypointId: 'refinery_cargo_approach',
+    targetRef: 'object:ceres_refinery_cargo_pod',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_refinery_cargo_pod',
+    standoffKind: 'fixed',
+    standoffWU: 24,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_hauler',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_hauler',
+    routeId: 'ceres_refinery_freight_loop',
+    jobKind: NPC_JOB_KIND.HAULER,
+    waypointId: 'refinery_station_approach',
+    targetRef: 'dest:station_ceres',
+    entityType: 'station',
+    identityField: 'stationId',
+    identityValue: 'station_ceres',
+    standoffKind: 'dock',
+    standoffWU: 72,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_seam_miner',
+    worldRecordSlotId: 'ceres:activity:ceres_seam_miner',
+    routeId: 'ceres_seam_extraction_loop',
+    jobKind: NPC_JOB_KIND.MINER,
+    waypointId: 'seam_miner_ore_face',
+    targetRef: 'field:slot:ceres_seam_ore_clast',
+    entityType: 'asteroid',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_seam_ore_clast',
+    standoffKind: 'collision',
+    standoffWU: 30,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_cathedral_salvor',
+    worldRecordSlotId: 'ceres:activity:ceres_cathedral_salvor',
+    routeId: 'ceres_cathedral_salvage_loop',
+    jobKind: NPC_JOB_KIND.SALVOR,
+    waypointId: 'cathedral_salvor_shard',
+    targetRef: 'object:ceres_cathedral_grave_shard',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_cathedral_grave_shard',
+    standoffKind: 'fixed',
+    standoffWU: 32,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_cathedral_salvor',
+    worldRecordSlotId: 'ceres:activity:ceres_cathedral_salvor',
+    routeId: 'ceres_cathedral_salvage_loop',
+    jobKind: NPC_JOB_KIND.SALVOR,
+    waypointId: 'cathedral_salvor_hulk',
+    targetRef: 'world-site:world_site_wreck_cathedral',
+    entityType: 'fx',
+    identityField: 'worldRecordId',
+    identityValue: 'world_site_wreck_cathedral/root',
+    standoffKind: 'fixed',
+    standoffWU: 48,
+  }),
+]);
 
 const CERES_ESCORT_SLOT = ceresActivitySlot(CERES_ESCORT_SLOT_ID);
 const CERES_ESCORT_WARD_SLOT = ceresActivitySlot(CERES_ESCORT_WARD_SLOT_ID);
@@ -199,6 +280,7 @@ export const npcJobsRuntime = {
     this.registry = ctx.registry;
     this._ensureState();
     this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
     this._threatQueries = createNearestEntityQueryService(this.state, {
       entityType: 'ship',
       team: 1,
@@ -225,22 +307,38 @@ export const npcJobsRuntime = {
       // job bag (saveSystem restore step 9 versus step 13). The earlier sector:enter therefore
       // cannot see those freshly restored virtual jobs. Re-run the same bounded relink pass after
       // every owner has deserialized and the live world-record hulls are already present.
-      this.bus.on('save:loaded', () => {
+      this._onSaveLoadedRelink = () => {
         const sectorId = this.state.world && this.state.world.currentSectorId;
         if (sectorId) this._onSectorEnter({ sectorId });
+      };
+      this.bus.on('save:loaded', this._onSaveLoadedRelink);
+      this.bus.on('save:restoring', () => {
+        // Traffic owns the exact legacy-R5 targetRef adoption and registers after this runtime.
+        // Move only this relink listener to the tail before a real Continue, so every owner has
+        // restored/adopted canonical state before `_tryRelink` performs its pure validation. The
+        // relink itself remains synchronous with save:loaded and still precedes no mutation of its
+        // own unless the now-canonical actor/job/route predicates pass.
+        this.bus.off('save:loaded', this._onSaveLoadedRelink);
+        this.bus.on('save:loaded', this._onSaveLoadedRelink);
       });
       // Physics publishes the hash before several later systems may spawn. Keep those stable IDs as
       // one-tick candidates so this owner sees the same live hulls the former entityList scan saw.
-      this.bus.on('entity:spawned', (p) => this._threatQueries.recordSpawn(p || {}));
+      this.bus.on('entity:spawned', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordSpawn(payload);
+        this._onCeresRealTargetSpawn(payload);
+      });
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
       this.bus.on('entity:killed', (p) => {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
+        this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
       this.bus.on('entity:destroyed', (p) => {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
+        this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
     }
@@ -323,6 +421,670 @@ export const npcJobsRuntime = {
     return null;
   },
 
+  // ── transient exact-Ceres real-target authority ─────────────────────────────────────────────
+  // Five fixed relationships are admitted. Each retains exact object identities only; nothing in
+  // this cache is serialized. Entity scans happen only while binding/rebinding at lifecycle seams,
+  // never in the steady `_drive` tick.
+  _resetCeresRealTargetAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    this._ceresRealTargetAuthority = {
+      seed,
+      bindings: CERES_REAL_TARGET_SPECS.map((spec) => {
+        const candidate = ceresActivityActorDescriptor(spec.actorSlotId);
+        const descriptor = candidate
+          && candidate.slot.worldRecordSlotId === spec.worldRecordSlotId
+          && candidate.slot.jobKind === spec.jobKind
+          && candidate.slot.route && candidate.slot.route.id === spec.routeId
+          ? candidate
+          : null;
+        const worldRecordId = descriptor
+          ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY,
+              descriptor.slot.worldRecordSlotId)
+          : null;
+        return {
+          spec,
+          descriptor,
+          worldRecordId,
+          jobId: worldRecordId ? `job:${worldRecordId}` : null,
+          entryRef: null,
+          jobRef: null,
+          routeRef: null,
+          routeWaypointRefs: null,
+          canonicalRoutePositions: null,
+          canonicalSpeed: null,
+          waypointRef: null,
+          actorRef: null,
+          actorDataRef: null,
+          terminalEntryRef: null,
+          terminalJobRef: null,
+          terminalActorRef: null,
+          terminalActorDataRef: null,
+          targetRef: null,
+          targetDataRef: null,
+          targetMatches: 0,
+          ambiguous: false,
+          actorAmbiguous: false,
+          actorAmbiguousRefs: null,
+          targetAmbiguous: false,
+        };
+      }),
+    };
+    return this._ceresRealTargetAuthority;
+  },
+
+  _ensureCeresRealTargetAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const authority = this._ceresRealTargetAuthority;
+    return authority && authority.seed === seed
+      ? authority
+      : this._resetCeresRealTargetAuthority();
+  },
+
+  _ceresRealTargetActorBinding(worldRecordId) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.worldRecordId === worldRecordId) return binding;
+    }
+    return null;
+  },
+
+  _ceresRealTargetJobBinding(jobId) {
+    if (!jobId) return null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId === jobId) return binding;
+    }
+    return null;
+  },
+
+  _hasUniqueCeresRealTargetActor(entity, worldRecordId) {
+    if (!this._ceresRealTargetActorBinding(worldRecordId)) return true;
+    let count = 0;
+    let match = null;
+    for (const candidate of this.state.entityList || []) {
+      if (!candidate || candidate.alive === false || !candidate.data
+        || candidate.data.worldRecordId !== worldRecordId
+        || this.state.entities?.get(candidate.id) !== candidate) continue;
+      count++;
+      if (count === 1) match = candidate;
+      if (count > 1) return false;
+    }
+    return count === 1 && match === entity && this.state.entities?.get(entity.id) === entity;
+  },
+
+  _collectCeresRealTargetActorCandidates(worldRecordId) {
+    const candidates = [];
+    for (const candidate of this.state.entityList || []) {
+      if (!candidate || candidate.alive === false || !candidate.data
+        || candidate.data.worldRecordId !== worldRecordId
+        || this.state.entities?.get(candidate.id) !== candidate) continue;
+      candidates.push(candidate);
+      // Two exact refs are sufficient: only a two-way ambiguity can become unique after one
+      // deletion. Larger malicious duplicate sets stay fail-closed until a retained contender is
+      // removed and the bounded lifecycle seam re-counts them.
+      if (candidates.length === 2) break;
+    }
+    return candidates;
+  },
+
+  _markCeresRealTargetActorAmbiguous(worldRecordId, candidates = null) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    const contenderRefs = candidates || this._collectCeresRealTargetActorCandidates(worldRecordId);
+    for (const binding of authority.bindings) {
+      if (binding.worldRecordId === worldRecordId) {
+        // Ambiguity must immediately disable every movement/target cache, but it does not transfer
+        // terminal cleanup. Preserve only an identity that was admitted before the collision and
+        // still proves the exact current canonical actor without consulting route shape.
+        const retainTerminalAuthority = this._hasExactCeresRealTargetTerminalIdentity(
+          binding,
+          binding.terminalEntryRef,
+          binding.terminalActorRef,
+        );
+        this._clearCeresRealTargetBinding(binding, !retainTerminalAuthority);
+        binding.ambiguous = true;
+        binding.actorAmbiguous = true;
+        // Core's real destruction event is id/type-only and runs after Map deletion. Retain these
+        // bounded seam-time objects so even a malformed wrong-type contender can identify the one
+        // removal that may resolve ambiguity, without scanning on unrelated projectile deaths.
+        binding.actorAmbiguousRefs = contenderRefs;
+      }
+    }
+  },
+
+  _worldRecordAllowsCeresJobActor(worldRecordId) {
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    const record = records && records[worldRecordId];
+    if (!record) return true;
+    return record.recordId === worldRecordId
+      && record.kind === RECORD_KIND.CONVOY
+      && record.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && record.alive !== false
+      && record.outcome !== 'destroyed'
+      && record.outcome !== 'defeated';
+  },
+
+  _isExactCeresRealTargetActor(binding, entity, requireJobId = false) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    if (!binding || !slot || !entity || entity.alive === false || entity.type !== 'ship'
+      || !entity.data || this.state.entities?.get(entity.id) !== entity) return false;
+    const data = entity.data;
+    return data.worldRecordId === binding.worldRecordId
+      && slot.id === binding.spec.actorSlotId
+      && slot.worldRecordSlotId === binding.spec.worldRecordSlotId
+      && slot.jobKind === binding.spec.jobKind
+      && slot.route && slot.route.id === binding.spec.routeId
+      && data.identityKey === binding.spec.worldRecordSlotId
+      && data.activityActorSlotId === slot.id
+      && data.ceresActivityCast === true
+      && data.ceresActivityJobOwned === true
+      && (!requireJobId || data.jobId === binding.jobId)
+      && this._hasExactCeresSectorAuthority(entity)
+      && this._worldRecordAllowsCeresJobActor(binding.worldRecordId);
+  },
+
+  _isCanonicalCeresRealTargetRoute(binding, route, speed) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const pocket = descriptor && descriptor.pocket;
+    const marks = slot && slot.route && slot.route.marks;
+    if (!binding || !slot || !pocket || !slot.route
+      || slot.id !== binding.spec.actorSlotId
+      || slot.worldRecordSlotId !== binding.spec.worldRecordSlotId
+      || slot.jobKind !== binding.spec.jobKind
+      || slot.route.id !== binding.spec.routeId
+      || !Number.isFinite(slot.route.durationS) || slot.route.durationS <= 0
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(route) || route.length !== marks.length) return false;
+    let x0 = 0;
+    let z0 = 0;
+    let x1 = 0;
+    let z1 = 0;
+    let ownsTuple = false;
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+      const expected = sectorLocalToGlobalForSector({
+        x: pocket.activityAnchor.localPos.x + mark.offset.x,
+        z: pocket.activityAnchor.localPos.z + mark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (waypoint.pos.x !== expected.x || waypoint.pos.z !== expected.z) return false;
+      if (index === 0) {
+        x0 = expected.x;
+        z0 = expected.z;
+      } else {
+        x1 = expected.x;
+        z1 = expected.z;
+      }
+      if (waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) ownsTuple = true;
+    }
+    const canonicalSpeed = Math.hypot(x1 - x0, z1 - z0) / slot.route.durationS;
+    return ownsTuple && Number.isFinite(canonicalSpeed) && canonicalSpeed > 0
+      && speed === canonicalSpeed;
+  },
+
+  _isCanonicalCeresRealTargetSpec(binding, spec) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    return !!slot && !!spec
+      && spec.kind === binding.spec.jobKind
+      && spec.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && this._isCanonicalCeresRealTargetRoute(binding, spec.route, spec.speed);
+  },
+
+  _hasExactCeresRealTargetEntryIdentity(binding, entry, entity, requireMaterialized = true) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    const job = entry && entry.job;
+    return !!binding && !!slot && !!entry && !!job && !!entity
+      && job.schema === NPC_JOB_SCHEMA && job.id === binding.jobId
+      && job.kind === slot.jobKind && job.corrupt !== true
+      && (requireMaterialized ? job.materialized === true : job.materialized === false)
+      && entry.kind === slot.jobKind && entry.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && entry.worldRecordId === binding.worldRecordId
+      && (requireMaterialized
+        ? (entry.entityId === entity.id && entity.data?.jobId === binding.jobId)
+        : (entry.entityId == null && entity.data?.jobId == null))
+      && this._byId()[binding.jobId] === entry
+      && this._isExactCeresRealTargetActor(binding, entity, requireMaterialized);
+  },
+
+  _hasExactCeresRealTargetRetainedActor(binding, entry, entity) {
+    return !!binding && !!entry && !!entry.job && !!entity && !!entity.data
+      && binding.entryRef === entry
+      && binding.jobRef === entry.job
+      && binding.actorRef === entity
+      && binding.actorDataRef === entity.data
+      && this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true);
+  },
+
+  _hasExactCeresRealTargetRetainedRoute(binding, entry) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const job = entry && entry.job;
+    const marks = slot && slot.route && slot.route.marks;
+    const route = job && job.route;
+    const routeWaypointRefs = binding && binding.routeWaypointRefs;
+    const canonicalRoutePositions = binding && binding.canonicalRoutePositions;
+    if (!binding || !slot || !job || !slot.route
+      || slot.id !== binding.spec.actorSlotId
+      || slot.worldRecordSlotId !== binding.spec.worldRecordSlotId
+      || slot.jobKind !== binding.spec.jobKind || slot.route.id !== binding.spec.routeId
+      || binding.routeRef !== route || !Array.isArray(route) || route.length !== 2
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(routeWaypointRefs) || routeWaypointRefs.length !== 2
+      || !Array.isArray(canonicalRoutePositions) || canonicalRoutePositions.length !== 2
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      || !Number.isFinite(binding.canonicalSpeed) || binding.canonicalSpeed <= 0
+      || job.speed !== binding.canonicalSpeed) return false;
+    let ownsWaypoint = false;
+    for (let index = 0; index < 2; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      const canonicalPos = canonicalRoutePositions[index];
+      if (!mark || !waypoint || routeWaypointRefs[index] !== waypoint || !canonicalPos
+        || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || waypoint.pos.x !== canonicalPos.x || waypoint.pos.z !== canonicalPos.z) return false;
+      if (binding.waypointRef === waypoint
+        && waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) ownsWaypoint = true;
+    }
+    return ownsWaypoint;
+  },
+
+  _hasCeresRealTargetMovementAuthority(binding) {
+    return !!binding && !!(binding.entryRef || binding.jobRef || binding.routeRef
+      || binding.routeWaypointRefs || binding.canonicalRoutePositions || binding.waypointRef
+      || binding.actorRef || binding.actorDataRef || binding.targetRef || binding.targetDataRef);
+  },
+
+  _hasRetainedCeresRealTargetMaterializedActor(jobId, entry, entity) {
+    if (!jobId || !entry || !entity) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      if (this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)
+        || this._hasExactCeresRealTargetRetainedActor(binding, entry, entity)) return true;
+    }
+    return false;
+  },
+
+  _hasRetainedCeresRealTargetActorAmbiguity(jobId, entry, entity) {
+    if (!jobId || !entry || !entity) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId || binding.actorAmbiguous !== true
+        || !Array.isArray(binding.actorAmbiguousRefs)
+        || !binding.actorAmbiguousRefs.some((candidate) => candidate === entity)) continue;
+      if (this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true)) return true;
+    }
+    return false;
+  },
+
+  _isCanonicalCeresRealTargetEntry(binding, entry, entity, requireMaterialized = true) {
+    if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, requireMaterialized)) {
+      return false;
+    }
+    return this._isCanonicalCeresRealTargetRoute(binding, entry.job.route, entry.job.speed);
+  },
+
+  _hasCanonicalCeresRealTargetRoute(binding, entry, entity) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const pocket = descriptor && descriptor.pocket;
+    const job = entry && entry.job;
+    const marks = slot && slot.route && slot.route.marks;
+    const route = job && job.route;
+    if (!binding || !entry || !entity || !slot || !pocket || !job
+      || !this._isCanonicalCeresRealTargetEntry(binding, entry, entity, true)
+      || !slot.route || !Number.isFinite(slot.route.durationS) || slot.route.durationS <= 0
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(route) || route.length !== marks.length
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      ) return false;
+    let waypointRef = null;
+    const routeWaypointRefs = [];
+    const canonicalRoutePositions = [];
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+      const expected = sectorLocalToGlobalForSector({
+        x: pocket.activityAnchor.localPos.x + mark.offset.x,
+        z: pocket.activityAnchor.localPos.z + mark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (waypoint.pos.x !== expected.x || waypoint.pos.z !== expected.z) return false;
+      routeWaypointRefs.push(waypoint);
+      canonicalRoutePositions.push(expected);
+      if (waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) waypointRef = waypoint;
+    }
+    const canonicalSpeed = Math.hypot(
+      canonicalRoutePositions[1].x - canonicalRoutePositions[0].x,
+      canonicalRoutePositions[1].z - canonicalRoutePositions[0].z,
+    ) / slot.route.durationS;
+    if (!waypointRef || !Number.isFinite(canonicalSpeed) || canonicalSpeed <= 0
+      || job.speed !== canonicalSpeed) return false;
+    binding.entryRef = entry;
+    binding.jobRef = job;
+    binding.routeRef = route;
+    binding.routeWaypointRefs = routeWaypointRefs;
+    binding.canonicalRoutePositions = canonicalRoutePositions;
+    binding.canonicalSpeed = canonicalSpeed;
+    binding.waypointRef = waypointRef;
+    binding.actorRef = entity;
+    binding.actorDataRef = entity.data;
+    return true;
+  },
+
+  _isCeresRealTargetCandidate(binding, entity) {
+    if (!binding || !entity || entity.alive === false || entity.type !== binding.spec.entityType
+      || !entity.data || !entity.pos
+      || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+      || this.state.entities?.get(entity.id) !== entity
+      || entity.data[binding.spec.identityField] !== binding.spec.identityValue
+      || !this._hasExactCeresSectorAuthority(entity)) return false;
+    return true;
+  },
+
+  _refreshCeresRealTargetsForEntry(entry, entity) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    let actorBinding = null;
+    for (const binding of authority.bindings) {
+      if (this._byId()[binding.jobId] === entry) {
+        actorBinding = binding;
+        break;
+      }
+    }
+    if (!actorBinding) return false;
+    const uniqueActor = this._hasUniqueCeresRealTargetActor(entity, actorBinding.worldRecordId);
+    const actorContenderRefs = !uniqueActor
+      ? this._collectCeresRealTargetActorCandidates(actorBinding.worldRecordId)
+      : null;
+    let ownsBinding = false;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== actorBinding.jobId) continue;
+      const retainTerminalAuthority = this._hasExactCeresRealTargetTerminalIdentity(
+        binding,
+        binding.terminalEntryRef,
+        binding.terminalActorRef,
+      );
+      this._clearCeresRealTargetBinding(binding, !retainTerminalAuthority);
+      if (!uniqueActor) {
+        binding.ambiguous = true;
+        binding.actorAmbiguous = true;
+        binding.actorAmbiguousRefs = actorContenderRefs;
+        continue;
+      }
+      if (this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true)) {
+        // Terminal cleanup authority is route-free and identity-only. A malformed route must disable
+        // movement without making the exact actor keep a stale marker, while semantic reclassification
+        // of that same object/data pair must still fail closed at release.
+        binding.terminalEntryRef = entry;
+        binding.terminalJobRef = entry.job;
+        binding.terminalActorRef = entity;
+        binding.terminalActorDataRef = entity.data;
+      } else {
+        binding.terminalEntryRef = null;
+        binding.terminalJobRef = null;
+        binding.terminalActorRef = null;
+        binding.terminalActorDataRef = null;
+      }
+      if (this._hasCanonicalCeresRealTargetRoute(binding, entry, entity)) ownsBinding = true;
+    }
+    if (!ownsBinding || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    for (const candidate of this.state.entityList || []) {
+      for (const binding of authority.bindings) {
+        if (binding.entryRef !== entry || !this._isCeresRealTargetCandidate(binding, candidate)) continue;
+        binding.targetMatches++;
+        if (binding.targetMatches === 1) {
+          binding.targetRef = candidate;
+          binding.targetDataRef = candidate.data;
+        } else {
+          binding.targetRef = null;
+          binding.targetDataRef = null;
+          binding.ambiguous = true;
+          binding.targetAmbiguous = true;
+        }
+      }
+    }
+    return true;
+  },
+
+  _clearCeresRealTargetTerminalAuthorityForJob(jobId) {
+    if (!jobId) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      binding.terminalEntryRef = null;
+      binding.terminalJobRef = null;
+      binding.terminalActorRef = null;
+      binding.terminalActorDataRef = null;
+    }
+  },
+
+  _hasExactCeresRealTargetTerminalIdentity(binding, entry, entity) {
+    return !!binding && !!entry && !!entry.job && !!entity && !!entity.data
+      && binding.terminalEntryRef === entry
+      && binding.terminalJobRef === entry.job
+      && binding.terminalActorRef === entity
+      && binding.terminalActorDataRef === entity.data
+      && this._byId()[binding.jobId] === entry
+      && entry.job.id === binding.jobId
+      && this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true);
+  },
+
+  _invalidateCeresRealTargetTerminalAuthorityIfReplaced(binding, entry, entity) {
+    if (!binding || !entry || this._byId()[binding.jobId] !== entry) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    let retained = false;
+    let exact = false;
+    for (const candidate of authority.bindings) {
+      if (candidate.jobId !== binding.jobId) continue;
+      if (candidate.terminalEntryRef || candidate.terminalJobRef
+        || candidate.terminalActorRef || candidate.terminalActorDataRef) retained = true;
+      if (this._hasExactCeresRealTargetTerminalIdentity(candidate, entry, entity)) exact = true;
+    }
+    if (retained && !exact) this._clearCeresRealTargetTerminalAuthorityForJob(binding.jobId);
+  },
+
+  _clearCeresRealTargetBinding(binding, clearTerminalAuthority = false) {
+    if (!binding) return;
+    binding.entryRef = null;
+    binding.jobRef = null;
+    binding.routeRef = null;
+    binding.routeWaypointRefs = null;
+    binding.canonicalRoutePositions = null;
+    binding.canonicalSpeed = null;
+    binding.waypointRef = null;
+    binding.actorRef = null;
+    binding.actorDataRef = null;
+    if (clearTerminalAuthority) {
+      binding.terminalEntryRef = null;
+      binding.terminalJobRef = null;
+      binding.terminalActorRef = null;
+      binding.terminalActorDataRef = null;
+    }
+    binding.targetRef = null;
+    binding.targetDataRef = null;
+    binding.targetMatches = 0;
+    binding.ambiguous = false;
+    binding.actorAmbiguous = false;
+    binding.actorAmbiguousRefs = null;
+    binding.targetAmbiguous = false;
+  },
+
+  _clearCeresRealTargetsForJob(jobId, clearTerminalAuthority = false) {
+    if (!jobId) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      this._clearCeresRealTargetBinding(binding, clearTerminalAuthority);
+    }
+  },
+
+  _clearCeresRealTargetsForEntry(entry, clearTerminalAuthority = false) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    const entryJobId = entry && entry.job && entry.job.id;
+    const exactCurrentEntry = !!entryJobId && this._byId()[entryJobId] === entry;
+    for (const binding of authority.bindings) {
+      if (binding.entryRef !== entry
+        && !(exactCurrentEntry && binding.jobId === entryJobId
+          && binding.worldRecordId === entry.worldRecordId)) continue;
+      this._clearCeresRealTargetBinding(binding, clearTerminalAuthority);
+    }
+  },
+
+  _hasRetainedCeresRealTargetReleaseActor(jobId, entry, entity) {
+    if (!jobId || !entry || !entry.job || !entity || !entity.data) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      if (this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)) return true;
+    }
+    return false;
+  },
+
+  _onCeresRealTargetSpawn(payload) {
+    const entity = payload && payload.entity;
+    if (!entity || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    const actorWorldRecordId = entity.data && entity.data.worldRecordId;
+    const actorBinding = actorWorldRecordId
+      ? this._ceresRealTargetActorBinding(actorWorldRecordId)
+      : null;
+    if (actorBinding && entity.alive !== false && this.state.entities?.get(entity.id) === entity
+      && !this._hasUniqueCeresRealTargetActor(entity, actorWorldRecordId)) {
+      // Establish ambiguity before exact actor/type/cast predicates. A malformed duplicate is still
+      // a collision in the seed-derived durable identity and must invalidate the retained actor now,
+      // even if no producer will ever call assign for that object.
+      this._markCeresRealTargetActorAmbiguous(actorWorldRecordId);
+      return;
+    }
+    for (const binding of authority.bindings) {
+      if (!binding.entryRef || !this._isCeresRealTargetCandidate(binding, entity)) continue;
+      // A spawn can arrive after a prior target was replaced or invalidated. Re-scan this one
+      // fixed job at the lifecycle seam so an older surviving match cannot be hidden by the new
+      // payload. Steady drive still consumes only the resulting exact object references.
+      this._refreshCeresRealTargetsForEntry(binding.entryRef, binding.actorRef);
+      return;
+    }
+  },
+
+  _onCeresRealTargetGone(payload) {
+    const id = payload && (payload.id != null ? payload.id : payload.entityId);
+    const explicitEntity = payload && payload.entity;
+    const mappedEntity = id != null && this.state.entities ? this.state.entities.get(id) : null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    if (id != null) {
+      // Core recycles the numeric id before flushing its destruction event. An earlier listener may
+      // therefore spawn a different object at the same id. Compare the retained object identity to
+      // the CURRENT map occupant first; never let the replacement hide the actual contender/target
+      // loss, and never let its later death masquerade as a second loss of the retained object.
+      let refreshedEntry = null;
+      let refreshedJobId = null;
+      for (const binding of authority.bindings) {
+        const removedActorContender = binding.actorAmbiguous === true
+          && Array.isArray(binding.actorAmbiguousRefs)
+          && binding.actorAmbiguousRefs.some((candidate) => (
+            candidate && candidate.id === id && mappedEntity !== candidate
+          ));
+        const removedTarget = binding.targetRef && binding.targetRef.id === id
+          && mappedEntity !== binding.targetRef;
+        if ((!removedActorContender && !removedTarget) || binding.jobId === refreshedJobId) continue;
+        let entry = binding.entryRef;
+        let actor = binding.actorRef;
+        if (!entry || !actor) {
+          entry = this._byId()[binding.jobId];
+          actor = entry && entry.entityId != null && this.state.entities
+            ? this.state.entities.get(entry.entityId)
+            : null;
+          if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, actor, true)) continue;
+        }
+        if (!entry || !actor) continue;
+        refreshedEntry = entry;
+        refreshedJobId = binding.jobId;
+        this._refreshCeresRealTargetsForEntry(entry, actor);
+      }
+      if (refreshedEntry) return;
+    }
+    const entity = explicitEntity || mappedEntity;
+    // An id-only notification whose id currently belongs to a live replacement cannot describe that
+    // replacement. Retained-identity loss was handled above; ignore everything else fail-closed.
+    if (!explicitEntity && entity && entity.alive !== false) return;
+    if (!entity) {
+      // Core deletes the object before flushing its id/type-only destruction payload. Direct retained
+      // ids identify the common actor/target case without a scan. An ambiguity has no retained target
+      // id, so only a destruction matching the seam-retained contender identities may justify the
+      // fixed bounded re-scan. Projectile and other unrelated deaths remain O(1) over these bindings.
+      const type = payload && payload.type;
+      let refreshedEntry = null;
+      for (const binding of authority.bindings) {
+        const actorAmbiguityMayResolve = binding.actorAmbiguous === true && id != null
+          && Array.isArray(binding.actorAmbiguousRefs)
+          && binding.actorAmbiguousRefs.some((candidate) => candidate && candidate.id === id);
+        let entry = binding.entryRef;
+        let actor = binding.actorRef;
+        if ((!entry || !actor) && actorAmbiguityMayResolve) {
+          // Actor ambiguity intentionally clears retained authority. Re-acquire only the exact
+          // kernel-owned wrapper/hull pair; the subsequent refresh still proves uniqueness before
+          // restoring authority.
+          entry = this._byId()[binding.jobId];
+          actor = entry && entry.entityId != null && this.state.entities
+            ? this.state.entities.get(entry.entityId)
+            : null;
+          if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, actor, true)) continue;
+        }
+        if (!entry || !actor || entry === refreshedEntry) continue;
+        const actorIdMatch = id != null && actor.id === id;
+        const targetIdMatch = id != null && binding.targetRef && binding.targetRef.id === id;
+        const targetAmbiguityMayResolve = binding.targetAmbiguous === true
+          && type === binding.spec.entityType;
+        if (!actorIdMatch && !targetIdMatch
+          && !actorAmbiguityMayResolve && !targetAmbiguityMayResolve) continue;
+        refreshedEntry = entry;
+        this._refreshCeresRealTargetsForEntry(entry, actor);
+      }
+      return;
+    }
+    const actorWorldRecordId = entity && entity.data && entity.data.worldRecordId;
+    const actorBinding = actorWorldRecordId
+      ? this._ceresRealTargetActorBinding(actorWorldRecordId)
+      : null;
+    if (actorBinding) {
+      const entry = this._byId()[actorBinding.jobId];
+      const actor = entry && entry.entityId != null && this.state.entities
+        ? this.state.entities.get(entry.entityId)
+        : null;
+      if (entry && actor) this._refreshCeresRealTargetsForEntry(entry, actor);
+    }
+    for (const binding of authority.bindings) {
+      const target = binding.targetRef;
+      const identityMatch = entity && entity.type === binding.spec.entityType && entity.data
+        && entity.data[binding.spec.identityField] === binding.spec.identityValue;
+      const retainedMatch = target
+        && ((entity && target === entity) || (!entity && target.id === id));
+      if (!identityMatch && !retainedMatch) continue;
+      const entry = binding.entryRef;
+      const actor = binding.actorRef;
+      if (retainedMatch) {
+        binding.targetRef = null;
+        binding.targetDataRef = null;
+        binding.targetMatches = 0;
+        binding.ambiguous = false;
+        binding.targetAmbiguous = false;
+      }
+      if (entry && actor) this._refreshCeresRealTargetsForEntry(entry, actor);
+      return;
+    }
+  },
+
   _bindCeresFormationSlot(slot, entry, entity) {
     if (!slot) return;
     if (entry) {
@@ -384,6 +1146,7 @@ export const npcJobsRuntime = {
   newGame() {
     this.state.npcJobs = { byId: {} };
     this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
     this._threatQueries?.reset();
   },
 
@@ -401,6 +1164,19 @@ export const npcJobsRuntime = {
     const jobId = 'job:' + worldRecordId;
     const byId = this._byId();
     const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
+    const realTargetActor = this._ceresRealTargetActorBinding(worldRecordId);
+    if (realTargetActor) {
+      // Any live same-record contender makes the retained actor authority ambiguous, even when the
+      // contender is itself malformed and will fail the exact actor/spec predicates below. Validate
+      // uniqueness first so a bad duplicate cannot leave the previously bound hull authoritative.
+      if (entity.alive === false || this.state.entities?.get(entity.id) !== entity) return null;
+      if (!this._hasUniqueCeresRealTargetActor(entity, worldRecordId)) {
+        this._markCeresRealTargetActorAmbiguous(worldRecordId);
+        return null;
+      }
+      if (!this._isExactCeresRealTargetActor(realTargetActor, entity, false)
+        || !this._isCanonicalCeresRealTargetSpec(realTargetActor, spec)) return null;
+    }
     if (formationSlot) {
       if (!this._isExactCeresFormationActor(entity, formationSlot)
         || spec.kind !== formationSlot.kind) {
@@ -434,6 +1210,41 @@ export const npcJobsRuntime = {
         return null;
       }
     } else if (byId[jobId]) {
+      const existing = byId[jobId];
+      const existingEntity = existing.entityId != null && this.state.entities
+        ? this.state.entities.get(existing.entityId)
+        : null;
+      if (realTargetActor) {
+        this._invalidateCeresRealTargetTerminalAuthorityIfReplaced(
+          realTargetActor,
+          existing,
+          entity,
+        );
+        if (existing.entityId == null) {
+          if (!this._isCanonicalCeresRealTargetEntry(realTargetActor, existing, entity, false)) return null;
+          return this._tryRelink(existing, finite(this.state.simTime, 0)) ? jobId : null;
+        }
+        if (existingEntity !== entity
+          || !this._isCanonicalCeresRealTargetEntry(realTargetActor, existing, entity, true)) return null;
+        const authority = this._ensureCeresRealTargetAuthority();
+        for (const binding of authority.bindings) {
+          if (binding.jobId !== jobId) continue;
+          // A fully cleared cache may be re-admitted by this bounded producer seam. Any retained
+          // object identity, however, is authoritative and must match exactly; scalar-equal wrapper
+          // restoration cannot launder a replacement into the cache.
+          if ((binding.entryRef && binding.entryRef !== existing)
+            || (binding.jobRef && binding.jobRef !== existing.job)
+            || (binding.actorRef && binding.actorRef !== entity)
+            || (binding.actorDataRef && binding.actorDataRef !== entity.data)
+            || (binding.routeRef && binding.routeRef !== existing.job.route)
+            || (binding.terminalEntryRef && binding.terminalEntryRef !== existing)
+            || (binding.terminalJobRef && binding.terminalJobRef !== existing.job)
+            || (binding.terminalActorRef && binding.terminalActorRef !== entity)
+            || (binding.terminalActorDataRef && binding.terminalActorDataRef !== entity.data)) return null;
+        }
+        this._refreshCeresRealTargetsForEntry(existing, entity);
+        return jobId;
+      }
       entity.data.jobId = jobId;
       return jobId; // unchanged ordinary idempotent assignment
     }
@@ -447,7 +1258,7 @@ export const npcJobsRuntime = {
     const sectorId = spec.sectorId
       || entity.data.sectorId || entity.homeSectorId
       || (this.state.world && this.state.world.currentSectorId) || null;
-    const entry = byId[jobId] = {
+    const entry = {
       job,
       kind: job.kind,
       sectorId,
@@ -456,8 +1267,14 @@ export const npcJobsRuntime = {
       lastAdvanceSimT: finite(this.state.simTime, 0),
       threatId: null,
     };
+    if (realTargetActor && (job.schema !== NPC_JOB_SCHEMA || job.id !== jobId
+      || job.kind !== realTargetActor.descriptor.slot.jobKind || job.corrupt === true
+      || job.materialized !== true || sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
+    byId[jobId] = entry;
     entity.data.jobId = jobId;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
+    this._refreshCeresRealTargetsForEntry(entry, entity);
     return jobId;
   },
 
@@ -465,11 +1282,21 @@ export const npcJobsRuntime = {
     const byId = this._byId();
     const entry = byId[jobId];
     if (!entry) return false;
-    const ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+    const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
+    let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+    if (ent && realTargetJobBinding
+      && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
+      // Core may already have recycled the dead actor's numeric id. The job still ends, but cleanup
+      // belongs only to the retained exact Ceres actor object/data (or its retained ambiguity ref),
+      // never to an unrelated replacement that happens to occupy `entry.entityId` now.
+      ent = null;
+    }
     clearRouteBrake(ent);
     if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
     if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
+    if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
+    else this._clearCeresRealTargetsForEntry(entry, true);
     delete byId[jobId];
     return true;
   },
@@ -708,6 +1535,172 @@ export const npcJobsRuntime = {
     intent.aimAngle = aimAngle;
   },
 
+  _ceresRealTargetWaypoint(job) {
+    if (!job || !Array.isArray(job.route) || !Number.isInteger(job.routeIndex)) return null;
+    let index = job.routeIndex;
+    if (job.phase === NPC_JOB_PHASE.TRANSIT || job.phase === NPC_JOB_PHASE.RETURN) {
+      if (job.kind === NPC_JOB_KIND.MINER || job.kind === NPC_JOB_KIND.SALVOR) {
+        index = job.routeIndex === 0 ? 1 : 0;
+      } else if (job.kind === NPC_JOB_KIND.HAULER) {
+        index = job.routeIndex + 1;
+      } else {
+        return null;
+      }
+    }
+    return index >= 0 && index < job.route.length ? job.route[index] : null;
+  },
+
+  _currentCeresRealTargetBinding(entry, entity) {
+    if (this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    let observedJobId = null;
+    for (const binding of authority.bindings) {
+      if (this._byId()[binding.jobId] === entry
+        || binding.entryRef === entry || binding.terminalEntryRef === entry
+        || binding.actorRef === entity || binding.terminalActorRef === entity) {
+        observedJobId = binding.jobId;
+        break;
+      }
+    }
+
+    // Validate every retained object before asking whether the current phase has an applicable
+    // waypoint. Otherwise an empty/out-of-range/replaced route (or a same-key entry wrapper) can
+    // early-return while leaving authority that springs back to life when equal values are restored.
+    // The job id is the immutable binding key; mutable entry/world-record scalars cannot bypass this
+    // invalidation. Route-only loss preserves strict terminal cleanup identity, while any actor,
+    // entry, job, or data replacement consumes both movement and terminal authority.
+    if (!observedJobId) return null;
+    let retainedMovement = false;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== observedJobId) continue;
+      const hasTerminalAuthority = !!(binding.terminalEntryRef || binding.terminalJobRef
+        || binding.terminalActorRef || binding.terminalActorDataRef);
+      if (hasTerminalAuthority
+        && !this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)) {
+        this._clearCeresRealTargetsForJob(observedJobId, true);
+        return null;
+      }
+      if (!this._hasCeresRealTargetMovementAuthority(binding)) continue;
+      retainedMovement = true;
+      if (!hasTerminalAuthority
+        || !this._hasExactCeresRealTargetRetainedActor(binding, entry, entity)) {
+        this._clearCeresRealTargetsForJob(observedJobId, true);
+        return null;
+      }
+      if (!this._hasExactCeresRealTargetRetainedRoute(binding, entry)) {
+        this._clearCeresRealTargetsForJob(observedJobId, false);
+        return null;
+      }
+    }
+    if (!retainedMovement) return null;
+
+    const job = entry && entry.job;
+    const waypoint = this._ceresRealTargetWaypoint(job);
+    if (!waypoint) return null;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== observedJobId || binding.entryRef !== entry
+        || binding.jobRef !== job || binding.actorRef !== entity
+        || binding.actorDataRef !== entity.data || binding.routeRef !== job.route
+        || job.phase === NPC_JOB_PHASE.COMPLETE || binding.waypointRef !== waypoint
+        || binding.ambiguous || waypoint.id !== binding.spec.waypointId
+        || waypoint.targetRef !== binding.spec.targetRef) continue;
+      const target = binding.targetRef;
+      if (!target || binding.targetDataRef !== target.data
+        || !this._isCeresRealTargetCandidate(binding, target)) {
+        binding.targetRef = null;
+        binding.targetDataRef = null;
+        binding.targetMatches = 0;
+        binding.ambiguous = false;
+        binding.targetAmbiguous = false;
+        continue;
+      }
+      return binding;
+    }
+    return null;
+  },
+
+  _tryDriveCeresRealTarget(entry, entity) {
+    const binding = this._currentCeresRealTargetBinding(entry, entity);
+    if (!binding || !entity.pos || !Number.isFinite(entity.pos.x)
+      || !Number.isFinite(entity.pos.z) || !Number.isFinite(entity.rot)) return false;
+    const target = binding.targetRef;
+    const dx = target.pos.x - entity.pos.x;
+    const dz = target.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance)) return false;
+
+    // Collidable targets use their collision/dock envelope; non-colliding place roots use an authored
+    // work berth rather than their broad visual radius (the Cathedral root radius is 360 WU). When a
+    // restored/spawned hull begins inside its berth, the same controller drives outward instead of
+    // freezing in overlap. All five targets are static; no hidden trajectory ownership is added.
+    const actorRadius = Math.max(0, finite(entity.radius, 0));
+    const targetRadius = Math.max(0, finite(target.radius, 0));
+    let standoff = binding.spec.standoffWU;
+    if (binding.spec.standoffKind === 'collision') {
+      standoff = Math.max(standoff, actorRadius + targetRadius + 12);
+    } else if (binding.spec.standoffKind === 'dock') {
+      standoff = Math.max(
+        standoff,
+        finite(target.data && target.data.dockRadius, 0),
+        actorRadius + targetRadius + 12,
+      );
+    }
+    standoff = Math.max(1, finite(standoff, 1));
+    const gap = distance - standoff;
+    const error = Math.abs(gap);
+    let directionX;
+    let directionZ;
+    if (distance > 0.0001) {
+      const sign = gap >= 0 ? 1 : -1;
+      directionX = sign * dx / distance;
+      directionZ = sign * dz / distance;
+    } else {
+      directionX = Math.cos(entity.rot);
+      directionZ = Math.sin(entity.rot);
+    }
+    const aim = Math.atan2(directionZ, directionX);
+
+    const derivedPropulsion = entity.data && entity.data.derived && entity.data.derived.propulsion;
+    const authoredPropulsion = derivedPropulsion || entity.propulsion
+      || (entity.flightModel && entity.flightModel.propulsion);
+    const velocity = entity.vel;
+    const closingSpeed = velocity && Number.isFinite(velocity.x) && Number.isFinite(velocity.z)
+      ? Math.max(0, velocity.x * directionX + velocity.z * directionZ)
+      : 0;
+    const brakeAccel = Math.max(
+      1,
+      finite(authoredPropulsion && authoredPropulsion.reverseAccel, 0),
+      finite(authoredPropulsion && authoredPropulsion.mainAccel, 0) * 0.72,
+    );
+    const stoppingDistance = closingSpeed > 0
+      ? (closingSpeed * closingSpeed) / (2 * brakeAccel)
+      : 0;
+    if (error <= 6 + stoppingDistance) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+
+    const governedSpeed = Math.max(1,
+      finite(authoredPropulsion && authoredPropulsion.combatSpeed, entity.maxSpeed || 1));
+    const deadInput = Math.max(0, finite(
+      authoredPropulsion && authoredPropulsion.assist && authoredPropulsion.assist.deadInput,
+      0.025,
+    ));
+    const minimumThrottle = clamp(deadInput + 0.001, 0, CERES_ESCORT_MAX_THROTTLE);
+    if (Math.abs(shortestAngleDelta(aim, entity.rot)) > CERES_ESCORT_TURN_ONLY_RAD) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+    const plannedThrottle = clamp(
+      Math.max(finite(entry.job.speed, 0) / governedSpeed, minimumThrottle),
+      0,
+      CERES_ESCORT_MAX_THROTTLE,
+    );
+    const closingThrottle = clamp(error / 120, minimumThrottle, CERES_ESCORT_MAX_THROTTLE);
+    this._writeIntent(entity, 0, Math.max(plannedThrottle, closingThrottle), false, aim, false);
+    return true;
+  },
+
   _worldRecordAllowsCeresFormation(slot) {
     const records = this.state.world && this.state.world.records && this.state.world.records.byId;
     const record = records && records[slot.worldRecordId];
@@ -887,6 +1880,10 @@ export const npcJobsRuntime = {
     // the update-loop control-lease gate remain strict higher-precedence owners.
     if (this._tryDriveCeresEscortFormation(entry, entity)) return;
 
+    // PQ-045 bounded real-target consumer. Only five exact, already-live Ceres relationships can
+    // reach this branch; everything else retains the authored route controller below.
+    if (this._tryDriveCeresRealTarget(entry, entity)) return;
+
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
       const planned = routePosition(job);
       const target = this._targetWaypointPos(job);
@@ -992,27 +1989,68 @@ export const npcJobsRuntime = {
       if (!entry || entry.sectorId !== sectorId) continue;
       // Keep the record; drop the live link. lastAdvanceSimT already holds the last live-advance time,
       // which is (to within a tick) the exit time — the anchor the re-entry catch-up measures from.
-      const ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+      let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+      const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
+      if (ent && realTargetJobBinding
+        && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
+        // Exit virtualizes the authoritative job regardless, but actor cleanup belongs only to the
+        // previously admitted exact object/data identity. A same-id clone or in-place semantic
+        // reclassification is foreign authority and must keep its marker/brake byte-for-byte.
+        ent = null;
+      }
       clearRouteBrake(ent);
       if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
     }
-    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._resetCeresEscortAuthority();
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._resetCeresEscortAuthority();
+      this._resetCeresRealTargetAuthority();
+    }
   },
 
   _onSectorEnter(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    // Exit, deserialize/newGame, and seed changes own hard cache resets. Enter is a bounded
+    // revalidation seam, including same-sector continuous handoffs; resetting here would erase a
+    // previously admitted terminal identity before a persistent actor ambiguity can preserve it.
     // Re-link is done lazily in update() once the producer has rematerialized the hulls this tick;
     // an immediate pass here also catches hulls already present (continuous handoff).
     const simT = finite(this.state.simTime, 0);
     const byId = this._byId();
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
-      if (!entry || entry.entityId != null || entry.sectorId !== sectorId) continue;
-      this._tryRelink(entry, simT);
+      if (!entry || entry.sectorId !== sectorId) continue;
+      if (entry.entityId == null) {
+        this._tryRelink(entry, simT);
+        continue;
+      }
+      const entity = this.state.entities && this.state.entities.get(entry.entityId);
+      const realTargetBinding = this._ceresRealTargetJobBinding(jobId);
+      if (entity && realTargetBinding
+        && !this._hasRetainedCeresRealTargetMaterializedActor(jobId, entry, entity)) {
+        if (this._hasRetainedCeresRealTargetActorAmbiguity(jobId, entry, entity)) {
+          // A spawn seam may already have recorded this exact actor plus a malformed durable-record
+          // contender. Preserve that fail-closed ambiguity for the real removal event, but do not use
+          // enter to scan, admit terminal identity, or restore movement while uniqueness is false.
+          // A same-key entry/job wrapper replacement must still consume pre-ambiguity terminal refs;
+          // restoring the old wrappers later cannot revive authority without a legitimate seam.
+          this._invalidateCeresRealTargetTerminalAuthorityIfReplaced(
+            realTargetBinding,
+            entry,
+            entity,
+          );
+          continue;
+        }
+        // Same-sector enter may revalidate only an already-admitted materialized actor. A semantic
+        // clone at the same numeric id cannot bootstrap authority from equal values; first admission
+        // remains producer assignment, or virtual relink after a real lifecycle reset.
+        this._clearCeresRealTargetsForJob(jobId, true);
+        continue;
+      }
+      if (entity) this._refreshCeresRealTargetsForEntry(entry, entity);
     }
   },
 
@@ -1021,6 +2059,19 @@ export const npcJobsRuntime = {
     const entity = this._findEntityByRecordId(entry.worldRecordId);
     if (!entity) return false;
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
+    const realTargetActor = this._ceresRealTargetActorBinding(entry.worldRecordId);
+    if (realTargetActor) {
+      if (!this._isCanonicalCeresRealTargetEntry(realTargetActor, entry, entity, false)) return false;
+      const authority = this._ensureCeresRealTargetAuthority();
+      for (const binding of authority.bindings) {
+        if (binding.jobId !== realTargetActor.jobId) continue;
+        if ((binding.entryRef && binding.entryRef !== entry)
+          || (binding.jobRef && binding.jobRef !== entry.job)
+          || (binding.actorRef && binding.actorRef !== entity)
+          || (binding.actorDataRef && binding.actorDataRef !== entity.data)
+          || (binding.routeRef && binding.routeRef !== entry.job.route)) return false;
+      }
+    }
     // Advance the whole offscreen interval in ONE aggregated call, resuming across the (never-hit-in-
     // practice) transition cap so a pathological dt cannot silently drop transitions. NO sink here:
     // offscreen catch-up is historical — replaying thousands of past-phase intents on the live bus
@@ -1050,6 +2101,7 @@ export const npcJobsRuntime = {
     clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
+    this._refreshCeresRealTargetsForEntry(entry, entity);
     return true;
   },
 
@@ -1057,15 +2109,18 @@ export const npcJobsRuntime = {
     if (!worldRecordId) return null;
     const list = this.state.entityList || [];
     const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
-    if (formationSlot) {
+    const realTargetActor = this._ceresRealTargetActorBinding(worldRecordId);
+    if (formationSlot || realTargetActor) {
       // This is the existing bounded rematerialization scan. Scan to the end only for the two exact
-      // formation identities so duplicates cannot be hidden by first-match order. Steady drive never
-      // scans; it consumes the object identities established here.
-      formationSlot.entryRef = null;
-      formationSlot.jobRef = null;
-      formationSlot.entityRef = null;
-      formationSlot.dataRef = null;
-      formationSlot.ambiguous = false;
+      // formation identities and the three admitted real-target actors so duplicates cannot be hidden
+      // by first-match order. Steady drive never scans; it consumes the identities established here.
+      if (formationSlot) {
+        formationSlot.entryRef = null;
+        formationSlot.jobRef = null;
+        formationSlot.entityRef = null;
+        formationSlot.dataRef = null;
+        formationSlot.ambiguous = false;
+      }
       let match = null;
       let count = 0;
       for (const entity of list) {
@@ -1076,11 +2131,17 @@ export const npcJobsRuntime = {
         if (count === 1) match = entity;
       }
       if (count !== 1) {
-        formationSlot.ambiguous = count > 1;
+        if (formationSlot) formationSlot.ambiguous = count > 1;
+        if (realTargetActor && count > 1) this._markCeresRealTargetActorAmbiguous(worldRecordId);
         return null;
       }
-      formationSlot.entityRef = match;
-      formationSlot.dataRef = match.data;
+      if (realTargetActor && !this._isExactCeresRealTargetActor(realTargetActor, match, false)) {
+        return null;
+      }
+      if (formationSlot) {
+        formationSlot.entityRef = match;
+        formationSlot.dataRef = match.data;
+      }
       return match;
     }
     for (const e of list) {
@@ -1132,6 +2193,7 @@ export const npcJobsRuntime = {
     // below is authoritative; clear every live marker owned by this runtime before replacing it,
     // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
     this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
     for (const entity of this.state.entityList || []) {
       if (entity && entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
