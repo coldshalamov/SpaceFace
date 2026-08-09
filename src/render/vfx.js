@@ -68,6 +68,11 @@ import {
   resolveNpcJobReaction,
   NPC_JOB_REACTION,
 } from './npcJobSignatureVfx.js';
+import {
+  CERES_JOB_ACTION_RECEIPT_EVENT,
+  CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
+  createCeresJobActionVfxController,
+} from './ceresJobActionVfx.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
 import {
@@ -523,6 +528,7 @@ function emptyVfxSubsystemDiag() {
     lootMagnet: 0,      // magnet-pulled drops drawn as incoming light this frame
     stationSideEvents: 0, // seeded station operations drawn on pooled sprite/trail substrates
     npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
+    ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
   };
 }
 
@@ -728,6 +734,12 @@ export const vfx = {
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     this._lastNpcJobSignatureId = null;
+    // R6B is event-driven rather than phase-pulled. The controller owns only fixed scalar slots;
+    // this bound emitter is allocated once so the render loop never creates a callback.
+    this._ceresJobActionVfx = createCeresJobActionVfxController();
+    this._ceresJobActionEmitter = (slot, profile, pulse, reducedMotion, reducedFlash) => {
+      this._emitCeresJobActionVfx(slot, profile, pulse, reducedMotion, reducedFlash);
+    };
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -906,6 +918,9 @@ export const vfx = {
         lastReaction: this._lastNpcJobReaction || null,
         capacity: NPC_JOB_SIGNATURE_CAPACITY,
       },
+      ceresJobActions: this._ceresJobActionVfx
+        ? this._ceresJobActionVfx.inspect()
+        : null,
     };
   },
 
@@ -1017,6 +1032,7 @@ export const vfx = {
         alive: false, age: 0, life: 1, size0: 1, size1: 1, op0: 1,
         x: 0, y: 0, z: 0, vx: 0, vz: 0, ax: 1, az: 0, stretch: 3.2, r: 1, g: 1, b: 1,
         admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY, admissionSerial: -1,
+        ceresJobActionOwner: false,
       });
     }
     this._trailStreakColor = new THREE.Color();
@@ -1041,6 +1057,7 @@ export const vfx = {
         alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1,
         op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0, aspect: 1,
         admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY, admissionSerial: -1,
+        ceresJobActionOwner: false,
         r: 1, g: 1, b: 1,
       });
     }
@@ -1298,10 +1315,11 @@ export const vfx = {
     });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('sector:exit', () => { this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); });
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresJobActionReceipt(p));
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => { this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); });
+    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1569,6 +1587,7 @@ export const vfx = {
     const st = this._spr[i];
     const wasAlive = st.alive;
     st.alive = true; st.kind = kind; st.age = 0; st.life = life;
+    st.ceresJobActionOwner = false;
     st.admissionPriority = priority;
     st.admissionSerial = this._admissionSerial++;
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
@@ -1631,6 +1650,7 @@ export const vfx = {
     const baseSize = width / 0.42;
     const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     st.alive = true;
+    st.ceresJobActionOwner = false;
     st.age = 0;
     st.life = life;
     st.size0 = baseSize;
@@ -1671,6 +1691,7 @@ export const vfx = {
     const baseSize = w / 0.42;
     const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     st.alive = true;
+    st.ceresJobActionOwner = false;
     st.age = 0;
     st.life = life;
     st.size0 = baseSize;
@@ -1704,6 +1725,7 @@ export const vfx = {
     const st = this._ts[i];
     if (!st || !st.alive) return;
     st.alive = false;
+    st.ceresJobActionOwner = false;
     st.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
     st.admissionSerial = -1;
     const pos = this._activeTrailStreakPos[i];
@@ -1785,6 +1807,7 @@ export const vfx = {
     const st = this._spr[i];
     if (!st || !st.alive) return;
     st.alive = false;
+    st.ceresJobActionOwner = false;
     const pos = this._activeSpritePos[i];
     if (pos >= 0) {
       const lastPos = --this._liveSpriteCount;
@@ -4225,6 +4248,205 @@ export const vfx = {
     return this._spawnProjectileTrailStreak(
       x, y, z, life, width, length, opacity, color, vx, vz, axisX, axisZ,
     ) ? 1 : 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // R6B authored Ceres action punctuation. Traffic validates and applies the action; this event
+  // consumer revalidates the exact receipt against still-live authority, snapshots global points,
+  // and thereafter draws only from the controller's detached scalar slots.
+  // -------------------------------------------------------------------------
+
+  _onCeresJobActionReceipt(receipt) {
+    return !!(this._ceresJobActionVfx
+      && this._ceresJobActionVfx.accept(receipt, this.state, this.helpers));
+  },
+
+  _updateCeresJobActionVfx(dt) {
+    if (!this._ceresJobActionVfx) return 0;
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reducedMotion = accessibility.id === 'reduced-motion'
+      || accessibility.id === 'reduced-motion-and-flash';
+    return this._ceresJobActionVfx.update(
+      dt,
+      reducedMotion,
+      accessibility.flashOpacityScale < 1,
+      this._ceresJobActionEmitter,
+    );
+  },
+
+  _spawnCeresJobActionStreak(
+    x, y, z, life, width, length, opacity, color, axisX, axisZ,
+  ) {
+    const resident = this._spawnProjectileTrailStreak(
+      x, y, z, life, width, length, opacity, color, 0, 0, axisX, axisZ,
+      CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
+    );
+    if (!resident) return 0;
+    resident.ceresJobActionOwner = true;
+    return 1;
+  },
+
+  _spawnCeresJobActionSprite(
+    kind, x, y, z, life, size0, size1, opacity, color, aspect, roll,
+  ) {
+    const resident = this._spawnSprite(
+      kind, x, y, z, life, size0, size1, opacity, 0, color, 0, 0,
+      aspect, roll, CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
+    );
+    if (!resident) return 0;
+    resident.ceresJobActionOwner = true;
+    return 1;
+  },
+
+  _emitCeresJobActionVfx(slot, profile, pulse, reducedMotion, reducedFlash) {
+    let dx = slot.targetX - slot.sourceX;
+    let dz = slot.targetZ - slot.sourceZ;
+    let distance = Math.hypot(dx, dz);
+    if (distance < 1e-5) {
+      dx = slot.routeX - slot.sourceX;
+      dz = slot.routeZ - slot.sourceZ;
+      distance = Math.hypot(dx, dz);
+    }
+    if (distance < 1e-5) {
+      const angle = pulse * 1.5707963267948966;
+      dx = Math.cos(angle);
+      dz = Math.sin(angle);
+      distance = 1;
+    }
+    dx /= distance;
+    dz /= distance;
+    const nx = -dz;
+    const nz = dx;
+    const midX = (slot.sourceX + slot.targetX) * 0.5;
+    const midZ = (slot.sourceZ + slot.targetZ) * 0.5;
+    const opacity = reducedFlash ? 0.42 : 0.74;
+    const life = reducedMotion ? 0.42 : 0.24;
+    let emitted = 0;
+
+    if (profile.id === 'ore-cut') {
+      emitted += this._spawnCeresJobActionStreak(
+        midX, 0.65, midZ, life, profile.width,
+        Math.max(5, Math.min(profile.length, distance)), opacity, profile.color, dx, dz,
+      );
+      emitted += this._spawnCeresJobActionSprite(
+        SPR_FLASH, slot.targetX, 0.7, slot.targetZ, 0.24, 0.7, 2.6,
+        opacity, profile.color, 0.55, Math.atan2(dz, dx),
+      );
+      return emitted;
+    }
+
+    if (profile.id === 'transfer') {
+      const railLength = Math.max(5, Math.min(profile.length, distance));
+      emitted += this._spawnCeresJobActionStreak(
+        midX + nx * 0.85, 0.58, midZ + nz * 0.85, life * 1.3,
+        profile.width, railLength, opacity * 0.82, profile.color, dx, dz,
+      );
+      emitted += this._spawnCeresJobActionStreak(
+        midX - nx * 0.85, 0.58, midZ - nz * 0.85, life * 1.3,
+        profile.width, railLength, opacity * 0.82, profile.color, dx, dz,
+      );
+      emitted += this._spawnCeresJobActionSprite(
+        SPR_PUFF, slot.targetX, 0.55, slot.targetZ, 0.45, 0.7, 2.1,
+        opacity * 0.55, profile.color, 1.8, Math.atan2(dz, dx),
+      );
+      return emitted;
+    }
+
+    if (profile.id === 'survey') {
+      const sweep = (pulse % 3 - 1) * 0.34;
+      const heading = Math.atan2(dz, dx) + sweep;
+      for (let i = -1; i <= 1; i++) {
+        const angle = heading + i * 0.27;
+        const ax = Math.cos(angle);
+        const az = Math.sin(angle);
+        emitted += this._spawnCeresJobActionStreak(
+          slot.sourceX + ax * 3.2, 0.5, slot.sourceZ + az * 3.2,
+          life * 1.45, profile.width, profile.length - Math.abs(i) * 1.8,
+          opacity * (i === 0 ? 0.72 : 0.46), profile.color, ax, az,
+        );
+      }
+      emitted += this._spawnCeresJobActionSprite(
+        SPR_RING, slot.routeX, 0.4, slot.routeZ, 0.48, 0.8, 3.8,
+        opacity * 0.34, profile.color, 0.72, heading,
+      );
+      return emitted;
+    }
+
+    if (profile.id === 'salvage') {
+      for (let i = 0; i < 3; i++) {
+        const spread = i === 0 ? -0.7 : (i === 1 ? 0.08 : 0.82);
+        const angle = Math.atan2(dz, dx) + spread + (pulse & 1 ? 0.16 : -0.16);
+        const ax = Math.cos(angle);
+        const az = Math.sin(angle);
+        emitted += this._spawnCeresJobActionStreak(
+          slot.targetX + ax * 1.5, 0.72 + i * 0.08, slot.targetZ + az * 1.5,
+          life * (0.8 + i * 0.16), profile.width, profile.length - i * 1.7,
+          opacity * (0.9 - i * 0.14), profile.color, ax, az,
+        );
+      }
+      emitted += this._spawnCeresJobActionSprite(
+        SPR_FLASH, slot.targetX, 0.72, slot.targetZ, 0.21, 0.45, 1.8,
+        opacity * 0.65, profile.color, 2.4, Math.atan2(dz, dx),
+      );
+      return emitted;
+    }
+
+    if (profile.id === 'escort') {
+      const wing = (pulse & 1) === 0 ? 1 : -1;
+      emitted += this._spawnCeresJobActionStreak(
+        slot.sourceX + nx * 1.2 * wing, 0.72, slot.sourceZ + nz * 1.2 * wing,
+        life * 1.15, profile.width, profile.length, opacity, profile.color,
+        dx * 0.72 + nx * 0.7, dz * 0.72 + nz * 0.7,
+      );
+      emitted += this._spawnCeresJobActionStreak(
+        slot.sourceX - nx * 1.2 * wing, 0.72, slot.sourceZ - nz * 1.2 * wing,
+        life * 1.15, profile.width, profile.length, opacity, profile.color,
+        dx * 0.72 - nx * 0.7, dz * 0.72 - nz * 0.7,
+      );
+      emitted += this._spawnCeresJobActionSprite(
+        SPR_RING, slot.sourceX, 0.62, slot.sourceZ, 0.4, 0.75, 3.6,
+        opacity * 0.55, profile.color, 0.7, 0,
+      );
+      return emitted;
+    }
+
+    // Patrol: four rigid spokes turn one quarter per beat. Unlike the escort's paired chevrons this
+    // reads as a held measured box even when motion reduction freezes every resident in place.
+    const baseAngle = (pulse & 3) * 1.5707963267948966;
+    for (let i = 0; i < 4; i++) {
+      const angle = baseAngle + i * 1.5707963267948966;
+      const ax = Math.cos(angle);
+      const az = Math.sin(angle);
+      emitted += this._spawnCeresJobActionStreak(
+        slot.routeX + ax * 2.1, 0.54, slot.routeZ + az * 2.1,
+        life * 1.4, profile.width, profile.length, opacity * 0.72,
+        profile.color, ax, az,
+      );
+    }
+    emitted += this._spawnCeresJobActionSprite(
+      SPR_RING, slot.routeX, 0.5, slot.routeZ, 0.55, 1.2, 5.2,
+      opacity * 0.5, profile.color, 1, 0,
+    );
+    return emitted;
+  },
+
+  _clearCeresJobActionVfx() {
+    if (this._ceresJobActionVfx) this._ceresJobActionVfx.clear();
+    let cursor = 0;
+    while (this._spr && cursor < this._liveSpriteCount) {
+      const index = this._activeSprites[cursor];
+      if (this._spr[index].ceresJobActionOwner === true) this._retireSprite(index);
+      else cursor++;
+    }
+    cursor = 0;
+    while (this._ts && cursor < this._liveTrailStreakCount) {
+      const index = this._activeTrailStreaks[cursor];
+      if (this._ts[index].ceresJobActionOwner === true) this._retireTrailStreak(index);
+      else cursor++;
+    }
+    if (this._trailStreakPool) this._commitTrailStreakInstances();
+    if (this._spriteBatches) this._integrateSprites(0);
+    return true;
   },
 
   // -------------------------------------------------------------------------
@@ -7841,6 +8063,7 @@ export const vfx = {
       this._cadenceStationSideEvent = 0;
       sub.stationSideEvents = 0;
     }
+    sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
     // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with
     // no live NPC job, which costs one existence probe per frame and nothing else.
     if (this._npcJobSignaturesRelevant()) {
