@@ -9,6 +9,10 @@
 
 import { hash32 } from '../core/rng.js';
 import { COMMODITIES } from '../data/commodities.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import {
@@ -23,6 +27,7 @@ import {
   rankLawfulResponders,
   reserveArrivalPoint,
 } from '../law/authorityResponse.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 export const LAW_SECURITY_VERSION = 2;
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
@@ -30,6 +35,7 @@ export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 const RESPONSE_GRACE_S = 6;
 const RESPONSE_CLEARANCE = 320;
 const RECEIPT_CAP = 24;
+const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const AMBIENT_SCAN_INTERVAL_TICKS = 30;
 const LAW_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
 const DANGEROUS_CONTEXTS = new Set([
@@ -37,6 +43,26 @@ const DANGEROUS_CONTEXTS = new Set([
   'mission_hostile', 'story_hostile', 'sg06_reinforcement',
 ]);
 const COMMODITY_VALUE = new Map(COMMODITIES.map((row) => [row.id, Math.max(1, Number(row.basePrice) || 1)]));
+const CERES_ACTIVITY_ACTOR_SLOTS = Object.freeze(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots));
+const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_ACTOR_SLOTS
+  .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
+  .map((slot) => [slot.id, slot]));
+const CERES_ACTIVITY_SLOT_IDS = new Set(CERES_ACTIVITY_ACTOR_SLOTS.map((slot) => slot.id));
+const LAW_JOB_RESPONSE_CLAIM_CAP = CERES_LAW_JOB_SLOTS_BY_ID.size;
+const LAW_RESPONSE_AI_FIELDS = Object.freeze([
+  'lawful',
+  'passive',
+  'securityTargetId',
+  'motive',
+  'engagementTrigger',
+  'zoneId',
+  'approachTelegraph',
+  'noFireResponseWindowS',
+  'roe',
+  'activity',
+]);
+const LAW_RESPONSE_COMBAT_FIELDS = Object.freeze(['targetId', 'lockTarget']);
+const LAW_RESPONSE_INTENT_FIELDS = Object.freeze(['fire', 'fireGroup']);
 
 export const lawSecurity = {
   name: 'lawSecurity',
@@ -45,20 +71,30 @@ export const lawSecurity = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this._jobResponseClaims = new Map();
     ensureState(this.state);
     this._onDamage = (payload) => this._handleDamage(payload);
     this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
+    this._onResponderGone = (payload) => this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
+    this._onSectorExit = (payload) => this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
+    this._onSaveRestoring = () => this._releaseAllJobResponses('save_restoring');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('entity:spawned', this._onSpawned);
+      this.bus.on('entity:killed', this._onResponderGone);
+      this.bus.on('entity:destroyed', this._onResponderGone);
+      this.bus.on('sector:exit', this._onSectorExit);
+      this.bus.on('save:restoring', this._onSaveRestoring);
     }
   },
 
   newGame() {
+    this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
   },
 
   update(_dt, state) {
+    this._reconcileJobResponses();
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
     this._enforceSanctuaryWithdrawals(state);
@@ -324,13 +360,234 @@ export const lawSecurity = {
     return incident;
   },
 
+  /**
+   * Return undefined for an ordinary responder, null for a job hull that is not safe to borrow,
+   * or the exact live Ceres job binding. Non-Ceres jobs retain the ordinary responder path; any
+   * Ceres-marked candidate fails closed unless it is one of the two authored patrol/escort leases.
+   */
+  _jobResponderBinding(responder, incident) {
+    const data = responder && responder.data;
+    const slotId = typeof data?.activityActorSlotId === 'string' ? data.activityActorSlotId : null;
+    const hasJobIdentity = !!data && (data.jobId != null || data.worldRecordId != null
+      || data.ceresActivityCast === true
+      || data.ceresActivityJobOwned === true
+      || slotId != null);
+    if (!hasJobIdentity) return undefined;
+    if (!hasCeresJobResponderMarker(this.state, responder, slotId)) return undefined;
+    const api = this.helpers && this.helpers.npcJobs;
+    const slot = slotId && CERES_LAW_JOB_SLOTS_BY_ID.get(slotId);
+    const worldRecordId = slot ? stableRecordId(
+      this.state?.meta?.seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      slot.worldRecordSlotId,
+    ) : null;
+    const jobId = worldRecordId ? `job:${worldRecordId}` : null;
+    if (!jobId || !slot
+      || data.worldRecordId !== worldRecordId || data.jobId !== jobId
+      || currentSectorId(this.state) !== CERES_ACTIVITY_SECTOR_ID
+      || data.ceresActivityCast !== true || data.ceresActivityJobOwned !== true
+      || data.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || (data.homeSectorId != null && data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+      || (responder.homeSectorId != null && responder.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+      || !api || typeof api.byEntity !== 'function' || typeof api.claimControl !== 'function'
+      || typeof api.releaseControl !== 'function' || typeof api.controlClaim !== 'function') {
+      return null;
+    }
+    const liveEntity = entityById(this.state, responder.id);
+    const entry = api.byEntity(responder.id);
+    if (liveEntity !== responder || responder.alive === false || !entry || entry.entityId !== responder.id
+      || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID || entry.worldRecordId !== worldRecordId
+      || entry.job?.id !== jobId
+      || entry.job?.kind !== 'patrol' || entry.kind !== 'patrol') {
+      return null;
+    }
+    const claimId = lawJobResponseClaimId(incident, jobId);
+    if (!claimId) return null;
+    const liveClaim = api.controlClaim(jobId);
+    if (liveClaim) {
+      const retained = this._jobResponseClaims && this._jobResponseClaims.get(claimId);
+      if (!retained || retained.entity !== responder || retained.entry !== entry
+        || liveClaim.claimId !== claimId || liveClaim.holder !== LAW_JOB_RESPONSE_HOLDER
+        || liveClaim.claimedEntityId !== responder.id) {
+        return null;
+      }
+    }
+    return { api, jobId, slotId, entry, claimId };
+  },
+
+  _responseCandidateEligible(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    return this._jobResponseClaims.has(binding.claimId)
+      || this._jobResponseClaims.size < LAW_JOB_RESPONSE_CLAIM_CAP;
+  },
+
+  _claimJobResponder(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    const retained = this._jobResponseClaims.get(binding.claimId);
+    if (retained) return retained.entity === responder && retained.entry === binding.entry;
+    if (this._jobResponseClaims.size >= LAW_JOB_RESPONSE_CLAIM_CAP) return false;
+
+    const data = responder.data;
+    const topLevels = {
+      ai: snapshotOwnValue(data, 'ai'),
+      combat: snapshotOwnValue(data, 'combat'),
+      intent: snapshotOwnValue(data, 'intent'),
+    };
+    const snapshots = {
+      ai: snapshotOwnFields(topLevels.ai.value, LAW_RESPONSE_AI_FIELDS),
+      combat: snapshotOwnFields(topLevels.combat.value, LAW_RESPONSE_COMBAT_FIELDS),
+      intent: snapshotOwnFields(topLevels.intent.value, LAW_RESPONSE_INTENT_FIELDS),
+    };
+    const granted = binding.api.claimControl(binding.jobId, {
+      claimId: binding.claimId,
+      holder: LAW_JOB_RESPONSE_HOLDER,
+    });
+    const claim = granted && granted.claim;
+    if (!granted?.granted || !claim || claim.claimId !== binding.claimId
+      || claim.holder !== LAW_JOB_RESPONSE_HOLDER || claim.claimedEntityId !== responder.id) {
+      return false;
+    }
+    this._jobResponseClaims.set(binding.claimId, {
+      claimId: binding.claimId,
+      incidentId: incident.id,
+      targetId: incident.attackerId,
+      entityId: responder.id,
+      entity: responder,
+      data,
+      jobId: binding.jobId,
+      slotId: binding.slotId,
+      entry: binding.entry,
+      job: binding.entry.job,
+      topLevels,
+      snapshots,
+      successors: null,
+    });
+    return true;
+  },
+
+  _sealJobResponder(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    const record = this._jobResponseClaims.get(binding.claimId);
+    const data = responder?.data;
+    if (!record || record.entity !== responder || record.entry !== binding.entry
+      || record.data !== data || !isObjectContainer(data?.ai)
+      || !isObjectContainer(data?.combat) || !isObjectContainer(data?.intent)) {
+      return false;
+    }
+    const successors = { ai: data.ai, combat: data.combat, intent: data.intent };
+    if (record.successors) return responseSuccessorsMatch(record, data);
+    record.successors = successors;
+    return true;
+  },
+
+  _releaseJobResponse(record, _reason) {
+    if (!record || !this._jobResponseClaims?.has(record.claimId)) return false;
+    const api = this.helpers && this.helpers.npcJobs;
+    if (!api || typeof api.controlClaim !== 'function') return false;
+    const current = entityById(this.state, record.entityId);
+    const entry = api && typeof api.byEntity === 'function' ? api.byEntity(record.entityId) : null;
+    const liveClaim = api.controlClaim(record.jobId);
+    const exactEntityAndJob = current === record.entity && current?.data === record.data
+      && entry === record.entry && entry?.job === record.job && entry?.job?.id === record.jobId
+      && entry?.entityId === record.entityId && current.data?.jobId === record.jobId;
+    const exactAi = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'ai');
+    const exactCombat = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'combat');
+    const exactIntent = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'intent');
+    const fullCapturedBinding = exactEntityAndJob && exactAi && exactCombat && exactIntent;
+    const ownsLiveClaim = liveClaim?.claimId === record.claimId
+      && liveClaim.holder === LAW_JOB_RESPONSE_HOLDER
+      && liveClaim.claimedEntityId === record.entityId;
+
+    // Clear only through exact law-owned successors before returning movement ownership. A foreign
+    // replacement in one slot must not prevent the other exact slots from being restored, and must
+    // never be used as a target for law cleanup.
+    if (ownsLiveClaim && exactCombat) clearCombatTarget(current.data.combat, record.targetId);
+    if (ownsLiveClaim && exactIntent) clearFiringIntent(current.data.intent);
+    if (ownsLiveClaim
+      && api && typeof api.releaseControl === 'function') {
+      releaseControlWithoutForeignWrites(api, record, current, fullCapturedBinding);
+    }
+    const remainingClaim = api.controlClaim(record.jobId);
+    const releaseVerified = remainingClaim?.claimId !== record.claimId
+      || remainingClaim?.holder !== LAW_JOB_RESPONSE_HOLDER
+      || remainingClaim?.claimedEntityId !== record.entityId;
+    if (!releaseVerified) return false;
+    this._jobResponseClaims.delete(record.claimId);
+    const exactEntityAndDataAfter = ownsLiveClaim
+      && entityById(this.state, record.entityId) === current && current.data === record.data;
+    if (exactEntityAndDataAfter && exactAi && responseSuccessorMatches(record, current.data, 'ai')) {
+      restoreOwnFields(record.topLevels.ai.value, record.snapshots.ai);
+      restoreOwnValue(current.data, 'ai', record.topLevels.ai);
+    }
+    if (exactEntityAndDataAfter && exactCombat && responseSuccessorMatches(record, current.data, 'combat')) {
+      restoreOwnFields(record.topLevels.combat.value, record.snapshots.combat);
+      restoreOwnValue(current.data, 'combat', record.topLevels.combat);
+    }
+    if (exactEntityAndDataAfter && exactIntent && responseSuccessorMatches(record, current.data, 'intent')) {
+      restoreOwnFields(record.topLevels.intent.value, record.snapshots.intent);
+      restoreOwnValue(current.data, 'intent', record.topLevels.intent);
+    }
+    return true;
+  },
+
+  _releaseJobResponseFor(incidentId, entityId, reason) {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.incidentId === incidentId && record.entityId === entityId) {
+        this._releaseJobResponse(record, reason);
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _releaseJobResponsesForEntity(entityId, reason) {
+    if (entityId == null) return;
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.entityId === entityId) this._releaseJobResponse(record, reason);
+    }
+  },
+
+  _releaseJobResponsesForSector(sectorId, reason) {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (sectorId == null || record.entry?.sectorId === sectorId) this._releaseJobResponse(record, reason);
+    }
+  },
+
+  _releaseAllJobResponses(reason) {
+    for (const record of this._jobResponseClaims?.values() || []) this._releaseJobResponse(record, reason);
+  },
+
+  _reconcileJobResponses() {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      const current = entityById(this.state, record.entityId);
+      const entry = this.helpers?.npcJobs?.byEntity?.(record.entityId);
+      const claim = this.helpers?.npcJobs?.controlClaim?.(record.jobId);
+      if (current !== record.entity || current?.alive === false || entry !== record.entry
+        || entry?.job !== record.job || claim?.claimId !== record.claimId
+        || claim?.holder !== LAW_JOB_RESPONSE_HOLDER
+        || current?.data !== record.data || !responseSuccessorsMatch(record, current?.data)
+        || !hasLiveIncident(this.state, record.incidentId)
+        || currentSectorId(this.state) !== CERES_ACTIVITY_SECTOR_ID) {
+        this._releaseJobResponse(record, 'live_identity_changed');
+      }
+    }
+  },
+
   _respondersFor(incident, victim) {
     const state = this.state;
     const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
     const anchor = station && station.pos || victim.pos;
-    const candidates = isLawful(victim) && victim.type === 'ship'
+    const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
       ? [victim, ...(state.entityList || [])]
       : (state.entityList || []);
+    const candidates = unfilteredCandidates.filter((entity) => this._responseCandidateEligible(entity, incident));
     const out = rankLawfulResponders(candidates, anchor, {
       aggressorId: incident.attackerId,
       cap: incident.responderCap,
@@ -368,20 +625,27 @@ export const lawSecurity = {
 
   _dispatchIncident(incident, victim, attacker) {
     const responders = this._respondersFor(incident, victim);
+    const dispatched = [];
     incident.dispatchedAt = this.state.simTime || 0;
-    incident.status = responders.length ? 'responding' : 'monitoring';
     for (const responder of responders) {
+      if (!this._claimJobResponder(responder, incident)) continue;
       this._authorizeResponder(responder, attacker, incident, 'security_response');
+      if (!this._sealJobResponder(responder, incident)) {
+        this._releaseJobResponseFor(incident.id, responder.id, 'authorization_identity_changed');
+        continue;
+      }
       incident.responderIds.push(responder.id);
+      dispatched.push(responder);
     }
+    incident.status = dispatched.length ? 'responding' : 'monitoring';
     const payload = publicIncident(incident);
     this._emit('law:dispatchStarted', payload);
-    if (responders.length) {
-      this._say('alert', `CONTROL: ${responders.length} patrol unit${responders.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
+    if (dispatched.length) {
+      this._say('alert', `CONTROL: ${dispatched.length} patrol unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
       this._recordReceipt({
         incidentId: incident.id, cause: incident.cause, outcome: 'patrol_dispatched',
         attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
-        text: `PATROL DISPATCHED — ${responders.length} unit${responders.length === 1 ? '' : 's'} intercepting the aggressor.`,
+        text: `PATROL DISPATCHED — ${dispatched.length} unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`,
       });
     } else {
       this._say('alert', 'CONTROL: no patrol in range. Distress remains active.', `law:dispatch:none:${incident.id}`, incident.factionId);
@@ -446,7 +710,9 @@ export const lawSecurity = {
     incident.status = 'resolved';
     incident.outcome = outcome;
     incident.resolvedAt = now;
-    for (const id of incident.responderIds) this._clearResponder(entityById(state, id), incident.attackerId);
+    for (const id of incident.responderIds) {
+      this._clearResponder(entityById(state, id), incident.attackerId, incident.id, id);
+    }
     delete ensureState(state).incidents[key];
     this._say('info', 'CONTROL: threat clear. Station approach secure.', `law:clear:${incident.id}`, incident.factionId);
     this._emit('law:incidentResolved', publicIncident(incident));
@@ -461,7 +727,8 @@ export const lawSecurity = {
     });
   },
 
-  _clearResponder(responder, targetId) {
+  _clearResponder(responder, targetId, incidentId = null, responderId = responder?.id) {
+    if (incidentId != null && this._releaseJobResponseFor(incidentId, responderId, 'incident_resolved')) return;
     if (!responder || !isLawful(responder)) return;
     const state = this.state;
     const data = responder.data || (responder.data = {});
@@ -635,12 +902,22 @@ export const lawSecurity = {
   },
 
   destroy() {
+    this._releaseAllJobResponses('destroy');
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
       if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
+      if (this._onResponderGone) {
+        this.bus.off('entity:killed', this._onResponderGone);
+        this.bus.off('entity:destroyed', this._onResponderGone);
+      }
+      if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
+      if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
     }
     this._onDamage = null;
     this._onSpawned = null;
+    this._onResponderGone = null;
+    this._onSectorExit = null;
+    this._onSaveRestoring = null;
   },
 };
 
@@ -664,6 +941,109 @@ export function playerCargoValue(state) {
     total += Math.max(0, Math.floor(Number(items[id]) || 0)) * (COMMODITY_VALUE.get(id) || 1);
   }
   return total;
+}
+
+function lawJobResponseClaimId(incident, jobId) {
+  if (!incident || typeof incident.id !== 'string' || incident.id.length === 0
+    || typeof jobId !== 'string' || jobId.length === 0) return null;
+  const value = `${LAW_JOB_RESPONSE_HOLDER}:${incident.id}:${jobId}`;
+  return value.length <= 200 ? value : null;
+}
+
+function hasCeresJobResponderMarker(state, responder, slotId) {
+  const data = responder?.data;
+  if (!data) return false;
+  if (data.sectorId === CERES_ACTIVITY_SECTOR_ID
+    || data.homeSectorId === CERES_ACTIVITY_SECTOR_ID
+    || responder.homeSectorId === CERES_ACTIVITY_SECTOR_ID
+    || data.ceresActivityCast === true || data.ceresActivityJobOwned === true
+    || (slotId != null && (CERES_ACTIVITY_SLOT_IDS.has(slotId) || slotId.startsWith('ceres_')))) {
+    return true;
+  }
+  const seed = state?.meta?.seed;
+  for (const slot of CERES_ACTIVITY_ACTOR_SLOTS) {
+    const worldRecordId = stableRecordId(
+      seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      slot.worldRecordSlotId,
+    );
+    if (data.worldRecordId === worldRecordId || data.jobId === `job:${worldRecordId}`) return true;
+  }
+  return false;
+}
+
+function isObjectContainer(value) {
+  return value != null && typeof value === 'object';
+}
+
+function snapshotOwnValue(owner, field) {
+  const own = Object.prototype.hasOwnProperty.call(owner, field);
+  return { own, value: own ? owner[field] : undefined };
+}
+
+function restoreOwnValue(owner, field, snapshot) {
+  if (snapshot.own) owner[field] = snapshot.value;
+  else delete owner[field];
+}
+
+function responseSuccessorsMatch(record, data) {
+  return responseSuccessorMatches(record, data, 'ai')
+    && responseSuccessorMatches(record, data, 'combat')
+    && responseSuccessorMatches(record, data, 'intent');
+}
+
+function responseSuccessorMatches(record, data, field) {
+  const successors = record?.successors;
+  return !!successors && data?.[field] === successors[field];
+}
+
+function hasLiveIncident(state, incidentId) {
+  const incidents = state?.lawSecurity?.incidents;
+  if (!incidents || typeof incidents !== 'object') return false;
+  for (const key in incidents) {
+    if (!Object.prototype.hasOwnProperty.call(incidents, key)) continue;
+    const incident = incidents[key];
+    const status = incident?.status;
+    if (incident?.id === incidentId
+      && (status === 'distress' || status === 'responding' || status === 'monitoring')) return true;
+  }
+  return false;
+}
+
+function releaseControlWithoutForeignWrites(api, record, current, fullCapturedBinding) {
+  let displacedData = null;
+  let scratchData = null;
+  if (current?.alive && !fullCapturedBinding) {
+    displacedData = snapshotOwnValue(current, 'data');
+    scratchData = { intent: {} };
+    current.data = scratchData;
+  }
+  try {
+    return api.releaseControl(record.jobId, record.claimId);
+  } finally {
+    if (displacedData && current.data === scratchData) restoreOwnValue(current, 'data', displacedData);
+  }
+}
+
+function snapshotOwnFields(value, fields) {
+  const source = value && typeof value === 'object' ? value : null;
+  return fields.map((field) => (source && Object.prototype.hasOwnProperty.call(source, field)
+    ? { field, own: true, value: source[field] }
+    : { field, own: false, value: undefined }));
+}
+
+function restoreOwnFields(value, snapshot) {
+  if (!value || typeof value !== 'object' || !Array.isArray(snapshot)) return;
+  for (const record of snapshot) {
+    if (record.own) value[record.field] = record.value;
+    else delete value[record.field];
+  }
+}
+
+function eventEntityId(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  return payload.entityId ?? payload.id ?? payload.entity?.id ?? null;
 }
 
 function freshState() {
@@ -726,9 +1106,17 @@ function clearTarget(entity, targetId) {
   if (!entity) return;
   const data = entity.data || (entity.data = {});
   const combat = data.combat || (data.combat = {});
+  clearCombatTarget(combat, targetId);
+  const intent = data.intent || (data.intent = {});
+  clearFiringIntent(intent);
+}
+
+function clearCombatTarget(combat, targetId) {
   if (targetId == null || combat.targetId === targetId) combat.targetId = null;
   if (targetId == null || combat.lockTarget === targetId) combat.lockTarget = null;
-  const intent = data.intent || (data.intent = {});
+}
+
+function clearFiringIntent(intent) {
   intent.fire = false;
   intent.fireGroup = null;
 }

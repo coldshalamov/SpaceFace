@@ -20,7 +20,8 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
-import { makeShipEntitySpec } from './ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
+import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import {
   RECORD_KIND,
@@ -81,6 +82,13 @@ const NPC_MINER_WORK_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_RECEIPT_SCHEMA = 'spaceface.trafficJobActionReceipt.v1';
 const CERES_JOB_ACTION_RECEIPT_EVENT = 'traffic:jobActionReceipt';
+const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
+  'ceres_ambush_escort',
+  'ceres_cathedral_patrol',
+]);
+const CERES_LAW_RESPONSE_WASP_FITTINGS = Object.freeze(
+  fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']),
+);
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((def) => [def.id, def]));
 
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
@@ -759,17 +767,22 @@ export const traffic = {
         ? { x: CINDER_SLUICE_TRAFFIC_STAGING_POS.x, z: CINDER_SLUICE_TRAFFIC_STAGING_POS.z }
         : sectorLocalToGlobalForSector(localPos, CERES_ACTIVITY_SECTOR_ID);
       const lawful = slot.lawful === true || role === 'patrol' || role === 'escort';
+      const authoredLawResponseWasp = CERES_LAW_RESPONSE_SLOT_IDS.has(slot.id);
       const aiSpec = {
         archetype: def.archetype,
         passive: slot.passive !== false,
         spawnContext: lawful ? 'patrol' : 'convoy_civilian',
         ...(lawful ? { lawful: true } : {}),
+        ...(authoredLawResponseWasp
+          ? { combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY }
+          : {}),
       };
       const canonicalSpec = makeShipEntitySpec(def.ship, {
         team: def.team,
         factionId: (sector && sector.factionId) || 'faction_free',
         pos,
         ai: aiSpec,
+        ...(authoredLawResponseWasp ? { fittings: CERES_LAW_RESPONSE_WASP_FITTINGS } : {}),
       });
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 

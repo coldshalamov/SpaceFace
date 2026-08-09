@@ -10,12 +10,17 @@ import {
   wrapAngle,
 } from '../ai/contracts.js';
 import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../ai/doctrine.js';
-import { normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
+import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
-import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
@@ -28,6 +33,12 @@ const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const EMPTY_ATTACHMENTS = Object.freeze([]);
 const AI_SPATIAL_MIN_COLLIDABLES = 96;
+const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
+const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
+  pocket.actorSlots
+    .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
+    .map((slot) => [slot.id, slot])
+)));
 const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_by_self', 'severable']);
 const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
 const SOLID_TAGS = Object.freeze(['solid']);
@@ -121,7 +132,7 @@ export const aiPorts = {
   },
 
   update(dt, state) {
-    clearIneligibleAIFiringIntents(state);
+    clearIneligibleAIFiringIntents(state, this.helpers);
     if (!this._pendingManeuvers || this._pendingManeuvers.size === 0) return;
     if (!usesSg02DynamicAuthority(state) || !sg02Ready(state)) {
       this._dropPending(usesSg02DynamicAuthority(state) ? 'physics_owner_unavailable' : 'physics_backend_unavailable');
@@ -571,7 +582,7 @@ export const aiPorts = {
  * separate fail-closed disarm sweep. This runs before the AI maneuver port's early return and
  * prevents a fire bit from surviving an encounter phase or save/load role transition.
  */
-export function clearIneligibleAIFiringIntents(state) {
+export function clearIneligibleAIFiringIntents(state, helpers = null) {
   if (!state) return 0;
   const index = state.entityIndex;
   const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
@@ -587,7 +598,9 @@ export function clearIneligibleAIFiringIntents(state) {
     if (!intent || (!intent.fire && intent.fireGroup == null)) continue;
     const ai = data && data.ai;
     const disabledNonlethalTarget = disabledNonlethalTargetFor(state, entity, ai);
-    const ineligible = !ai || ai.passive || entity.team === 2
+    const teamTwoDisarmed = entity.team === 2
+      && !authorizedCeresLawJobResponse(state, entity, ai, helpers);
+    const ineligible = !ai || ai.passive || teamTwoDisarmed
       || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire'
       || !activityAllowsOffense(effectiveActivityForAI(ai))
       || disabledNonlethalTarget;
@@ -601,6 +614,67 @@ export function clearIneligibleAIFiringIntents(state) {
     cleared++;
   }
   return cleared;
+}
+
+function authorizedCeresLawJobResponse(state, entity, ai, helpers) {
+  if (!state || !entity || !ai || entity.team !== 2 || ai.lawful !== true || ai.passive !== false
+    || ai.engagementTrigger !== 'security_response'
+    || state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+  const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
+  if (doctrineId !== CombatDoctrineId.INTERCEPTOR_FLYBY) return false;
+  const data = entity.data;
+  const slotId = typeof data?.activityActorSlotId === 'string' ? data.activityActorSlotId : null;
+  const slot = slotId && CERES_LAW_JOB_SLOTS_BY_ID.get(slotId);
+  const worldRecordId = slot ? stableRecordId(
+    state.meta?.seed,
+    CERES_ACTIVITY_SECTOR_ID,
+    RECORD_KIND.CONVOY,
+    slot.worldRecordSlotId,
+  ) : null;
+  const jobId = worldRecordId ? `job:${worldRecordId}` : null;
+  const targetId = ai.securityTargetId;
+  const combat = data && data.combat;
+  if (!jobId || !slot || data.worldRecordId !== worldRecordId || data.jobId !== jobId
+    || data.ceresActivityCast !== true || data.ceresActivityJobOwned !== true
+    || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || targetId == null
+    || (data.homeSectorId != null && data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+    || (entity.homeSectorId != null && entity.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+    || !combat || combat.targetId !== targetId || getEntity(state, entity.id) !== entity) return false;
+
+  const target = getEntity(state, targetId);
+  if (!target || target.alive === false || !isHostileForAI(state, entity, target)) return false;
+  const jobs = helpers && helpers.npcJobs;
+  if (!jobs || typeof jobs.byEntity !== 'function' || typeof jobs.controlClaim !== 'function') return false;
+  const entry = jobs.byEntity(entity.id);
+  const claim = jobs.controlClaim(jobId);
+  if (!entry || entry.entityId !== entity.id || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID
+    || entry.kind !== 'patrol' || entry.worldRecordId !== worldRecordId
+    || entry.job?.kind !== 'patrol' || entry.job?.id !== jobId
+    || !claim || claim.holder !== LAW_JOB_RESPONSE_HOLDER || claim.claimedEntityId !== entity.id) {
+    return false;
+  }
+
+  const incidents = state.lawSecurity && state.lawSecurity.incidents;
+  if (!incidents || typeof incidents !== 'object') return false;
+  let boundIncident = null;
+  for (const key in incidents) {
+    if (!Object.prototype.hasOwnProperty.call(incidents, key)) continue;
+    const incident = incidents[key];
+    if (!incident || incident.status !== 'responding' || incident.attackerId !== targetId
+      || !Array.isArray(incident.responderIds) || !incident.responderIds.includes(entity.id)) continue;
+    if (claim.claimId === `${LAW_JOB_RESPONSE_HOLDER}:${incident.id}:${jobId}`) {
+      boundIncident = incident;
+      break;
+    }
+  }
+  if (!boundIncident) return false;
+  return authorizeAIEngagement({
+    state,
+    self: entity,
+    target,
+    tick: state.tick,
+    objectiveReason: `combat_doctrine:${doctrineId}:strike`,
+  }).ok;
 }
 
 function disabledNonlethalTargetFor(state, entity, ai) {
