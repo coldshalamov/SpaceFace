@@ -209,6 +209,19 @@ export function createStage(scene, opts = {}) {
       stage.clear();
       sparks.dispose(); smoke.dispose(); debris.dispose(); fronts.dispose(); ribbons.dispose();
       scene.remove(root);
+      // The light pool is added to the SCENE, not to `root` (a PointLight parented under a Group
+      // still lights the scene, but keeping them off the disposable node is how the pool guarantees
+      // a stable visible-light count for the lifetime of the stage). So removing `root` does NOT
+      // remove them, and they must be removed explicitly here.
+      //
+      // This is load-bearing, not tidiness. Pool lights are permanently `visible = true` by design
+      // (see lights.js — toggling `.visible` mutates the shader-program cache key). Orphaned
+      // visible lights therefore keep COUNTING: dispose-then-recreate would take the scene from 4
+      // visible PointLights to 8, which is exactly the whole-scene recompile the visible-forever
+      // rule exists to prevent. Leaving them was strictly worse than the `.visible` toggling it
+      // replaced.
+      lights.clear();
+      for (const l of lights.lights) scene.remove(l);
     },
   };
 
