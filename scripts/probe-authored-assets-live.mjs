@@ -1,10 +1,20 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { createServer as createNetServer } from 'node:net';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { createConnection, createServer as createNetServer } from 'node:net';
+import { tmpdir } from 'node:os';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { waitForAuthoredAssetDeadline } from './lib/authoredAssetDeadline.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -28,15 +38,37 @@ const AUTHORED_BODY_PROOF = Object.freeze({
 // Must exceed main.js' authored-visual startup wait so this probe observes the same no-fallback
 // default path instead of racing the loading gate.
 const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(process.env.SF_ASSETS_LIVE_TIMEOUT_MS) || 90000);
+const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
+const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
+  'src/render/partsLibrary.js',
+  'src/render/renderer.js',
+  'src/render/assetLoader.js',
+  'src/render/renderPackageManifest.js',
+  'assets/ships/render-packages/pilots.json',
+  'scripts/probe-authored-assets-live.mjs',
+]);
+
+export async function runAuthoredAssetsLiveProbe() {
+const candidate = collectAuthoredProbeCandidateIdentity();
+assert.equal(candidate.head, candidate.originMaster,
+  `authored batching evidence requires HEAD == origin/master: ${JSON.stringify(candidate)}`);
+assert.deepEqual(candidate.worktreeStatus, [],
+  `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
 
 let server = null;
 let chrome = null;
 let ws = null;
+let debugPort = null;
+let output = null;
+let runError = null;
+let cleanupProof = null;
+const profileDir = mkdtempSync(join(tmpdir(), CHROME_PROFILE_PREFIX));
 
 try {
   server = await startFreshServer();
-  const debugPort = await findFreePort(9801);
-  chrome = spawnChrome(debugPort);
+  await server.ready;
+  debugPort = await findFreePort(9801);
+  chrome = spawnChrome(debugPort, profileDir);
   const cdp = await connectCdp(debugPort);
   ws = cdp.ws;
 
@@ -127,6 +159,9 @@ try {
     'scene should contain live authored GLB static batches or pooled instances');
   assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
     `a real Wasp/freighter package surface should share one pool across at least two authored roots: ${JSON.stringify(report.packageShipPoolRoots)}`);
+  const repeatedPackagePoolProof = assessRepeatedAuthoredPackagePoolProof(report);
+  assert.equal(repeatedPackagePoolProof.pass, true,
+    `two frequent authored roots must own distinct live slots in one exact package pool chunk: ${JSON.stringify(repeatedPackagePoolProof, null, 2)}`);
   assert.deepEqual(report.ships.filter((ship) => (
     ship.packageInstancePoolKeys.length > 0 && !ship.packagePoolTextureResidency.allResident
   )).map(summarizeShip), [],
@@ -141,7 +176,8 @@ try {
     `authored admission memory proxy must remain below 3 GiB: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.deepEqual(pageIssues.errorIssues(), [], 'browser page should not report runtime errors during the asset probe');
 
-  const output = {
+  output = {
+    candidate,
     route: probeRoute,
     inputSource: 'fixture',
     injectedState: true,
@@ -161,6 +197,7 @@ try {
     instancePoolLiveCount: report.instancePoolLiveCount,
     packageShipPoolRoots: report.packageShipPoolRoots,
     repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys,
+    repeatedPackagePoolProof,
     staticBatchCount: report.staticBatchCount,
     loaderDiagnostics: {
       available: report.loaderDiagnostics.available,
@@ -178,20 +215,256 @@ try {
     authoredDeadline: report.authoredDeadline,
     authoredUpgradeDiagnostics: report.authoredUpgradeDiagnostics,
     startupTrace,
-    screenshot: SHOT,
+    screenshot: artifactFileEvidence(SHOT),
   };
-  const renderedOutput = JSON.stringify(output, null, 2);
-  if (REPORT) writeJsonReport(REPORT, output);
-  if (LOG) writeTextReport(LOG, `Authored GLB live probe PASS\n${renderedOutput}\n`);
-  console.log('Authored GLB live probe PASS');
-  console.log(renderedOutput);
+} catch (error) {
+  runError = error;
 } finally {
-  await closeWebSocket(ws);
-  await terminateChild(chrome);
-  if (server && server.child) await terminateChild(server.child);
-  else {
-    try { if (server && server.kill) server.kill(); } catch (_) {}
+  cleanupProof = await closeOwnedAuthoredProbeRuntime({
+    ws,
+    chrome,
+    server,
+    debugPort,
+    profileDir,
+  });
+}
+
+let cleanupError = null;
+try { assertAuthoredProbeCleanup(cleanupProof); }
+catch (error) { cleanupError = error; }
+let candidateError = null;
+try {
+  assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
+    'authored probe candidate changed between launch and teardown');
+} catch (error) {
+  candidateError = error;
+}
+if (runError || cleanupError || candidateError) {
+  const errors = [runError, cleanupError, candidateError].filter(Boolean);
+  const failure = {
+    status: 'FAIL',
+    candidate,
+    route: output && output.route || null,
+    cleanup: cleanupProof,
+    errors: errors.map((error) => ({
+      name: error && error.name || 'Error',
+      message: error && error.message || String(error),
+    })),
+  };
+  const renderedFailure = JSON.stringify(failure, null, 2);
+  if (REPORT) writeJsonReport(REPORT, failure);
+  if (LOG) writeTextReport(LOG, `Authored GLB live probe FAIL\n${renderedFailure}\n`);
+  if (errors.length === 1) throw errors[0];
+  throw new AggregateError(errors, 'Authored GLB live probe and owned-runtime cleanup failed');
+}
+
+const finalOutput = finalizeAuthoredProbeEvidence(output, cleanupProof);
+const renderedOutput = JSON.stringify(finalOutput, null, 2);
+if (REPORT) writeJsonReport(REPORT, finalOutput);
+if (LOG) writeTextReport(LOG, `Authored GLB live probe PASS\n${renderedOutput}\n`);
+console.log('Authored GLB live probe PASS');
+console.log(renderedOutput);
+return finalOutput;
+}
+
+if (isMainModule()) await runAuthoredAssetsLiveProbe();
+
+export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
+  const matrixEpsilon = Number.isFinite(options.matrixEpsilon)
+    ? Math.max(0, options.matrixEpsilon)
+    : 0.00001;
+  const pools = new Map();
+  const failures = [];
+  for (const pool of Array.isArray(report && report.instancePools) ? report.instancePools : []) {
+    const identity = exactPoolIdentity(pool && pool.key, pool && pool.chunk);
+    const slots = new Map();
+    for (const slot of Array.isArray(pool && pool.submittedSlotMatrices) ? pool.submittedSlotMatrices : []) {
+      if (Number.isInteger(slot && slot.index)) slots.set(slot.index, slot);
+    }
+    pools.set(identity, { ...pool, identity, slots });
   }
+
+  const groups = new Map();
+  for (const ship of Array.isArray(report && report.ships) ? report.ships : []) {
+    if (!ship || ship.presented !== true || ship.state !== 'authored' || !isFrequentAuthoredRoot(ship)) continue;
+    for (const submission of Array.isArray(ship.packagePoolSubmissions) ? ship.packagePoolSubmissions : []) {
+      const identity = exactPoolIdentity(submission && submission.key, submission && submission.chunk);
+      const expectedToken = poolSlotTokenForEvidence(
+        submission && submission.key,
+        submission && submission.chunk,
+        submission && submission.index,
+      );
+      const pool = pools.get(identity);
+      const slot = pool && pool.slots.get(submission && submission.index);
+      const reasons = [];
+      if (!pool) reasons.push('missing-exact-pool-chunk');
+      if (pool && pool.visible !== true) reasons.push('pool-hidden');
+      if (pool && pool.sceneParented !== true) reasons.push('pool-not-scene-parented');
+      if (!slot) reasons.push('slot-not-submitted');
+      if (slot && !(Math.abs(Number(slot.determinant) || 0) > 1e-12)) reasons.push('slot-matrix-zero');
+      if (submission && submission.submitted !== true) reasons.push('submission-not-live');
+      if (!submission || submission.token !== expectedToken) reasons.push('slot-token-mismatch');
+      if (!submission || submission.proxyIsInstanceProxy !== true) reasons.push('not-instance-proxy');
+      if (!submission || submission.proxyIsRenderPackagePooled !== true) reasons.push('not-package-pooled');
+      if (!submission || submission.proxyIsMesh !== false) reasons.push('direct-mesh-not-suppressed');
+      if (!submission || submission.directDrawSuppressed !== true) reasons.push('visible-direct-draw-present');
+      if (!submission || submission.visibleThroughRoot !== true) reasons.push('proxy-not-presented');
+      if (slot && !matricesApproximatelyEqual(slot.matrix, submission && submission.proxyMatrix, matrixEpsilon)) {
+        reasons.push('proxy-slot-matrix-mismatch');
+      }
+      if (reasons.length) {
+        failures.push({ rootId: ship.id, identity, token: submission && submission.token || null, reasons });
+        continue;
+      }
+      let group = groups.get(identity);
+      if (!group) {
+        group = { identity, key: submission.key, chunk: Number(submission.chunk) || 0, roots: new Map(), tokens: new Set() };
+        groups.set(identity, group);
+      }
+      group.tokens.add(submission.token);
+      let root = group.roots.get(ship.id);
+      if (!root) {
+        root = {
+          id: ship.id,
+          defId: ship.defId || null,
+          trafficRole: ship.trafficRole || null,
+          tokens: new Set(),
+        };
+        group.roots.set(ship.id, root);
+      }
+      root.tokens.add(submission.token);
+    }
+  }
+
+  const proofs = [];
+  for (const group of groups.values()) {
+    if (group.roots.size < 2 || group.tokens.size < 2) continue;
+    proofs.push({
+      key: group.key,
+      chunk: group.chunk,
+      distinctRootCount: group.roots.size,
+      distinctSlotCount: group.tokens.size,
+      slotTokens: [...group.tokens].sort(),
+      roots: [...group.roots.values()].map((root) => ({
+        id: root.id,
+        defId: root.defId,
+        trafficRole: root.trafficRole,
+        slotTokens: [...root.tokens].sort(),
+      })),
+    });
+  }
+  proofs.sort((a, b) => exactPoolIdentity(a.key, a.chunk).localeCompare(exactPoolIdentity(b.key, b.chunk)));
+  if (!proofs.length) failures.push({ reason: 'no-two-root-two-slot-exact-package-pool-proof' });
+  return { pass: proofs.length > 0, matrixEpsilon, proofs, failures };
+}
+
+export function collectAuthoredProbeCandidateIdentity() {
+  const sourceDigest = createHash('sha256');
+  for (const file of AUTHORED_PROBE_SOURCE_FILES) {
+    sourceDigest.update(file);
+    sourceDigest.update('\0');
+    sourceDigest.update(readFileSync(join(ROOT, file)));
+    sourceDigest.update('\0');
+  }
+  const status = gitText(['status', '--porcelain=v1', '--untracked-files=all']);
+  return {
+    head: gitText(['rev-parse', 'HEAD']),
+    originMaster: gitText(['rev-parse', 'origin/master']),
+    branch: gitText(['branch', '--show-current']),
+    sourceDigest: sourceDigest.digest('hex'),
+    sourceFiles: [...AUTHORED_PROBE_SOURCE_FILES],
+    worktreeStatus: status ? status.split(/\r?\n/).filter(Boolean) : [],
+  };
+}
+
+export function assertAuthoredProbeCleanup(cleanup) {
+  const failures = [];
+  for (const name of ['chrome', 'server']) {
+    const processProof = cleanup && cleanup[name];
+    if (!processProof || processProof.started !== true) {
+      failures.push(`${name === 'chrome' ? 'Chrome' : 'game server'} process proof is missing`);
+    } else if (processProof.exitConfirmed !== true) {
+      failures.push(`${name} process ${processProof.pid || 'unknown'} did not exit`);
+    }
+  }
+  const ports = Array.isArray(cleanup && cleanup.ports) ? cleanup.ports : [];
+  for (const name of ['chrome-debug', 'game-server']) {
+    if (!ports.some((port) => port && port.name === name && Number.isInteger(port.port))) {
+      failures.push(`${name} port proof is missing`);
+    }
+  }
+  for (const port of ports) {
+    if (Number.isInteger(port && port.port) && port.refused !== true) {
+      failures.push(`${port.name || 'owned'} port ${port.port} still accepts connections`);
+    }
+  }
+  if (!cleanup || !cleanup.profile || !cleanup.profile.path) {
+    failures.push('owned Chrome profile proof is missing');
+  } else if (cleanup.profile.deleted !== true) {
+    failures.push(`owned Chrome profile was not deleted: ${cleanup.profile.path}`);
+  }
+  for (const failure of Array.isArray(cleanup && cleanup.failures) ? cleanup.failures : []) {
+    failures.push(String(failure));
+  }
+  assert.deepEqual(failures, [], `authored probe cleanup incomplete: ${failures.join('; ')}`);
+  return cleanup;
+}
+
+export function finalizeAuthoredProbeEvidence(output, cleanup) {
+  assert.ok(output && typeof output === 'object', 'authored probe output is required before PASS');
+  assertAuthoredProbeCleanup(cleanup);
+  return { status: 'PASS', ...output, cleanup };
+}
+
+function exactPoolIdentity(key, chunk) {
+  return `${String(key || '')}|${Number(chunk) || 0}`;
+}
+
+function poolSlotTokenForEvidence(key, chunk, index) {
+  return `${exactPoolIdentity(key, chunk)}|${Number(index)}`;
+}
+
+function matricesApproximatelyEqual(first, second, epsilon) {
+  if (!Array.isArray(first) || !Array.isArray(second) || first.length !== 16 || second.length !== 16) return false;
+  for (let index = 0; index < 16; index++) {
+    if (!Number.isFinite(first[index]) || !Number.isFinite(second[index])) return false;
+    if (Math.abs(first[index] - second[index]) > epsilon) return false;
+  }
+  return true;
+}
+
+function isFrequentAuthoredRoot(root) {
+  const defId = String(root && root.defId || '').toLowerCase();
+  const trafficRole = String(root && root.trafficRole || '').toLowerCase();
+  const urls = Array.isArray(root && root.wholeShipBodyUrls) ? root.wholeShipBodyUrls : [];
+  return defId === 'ship_wasp'
+    || defId === 'ship_mule'
+    || defId === 'ship_atlas'
+    || trafficRole === 'hauler'
+    || trafficRole === 'freighter'
+    || urls.some((url) => /(?:wasp|helios_span)/i.test(String(url || '')));
+}
+
+function gitText(args) {
+  const result = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', windowsHide: true });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${String(result.stderr || result.stdout || '').trim()}`);
+  }
+  return String(result.stdout || '').trim();
+}
+
+function artifactFileEvidence(file) {
+  const absolute = resolve(file);
+  const bytes = readFileSync(absolute);
+  return {
+    path: file,
+    bytes: statSync(absolute).size,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+  };
+}
+
+function isMainModule() {
+  return !!process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 }
 
 async function waitForAuthoredShips(cdp) {
@@ -302,14 +575,18 @@ async function collectAuthoredReport(cdp) {
         if (object && object.isInstancedMesh && object.userData && object.userData.spacefaceInstancePool) {
           const key = object.userData.spacefaceInstancePoolKey || null;
           const chunk = Number(object.userData.spacefaceInstancePoolChunk) || 0;
-          const submittedSlots = submittedInstancePoolSlots(object);
+          const submittedSlotMatrices = submittedInstancePoolSlots(object);
+          const submittedSlots = submittedSlotMatrices.map((slot) => slot.index);
           for (const index of submittedSlots) submittedPoolSlotTokens.add(poolSlotToken(key, chunk, index));
           instancePools.push({
             name: object.name || '',
             key,
             chunk,
             count: object.count || 0,
+            visible: object.visible !== false,
+            sceneParented: isDescendantOf(object, scene),
             submittedSlots,
+            submittedSlotMatrices,
             submittedSlotCount: submittedSlots.length,
           });
         } else if (object && object.isMesh && object.userData && object.userData.spacefaceStaticBatch) {
@@ -399,6 +676,7 @@ async function collectAuthoredReport(cdp) {
       const packageInstancePoolKeys = new Set();
       const packageSubmittedPoolKeys = new Set();
       const packagePoolSubmissions = [];
+      const visibleDirectPackagePoolKeys = new Set();
       const packagePoolTextures = new Set();
       const childNames = [];
       root.traverse((object) => {
@@ -406,6 +684,13 @@ async function collectAuthoredReport(cdp) {
         if (object !== root && object.parent === root) childNames.push(object.name || '');
         if (object.isMesh) meshCount++;
         if (object.userData && object.userData.spacefaceInstanceProxy) instanceProxyCount++;
+        if (object.isMesh
+          && object.userData?.spacefaceInstancePoolKey
+          && object.userData?.spacefaceRenderPackagePooled !== true
+          && visibleThroughRoot(object, root)
+          && materialIsVisible(object.material)) {
+          visibleDirectPackagePoolKeys.add(object.userData.spacefaceInstancePoolKey);
+        }
         if (object.userData?.spacefaceRenderPackagePooled === true) {
           const key = object.userData.spacefaceInstancePoolKey || null;
           if (key) {
@@ -414,7 +699,20 @@ async function collectAuthoredReport(cdp) {
             const index = Number(object.userData.spacefaceInstancePoolSlot);
             const submitted = Number.isInteger(index)
               && submittedPoolSlotTokens.has(poolSlotToken(key, chunk, index));
-            packagePoolSubmissions.push({ key, chunk, index, submitted });
+            try { object.updateWorldMatrix(true, false); } catch (_) {}
+            packagePoolSubmissions.push({
+              key,
+              chunk,
+              index,
+              token: poolSlotToken(key, chunk, index),
+              submitted,
+              proxyMatrix: object.matrixWorld?.elements ? Array.from(object.matrixWorld.elements) : null,
+              proxyIsInstanceProxy: object.userData?.spacefaceInstanceProxy === true,
+              proxyIsRenderPackagePooled: object.userData?.spacefaceRenderPackagePooled === true,
+              proxyIsMesh: object.isMesh === true,
+              visibleThroughRoot: visibleThroughRoot(object, root) && materialIsVisible(object.material),
+              directDrawSuppressed: null,
+            });
             if (submitted) packageSubmittedPoolKeys.add(key);
           }
           collectMaterialTextures(object.material, packagePoolTextures);
@@ -432,6 +730,9 @@ async function collectAuthoredReport(cdp) {
           if (!graphSlots[slot].includes(url)) graphSlots[slot].push(url);
         }
       });
+      for (const submission of packagePoolSubmissions) {
+        submission.directDrawSuppressed = !visibleDirectPackagePoolKeys.has(submission.key);
+      }
       const slotUrls = Object.values(authoredSlots).flat();
       const slotUrlsMissingFromGraph = slotUrls.filter((url) => !partUrls.has(url));
       const presentSlots = Object.keys(authoredSlots).filter((slot) => authoredSlots[slot].length > 0);
@@ -688,9 +989,19 @@ async function collectAuthoredReport(cdp) {
       const submitted = [];
       for (let index = 0; index < (Number(pool.count) || 0); index++) {
         pool.getMatrixAt(index, matrix);
-        if (Math.abs(matrix.determinant()) > 1e-12) submitted.push(index);
+        const determinant = matrix.determinant();
+        if (Math.abs(determinant) > 1e-12) {
+          submitted.push({ index, determinant, matrix: Array.from(matrix.elements) });
+        }
       }
       return submitted;
+    }
+
+    function isDescendantOf(object, ancestor) {
+      for (let current = object; current; current = current.parent) {
+        if (current === ancestor) return true;
+      }
+      return false;
     }
 
     function poolSlotToken(key, chunk, index) {
@@ -1120,12 +1431,24 @@ function describeException(details) {
   return details && (details.exception && details.exception.description || details.text) || 'Runtime.evaluate failed';
 }
 
-async function startFreshServer() {
-  const port = await findFreePort(8521);
+export async function startFreshServer(options = {}) {
+  const selectPort = options.findFreePort || findFreePort;
+  const launchServer = options.spawnServer || spawnProbeServer;
+  const awaitReady = options.waitForReachable || waitForReachable;
+  const port = await selectPort(8521);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawnProbeServer(port);
-  await waitForReachable(url, child);
-  return { baseUrl: url, child, kill: () => child.kill() };
+  const child = launchServer(port);
+  const server = {
+    baseUrl: url,
+    port,
+    child,
+    kill: () => child.kill(),
+    ready: null,
+  };
+  // Defer readiness work one turn so the caller owns the child and exact port before any
+  // synchronous or asynchronous readiness failure can escape.
+  server.ready = Promise.resolve().then(() => awaitReady(url, child));
+  return server;
 }
 
 function spawnProbeServer(port) {
@@ -1179,7 +1502,7 @@ async function reachable(url) {
   }
 }
 
-function spawnChrome(debugPort) {
+function spawnChrome(debugPort, profileDir) {
   const chromePath = findChrome();
   return spawn(chromePath, [
     '--headless=new',
@@ -1187,6 +1510,7 @@ function spawnChrome(debugPort) {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-extensions',
+    `--user-data-dir=${profileDir}`,
     `--window-size=${WIDTH},${HEIGHT}`,
     `--remote-debugging-port=${debugPort}`,
     'about:blank',
@@ -1280,20 +1604,77 @@ async function closeWebSocket(socket) {
   } catch (_) {}
 }
 
+async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, profileDir }) {
+  const failures = [];
+  await closeWebSocket(ws);
+  const chromeProof = await terminateChild(chrome);
+  let serverProof;
+  if (server && server.child) {
+    serverProof = await terminateChild(server.child);
+  } else {
+    serverProof = { started: false, pid: null, exitConfirmed: true };
+    try { if (server && server.kill) server.kill(); }
+    catch (error) { failures.push(`game server close failed: ${error && error.message || error}`); }
+  }
+
+  const ports = [];
+  if (Number.isInteger(debugPort)) {
+    ports.push({
+      name: 'chrome-debug',
+      port: debugPort,
+      refused: await waitForPortRefusal(debugPort),
+    });
+  }
+  if (Number.isInteger(server && server.port)) {
+    ports.push({
+      name: 'game-server',
+      port: server.port,
+      refused: await waitForPortRefusal(server.port),
+    });
+  }
+
+  let profileDeleted = false;
+  try {
+    profileDeleted = removeOwnedChromeProfile(profileDir, chromeProof.started !== true || chromeProof.exitConfirmed === true);
+  } catch (error) {
+    failures.push(`Chrome profile cleanup failed: ${error && error.message || error}`);
+  }
+  return {
+    chrome: chromeProof,
+    server: serverProof,
+    ports,
+    profile: { path: profileDir, deleted: profileDeleted },
+    failures,
+  };
+}
+
 async function terminateChild(child) {
-  if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (!child) return { started: false, pid: null, exitConfirmed: true };
+  const proof = {
+    started: true,
+    pid: child.pid || null,
+    exitConfirmed: child.exitCode != null || child.signalCode != null,
+    exitCode: child.exitCode,
+    signalCode: child.signalCode,
+  };
+  if (proof.exitConfirmed) return proof;
   if (process.platform === 'win32' && child.pid) {
     try {
       spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
     } catch (_) {}
     await waitForChildExit(child, 2500);
-    return;
+  } else {
+    try { child.kill(); } catch (_) {}
+    await waitForChildExit(child, 2500);
+    if (child.exitCode == null && child.signalCode == null) {
+      try { child.kill('SIGKILL'); } catch (_) {}
+      await waitForChildExit(child, 1000);
+    }
   }
-  try { child.kill(); } catch (_) {}
-  await waitForChildExit(child, 2500);
-  if (child.exitCode != null || child.signalCode != null) return;
-  try { child.kill('SIGKILL'); } catch (_) {}
-  await waitForChildExit(child, 1000);
+  proof.exitConfirmed = child.exitCode != null || child.signalCode != null;
+  proof.exitCode = child.exitCode;
+  proof.signalCode = child.signalCode;
+  return proof;
 }
 
 async function waitForChildExit(child, timeoutMs) {
@@ -1302,6 +1683,48 @@ async function waitForChildExit(child, timeoutMs) {
     new Promise((resolve) => child.once('exit', resolve)),
     sleep(timeoutMs),
   ]);
+}
+
+async function waitForPortRefusal(port, timeoutMs = 3000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (await probePortRefusalOnce(port)) return true;
+    await sleep(75);
+  }
+  return probePortRefusalOnce(port);
+}
+
+export function probePortRefusalOnce(port, options = {}) {
+  const host = options.host || '127.0.0.1';
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : 500;
+  return new Promise((resolvePort) => {
+    const socket = createConnection({ host, port });
+    let settled = false;
+    const finish = (refused) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolvePort(refused);
+    };
+    socket.once('connect', () => finish(false));
+    socket.once('error', (error) => finish(error && error.code === 'ECONNREFUSED'));
+    socket.setTimeout(timeoutMs, () => finish(false));
+  });
+}
+
+function removeOwnedChromeProfile(profileDir, processExited) {
+  if (!profileDir) return true;
+  const target = resolve(profileDir);
+  const tempRoot = resolve(tmpdir());
+  const pathWithinTemp = relative(tempRoot, target);
+  const owned = pathWithinTemp
+    && !pathWithinTemp.startsWith('..')
+    && !isAbsolute(pathWithinTemp)
+    && basename(target).startsWith(CHROME_PROFILE_PREFIX);
+  assert.equal(owned, true, `refusing to remove non-owned Chrome profile path: ${target}`);
+  if (!processExited) return false;
+  rmSync(target, { recursive: true, force: true });
+  return !existsSync(target);
 }
 
 function summarizeShip(ship) {
