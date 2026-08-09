@@ -75,7 +75,7 @@ Never use default quality reduction as the mitigation.
 
 > “Do not gain performance by reducing content, population, effects, draw distance, render quality, or default visual quality.”
 
-## Verification
+## Verification budget
 
 Run `npm run check:baseline` before and after edits — that's the default gate. Beyond that, choose
 the checks proportionate to the change: a focused owner test for a small fix, broader checks for

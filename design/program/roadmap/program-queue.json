@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-05",
+  "updatedAt": "2026-08-09",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2157,6 +2157,39 @@
         "electron"
       ],
       "brief": "Remain deferred until the compiler, PresentationWorld, supported Electron runtime, and GPU correction establish a representative limiting route worth testing through one rollback-safe WebGPU/TSL slice."
+    },
+    {
+      "id": "PQ-045",
+      "priority": 45,
+      "title": "R5 Ceres reference sector — lived-world vertical slice",
+      "state": "ready",
+      "canonical": [
+        "R5",
+        "R5A"
+      ],
+      "aliases": [
+        "R5"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/reference-sector/BINDING_REVIEW_AND_SELECTION_LEDGER.md",
+        "design/reference-sector/WAVE0_CERES_BASELINE.md",
+        "design/reference-sector/ADMISSION_ROUTE.md",
+        "design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:pq020:ceres-topology",
+        "npm run check:ceres:five-minute"
+      ],
+      "evidence": [
+        "choreography",
+        "causal-chain",
+        "five-minute-gate",
+        "human-review"
+      ],
+      "brief": "Retroactively admit the R5 Ceres reference pocket and its five-minute acceptance harness, which landed on master 2026-08-08 with no queue row, no lease and no receipt, then carry the slice to a human-reviewed five-minute gate. That gate is the declared prerequisite for R8 showcase work and for any sector-propagation pass. PQ-020 established the Ceres geography and route and remains its owner; this row deliberately carries no hard dependsOn on it, because the R5 implementation has already landed and its own leaf chain supplies the real ordering."
     }
   ],
   "dispatchUnits": [
@@ -4983,6 +5016,244 @@
       "receiptRefs": [],
       "brief": "Use valid post-modernization evidence to select A, B, C, or an explicit D closure; do not choose from the contaminated July trace.",
       "blocker": null
+    },
+    {
+      "id": "PQ-045.retro-admission",
+      "parentId": "PQ-045",
+      "priority": 250,
+      "title": "Retroactively receipt the landed R5 Ceres implementation",
+      "kind": "program_control",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "design/program/roadmap/program-queue.json",
+        "design/program/roadmap/active/PQ-045.md",
+        "design/program/NOW.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-retro-admission-REPORT.md"
+      ],
+      "brief": "Bind commits 7fa9452b..0f44b94b (sectorActivityPockets.js, traffic.js, world.js, sandbox wiring, the five-minute harness) to a queue row, an active packet and a NOW.md lease. Closed by this admission."
+    },
+    {
+      "id": "PQ-045.choreography-repair",
+      "parentId": "PQ-045",
+      "priority": 251,
+      "title": "Give route marks a movement consumer and remove the placeholder targets",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-045.retro-admission"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/npcJobsRuntime.js",
+        "src/data/sectorActivityPockets.js",
+        "test/ceres-active-pockets.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:pq020:ceres-topology"
+      ],
+      "receiptRefs": [],
+      "brief": "targetRef has no movement consumer: npcJobsRuntime _targetWaypointPos resolves only the authored anchor+offset, so actors work 40.5/108.8/173.7 WU from the objects their marks name and no runtime path can close it. Add the consumer, add a proximity assertion, replace the eight activity: placeholder marks, and spawn the hull the tender services (activity:disabled-hull is the only occurrence of that string in src/). COORDINATE FIRST: a concurrent lane owns npcJobsRuntime.js and has authored a narrow escort formation there while explicitly declining a generic targetRef movement language."
+    },
+    {
+      "id": "PQ-045.route-topology",
+      "parentId": "PQ-045",
+      "priority": 252,
+      "title": "Give each Ceres pocket its own route topology",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.choreography-repair"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/sectorActivityPockets.js",
+        "test/ceres-active-pockets.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:pq020:ceres-topology"
+      ],
+      "receiptRefs": [],
+      "blocker": "Route topology cannot be differentiated until the choreography repair lands, because the marks a topology is expressed through are still the eight placeholder activity: refs.",
+      "brief": "All eight actors use the identical 102/116 WU cardinal marks; six of eight routes are 218.000 WU colinear shuttles and two are 154.467 WU right angles, so four pockets with four different fictions read as the same back-and-forth. Ceres must satisfy the no-two-places-share-a-topology rule against itself before it can serve as a propagation template."
+    },
+    {
+      "id": "PQ-045.causal-chain",
+      "parentId": "PQ-045",
+      "priority": 253,
+      "title": "Implement the first six ambient microevents as one causal chain",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.choreography-repair"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/traffic.js",
+        "design/incubator/microevent_library/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "blocker": "The chain retargets existing route marks, so it cannot be authored until those marks resolve to real world objects.",
+      "brief": "ev_rich_seam_strike, ev_miner_calls_hauler, ev_patrol_scans_suspect, ev_disabled_hauler_recovery, ev_tender_services_miner, ev_cutter_strips_wreck. Cap concurrent authored events at two. Choreography-timer scope only: if a concurrency/cooldown/chain policy layer becomes necessary, stop and report, because that is the bounded adapter becoming a global framework."
+    },
+    {
+      "id": "PQ-045.npc-identity",
+      "parentId": "PQ-045",
+      "priority": 254,
+      "title": "Wire four occupational NPC families so trades stop sharing one hull",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.choreography-repair"
+      ],
+      "mutexes": [
+        "asset-manifest"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/systems/traffic.js",
+        "assets/incubator/npc_activity_pack/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:assets:live"
+      ],
+      "receiptRefs": [],
+      "blocker": "Blocked on the choreography repair so occupational identity is not authored onto actors that are still working in empty space.",
+      "brief": "ore_barge, repair_tender, salvage_cutter, survey_pin. WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE is keyed by presentationRole and hauler is already the accepted helios_span, so the barge needs a new ore_carrier presentationRole plus a TRAFFIC_ROLES entry or it silently inherits hauler ship/team/speed and the Cargo Hauler label. customs_cutter collides with a live hostile archetype and is deliberately excluded."
+    },
+    {
+      "id": "PQ-045.prop-promotion",
+      "parentId": "PQ-045",
+      "priority": 255,
+      "title": "Re-author the sixteen selected Everyday Space props to production standard",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.route-topology"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/incubator/everyday_space_kit/",
+        "assets/ships/parts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:graphics:asset-receipts"
+      ],
+      "receiptRefs": [],
+      "blocker": "Blocked until route topology fixes where each prop must physically stand; promoting art onto provisional placement is the expensive-rework failure the selection ledger exists to prevent.",
+      "brief": "Sixteen props chosen to support visible actions, all outside the controlling review 19 REVISE-first list. Every one still needs revision, real LODs, recomputed collision and G0-G7. Pin the toolchain and prove two byte-matching builds first: the pack is not currently reproducible (29 of 46 GLBs differed across two isolated Blender 5.1.2 builds)."
+    },
+    {
+      "id": "PQ-045.wreck-dressing",
+      "parentId": "PQ-045",
+      "priority": 256,
+      "title": "Dress the two anonymous Ceres wreck slots from the aftermath pack",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.route-topology"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/incubator/wreck_aftermath_pack/",
+        "assets/ships/parts/places/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:graphics:asset-receipts"
+      ],
+      "receiptRefs": [],
+      "blocker": "Same placement dependency as prop promotion, plus the pack has no texture data at all and must first pass a reproducible-build gate.",
+      "brief": "Seven selected assets into ceres_ambush_bait_wreck and ceres_cathedral_grave_shard. The pack is entirely untextured (images=0 in all 37 GLBs) and ships 1,891 unmerged meshes with no LODs and no instancing. The three specified-but-unbuilt hull families stay unbuilt."
+    },
+    {
+      "id": "PQ-045.vfx-recipes",
+      "parentId": "PQ-045",
+      "priority": 257,
+      "title": "Port five VFX NEXT recipes into the live presentation owner",
+      "kind": "implementation",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.causal-chain"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/render/vfx.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "blocker": "The five recipes present causal moments the chain produces; without the chain there is nothing for them to explain.",
+      "brief": "impact_concussion, destruction_light, massline_latch, massline_tension, massline_release — recipes only, against the live pools and _flashLight(). No vfxnext code ships and its LightPool does not travel. speed_extreme is rejected: velocityLanguage.js owns speed language and its one sanctioned exceptional-speed output is already spent."
+    },
+    {
+      "id": "PQ-045.five-minute-h1",
+      "parentId": "PQ-045",
+      "priority": 258,
+      "title": "Capture the five-minute Ceres gate in Browser and Electron",
+      "kind": "acceptance_capture",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.causal-chain",
+        "PQ-045.npc-identity"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/"
+      ],
+      "checks": [
+        "npm run check:ceres:five-minute"
+      ],
+      "receiptRefs": [],
+      "blocker": "The gate has never produced machine evidence and its preflight fails closed on a dirty candidate (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN); it also needs browser-gpu and validation-broker, which no admitted unit currently reserves.",
+      "brief": "Both machine-evidence blobs are missing and the gate has never run. Preflight fails closed on a dirty candidate (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN), so this needs a clean tree or a pinned worktree. Fixed seed 47, 18,000 ticks, four-pocket sequence."
+    },
+    {
+      "id": "PQ-045.human-review",
+      "parentId": "PQ-045",
+      "priority": 259,
+      "title": "Human five-minute Ceres verdict",
+      "kind": "acceptance_review",
+      "state": "blocked",
+      "dependsOn": [
+        "PQ-045.five-minute-h1"
+      ],
+      "mutexes": [
+        "evidence-review"
+      ],
+      "paths": [
+        "design/program/roadmap/evidence/"
+      ],
+      "checks": [
+        "npm run check:ceres:five-minute"
+      ],
+      "receiptRefs": [],
+      "blocker": "Requires the machine evidence from the capture unit to bind against, and requires a named human reviewer that no agent may substitute for.",
+      "brief": "evaluateCeresHumanReview requires a named human reviewer, a timestamp, a KEEP or REVISE verdict and an explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. NO AGENT MAY SELF-GRANT THIS. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
     }
   ]
 }
