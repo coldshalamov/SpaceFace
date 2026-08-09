@@ -93,6 +93,69 @@ per selected family and keep G0/G1 open until then.
    manifest row. Follow the lane-furniture precedent for the source-only intermediate
    state. None of this is done here, deliberately.
 
+## Promotion blockers found OUTSIDE this pack
+
+Both were found in live source, not in this tree, and neither is fixable from inside it.
+They gate the wiring levels above.
+
+### (a) NAME COLLISION — `customs_cutter` is already a live encounter archetype
+
+`src/data/enemies.js:231` defines an `ENEMY_TYPES` entry with `id: 'customs_cutter'`, name "Customs
+Cutter", `shipId: 'ship_hornet'`, `factionId: 'faction_scn'`, `aiArchetype: 'brawler'` and three
+weapons, and `src/data/encounters/326-customs-logic-net.js:30` spawns it as a squad archetype
+(`archetypes: ['customs_cutter', 'patrol_lawman']`). It is *conditionally* hostile rather than
+unconditionally so — `roe: 'lawful_wanted_only'`, `factionLawful: true`, behavior string "hostile
+only if wanted or contraband scan fails; assists Trusted+ pilots" — but it is armed, combat-capable,
+and the encounter deck can turn it on the player.
+
+This pack raises the same string on the other side of that boundary. `evidence/ROLE_MATRIX.md:17` is
+the row for the neutral, team-2 `patrol` traffic role (`src/systems/traffic.js:137-138`,
+`team: 2`, `archetype: 'passive'`), and its pack action is **`customs_cutter`** as the missing
+distinct LAW identity — the row is explicit that patrol/escort themselves keep `hull_fighter.glb`.
+The wiring section above lists `customs` among the new roles that "additionally need a
+`TRAFFIC_ROLES` entry to exist at all", i.e. another team-2 ambient entry alongside `patrol`.
+
+Either reading lands in the same place: one string would name both an unarmed ambient civilian craft
+and an armed encounter archetype. Rename **the pack's GLB and role id** before any wiring — the enemy
+id is live and referenced, so it is not the side that moves.
+
+### (b) WIRING CONSTRAINT — the ore barge cannot be wired under `hauler`
+
+`WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE` in `src/render/partsLibrary.js:903-907` is keyed by the entity's
+`data.trafficRole`, which traffic sets from `slot.presentationRole` — and `hauler` there is already
+the accepted `wholeships/helios_span.glb`, paired with `SF_WHOLESHIP_HELIOS_SPAN` in
+`WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE` (`:908-912`). All three Ceres slots carrying
+`presentationRole: 'hauler'` (`src/data/sectorActivityPockets.js:252`, `:334`, `:408`) would pick up
+an `ore_barge` row under that key, in every sector. **An `ore_barge` row under `hauler` replaces an
+accepted live asset; it does not add one.**
+
+Job eligibility gates on the SEPARATE `slot.jobKind`, never on `presentationRole`
+(`src/systems/traffic.js:231`, `CERES_ACTIVITY_JOB_KINDS.has(slot.jobKind)`), so a slot can carry
+`presentationRole: 'ore_carrier'` while keeping `jobKind: 'hauler'` and its freight route intact.
+(The third slot, `ceres_cinder_service_hauler` at `:408`, carries `jobKind: null` — it is the reserved
+service slot and owns no job either way.) That split is the shape to use, and it needs NEW keys in
+**both** `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE` and `WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE`.
+
+**The silent fallback is the trap.** Without a matching `TRAFFIC_ROLES` entry a new role does not
+fail — it degrades, and it degrades in a SPLIT way: the identity string propagates raw while the
+stats, the label and the hull all quietly become something else.
+
+| where | what an unmapped `ore_carrier` gets |
+|---|---|
+| `src/systems/traffic.js:758-759` | `const role = slot.presentationRole \|\| 'hauler'` then `TRAFFIC_ROLES[role] \|\| TRAFFIC_ROLES.hauler` — the actor is spawned with hauler's `ship_mule`, `team: 2`, `speed: 26`, `archetype: 'fleeing_trader'` |
+| `src/systems/traffic.js:879-880` | `data.trafficRole` is set to the RAW `'ore_carrier'` (that `\|\| 'hauler'` only catches a missing role), then `data.trafficLabel` is resolved through the same fallback and reads **"Cargo Hauler"** |
+| `src/render/partsLibrary.js:950-951` | `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE['ore_carrier']` is `undefined`, so no traffic-role whole-ship binding is returned and the barge GLB is never selected |
+| `src/systems/scanner.js:1341-1348` | sees `'ore_carrier'` and matches no `trafficRole` branch — it falls straight past PATROL/MINER/COURIER/HAULER/SMUGGLER/RESCUE/RAIDER |
+
+The scanner then closes the loop on the deception rather than exposing it: a non-lawful Ceres actor
+is spawned with `spawnContext: 'convoy_civilian'` (`traffic.js:774`), and the `ai` fallthrough at
+`scanner.js:1356` returns **`'HAULER'`** for exactly that context. So the barge reads as a hauler on
+the scanner too, by a second route, with nothing anywhere reporting a missing role.
+
+The wiring change is therefore atomic: the `TRAFFIC_ROLES` entry, both `partsLibrary` keys and a
+`scanner` branch land together, or the barge ships as a Mule labelled "Cargo Hauler", classified
+HAULER, wearing no barge hull.
+
 ## Deliberate non-hulls
 
 - **Smuggler:** signal is absence (fiction §13). Skin: `courier` (Helios Lark),

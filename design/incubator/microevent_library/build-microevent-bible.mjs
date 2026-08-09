@@ -80,6 +80,11 @@ const byTier = { first15: [], next20: [], standard: [], blocked: [] };
 for (const ev of events) (byTier[ev.tier] ?? (byTier[ev.tier] = [])).push(ev);
 if (byTier.first15.length !== 15) errors.push(`tier first15 has ${byTier.first15.length} events, expected exactly 15`);
 if (byTier.next20.length !== 20) errors.push(`tier next20 has ${byTier.next20.length} events, expected exactly 20`);
+// standard + blocked are pinned too, so that ALL FOUR numbers in the published
+// "15 / 20 / 18 / 5" headline are enforced. Without these two, retiering a standard
+// event to blocked passes every other assertion while the headline silently goes wrong.
+if (byTier.standard.length !== 18) errors.push(`tier standard has ${byTier.standard.length} events, expected exactly 18`);
+if (byTier.blocked.length !== 5) errors.push(`tier blocked has ${byTier.blocked.length} events, expected exactly 5`);
 if (events.length < 50 || events.length > 70) errors.push(`catalog has ${events.length} events, brief asks 50-70`);
 
 if (errors.length) {

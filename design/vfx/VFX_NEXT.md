@@ -218,6 +218,35 @@ event fired.
 * **Sustained families hold per-family emission state**, so one held instance per family id is
   supported. A fleet-wide system needs that state moved per-emitter. It is one accumulator per
   family and it is flagged in `families/propulsion.js`.
+* **Nothing here proves `speed_extreme` may ship.** The program names
+  `src/render/velocityLanguage.js` as the owner of speed language
+  (`PHYSICS_AS_SPECTACLE_PROGRAM.md:181`), and that module is the deliberate inverse of family 6:
+  streaks capped at `VL_COUNT_MAX = 24`, overlay alpha at `VL_ALPHA_MAX = 0.20`,
+  `VL_COMPOSITE = 'source-over'` in **every** band, and above 5× the streaks fade *out* — "at
+  extreme velocity individual particles are physically invisible" is its stated design point, not a
+  budget concession. `speed_extreme` scales additive near-white emission *up* with the same band:
+  sparks 40→260 /s and ribbons 2→12 /s against `severity`, on the additive spark and ribbon
+  substrates, with a compression cap added past `sev > 0.72`. That seam is granted exactly **one
+  bounded exceptional-speed output** (PROGRAM.md:181), and PROGRAM.md:255-256 records the allowance
+  as already spent — the bounded camera opening and player projectile-ribbon intensity, `3118aa5a`.
+  `vfxnext` names `velocityLanguage.js` nowhere in its code or its lab, so the conflict was
+  invisible from inside the library until this entry. See §8.
+* **No accessibility evidence, on either axis the program gates.** The reduced-flash hook exists —
+  `stage.intensity` reaches the light pool and all four materials (`core/stage.js:174-180`, applied
+  in `core/lights.js:83` and `:108`) — but nothing inside `src/vfxnext` reads a settings or profile
+  object to drive it. The only writers are a URL parameter and a slider in `_vfxlab.html` (`:64`,
+  `:185`, `:497`); `grep -riE 'accessib|motionReduce|prefers-reduced' src/vfxnext/` returns four
+  comments and no code. No capture exercises it either: the five conditions in §6 vary **framing**
+  (camera distance, background, concurrency) and never **treatment**, so the sheet has no
+  reduced-motion and no reduced-flash cell. That is an orthogonal axis to the one the harness
+  covers — `PHYSICS_AS_SPECTACLE_ART_BIBLE.md` §5.2 requires six matched cells on it (bloom on,
+  bloom off, grayscale, emissive-off for solid-material subjects — §5.2 explicitly exempts energy
+  effects from that one — reduced motion, reduced flash), and program gate **G5** is specifically
+  matched reduced-motion and reduced-flash captures. Neither §2 nor §6 speaks to either.
+* **The evidence cannot go stale loudly.** `scripts/capture-vfxnext.mjs` is wired to no npm script —
+  nothing in `package.json` names it — and writes to gitignored `.devshots/`. No check run and no
+  committed artifact will contradict the budget numbers in §2 once `src/**` moves; the "re-run it
+  first" line at the end of §8 is a convention, not a gate.
 
 ## 8. Promotion order
 
@@ -230,6 +259,22 @@ Cheapest first, and each one is independently useful:
 4. **`massline_latch` / `_release`** — self-contained, and the tether already carries both endpoints.
 5. **`thruster_boost`** — first sustained family; needs per-emitter state first.
 6. **`explosion_heavy`** — last, because of the 3-light ask against a pool of 6.
+
+### NON-PROMOTABLE — `speed_extreme`
+
+Its absence from the six above is a **bar**, not an oversight, and it is recorded here so a later
+lane cannot read the gap as "not scheduled yet". `src/render/velocityLanguage.js` owns speed language
+by name in the program, its whole thesis is that streaks get quieter as speed rises, and its single
+sanctioned exceptional-speed extension is already spent (`3118aa5a`). Family 6 is a second,
+unsanctioned exceptional-speed output that contradicts the owner's grammar rather than extending it —
+additive where the owner forbids additive, brightening where the owner fades out. §7 carries the
+citations.
+
+The family and its lab scenario **stay**. They are reference: the annulus placement, the clear-radius
+playfield rule and the overtaken-mote velocity model are all sound, and any future work on the
+existing speed language should read them. What is barred is wiring it, not keeping it. Anything that
+changes here is a change to `velocityLanguage.js` under a fresh program allowance, not a promotion of
+this family.
 
 Before any of it: re-run `node scripts/capture-vfxnext.mjs` and read the sheet. `src/**` moves, and
 so does the renderer this library will eventually live beside.

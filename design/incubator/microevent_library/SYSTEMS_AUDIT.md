@@ -25,7 +25,11 @@ the generated docs were rebuilt:
 | was | now | why |
 |---|---|---|
 | `campaignDirector.pressure` | `encounterDirector.pressure` | There is no `campaignDirector` module. The campaign director **is** `src/systems/encounterDirector.js`; the two-deck pressure pools live there (`POOL_MAX`, `dir.pressure.combat` / `.civilian`). The old id also split one module across two vocabulary prefixes. |
-| `sectorPockets.slot` | `sectorZones.slot` | There is no `sectorPockets` module and no `slot` identifier in the authored-place data. The real concept is the named **zone**: `src/data/sectorZones.js` plus `AUTHORED_PLACE_ZONES` in `src/data/authoredPlaces.js`. |
+| `sectorPockets.slot` | `sectorZones.slot` | There is no `sectorPockets` module and no `slot` identifier in the authored-place data. The real concept is the named **zone**: `src/data/sectorZones.js` plus `AUTHORED_PLACE_ZONES` in `src/data/authoredPlaces.js`. This rename fixed the *module* half only — the `.slot` suffix is still vestigial, see **Known label debt**. |
+
+Two *further* ids are misnamed — `sectorZones.slot` and `comms.ambientToast`. Both name
+a live capability in the right module, so neither blocks anything, and neither is
+renamed here: see **Known label debt** below for why and for what a rename would cost.
 
 ## Resolution table
 
@@ -57,15 +61,44 @@ grep the string.
 | `encounterDirector.whisper` | `src/data/encounters.js` — `WHISPER_LINES` | EXACT |
 | `encounterDirector.squad` | `src/systems/encounterDirector.js` — `squadId`, `dir.active` squad records | EXACT |
 | `encounterDirector.pressure` | `src/systems/encounterDirector.js:101` — `POOL_MAX`, per-deck `dir.pressure` | EXACT *(renamed)* |
-| `sectorZones.slot` | `src/data/sectorZones.js` + `AUTHORED_PLACE_ZONES` in `src/data/authoredPlaces.js` | CAPABILITY *(renamed)* |
+| `sectorZones.slot` | `src/data/sectorZones.js` — `ZONE_TYPES` :23, `SECTOR_ZONES` :239, `zonesForSector()` :245, `zoneAt()` :255, plus `AUTHORED_PLACE_ZONES` in `src/data/authoredPlaces.js:120`. The **`.slot` suffix still names nothing**: `slot` occurs zero times in either file. The real slot vocabulary is `src/data/sectorActivityPockets.js` (`worldRecordSlotId` :96, `actorSlots` / `objectSlots` :156–157) — but that table is Ceres-only (`CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt'`, every export `CERES_*`), so it is *not* what these cross-sector events resolve to. Suffix should be dropped — see **Known label debt** | CAPABILITY *(renamed)* |
 | `wrecks.spawn` | `src/systems/aftermathWrecks.js:434` — `_spawnForSector()` materialises durable aftermath markers into ordinary wreck entities via `helpers.spawnEntity()` | EXACT |
-| `salvage.strip` | `src/systems/salvageActions.js:58` — per-wreck `salvagePool` + `actionForWreck()` discrete actions, driven by `scan:completed` / `salvage:ventReactor` / `salvage:completed`. Piecewise stripping is the pool draining, not a `strip()` call | CAPABILITY |
+| `salvage.strip` | **two** files share the name `salvageActions.js`. Pure catalog `src/data/salvageActions.js` — `SALVAGE_ACTIONS` :7, `actionForWreck()` :52, `poolForAction()` :63. System `src/systems/salvageActions.js` — `export const salvageActions = {` :58, which *imports* `actionForWreck` at :7 and stamps each wreck's `data.salvagePool` (:33, :39, via `salvagePoolForWreck` from `src/data/salvageLegality.js:29`); it listens on `entity:spawned` / `scan:completed` / `salvage:ventReactor` (:69–:71). The pool is *drained* elsewhere: `src/systems/mining.js` imports the same catalog at :25 and emits `salvage:completed` at :897. Piecewise stripping is the pool draining, not a `strip()` call | CAPABILITY |
 | `pickups.spawn` | `src/systems/mining.js:732` — `_spawnPickup()`; `src/systems/cargo.js:199` dumps recoverable pickups | EXACT |
 | `scanner.roleReadout` | `src/systems/scanner.js:1315` — reads `ai.archetype / doctrine / role` | CAPABILITY |
 | `spawnBudget` | `src/systems/spawnBudget.js:27` | EXACT |
-| `comms.ambientToast` | `src/ui/comms.js` — comms surface with toast presentation | CAPABILITY |
+| `comms.ambientToast` | `src/ui/comms.js:229` — `bus.on('comms:popup', pushComms)`; payload shape documented at `src/data/narrative.js:105`; five modules emit it directly (`ai.js`, `factionPresence.js`, `missions.js`, `scenarioRuntime.js`, `story.js`) — a plain grep for the string also hits `uniqueWrecks.js` and `missions.js:177`, which route it indirectly. Module and capability are both **correct and live** — only the word *Toast* is wrong. The surface is the left-edge comms feed (`#sf-comms`, `left:20px` in comms.js's injected CSS), not the `#toasts` stack in `src/ui/toasts.js` (`styles/ui.css:79` — a top-right column). Label defect, not a missing capability — see **Known label debt** | CAPABILITY |
 | `vfx.substrate` | `src/render/vfx.js:529` — the `vfx` particulate/light substrate | CAPABILITY |
 | `ai.passive` | `src/systems/ai.js:148,340` — `ai.passive` flag, literally checked | EXACT |
+
+## Known label debt
+
+Two ids above are **misnamed but not broken**. Both capabilities are live and both
+resolve to the right module; the id text mis-describes them. Neither is renamed here,
+because a rename has to move together across `microevent.schema.json`
+(`properties.systems.items.enum`) and every `catalog/*.json` that references it — and
+this table is a *report against* that enum. Renaming the row alone would make the audit
+assert a schema value that does not exist, which is precisely the defect class this
+document exists to catch. Rows therefore stay keyed to the ids that are really in the
+schema, and the debt is recorded:
+
+| id today | should be | why | references to move |
+|---|---|---|---|
+| `sectorZones.slot` | `sectorZones` | `slot` appears nowhere in `sectorZones.js` or `authoredPlaces.js`. The suffix was reaching for `sectorActivityPockets.js` vocabulary that is Ceres-only and does not generalise. | schema enum + 12 events |
+| `comms.ambientToast` | `comms.ambientLine` | The line lands in the left-edge comms feed, not a toast. Calling it a toast points an integrator at `src/ui/toasts.js`, the wrong surface entirely. | schema enum + 2 events |
+
+**Exposure is asymmetric, and that is why neither is urgent.** All 12
+`sectorZones.slot` dependents are `next20` (5) or `standard` (7) — **zero `first15`** —
+so the wrong label costs nothing on day one. `comms.ambientToast` has two dependents
+(`ev_structure_first_light` standard, `ev_tanker_holds_for_berth` next20), also zero
+`first15`.
+
+`salvage.strip`, corrected above, is the opposite case: **both** of its dependents are
+`first15` (`ev_cutter_strips_wreck`, `ev_scavengers_at_fresh_wreck`). Six `CAPABILITY`
+rows have at least one `first15` dependent, but `salvage.strip` is the only one whose
+dependents are *entirely* `first15` — a bad cite there misleads an integrator on the
+very first thing they wire, which is why it had to name both `salvageActions.js` files
+and the `mining.js` drain rather than a single line.
 
 ## Not verified here (deliberately)
 
