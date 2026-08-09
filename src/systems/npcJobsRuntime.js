@@ -52,10 +52,16 @@ import {
   summarizeJob,
   NPC_JOB_KIND,
   NPC_JOB_PHASE,
+  NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -71,12 +77,65 @@ const MAX_CATCHUP_S = 3600;
 // coast through its pocket while the kernel enters a stationary phase.
 const ROUTE_BRAKE_WINDOW_S = 0.75;
 
+// R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
+// movement language. Stable record/job ids remain the authority across rematerialization; live
+// numeric ids are looked up through the current job entries and are never retained or serialized.
+const CERES_ESCORT_SLOT_ID = 'ceres_ambush_escort';
+const CERES_ESCORT_WARD_SLOT_ID = 'ceres_ambush_loaded_hauler';
+const CERES_ESCORT_WARD_TARGET_REF = `actor:${CERES_ESCORT_WARD_SLOT_ID}`;
+const CERES_ESCORT_AFT_WU = 80;
+const CERES_ESCORT_DEADBAND_WU = 18;
+const CERES_ESCORT_CATCHUP_WU = 120;
+const CERES_ESCORT_MAX_THROTTLE = 0.65;
+const CERES_ESCORT_TURN_ONLY_RAD = 0.4;
+const CERES_ESCORT_VELOCITY_EPSILON = 0.001;
+const CERES_ESCORT_RELATIVE_OVERSPEED_WU_S = 2;
+
+function ceresActivitySlot(slotId) {
+  for (const pocket of CERES_ACTIVITY_POCKETS) {
+    for (const slot of pocket.actorSlots) {
+      if (slot && slot.id === slotId) return slot;
+    }
+  }
+  return null;
+}
+
+const CERES_ESCORT_SLOT = ceresActivitySlot(CERES_ESCORT_SLOT_ID);
+const CERES_ESCORT_WARD_SLOT = ceresActivitySlot(CERES_ESCORT_WARD_SLOT_ID);
+
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
 function clamp(value, low, high) {
   return Math.max(low, Math.min(high, value));
+}
+
+function shortestAngleDelta(a, b) {
+  const turn = Math.PI * 2;
+  let delta = (a % turn) - (b % turn);
+  if (delta > Math.PI) delta -= turn;
+  else if (delta < -Math.PI) delta += turn;
+  return delta;
+}
+
+function legalFormationJobPhase(kind, phase) {
+  if (phase === NPC_JOB_PHASE.FLEE) return true;
+  if (kind === NPC_JOB_KIND.PATROL) {
+    return phase === NPC_JOB_PHASE.COMMISSION
+      || phase === NPC_JOB_PHASE.TRANSIT
+      || phase === NPC_JOB_PHASE.APPROACH
+      || phase === NPC_JOB_PHASE.HOLD;
+  }
+  if (kind === NPC_JOB_KIND.HAULER) {
+    return phase === NPC_JOB_PHASE.COMMISSION
+      || phase === NPC_JOB_PHASE.LOAD
+      || phase === NPC_JOB_PHASE.DEPART
+      || phase === NPC_JOB_PHASE.TRANSIT
+      || phase === NPC_JOB_PHASE.APPROACH
+      || phase === NPC_JOB_PHASE.UNLOAD;
+  }
+  return false;
 }
 
 function clearRouteBrake(entity) {
@@ -139,6 +198,7 @@ export const npcJobsRuntime = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._ensureState();
+    this._resetCeresEscortAuthority();
     this._threatQueries = createNearestEntityQueryService(this.state, {
       entityType: 'ship',
       team: 1,
@@ -216,6 +276,102 @@ export const npcJobsRuntime = {
   },
   _byId() { return this._ensureState().byId; },
 
+  // ── transient exact-Ceres formation authority ───────────────────────────────────────────────
+  // This fixed two-slot cache is intentionally outside GameState/save data. It retains object
+  // identities (never numeric entity ids) so the steady tick can prove O(1) that both ends of the
+  // relationship are still the exact live objects admitted by assign/relink. Any duplicate durable
+  // identity makes the slot ambiguous for the rest of that residency.
+  _resetCeresEscortAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const makeSlot = (slot, kind) => {
+      const worldRecordId = slot
+        ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY, slot.worldRecordSlotId)
+        : null;
+      return {
+        slotId: slot && slot.id || null,
+        worldRecordSlotId: slot && slot.worldRecordSlotId || null,
+        kind,
+        worldRecordId,
+        jobId: worldRecordId ? `job:${worldRecordId}` : null,
+        entryRef: null,
+        jobRef: null,
+        entityRef: null,
+        dataRef: null,
+        ambiguous: false,
+      };
+    };
+    this._ceresEscortAuthority = {
+      seed,
+      escort: makeSlot(CERES_ESCORT_SLOT, NPC_JOB_KIND.PATROL),
+      ward: makeSlot(CERES_ESCORT_WARD_SLOT, NPC_JOB_KIND.HAULER),
+    };
+    return this._ceresEscortAuthority;
+  },
+
+  _ensureCeresEscortAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const authority = this._ceresEscortAuthority;
+    return authority && authority.seed === seed ? authority : this._resetCeresEscortAuthority();
+  },
+
+  _ceresFormationSlotForWorldRecordId(worldRecordId) {
+    const authority = this._ensureCeresEscortAuthority();
+    if (authority.escort.worldRecordId === worldRecordId) return authority.escort;
+    if (authority.ward.worldRecordId === worldRecordId) return authority.ward;
+    return null;
+  },
+
+  _bindCeresFormationSlot(slot, entry, entity) {
+    if (!slot) return;
+    if (entry) {
+      slot.entryRef = entry;
+      slot.jobRef = entry.job || null;
+    }
+    if (entity) {
+      slot.entityRef = entity;
+      slot.dataRef = entity.data || null;
+    }
+  },
+
+  _clearCeresFormationEntry(slot, entry) {
+    if (!slot || (entry && slot.entryRef && slot.entryRef !== entry)) return;
+    slot.entryRef = null;
+    slot.jobRef = null;
+  },
+
+  _hasExactCeresSectorAuthority(entity) {
+    if (!entity || !entity.data) return false;
+    const data = entity.data;
+    let present = false;
+    if (entity.homeSectorId != null) {
+      present = true;
+      if (entity.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    if (data.homeSectorId != null) {
+      present = true;
+      if (data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    if (data.sectorId != null) {
+      present = true;
+      if (data.sectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    return present;
+  },
+
+  _isExactCeresFormationActor(entity, slot, requireJobId = false) {
+    if (!entity || !slot || entity.alive === false || entity.type !== 'ship'
+      || !entity.data || this.state.entities?.get(entity.id) !== entity) return false;
+    const data = entity.data;
+    return data.worldRecordId === slot.worldRecordId
+      && data.activityActorSlotId === slot.slotId
+      && data.ceresActivityCast === true
+      && data.ceresActivityJobOwned === true
+      && (!requireJobId || data.jobId === slot.jobId)
+      && this._hasExactCeresSectorAuthority(entity);
+  },
+
   _entryForEntity(entityId) {
     if (entityId == null) return null;
     const byId = this._byId();
@@ -227,6 +383,7 @@ export const npcJobsRuntime = {
 
   newGame() {
     this.state.npcJobs = { byId: {} };
+    this._resetCeresEscortAuthority();
     this._threatQueries?.reset();
   },
 
@@ -243,7 +400,43 @@ export const npcJobsRuntime = {
     if (!worldRecordId) return null; // no stable identity → cannot survive exit/reentry → not our job
     const jobId = 'job:' + worldRecordId;
     const byId = this._byId();
-    if (byId[jobId]) { entity.data.jobId = jobId; return jobId; } // already assigned
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
+    if (formationSlot) {
+      if (!this._isExactCeresFormationActor(entity, formationSlot)
+        || spec.kind !== formationSlot.kind) {
+        formationSlot.ambiguous = true;
+        return null;
+      }
+      const existing = byId[jobId];
+      if (existing) {
+        // A virtual job will be rebound by the existing rematerialization scan. Preserve that path;
+        // a materialized same-id job, however, must still name this exact entity/data object.
+        if (existing.entityId == null) {
+          entity.data.jobId = jobId;
+          return jobId;
+        }
+        const existingEntity = this.state.entities && this.state.entities.get(existing.entityId);
+        if (existingEntity !== entity
+          || (formationSlot.entryRef && formationSlot.entryRef !== existing)
+          || (formationSlot.jobRef && formationSlot.jobRef !== existing.job)
+          || (formationSlot.entityRef && formationSlot.entityRef !== entity)
+          || (formationSlot.dataRef && formationSlot.dataRef !== entity.data)) {
+          formationSlot.ambiguous = true;
+          return null;
+        }
+        this._bindCeresFormationSlot(formationSlot, existing, entity);
+        entity.data.jobId = jobId;
+        return jobId;
+      }
+      if ((formationSlot.entityRef && formationSlot.entityRef !== entity)
+        || (formationSlot.dataRef && formationSlot.dataRef !== entity.data)) {
+        formationSlot.ambiguous = true;
+        return null;
+      }
+    } else if (byId[jobId]) {
+      entity.data.jobId = jobId;
+      return jobId; // unchanged ordinary idempotent assignment
+    }
 
     let job;
     try {
@@ -254,7 +447,7 @@ export const npcJobsRuntime = {
     const sectorId = spec.sectorId
       || entity.data.sectorId || entity.homeSectorId
       || (this.state.world && this.state.world.currentSectorId) || null;
-    byId[jobId] = {
+    const entry = byId[jobId] = {
       job,
       kind: job.kind,
       sectorId,
@@ -264,6 +457,7 @@ export const npcJobsRuntime = {
       threatId: null,
     };
     entity.data.jobId = jobId;
+    if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     return jobId;
   },
 
@@ -274,6 +468,8 @@ export const npcJobsRuntime = {
     const ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
     clearRouteBrake(ent);
     if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
+    if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
     delete byId[jobId];
     return true;
   },
@@ -512,6 +708,164 @@ export const npcJobsRuntime = {
     intent.aimAngle = aimAngle;
   },
 
+  _worldRecordAllowsCeresFormation(slot) {
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    const record = records && records[slot.worldRecordId];
+    if (!record) return true;
+    return record.recordId === slot.worldRecordId
+      && record.kind === RECORD_KIND.CONVOY
+      && record.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && record.alive !== false
+      && record.outcome !== 'destroyed'
+      && record.outcome !== 'defeated';
+  },
+
+  _hasExactCeresFormationRoute(slot, job) {
+    const authoredSlot = slot.slotId === CERES_ESCORT_SLOT_ID
+      ? CERES_ESCORT_SLOT
+      : (slot.slotId === CERES_ESCORT_WARD_SLOT_ID ? CERES_ESCORT_WARD_SLOT : null);
+    const marks = authoredSlot && authoredSlot.route && authoredSlot.route.marks;
+    const route = job && job.route;
+    if (!Array.isArray(marks) || !Array.isArray(route) || route.length !== marks.length
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      || !Number.isFinite(job.speed) || job.speed <= 0) return false;
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+    }
+    return true;
+  },
+
+  _isExactCeresFormationBinding(slot) {
+    if (!slot || slot.ambiguous || !slot.entryRef || !slot.jobRef
+      || !slot.entityRef || !slot.dataRef) return false;
+    const entry = slot.entryRef;
+    const job = slot.jobRef;
+    const entity = slot.entityRef;
+    if (this._byId()[slot.jobId] !== entry
+      || entry.job !== job
+      || entry.entityId !== entity.id
+      || this.state.entities?.get(entry.entityId) !== entity
+      || entity.data !== slot.dataRef
+      || entry.kind !== slot.kind
+      || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || entry.worldRecordId !== slot.worldRecordId
+      || job.schema !== NPC_JOB_SCHEMA
+      || job.id !== slot.jobId
+      || job.kind !== slot.kind
+      || job.corrupt === true
+      || job.materialized !== true
+      || job.phase === NPC_JOB_PHASE.COMPLETE
+      || !legalFormationJobPhase(slot.kind, job.phase)
+      || !this._hasExactCeresFormationRoute(slot, job)
+      || !this._isExactCeresFormationActor(entity, slot, true)
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+      || !this._worldRecordAllowsCeresFormation(slot)) return false;
+    return true;
+  },
+
+  _tryDriveCeresEscortFormation(entry, entity) {
+    const authority = this._ensureCeresEscortAuthority();
+    const escort = authority.escort;
+    const ward = authority.ward;
+    if (!entry || entry !== escort.entryRef || entity !== escort.entityRef
+      || entry.control || !this.state.world
+      || this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+      || !this._isExactCeresFormationBinding(escort)
+      || !this._isExactCeresFormationBinding(ward)) return false;
+
+    // The authored relationship must still be the current kernel waypoint. The stable ids above
+    // establish WHO may form up; targetRef only proves that this exact route phase still asks for it.
+    const routeIndex = entry.job.routeIndex;
+    const route = entry.job.route;
+    const authoredMarks = CERES_ESCORT_SLOT && CERES_ESCORT_SLOT.route
+      && CERES_ESCORT_SLOT.route.marks;
+    if (!Array.isArray(route) || !Array.isArray(authoredMarks)
+      || route.length !== authoredMarks.length
+      || !Number.isInteger(routeIndex) || routeIndex < 0 || routeIndex >= route.length) return false;
+    const waypoint = route[routeIndex];
+    const authoredMark = authoredMarks[routeIndex];
+    if (!waypoint || !authoredMark || waypoint.id !== authoredMark.id
+      || waypoint.targetRef !== CERES_ESCORT_WARD_TARGET_REF
+      || authoredMark.targetRef !== CERES_ESCORT_WARD_TARGET_REF) return false;
+
+    const wardEntity = ward.entityRef;
+    const velocity = wardEntity.vel;
+    let wardSpeed = 0;
+    let heading;
+    if (velocity && Number.isFinite(velocity.x) && Number.isFinite(velocity.z)) {
+      wardSpeed = Math.hypot(velocity.x, velocity.z);
+    }
+    if (wardSpeed > CERES_ESCORT_VELOCITY_EPSILON) {
+      heading = Math.atan2(velocity.z, velocity.x);
+    } else if (Number.isFinite(wardEntity.rot)) {
+      heading = wardEntity.rot;
+    } else {
+      return false;
+    }
+    if (!Number.isFinite(entity.rot)) return false;
+
+    const headingX = Math.cos(heading);
+    const headingZ = Math.sin(heading);
+    const targetX = wardEntity.pos.x - headingX * CERES_ESCORT_AFT_WU;
+    const targetZ = wardEntity.pos.z - headingZ * CERES_ESCORT_AFT_WU;
+    const dx = targetX - entity.pos.x;
+    const dz = targetZ - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance)) return false;
+
+    // Traffic publishes the exact Wasp's derived propulsion scalars. Read them directly here:
+    // resolvePropulsionProfile legitimately merges partial authored profiles with fresh objects,
+    // which is useful off the hot path but would violate this controller's zero-allocation tick.
+    const derivedPropulsion = entity.data && entity.data.derived && entity.data.derived.propulsion;
+    const authoredPropulsion = derivedPropulsion || entity.propulsion
+      || (entity.flightModel && entity.flightModel.propulsion);
+    const governedSpeed = Math.max(1,
+      finite(authoredPropulsion && authoredPropulsion.combatSpeed, entity.maxSpeed || 1));
+    const deadInput = Math.max(0, finite(
+      authoredPropulsion && authoredPropulsion.assist && authoredPropulsion.assist.deadInput,
+      0.025,
+    ));
+    const minimumThrottle = clamp(deadInput + 0.001, 0, CERES_ESCORT_MAX_THROTTLE);
+    const wardThrottle = wardSpeed > CERES_ESCORT_VELOCITY_EPSILON
+      ? clamp(Math.max(wardSpeed / governedSpeed, minimumThrottle), 0, CERES_ESCORT_MAX_THROTTLE)
+      : 0;
+    const escortVelocity = entity.vel;
+    const escortForwardSpeed = escortVelocity
+      && Number.isFinite(escortVelocity.x) && Number.isFinite(escortVelocity.z)
+      ? escortVelocity.x * headingX + escortVelocity.z * headingZ
+      : 0;
+    const relativeOverspeed = wardSpeed > CERES_ESCORT_VELOCITY_EPSILON
+      && escortForwardSpeed - wardSpeed > CERES_ESCORT_RELATIVE_OVERSPEED_WU_S;
+
+    if (distance <= CERES_ESCORT_DEADBAND_WU) {
+      const brake = wardSpeed <= CERES_ESCORT_VELOCITY_EPSILON || relativeOverspeed;
+      this._writeIntent(entity, 0, brake ? 0 : wardThrottle, false, heading, brake);
+      return true;
+    }
+
+    const aim = Math.atan2(dz, dx);
+    if (Math.abs(shortestAngleDelta(aim, entity.rot)) > CERES_ESCORT_TURN_ONLY_RAD) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+
+    const plannedThrottle = Math.max(0, finite(entry.job.speed, 0)) > 0
+      ? clamp(Math.max(entry.job.speed / governedSpeed, minimumThrottle), 0, CERES_ESCORT_MAX_THROTTLE)
+      : 0;
+    const catchupThrottle = clamp(
+      (distance - CERES_ESCORT_DEADBAND_WU) / CERES_ESCORT_CATCHUP_WU,
+      minimumThrottle,
+      CERES_ESCORT_MAX_THROTTLE,
+    );
+    this._writeIntent(entity, 0,
+      Math.max(wardThrottle, plannedThrottle, catchupThrottle), false, aim, false);
+    return true;
+  },
+
   _drive(entry, entity) {
     const job = entry.job;
     if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
@@ -528,6 +882,10 @@ export const npcJobsRuntime = {
       }
       return;
     }
+
+    // R6 exact authored formation: all normal patrol phases follow the live ward. FLEE above and
+    // the update-loop control-lease gate remain strict higher-precedence owners.
+    if (this._tryDriveCeresEscortFormation(entry, entity)) return;
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
       const planned = routePosition(job);
@@ -641,6 +999,7 @@ export const npcJobsRuntime = {
       entry.entityId = null;
       entry.threatId = null;
     }
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._resetCeresEscortAuthority();
   },
 
   _onSectorEnter(p) {
@@ -661,6 +1020,7 @@ export const npcJobsRuntime = {
   _tryRelink(entry, simT) {
     const entity = this._findEntityByRecordId(entry.worldRecordId);
     if (!entity) return false;
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
     // Advance the whole offscreen interval in ONE aggregated call, resuming across the (never-hit-in-
     // practice) transition cap so a pathological dt cannot silently drop transitions. NO sink here:
     // offscreen catch-up is historical — replaying thousands of past-phase intents on the live bus
@@ -680,6 +1040,7 @@ export const npcJobsRuntime = {
       // A hauler that finished its run while away: no live job to resume; hand the hull back.
       clearRouteBrake(entity);
       if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
+      if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
       delete this._byId()['job:' + entry.worldRecordId];
       return true;
     }
@@ -688,12 +1049,40 @@ export const npcJobsRuntime = {
     entry.threatId = null;
     clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
+    if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     return true;
   },
 
   _findEntityByRecordId(worldRecordId) {
     if (!worldRecordId) return null;
     const list = this.state.entityList || [];
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
+    if (formationSlot) {
+      // This is the existing bounded rematerialization scan. Scan to the end only for the two exact
+      // formation identities so duplicates cannot be hidden by first-match order. Steady drive never
+      // scans; it consumes the object identities established here.
+      formationSlot.entryRef = null;
+      formationSlot.jobRef = null;
+      formationSlot.entityRef = null;
+      formationSlot.dataRef = null;
+      formationSlot.ambiguous = false;
+      let match = null;
+      let count = 0;
+      for (const entity of list) {
+        if (!entity || !entity.alive || !entity.data
+          || entity.data.worldRecordId !== worldRecordId
+          || this.state.entities?.get(entity.id) !== entity) continue;
+        count++;
+        if (count === 1) match = entity;
+      }
+      if (count !== 1) {
+        formationSlot.ambiguous = count > 1;
+        return null;
+      }
+      formationSlot.entityRef = match;
+      formationSlot.dataRef = match.data;
+      return match;
+    }
     for (const e of list) {
       if (e && e.alive && e.data && e.data.worldRecordId === worldRecordId) return e;
     }
@@ -742,6 +1131,7 @@ export const npcJobsRuntime = {
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
     // below is authoritative; clear every live marker owned by this runtime before replacing it,
     // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
+    this._resetCeresEscortAuthority();
     for (const entity of this.state.entityList || []) {
       if (entity && entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
