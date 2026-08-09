@@ -58,8 +58,8 @@ grep the string.
 | `encounterDirector.squad` | `src/systems/encounterDirector.js` — `squadId`, `dir.active` squad records | EXACT |
 | `encounterDirector.pressure` | `src/systems/encounterDirector.js:101` — `POOL_MAX`, per-deck `dir.pressure` | EXACT *(renamed)* |
 | `sectorZones.slot` | `src/data/sectorZones.js` + `AUTHORED_PLACE_ZONES` in `src/data/authoredPlaces.js` | CAPABILITY *(renamed)* |
-| `wrecks.spawn` | `src/systems/aftermathWrecks.js:42` | CAPABILITY |
-| `salvage.strip` | `src/systems/salvage.js:41` + `src/systems/salvageActions.js:58` | CAPABILITY |
+| `wrecks.spawn` | `src/systems/aftermathWrecks.js:434` — `_spawnForSector()` materialises durable aftermath markers into ordinary wreck entities via `helpers.spawnEntity()` | EXACT |
+| `salvage.strip` | `src/systems/salvageActions.js:58` — per-wreck `salvagePool` + `actionForWreck()` discrete actions, driven by `scan:completed` / `salvage:ventReactor` / `salvage:completed`. Piecewise stripping is the pool draining, not a `strip()` call | CAPABILITY |
 | `pickups.spawn` | `src/systems/mining.js:732` — `_spawnPickup()`; `src/systems/cargo.js:199` dumps recoverable pickups | EXACT |
 | `scanner.roleReadout` | `src/systems/scanner.js:1315` — reads `ai.archetype / doctrine / role` | CAPABILITY |
 | `spawnBudget` | `src/systems/spawnBudget.js:27` | EXACT |
