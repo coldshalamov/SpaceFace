@@ -1,0 +1,367 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "48e8cbf76d82c3a80804b894d86121f1fdbac6116f5a364ad4284a07390b9827",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "wreck_corvette_forward",
+      "family": "corvette",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Concord patrol corvette, forward hull: prow, bridge citadel, forward barbette.",
+      "reads": "Belt armour and a gun ring say warship. The cut is angled and clean-edged where the lance went through, ragged where the hull let go behind it. The barbette is empty -- the turret is somewhere else.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward.glb",
+      "sha256": "966961c4de5a45a063a936dc6fa396f89aedcc1271554c6a77f749ef9d7bb9ac",
+      "bytes": 213656,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2112,
+      "sizeM": [
+        88.85,
+        25.4,
+        16.45
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        32.58,
+        -5.29,
+        0.53
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          88.85,
+          25.4,
+          16.45
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_engine",
+      "family": "corvette",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Concord patrol corvette, drive section: reactor, three bells, aft barbette.",
+      "reads": "The end that kept thrusting for a second after the ship stopped being a ship.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_engine.glb",
+      "sha256": "92062cc9a20726b152d457e8c7766d95a0fc712a81ff033fc1786ac2ea5e98cb",
+      "bytes": 118320,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1180,
+      "sizeM": [
+        73.07,
+        19.03,
+        17.4
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -37.47,
+        0.0,
+        1.34
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Reactor",
+        "SOCKET_Salvage_Drive"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -24.0,
+          -19.0,
+          7.0
+        ],
+        "tumbleAxis": [
+          0.181,
+          0.622,
+          0.762
+        ],
+        "tumbleDeg": 52.0,
+        "driftDistanceM": 31.4,
+        "note": "pushed aft and to starboard by its own dying drive"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          73.07,
+          19.03,
+          17.4
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_turret",
+      "family": "corvette",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Concord patrol corvette, main turret with its bearing ring.",
+      "reads": "Milspec, restricted, and lying in the open. Someone will want it and someone will be fined for taking it.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_turret.glb",
+      "sha256": "6abc72e4b7c2f6dfcc7a938961049c20736f921a52c5b9ed705dfffff11cdc2c",
+      "bytes": 41072,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 316,
+      "sizeM": [
+        16.18,
+        9.51,
+        7.78
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        46.0,
+        0.0,
+        5.0
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Weapon"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          11.0,
+          26.0,
+          14.0
+        ],
+        "tumbleAxis": [
+          0.711,
+          0.33,
+          0.621
+        ],
+        "tumbleDeg": 104.0,
+        "driftDistanceM": 31.51,
+        "note": "light, high, and spinning: sheared parts leave fast"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          16.18,
+          9.51,
+          7.78
+        ]
+      }
+    },
+    {
+      "id": "deb_corvette_armor_belt",
+      "family": "corvette",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "Concord patrol corvette, one belt-armour section.",
+      "reads": "Too heavy to be worth lifting, too obviously milspec to be worth being caught with.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_corvette_armor_belt.glb",
+      "sha256": "600bd587217a7b17f26287b6571e8ed4cb0205aea6661d1014179ae66f8f8659",
+      "bytes": 26364,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 192,
+      "sizeM": [
+        22.53,
+        6.27,
+        10.14
+      ],
+      "centredResidualM": [
+        -0.15,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        16.0,
+        -7.0,
+        -0.5
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          22.0,
+          -31.0,
+          -12.0
+        ],
+        "tumbleAxis": [
+          0.26,
+          0.8,
+          0.54
+        ],
+        "tumbleDeg": 87.0,
+        "driftDistanceM": 39.86
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          22.53,
+          6.27,
+          10.14
+        ]
+      }
+    },
+    {
+      "id": "deb_corvette_barbette_ring",
+      "family": "corvette",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "Concord patrol corvette, barbette ring cut from the deck.",
+      "reads": "The straight square edge on the deck plate is the whole story: this was taken, and taking it was a crime.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_corvette_barbette_ring.glb",
+      "sha256": "46d4a64934a0d40cc76cae9e877a54a581a2a13b1791b8f1a7276e1fe6c3b819",
+      "bytes": 28112,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 236,
+      "sizeM": [
+        11.2,
+        10.2,
+        11.44
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -30.0,
+        0.0,
+        5.0
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          6.0,
+          -8.0,
+          -4.0
+        ],
+        "tumbleAxis": [
+          0.62,
+          0.44,
+          0.65
+        ],
+        "tumbleDeg": 31.0,
+        "driftDistanceM": 10.77,
+        "note": "dropped, not thrown: cut free by a salvage crew"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          11.2,
+          10.2,
+          11.44
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_forward__fresh",
+      "family": "corvette",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Concord patrol corvette, forward hull: prow, bridge citadel, forward barbette.",
+      "reads": "Belt armour and a gun ring say warship. The cut is angled and clean-edged where the lance went through, ragged where the hull let go behind it. The barbette is empty -- the turret is somewhere else.",
+      "variantOf": "wreck_corvette_forward",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward__fresh.glb",
+      "sha256": "170af65812aaff154176118264770394d69f353e6e539c7fd49c79ab4a4ddac2",
+      "bytes": 226960,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2240,
+      "sizeM": [
+        88.85,
+        25.4,
+        16.45
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": null,
+      "shipFrameOriginM": [
+        32.58,
+        -5.29,
+        0.53
+      ]
+    },
+    {
+      "id": "wreck_corvette_forward__stripped_heavy",
+      "family": "corvette",
+      "kind": "state-variant",
+      "state": "stripped_heavy",
+      "was": "Concord patrol corvette, forward hull: prow, bridge citadel, forward barbette.",
+      "reads": "Belt armour and a gun ring say warship. The cut is angled and clean-edged where the lance went through, ragged where the hull let go behind it. The barbette is empty -- the turret is somewhere else.",
+      "variantOf": "wreck_corvette_forward",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward__stripped_heavy.glb",
+      "sha256": "47ec46add4f2949f6a66f1faa7880751646d90235135289db5839fd39420aa22",
+      "bytes": 94560,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 924,
+      "sizeM": [
+        88.85,
+        22.44,
+        15.36
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": null,
+      "shipFrameOriginM": [
+        32.58,
+        -3.81,
+        -0.02
+      ]
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 7
+}

@@ -1,0 +1,381 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "63f48a7286ed321aa45e7a28ed461acb66551010f527e736036e0b44bd784c9a",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "wreck_liner_drum",
+      "family": "liner",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Civilian passenger liner, pressurised habitation drum.",
+      "reads": "Window rows say people lived here. The shell is folded OUTWARD along four sectors, which says it burst from the inside -- nothing hit this ship, its air left it.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum.glb",
+      "sha256": "317ec75d642236ce62b794565ceeb7340642435e32e9298492ad70e7a3df179f",
+      "bytes": 197648,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1976,
+      "sizeM": [
+        87.61,
+        67.14,
+        72.82
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -6.25,
+        -9.41,
+        -0.0
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            0.2,
+            9.4,
+            0.0
+          ],
+          "clearRadiusM": 20.75,
+          "clearSpanM": 41.5,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          87.61,
+          67.14,
+          72.82
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_bow",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Civilian passenger liner, forward hull and bridge.",
+      "reads": "Almost undamaged, which is the worst part: whatever happened, it happened behind this bulkhead and everyone forward of it knew about it for a while.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_bow.glb",
+      "sha256": "678ecb64e8c7c5285eb7108dc8f77b78a2084c3b5d50cced5af5cab7024dcfc3",
+      "bytes": 81272,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 792,
+      "sizeM": [
+        69.07,
+        26.77,
+        25.76
+      ],
+      "centredResidualM": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -13.53,
+        -2.09,
+        -0.29
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Salvage_Bridge"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          38.0,
+          17.0,
+          -9.0
+        ],
+        "tumbleAxis": [
+          0.14,
+          0.361,
+          0.922
+        ],
+        "tumbleDeg": 28.0,
+        "driftDistanceM": 42.59,
+        "note": "barely tumbled: it parted cleanly and kept the ship attitude"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          69.07,
+          26.77,
+          25.76
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_boatbay",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Civilian passenger liner, boat bay section.",
+      "reads": "Three davits, swung out, falls cut, cradles empty. The lifeboats launched. Somebody survived this and the wreck says so without a word.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_boatbay.glb",
+      "sha256": "24cd78e008f3be3e98ccb1a4df0c8555d1b17c7c5dc6f89b9dd920e898694885",
+      "bytes": 57756,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 504,
+      "sizeM": [
+        54.03,
+        23.54,
+        16.29
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "shipFrameOriginM": [
+        0.45,
+        -1.43,
+        -0.34
+      ],
+      "sockets": [
+        "SOCKET_Evidence_Manifest",
+        "SOCKET_Salvage_Bay"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -14.0,
+          -33.0,
+          12.0
+        ],
+        "tumbleAxis": [
+          0.553,
+          0.221,
+          0.804
+        ],
+        "tumbleDeg": 66.0,
+        "driftDistanceM": 37.8
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          54.03,
+          23.54,
+          16.29
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_hull_panel",
+      "family": "liner",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "Civilian passenger liner, hull panel with cabin window row.",
+      "reads": "One row of windows is all it takes. Nobody mistakes this for freight.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_hull_panel.glb",
+      "sha256": "e082b1b4b8b049a5e617bc220d8b0947ae13f0a7b4ee6a5c0eb191cb2b798cf3",
+      "bytes": 31576,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 228,
+      "sizeM": [
+        28.7,
+        9.4,
+        13.52
+      ],
+      "centredResidualM": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        2.0,
+        -20.0,
+        6.0
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -31.0,
+          -58.0,
+          24.0
+        ],
+        "tumbleAxis": [
+          0.421,
+          0.661,
+          0.621
+        ],
+        "tumbleDeg": 133.0,
+        "driftDistanceM": 70.01,
+        "note": "thin skin, huge area: the piece that ends up furthest from the hull"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          28.7,
+          9.4,
+          13.52
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_drive_pod",
+      "family": "liner",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "Civilian passenger liner, outboard drive pod.",
+      "reads": "Torn off its pylon, and the bell is already gone -- square torch cut around the mount. Salvage got here before you did.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_drive_pod.glb",
+      "sha256": "6bc37937a5dc575daa4dfcf7daafb5a4790fd475cd8d65d9b950ae39a6587934",
+      "bytes": 37696,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 296,
+      "sizeM": [
+        16.62,
+        7.2,
+        17.99
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -32.0,
+        14.0,
+        0.0
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -19.0,
+          24.0,
+          -16.0
+        ],
+        "tumbleAxis": [
+          0.679,
+          0.509,
+          0.529
+        ],
+        "tumbleDeg": 74.0,
+        "driftDistanceM": 34.54
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          16.62,
+          7.2,
+          17.99
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_drum__fresh",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Civilian passenger liner, pressurised habitation drum.",
+      "reads": "Window rows say people lived here. The shell is folded OUTWARD along four sectors, which says it burst from the inside -- nothing hit this ship, its air left it.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__fresh.glb",
+      "sha256": "a4676ff71c10366729758d436ae3176348bc40a55759c6fbde20551d3b9223ec",
+      "bytes": 198296,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1976,
+      "sizeM": [
+        87.61,
+        67.14,
+        72.82
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": null,
+      "shipFrameOriginM": [
+        -6.25,
+        -9.41,
+        -0.0
+      ]
+    },
+    {
+      "id": "wreck_liner_drum__derelict",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "derelict",
+      "was": "Civilian passenger liner, pressurised habitation drum.",
+      "reads": "Window rows say people lived here. The shell is folded OUTWARD along four sectors, which says it burst from the inside -- nothing hit this ship, its air left it.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__derelict.glb",
+      "sha256": "489a4290499bf475aa4ac044f8f6bca6b549c8cd6e11728174b5c3f9c9172256",
+      "bytes": 95272,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 856,
+      "sizeM": [
+        87.61,
+        66.23,
+        72.82
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": null,
+      "shipFrameOriginM": [
+        -6.25,
+        -8.96,
+        -0.0
+      ]
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 7
+}
