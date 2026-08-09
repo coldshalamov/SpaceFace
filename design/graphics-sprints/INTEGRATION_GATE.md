@@ -1,3 +1,5 @@
+<!-- LIFETIME: STABLE -->
+<!-- Export/build/runtime integration checks. Still applicable; not a priority authority. -->
 # Integration Gate — Integrator Checklist
 
 > **Activated-sprint checklist.** Use after a named graphics handoff. It does not force ordinary

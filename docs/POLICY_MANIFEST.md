@@ -19,6 +19,8 @@ This file identifies which repository surfaces may direct an agent. It is a rout
 Control documents declare one of these markers:
 
 - `LIFETIME: STABLE` — durable routing/contracts; no live branch, lease, snapshot, or completion facts.
+- `LIFETIME: DURABLE` — long-lived research, evidence, or rationale; informative only and never a
+  lease, dispatch instruction, acceptance decision, or priority override.
 - `LIFETIME: VOLATILE` — current state with refresh base and expiry; no historical narrative.
 - `LIFETIME: ACTIVE_PACKET` — one admitted packet; retired or replaced when integrated or materially replanned.
 - `LIFETIME: GENERATED` — derived from code; never hand-edited as source.

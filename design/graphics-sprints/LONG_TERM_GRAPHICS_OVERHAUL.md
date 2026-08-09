@@ -1,12 +1,14 @@
+<!-- LIFETIME: DURABLE -->
+<!-- Long-lived architecture and evidence reference only. It cannot dispatch, prioritize, lease, or accept work; current implementation requires an admitted packet and candidate-bound evidence. -->
 # Long-Term Graphics Overhaul
 
-**Purpose:** durable architecture, build order, and acceptance contract for bringing the complete
-player-visible game to one professional visual bar.
+**Purpose:** durable architecture and evidence reference for bringing the complete player-visible
+game to one professional visual bar. Its old build order and acceptance language is non-authoritative.
 
-**Status authority:** this document does not promote work. Current promotion and evidence truth lives in
-[`design/program/08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](../program/08_GRAPHICS_OVERHAUL_CHECKPOINT.md),
-with whole-program state in `design/program/`. When this plan and live evidence disagree, the live route,
-runtime maps, manifests, focused checks, and program checkpoint win.
+**Status authority:** this document does not dispatch, prioritize, lease, promote, or accept work.
+Current order comes from `CANONICAL_BUILD_MAP.md` and an admitted queue packet; craft acceptance comes
+from the visual-asset standard plus candidate-bound evidence. When this reference and live evidence
+disagree, the live route, runtime maps, manifests, focused checks, and admitted packet win.
 
 ## 1. Outcome and quality bar
 
@@ -68,10 +70,11 @@ and performance evidence. Merely creating or passing a local artifact never chan
 
 ### 2.1 Helios donor disposition
 
-Do not merge the current OpenCode Helios worktree as an asset replacement. Its later release shortcut
-removes `LOD1`, `LOD2`, and `SOCKET_Structure_Core`, leaving roughly 1.02 million triangles active at every
-distance. Its uncommitted texture set is also older and heavier than the accepted iteration-2 maps on
-`master`. The retained three-LOD live station and its accepted material payload remain authoritative.
+The captured donor audit rejected the then-current OpenCode Helios worktree as an asset replacement.
+Its later release shortcut removed `LOD1`, `LOD2`, and `SOCKET_Structure_Core`, leaving roughly
+1.02 million triangles active at every distance; its uncommitted texture set was also older and
+heavier than the iteration-2 baseline reviewed in that audit. Preserve this as historical donor
+evidence and refresh exact hashes, manifests, and current route acceptance before any reuse.
 
 One donor technique is worth reimplementing in a dedicated optimization slice: its scratch Blender
 candidate consolidates the full three-LOD station from 777 glTF primitives to 45 while preserving twelve

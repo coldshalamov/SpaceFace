@@ -1,3 +1,5 @@
+<!-- LIFETIME: STABLE -->
+<!-- Front door for this folder. Dispatch and sequencing belong to CANONICAL_BUILD_MAP.md plus the admitted queue; EXPANSION_PROGRAM.md and TOP10_ROI_ASSET_PLAN.md are research context only. Craft and acceptance belong to docs/visual-assets/. -->
 # Graphics Program — Start Here
 
 > **Manual sprint kit — explicit activation required.** The files in this folder coordinate named
@@ -18,19 +20,20 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
    [`.grok/skills/spaceface-blender-material-truth/SKILL.md`](../../.grok/skills/spaceface-blender-material-truth/SKILL.md)
    and its material-truth preflight before modeling, not only after a plastic/clay/primitive defect
    is reported.
-3. [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md) owns **priority and build order**: what
-   produces the largest visible improvement first.
-4. [`FULL_GRAPHICS_REVAMP_GOAL.md`](FULL_GRAPHICS_REVAMP_GOAL.md) owns **coverage and outcome bar**:
-   which authored surfaces must ultimately reach a professional, coherent result.
+3. Root [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) and the admitted program queue own
+   **dispatch, priority, and build order**.
+4. [`design/program/EXPANSION_PROGRAM.md`](../program/EXPANSION_PROGRAM.md) and
+   [`TOP10_ROI_ASSET_PLAN.md`](TOP10_ROI_ASSET_PLAN.md) supply **research context and a measured
+   ranking only**. Historical Top-50 and revamp plans do not dispatch work.
 5. [`design/revamp/BP-08_VISUAL_ASSET_SPEC.md`](../revamp/BP-08_VISUAL_ASSET_SPEC.md) supplies missing
    asset inventory and faction/role silhouette intent.
-6. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is an **evidence template**, not a quota system. Screenshots,
-   written critique, live-route proof, contract checks, and independent visual judgment matter; iteration
-   counts and self-scores do not prove quality.
-7. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) routes concurrent lanes and single-writer integration.
-8. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) subdivides PQ-022/PQ-023 into stable,
-   manifest-covering asset and presentation packets. It is a subordinate execution ledger, not a
-   global queue or completion authority.
+6. [`QUALITY_RITUAL.md`](QUALITY_RITUAL.md) is a **historical evidence template**, not current routing
+   or acceptance authority. An admitted packet may reuse its critique prompts; iteration counts and
+   self-scores do not prove quality.
+7. [`00_ORCHESTRATION.md`](00_ORCHESTRATION.md) is a historical concurrency example. Its lanes become
+   relevant only when an admitted packet explicitly reactivates that topology.
+8. [`ASSET_PRODUCTION_LEDGER.md`](ASSET_PRODUCTION_LEDGER.md) records durable PQ-022/PQ-023 family
+   subdivision and craft evidence. It cannot dispatch, prioritize, or claim completion.
 9. [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md) defines outcome-based scrutiny,
    valid full-subject/game-camera evidence, story-grounded art briefs, defect escalation and
    independent review. Iteration counts never grant or withhold acceptance.
@@ -70,14 +73,14 @@ captures.
 | Document | Role |
 |---|---|
 | [`docs/visual-assets/`](../../docs/visual-assets/README.md) | **Canonical** craft states, G0–G7 gates, acceptance (not this folder) |
-| `TOP50_WONDER_BUILD_PLAN.md` | Ranked visual priority and slice exits |
-| `FULL_GRAPHICS_REVAMP_GOAL.md` | Full authored-asset coverage and professional outcome bar |
-| `CLI_ASSET_FOUNDRY_EXECUTION_PLAN.md` | Zero-cost CLI pipeline and six independently shippable checkpoints |
-| `QUALITY_RITUAL.md` | Optional evidence/critique structure |
-| `00_ORCHESTRATION.md` | Concurrent lanes, ownership, and lifecycle |
-| `THREAD_A_...` through `THREAD_E_...` | Scoped lane briefs |
-| `BLENDER_EXCLUSIVE_LOCK.md` | Exclusive authoring coordination |
-| `HANDOFF_TEMPLATE.md` | Machine-readable handoff facts |
+| `TOP50_WONDER_BUILD_PLAN.md` | Historical ranking and slice-exit research; no dispatch authority |
+| `FULL_GRAPHICS_REVAMP_GOAL.md` | Historical coverage/outcome reference |
+| `CLI_ASSET_FOUNDRY_EXECUTION_PLAN.md` | Historical CLI-pipeline research |
+| `QUALITY_RITUAL.md` | Historical evidence/critique template |
+| `00_ORCHESTRATION.md` | Historical concurrent-lane scaffold |
+| `THREAD_A_...` through `THREAD_E_...` | Historical lane briefs |
+| `BLENDER_EXCLUSIVE_LOCK.md` | Historical authoring-coordination notes; live process/path evidence controls |
+| `HANDOFF_TEMPLATE.md` | Historical handoff template |
 | `INTEGRATION_GATE.md` | Export/build/runtime integration checks |
 | `GOAL_PROMPTS.md` | Copyable lane prompts; subordinate to this README |
 | `ASSET_PRODUCTION_LEDGER.md` | Complete manifest-family routing, G0–G7 audit fields, VA/VP packets and controller prompt |

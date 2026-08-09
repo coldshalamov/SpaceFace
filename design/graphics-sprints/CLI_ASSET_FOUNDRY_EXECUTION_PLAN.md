@@ -1,6 +1,8 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded process scaffold. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # CLI Asset Foundry Execution Plan
 
-Status: explicitly requested execution plan, 2026-07-16
+Status: historical execution-plan snapshot, 2026-07-16
 
 Cost constraint: zero paid software, zero subscription-only steps
 
@@ -8,10 +10,10 @@ Execution shape: six sequential checkpoints; every checkpoint ends with a functi
 
 Agent constraint: the work must be executable by lower-cost agents using deterministic commands, schemas, checklists, and evidence rather than broad artistic judgment
 
-This plan does not replace TOP50_WONDER_BUILD_PLAN.md, FULL_GRAPHICS_REVAMP_GOAL.md, the Depth
-Program, or the production status roll-up. Those documents own priority, coverage, story content,
-and cross-program status. This document owns the repeatable CLI-first production method and the six
-checkpoint boundaries.
+This plan does not own current priority, coverage, dispatch, acceptance, or cross-program status.
+Its CLI-first method and six checkpoint boundaries are historical reference material that apply only
+when an admitted packet explicitly reuses them. Current order comes from `CANONICAL_BUILD_MAP.md` and
+the admitted queue; live contracts and candidate-bound evidence remain authoritative.
 
 For substantive Tier A/B authored-3D work, the repeatable method begins with
 `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and the mandatory fiction/material preflight

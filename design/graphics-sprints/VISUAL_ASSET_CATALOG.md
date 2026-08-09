@@ -1,3 +1,4 @@
+<!-- LIFETIME: GENERATED -->
 # SpaceFace visual-asset catalog
 
 **Snapshot:** 2026-08-08

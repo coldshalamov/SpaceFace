@@ -1,9 +1,11 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded roadmap. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Historical Revamp Correction — Geometry Was Not Completion
 
 > **HISTORICAL CORRECTION / EVIDENCE ONLY.** This is not an active goal, acceptance contract, inventory,
-> or status ledger. Current routing is in `README.md`; current coverage/outcome is in
-> `FULL_GRAPHICS_REVAMP_GOAL.md`; current priority is in `TOP50_WONDER_BUILD_PLAN.md`; global status lives in
-> `design/program/`.
+> or status ledger. `FULL_GRAPHICS_REVAMP_GOAL.md` and `TOP50_WONDER_BUILD_PLAN.md` are also historical;
+> current dispatch and priority live in the program map and admitted queue, while the visual-asset
+> standard plus live candidate evidence own acceptance.
 
 ## What this correction established
 

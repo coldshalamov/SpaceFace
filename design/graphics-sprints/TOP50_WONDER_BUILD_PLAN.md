@@ -1,15 +1,16 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded ranking. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Top-50 Wonder Build Plan
 
-> **ACTIVE PRIORITY SPINE.** This file owns the ranked order and slice outcomes. It does not own global
-> program status, impose iteration quotas, or replace independent visual judgment. It also does not
-> activate a sprint merely by being discovered: a user/lead or the program ledger must select a bounded
-> slice before its thread prompts and ownership lanes apply. Start at `README.md`.
+> **HISTORICAL RANKING SNAPSHOT.** This file preserves the former ranked order and slice hypotheses.
+> It does not own current priority, dispatch, acceptance, or program status. A current integrator may
+> use it as archaeology only after admitting a bounded leaf through the program map and queue.
 
-**Status:** LIVE — director-facing visual production slate
+**Status:** HISTORICAL — former director-facing visual production slate
 **Date:** 2026-07-09  
 **Owner:** Human director + graphics / presentation agents  
-**Authority:** `README.md` · this file (order) · `FULL_GRAPHICS_REVAMP_GOAL.md` (coverage/outcome) ·
-`design/revamp/BP-08_VISUAL_ASSET_SPEC.md` (coverage/identity) · live contracts/checks
+**Authority:** none for dispatch or acceptance; consult `README.md`, the program queue, the visual-asset
+standard, and live contracts/checks before using any retained hypothesis.
 
 ---
 
@@ -25,19 +26,22 @@
 
 **Prime directive:** Space games live on wonder + tactile feedback. Excellent systems under clay placeholders do not sell at ~$30. Target is **real 2026 hard-surface + presentation** (Eve / modern space-sim bar at game scale), browser-safe via LOD/instancing/batching.
 
-**This is not “polish a few parts then declare victory.”** Slice A must produce **Steam-quality undock frames**. Slices B–E fill combat, density, retail, and fleet scale. The full kit (~70 GLBs + BP-08 gaps) still lives under FGRG — this file is the **order of attack** that maximizes player-visible value.
+**This was not “polish a few parts then declare victory.”** The former plan expected Slice A to
+produce **Steam-quality undock frames**, with Slices B–E filling combat, density, retail, and fleet
+scale. Preserve that as a historical ROI hypothesis, not current order or dispatch.
 
 ---
 
-## 1. Authority chain (when docs disagree)
+## 1. Former authority chain (historical)
 
 1. Root `AGENTS.md` for repository safety, live paths, ownership, and performance doctrine.
-2. `README.md` for graphics-document authority and quality doctrine.
-3. **This file** for Top-50 order and slice exits.
-4. `FULL_GRAPHICS_REVAMP_GOAL.md` for whole-kit coverage and outcome bar.
-5. `BP-08` for faction silhouettes and missing gameplay assets.
-6. `QUALITY_RITUAL.md` for evidence/critique structure.
-7. Exporter/runtime contracts and current checks for technical truth.
+2. `CANONICAL_BUILD_MAP.md` and an admitted queue packet for current dispatch and order.
+3. `README.md` for graphics-document routing and quality doctrine.
+4. **This file** only as a historical ranking and slice-outcome hypothesis.
+5. `FULL_GRAPHICS_REVAMP_GOAL.md` only as historical coverage/outcome evidence.
+6. `BP-08` for retained faction silhouettes and missing-gameplay-asset intent.
+7. `QUALITY_RITUAL.md` as a historical evidence/critique template when an admitted packet reuses it.
+8. Exporter/runtime contracts and current checks for technical truth.
 
 ---
 
@@ -338,7 +342,8 @@ Director reviews slice exits with shots — **transcripts are not proof**.
 | | Claim/empire props when Wave 6 opens |
 | | ASSET_STATUS populated for **all** LIVE assets |
 
-Top 50 is the **priority spine**. FGRG owns full authored-asset coverage and the professional outcome bar.
+Historically, Top 50 was the priority spine and FGRG described full authored-asset coverage. Neither
+statement grants current dispatch, order, coverage authority, or acceptance.
 
 ---
 

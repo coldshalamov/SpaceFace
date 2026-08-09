@@ -520,7 +520,8 @@ export function renderVisualAssetCatalogMarkdown(catalog) {
     .join('\n');
   const findings = catalog.findings.map((finding) => `- ${finding}`).join('\n');
 
-  return `# SpaceFace visual-asset catalog
+  return `<!-- LIFETIME: GENERATED -->
+# SpaceFace visual-asset catalog
 
 **Snapshot:** ${catalog.snapshotDate}
 **Status:** ${catalog.authority.status}

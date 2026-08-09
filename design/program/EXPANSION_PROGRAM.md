@@ -4,8 +4,10 @@
 Goal: raise SpaceFace to A-list 2026 parity in **graphics, animation, VFX, variety and world density**,
 and make the universe feel populated, purposeful and specific rather than sparse and repetitive.
 
-This document is the standing brief. Read it fully before acting. It encodes what a previous graphics
-lane proved by measurement, so the same weeks are not spent twice.
+This document is durable research and operating guidance, not dispatch authority. Read it before
+planning a broad graphics portfolio so the same weeks are not spent twice, then admit each bounded
+production outcome through the normal queue/active-packet route. It grants no lease or acceptance
+and cannot advance the Physics-as-Spectacle R5/five-minute-Ceres/R8 dependency chain.
 
 ---
 
@@ -27,9 +29,11 @@ on the primary scene. Every one held p95 at 16.80 ms. **Nine consecutive experim
 A control settles the interpretation: a **real EVE Online frame scored through the same harness gets
 4s and 3.63 overall**. The grader discriminates between games, not between our variants.
 
-> **Conclusion, treat as established: our frames sit solidly inside the "2" band and no single dial or
-> single-asset change crosses it.** Do not spend days re-running single-lever tuning. Parity comes from
-> ACCUMULATED authored detail, effect craft, scene population and art direction moving together.
+> **Conclusion for this measured scene and scorer:** none of the exact twelve hypotheses crossed the
+> "2" band, even when chase zoom visibly improved the frame. Do not repeat those exact single-lever
+> experiments unchanged. The result does not close untested renderer, composition, camera, or
+> player-route hypotheses; parity still requires accumulated authored detail, effect craft, scene
+> population, and art direction moving together, verified by human and route evidence.
 
 **The most actionable observation in the whole program:** in the asteroid-field frame, the *asteroids
 read as rock* — varied surface, believable light, real silhouette — while the *ship beside them reads
@@ -104,9 +108,10 @@ These are all real failures from the prior lane. Each cost hours.
   ground. `scripts/gfx-validate-references.mjs` does this; run it on every scene you score.
 * **Never compare against a stale baseline.** An archived frame showed a fake 80.3% -> 73.0% win; a
   same-session baseline showed 73.4% -> 73.0% = noise. Re-capture the baseline in the same session.
-* **Match resolution.** Captures default to 1262x648; archived rounds are 1920x1080. HUD occupies a
-  different *fraction* of each, so frame statistics are not comparable across them. Pass
-  `--width/--height` explicitly whenever a number will be quoted.
+* **Match resolution.** Historical session image captures used 1262×648 while archived rounds used
+  1920×1080. HUD occupies a different *fraction* of each, so frame statistics are not comparable
+  across them. Use the active manifest/profile and pass `--width/--height` explicitly whenever a
+  number will be quoted.
 * **Pick metrics that cannot be gamed by a global offset.** "Dead black %" measured the black floor,
   not content — a flat +0.02 luma lift moves it 84% -> 0.2% while adding nothing. Prefer
   `structFrac` (fraction of 16x16 tiles with luma stdev > 0.01) in `scripts/gfx-frame-stats.mjs`.
@@ -125,13 +130,18 @@ These are all real failures from the prior lane. Each cost hours.
 
 ## 6. Performance is a hard gate
 
-**p95 16.80 ms on the Intel iGPU target.** Every change the prior lane shipped held it. Measure with
-`scripts/capture-gameplay.mjs --width 1920 --height 1080`, and quote p95, never a single frame.
+The binding shipping contract is [`design/PERF_BUDGET.md`](../PERF_BUDGET.md): target-profile
+**p95 ≤16.7 ms**, unchanged-or-better p99/hitch tails, and no quality reduction. The prior lane also
+measured an Intel-iGPU route at p95 16.80 ms; report that route-specific guardrail when applicable,
+but it never relaxes the 16.7 ms target. Measure both arms with the same admitted manifest, active
+profile, and dimensions (the current probe default is 1830×973); use 1920×1080 only for the explicitly
+named legacy Intel route. Quote p95, p99, and hitches rather than a single frame.
 
 Known, pre-existing, not yours to be alarmed by: combat shows a stochastic ~250 ms spike from a
 non-preemptible `buildComposedShip` admission stall (it reproduces with all graphics changes reverted,
 and correlates with low ship speed). `check-helios-sky-kit.mjs` fails on `cycle 10: core fog density`
-independently of any change. Attribute before you fix — stash your change and re-run.
+independently of any change. Attribute before you fix by using a clean isolated worktree or a
+candidate-only path; never stash, restore, or overwrite foreign work in the shared checkout.
 
 The user's standing rule: **no quality reduction to buy performance.** Find the waste instead. The
 prior lane found two nebula layers being baked and sampled every frame (32.2 MB of texture) whose
@@ -139,21 +149,20 @@ shader contribution was multiplied by exactly zero.
 
 ---
 
-## 7. Working safely alongside the other agent
+## 7. Working safely alongside other agents
 
-A codex thread works this repo concurrently (`codex://threads/019fd2c0-a9f5-7c20-9a7f-2de49dbc5578`).
-Collisions are rare for graphics work and cheap to fix, so this is a courtesy, not a blocker.
+Other agents may work this repository concurrently. Ownership is exact and current, not inferred
+from a lane label or old task URI.
 
-* `design/program/NOW.md` is the coordination board. Register a lease row before mutating shared paths;
-  read it before starting something new. Claiming an exact-path lease is the documented mechanism — you
-  do not need permission to claim one.
-* Prefer `git stash` over `git checkout <file>` when temporarily reverting: `checkout` discards *all*
-  uncommitted work in that file, which once silently destroyed a session's tuning.
+* Read `design/program/NOW.md`, `git status --short`, current diffs, and live task activity before
+  mutation. A dirty foreign path or demonstrably live exact writer is protected; an expired lane
+  label alone is not.
+* Never use `git stash`, `checkout`, `restore`, `reset`, or `clean` to manufacture a baseline in the
+  shared checkout. Use a clean isolated worktree or a candidate-only output instead.
 * Untracked new files can be deleted by this environment. `git add -N` them immediately.
-* To test an asset change without shipping it: write the candidate to gitignored `.devshots/`, copy it
-  over the live file, capture, then restore with `git checkout` and verify the hash. Run that as a
-  **background script with a `trap ... EXIT INT TERM` restore** — an inline attempt once timed out
-  mid-swap and left a modified asset live.
+* To test an asset change without shipping it, keep the candidate under an isolated candidate path or
+  dedicated worktree and point the probe at it explicitly. Never copy over a live source and depend
+  on a later restore.
 
 ---
 
@@ -164,8 +173,82 @@ Collisions are rare for graphics work and cheap to fix, so this is a courtesy, n
 3. The built asset/effect/behaviour matches the concept art.
 4. An adversarial reviewer compared it to professional references and stopped finding substantive
    faults.
-5. p95 16.80 ms holds.
+5. The repository p95 ≤16.7 ms target and p99/hitch protections hold; any applicable 16.80 ms
+   Intel-iGPU route guardrail is reported separately and never weakens the target.
 6. Tests and `check:contracts` pass; the fiction, concept and provenance are committed.
 
 Breadth counts as much as polish. A hundred things at "clearly good" beats three at "perfect" for a
 game whose actual problem is that it feels empty and same-y.
+
+---
+
+## 9. The render stack — what each seam can and cannot buy you
+
+Reviewed at `f66f6768`. `src/render/` holds ~80 modules; these are the ones that decide how the game
+looks. The **Axis** column records which exact hypotheses were measured in the cited scene and which
+seams remain promising. "Closed" below means only "do not repeat the same tested hypothesis
+unchanged"; it is not a ban on new renderer, composition, camera, or route-level evidence.
+
+`src/render/AGENTS.md` is the module-level contract and owns the silent-fallback trap. Read it before
+editing anything here.
+
+### Tested hypotheses — do not repeat unchanged
+
+| Seam | Owns | Measured result |
+|---|---|---|
+| `authoredMaterialProfiles.js` | Material role classification (14 regex rules), roughness breakup shader | **Two hypotheses disconfirmed at n=5** — roughness breakup and albedo value zones both left `material` at 2/5, samples `[2,2,2,2,2]`. The file says so itself at lines 53-58. `installRoughnessBreakup` is live (called from `applyAuthoredMaterialProfile:238`), keyed `spaceface-surface-breakup-v3-roughness-only`. Its own conclusion: the reviewer wants *texture content*, not shader modulation. |
+| `bloom.js` (913 lines) | Selective bloom, 4-level, post-stack composite, `uToe` | `SECTOR_POST_TOE = 0.020` is live and took dead-black 84.6% → 0.2% at unchanged p95. `0.038` washes out. The ladder was captured; the value is chosen, not guessed. |
+| `spaceBackground.js` / `parallaxLayers.js` | Deep-field composite, L0/L1/L2, parallax midground | Midground already raised ~6 → ~64 expected on-screen objects. Raising `nebulaOpacity` is **disconfirmed** — L1 is authored as dark dust and `mix()` replaces L0 with it, so the frame gets *darker*. |
+| Lighting rig (`rim`, `fill`, `ambient` in `src/data/sectorVisualProfiles.js`) | Per-sector key/fill/rim | `rim` 1.15→2.45 and `ambient` 0.15→0.62 at 4x both produced **no visible change**. Four disconfirmations total on this axis. |
+
+### Open axes — where improvement actually is
+
+| Seam | Owns | What it can buy |
+|---|---|---|
+| **Authored GLB texture content** | `assets/**`, Blender sources | **Largest gap exposed by the measured scene.** Per-zone painted metal / glass / worn edge, readable at ship size. Other renderer and composition hypotheses remain open until measured. |
+| `partsLibrary.js` | Ship composition, whole-ship / role / archetype maps, packed-ORM single-sample shader | Variety through composition and correct selector wiring. Two hostile roles currently alias one hull. |
+| `assetLoader.js` | GLB fetch + validate; **returns `null` and records a diagnostic on failure** | The silent-fallback trap: the entity stays visible with procedural fallback geometry, so a broken authored asset looks like a *styling* problem. Always check `getAuthoredAssetDiagnostic` and `npm run check:assets:live`. |
+| `vfx.js` (11,245 lines) + `src/vfxnext/**` | Pooled particles and sprites; the isolated 12-family reference library | Effects are the brightest band in the hierarchy and the cheapest perceived quality per triangle. `EVENT_LIGHT_POOL_SIZE = 6` is the ceiling **and a shader cache key `precompile.js` must match**. |
+| `lod.js` / `hlod.js` (88 / 81 lines) | Projected-screen-size LOD selector with 25px hysteresis | Selector only — it never owns geometry. Adding a level is a *geometry* task, not an architecture one. **`lod.js:10`'s "the Kestrel ships LOD0-only" comment is stale** — `partsLibrary.js:874-877` maps `ship_kestrel` to lod0/1/2, `881-882` does the same for the Wasp, both are in the release manifest, and a hysteresis resolver runs at `partsLibrary.js:3592`. Whole-ship LOD coverage is better than that comment implies; the real gaps are `rock_b`/`rock_c`, which have no chain at all. |
+| `assetResidency.js` (574 lines) | Texture/mesh residency and admission | Where the dead-nebula 32.2 MB is reclaimable without touching a pixel. |
+| `adaptiveQuality.js` (126 lines) | Dynamic resolution | **Read the quality contract before touching this.** Dynamic resolution is a quality reduction; the standing rule forbids buying performance with it. |
+| `materialLibrary.js` / `canvasTextures.js` | Shared materials, runtime canvas textures | Deduplication — "no duplicated asset loads or material programs for equivalent roles". |
+| `renderer.js` (4,793 lines) | WebGLRenderer, scene, frame, sector post constants | Structural work only: batching, state ordering, persistent resources. |
+
+### The two traps most likely to waste your day
+
+1. **The silent fallback.** A failed authored load leaves the entity *visible* with procedural
+   geometry. You will read it as an art defect and go re-texture a model the game never loaded.
+2. **Shader cache keys.** A change to injected shader source without changing its program cache key
+   makes three.js reuse the program compiled from the *old* source. The new term silently never
+   appears — and it measures as "no effect", which reads as a disconfirmed hypothesis rather than a
+   bug. This has already happened here (`bloom.js` `setOptions` did not read `o.toe`, so an entire
+   A/B ladder produced identical frames).
+
+---
+
+## 10. Current research snapshot and ranking
+
+The measured research ranking lives in
+[`design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md`](../graphics-sprints/TOP10_ROI_ASSET_PLAN.md).
+It is not execution order: an integrator must admit one dependency-ready leaf through the program
+queue before implementation.
+The historical candidate and literal-source-reference screen lives in
+[`design/graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md`](../graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md).
+It does not prove current manifest, bundle, dynamic-route, or player reachability; rerun the owning
+validators before acting on a captured disposition.
+
+The original research snapshot was verified at `f66f6768`; these are historical findings, not a
+current ownership census. Before acting, refresh `NOW.md`, Git status and diffs, branch/ref state,
+and demonstrably live exact writers:
+
+1. **The lease board had exceeded its commit expiry and contradicted itself.** That snapshot remains
+   evidence for why live exact-path checks are mandatory, not a reusable current staleness count.
+2. **No authored-asset surfacing lane was active in that snapshot.** That conclusion was already
+   superseded at the `9772dfbd` reconciliation, when receiver-facility Blender/GLB/evidence work was
+   live in the shared tree. Current workers must recheck exact paths and writers.
+3. **The promotion boundary was where work stopped in that snapshot.** Six lanes each authored a complete, reviewed
+   pack — 98 incubator GLBs, a 32-cell markings atlas, a 12-family VFX library, a 58-event microevent
+   catalog — and each left wiring "to whoever holds those exact paths". Nobody held them. Before
+   authoring something new, check whether the thing you need is already on disk, then use current
+   manifest, bundle, catalog, and route validators to determine whether it is actually unwired.

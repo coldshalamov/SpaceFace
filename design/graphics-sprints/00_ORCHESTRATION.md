@@ -1,11 +1,14 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded process scaffold. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Graphics Sprint Threads — Orchestration
 
 > **ACTIVATION SCOPE:** This five-thread topology exists only for an explicitly launched graphics
 > sprint. Outside that sprint, its A–E ownership table is reference history, not a permanent file
 > prohibition. Live lock/build signals still protect concurrent asset work.
 
-**Status:** LIVE routing for parallel agent sprints.
-**Purpose:** Run multiple north-star goals in parallel **without domain overlap**. One Blender owner at a time. Integrate in series.
+**Status:** HISTORICAL routing example for a specifically launched parallel sprint.
+**Purpose:** Preserve the former isolation pattern. It creates no current lease or ownership lane;
+active writers must coordinate exact live paths through the repository program workflow.
 
 ## Authority chain
 
@@ -16,8 +19,9 @@
    preflight and anti-primitive hard-surface workflow on every substantive Tier A/B authored-3D
    slice. Run that preflight before form or surfacing work begins.
 4. [`README.md`](README.md) for this folder's authority map and quality doctrine.
-5. **`TOP50_WONDER_BUILD_PLAN.md`** for priority/order and slice outcomes.
-6. `FULL_GRAPHICS_REVAMP_GOAL.md` for full authored-asset coverage and outcome bar.
+5. `EXPANSION_PROGRAM.md` and `TOP10_ROI_ASSET_PLAN.md` for research context/ranking only; the
+   admitted queue packet owns priority, order, and slice outcomes.
+6. `FULL_GRAPHICS_REVAMP_GOAL.md` as a historical coverage/outcome reference.
 7. `VISUAL_ITERATION_PROTOCOL.md` for evidence validity, outcome-based scrutiny and defect escalation.
 8. `design/revamp/BP-08_VISUAL_ASSET_SPEC.md` for missing-asset and silhouette intent.
 9. Live exporter/runtime contracts and current checks for technical truth.
@@ -85,7 +89,8 @@ After a graphics handoff or before runtime wiring, **one integrator agent** runs
 - Iterate until the asset or presentation change survives independent visual review at the real game camera;
   iteration counts and self-scores are not acceptance criteria.
 - Run the checks that cover the touched contract. Repeating an unchanged check does not create more proof.
-- Top-50 work follows `TOP50_WONDER_BUILD_PLAN.md` for order and player-visible slice exits.
+- A reactivated slice follows its admitted packet for order and player-visible exits; the Top-50
+  plan remains historical research.
 
 **Transcripts are not proof — checks and screenshots are.**
 

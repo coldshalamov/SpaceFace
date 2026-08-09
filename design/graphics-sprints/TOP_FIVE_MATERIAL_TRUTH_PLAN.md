@@ -1,8 +1,10 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Its five named items remain useful research context and appear in TOP10_ROI_ASSET_PLAN.md. Its sequencing is superseded; only an admitted queue packet can set order. -->
 # Top-five visual material-truth program
 
 **Snapshot:** 2026-07-29
-**Authority:** execution companion to `VISUAL_ASSET_CATALOG.json`; not acceptance or a permanent
-lease
+**Authority:** historical research companion to `VISUAL_ASSET_CATALOG.json`; not dispatch,
+acceptance, priority, or a permanent lease
 **Workflow:** `.grok/skills/spaceface-blender-material-truth/SKILL.md`
 
 This packet turns the catalog's first five rows into bounded in-place remasters. It does not authorize

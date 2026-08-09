@@ -1,3 +1,5 @@
+<!-- LIFETIME: DURABLE -->
+<!-- SCOPE: long-lived family subdivision and G0-G7 audit evidence for PQ-022/PQ-023 only. It cannot dispatch, prioritize, or claim completion; TOP10_ROI_ASSET_PLAN.md is research ranking only. -->
 # Visual Production Ledger — PQ-022 / PQ-023
 
 > **Subordinate execution ledger, not a sixth program queue.** `CANONICAL_BUILD_MAP.md` and
@@ -17,8 +19,10 @@ Use this order inside an activated graphics lane:
 3. This ledger for PQ-022/PQ-023 subdivision and coverage.
 4. `VISUAL_ITERATION_PROTOCOL.md` for outcome-based scrutiny, valid framing, story-grounded briefs
    and non-gameable review records.
-5. `TOP50_WONDER_BUILD_PLAN.md` for visible priority and slice order.
-6. `FULL_GRAPHICS_REVAMP_GOAL.md` and `LONG_TERM_GRAPHICS_OVERHAUL.md` for outcome and architecture.
+5. `EXPANSION_PROGRAM.md` and `TOP10_ROI_ASSET_PLAN.md` for research context and measured ranking;
+   the admitted packet still controls priority and slice order.
+6. `FULL_GRAPHICS_REVAMP_GOAL.md` as historical outcome evidence and
+   `LONG_TERM_GRAPHICS_OVERHAUL.md` as a durable architecture/evidence reference only.
 7. Live manifests, runtime maps, checks, and current player-route evidence for technical truth.
 
 The canonical Visual Asset Production Standard is installed at:

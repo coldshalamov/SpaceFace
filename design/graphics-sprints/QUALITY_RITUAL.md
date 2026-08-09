@@ -1,3 +1,5 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded process scaffold. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Quality Evidence Ritual — Screenshot-Driven Critique
 
 This is an evidence template for Threads A, B, and E and for any visible Thread D change. It is **not**

@@ -1,11 +1,11 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded roadmap. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Full Graphics Revamp — Coverage and Outcome Bar
 
-> **ACTIVE COVERAGE AUTHORITY.** This file defines the visual surfaces that must ultimately receive a
-> professional player-facing result and the evidence needed to accept them. It does not activate all
-> surfaces as one task, impose the A–E lane topology on ordinary work, or override current program
-> pickup; a bounded slice must be explicitly selected. `TOP50_WONDER_BUILD_PLAN.md`
-> owns priority/order. `README.md` owns this folder's authority map and quality doctrine. Whole-program
-> status lives in `design/program/`.
+> **HISTORICAL COVERAGE EVIDENCE.** This file records the visual surfaces and outcome bar considered by
+> the former revamp. It cannot dispatch work, own priority/order, define current acceptance, or impose
+> the A–E lane topology. A bounded slice must be admitted through the program map and queue; current
+> acceptance comes from the visual-asset standard, live contracts, and candidate-bound evidence.
 >
 > Every substantive Tier A/B authored-3D slice must first use
 > `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md` and the mandatory fiction/material
@@ -72,9 +72,10 @@ mount/socket/hook semantics, and the one-game-path rule. Prefer material reuse, 
 instancing, batching, cache reuse, streaming, culling, LOD/HLOD, and precompile/warm-up over reducing visible
 quality.
 
-## Build sequence
+## Historical build-sequence hypothesis
 
-`TOP50_WONDER_BUILD_PLAN.md` is the order of attack. After its slices, continue through the long tail:
+The former revamp used `TOP50_WONDER_BUILD_PLAN.md` as its order of attack, then proposed this long
+tail. Neither sequence is current dispatch; an admitted queue packet must select any reusable slice.
 
 1. **Hero player experience:** starter family, propulsion/weapons, initial station/gate/sector composition,
    mining/combat VFX, and the normal undock route.

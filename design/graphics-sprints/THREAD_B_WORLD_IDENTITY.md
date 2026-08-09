@@ -1,3 +1,5 @@
+<!-- LIFETIME: HISTORICAL -->
+<!-- Superseded lane brief. EXPANSION_PROGRAM.md supplies research context and TOP10_ROI_ASSET_PLAN.md a measured ranking; neither dispatches work. Archaeology and technical reference only; it cannot direct implementation unless explicitly reactivated through an admitted packet. -->
 # Thread B — World Identity (Places, Stations, Landmarks)
 
 > **Manual sprint lane.** This scope is exclusive only while Thread B is explicitly activated and its

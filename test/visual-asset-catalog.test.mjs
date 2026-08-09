@@ -114,6 +114,10 @@ test('tracked catalog artifacts are deterministic products of current manifests 
   const expectedJson = `${JSON.stringify(catalog, null, 2)}\n`;
   const expectedMarkdown = renderVisualAssetCatalogMarkdown(catalog);
 
+  assert.match(
+    expectedMarkdown,
+    /^<!-- LIFETIME: GENERATED -->\n# SpaceFace visual-asset catalog\n/,
+  );
   assert.equal(readFileSync(JSON_PATH, 'utf8'), expectedJson);
   assert.equal(readFileSync(MARKDOWN_PATH, 'utf8'), expectedMarkdown);
   for (const path of catalog.runtime.codeNativeVisuals) {

@@ -1,3 +1,5 @@
+<!-- LIFETIME: STABLE -->
+<!-- Live and mandatory: cited by src/render/AGENTS.md and docs/visual-assets/README.md for cinematic, VFX, compositor and presentation work. -->
 # Visual Iteration and Evidence Protocol
 
 > **Companion craft protocol, not a plan or completion ledger.** This file prevents shallow

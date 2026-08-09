@@ -32,6 +32,27 @@ before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE
 meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
 roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
 
+**Graphics / expansion research (A-list parity):** when planning work that spans graphics,
+animation, VFX, variety, or world density — as opposed to one admitted asset packet — the durable
+research brief is
+[`design/program/EXPANSION_PROGRAM.md`](./design/program/EXPANSION_PROGRAM.md). Its §1 records twelve
+controlled experiments against one scene and scoring harness; use those results to avoid repeating
+the exact disconfirmed hypotheses, not as proof that every renderer or composition axis is closed.
+Its §2 records the production loop (research → worldbuild → concept → build → adversarial review)
+and §5 records measurement traps that have already cost real time. The repository performance
+contract remains [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md): target-profile p95 ≤16.7 ms,
+p99/hitch protection, and no quality reduction; the measured 16.80 ms Intel-iGPU route is an
+additional guardrail, never a relaxation. Pair the brief with
+[`design/graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md`](./design/graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md),
+which preserves a historical plan/literal-source-reference screen and withdrawn-claim evidence.
+Refresh its named manifest, bundle, catalog, route, and ownership checks before treating any captured
+disposition as current. The current research ranking is
+[`design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md`](./design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md).
+It grants no lease, priority, or dispatch authority: implementation still requires an admitted
+packet from the queue, and any overlapping Physics-as-Spectacle row remains downstream of that
+packet's R5/five-minute-Ceres/R8 gates. Craft and acceptance still belong to
+`docs/visual-assets/` below.
+
 **Graphics / visual assets:** every player-facing graphics task starts at
 [`docs/visual-assets/README.md`](./docs/visual-assets/README.md), which routes authored 3D, portraits,
 concept/reference generation, cinematics, VFX, and UI art to their owning quality contract. For
@@ -270,6 +291,8 @@ Feature code should be naturally bounded:
 Documentation has a declared lifetime:
 
 - `STABLE` files route and define durable contracts; they contain no live snapshots.
+- `DURABLE` files preserve long-lived research, evidence, or rationale. They may inform planning,
+  but never grant a lease, dispatch authority, acceptance, or priority over an admitted packet.
 - `VOLATILE` files contain leases/current state, a refresh base, and an expiry condition.
 - `ACTIVE_PACKET` files guide one admitted packet and retire into evidence when done.
 - `GENERATED` files are rebuilt from code.

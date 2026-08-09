@@ -1,3 +1,5 @@
+<!-- LIFETIME: DURABLE -->
+<!-- Method for the parity/perf harness. Measurement rules are consolidated in EXPANSION_PROGRAM.md section 5. -->
 # Validation of the external SpaceFace performance audit
 
 Checked against committed `master` @ `dab9199a` on 2026-08-05, plus a fresh real-GPU capture

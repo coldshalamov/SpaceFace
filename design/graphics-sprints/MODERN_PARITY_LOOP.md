@@ -1,7 +1,9 @@
+<!-- LIFETIME: DURABLE -->
+<!-- Retains the twelve-experiment table and EVE control. Do not repeat the same tested settings, scene, and scorer unchanged; other renderer, composition, camera, and route hypotheses remain open. -->
 # Modern-Parity Loop
 
-> **Measurement harness, not a new authority.** Priority still comes from
-> [`TOP50_WONDER_BUILD_PLAN.md`](TOP50_WONDER_BUILD_PLAN.md); craft acceptance for authored 3D assets
+> **Measurement harness, not a new authority.** Priority comes from `CANONICAL_BUILD_MAP.md` and the
+> admitted queue; craft acceptance for authored 3D assets
 > still comes from [`docs/visual-assets/`](../../docs/visual-assets/README.md); iteration validity still
 > comes from [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md). This file adds one thing
 > those do not have: an **external bar**. It answers "how far are we from a 2020s game?" with a number
@@ -761,8 +763,10 @@ comparison came back clean — more evidence that **moving scenarios cannot be u
 ### The parallax bands were tuned for the wrong camera
 
 Once `parallaxLayers.js` was wired, its on-screen density turned out to be near zero. Tile sizes are
-the wrap cell in parallax space, so visible count is `count * (view / tile)²`, and the chase camera
-sees roughly 120 world units:
+the wrap cell in parallax space, so the experiment estimated visible count as
+`count * (view / tile)²` using a roughly 120-WU lateral span. That lateral scan is now rejected by
+`CAMERA_VISIBLE_BUBBLE.md`; keep these values only as historical experiment inputs, not a current
+camera or density contract:
 
 | band | original | expected on screen | retuned | expected on screen |
 |---|---|---:|---|---:|
@@ -1016,9 +1020,11 @@ the baseline in the same session as the variant.
 
 ## 13. Midground density: visible, but not enough on its own
 
-Independent review's single highest-value action was a midground band. The parallax module supplies
-one, and the on-screen count is `count * (view/tile)^2` against a chase camera that sees ~120 world
-units:
+Independent review's single highest-value action was a midground band. The historical experiment
+estimated on-screen count as `count * (view/tile)^2` using a ~120-WU lateral span. That span is now
+rejected: `CAMERA_VISIBLE_BUBBLE.md` owns the 93–125 WU ordinary / 145–164 WU earned depth contract
+and explicitly invalidates the old lateral scan. Preserve the table only as captured experiment
+history; do not reuse it for current density or culling:
 
 | state | MID count / tile | expected on screen |
 |---|---|---:|
@@ -1726,18 +1732,19 @@ unrepresentative target.
 
 One observation from that frame worth carrying into any art plan: **the asteroids read as rock** —
 varied surface, believable lighting, real silhouette — while the ship beside them reads as flat
-plastic. Same renderer, same lights, same frame. That is direct evidence the engine is not the
-limitation on `material`; the rocks are simply better authored than the ship. It is the strongest
-single argument that the remaining gap is production, and it also names where to spend first.
+plastic. Same renderer, same lights, same frame. In that measured comparison, the evidence does not
+support blaming the shared renderer for the material-score difference; authored ship surfacing is
+the next hypothesis to test. It does not close other scenes, scorers, renderer, composition, or
+camera work.
 
 ## 28. Closing this lane
 
 Thirteen measured changes across two scenes. Nine consecutive identical 2.25s on the primary scene, a
 1.88 on the second, and a control (real EVE frame, same harness) at 3.63.
 
-I am not going to run a fourteenth single-lever experiment. Twelve on record disconfirm that method,
-the cross-scene check shows the target was representative, and repeating it would spend the owner's
-budget to reprint a number that is already established to three significant figures.
+Do not repeat these twelve settings unchanged against the same scenes and scorer: those exact
+hypotheses are already measured. This result does not disconfirm all single-variable experiments or
+close new renderer, composition, camera, route, or scorer hypotheses.
 
 **Parity was not reached: 2.25 against 3.63.** The performance half of the brief was met in full —
 p95 16.80 ms held through every change, with zero live assets modified.
