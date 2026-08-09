@@ -1,4 +1,12 @@
+<!-- LIFETIME: VOLATILE -->
 # Verified Done and Implemented Work
+
+```yaml
+refreshed: 2026-08-09
+baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
+expiresAfterCommits: 10
+expiresAfterDays: 2
+```
 
 **Audit date:** 2026-07-19 for the integration checkpoint below; older rows retain their stated dates.
 **2026-07-20 closeout synthesis appended** below the PQ-001..PQ-010 row.
@@ -6,12 +14,31 @@
 **Rule:** this document separates accepted outcomes from implemented components. The whole Alpha and
 the whole Depth Program are not finished.
 
-**User correction 2026-07-24:** PQ-007's `1a54e56b` pursuit-slot implementation is no longer an
+## Current integration checkpoint — 2026-08-09
+
+Current canonical tip at this reconciliation is `8b7b1d3b26181fdc38325a63f5e9d85574bf321b`.
+The rows below record recent committed production truth without promoting the Alpha, Depth Program,
+R5 Ceres slice, or R8 showcase.
+
+| Commit | Integrated player-facing outcome | Acceptance boundary |
+|---|---|---|
+| `446e4e06` | Seven authored Ceres job roles publish exact, replay-safe causal action receipts; mining and freight effects remain with their existing owners. | Integrated and focused-green. This is event/owner truth, not the five-minute Ceres verdict. |
+| `fc5e54a0` | Those receipts drive bounded, accessible Ceres action punctuation through existing VFX pools. | Integrated and focused-green; no whole-sector visual acceptance claim. |
+| `f66f6768` | Exact Ceres patrol/escort jobs can enter a lease-backed lawful response, carry production fittings/doctrine, fire through the real weapons/physics/damage path, and return ownership safely. | Integrated and focused-green; broader combat/law ecology remains open. |
+| `fdbbd495` | The authored Ambush escort holds a physical aft formation on its live ward while control leases and FLEE retain precedence. | Integrated and focused-green. |
+| `2cda03cb` | Three traffic-owned jobs across five exact Ceres target relationships approach their live station, field, cargo, shard, or world-site authority with safe standoff and authored-route fallback. | Integrated and focused-green; receipt is `roadmap/receipts/PQ-045-target-motion-REPORT.md`. Two unconfirmed lifecycle hypotheses remain an independent, non-gating audit. |
+| `738a152a`, `be07fc47` | Nebula tile baking now occurs only when a consumer can see it; the follow-up restores repository line-ending truth. | Integrated implementation/check truth only; no whole-frame performance or visual-quality promotion is inferred here. |
+
+The durable direction and graphics-research commits (`5d026a0f`, `c4a3bb32`) are planning
+authority, not implemented gameplay. PR #92 remains an unmerged draft; its useful method is
+selectively retained in `design/vision/INFERENCE_CONVERGENCE_METHOD.md` and grants no completion.
+
+**Historical correction, superseded by the current checkpoint above:** PQ-007's `1a54e56b` pursuit-slot implementation is no longer an
 accepted outcome. It introduced target-relative station keeping, MMB pursuit selection, pursuit
 impulses, and pursuit UI that the user did not request, while removing the requested G
 auto-target/draw-to-fly behavior. Its former acceptance row is revoked. The user-directed correction
-is reviewed, focused-green, and integrated at `4d00867e`; browser/Electron route acceptance remains
-open, so PQ-007 is not restored to the verified-done count.
+was reviewed, focused-green, and integrated at `4d00867e`. Later Browser/Electron route acceptance at
+`c1b190e2` closes that old open boundary; do not redispatch it.
 
 ## Milestone-exit truth
 
@@ -99,7 +126,8 @@ closed-loop control **23/23**, SG-02 and SG-06 Massline resilience green, and 47
 site, operations, and Massline phase, but its acceptance driver measured sequential cleanup latency as
 active key-hold time. That validator defect is corrected with token-bound exact keydown/keyup receipts
 and deterministic proof. No final Browser/Electron artifact is claimed; see
-`roadmap/receipts/PQ-017-world-site-REPORT.md`. PQ-018 is now unblocked and next.
+`roadmap/receipts/PQ-017-world-site-REPORT.md`. At that dated checkpoint PQ-018 became the next
+planned item; current status is in the top table and `02_REMAINING_WORK.md`.
 
 ## 2026-07-21 playable graphics checkpoint (`ea698805`, `54548e09`)
 

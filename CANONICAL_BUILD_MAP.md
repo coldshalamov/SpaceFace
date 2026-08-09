@@ -10,11 +10,11 @@ Before changing anything:
 1. Run `git status --short` and inspect the current branch/HEAD. Do not create a worktree by default.
 2. Read root [`AGENTS.md`](./AGENTS.md).
 3. Read only the relevant sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) and [`design/GDD_2_0.md`](./design/GDD_2_0.md).
-4. Read the volatile lease board: [`design/program/NOW.md`](./design/program/NOW.md).
+4. Read the short shared-edit board: [`design/program/NOW.md`](./design/program/NOW.md).
 5. If the user did not name an exact unit, use the copy-ready
    [`design/program/AGENT_TASK_PROMPTS.md`](./design/program/AGENT_TASK_PROMPTS.md), then run
    `node scripts/program-dispatch.mjs --next` for the first exact dependency-front unit,
-   `node scripts/program-dispatch.mjs --ready` for every currently claim-ready unit, or
+   `node scripts/program-dispatch.mjs --ready` for every currently dependency-front unit, or
    `node scripts/program-dispatch.mjs --id PQ-XXX` for one parent outcome. The dispatcher includes
    implementation, acceptance-repair, capture, evidence-review, performance, and integration units, so a
    headless-complete parent is not redispatched as feature work. Open the raw
@@ -22,7 +22,7 @@ Before changing anything:
    index/dispatch units or diagnosing dependency/identity history.
 6. Open the returned packet in [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md).
    If an already-queued unit lacks an executable packet, shape the smallest packet from the template
-   as part of that unit instead of stopping for a missing coordinator. Do not invent a new outcome that is
+   as part of that unit instead of stopping. Do not invent a new outcome that is
    absent from both the queue and the user's direction.
 7. Use [`docs/MODULE_MAP.md`](./docs/MODULE_MAP.md), then generated [`docs/SYSTEM_REGISTRY.md`](./docs/SYSTEM_REGISTRY.md) or [`docs/EVENT_ROUTING.md`](./docs/EVENT_ROUTING.md), to locate live owners. Search only those owners, their tests, and their checks.
 8. Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md) through a terminal receipt.
@@ -31,6 +31,10 @@ Before changing anything:
 10. Finish one unit, commit and push its exact result, update its receipt/status, and return
     `RESULT: DONE` or `RESULT: NOT DONE` using the template in `02_REMAINING_WORK.md`. Do not begin a
     second unit in the same task.
+
+Several threads may follow these steps at once in the same checkout. The first thread that actually
+edits records its exact files in `NOW.md`; the others take the next returned task or continue on
+disjoint files. No coordinator, task-long reservation, or worktree is required.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
@@ -252,7 +256,7 @@ buggy implementation is current.
 | Surface | Lifetime | Owns | Must not own |
 |---|---|---|---|
 | [`NOW.md`](./design/program/NOW.md) | volatile | threads actually mutating now, exact dirty hunks, brief publication windows, unassigned dirty work | history, task-long ownership, subsystem lanes, dependencies, completion, test transcripts |
-| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, integration dependencies, coordination hints, broad checks/evidence, coarse parent state | active mutation windows, implementation prose, acceptance transcripts |
+| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, integration dependencies, broad checks/evidence, coarse parent state | active mutation windows, implementation prose, acceptance transcripts |
 | [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
 | `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
 | module/event/system maps | generated or maintained reference | low-context code navigation | product priority or completion claims |
@@ -260,9 +264,9 @@ buggy implementation is current.
 Status is two-dimensional:
 
 - **Lifecycle:** `planned → ready → claimed → implemented → integrated`, with `deferred` and
-  `historical` as explicit dispositions. The legacy `blocked` enum is reserved for a proven external
-  impossibility; internal dependencies, another thread, dirty files, tools, reviews, or hardware do
-  not qualify.
+  `historical` as explicit dispositions. The legacy `blocked` enum remains only for schema
+  compatibility and has no current queue rows. Named human-only work uses `deferred`; internal
+  dependencies, another thread, dirty files, tools, reviews, or hardware never become blockers.
 - **Acceptance:** `unproven → focused_green → route_accepted → milestone_accepted`.
 
 These axes do not imply each other. Integrated code may still lack route acceptance; a source asset may be implemented but not runtime-wired; a focused-green packet is not automatically fun, readable, or complete.
@@ -323,12 +327,13 @@ are:
   claim may contain several distinct cells;
 - a product, harness, or nondeterminism failure must be reduced to a seconds-scale regression before
   another affected acceptance attempt;
-- unchanged failure fingerprints block reruns;
+- retain unchanged failure fingerprints as evidence; change the candidate or approach instead of rerunning them;
 - evidence review closes with discovery, repair, and a causal re-review rather than a succession of
   open-ended fresh audits; use a separate reviewer when one exists, but the finishing agent may issue
   the verdict from retained evidence and must disclose that it is a self-review;
 - unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
-- every execution ends `PASS`, `FAIL`, `BLOCKED`, or `DEFERRED` with an exact-revision receipt.
+- every execution ends `PASS`, `FAIL`, `NEEDS HUMAN`, or `DEFERRED` with an exact-revision receipt,
+  then reports plain `DONE` or `NOT DONE` to the user.
 
 Certification remains fail-fast. A diagnostic route may collect several independent recoverable
 failures in one run, but it must abort when boot, navigation, or observation authority is lost and

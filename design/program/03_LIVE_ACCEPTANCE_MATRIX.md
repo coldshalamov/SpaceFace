@@ -1,13 +1,48 @@
+<!-- LIFETIME: VOLATILE -->
 # Live Acceptance Matrix
+
+```yaml
+refreshed: 2026-08-09
+baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
+expiresAfterCommits: 10
+expiresAfterDays: 2
+```
+
+## Current acceptance checkpoint — 2026-08-09
+
+This table is the current top-level correction to the dated rows below. It separates committed
+implementation from route, visual, performance, and human acceptance.
+
+| Outcome | Lifecycle | Current accepted proof | Still open |
+|---|---|---|---|
+| PQ-007 corrected targeting/draw-to-fly | Integrated | Distinct Browser and Electron public-route PASS at `c1b190e2`; pursuit package remains absent | None in the retired packet |
+| PQ-018 Wreck Cathedral | Integrated runtime/route; art `REVISE` | World Site behavior and existing route evidence | Whole-asset reauthor, H1, and causal visual review |
+| PQ-019 physical heist | Integrated + focused/route evidence | A/B/C owners, capsule and surface routes, H2, matched H3 | Receiver facility reauthor/H1/review, aliases, parent promotion |
+| PQ-020 Ceres route | Integrated functional H1 + matched H3 | Browser/Electron functional topology and current target-visible substrate | Revised pocket presentation, Cathedral/refinery dependencies, promotion |
+| PQ-021 Gold Corridor narrative | Integrated + route-accepted | Terminal receipt; no remaining dispatch unit | None in the current packet |
+| PQ-022 corridor assets | Partial portfolio | Relay accepted; refinery and billboard/buoy source/release implementations integrated | Targeted H1/reviews, matched H3, promotions |
+| PQ-023 presentation umbrella | Corridor-cue subslice integrated; parent remains active/partial | Browser/Electron functional cue route, causal reviews, accessibility, dense composition, matched H3 | Broader propulsion/environment/HUD/camera/dense-scene leaves still need decomposition and implementation |
+| PQ-024 Asteroid Ops corridor | Integrated + focused/route evidence | Production, original H1/H2/H3, committed-transition repair/H1/review; stale queue blocker reconciled | Relay receipt promotion, then parent promotion |
+| PQ-034–041 performance modernization | Mixed exact boundaries | PQ-034–037 and PQ-039 terminal at their receipts; PQ-038/040/041 implementations are focused-green | Three remaining native acceptances; then PQ-042 selection |
+| PQ-045 R5 Ceres | Integrated substrate + focused-green leaves | R6 action spine, punctuation, law response, escort, and exact-five target motion | Tender client; topology; causal/NPC/art/VFX leaves; five-minute Browser/Electron evidence; human verdict; independent two-hypothesis audit |
+
+The two late target-motion hypotheses are **unconfirmed review findings**, not a retroactive failure
+claim: (1) terminal cleanup under numeric-ID replacement and (2) overly broad same-type destruction
+revalidation. One bounded independent leaf may reproduce or dismiss each. It does not gate tender,
+the rest of Ceres, or acceptance unless it produces a causal defect. It must not launch another
+general review of the already tested matrix.
+
+PR #92 contributes no acceptance. Its retained convergence review labels are advisory only; this
+matrix, active packets, candidate-bound receipts, and named human gates remain authoritative.
 
 **Audit date:** 2026-07-14 for the M0–M6 and Depth rows below.
 **Sprint 2 packet rows appended 2026-07-18** at commits `4f750412`, `cd784532`, `d5e0d6e7`; those rows
 carry their own evidence and do not promote any milestone row.
 
-**Live status correction 2026-07-24:** PQ-007's user-directed control correction is focused-green
+**Historical status correction, superseded by the current checkpoint:** PQ-007's user-directed control correction was focused-green
 and integrated on `master` at `4d00867e`; its former pursuit-slot acceptance remains revoked below.
-Current browser/Electron control-route acceptance is still open.
-`C:\Users\93rob\sf-perf01a` remains a second registered occupied worktree. The older clean
+Later Browser/Electron control-route acceptance at `c1b190e2` closes that old boundary.
+`C:\Users\93rob\sf-perf01a` was a second registered worktree at that snapshot. The older clean
 `dff6e4fc` recovery checkpoint remains historical and adds no current route, visual, performance,
 or packet acceptance claim.
 
@@ -40,7 +75,7 @@ recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKP
 
 | Outcome | Current state | Current evidence | Remaining boundary |
 |---|---|---|---|
-| Persistent multi-component World Site (`PQ-017` / `A15` / `SF-19`) | **`INTEGRATED` / CHECKED OFF** | Commit `2a9517d8`; independent final control review APPROVE. Final focused proof: World Site/Massline **81/81**, public-route contract **67/67**, closed-loop control **23/23**, SG-02 and SG-06 resilience green, 47-A compare `ok:true`/deterministic/`hashEqual:true`, and staged diff check clean. The implementation includes sole persistence ownership, bounded deterministic operations, physical payload/receiver and impact recovery, exact asset/socket bindings, admission-gated compound proxies, accessible state-driven presentation, map History, traffic, shared Browser/Electron route source, and normal-play Massline durability. The headed Browser route reached the authored site, four operation phases, and the Massline phase before a validator-only false negative; exact token-bound keydown/keyup accounting now has deterministic coverage. Receipt: `roadmap/receipts/PQ-017-world-site-REPORT.md`. | No new final Browser/Electron evidence directory is claimed. A future evidence refresh may run the corrected route once for current media/perf numbers, but it is not a reason to reopen the integrated feature or to use the expensive route as a debugger. PQ-018 is unblocked and next. |
+| Persistent multi-component World Site (`PQ-017` / `A15` / `SF-19`) | **`INTEGRATED` / CHECKED OFF** | Commit `2a9517d8`; independent final control review APPROVE. Final focused proof: World Site/Massline **81/81**, public-route contract **67/67**, closed-loop control **23/23**, SG-02 and SG-06 resilience green, 47-A compare `ok:true`/deterministic/`hashEqual:true`, and staged diff check clean. The implementation includes sole persistence ownership, bounded deterministic operations, physical payload/receiver and impact recovery, exact asset/socket bindings, admission-gated compound proxies, accessible state-driven presentation, map History, traffic, shared Browser/Electron route source, and normal-play Massline durability. The headed Browser route reached the authored site, four operation phases, and the Massline phase before a validator-only false negative; exact token-bound keydown/keyup accounting now has deterministic coverage. Receipt: `roadmap/receipts/PQ-017-world-site-REPORT.md`. | No new final Browser/Electron evidence directory is claimed. A future evidence refresh may run the corrected route once for current media/perf numbers, but it is not a reason to reopen the integrated feature or to use the expensive route as a debugger. At that date PQ-018 became next; the current Cathedral residual is the whole-asset chain in the top table. |
 
 ## PQ-021 Ship's Ledger closure (2026-08-01, `61f2ffe7`)
 
@@ -75,9 +110,9 @@ recorded in [`08_GRAPHICS_OVERHAUL_CHECKPOINT.md`](./08_GRAPHICS_OVERHAUL_CHECKP
 | `A01` | `FOCUSED_GREEN` + `INTEGRATED` | `test/asteroid-formation-model.test.mjs` 33/33 after the `5c1d9c0c` r4 overflow fix (31/31 as first landed) | `cd784532`, `5c1d9c0c` | — |
 | `W01` | `FOCUSED_GREEN` + `INTEGRATED` (coverage-only) | `test/e1-encounter-phase-dispatch.test.mjs` 14/14; seam held, no extraction | `cd784532` | — |
 | `G04` | `SUPERSEDED BY WAVE-01 ROUTE_ACCEPTED` | This first measurement inverted the stated cause; the later clean-checkout run closes attribution and is authoritative in the Wave-01 row below. | — | historical measurement |
-| `A03`, `G07` | `BLOCKED_BY_LEASE` | write-set needs `src/render/renderer.js` / `bloom.js`, both dirty | — | `MAP-2026-07-18` |
-| `W05` | `BLOCKED_BY_LEASE` | write-set needs HUD/map; `galaxyMap.js` observed changing twice mid-sprint | — | `MAP-2026-07-18` |
-| `G08` | `NOT_STARTED (dependency)` | depends on `G07` (blocked), `A04`, `A05` | — | via `G07` |
+| `A03`, `G07` | `HISTORICAL 2026-07-18 LEASE NOTE` | write-set then needed `src/render/renderer.js` / `bloom.js` | — | superseded by current board |
+| `W05` | `HISTORICAL 2026-07-18 LEASE NOTE` | write-set then needed HUD/map | — | superseded by current board |
+| `G08` | `HISTORICAL NOT_STARTED` | depended on the dated G07/A04/A05 snapshot | — | superseded by current board |
 | `G02`, `G03`, `G05`, `G06`, `T02`, `T03`, `T04`, `A02`, `A04`, `A05`, `W02`, `W03`, `W04`, `W06` | superseded for `G02,G03,T02,T03,A02,A05,W02` by the Wave-01 rows below; `G05,G06,T04,A04,W03,W04,W06` remain `READY`/`PLANNED` for Wave-02 | contracts in `roadmap/05_SPRINT2_READY_CONTRACTS.md` | — | save-schema mutex resolved by `edca7c7e` (clean-worktree regeneration) |
 
 ## Wave-01 — PROGRAM-WAVE-01-RECOVERY-ROOTS packet rows (2026-07-18, commits on `master` at `c751b9a9`)
@@ -117,7 +152,7 @@ below was rerun by the integrating controller.
 | `PQ-004` | `T02`/`T03` delta + `T15` | `FOCUSED_GREEN`+`INTEGRATED`+`ROUTE_ACCEPTED` | preview===latch proven on the live route (previewMatched:true, receipt/target ids match the rendered cue); focused suites 29/29; clutter threshold ≥19/20 across transformed scenes and 3 input modalities; target-scoring/auto-target gates green; reduced-motion/forced-colors/WCAG AA; both sim compares ok/hashEqual | `87f523a9` |
 | `PQ-010` | `G10`,`W03`,`T09` (+T08 route) | `FOCUSED_GREEN`+`INTEGRATED`; combat visual-family GPU acceptance remains graphics-lane | concussion/vector-mine/RCS-disruptor with distinct impulse identities + provenance; shop-reachable via tech gates; unconsumed collision receipts now drive impact VFX; sf10 7/7 + impulse 14/14; check:combat repaired (difficulty ratio encoded) + green; membrane/balance/data green; sim gates hashEqual; visual-stability acceptance attempt exit 0 — probe readiness deadline measured MARGIN-FLAKY on this machine (identical configs flip red/green under load; committed-HEAD worktree green; attribution matrix in NOW.md; probe-margin debt filed); `check:data-refs` dangling `beam_pressure` (PQ-009 latent) closed via `light_beam_pressure` | `226b4e44` |
 | `PQ-006` | `T07`+`T15` contributions | `FOCUSED_GREEN`+`INTEGRATED`+route | one 15 Hz deterministic release solution shared by Arm/Snap/HUD/telemetry (replaces 60 Hz solve); predictor-vs-actual error receipts pinned (12/12); GDD-ruled world-anchored offscreen ALIGN/RELEASE cues (ARIA, forced-colors, reduced-motion static distinction); masslineReleaseAssist persisted via profile whitelist; earned speed reuses velocityLanguage+pushZoom with live proof (+134.7 wu/s → 12.5% push, captures in `.devshots/spec2/`); `check:m1:tether-mass` updated to the truthful reel receipt; both sim compares ok/hashEqual | `0cd42f25` |
-| `PQ-007` | `T16` control correction; `PROPOSED-T19` rejected | **`FOCUSED_GREEN`+`INTEGRATED`; former pursuit acceptance revoked; route acceptance open** | `4d00867e` restores independent locked-target weapon lead plus clutchable relative draw-to-fly, ordinary-input Massline orbit correction, and removes pursuit selection/controller/impulses/HUD/toasts. Focused control tests 60/60; Massline aggregate 23/23; input modalities, UI/a11y/contrast/perf, flight checks, and both sim compares green/deterministic. `1a54e56b` and historical pursuit evidence cannot re-authorize the rejected mechanic. | Reaccept the route only after current browser and Electron control evidence passes on `4d00867e`. |
+| `PQ-007` | `T16` control correction; `PROPOSED-T19` rejected | **HISTORICAL focused/integrated checkpoint; later route accepted at `c1b190e2`** | `4d00867e` restores independent locked-target weapon lead plus clutchable relative draw-to-fly, ordinary-input Massline orbit correction, and removes pursuit selection/controller/impulses/HUD/toasts. Focused control tests 60/60; Massline aggregate 23/23; input modalities, UI/a11y/contrast/perf, flight checks, and both sim compares green/deterministic. `1a54e56b` and historical pursuit evidence cannot re-authorize the rejected mechanic. | No remaining task in the retired packet. |
 | generated docs | — | integrated | EVENT_ROUTING/SYSTEM_REGISTRY regenerated at HEAD (89 systems) | `8ac9d32e` |
 
 **M2 combined seamless-world is GREEN for the first time**: browser and Electron both pass the full

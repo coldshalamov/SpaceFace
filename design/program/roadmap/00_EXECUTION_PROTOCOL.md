@@ -17,30 +17,29 @@ that touches the render or simulation core.
 |---|---|---|
 | `PASS` | packet outcome implemented; focused proof passes; nothing green at entry is now red | completed packet checklist + receipt |
 | `FAIL` | an in-scope product defect remains after repair, or a check green at entry is now red | failing regression, failure class, owner, minimal next action |
-| `BLOCKED` | an entry condition, owner seam, lease, asset, environment, or dependency is absent | blocker evidence and requested upstream change |
-| `DEFERRED` | user/integrator deliberately stops or reschedules valid work | preserved branch/diff and explicit resume point |
+| `NEEDS HUMAN` | the agent-deliverable work is complete and one named human-only action remains | exact candidate, named human action, and resume point |
+| `DEFERRED` | the user explicitly stops or reschedules valid work | preserved diff and explicit resume point |
 
 Don't camp in "still verifying." If you're looping on the same check without new information, stop —
 either reduce it to a focused regression, classify the failure, or defer. Repetition is not
 investigation.
 
 These dispositions apply to the selected dispatch unit, not automatically to a multi-packet
-campaign. In a user-authorized long-running campaign, `BLOCKED` means record this unit and continue
-another safe unit. An empty ready list means the integrator rechecks stale state, admits an existing
-planned slice whose dependencies are real, or implements an authorized missing in-repo seam; it does
-not mean the campaign passed. The campaign ends only at its declared product milestone or when every
-remaining route has an evidenced external dependency or exact live-path collision.
+campaign. A named human action or one protected exact hunk does not stop the rest of the campaign.
+An empty ready list means the working agent refreshes stale state, shapes an existing planned slice,
+or implements an authorized missing in-repo seam; it does not mean the campaign passed. The campaign
+ends only at its declared product milestone.
 
-### Blocker evidence
+### Coordination is not product status
 
-- A path or mutex collision is real only when a current-date `NOW.md` entry names the exact bounded
-  paths and a live writer, or the foreign work is currently dirty/untracked. Historical claims,
-  branch names, broad lane labels, and mutex names without a live owner are not blockers.
+- A current `NOW.md` row or foreign dirty hunk protects only those exact bytes from overwrite. It does
+  not reserve a subsystem or stop disjoint implementation, research, tests, or another queue unit.
+  Historical claims, branch names, broad lane labels, and mutex names grant no ownership.
 - An absent local checker, manifest, packet, adapter, or owner seam is implementation work when the
-  current goal authorizes that surface. It is a blocker only when creating it would exceed the
-  worker's granted authority or violate a real dependency.
-- If one part of a unit collides, split or reroute that part. Do not mark the parent packet, module
-  family, or whole campaign blocked unless the outcome is genuinely indivisible.
+  current goal authorizes that surface. Implement it instead of returning a blocker report.
+- If one hunk overlaps current foreign work, preserve it, finish every disjoint part, and arrange an
+  explicit handoff for the overlap. Do not mark the task, parent packet, module family, or campaign
+  blocked.
 
 ## 2. Two state axes
 
@@ -48,13 +47,16 @@ Lifecycle and acceptance are independent.
 
 ```text
 lifecycle: planned -> ready -> claimed -> implemented -> integrated
-            |          |          |
-          blocked    deferred   historical
+            |          |
+          deferred   historical
 
 acceptance: unproven -> focused_green -> route_accepted -> milestone_accepted
 ```
 
-A feature agent may report `implemented/focused_green`; only the integrator promotes shared lifecycle/acceptance after exact-revision review. Integrated code may honestly remain `unproven` or `focused_green` on the route axis.
+The finishing agent promotes only the exact lifecycle/acceptance rows supported by the candidate's
+proof. Integrated code may honestly remain `unproven` or `focused_green` on the route axis. The queue
+retains a legacy `blocked` value only for schema compatibility and has no current rows using it;
+human-only action uses `deferred`, and in-repo work continues to a terminal result.
 
 ## 3. Packet entry gate
 
@@ -67,17 +69,20 @@ the live owner, and one proportionate way to observe the change.
 - Which current modules own the state and mutations?
 - Which owner APIs/events already exist, and which new seams are explicitly required?
 - Are all dependencies integrated at the candidate base?
-- Are the named path/mutex owners free?
+- Which exact dirty hunks must be preserved during the short mutation window?
 - Is the write set bounded enough to review?
 - What deterministic focused test can fail before a live probe is needed?
 - What new entities, queries, allocations, DOM, materials, textures, save bytes, or draw work are expected?
 - What is explicitly not being built?
 
-If any answer is unknown and material, classify the packet `BLOCKED` or perform a planning-only seam audit. Do not invent an owner contract while implementing a consumer.
+If any answer is unknown and material, resolve it with a bounded seam audit inside the task before
+mutating the consumer. Do not invent an owner contract, but do not turn missing in-repo knowledge into
+a durable blocker.
 
 ## 4. Phase A — preflight and characterization
 
-1. Record exact branch, HEAD, dirty paths, worktrees, and active leases.
+1. Record exact branch, HEAD, dirty paths, and current mutation rows. Existing worktrees are recovery
+   obligations, not a default execution strategy.
 2. **Record a proportionate entry baseline.** For route/milestone acceptance, shared-core changes, or
    evidence dependencies, run the packet's declared L0–L2 commands plus the fast baseline and retain
    the result. For a bounded product fix, reproduce the behavior and record the relevant focused check;
@@ -113,7 +118,10 @@ Plans, checks, and harnesses are fallible descriptions of the product. If one de
 conflicts with current user direction, architecture, GDD intent, or observed player control, correct or
 remove that stale demand; never distort production behavior to keep an obsolete validator green.
 
-When an unforeseen shared edit is necessary, stop. Return a shared-change request containing the owner, required contract, why existing seams are insufficient, and the smallest proposed change.
+When an unforeseen shared edit is necessary and remains inside the assigned outcome, add the smallest
+truthful owner-side seam to the task's exact write set and implement it. Reread the file and record the
+short mutation window. If the exact hunk already contains foreign dirty work, preserve it, finish the
+disjoint work, and arrange an explicit handoff for that hunk; do not abandon the product task.
 
 ## 6. Phase C — validation ladder
 
@@ -176,7 +184,9 @@ A broker campaign may contain several distinct predeclared cells. The cell ident
 runtime, seed/save, profile, scenario, and harness digest; changing a label after observation does not
 create a new cell.
 
-Use `scripts/validation-broker-cli.mjs` and a packet manifest for expensive Browser/Electron routes. Direct probe execution is diagnostic and cannot promote acceptance unless the packet explicitly documents why no broker is possible and the integrator records a one-use equivalent claim.
+Use `scripts/validation-broker-cli.mjs` and a packet manifest for expensive Browser/Electron routes.
+Direct probe execution is diagnostic and cannot promote acceptance unless the packet explicitly
+documents why no broker is possible and the finishing agent records a one-use equivalent claim.
 
 After an expensive probe fails, classify it first. For `PRODUCT`, `HARNESS`, or `NONDETERMINISM`:
 
@@ -206,7 +216,7 @@ production milestone by itself.
 | `NONDETERMINISM` | equal candidate/seed/input can diverge | hard stop; reduce to deterministic regression before any route rerun |
 | `STALE_BASELINE` | expected data or prose no longer describes live code | update packet/check deliberately; never rewrite a golden blindly |
 | `OUT_OF_SCOPE` | valid defect outside the selected outcome/write budget, **and not a red check** | record follow-up; do not reopen current acceptance unless it invalidates the route |
-| `INHERITED_RED` | a declared check was already red at the recorded entry baseline | repair it when bounded; otherwise record it clearly (owner, reason, entry-evidence) and either defer it as a follow-up or flag for the integrator. Don't silently ignore it |
+| `INHERITED_RED` | a declared check was already red at the recorded entry baseline | repair it when bounded; otherwise record it clearly (owner, reason, entry-evidence) as one exact follow-up. Don't silently ignore it |
 | `UNKNOWN` | evidence cannot support attribution | fail closed; collect one discriminating diagnostic, not another identical run |
 
 ### Red checks are a floor, not a wall
@@ -231,7 +241,7 @@ actually blocks the work in front of you.
 Review is adversarial but finite.
 
 When another qualified reviewer is actually available, prefer separation between authoring and
-review. In a solo recovery or integration run, the integrator may perform the same evidence-bound
+review. In a solo recovery or integration run, the finishing agent may perform the same evidence-bound
 review after the implementation/capture step. Record that it was a self-review and apply the same
 finding standard. The absence of a separate person or agent is not a blocker and must not be encoded
 as a dependency, owner, or lease.
@@ -250,21 +260,24 @@ A preference without an invariant or observed player defect is advice, not a blo
 
 ### Repair
 
-Repair all validated P0/P1 findings and in-scope P2 findings. Shared-owner findings become explicit requests. P3 polish can land when cheap and coherent or be retained as a follow-up.
+Repair all validated P0/P1 findings and in-scope P2 findings. An authorized missing in-repo seam is
+part of the task, not a blocker. A genuinely overlapping foreign dirty hunk gets an exact handoff while
+disjoint work continues. P3 polish can land when cheap and coherent or be retained as a follow-up.
 
 ### Causal re-review
 
 The reviewer verifies the repairs and checks for regressions caused by them. This pass does not restart a general audit. A newly discovered unrelated issue is recorded separately unless it invalidates the packet's core claim.
 
-After causal re-review, the reviewer returns `APPROVE`, `REJECT`, or `BLOCKED` with exact reasons.
-Further review requires a material redesign, a new candidate after rejection, or explicit integrator
-direction; this is a causal boundary, not an iteration quota.
+After causal re-review, the reviewer returns `APPROVE` or `REVISE` with exact reasons. Further review
+requires a material redesign or a new candidate after a causal revision; this is a causal boundary,
+not an iteration quota.
 
 Do not ask successive agents to “find more issues” until one eventually invents a new local doctrine. Do not convert reviewer taste into automatic repository instructions.
 
 ## 9. Player-route and fun review
 
-Automation proves contracts. Evidence-bound integrator review decides whether the feature is
+Automation proves contracts. The packet's assigned evidence review—or the disclosed finishing-agent
+self-review when no separate reviewer is required—decides whether the feature is
 readable, discoverable, coherent, and enjoyable; an independent or external player review can add
 confidence when it actually exists, but it is not a fictional prerequisite.
 
@@ -305,27 +318,28 @@ A performance failure is repaired structurally. Lowering default quality, omitti
 
 ## 11. Checkoff and receipt
 
-The feature agent updates the active packet checklist and creates or updates its receipt. The receipt should be concise and machine-readable where practical:
+The finishing agent updates the active packet checklist and creates or updates its receipt. The receipt should be concise and machine-readable where practical:
 
 ```yaml
 packet: PQ-XXX
 candidateCommit: <sha>
 lifecycleClaim: implemented
 acceptanceClaim: focused_green | route_accepted | unproven
-disposition: PASS | FAIL | BLOCKED | DEFERRED
+disposition: PASS | FAIL | NEEDS_HUMAN | DEFERRED
 changedPaths: []
 focusedGates: []
 routeEvidence: []
 performanceEvidence: []
 review:
-  discovery: APPROVE | REJECT | BLOCKED
-  causalRereview: APPROVE | REJECT | NOT_REQUIRED
+  discovery: APPROVE | REVISE
+  causalRereview: APPROVE | REVISE | NOT_REQUIRED
 residuals: []
 followUps: []
 ```
 
 When the receipt satisfies another queue row's `evidenceDependencies`, use the
 `PROGRAM_EVIDENCE_RECEIPT` header defined in [`README.md`](./README.md), commit the receipt, and
-record its Git blob only after the integrator verifies the metadata and candidate revision.
+record its Git blob only after the finishing agent verifies the metadata and candidate revision.
 
-The integrator verifies the exact candidate and then updates queue/global status atomically. Never make a global completion claim from a worker report, old artifact, or different commit.
+The finishing agent verifies the exact candidate and then updates the exact queue/global rows
+atomically. Never make a global completion claim from a worker report, old artifact, or different commit.

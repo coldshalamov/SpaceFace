@@ -782,8 +782,13 @@ export function parsePacketDocument(text, rel = '<packet>') {
   if (!new Set(['direct', 'leaf_required']).has(dispatchPolicy)) {
     errors.push(`${rel}: invalid dispatchPolicy ${dispatchPolicy}`);
   }
-  if ((owner === 'portfolio-container' || dispatchPolicy === 'leaf_required') && lifecycle !== 'blocked') {
-    errors.push(`${rel}: portfolio/leaf-required packet must remain blocked until an executable leaf exists`);
+  if (
+    (owner === 'portfolio-container' || dispatchPolicy === 'leaf_required')
+    && !new Set(['planned', 'ready', 'blocked', 'deferred']).has(lifecycle)
+  ) {
+    errors.push(
+      `${rel}: portfolio/leaf-required packet must stay planned, ready, deferred, or externally blocked until its leaves are complete`,
+    );
   }
   if (errors.length) throw new ProgramControlError('packet metadata is invalid', errors);
 
@@ -858,7 +863,6 @@ export function summarizePacket(row, control, packet) {
     packetDependencyGateSatisfied,
     evidenceGateSatisfied,
     dependencies,
-    mutexes: row.mutexes,
     activePacket: packet.rel,
     checks: row.checks,
     evidence: row.evidence,
@@ -876,9 +880,8 @@ export function summarizePacket(row, control, packet) {
         state: unit.state,
         claimReady: dispatchUnitReady(unit, control),
         title: unit.title,
-        blocker: unit.blocker || null,
       })),
-    caution: 'This is parent context, not a claim. Use its exact dispatchUnits and re-read design/program/NOW.md before mutation. The queue state field remains a coarse parent index; unit receipts own completion.',
+    instruction: 'Use the first ready dispatch unit. Re-read design/program/NOW.md before mutation and preserve only an exact currently dirty overlapping hunk. Historical owners and mutex labels never stop work.',
   };
 }
 
@@ -922,15 +925,12 @@ export function summarizeDispatchUnit(unit, control) {
       id,
       state: control.dispatchById.get(id)?.state || 'missing',
     })),
-    mutexes: unit.mutexes,
     paths: unit.paths,
     checks: unit.checks,
     receiptRefs: unit.receiptRefs,
     brief: unit.brief,
-    blocker: unit.blocker || null,
-    owner: unit.owner || 'unclaimed',
     packet: `design/program/roadmap/active/${unit.parentId}.md`,
-    caution: 'Claim-ready still requires a fresh design/program/NOW.md collision check. Evidence review, Browser/Electron capture, and matched performance remain separate exact units.',
+    instruction: 'Start and finish this unit. Before editing, re-read design/program/NOW.md and preserve only an exact currently dirty overlapping hunk; otherwise begin immediately. Historical owners and mutex labels never stop work.',
   };
 }
 

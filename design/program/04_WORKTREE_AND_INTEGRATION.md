@@ -1,4 +1,51 @@
+<!-- LIFETIME: VOLATILE -->
 # Worktree and Integration Inventory
+
+```yaml
+refreshed: 2026-08-09
+baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
+expiresAfterCommits: 10
+expiresAfterDays: 2
+```
+
+## Live shared-tree snapshot — 2026-08-09
+
+At reconciliation, `master`, `HEAD`, and `origin/master` are
+`8b7b1d3b26181fdc38325a63f5e9d85574bf321b`; the index is empty and no `index.lock` exists. The
+latest disjoint commit updates the canonical graphics G0-2 result and remaining ROI work; it does not
+touch the still-uncommitted program/status paths below.
+
+The main checkout contains these foreign, uncommitted groups in addition to this exact documentation
+transaction. Their exact dirty hunks remain protected until explicit handoff/integration, but they
+are not durable task status, subsystem ownership, or a reason to stop disjoint work:
+
+| Dirty group | Current truth | Plain next action |
+|---|---|---|
+| 100 paths under `assets/ships/m5_claim_outposts/` plus one focused test and three tools | PQ-019 receiver Phase A candidate; whole-asset review is G1/G2/G4 `REVISE`, so it is not ready for promotion. | Revise the candidate until it earns exact-source KEEP or discard it explicitly; then handle Phase B promotion and Phase C runtime release as separate tasks. |
+| `--class/` | Untracked receiver-validator output/spill. | The receiver task classifies and either retains or removes it in its terminal handoff. |
+
+There are nine registered worktrees because older agents created isolated copies. This inventory does
+not recommend creating more. Counts are a volatile snapshot and do not grant ownership:
+
+| Worktree | Dirty entries | Disposition |
+|---|---:|---|
+| primary checkout | use current `git status --short` | Canonical shared checkout; includes the reconciliation and foreign groups above. |
+| `C:\sf-agents\bespoke-faction-a-list` | 6 | Unfinished candidate; audit to KEEP/DROP as one explicit task. |
+| `C:\sf-agents\kestrel-a-list-i01` | 0 | Clean recovery reference; integrate/archive decision still needs an explicit task. |
+| `C:\sf-agents\receiver-a-list` | 119 | Receiver candidate copy; reconcile against the primary Phase A candidate. |
+| `C:\sf-agents\receiver-a-list-lf` | 128 | Receiver candidate copy; reconcile against the primary Phase A candidate. |
+| `C:\sf-agents\sector-law-ui-a-list` | 2 | Unfinished UI candidate; reduce to a current-base KEEP/DROP task. |
+| `C:\sf-agents\shield-r3-integration` | 12 | Unfinished VFX candidate; reconstruct or drop against current owners. |
+| `C:\sf-agents\station-ledger-a-list` | 2 | Unfinished UI candidate; integrate or drop with current evidence. |
+| `C:\sf-agents\vfx-damage-audit` | 12 | Unfinished VFX/audit candidate; reconcile into one explicit result. |
+
+Default concurrent work stays in the primary checkout. Threads reserve an exact file only during the
+short patch operation, reread before changing shared files, and release immediately afterward. The
+thread finishing a result briefly serializes only staging/commit/push. Existing worktrees are tracked recovery obligations,
+not a concurrency strategy; use [`WORKTREE_RECOVERY.md`](./WORKTREE_RECOVERY.md) to integrate or
+remove them deliberately after their useful work is accounted for.
+
+The July snapshots below are retained as history and are not current dispatch or collision truth.
 
 ## Recovery refresh — 2026-07-30
 

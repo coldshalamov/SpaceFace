@@ -30,8 +30,8 @@ function usage() {
   node scripts/program-dispatch.mjs --id PQ-018 [--root PATH]
   node scripts/program-dispatch.mjs --list [--root PATH]
 
-When dispatchUnits exist, --next returns the first claim-ready unit and --ready returns every
-claim-ready unit. Outputs compact JSON and never grants a lease or acceptance claim.`);
+When dispatchUnits exist, --next returns the first ready unit and --ready returns every ready unit.
+Outputs compact JSON; starting a task requires no separate coordinator or lease.`);
 }
 
 let values;
@@ -107,7 +107,7 @@ try {
 
   if (control.dispatchUnits.length > 0) {
     const [nextUnit] = readyDispatchUnits(control);
-    if (!nextUnit) fail('no claim-ready dispatch unit found', 1);
+    if (!nextUnit) fail('no ready dispatch unit found', 1);
     console.log(JSON.stringify(summarizeDispatchUnit(nextUnit, control), null, 2));
     process.exit(0);
   }

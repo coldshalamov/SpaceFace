@@ -1,14 +1,166 @@
+<!-- LIFETIME: VOLATILE -->
 # Unified Remaining Work
+
+```yaml
+refreshed: 2026-08-09
+baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
+expiresAfterCommits: 10
+expiresAfterDays: 2
+```
 
 This is the canonical roll-up of everything still required from the Full Solo Alpha and the Depth
 Program. Detailed behavior remains in the linked source plans; this file owns status and next action.
 
-## Recovery-wave dispatch index — 2026-08-01
+## Current execution board — 2026-08-09
 
-The old parent queue mixed implementation lifecycle, acceptance status, and nonexistent external
+**Snapshot base:** `8b7b1d3b26181fdc38325a63f5e9d85574bf321b` on `master`, equal to
+`origin/master` when reconciled. The durable development handoff is
+[`DEVELOPMENT_HANDOFF_2026-08-09.md`](./DEVELOPMENT_HANDOFF_2026-08-09.md).
+
+This section supersedes older dated status, ownership, ordering, “next,” “immediate,” and blocker
+claims below. The broader Alpha/Depth outcome tables remain retained scope until each outcome is done
+or mapped to an exact queue leaf.
+
+### Status words a nontechnical reader can trust
+
+| Status | Meaning |
+|---|---|
+| `DONE` | The result is committed on `master` and the cited proof exists. |
+| `IN PROGRESS` | Uncommitted work exists. It is not done; the row names the exact next action. |
+| `TODO` | The result is not done. It may be assigned as a bounded task. |
+| `NEEDS HUMAN` | Agent work is complete only when the named human action is performed and recorded. |
+
+There is no durable `BLOCKED` status for in-repo work. A dependency is integration order, not a
+reason to abandon a task. A dirty path, another agent, Blender, the GPU, a validation broker, or a
+shared source file is coordination at execution time, not product status.
+
+The queue contains 113 exact leaves: 80 `done`, 32 agent-ready, and one deferred named-human review,
+with zero dependency-only blocked leaves. `dependsOn` records the preferred integration order.
+`program-dispatch --ready` reports the current front of that order; it is not the list of all work
+that exists and it never cancels a task.
+
+### How concurrent agents finish in one checkout
+
+- Do not create a worktree by default.
+- All threads may inspect, research, test, and review concurrently. Those activities reserve no file.
+- A thread announces an exact clean file only for the short mutation window in which it is applying
+  a patch, then releases it immediately. This is minutes of coordination, not task-long ownership.
+- Before changing a shared file, reread its live contents. Several threads may change a clean file
+  sequentially in the shared checkout. A stale patch context means reread and reapply.
+- An existing foreign dirty hunk remains protected until that writer explicitly hands it off or it is
+  integrated. Continue the task's disjoint work or another queue task meanwhile; the exact hunk does
+  not become a blocked product, packet, subsystem, or plan.
+- When two proposed clean-file hunks genuinely overlap, one finishing agent combines those hunks while the
+  other threads continue their remaining work. The plan and task remain active.
+- The thread finishing a result briefly enters `PUBLISHING`, stages only that result, verifies the
+  names, commits, and pushes. Every completed slice is committed promptly so it cannot be stranded in
+  chat or overwritten.
+- Old branches, task names, packet labels, worktrees, and an agent merely reading a file never imply
+  current ownership.
+
+### Current task list
+
+Every `TODO` row is real remaining work. “After” describes integration order only; it does not mean an
+agent should invent a blocker or stop unrelated work.
+
+| Status | Priority / unit | Player-facing result | Exact next action | Integrate after |
+|---|---|---|---|---|
+| `TODO` | 28 — `PQ-022.refinery-reauthor-h1` | Prove the revised refinery on the real Browser and Electron route. | Run the bounded H1 capture and publish its result. | Existing refinery implementation |
+| `TODO` | 29 — `PQ-022.refinery-reauthor-review` | Decide whether the revised refinery actually fixes the visible defect. | Review the exact H1 candidate and record KEEP or REVISE. | Refinery H1 |
+| `TODO` | 31 — `PQ-022.billboard-buoy-reauthor-h1` | Prove the revised billboard and buoy on the real route. | Run the bounded H1 capture and publish its result. | Existing billboard/buoy implementation |
+| `TODO` | 32 — `PQ-022.billboard-buoy-reauthor-review` | Decide whether the revised billboard and buoy read correctly. | Review the exact H1 candidate and record KEEP or REVISE. | Billboard/buoy H1 |
+| `TODO` | 204 — `PQ-019.promote` | Make the completed claim-outpost/heist result the accepted PQ-019 milestone. | Bind the final facility review and performance receipts, then promote. | PQ-019 facility review and H3 |
+| `TODO` | 207 — `PQ-020.promote` | Make the completed Ceres topology/presentation result the accepted PQ-020 milestone. | Bind Cathedral and pocket review receipts, then promote. | Cathedral and pocket presentation reviews |
+| `TODO` | 209 — `PQ-022.h3-performance` | Prove the accepted corridor assets fit the live performance/cleanup envelope. | Run one matched H3 candidate and publish the result. | Refinery, billboard/buoy, relay, and corridor dispositions |
+| `TODO` | 210 — `PQ-022.promote-relay` | Turn the accepted relay result into the final receipt other packets can consume. | Bind the relay review and H3 evidence. | Relay review and PQ-022 H3 |
+| `TODO` | 211 — `PQ-022.promote-corridor-assets` | Publish the Gold Corridor required-assets milestone. | Bind the corridor disposition and H3 evidence. | Corridor disposition and PQ-022 H3 |
+| `TODO` | 217 — `PQ-024.promote` | Promote the visible permanent claim-site consequence. | Bind the accepted relay and committed-transition evidence. | Relay promotion and PQ-024 reviews |
+| `TODO` | 219 — `PQ-025.calibration-qualification` | Prove the complete Gold Corridor over held-out 30/90-minute play. | Freeze the candidate, calibrate the rubric, run qualification once, and publish the verdict. | PQ-019/020/021/022/023/024 milestone receipts and owner facts |
+| `TODO` | 223 — `PQ-038.native-acceptance` | Prove dense PresentationWorld behavior in the supported runtimes. | Run one clean Browser/Electron acceptance candidate and record the result. | Existing focused implementation |
+| `TODO` | 226 — `PQ-041.native-acceptance` | Prove the exact packaged Electron build and paired Browser route. | Build and run one clean candidate; publish the paired ledger. | Existing acceptance surfaces |
+| `TODO` | 227 — `PQ-042.branch-selection` | Choose the next GPU correction from real evidence—or close with no change. | Evaluate the completed PERF evidence and execute the selected A/B/C/D result. | PERF-03/04/05/06/07 acceptances |
+| `TODO` | 228 — `PQ-020.pocket-presentation-recapture` | Show Ceres actors visibly approaching their real targets. | Capture the corrected pocket approaches on the exact route. | Refinery review and existing PQ-020 review |
+| `TODO` | 229 — `PQ-020.pocket-presentation-review` | Decide whether the recaptured Ceres pocket presentation is truthful and readable. | Review the exact captures and record KEEP or REVISE. | Pocket recapture |
+| `TODO` | 230 — `PQ-018.cathedral-reauthor` | Replace the Cathedral's weak hull/rupture presentation with an accepted whole asset. | Re-author the exact asset and return KEEP or REVISE. | World Site runtime and current art verdict |
+| `TODO` | 231 — `PQ-018.cathedral-reauthor-h1` | Prove the revised Cathedral in Browser and Electron. | Capture the exact candidate once in each runtime. | Cathedral re-authoring |
+| `TODO` | 232 — `PQ-018.cathedral-reauthor-review` | Decide whether the revised Cathedral fixes the whole-asset defect. | Review the exact H1 candidate and record KEEP or REVISE. | Cathedral H1 |
+| `IN PROGRESS` | 233 — `PQ-019.receiver-facility-reauthor` | Give the lawful catcher and covert fence visibly distinct, believable facilities. | Current Phase A is G1/G2/G4 `REVISE`: make a real geometry/material revision that earns KEEP, or discard it explicitly. Phase B promotion and Phase C runtime release remain separate. | Existing receiver contracts |
+| `TODO` | 234 — `PQ-019.facility-presentation-h1` | Prove the revised catcher/fence/facility roles on the real route. | Capture one exact Browser/Electron candidate. | Receiver KEEP and accepted relay |
+| `TODO` | 235 — `PQ-019.facility-presentation-review` | Decide whether all four facility roles are clear and coherent. | Review the exact H1 candidate and record KEEP or REVISE. | Facility H1 |
+| `TODO` | 246 — `PQ-040.native-acceptance` | Prove dirty-range GPU uploads in Browser and Electron. | Run one clean paired acceptance candidate and publish the result. | Existing focused implementation |
+| `TODO` | 253 — `PQ-045.tender-client-materialization` | Put a real disabled client in Ceres so the tender services something visible. | Implement the exact nine-path leaf in [`PQ-045.md`](./roadmap/active/PQ-045.md). | Integrated target motion |
+| `TODO` | 254 — `PQ-045.route-topology` | Make the four Ceres pockets move differently instead of sharing one shuttle pattern. | Author and prove four distinct route topologies. | Tender client for final integration |
+| `TODO` | 255 — `PQ-045.causal-chain` | Show six connected ambient events with visible cause and consequence. | Implement the six-event chain through existing system owners. | Final route topology |
+| `TODO` | 256 — `PQ-045.npc-identity` | Give four Ceres occupations distinct ships and identities. | Produce and wire the four exact families. | Tender client for final integration |
+| `TODO` | 257 — `PQ-045.prop-promotion` | Replace generic activity props with production-quality route dressing. | Re-author the sixteen selected props; KEEP or cut each result. | Final route topology |
+| `TODO` | 258 — `PQ-045.wreck-dressing` | Give the two Ceres wreck sites specific aftermath identities. | Re-author and place the seven selected wreck pieces. | Final route topology |
+| `TODO` | 259 — `PQ-045.vfx-recipes` | Make five causal events visibly readable through the live VFX owner. | Port the five bounded recipes and prove accessibility/cleanup. | Causal events |
+| `TODO` | 260 — `PQ-045.five-minute-h1` | Prove the finished Ceres slice in Browser and Electron. | Run one clean fixed-seed five-minute candidate. | Causal/NPC/prop/wreck/VFX leaves |
+| `NEEDS HUMAN` | 261 — `PQ-045.human-review` | Decide whether Ceres feels populated and coherent in ordinary play. | Record named KEEP or REVISE against the exact candidate. | Five-minute machine evidence |
+| `TODO` | 270 — `PQ-045.target-motion-late-audit` | Resolve two late target-motion lifecycle questions without reopening the feature. | Run exactly two causal reproductions; repair only a reproduced defect or close with evidence. | Independent follow-up; it does not gate tender or Ceres acceptance |
+
+The full cross-program list remains in
+[`roadmap/program-queue.json`](./roadmap/program-queue.json). The table above accounts for every
+unfinished dispatch leaf currently represented there. Broader Alpha/Depth outcomes below remain
+planned scope where they have not yet been decomposed into leaves.
+
+### Planned scope not yet decomposed into exact leaves
+
+- `PQ-023` remains an active, unfinished presentation umbrella. Its Gold Corridor cue milestone is
+  accepted, but broader propulsion, environment, HUD, camera, accessibility, and dense-scene work
+  still needs bounded leaf IDs before implementation.
+- `PQ-032` (five endings and the continuing universe) and `PQ-033` (release closeout) are deferred and
+  unfinished. They live under `roadmap/retired/` only to keep non-executable packets out of current
+  dispatch; that storage location does not mean `DONE`.
+- The retained Alpha M0-M6 and Depth tables below remain product scope. A finishing agent maps one
+  bounded outcome into the queue when the user assigns it; it must not silently discard or self-complete
+  the rest of those tables.
+
+### Agent completion contract
+
+An assigned agent owns the outcome until it returns one of these two terminal reports:
+
+```text
+RESULT: DONE
+PLAYER RESULT: <one plain sentence>
+COMMIT: <hash on the named branch or master>
+PROOF: <focused checks and route evidence>
+REMAINING: none for this task
+NEXT ACTION: <one exact next task, or none>
+DIRTY PATHS: none
+```
+
+```text
+RESULT: NOT DONE
+PLAYER RESULT: not delivered
+COMPLETED SUBRESULT: <what is actually reusable, if anything>
+REMAINING: <plain-language missing outcome>
+NEXT ACTION: <one executable action with exact paths>
+DIRTY PATHS: <every uncommitted path>
+```
+
+Review chatter, test counts, “waiting,” “occupied,” “mutex,” and “handoff ready” are not completion
+states. The finishing agent translates technical evidence into this report before updating the board.
+An unchanged failed command is retained as evidence and the approach changes; agents do not loop on
+the same proof or turn a local failure into a program-wide stop.
+
+### PR #92 integration disposition
+
+Do not merge PR #92 or its older PR #91 reference-sector bundle. Current master independently
+re-authored the Ceres admission, binding ledger, baseline, and ordered PQ-045 leaves. The retained
+delta is the optional, non-authorizing convergence method in
+[`../vision/INFERENCE_CONVERGENCE_METHOD.md`](../vision/INFERENCE_CONVERGENCE_METHOD.md): inspect
+ordinary play, compare mechanisms and candidates, cut weak ideas, review the largest causal defects,
+and compose before multiplying. Its `WF`/`Nx` labels never create tasks, status, ownership, or
+acceptance.
+
+## Historical recovery-wave dispatch index — 2026-08-01 (do not dispatch)
+
+This section is retained to explain earlier receipts. Its “current” and “next” wording is historical;
+the current task table above is authoritative. The old parent queue mixed implementation lifecycle, acceptance status, and nonexistent external
 review roles. That left every unfinished exact unit manually `blocked` even though its real
 dependencies were satisfied. The machine queue now owns exact `dispatchUnits`; unfinished units are
-dependency-driven and evidence reviews are performed by the active integrator. Use:
+dependency-driven and evidence reviews are performed by the agent assigned that exact review. Use:
 
 ```text
 node scripts/program-dispatch.mjs --next
@@ -29,7 +181,7 @@ Current recovery state and order is:
 | `PQ-035.native-acceptance` | **ROUTE ACCEPTED / RETIRED** on clean source `f3046007`. Browser claim `10372-4aa9e5f78322240b4566e2bd` and source-Electron claim `12340-3eefb1bf37636736c1d67ead` share source digest `bbd92995…`, prove zero hidden GPU submission, bounded restore/input/audio behavior, foreground-equivalent cadence, and clean teardown. Physical host suspend/lock and packaged startup remain explicitly unclaimed under PQ-041. |
 | `PQ-036.native-acceptance` | **ROUTE ACCEPTED / RETIRED** at `391e8658`. The retained PERF-00 Browser/Electron pair shares source digest `8948e0ad…` and publishes owner-complete scheduler facts; the current PERF-01 lifecycle pair proves the only later scheduler-owner change. No duplicate headed claim was spent. |
 | `PQ-039.native-acceptance` | **DETERMINISTIC ACCEPTANCE / RETIRED** at `9b50f317`. Full-scan shadow parity, stable order, spawn/destroy churn, bounded scratch, and the exact 100→500 candidate curve (`1→1`) close PERF-05. No Browser/Electron, CPU-time, FPS, or GPU magnitude is claimed. |
-| PERF-03/PERF-04/PERF-06/PERF-07 native units | **NEXT NON-ASSET WORK.** Continue `PQ-037`, `PQ-038`, `PQ-040`, and `PQ-041` in exact dependency/mutex order against the accepted PERF-00/PERF-01 authority. |
+| PERF-03/PERF-04/PERF-06/PERF-07 native units | Historical snapshot. PQ-037 is now retired; current remaining acceptance is `PQ-038`, `PQ-041`, and `PQ-040`, followed by `PQ-042`. |
 | H3 and H4 corridor units | Accepted evidence must not be rerun as a ritual. Remaining corridor binding/promotion work stays dependency-driven behind the exact visual repair leaves reported by `--ready`. |
 | PQ-025 qualification | Calibrate and run only after its exact corridor/performance dependencies are accepted. |
 
@@ -39,7 +191,7 @@ PQ-043/PQ-044 remain deliberately deferred. The Alpha/Depth table below is the b
 claim that every row is part of this recovery wave. This section supersedes dated “immediate queue”
 prose below when the two disagree.
 
-## Alpha M0–M6
+## Retained broad Alpha M0–M6 outcomes
 
 | ID | Present maturity | Exact remaining work | Acceptance required |
 |---|---|---|---|
@@ -80,16 +232,15 @@ prose below when the two disagree.
   separately-filed stranded-freighter static-collider latent defect) live in the receipt's
   `gate0_closure` block.
 - **THE BATCH IS CLOSED: PQ-012, PQ-013, PQ-014, PQ-015, PQ-016 are ALL CHECKED OFF** at final
-  master `ce97d573` (see the NOW.md batch-closure table for commits, evidence, honest perf truth,
-  and the named follow-up list). **PQ-017 is CHECKED OFF at `2a9517d8`; PQ-018 is the current
-  canonical queue item.** The preserved Wreck Cathedral source candidate is now unblocked for
-  manifest/release promotion, place registration, World Site wiring, save continuity, and public-route
-  acceptance. PQ-021's site-kernel dependency is also satisfied, but it remains later in queue order.
+  master `ce97d573` (historical commits and evidence are retained in receipts,
+  including the named follow-up list). **PQ-017 is CHECKED OFF at `2a9517d8`.** At this historical
+  snapshot PQ-018 was next; the current Cathedral runtime/route now exists and the remaining exact
+  task is the whole-asset reauthor/H1/review chain in the top table.
 - **Full PQ-014 follows the PQ-015 registry release.** Reuse the existing deterministic job kernel;
   do not replace it. Remaining work is live materialization, virtualization, AI movement, save,
   natural-occurrence census, held-out seeds, and public-route proof.
 - **PQ-016 follows PQ-015 and the PQ-012 physics/renderer release.**
-- **PQ-013 is serialized last in this batch** because its planet vertical spans physics, renderer,
+- **PQ-013 was integrated last in this historical batch** because its planet vertical spans physics, renderer,
   Atlas, save, and the browser/GPU route.
 - The fleet breadth foundry on master is reusable source infrastructure: 47 detail pieces, 14
   variants, and 20 scenery props. It does not reduce M1-VISUAL-FAMILY debt until selected assets are

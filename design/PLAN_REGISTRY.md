@@ -25,16 +25,17 @@ folder indexes.
 
 | Family | Canonical role | Current disposition | Status owner |
 |---|---|---|---|
-| [`program/`](./program/README.md) | Unified Alpha + Depth pickup, verified done, remaining work, acceptance, integration | **ACTIVE — sole global status** | Lead/status integrator only |
-| [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) and [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) | Cross-plan routing, explicit priority, dependencies, and safe dispatch grouping | **ACTIVE DISPATCH FRONT DOOR — no completion authority** | Lead may reorder with a documented rationale; proof still projects into `program/01–05` |
-| [`program/roadmap/`](./program/roadmap/README.md) | Stable execution packet identities, dependencies, agent workflow, and collision-safe work order | **ACTIVE WORK ORDER — no completion authority** | Lead activates leases in `program/NOW.md`; proof projects into `program/01–05` |
-| [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) | Reservoir only for valuable outcomes not yet mapped to an active roadmap packet | **RETAINED — not a second queue** | Lead assigns a roadmap ID before execution and updates milestone roll-up |
+| [`program/`](./program/README.md) | Unified Alpha + Depth pickup, verified done, remaining work, acceptance, integration | **ACTIVE — sole global status** | The finishing agent updates only its exact unit and affected roll-up rows |
+| [`program/PROGRAM_MAP.md`](./program/PROGRAM_MAP.md) and [`program/roadmap/program-queue.json`](./program/roadmap/program-queue.json) | Cross-plan routing, explicit priority, dependencies, and safe dispatch grouping | **ACTIVE DISPATCH FRONT DOOR — no completion authority** | Any finishing agent may maintain its exact row with a documented rationale; proof still projects into `program/01–05` |
+| [`program/roadmap/`](./program/roadmap/README.md) | Stable execution packet identities, dependencies, agent workflow, and collision-safe work order | **ACTIVE WORK ORDER — no completion authority** | A mutating thread records and releases its own short `NOW.md` row; proof projects into `program/01–05` |
+| [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) | Reservoir only for valuable outcomes not yet mapped to an active roadmap packet | **RETAINED — not a second queue** | The agent shaping the bounded task assigns the stable roadmap ID and updates the milestone roll-up |
 | [`program/07_HISTORICAL_BUILDS.md`](./program/07_HISTORICAL_BUILDS.md) | Finished handoffs, recent build provenance, and deferred verification | **HISTORY — verification queue only** | Lead reopens defects through stable roadmap IDs |
-| [`vision/ALPHA_PROGRAM.md`](./vision/ALPHA_PROGRAM.md) | M0–M6 Alpha scope, order, leases, evidence contract | **ACTIVE SCOPE** | Alpha design lead; completion projected into `program/` |
+| [`vision/ALPHA_PROGRAM.md`](./vision/ALPHA_PROGRAM.md) | M0–M6 Alpha scope, order, task boundaries, evidence contract | **ACTIVE SCOPE** | Alpha design authority; completion projected into `program/` |
 | [`vision/GAME_DIRECTION_EXPANSION.md`](./vision/GAME_DIRECTION_EXPANSION.md) | Durable cross-system product promises, thirty design axes, five launch-coherence frames, research transfers/refusals, and slice-shaping rules | **DURABLE DIRECTION — not admitted work, gate, or status** | Product/GDD authority adopts decisions; future implementation enters only through an admitted program packet |
+| [`vision/INFERENCE_CONVERGENCE_METHOD.md`](./vision/INFERENCE_CONVERGENCE_METHOD.md) | Selective PR #92 synthesis: ordinary-player diagnosis, mechanism transfer, candidate selection, causal critique, composition, and propagation learning | **DURABLE SUPPORTING METHOD — not dispatch, status, proof, or acceptance** | Design curates the method; an admitted queue leaf and active packet separately own paths, checks, evidence, and promotion |
 | [`depth-program/`](./depth-program/README.md) | 31-chunk Depth scope, sequencing, research provenance, and worked actualization pipelines | **ACTIVE SCOPE** | Depth design lead; detail in `PROGRESS_LEDGER.md`, roll-up in `program/` |
 | [`production/`](./production/README.md) | Production controller, evidence, capability, observatory, and hard-gate machinery | **PARTIAL / FUTURE CONTROL PLANE** | Packet evidence only; `08_IMPLEMENTATION_BACKLOG.md` is subordinate |
-| [`PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`](./PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md) and [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md) | Selected performance modernization sequence plus supporting option/research appendix | **ACTIVE SOURCE PLAN via PQ-034–PQ-044; conditional continuations remain deferred** | Queue/active packets own lifecycle, leases, and proof; the plan does not self-claim files |
+| [`PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md`](./PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md) and [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md) | Selected performance modernization sequence plus supporting option/research appendix | **ACTIVE SOURCE PLAN via PQ-034–PQ-044; conditional continuations remain deferred** | Queue/active packets own lifecycle and proof; the plan does not self-claim files |
 | [`spec2/`](./spec2/INDEX.md) | Shipped-system polish/release intent and behavioral reference | **ACTIVE REFERENCE / PARTIAL** | Activated task spec; never a global ledger |
 | [`spec3/`](./spec3/INDEX.md) | Ambition and expansion plans F1–F10 | **ACTIVE FUTURE / PARTIAL** | Activated task spec; reconcile stale cited paths before work |
 | [`revamp/`](./revamp/README.md) | Revamp outcome packets, detail quarry, focused UX/physics references, and historical implementation receipts | **ACTIVE DETAIL + HISTORY** | `PROGRESS.md` is subordinate check evidence |
@@ -45,7 +46,7 @@ folder indexes.
 | [`ASTEROID_OPS_VISION.md`](./ASTEROID_OPS_VISION.md), [`ASTEROID_OPS_UI_BRIEF.md`](./ASTEROID_OPS_UI_BRIEF.md), [`ASTEROID_SITES_BRIEF.md`](./ASTEROID_SITES_BRIEF.md) | Active Asteroid Ops mechanics roadmap, implemented shell contract, and retained original contact-ring design | **ACTIVE DETAIL / RETAINED REFERENCE** | Roadmap `A01–A20` owns order/status; these documents own design detail only |
 | [`MAP_UX_PLAN.md`](./MAP_UX_PLAN.md), [`MAP_DATA_HANDOFF.md`](./MAP_DATA_HANDOFF.md), [`MAP_OVERHAUL_BRIEF.md`](./MAP_OVERHAUL_BRIEF.md) | Occupied map implementation, remaining content/data packet, and research dossier | **ACTIVE LEASE / ACTIVE DETAIL / RESEARCH** | Current map owner; status rolls into `program/` |
 | [`PHYSICAL_PLAY_GRAMMAR.md`](./PHYSICAL_PLAY_GRAMMAR.md) | Mechanics-level design for physical play: the primitive/state/outcome grammar, input models, presentation language, and the record of approaches set aside with their reasons | **ACTIVE DESIGN PROPOSAL — not admitted work** | Design owner; §10 is append-only. Where it disagrees with `GDD_2_0.md` §4–§6 it is the more recent intent and the GDD should be corrected in the same pass |
-| [`PHYSICAL_PLAY_BUILD_PLAN.md`](./PHYSICAL_PLAY_BUILD_PLAN.md) | Seam map, contradictions, missing foundations, order of operations, and process changes required to implement the grammar | **ACTIVE BUILD PROPOSAL — not admitted work** | Lead assigns roadmap IDs; its `file:line` claims are dated and must be re-verified before acting |
+| [`PHYSICAL_PLAY_BUILD_PLAN.md`](./PHYSICAL_PLAY_BUILD_PLAN.md) | Seam map, contradictions, missing foundations, order of operations, and process changes required to implement the grammar | **ACTIVE BUILD PROPOSAL — not admitted work** | The agent shaping an assigned bounded slice gives it a roadmap ID; dated `file:line` claims must be re-verified before acting |
 | [`AGENT_EXECUTION_GUIDE.md`](./AGENT_EXECUTION_GUIDE.md) | How to staff work against the physical-play plan: context class, model class, vision needs, parallelism and mutex reality, loop-avoidance, and what agents can produce in the art/generated-media pipelines | **ACTIVE DISPATCH REFERENCE** | Dispatcher; complements `00_EXECUTION_PROTOCOL.md` (which owns proof) rather than replacing it |
 | [`sequential-build-plan/`](./sequential-build-plan/) | SF-00…SF-32 critical path, the user's own design words, and the PQ↔T↔SF collision/flag map | **RETAINED SOURCE — previously unregistered** | Contains material not represented elsewhere (including swarm rebalance and the cross-namespace overlap analysis). Dedupe against `program/roadmap/**` before admitting anything from it |
 | [`POLISH_BRIEFING.md`](./POLISH_BRIEFING.md) | Code-derived 2026-07-16 findings | **RETAINED RESEARCH — not build order** | Map valid outcomes to roadmap IDs before execution |
@@ -77,14 +78,14 @@ folder indexes.
 ## Updating status without drift
 
 1. Deduplicate an outcome against live code, Alpha/Depth scope, and `program/roadmap/**`. If mapped,
-   update that packet. If unmapped, retain it in `program/06_RETAINED_FUTURE_BACKLOG.md` until the lead
-   assigns a stable roadmap ID and projects it into the milestone-level `program/02_REMAINING_WORK.md`.
-2. Activate only a bounded READY packet through `program/NOW.md` with dependencies, exact path lease,
-   focused commands, and terminal proof.
+   update that packet. If unmapped, retain it in `program/06_RETAINED_FUTURE_BACKLOG.md` until a
+   bounded task is shaped with a stable roadmap ID and projected into `program/02_REMAINING_WORK.md`.
+2. Select one bounded READY packet. Add a short `program/NOW.md` row only when mutation starts, with
+   exact paths, focused commands, and terminal proof; remove it when mutation stops.
 3. Update the owning feature/packet/chunk ledger with exact code, check, public-route, evidence, and
    git identity.
-4. Return the packet receipt to the lead/status integrator.
-5. Update `program/01_VERIFIED_DONE.md`, `program/02_REMAINING_WORK.md`, and
+4. Write the exact packet receipt and a plain `DONE` or `NOT DONE` result.
+5. The finishing agent updates `program/01_VERIFIED_DONE.md`, `program/02_REMAINING_WORK.md`, and
    `program/03_LIVE_ACCEPTANCE_MATRIX.md` together.
 6. Update `program/04_WORKTREE_AND_INTEGRATION.md` if recoverability changed.
 7. Treat clean-wave counts as conditional unless a controller record explicitly adopts

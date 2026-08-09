@@ -12,6 +12,7 @@ import {
   parsePacketDocument,
   readyDispatchUnits,
   selectNextPacket,
+  summarizeDispatchUnit,
   validateControlPlane,
   validateQueueDocument,
 } from '../scripts/lib/programControlPlane.mjs';
@@ -175,7 +176,7 @@ test('checked-off dependencies require exact evidence and historical waiver', ()
   assert.doesNotThrow(() => validateQueueDocument(queue([historical])));
 });
 
-test('packet metadata must be authoritative top matter and portfolio containers are blocked', () => {
+test('packet metadata is authoritative and portfolio containers need no false blocked state', () => {
   const spoofed = `<!-- LIFETIME: ACTIVE_PACKET -->
 # PQ-001
 
@@ -190,23 +191,35 @@ owner: unclaimed
 \`\`\``;
   assert.throws(() => parsePacketDocument(spoofed, 'spoofed.md'), ProgramControlError);
 
-  assert.throws(
-    () => parsePacketDocument(packetText('PQ-001', {
-      owner: 'portfolio-container',
-      dispatchPolicy: 'leaf_required',
-    }), 'portfolio.md'),
-    (error) => error instanceof ProgramControlError
-      && error.details.some((detail) => detail.includes('must remain blocked')),
-  );
+  assert.doesNotThrow(() => parsePacketDocument(packetText('PQ-001', {
+    owner: 'portfolio-container',
+    dispatchPolicy: 'leaf_required',
+  }), 'portfolio.md'));
+
+  assert.doesNotThrow(() => parsePacketDocument(packetText('PQ-001', {
+    lifecycle: 'ready',
+    owner: 'portfolio-container',
+    dispatchPolicy: 'leaf_required',
+  }), 'portfolio-ready.md'));
 
   assert.doesNotThrow(() => parsePacketDocument(packetText('PQ-001', {
     lifecycle: 'blocked',
     owner: 'portfolio-container',
     dispatchPolicy: 'leaf_required',
   }), 'portfolio.md'));
+
+  assert.throws(
+    () => parsePacketDocument(packetText('PQ-001', {
+      lifecycle: 'integrated',
+      owner: 'portfolio-container',
+      dispatchPolicy: 'leaf_required',
+    }), 'portfolio-integrated.md'),
+    (error) => error instanceof ProgramControlError
+      && error.details.some((detail) => detail.includes('must stay planned, ready, deferred')),
+  );
 });
 
-test('selection requires verified integration evidence and skips blocked leaf containers', () => {
+test('selection requires verified integration evidence and skips ready leaf containers', () => {
   const { root, commit } = controlRoot();
   const activeDir = path.join(root, 'design', 'program', 'roadmap', 'active');
 
@@ -215,7 +228,7 @@ test('selection requires verified integration evidence and skips blocked leaf co
   const container = row('PQ-003', 3, 'planned', ['PQ-001']);
   fs.writeFileSync(path.join(activeDir, 'PQ-002.md'), packetText('PQ-002'));
   fs.writeFileSync(path.join(activeDir, 'PQ-003.md'), packetText('PQ-003', {
-    lifecycle: 'blocked',
+    lifecycle: 'ready',
     owner: 'portfolio-container',
     dispatchPolicy: 'leaf_required',
   }));
@@ -341,7 +354,7 @@ test('dispatcher rejects conflicting modes and unknown flags', () => {
   assert.match(unknown.stderr, /Unknown option/);
 });
 
-test('dispatch units expose implementation and integrator-review work without external-owner gates', () => {
+test('dispatch units expose implementation and review work without false dependency blockers', () => {
   const parsed = queue([
     row('PQ-001', 1, 'planned'),
     row('PQ-002', 2, 'planned'),
@@ -381,14 +394,13 @@ test('dispatch units expose implementation and integrator-review work without ex
       priority: 3,
       title: 'Run capture',
       kind: 'acceptance_capture',
-      state: 'blocked',
+      state: 'ready',
       dependsOn: ['PQ-001.acceptance-repair'],
       mutexes: ['browser-gpu'],
       paths: ['scripts/example.mjs'],
       checks: ['npm run check:example'],
       receiptRefs: [],
       brief: 'Run one broker capture after the repair lands.',
-      blocker: 'The acceptance repair is not done.',
     },
     {
       id: 'PQ-002.evidence-review',
@@ -402,7 +414,7 @@ test('dispatch units expose implementation and integrator-review work without ex
       paths: ['design/evidence.md'],
       checks: [],
       receiptRefs: [],
-      brief: 'The integrator records a keep or revise disposition from current evidence.',
+      brief: 'The finishing agent records a keep or revise disposition from current evidence.',
     },
   ];
   const control = validateQueueDocument(parsed);
@@ -411,6 +423,12 @@ test('dispatch units expose implementation and integrator-review work without ex
     readyDispatchUnits(control).map((unit) => unit.id),
     ['PQ-001.acceptance-repair', 'PQ-002.evidence-review'],
   );
+  const summary = summarizeDispatchUnit(control.dispatchById.get('PQ-001.acceptance-repair'), control);
+  assert.equal(summary.claimReady, true);
+  assert.equal(Object.hasOwn(summary, 'mutexes'), false, 'agent-facing output must not turn coordination metadata into a blocker');
+  assert.equal(Object.hasOwn(summary, 'blocker'), false, 'ready output must not invite invented blockers');
+  assert.equal(Object.hasOwn(summary, 'owner'), false, 'ready output must not require a coordinator assignment');
+  assert.match(summary.instruction, /Start and finish this unit/);
 
   const obsoleteHumanGate = structuredClone(parsed);
   obsoleteHumanGate.dispatchUnits[3].kind = 'human_gate';

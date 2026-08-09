@@ -630,7 +630,7 @@
       "id": "PQ-007",
       "priority": 7,
       "title": "Restore auto-target and direct draw-to-fly control",
-      "state": "focused_green",
+      "state": "integrated",
       "canonical": [
         "T16"
       ],
@@ -662,7 +662,10 @@
       ],
       "brief": "Preserve G as the user-requested auto-target/draw-to-fly control: relative clutchable path input steers the ship while weapon lead remains on the locked target. Remove the unsolicited pursuit-slot package completely: no MMB pursuit selection, target-relative station keeping, pursuit impulses, pursuit HUD/toasts, or historical-plan path that can restore them.",
       "rejectedImplementation": "Commit 1a54e56b and the derived SF-07/T19 reviewer decision implemented an unsolicited pursuit-slot controller and retired the requested draw-to-fly route. The user explicitly rejected that direction on 2026-07-24; its former route acceptance is revoked and remains historical evidence only.",
-      "partialIntegration": "2026-07-24 result 4d00867e restores auto-target weapon lead plus clutchable draw-to-fly, removes pursuit selection/controller/impulses/HUD/toasts, and updates focused/live probes. Focused control 60/60, Massline aggregate 23/23, input modalities, UI/a11y/contrast/perf, flight checks, and both sim compares are green/deterministic. State is focused_green; current browser/Electron control-route evidence remains open before route acceptance."
+      "partialIntegration": "2026-07-24 result 4d00867e restored auto-target weapon lead plus clutchable draw-to-fly and removed pursuit selection/controller/impulses/HUD/toasts. The later candidate c1b190e2 passed distinct one-use Browser and Electron public routes at fixed seed 47; the corrected control route is accepted without reviving the rejected pursuit package.",
+      "integratedCommit": "c1b190e2ba691813a95bbcfe393668780e51f9f6",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-007-route-acceptance-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-007-route-acceptance-REPORT.md"
     },
     {
       "id": "PQ-008",
@@ -1315,7 +1318,7 @@
         "accessibility",
         "dense-combat"
       ],
-      "brief": "Close propulsion families, combat/destruction presentation, localized space structure, HUD hierarchy, camera language, and accessibility as one readable system."
+      "brief": "Close propulsion families, combat/destruction presentation, localized space structure, HUD hierarchy, camera language, and accessibility as one readable system. The Gold Corridor-required cue subslice is integrated and accepted. The broader umbrella remains unfinished and must be decomposed into exact future leaves instead of being checked off from that narrower milestone."
     },
     {
       "id": "PQ-024",
@@ -1378,8 +1381,8 @@
       "id": "PQ-025",
       "priority": 25,
       "title": "Gold Corridor thirty- and ninety-minute acceptance",
-      "state": "blocked",
-      "partialIntegration": "2026-07-28 Phase 0+1 prework integrated (merge from claude/pq025-prework-20260728 tip f7229962, receipt receipts/PQ-025-contracts-prework-REPORT.md): 34-row semantic outcome->owner map (28 verified with file:line raw refs, 1 degraded, 5 absent), 3 pure contract modules (goldCorridorAcceptanceContracts/Session/Aggregate), 2 broker manifests authored but deliberately UNREGISTERED in validation-broker-cli, 108/108 tests including 40 adversarial rejection ids covering the packet's 17 adversarial bullets expanded by sub-condition. Four self-found evidence-laundering holes closed with tests (ledger cellKey outside the hash chain enabled relabelling; validateAggregate ignored evaluateRerunRequest so fail->fail->pass on an unchanged candidate published PASS; empty human-verdict array evaluated ok; capture reuse caught only at registration). NAMED BLOCKERS FOR QUALIFICATION (stop-condition findings, routed as narrow owner-read-seam requests to the performance harness lane PQ-034/PERF): F1 perf.p50 raw samples (reportStat exposes only last/avg/min/max/p95), F2 perf.p99 (absent repo-wide), F3 perf.missedVsync (absent), F4 perf.residency (only Chrome-only harness-side performance.memory, not an owner fact), F5 draw/triangle counts — the performance half of a qualification attempt cannot be satisfied until these exist. F6 state.masslineAcquisition publisher remains dead (known shared-change request; contracts use the tether:attached physics-attach authority instead, unaffected). Matrix/rubric/profile/retention values are DRAFT until integrator freeze; no calibration, smoke, launch, or qualification claimed. State stays blocked pending dependency receipts.",
+      "state": "ready",
+      "partialIntegration": "2026-07-28 Phase 0+1 prework integrated (merge from claude/pq025-prework-20260728 tip f7229962, receipt receipts/PQ-025-contracts-prework-REPORT.md): 34-row semantic outcome->owner map (28 verified with file:line raw refs, 1 degraded, 5 absent), 3 pure contract modules (goldCorridorAcceptanceContracts/Session/Aggregate), 2 broker manifests authored but deliberately UNREGISTERED in validation-broker-cli, 108/108 tests including 40 adversarial rejection ids covering the packet's 17 adversarial bullets expanded by sub-condition. Four self-found evidence-laundering holes closed with tests (ledger cellKey outside the hash chain enabled relabelling; validateAggregate ignored evaluateRerunRequest so fail->fail->pass on an unchanged candidate published PASS; empty human-verdict array evaluated ok; capture reuse caught only at registration). Remaining qualification inputs are ordinary in-repo tasks: F1 perf.p50 raw samples (reportStat exposes only last/avg/min/max/p95), F2 perf.p99, F3 perf.missedVsync, F4 owner-level perf.residency, F5 draw/triangle counts, and F6 the inactive state.masslineAcquisition publisher (the current contracts use tether:attached instead). Matrix/rubric/profile/retention values are DRAFT until integrator freeze; no calibration, smoke, launch, or qualification claimed. The task remains defined and actionable while its dependency edges preserve integration order.",
       "canonical": [
         "G17",
         "G18",
@@ -4464,7 +4467,7 @@
       "priority": 244,
       "title": "Recapture only the corrected Core-commit transition",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "done",
       "dependsOn": [
         "PQ-024.committed-transition-repair"
       ],
@@ -4483,9 +4486,11 @@
         "node --test test/pq024-asteroid-claim-manifest.test.mjs",
         "npm run check:pq024:survey-claim"
       ],
-      "receiptRefs": [],
-      "brief": "Acceptance remains unproven after three Browser launches and zero Electron launches. Fresh claim 3472-619b7b30c67a1862b84795e0 exposed a production station-autopilot defect before the Core cell: the generic 38-WU arrival floor stopped outside the 20-WU physical berth gate. Commit ac02d9c1 repairs production and proves the owner contract focused-green without changing generic waypoints, manual flight, corridor geometry, or prompt rules. A post-source-change broker invocation launched no runtime because this manifest's regression identity does not bind the repaired flight owner/regression. Under the no-manifest-expansion boundary, the cell stays blocked/unproven; accepted Survey, production, relay, Continue, re-entry, and H3 remain retained.",
-      "blocker": "Existing pq024-committed-transition regression identity omits src/systems/flightV3.js and test/station-docking-corridor.test.mjs, so the broker cannot acknowledge the retained failure after production repair ac02d9c1; this goal forbids expanding broker manifests merely to close a packet."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-committed-transition-h1-REPORT.md"
+      ],
+      "brief": "Accepted and released on exact candidate d02f0cf5. Distinct Browser and Electron corrected Core-commit frames show one coherent permanent claim state; the earlier manifest blocker was repaired and is historical.",
+      "blocker": null
     },
     {
       "id": "PQ-024.committed-transition-review",
@@ -4493,7 +4498,7 @@
       "priority": 245,
       "title": "Review the corrected Core-commit presentation",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-024.committed-transition-h1"
       ],
@@ -4505,8 +4510,10 @@
         "design/program/roadmap/active/PQ-024.md"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Judge only whether the corrected Browser/Electron committed frame shows one coherent permanent-claim state with durable assay copy and awaiting-first-output context. Retain every accepted downstream PQ-024 and relay verdict.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-024-committed-transition-review-REPORT.md"
+      ],
+      "brief": "Accepted causal review of the corrected Browser/Electron committed frame at d02f0cf5. It retains every previously accepted Survey, production, relay, Continue, re-entry, and H3 verdict.",
       "blocker": null
     },
     {
@@ -5043,34 +5050,90 @@
       "id": "PQ-045.choreography-repair",
       "parentId": "PQ-045",
       "priority": 251,
-      "title": "Give route marks a movement consumer and remove the placeholder targets",
+      "title": "Drive exact Ceres jobs toward the live targets their routes name",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-045.retro-admission"
       ],
       "mutexes": [],
       "paths": [
         "src/systems/npcJobsRuntime.js",
-        "src/data/sectorActivityPockets.js",
-        "test/ceres-active-pockets.test.mjs"
+        "test/ceres-activity-runtime-lifecycle.test.mjs"
       ],
       "checks": [
-        "npm run check:baseline",
-        "npm run check:pq020:ceres-topology"
+        "node --test test/ceres-activity-runtime-lifecycle.test.mjs",
+        "node --test test/npc-jobs-runtime-wiring.test.mjs test/ceres-escort-formation.test.mjs",
+        "node --test test/ceres-visible-job-actions.test.mjs"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-target-motion-REPORT.md"
+      ],
+      "brief": "Integrated at 2cda03cb: npcJobsRuntime now consumes exactly five seed-derived Ceres object/field/station/world-site route tuples with bounded lifecycle resolution, safe standoff, and authored-waypoint fallback. This is deliberately not a generic targetRef language and does not consume activity:* or actor:* refs. The seven non-tender activity:* refs remain authored abstract choreography; the separately missing disabled-hull tender client is the next leaf."
+    },
+    {
+      "id": "PQ-045.target-motion-late-audit",
+      "parentId": "PQ-045",
+      "priority": 270,
+      "title": "Resolve two late target-motion lifecycle hypotheses without reopening the packet",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-045.choreography-repair"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/npcJobsRuntime.js",
+        "test/ceres-activity-runtime-lifecycle.test.mjs",
+        "design/program/roadmap/receipts/PQ-045-target-motion-late-audit-REPORT.md"
+      ],
+      "checks": [
+        "node --test test/ceres-activity-runtime-lifecycle.test.mjs",
+        "node --test test/npc-jobs-runtime-wiring.test.mjs test/ceres-escort-formation.test.mjs",
+        "node --test test/ceres-visible-job-actions.test.mjs"
       ],
       "receiptRefs": [],
-      "brief": "targetRef has no movement consumer: npcJobsRuntime _targetWaypointPos resolves only the authored anchor+offset, so actors work 40.5/108.8/173.7 WU from the objects their marks name and no runtime path can close it. Add the consumer, add a proximity assertion, replace the eight activity: placeholder marks, and spawn the hull the tender services (activity:disabled-hull is the only occurrence of that string in src/). COORDINATE FIRST: a concurrent lane owns npcJobsRuntime.js and has authored a narrow escort formation there while explicitly declining a generic targetRef movement language."
+      "brief": "Run exactly two fresh causal reproductions from the late withdrawn review: (1) release/sector-exit after the retained terminal actor's numeric ID maps to a different live object, and (2) whether an unrelated id-only same-type destroyed event can trigger target-ambiguity re-admission. If either reproduces, make the smallest owner-level repair and retain the focused parity suites. If neither reproduces, close with a bounded evidence receipt. Do not restart the broad target-motion audit, add generic targetRef behavior, or rerun unchanged baseline/headed evidence."
+    },
+    {
+      "id": "PQ-045.tender-client-materialization",
+      "parentId": "PQ-045",
+      "priority": 253,
+      "title": "Materialize the disabled refinery client the Pitborn tender services",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-045.choreography-repair"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/sectorActivityPockets.js",
+        "src/systems/factionPresence.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/world.js",
+        "scripts/lib/ceresFiveMinuteAcceptance.mjs",
+        "test/ceres-active-pockets.test.mjs",
+        "test/ceres-activity-faction-tender.test.mjs",
+        "test/ceres-activity-runtime-lifecycle.test.mjs",
+        "test/ceres-five-minute-acceptance.test.mjs"
+      ],
+      "checks": [
+        "node --test test/ceres-active-pockets.test.mjs test/ceres-activity-faction-tender.test.mjs test/ceres-activity-runtime-lifecycle.test.mjs test/ceres-five-minute-acceptance.test.mjs",
+        "npm run check:pq020:ceres-topology",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "activity:disabled-hull is the one route ref that claims a physical service client with no live object. Add one stable disabled-hull object authority, preserve the tender's exact targetRef through its factionPresence job projection and Continue, materialize and bind it through world, steer the tender to a safe berth through the existing job owner, and update the fixed five-minute object census. Do not replace the seven other activity:* marks: they are abstract scan/throughline/perimeter choreography, not missing entities."
     },
     {
       "id": "PQ-045.route-topology",
       "parentId": "PQ-045",
-      "priority": 252,
+      "priority": 254,
       "title": "Give each Ceres pocket its own route topology",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
-        "PQ-045.choreography-repair"
+        "PQ-045.tender-client-materialization"
       ],
       "mutexes": [],
       "paths": [
@@ -5082,18 +5145,17 @@
         "npm run check:pq020:ceres-topology"
       ],
       "receiptRefs": [],
-      "blocker": "Route topology cannot be differentiated until the choreography repair lands, because the marks a topology is expressed through are still the eight placeholder activity: refs.",
       "brief": "All eight actors use the identical 102/116 WU cardinal marks; six of eight routes are 218.000 WU colinear shuttles and two are 154.467 WU right angles, so four pockets with four different fictions read as the same back-and-forth. Ceres must satisfy the no-two-places-share-a-topology rule against itself before it can serve as a propagation template."
     },
     {
       "id": "PQ-045.causal-chain",
       "parentId": "PQ-045",
-      "priority": 253,
+      "priority": 255,
       "title": "Implement the first six ambient microevents as one causal chain",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
-        "PQ-045.choreography-repair"
+        "PQ-045.route-topology"
       ],
       "mutexes": [],
       "paths": [
@@ -5104,18 +5166,17 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "blocker": "The chain retargets existing route marks, so it cannot be authored until those marks resolve to real world objects.",
       "brief": "ev_rich_seam_strike, ev_miner_calls_hauler, ev_patrol_scans_suspect, ev_disabled_hauler_recovery, ev_tender_services_miner, ev_cutter_strips_wreck. Cap concurrent authored events at two. Choreography-timer scope only: if a concurrency/cooldown/chain policy layer becomes necessary, stop and report, because that is the bounded adapter becoming a global framework."
     },
     {
       "id": "PQ-045.npc-identity",
       "parentId": "PQ-045",
-      "priority": 254,
+      "priority": 256,
       "title": "Wire four occupational NPC families so trades stop sharing one hull",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
-        "PQ-045.choreography-repair"
+        "PQ-045.tender-client-materialization"
       ],
       "mutexes": [
         "asset-manifest"
@@ -5130,16 +5191,15 @@
         "npm run check:assets:live"
       ],
       "receiptRefs": [],
-      "blocker": "Blocked on the choreography repair so occupational identity is not authored onto actors that are still working in empty space.",
       "brief": "ore_barge, repair_tender, salvage_cutter, survey_pin. WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE is keyed by presentationRole and hauler is already the accepted helios_span, so the barge needs a new ore_carrier presentationRole plus a TRAFFIC_ROLES entry or it silently inherits hauler ship/team/speed and the Cargo Hauler label. customs_cutter collides with a live hostile archetype and is deliberately excluded."
     },
     {
       "id": "PQ-045.prop-promotion",
       "parentId": "PQ-045",
-      "priority": 255,
+      "priority": 257,
       "title": "Re-author the sixteen selected Everyday Space props to production standard",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-045.route-topology"
       ],
@@ -5156,16 +5216,15 @@
         "npm run check:graphics:asset-receipts"
       ],
       "receiptRefs": [],
-      "blocker": "Blocked until route topology fixes where each prop must physically stand; promoting art onto provisional placement is the expensive-rework failure the selection ledger exists to prevent.",
       "brief": "Sixteen props chosen to support visible actions, all outside the controlling review 19 REVISE-first list. Every one still needs revision, real LODs, recomputed collision and G0-G7. Pin the toolchain and prove two byte-matching builds first: the pack is not currently reproducible (29 of 46 GLBs differed across two isolated Blender 5.1.2 builds)."
     },
     {
       "id": "PQ-045.wreck-dressing",
       "parentId": "PQ-045",
-      "priority": 256,
+      "priority": 258,
       "title": "Dress the two anonymous Ceres wreck slots from the aftermath pack",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-045.route-topology"
       ],
@@ -5182,16 +5241,15 @@
         "npm run check:graphics:asset-receipts"
       ],
       "receiptRefs": [],
-      "blocker": "Same placement dependency as prop promotion, plus the pack has no texture data at all and must first pass a reproducible-build gate.",
       "brief": "Seven selected assets into ceres_ambush_bait_wreck and ceres_cathedral_grave_shard. The pack is entirely untextured (images=0 in all 37 GLBs) and ships 1,891 unmerged meshes with no LODs and no instancing. The three specified-but-unbuilt hull families stay unbuilt."
     },
     {
       "id": "PQ-045.vfx-recipes",
       "parentId": "PQ-045",
-      "priority": 257,
+      "priority": 259,
       "title": "Port five VFX NEXT recipes into the live presentation owner",
       "kind": "implementation",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-045.causal-chain"
       ],
@@ -5204,19 +5262,21 @@
         "npm run check:presentation"
       ],
       "receiptRefs": [],
-      "blocker": "The five recipes present causal moments the chain produces; without the chain there is nothing for them to explain.",
       "brief": "impact_concussion, destruction_light, massline_latch, massline_tension, massline_release — recipes only, against the live pools and _flashLight(). No vfxnext code ships and its LightPool does not travel. speed_extreme is rejected: velocityLanguage.js owns speed language and its one sanctioned exceptional-speed output is already spent."
     },
     {
       "id": "PQ-045.five-minute-h1",
       "parentId": "PQ-045",
-      "priority": 258,
+      "priority": 260,
       "title": "Capture the five-minute Ceres gate in Browser and Electron",
       "kind": "acceptance_capture",
-      "state": "blocked",
+      "state": "ready",
       "dependsOn": [
         "PQ-045.causal-chain",
-        "PQ-045.npc-identity"
+        "PQ-045.npc-identity",
+        "PQ-045.prop-promotion",
+        "PQ-045.wreck-dressing",
+        "PQ-045.vfx-recipes"
       ],
       "mutexes": [
         "browser-gpu",
@@ -5229,16 +5289,15 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "blocker": "Both machine-evidence blobs are missing and the gate has never run; the capture also needs a clean candidate, because preflight fails closed on a dirty tree (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN). This unit itself reserves browser-gpu and validation-broker, so the mutexes are represented in the control plane; what is missing is a clean tree and its two upstream implementation leaves.",
-      "brief": "Both machine-evidence blobs are missing and the gate has never run. Preflight fails closed on a dirty candidate (CERES_PREFLIGHT_CANDIDATE_NOT_CLEAN), so this needs a clean tree or a pinned worktree. Fixed seed 47, 18,000 ticks, four-pocket sequence."
+      "brief": "Both machine-evidence blobs are missing and the gate has never run. First account for and publish the exact dirty task bytes, then run the fixed seed-47, 18,000-tick, four-pocket candidate from the shared checkout. Do not leave a long-lived worktree behind."
     },
     {
       "id": "PQ-045.human-review",
       "parentId": "PQ-045",
-      "priority": 259,
+      "priority": 261,
       "title": "Human five-minute Ceres verdict",
       "kind": "acceptance_review",
-      "state": "blocked",
+      "state": "deferred",
       "dependsOn": [
         "PQ-045.five-minute-h1"
       ],
@@ -5252,7 +5311,6 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "blocker": "Requires the machine evidence from the capture unit to bind against, and requires a named human reviewer that no agent may substitute for.",
       "brief": "evaluateCeresHumanReview requires a named human reviewer, a timestamp, a KEEP or REVISE verdict and an explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. NO AGENT MAY SELF-GRANT THIS. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
     }
   ]

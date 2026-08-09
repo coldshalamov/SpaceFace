@@ -1,14 +1,17 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace program control surface
 
-This directory is the only whole-program status and acceptance surface. It separates live leases, machine-indexed work, executable packets, and retained evidence so an agent can orient without ingesting the repository's history.
+This directory is the only whole-program status and acceptance surface. It separates short live
+mutation windows, machine-indexed work, executable packets, and retained evidence so an agent can
+orient without ingesting the repository's history.
 
 ## Read by need
 
 | Need | Read |
 |---|---|
-| First exact claim-ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
-| Live worktrees, leases, protected paths, blockers | [`NOW.md`](./NOW.md) |
+| Copy-ready prompt for any thread | [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) |
+| First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
+| Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |
 | Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
 | Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
 | Finite implementation/review/verification protocol | [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) |
@@ -26,7 +29,11 @@ Lifecycle and acceptance are tracked separately:
 - lifecycle: `planned`, `ready`, `claimed`, `implemented`, `integrated`, plus `blocked`, `deferred`, `historical`;
 - acceptance: `unproven`, `focused_green`, `route_accepted`, `milestone_accepted`.
 
-Never infer one axis from the other. A source asset can be implemented but not runtime-wired. Integrated code can retain an open route or visual acceptance debt. A packet can be blocked even when substantial substrate already exists.
+Never infer one axis from the other. A source asset can be implemented but not runtime-wired.
+Integrated code can retain an open route or visual acceptance debt. The legacy `blocked` value is
+retained for schema compatibility and has no current queue rows. Human-only action uses `deferred`;
+another thread, an in-repo dependency, a dirty unrelated path, Blender, a GPU, or a missing in-repo
+implementation never becomes durable task status.
 
 The queue's parent `state` field is a transitional legacy value and can contain acceptance-like
 labels. Exact `dispatchUnits` own claimability, dependencies, and terminal receipt references. Use
@@ -35,8 +42,9 @@ labels the parent field accordingly and omits narrative payloads.
 
 ## Maintenance
 
-- `NOW.md` contains only volatile state and an expiry marker.
+- `NOW.md` contains only active mutation rows, exact dirty-hunk preservation notes, brief publication windows, and an expiry marker.
 - Queue rows stay compact over time; exact dispatch units link receipts instead of embedding incident histories and test transcripts.
 - Active packets are the implementation handoff. Retire or replace them when the live seam changes materially.
-- Feature agents update packet checkboxes and receipts. The integrator updates global state.
+- The finishing agent updates its packet checkboxes, receipt, exact queue row, and affected global
+  status in one bounded transaction. It reports `DONE` or `NOT DONE`; no coordinator handoff is needed.
 - Run `node scripts/check-program-docs.mjs` after changing these control surfaces.

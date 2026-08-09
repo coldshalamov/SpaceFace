@@ -1,7 +1,10 @@
 <!-- LIFETIME: STABLE -->
 # `scripts/` agent notes
 
-This directory owns executable checks, probes, build/index generation, launch helpers, simulation harnesses, and compact control-plane readers. Find the public command in `package.json` when one exists, then inspect only its direct script/imports. `program-dispatch.mjs` intentionally remains a direct command until the package/launch mutex is free.
+This directory owns executable checks, probes, build/index generation, launch helpers, simulation
+harnesses, and compact control-plane readers. Find the public command in `package.json` when one
+exists, then inspect only its direct script/imports. `program-dispatch.mjs` is intentionally a direct
+command; no package alias or coordination window is required to run it.
 
 Feature-proof selection and evidence classes live in
 [`../docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md); this file owns script-side
@@ -21,16 +24,17 @@ implementation hazards.
 - Acceptance actors use public controls and visible semantics. Observers may collect approved owner evidence but may not mutate gameplay state or tell the actor hidden facts.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save, and raw trace identity. Never reuse a capture across acceptance cells.
 - `program-dispatch.mjs` is read-only, omits narrative queue fields, and reports exact queue
-  `dispatchUnits` as claim-ready only when their machine dependencies are `done`. Its caution still
-  requires a fresh `NOW.md` collision check; it never mutates, leases, launches acceptance, or
-  promotes work.
+  `dispatchUnits` at the current integration front when their machine dependencies are `done`. Before
+  mutation, reread `NOW.md` and preserve exact foreign dirty hunks; neither the check nor a
+  coordination hint creates task-long ownership or blocks a packet. The command never mutates,
+  launches acceptance, or promotes work.
 
 See [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) for the finite state machine.
 
 ## Routing
 
 - Program orientation: `program-dispatch.mjs --next` for one exact unit, `--ready` for the current
-  claim-ready set, and `--id PQ-XXX` for parent context.
+  ready set, and `--id PQ-XXX` for parent context.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
 - Browser/Electron proof: launcher/probe scripts plus the shared game server and validation broker.
 - Assets: reachability, status, live-load, release-build, residency, and visual-stability scripts.
