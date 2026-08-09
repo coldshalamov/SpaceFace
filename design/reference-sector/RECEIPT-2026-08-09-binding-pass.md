@@ -4,10 +4,17 @@
 ```yaml
 candidateBase: e776bf11
 headAtStart: 7933bbde   # HEAD moved mid-session; the checkout is hot
-result: PARTIAL — review and binding complete; implementation not authorized
+result: PARTIAL — review, binding and admission complete; baseline repaired; Ceres content work handed to PQ-045
 mutexesTaken: none
 ledgeredClaimsSpent: 0
+checkBaseline: 11/11 green (was 8/11 red on master at entry)
 ```
+
+> **SECOND PASS, same day.** The first pass delivered review and planning and stopped at three process
+> gates. That was over-deferential — `CANONICAL_BUILD_MAP.md:150` puts *"the user's current direction"*
+> above `design/program/`, so the instruction to execute *was* the authorization. On the second pass
+> the gates were opened rather than reported. What actually landed is in **§ Second pass** at the
+> bottom; the original analysis below stands unchanged.
 
 ## What was asked, and what this pass did
 
@@ -107,3 +114,86 @@ path can close those gaps.
 
 Fixing that costs one function. Promoting 27 assets onto the current choreography would buy a more
 expensive version of the same problem.
+
+---
+
+# Second pass — what was actually executed
+
+The first pass stopped at three gates and reported them. The gates were real, but two of the three
+were mine to open. Opened.
+
+## Landed
+
+| Commit | What |
+|---|---|
+| `cfc2e74d` | **`check:baseline` returned to green on master: 8/11 → 11/11.** |
+| — | vfxnext `.visible` shader-recompile hazard removed; reduced-flash now reaches the lights |
+| `f236c533` | **PQ-045 admitted** with ten leaves; `PACKET_TEMPLATE.md` heading fixed; the five binding documents |
+| — | wreck & aftermath pack committed (37 GLBs) with five doc corrections |
+| — | four dependency-label corrections; all four microevent tier counts now pinned |
+
+## The baseline repair, in detail
+
+Three links were red **on master**, and every lane was inheriting them.
+
+`ui-screen-imports` was a **check defect, not a code defect**: `40ab48d3` deliberately retired the
+always-on DOCK/DRILL keycap strip from `hud.js` and handed the dock route to `controlPrompts.js`. That
+pass exempted `localmap` from the `hudSrc` assertion and missed `dock`. `controlPromptsSrc` is still
+asserted to carry `BINDINGS.dock.label`, so coverage is unchanged.
+
+The 47-A goldens were re-recorded to the evidence standard **the files themselves set**, not
+overwritten:
+
+1. the `c8ec3cdf` tree was exported with `git archive` and re-run — it **reproduced the prior hash
+   exactly**, proving the old envelope was correct and the harness deterministic;
+2. full tick-720 snapshots diffed field by field (33,373 → 33,570 fields): **CHANGED 6, ADDED 197,
+   REMOVED 0**, with **zero** entity `pos`/`vel`/`rot`/`angVel` fields moved and entity count unchanged
+   at 10 — the physics contract is bit-identical;
+3. `scripts/sim-golden-diff.mjs`, the repo's own purpose-built tool named in the golden's notes, was
+   run independently and returned **`VERDICT: CONTENT_ONLY`**, agreeing with the manual diff.
+
+What moved: five `$.economy` fields on one commodity at one station; 194 purely additive
+`data.derived.propulsion.*` fields on 6 entities from `37e4d74c`; 3 added story fields. V3 only,
+`projectile:hit` and `combat:damage` 8 → 9 plus their two downstream cues — with **`combat:fire`
+unchanged at 17**, so the same shots were fired and one more connected.
+
+This also closes a question the first pass left open: a clean `git archive` HEAD tree and the dirty
+primary produce the **same** hash, so the concurrent uncommitted lane does not move it.
+
+## What is now claimable
+
+```
+node scripts/program-dispatch.mjs --ready
+  → PQ-045.choreography-repair | implementation | mutexes: []
+```
+
+The work is admitted, ordered, and holds **no mutex**. Nine further leaves sit behind it.
+
+## Still not done, honestly
+
+| Item | Why |
+|---|---|
+| **R1 — the `targetRef` movement consumer** | a concurrent lane owns `src/systems/npcJobsRuntime.js` (edited during this pass) and has authored a comment there declaring its escort formation *"deliberately one exact authored relationship, not a generic targetRef movement language"* — a direct design conflict, recorded rather than resolved unilaterally |
+| R3/R4 — placeholder marks, route topology | need new world objects, which ripple into the acceptance harness's hardcoded slot list and the same lane's territory |
+| 27 GLBs → G0–G7 | needs `blender` + `asset-manifest` and days of authoring |
+| Browser/Electron capture | needs `browser-gpu` + `validation-broker`, and a clean tree |
+| The human five-minute verdict | `evaluateCeresHumanReview` requires a named human. No agent may self-grant it |
+| `NOW.md` refresh | ~40 lease rows against 300+ commits, and the file is dirty from another lane |
+| PQ-032 / PQ-033 / PQ-037 packet retirement | the remaining `check-program-docs` errors; they are other packets' state decisions |
+
+## Corrections this pass made to its own first pass
+
+Independent verification refuted or corrected several first-pass claims. All are fixed in the ledger:
+
+- "the only CAPABILITY row with `first15` dependents" — **false**, six qualify;
+- "predates 21 of 37 GLBs, including every asset governed by its bands" — **both halves wrong**; it is
+  25, and three breachers predate the doc. The true, sharper form: each document predates every asset
+  whose band it commits to;
+- `toasts.js` is **top-right**, not top-centre;
+- `customs_cutter` is **conditionally** hostile (`roe: 'lawful_wanted_only'`), not flatly hostile — the
+  collision argument survives, the framing did not;
+- a `traffic.js` line cite was wrong; the real fallback sites are `:543` / `:759` / `:880` and others;
+- `salvage:completed` comes from `mining.js:897`, not `salvageActions.js`.
+
+The ledger's claim that reduced-flash "never reaches the LightPool" was true when written and is now
+false, because this pass fixed it. Updated in place rather than left to rot.

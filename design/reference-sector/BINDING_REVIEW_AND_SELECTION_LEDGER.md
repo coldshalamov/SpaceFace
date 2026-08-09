@@ -79,11 +79,17 @@ separate `slot.jobKind` field (`traffic.js:223`), so a slot may carry
 The barge would look new and read as a hauler in every UI surface.
 
 **(b) `customs_cutter` is a semantic collision across the hostility boundary.**
-`src/data/enemies.js:231` already defines `customs_cutter` as a **hostile** archetype
-(`ship_hornet`, `faction_scn`), referenced by `src/data/encounters/326-customs-logic-net.js:30`.
-The pack's own `evidence/ROLE_MATRIX.md:17` assigns its `customs_cutter.glb` to the **neutral team-2
-`patrol`** traffic role. One string would name both. This is why `customs_cutter` is DEFER, not a
-pick, despite being a good law silhouette.
+`src/data/enemies.js:231` already defines `customs_cutter` as a live, armed, combat-capable encounter
+archetype (`ship_hornet`, `faction_scn`), referenced by
+`src/data/encounters/326-customs-logic-net.js:30`. It is **conditionally** hostile, not flatly hostile
+— `:242-244` carry `roe: 'lawful_wanted_only'` and `factionLawful: true` — but it is an ENEMY_TYPES
+entry, while the pack's own `evidence/ROLE_MATRIX.md:17` names `customs_cutter` as the missing distinct
+law identity for the **neutral team-2 `patrol`** role. One string would name both sides. This is why
+`customs_cutter` is DEFER, not a pick, despite being a good law silhouette.
+
+The silent-fallback consequence in (a) is also **worse than first diagnosed**: an unknown
+`trafficRole` inherits hauler's ship/team/speed *and* the scanner's ai fallthrough returns `HAULER` for
+its `convoy_civilian` spawn context, so the misidentification is total and silent on every channel.
 
 ### 2.2 Everyday Space Kit (prompt 2) — donor, sixteen props selected
 
@@ -128,10 +134,15 @@ Against that, six defects, none of which appear in the pack's own documents:
 4. **Eight assets breach the size bands the documents commit to** (not seven), and two debris pieces
    are *larger* than the `place_debris_chunk` (30.8 m) the pack's audit says it was deliberately
    authored smaller than: `deb_ore_freighter_ring_span` at 53.25 m and `deb_ore_freighter_hopper_lid`
-   at 31.56 m. That undercuts the non-duplication argument. The mechanism is datable: `INTEGRATION.md`
-   (mtime 20:36) and `EXISTING_COVERAGE.md` (18:00) both **predate 21 of the 37 GLBs**, including
-   every asset governed by their own bands. The two hand-authored docs a promotion lane reads first
-   are the two that never saw the shipped numbers.
+   at 31.56 m. That undercuts the non-duplication argument. The mechanism is datable, and the exact
+   framing matters — an earlier draft said the docs "predate 21 of the 37 GLBs, including every asset
+   governed by their own bands," and **both halves were wrong**: `INTEGRATION.md` (mtime 20:36)
+   predates **25** of 37, and three of the eight breachers were exported *before* it. The precise and
+   sharper statement: **each document predates every asset whose band it commits to.**
+   `INTEGRATION.md` states the component and fragment bands and postdates all 14 of those GLBs;
+   `EXISTING_COVERAGE.md` (18:00) states the debris band and predates the entire build. The two
+   hand-authored docs a promotion lane reads first are the two that never saw the shipped numbers, and
+   no automated check asserts the bands, which is why the build stayed green.
 5. **The pack is completely untextured** — `images=0` and `textures=0` across all 37 GLBs — while
    every comparator it benchmarks against carries embedded images (`place_dead_hulk` 21,
    `place_debris_chunk` 21, `place_landmark_wreck_cathedral` 26). `INTEGRATION.md:227` lists only
@@ -153,11 +164,14 @@ nowhere in `src/`, confirming the two documented renames were real fixes.
 
 Four residual defects, all label-precision rather than substance:
 
-- **`salvage.strip` is the one that matters** — it is the only CAPABILITY-graded row with `first15`
-  dependents (`ev_cutter_strips_wreck`, `ev_scavengers_at_fresh_wreck`). Its cite claims
+- **`salvage.strip` is the one that matters** — its cite claims
   `src/systems/salvageActions.js:58 — actionForWreck()`, but `:58` is
   `export const salvageActions = {`; `actionForWreck` is *imported* at `:7` from
-  **`src/data/salvageActions.js`**, a separate file the audit never names;
+  **`src/data/salvageActions.js`**, a separate file the audit never names. It also attributed
+  `salvage:completed` to that module, which never listens for or emits it — it comes from
+  `src/systems/mining.js:897`. (An earlier draft called this "the only CAPABILITY row with `first15`
+  dependents." That is **false**: six qualify. The defensible claim is that it is the one whose cite
+  lands on no relevant code *and* has day-one exposure.) **Fixed.**
 - **the tier math is only half validator-enforced.** `build-microevent-bible.mjs` asserts
   `first15 !== 15`, `next20 !== 20` and total outside 50–70. Nothing asserts `standard === 18` or
   `blocked === 5`. Retier a standard event to blocked and all three assertions still pass while the
@@ -165,9 +179,15 @@ Four residual defects, all label-precision rather than substance:
 - **`sectorZones.slot`** keeps a `.slot` suffix that `SYSTEMS_AUDIT.md:28` itself declares
   nonexistent (12 dependents, all `next20`/`standard`, **zero `first15`** — so the exposure is low);
 - **`comms.ambientToast`** — the module is right and the capability is live
-  (`comms.js:229 bus.on('comms:popup', pushComms)`, emitted from five `src/` modules); only the
-  *presentation* is misnamed (left-edge comms feed, not the `toasts.js` pill). This was initially
-  graded a major defect and that grade does not survive; see §7.
+  (`comms.js:229 bus.on('comms:popup', pushComms)`, emitted *directly* from five `src/` modules and
+  routed indirectly from two more); only the *presentation* is misnamed — it is the comms feed, not
+  the `toasts.js` surface, which `styles/ui.css:79` places **top-right**, not top-centre as an earlier
+  draft said. This was initially graded a major defect and that grade does not survive; see §7.
+
+The two id **renames** (`sectorZones.slot` → `sectorZones`, `comms.ambientToast` → `comms.ambientLine`)
+are deliberately **not applied**: those ids live in `microevent.schema.json` and 14 catalog references.
+A "Known label debt" section in `SYSTEMS_AUDIT.md` records the exact reference counts for that
+follow-up.
 
 **On the proposed runner.** `INTEGRATION.md` and the generated `TIERS.md` describe it at two
 different scopes ("a small choreography timer" vs. selection + binding + release + a
@@ -205,12 +225,21 @@ precisely the cache-key mutation. **Scope honestly:** the pool is built against 
 and a lab-side hitch source, not a live-game regression.** It must be fixed before any family is
 promoted.
 
-Second: **`stage.intensity`, the packet's declared reduced-flash hook, never reaches the LightPool.**
-It reaches sparks, smoke, fronts and ribbons (`stage.js:173-176`) but `lights.js` has no intensity
-scaling of any kind — `spawn()` writes `l.intensity = peak` raw. Turning reduced-flash to 0 dims every
-particle to nothing and leaves all four dynamic PointLights at full peak. The brightest, most
-flash-sensitive element is the one the accessibility control does not cover. The live owner does this
-correctly at a single choke point (`vfx.js:9490`, `peak *= accessibility.eventLightPeakScale`).
+Second: **`stage.intensity`, the packet's declared reduced-flash hook, never reached the LightPool.**
+It reached sparks, smoke, fronts and ribbons (`stage.js:173-176`) but `lights.js` had no intensity
+scaling of any kind — `spawn()` wrote `l.intensity = peak` raw. Turning reduced-flash to 0 dimmed every
+particle to nothing and left all four dynamic PointLights at full peak: the brightest, most
+flash-sensitive element was the one the accessibility control did not cover. The live owner does this
+correctly at a single choke point (`peak *= accessibility.eventLightPeakScale`).
+
+> **Both light defects are FIXED.** `LightPool` no longer writes `.visible` anywhere (zero occurrences
+> remain outside the explanatory comment), and `setIntensityScale()` now applies the reduced-flash
+> factor at spawn *and* each update, pushed from `stage.js` before `lights.update()`. Verified: lights
+> stay visible at construction, after expiry and after `clear()`; scale 0.5 turns peak 40 into 20.
+> **Note the residual honestly** — the hook now reaches the lights, but nothing inside `src/vfxnext`
+> reads an accessibility *profile* to drive that scalar, and the capture harness still has no
+> reduced-motion or reduced-flash cell against the art bible's six. That gap is recorded in
+> `VFX_NEXT.md` §7, not closed.
 
 Third: **`speed_extreme` is an unsanctioned second exceptional-speed output.**
 `src/render/velocityLanguage.js` is the program-named owner of speed language; it caps streaks at 24,
@@ -227,9 +256,10 @@ capture evidence backing every budget claim in `VFX_NEXT.md` cannot go stale lou
 
 ---
 
-## 3. Corrections to prompt 1–5 documentation (exact, small)
+## 3. Corrections to prompt 1–5 documentation — **all applied**
 
-These are the "improve them" actions. All are documentation or test-harness fixes; none touches a GLB.
+These are the "improve them" actions. All are documentation, builder or presentation-code fixes; none
+touches a GLB. **Every row below has landed**; `check:baseline` is 11/11 green after them.
 
 | # | File | Change | Why |
 |---|---|---|---|
@@ -247,8 +277,17 @@ These are the "improve them" actions. All are documentation or test-harness fixe
 | C12 | `design/vfx/VFX_NEXT.md` | Add a §7 entry naming `velocityLanguage.js` as the sanctioned speed-language owner and marking `speed_extreme` non-promotable | Owner is never named |
 | C13 | `assets/incubator/npc_activity_pack/INTEGRATION.md` | Record the `customs_cutter` hostile-archetype collision and the `presentationRole`-keyed map constraint | Both are promotion blockers discovered outside the pack |
 
-C10 and C11 are the only ones touching `src/`. `src/vfxnext/**` had a live writer during this audit
-(`e776bf11` landed mid-session), so they must be claimed, not applied opportunistically.
+C10 and C11 are the only ones touching `src/`, and they are runtime-inert: nothing imports
+`src/vfxnext`, so the fix is a latent-hazard removal rather than a live behaviour change.
+
+Two follow-ups were deliberately **not** folded in:
+
+- the C7/C8 **id renames** need `microevent.schema.json` plus 14 catalog references; the reference
+  counts are recorded under "Known label debt" in `SYSTEMS_AUDIT.md`;
+- the comparator envelopes in `EXISTING_COVERAGE.md` §1 look **inflated** — direct vertex measurement
+  gives `place_debris_chunk` 23.90 m against the doc's 30.8, and `place_dead_hulk` 54.70 against 65.5.
+  The evidence is uneven (release GLBs are quantized, and a third source disagrees again), so the
+  30.8 m figure is now cited as *what the audit records* rather than asserted as fact.
 
 ---
 
