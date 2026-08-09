@@ -38,8 +38,24 @@ Do not stop, investigate at length, or report these as findings unless they are 
   when `HEAD` is ahead of `origin/master`. With a concurrent agent running, it is usually red.
 - `check-helios-sky-kit.mjs` fails on `cycle 10: core fog density`.
 - A stochastic ~250 ms combat spike from a `buildComposedShip` admission stall.
-- `design/program/NOW.md` is chronically expired and self-contradicting. Do not trust it as a
-  description of who owns what; do not stop to reconcile it.
+## `NOW.md` must never stop you
+
+`design/program/NOW.md` is a **lock board, not a bulletin board.** Every row is a prohibition
+("this path is claimed"); it has no vocabulary for "go ahead." Read literally, it can only ever
+produce a stop.
+
+It is also mostly dead: **89 rows, 60 of which say RELEASED or COMPLETE** — finished work nobody
+deleted. It is chronically past its own commit expiry and contradicts itself about which lanes are
+active.
+
+Therefore:
+
+- **A row in `NOW.md` is not a reason to stop, and never a reason to ask the owner what to do.**
+  Treat it as a hint about where a collision is *possible*, nothing more.
+- Verify against reality instead — `git log`, `git status`, and the file itself. Recent commits beat
+  any row on that board.
+- Do not stop to reconcile, refresh, or audit the board unless that is the actual assigned task.
+- If you do need to claim something, add your row and keep working. Do not wait for anything.
 
 ## A green check is not proof
 
