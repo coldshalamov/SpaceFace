@@ -199,7 +199,7 @@ const seamObjects = Object.freeze([
     kind: 'world_owned_asteroid_slot',
     offset: point(-64, 28),
     runtimeOwner: 'world',
-    targetRef: 'field:<live-asteroid-id>',
+    targetRef: 'field:slot:ceres_seam_ore_clast',
   }),
 ]);
 const ambushObjects = Object.freeze([
@@ -305,7 +305,7 @@ const seamActors = Object.freeze([
       receiptType: 'mining:npcExtraction',
       marks: [
         mark('seam_miner_work_pad', MARK_DISTANCE_WU[0], 0, 'activity:seam-work-pad'),
-        mark('seam_miner_ore_face', 0, MARK_DISTANCE_WU[1], 'field:<ceres_seam_ore_clast-live-id>'),
+        mark('seam_miner_ore_face', 0, MARK_DISTANCE_WU[1], 'field:slot:ceres_seam_ore_clast'),
       ],
     }),
   }),

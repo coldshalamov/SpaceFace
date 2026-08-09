@@ -345,6 +345,16 @@ function isPlainPos(p) {
   return !!p && Number.isFinite(p.x) && Number.isFinite(p.z);
 }
 
+// Optional route target references are durable symbolic identities, never live entity ids. Keep the
+// grammar deliberately small: a lower-case namespace plus one or more symbolic segments. Numeric
+// entity ids, coordinates, whitespace, placeholders, and coercible objects therefore fail closed at
+// every route normalization seam while older targetRef-free routes retain their exact shape.
+const STABLE_TARGET_REF_RE = /^[a-z][a-z0-9-]*(?::[a-z_][a-z0-9_.-]*)+$/;
+
+function stableTargetRef(value) {
+  return typeof value === 'string' && STABLE_TARGET_REF_RE.test(value);
+}
+
 function dist2D(a, b) {
   return Math.hypot(b.x - a.x, b.z - a.z);
 }
@@ -359,7 +369,16 @@ function normalizeRoute(input) {
     const pos = w && typeof w === 'object' ? w.pos : null;
     if (!isPlainPos(pos)) return null;
     const id = typeof w.id === 'string' && w.id.length ? w.id : `wp${i}`;
-    out.push({ id, pos: { x: finite(pos.x), z: finite(pos.z) }, label: typeof w.label === 'string' ? w.label : id });
+    const waypoint = {
+      id,
+      pos: { x: finite(pos.x), z: finite(pos.z) },
+      label: typeof w.label === 'string' ? w.label : id,
+    };
+    if (w.targetRef !== null && w.targetRef !== undefined) {
+      if (!stableTargetRef(w.targetRef)) return null;
+      waypoint.targetRef = w.targetRef;
+    }
+    out.push(waypoint);
   }
   return out.length >= 2 ? out : null;
 }
@@ -727,13 +746,26 @@ function emitCompletionFor(job, intents, sink, finishedPhase) {
       break;
     case NPC_JOB_PHASE.WORK:
       // miner only. completed:true distinguishes the single completion from progress ticks.
-      emit(job, intents, sink, 'work', { phase: finishedPhase, completed: true, field: waypoint(job, job.routeIndex)?.id || null, pos });
+      emit(job, intents, sink, 'work', {
+        phase: finishedPhase,
+        completed: true,
+        waypointId: waypoint(job, job.routeIndex)?.id || null,
+        field: waypoint(job, job.routeIndex)?.id || null,
+        pos,
+      });
       break;
     case NPC_JOB_PHASE.LOAD:
       emit(job, intents, sink, 'load', { phase: finishedPhase, completed: true, origin: waypoint(job, job.routeIndex)?.id || null, payload: cloneJSON(job.payload), pos });
       break;
     case NPC_JOB_PHASE.UNLOAD:
-      emit(job, intents, sink, 'unload', { phase: finishedPhase, completed: true, destination: waypoint(job, job.routeIndex)?.id || null, payload: cloneJSON(job.payload), pos });
+      emit(job, intents, sink, 'unload', {
+        phase: finishedPhase,
+        completed: true,
+        waypointId: waypoint(job, job.routeIndex)?.id || null,
+        destination: waypoint(job, job.routeIndex)?.id || null,
+        payload: cloneJSON(job.payload),
+        pos,
+      });
       break;
     case NPC_JOB_PHASE.RETURN: {
       // RETURN completes on ARRIVAL at the destination (home for a miner). The `to` field must name
@@ -745,7 +777,13 @@ function emitCompletionFor(job, intents, sink, finishedPhase) {
       break;
     }
     case NPC_JOB_PHASE.HOLD:
-      emit(job, intents, sink, 'hold', { phase: finishedPhase, completed: true, at: waypoint(job, job.routeIndex)?.id || null, pos });
+      emit(job, intents, sink, 'hold', {
+        phase: finishedPhase,
+        completed: true,
+        waypointId: waypoint(job, job.routeIndex)?.id || null,
+        at: waypoint(job, job.routeIndex)?.id || null,
+        pos,
+      });
       break;
     default:
       break;
@@ -1129,6 +1167,11 @@ export function serializeJob(job) {
   if (!job || typeof job !== 'object') return null;
   const { _lastThreat, ...rest } = job;
   void _lastThreat;
+  // Re-normalize the route at the write seam so post-create mutation cannot smuggle a runtime id or
+  // malformed reference into a save. This also deep-copies the route before the JSON projection.
+  const route = normalizeRoute(rest.route);
+  if (!route) return null;
+  rest.route = route;
   // Enforce the JSON-safe payload contract at serialization too: if a caller mutated job.payload to
   // a cyclic/non-JSON value after creation, fail predictably (drop the payload) instead of throwing
   // inside JSON.stringify. The rest of the record is JSON-safe by construction (scalars + the

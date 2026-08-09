@@ -13,6 +13,7 @@ import {
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
 } from '../src/data/environmentalMachinery.js';
 import { traffic as trafficBase } from '../src/systems/traffic.js';
+import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from '../src/systems/npcJobs.js';
 import { normalizeRecord, RECORD_KIND, stableRecordId } from '../src/world/worldRecords.js';
 
 const SEED = 0x5ce2e5;
@@ -60,6 +61,7 @@ function expectedJobRoute(pocket, slot) {
       x: pocket.activityAnchor.localPos.x + mark.offset.x,
       z: pocket.activityAnchor.localPos.z + mark.offset.z,
     }, CERES_ACTIVITY_SECTOR_ID),
+    targetRef: mark.targetRef,
   }));
 }
 
@@ -96,7 +98,14 @@ function activeRecord(slot, overrides = {}) {
 }
 
 function makeStation(id, stationId, pos) {
-  return { id, type: 'station', alive: true, pos: { ...pos }, data: { stationId } };
+  return {
+    id,
+    type: 'station',
+    alive: true,
+    pos: { ...pos },
+    homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+    data: { stationId, sectorId: CERES_ACTIVITY_SECTOR_ID, homeSectorId: CERES_ACTIVITY_SECTOR_ID },
+  };
 }
 
 function boot({ records = {} } = {}) {
@@ -177,10 +186,21 @@ function boot({ records = {} } = {}) {
           return jobId;
         }
         const job = {
+          schema: NPC_JOB_SCHEMA,
           id: jobId,
           kind: spec.kind,
+          phase: NPC_JOB_PHASE.COMMISSION,
+          routeIndex: 0,
+          progress: 0,
+          sequence: 0,
+          simTime: state.simTime,
+          materialized: true,
+          corrupt: false,
           route: spec.route.map((mark) => ({ ...mark, pos: { ...mark.pos } })),
           speed: spec.speed,
+          ...(Object.hasOwn(spec, 'payload')
+            ? { payload: JSON.parse(JSON.stringify(spec.payload)) }
+            : {}),
         };
         npcJobsById[jobId] = {
           job,
@@ -257,7 +277,10 @@ function boot({ records = {} } = {}) {
   };
   const bus = createBus();
   const emitted = [];
-  for (const name of ['freight:arrival', 'freight:loss', 'mining:npcExtraction', 'npcjobs:work', 'npcjobs:unload']) {
+  for (const name of [
+    'freight:arrival', 'freight:loss', 'mining:npcExtraction', 'traffic:jobActionReceipt',
+    'aiTrader:requestTrade', 'npcjobs:work', 'npcjobs:unload', 'npcjobs:hold',
+  ]) {
     bus.on(name, (payload) => emitted.push({ name, payload }));
   }
   const system = Object.create(trafficBase);
@@ -337,14 +360,29 @@ function assertExactAuthoredJobs(harness) {
       `${slot.id} translates authored duration into kernel speed`);
     const call = harness.npcJobCalls.find((candidate) => candidate.jobId === expectedJobId(slot));
     assert.ok(call, `${slot.id} was assigned through the public NPC jobs seam`);
-    assert.deepEqual(Object.keys(call.spec).sort(), ['kind', 'route', 'sectorId', 'speed']);
+    const expectedSpecKeys = slot.jobKind === 'hauler'
+      ? ['kind', 'payload', 'route', 'sectorId', 'speed']
+      : ['kind', 'route', 'sectorId', 'speed'];
+    assert.deepEqual(Object.keys(call.spec).sort(), expectedSpecKeys);
     assert.equal(Object.hasOwn(call.spec, 'durationS'), false);
     assert.equal(Object.hasOwn(call.spec, 'receiptType'), false);
     assert.equal(Object.hasOwn(call.spec, 'targetRef'), false);
-    assert.equal(Object.hasOwn(call.spec, 'payload'), false);
+    if (slot.jobKind === 'hauler') {
+      assert.equal(call.spec.payload && call.spec.payload.activityRunSeq, 0,
+        'one-shot Ceres haulers capture their durable run sequence at commission');
+      if (slot.id === 'ceres_refinery_hauler') {
+        assert.ok(call.spec.payload.manifest,
+          'the refinery hauler carries the deterministic live manifest into its one-shot job');
+      } else {
+        assert.equal(Object.hasOwn(call.spec.payload, 'manifest'), false,
+          'the Throughline hauler emits a typed action but never invents freight cargo');
+      }
+    } else {
+      assert.equal(Object.hasOwn(call.spec, 'payload'), false);
+    }
     assert.equal(call.spec.route.every((mark) => (
-      Object.keys(mark).sort().join(',') === 'id,label,pos'
-      && !Object.hasOwn(mark, 'targetRef')
+      Object.keys(mark).sort().join(',') === 'id,label,pos,targetRef'
+      && mark.targetRef === slot.route.marks.find((source) => source.id === mark.id).targetRef
     )), true);
   }
   assert.equal(harness.npcJobs.get(expectedJobId(SERVICE_SLOT)), null,
@@ -637,6 +675,72 @@ test('a completed authored hauler recommissions the same stable job before ambie
   assert.equal(harness.emitted.length, 0, 'recommissioning claims no freight or mining receipt');
 });
 
+test('a one-shot refinery hauler delivers on two recommissions without replaying either run', () => {
+  const harness = boot();
+  enterCeres(harness);
+  const slot = castSlot('ceres_refinery_hauler');
+  const hauler = authoredEntities(harness.state)
+    .find((entity) => entity.data.activityActorSlotId === slot.id);
+  const jobId = expectedJobId(slot);
+  const rec = harness.state.traffic.freighters.find((row) => row.id === hauler.id);
+  const arrivals = () => harness.emitted.filter((event) => event.name === 'freight:arrival');
+  const receipts = () => harness.emitted.filter((event) => event.name === 'traffic:jobActionReceipt');
+  const unloadIntent = (entry, seq = 7) => {
+    entry.job.phase = NPC_JOB_PHASE.UNLOAD;
+    entry.job.routeIndex = 1;
+    entry.job.progress = 1;
+    entry.job.sequence = seq;
+    entry.job.simTime = harness.state.simTime;
+    const waypointId = entry.job.route[entry.job.routeIndex].id;
+    return {
+      jobId,
+      kind: 'hauler',
+      seq,
+      simTime: entry.job.simTime,
+      phase: NPC_JOB_PHASE.UNLOAD,
+      waypointId,
+      completed: true,
+      destination: waypointId,
+      payload: JSON.parse(JSON.stringify(entry.job.payload)),
+    };
+  };
+
+  const firstEntry = harness.npcJobs.get(jobId);
+  assert.equal(firstEntry.job.payload.activityRunSeq, 0);
+  const first = unloadIntent(firstEntry);
+  harness.bus.emit('npcjobs:unload', first);
+  assert.equal(arrivals().length, 1);
+  assert.equal(receipts().length, 1);
+  assert.equal(receipts()[0].payload.sequence, 0);
+  assert.equal(receipts()[0].payload.kernelSequence, 7);
+  assert.equal(rec.dockSeq, 1);
+  assert.equal(hauler.data.freightDockSeq, 1);
+
+  harness.bus.emit('npcjobs:unload', first);
+  assert.equal(arrivals().length, 1, 'duplicate delivery in the same run is owner-idempotent');
+  assert.equal(receipts().length, 1);
+
+  assert.equal(harness.npcJobs.release(jobId), true);
+  harness.system.update(1 / 60, harness.state);
+  const secondEntry = harness.npcJobs.get(jobId);
+  assert.ok(secondEntry);
+  assert.equal(secondEntry.job.payload.activityRunSeq, 1,
+    'recommission captures the durable generation advanced by the first delivery');
+  const second = unloadIntent(secondEntry);
+  harness.bus.emit('npcjobs:unload', second);
+  assert.equal(arrivals().length, 2, 'the reset kernel sequence does not suppress the next real trip');
+  assert.equal(receipts().length, 2);
+  assert.equal(receipts()[1].payload.sequence, 1);
+  assert.equal(receipts()[1].payload.kernelSequence, 7);
+  assert.equal(rec.dockSeq, 2);
+  assert.equal(hauler.data.freightDockSeq, 2);
+
+  harness.bus.emit('npcjobs:unload', first);
+  harness.bus.emit('npcjobs:unload', second);
+  assert.equal(arrivals().length, 2, 'stale and duplicate intents remain inert after the next trip');
+  assert.equal(receipts().length, 2);
+});
+
 test('malformed authored route timing and geometry fail closed without ambient fallback', () => {
   const harness = boot();
   const slot = castSlot('ceres_refinery_hauler');
@@ -701,6 +805,13 @@ test('continuous exit preserves the cast; hard exit captures all eight before sc
   hauler.vel = { x: 6, z: -3 };
   hauler.hull = 21;
   hauler.data.cargoManifest = { id: 'captured-cargo', lines: [] };
+  const ceresMinerWorkId = 'npc-miner-work:job:ceres-rewind:work:1:field:slot:ceres_seam_ore_clast';
+  const genericMinerWorkId = 'npc-miner-work:generic-non-ceres:1';
+  harness.state.traffic.appliedJobActionIds = ['ceres-job-action:rewind'];
+  harness.state.traffic.appliedMinerWorkIds = [ceresMinerWorkId, genericMinerWorkId];
+  harness.system._committedCeresMinerWorkIds.add(ceresMinerWorkId);
+  harness.system._pendingJobActionIds.add('in-flight-action');
+  const liveEpoch = harness.system._causalRunEpoch;
 
   harness.bus.emit('sector:exit', {
     sectorId: CERES_ACTIVITY_SECTOR_ID,
@@ -710,6 +821,11 @@ test('continuous exit preserves the cast; hard exit captures all eight before sc
   assert.equal(harness.captures.length, 0);
   assert.equal(before.every((entity) => entity.alive), true);
   assert.equal(harness.state.traffic.freighters.length, 8);
+  assert.deepEqual(harness.state.traffic.appliedMinerWorkIds, [ceresMinerWorkId, genericMinerWorkId],
+    'continuous handoff preserves the current causal boundary');
+  assert.equal(harness.system._pendingJobActionIds.has('in-flight-action'), true);
+  assert.equal(harness.system._causalRunEpoch, liveEpoch,
+    'continuous/noTeleport handoff does not invalidate the live causal run');
 
   harness.bus.emit('sector:exit', { sectorId: CERES_ACTIVITY_SECTOR_ID });
   assert.equal(harness.captures.length, 8);
@@ -722,6 +838,20 @@ test('continuous exit preserves the cast; hard exit captures all eight before sc
   assert.equal(captured.cargoManifest.id, 'captured-cargo');
   assert.equal(before.every((entity) => entity.alive === false), true);
   assert.equal(harness.state.traffic.freighters.length, 0);
+  assert.deepEqual(harness.state.traffic.appliedMinerWorkIds, [genericMinerWorkId],
+    'hard reentry removes only committed Ceres miner identities');
+  assert.deepEqual(harness.state.traffic.appliedJobActionIds, []);
+  assert.equal(harness.system._pendingJobActionIds.has('in-flight-action'), false,
+    'an authoritative hard exit invalidates reservations from the terminated run');
+  assert.equal(harness.system._causalRunEpoch > liveEpoch, true);
+
+  const hardExitEpoch = harness.system._causalRunEpoch;
+  harness.system._pendingJobActionIds.add('new-game-stale-action');
+  harness.system.newGame();
+  assert.equal(harness.system._pendingJobActionIds.size, 0,
+    'a terminal new run clears reservations that cannot belong to the new authority');
+  assert.equal(harness.system._causalRunEpoch > hardExitEpoch, true,
+    'New Game starts a distinct causal run');
 });
 
 test('destroying the stable Cinder service slot leaves the hook empty and emits no freight loss', () => {

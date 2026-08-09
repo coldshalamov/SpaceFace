@@ -176,6 +176,70 @@ test('createJob throws on an invalid spec rather than producing a corrupt record
   assert.throws(() => createJob({ id: 'x', kind: 'bogus', route: MINER_ROUTE }, 0), /invalid spec/);
 });
 
+test('owner-facing completion intents name the exact current route waypoint explicitly', () => {
+  const cases = [
+    [createJob(minerSpec('waypoint-miner'), 47), 'npcjobs:work', 'field'],
+    [createJob(haulerSpec('waypoint-hauler'), 47), 'npcjobs:unload', 'destination'],
+    [createJob(patrolSpec('waypoint-patrol'), 47), 'npcjobs:hold', 'at'],
+  ];
+  for (const [job, event, field] of cases) {
+    const intents = runFixed(job, 30);
+    const completion = intents.find((intent) => intent.event === event);
+    assert.ok(completion, `${event} is reached by the short deterministic fixture`);
+    assert.equal(completion.waypointId, completion[field]);
+    assert.equal(typeof completion.waypointId, 'string');
+  }
+});
+
+test('stable target refs survive create, serialize, and restore without changing ordinary route shape', () => {
+  const targetedRoute = [
+    { ...MINER_ROUTE[0], targetRef: 'activity:seam-work-pad' },
+    { ...MINER_ROUTE[1], targetRef: 'field:slot:ceres_seam_ore_clast' },
+  ];
+  const job = createJob(minerSpec('stable-targets', { route: targetedRoute }), 47);
+  assert.deepEqual(job.route.map((waypoint) => waypoint.targetRef), [
+    'activity:seam-work-pad',
+    'field:slot:ceres_seam_ore_clast',
+  ]);
+
+  const saved = serializeJob(job);
+  assert.ok(saved);
+  const restored = restoreJob(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(restored.route, job.route, 'the symbolic references survive the save seam verbatim');
+
+  const ordinary = createJob(minerSpec('ordinary-route'), 47);
+  assert.deepEqual(ordinary.route, MINER_ROUTE, 'targetRef-free routes retain their exact public shape');
+  assert.equal(ordinary.route.some((waypoint) => Object.hasOwn(waypoint, 'targetRef')), false);
+  assert.deepEqual(serializeJob(ordinary).route, MINER_ROUTE,
+    'targetRef-free serialized routes retain their exact public shape');
+});
+
+test('invalid or runtime-identity target refs fail closed at create, restore, and serialize seams', () => {
+  const invalidRefs = [
+    '',
+    'field:38',
+    'field:<live-asteroid-id>',
+    ' activity:mark',
+    'activity:mark ',
+    'bare-symbol',
+    38,
+    { id: 'runtime-entity' },
+  ];
+  for (const targetRef of invalidRefs) {
+    const route = [{ ...MINER_ROUTE[0] }, { ...MINER_ROUTE[1], targetRef }];
+    assert.equal(validateJobSpec(minerSpec('invalid-target', { route })).ok, false,
+      `${JSON.stringify(targetRef)} is not a stable symbolic target ref`);
+    assert.throws(() => createJob(minerSpec('invalid-target', { route }), 47), /invalid spec/);
+    assert.equal(normalizeJob({ ...minerSpec('invalid-target', { route }), phase: NPC_JOB_PHASE.COMMISSION }).corrupt, true,
+      'restore normalization must not silently drop an authored invalid reference');
+  }
+
+  const mutated = createJob(minerSpec('mutated-target'), 47);
+  mutated.route[1].targetRef = 'field:38';
+  assert.equal(serializeJob(mutated), null,
+    'post-create mutation cannot smuggle a runtime entity id into a save record');
+});
+
 // ═══ DETERMINISM (same seed + inputs ⇒ identical state and intents) ═══════════════════════════════
 
 test('determinism: two miner jobs from the same seed advance identically (state + intents)', () => {

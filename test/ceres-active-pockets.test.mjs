@@ -203,7 +203,10 @@ test('R5A positions and inert routes use the named-anchor camera bands', () => {
   assert.equal(actor('ceres_cathedral_patrol').lawful, true);
   assert.equal(actor('ceres_refinery_hauler').route.receiptType, 'freight:arrival');
   assert.equal(actor('ceres_seam_miner').route.receiptType, 'mining:npcExtraction');
-  assert.match(actor('ceres_seam_miner').route.marks[1].targetRef, /^field:</);
+  assert.equal(
+    actor('ceres_seam_miner').route.marks[1].targetRef,
+    'field:slot:ceres_seam_ore_clast',
+  );
 });
 
 test('R5A companion objects are logical world slots, not a second place registry', () => {

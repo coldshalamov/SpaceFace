@@ -463,17 +463,30 @@ export const npcJobsRuntime = {
       // kernel keeps advancing regardless — suspending `advance` would stop the job's clock and
       // break the offscreen≈onscreen convergence proof, and the job's own schedule did not pause
       // just because a patrol got pulled onto an intercept.
-      const claimed = !!entry.control;
+      const claimedBeforeAdvance = !!entry.control;
 
       // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull). The
       // civilian flee reflex writes job phase, so it must not fight the controller either.
-      if (!claimed && threatRequest && threatRequest.sourceEntityId === entity.id) {
+      if (!claimedBeforeAdvance && threatRequest && threatRequest.sourceEntityId === entity.id) {
         this._reconcileThreatResult(entry, threatRequest.resultId);
       }
 
       // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
       if (step > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) advance(entry.job, step, this._sink);
+
+      // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
+      // this stack. Never timestamp, release, or drive an entry/entity captured from the old run.
+      // Exact object identity matters: restored jobs and hulls may legitimately reuse both stable and
+      // numeric ids. Re-read control after the sink as an external owner may also claim in-place.
+      const currentEntry = this._byId()[jobId];
+      const currentEntity = this.state.entities && this.state.entities.get(entry.entityId);
+      if (currentEntry !== entry
+        || currentEntity !== entity
+        || entry.entityId !== entity.id
+        || !entity.data
+        || entity.data.jobId !== jobId) return;
       entry.lastAdvanceSimT = simT;
+      const claimed = !!entry.control;
 
       // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
       // NOT while leased: dropping the entry here would delete `data.jobId`, the ambient stepper

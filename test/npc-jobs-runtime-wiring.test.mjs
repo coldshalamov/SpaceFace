@@ -114,6 +114,116 @@ test('materialized: the job advances phases and writes the civilian transit inte
   assert.ok(Math.abs(e.data.intent.aimAngle) < 0.2, `aim toward field at +x (got ${e.data.intent.aimAngle})`);
 });
 
+test('post-sink replacement aborts the obsolete batch before any same-ID successor is touched', () => {
+  const sim = boot();
+  const staleHullA = hull(sim, 'rec-reentrant-replace-a');
+  const staleHullB = hull(sim, 'rec-reentrant-replace-b');
+  const jobIdA = sim.helpers.npcJobs.assign(staleHullA, haulerSpec());
+  const jobIdB = sim.helpers.npcJobs.assign(staleHullB, minerSpec());
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const staleEntryA = jobs._byId()[jobIdA];
+  const staleEntryB = jobs._byId()[jobIdB];
+  const successorHullA = hull(sim, 'rec-successor-placeholder-a');
+  const successorHullB = hull(sim, 'rec-successor-placeholder-b');
+  const replacementA = JSON.parse(JSON.stringify(staleEntryA));
+  const replacementB = JSON.parse(JSON.stringify(staleEntryB));
+
+  const configureReplacement = (entry, entityId, progress, sequence, simTime, lastAdvanceSimT) => {
+    entry.job.phase = NPC_JOB_PHASE.COMMISSION;
+    entry.job.progress = progress;
+    entry.job.sequence = sequence;
+    entry.job.simTime = simTime;
+    entry.job.materialized = true;
+    entry.entityId = entityId;
+    entry.lastAdvanceSimT = lastAdvanceSimT;
+    entry.control = null;
+  };
+  configureReplacement(replacementA, successorHullA.id, 0.375, 23, 4.5, 0.5);
+  configureReplacement(replacementB, successorHullB.id, 0.625, 31, 6.5, 0.75);
+
+  let guard = 0;
+  while (staleEntryA.job.phase !== NPC_JOB_PHASE.UNLOAD && guard++ < 60 * 60) sim.step(DT);
+  assert.equal(staleEntryA.job.phase, NPC_JOB_PHASE.UNLOAD);
+  staleEntryA.job.progress = 1 - DT / 2;
+
+  const released = [];
+  const driven = [];
+  const originalRelease = jobs.release;
+  const originalDrive = jobs._drive;
+  jobs.release = function observeRelease(id) {
+    released.push({ id, entry: this._byId()[id] });
+    return originalRelease.call(this, id);
+  };
+  jobs._drive = function observeDrive(entry, entity) {
+    driven.push({ entry, entity });
+    return originalDrive.call(this, entry, entity);
+  };
+  delete staleHullA.data.intent;
+  delete staleHullB.data.intent;
+  delete successorHullA.data.intent;
+  delete successorHullB.data.intent;
+
+  const snapshot = (entry, entity, jobId) => ({
+    phase: entry.job.phase,
+    progress: entry.job.progress,
+    sequence: entry.job.sequence,
+    simTime: entry.job.simTime,
+    entityId: entry.entityId,
+    lastAdvanceSimT: entry.lastAdvanceSimT,
+    jobId: entity.data.jobId,
+    expectedJobId: jobId,
+  });
+  const expectedA = { ...snapshot(replacementA, successorHullA, jobIdA), jobId: jobIdA };
+  const expectedB = { ...snapshot(replacementB, successorHullB, jobIdB), jobId: jobIdB };
+
+  let replaced = false;
+  sim.bus.on('npcjobs:unload', (intent) => {
+    if (replaced || !intent || intent.jobId !== jobIdA) return;
+    replaced = true;
+    staleHullA.alive = false;
+    staleHullB.alive = false;
+    sim.state.entities.delete(staleHullA.id);
+    sim.state.entities.delete(staleHullB.id);
+    sim.state.entityList = sim.state.entityList
+      .filter((entity) => entity !== staleHullA && entity !== staleHullB);
+    successorHullA.data.worldRecordId = staleEntryA.worldRecordId;
+    successorHullA.data.jobId = jobIdA;
+    successorHullB.data.worldRecordId = staleEntryB.worldRecordId;
+    successorHullB.data.jobId = jobIdB;
+    sim.state.npcJobs = { byId: { [jobIdA]: replacementA, [jobIdB]: replacementB } };
+  });
+
+  sim.step(DT);
+
+  assert.equal(replaced, true, 'the owner sink synchronously installed a new two-job run');
+  assert.equal(jobs._byId()[jobIdA], replacementA);
+  assert.equal(jobs._byId()[jobIdB], replacementB,
+    'the obsolete loop cannot release a later same-ID successor from its stale id snapshot');
+  assert.deepEqual(snapshot(replacementA, successorHullA, jobIdA), expectedA);
+  assert.deepEqual(snapshot(replacementB, successorHullB, jobIdB), expectedB,
+    'both restored phase/progress/sequence/entity/timestamp owners stay untouched');
+  assert.deepEqual(released, [], 'no stale release targets either replacement entry');
+  assert.deepEqual(driven, [], 'no stale drive writes through either obsolete entry');
+  assert.equal(successorHullA.data.intent, undefined);
+  assert.equal(successorHullB.data.intent, undefined);
+
+  const progressA = replacementA.job.progress;
+  const progressB = replacementB.job.progress;
+  sim.step(DT);
+  assert.equal(jobs._byId()[jobIdA], replacementA);
+  assert.equal(jobs._byId()[jobIdB], replacementB);
+  assert.equal(replacementA.job.progress > progressA, true);
+  assert.equal(replacementB.job.progress > progressB, true,
+    'the next legitimate runtime tick advances both restored entries');
+  assert.equal(replacementA.lastAdvanceSimT, sim.state.simTime);
+  assert.equal(replacementB.lastAdvanceSimT, sim.state.simTime,
+    'the next legitimate tick owns both away-clock timestamps');
+  assert.deepEqual(new Set(driven.map((row) => row.entry)), new Set([replacementA, replacementB]));
+  assert.deepEqual(new Set(driven.map((row) => row.entity)), new Set([successorHullA, successorHullB]));
+  assert.ok(successorHullA.data.intent);
+  assert.ok(successorHullB.data.intent, 'both replacement hulls resume drive ownership together');
+});
+
 // ═══ save → restore round trip (kernel record + sidecar meta), then re-link ═══════════════════════
 test('save/restore: serialize→deserialize preserves the job + meta and re-links on re-entry', () => {
   const sim = boot();
