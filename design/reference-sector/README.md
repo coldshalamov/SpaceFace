@@ -28,10 +28,11 @@ The work should **select, re-author, promote and compose** only the strongest as
 
 1. `PROMPT_AUDIT.md` — what the previous six prompts produced, where they succeeded, and how each must be corrected before integration.
 2. `RESEARCH_AND_REPO_AUDIT.md` — current repository truth plus professional production lessons from major games and GDC talks.
-3. `REFERENCE_SECTOR_VALUE_HARVEST_PROMPT.md` — the improved, ready-to-paste implementation prompt.
-4. `ASSET_DIVERSIFICATION_AND_PROPAGATION_PLAN.md` — longer-term plan for asset quality, family diversity, lived-world content and sector rollout.
-5. `REFERENCE_SECTOR_ACCEPTANCE_SCORECARD.md` — measurable machine, visual, systemic, player-opportunity and human-review gates.
-6. `CANONICAL_BUILD_MAP_INSERT.md` — exact small stable-route paragraph intended for `CANONICAL_BUILD_MAP.md`.
+3. `SPACE_GAME_REFERENCE_LESSONS.md` — direct lessons from No Man's Sky, EVE Online, Outer Wilds and DUST 514 and their bounded application to SpaceFace.
+4. `REFERENCE_SECTOR_VALUE_HARVEST_PROMPT.md` — the improved, ready-to-paste implementation prompt.
+5. `ASSET_DIVERSIFICATION_AND_PROPAGATION_PLAN.md` — longer-term plan for asset quality, family diversity, lived-world content and sector rollout.
+6. `REFERENCE_SECTOR_ACCEPTANCE_SCORECARD.md` — measurable machine, visual, systemic, player-opportunity and human-review gates.
+7. `CANONICAL_BUILD_MAP_INSERT.md` — exact small stable-route paragraph intended for `CANONICAL_BUILD_MAP.md`.
 
 ## How to use
 
