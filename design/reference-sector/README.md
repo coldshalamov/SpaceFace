@@ -24,6 +24,10 @@ The correct next large chunk is therefore:
 
 The work should **select, re-author, promote and compose** only the strongest assets needed by that slice. It should not create another universal framework or another warehouse of future content.
 
+## Relationship to the inference workflow library
+
+The reusable production loops for continuing beyond the one Ceres benchmark live at [`../inference-workflows/README.md`](../inference-workflows/README.md). Use **WF-17 at 5x** to execute this reference-sector program as an integrated vertical tranche; use the domain workflows to produce bounded accepted NPC, economy, art, VFX, mission, narrative or feel units without inventing another umbrella. The active R5 Ceres packet and five-minute gate remain implementation and acceptance authority.
+
 ## Files
 
 1. `PROMPT_AUDIT.md` — what the previous six prompts produced, where they succeeded, and how each must be corrected before integration.
@@ -39,8 +43,9 @@ The work should **select, re-author, promote and compose** only the strongest as
 - Merge or retain this documentation PR first.
 - Admit the reference-sector implementation as an exact leaf packet through the repository's normal dispatcher and execution protocol.
 - Give the implementation agent `REFERENCE_SECTOR_VALUE_HARVEST_PROMPT.md` plus the current active packet and lease board.
+- For the reusable creative/iteration loop, invoke `WF-17 5x` from the inference-workflow library with Ceres as scope and this prompt as the controlling slice brief.
 - Do not let the agent interpret this supporting plan as permission to touch protected paths.
-- After Ceres passes human review, use `ASSET_DIVERSIFICATION_AND_PROPAGATION_PLAN.md` to deepen only 2–3 additional sectors before attempting galaxy-wide rollout.
+- After Ceres passes human review, use `ASSET_DIVERSIFICATION_AND_PROPAGATION_PLAN.md` and the relevant inference workflows to deepen only 2–3 additional sectors before attempting galaxy-wide rollout.
 
 ## Governing sentence
 
