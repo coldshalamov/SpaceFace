@@ -166,6 +166,12 @@ A strong implementation therefore does all of the following:
 
 When a plan and live evidence disagree, preserve the intended player outcome and repair the execution path. Do not preserve a stale technique merely because prose once named it.
 
+For cross-system game-direction expansion, start at
+[`design/vision/GAME_DIRECTION_EXPANSION.md`](./design/vision/GAME_DIRECTION_EXPANSION.md). It owns
+durable portfolio axes and player-story coherence, never priority, leases, implementation, status, or
+acceptance. Shape one bounded slice, then return to §1 and admit it through the normal program route;
+graphics-only work still follows the standing graphics route above.
+
 ## 3. Authority and truth
 
 Use this order when sources disagree:

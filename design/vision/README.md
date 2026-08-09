@@ -12,6 +12,7 @@
 |---|---|---|
 | ★ status | [`../program/README.md`](../program/README.md) | **Unified pickup index.** Verified done, remaining Alpha + Depth work, live acceptance matrix, dirty-tree inventory, and final-review procedure. |
 | ★ current | [`ALPHA_PROGRAM.md`](./ALPHA_PROGRAM.md) | **Current product-sprint scope/order authority.** Locked solo-alpha scope, milestone order, file leases, and evidence contract. `design/program/**` alone owns cross-program status. |
+| ★ direction | [`GAME_DIRECTION_EXPANSION.md`](./GAME_DIRECTION_EXPANSION.md) | **Durable cross-system direction.** Thirty portfolio axes and five player-story coherence frames; never status, priority, a gate, a lease, or implementation authority. Future slices enter through admitted program packets. |
 | 0 | [`00_CONSTITUTION.md`](./00_CONSTITUTION.md) | Product framing for fun, open chart travel, massline, easy piloting, data-dense strategy UI, original identity, and assist-first play. |
 | 1 | [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) | Compatibility checkpoint retained for historical pickup context. Use `design/program/**` for current status. |
 | 2 | [`02_RESEARCH_SYNTHESIS.md`](./02_RESEARCH_SYNTHESIS.md) | Genre research (professional space games + external agent research) → SpaceFace opportunity map. |
@@ -45,6 +46,7 @@ ARCHITECTURE.md (technical contract)
   > design/program/*                          ← SOLE CROSS-PROGRAM STATUS / PICKUP SURFACE
   > design/vision/ALPHA_PROGRAM.md            ← CURRENT ALPHA SCOPE / ORDER AUTHORITY
   > specific spec2/spec3 task spec            ← IMPLEMENTATION DETAIL WHEN THE LEDGER CITES IT
+  > design/vision/GAME_DIRECTION_EXPANSION.md ← DURABLE DIRECTION; NOT ADMITTED WORK OR STATUS
   > design/vision/00_CONSTITUTION.md           ← PRODUCT FRAMING
   > design/vision/06_OPERATING_MODEL.md        ← SUPPORTING AGENT PRACTICE
   > design/vision/07_AUTONOMOUS_PIPELINE.md    ← HISTORICAL OVERNIGHT PROCESS
