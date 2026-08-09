@@ -10,6 +10,21 @@
 // removed. "Spawning" a light is re-aiming an existing one. Adding/removing lights from a scene
 // forces material recompiles in Three, which is a frame-hitch generator — the exact class of bug
 // recorded in the project's hitch history.
+//
+// FIXED ALLOCATION IS NOT ENOUGH, and an earlier version of this file got it wrong. Never add or
+// remove a scene light, AND never toggle `.visible` either. src/render/vfx.js states the contract
+// verbatim: "Pool lights stay VISIBLE forever and flash via intensity only. three bakes the visible
+// light COUNT into every shader program, so toggling .visible forces a synchronous whole-scene
+// shader recompile (measured multi-second stalls on Intel/ANGLE). The count must never change at
+// runtime — precompile.js warms shaders against this same count." Visibility toggling mutates the
+// same cache key that add/remove does. A dead slot is `intensity = 0`, which contributes no light
+// and no recompile.
+//
+// ACCESSIBILITY. `intensityScale` is the reduced-flash hook, and it must reach the LIGHTS, not only
+// the particles. The live owner scales peak at its single light choke point
+// (`peak *= accessibility.eventLightPeakScale`). An earlier version of this pool scaled every
+// particle substrate and left all four PointLights at full peak — i.e. the brightest, most
+// flash-sensitive element in the frame was the one element reduced-flash did not cover.
 
 import * as THREE from 'three';
 
@@ -25,12 +40,21 @@ export class LightPool {
     this.alive = new Uint8Array(capacity);
     this._cursor = 0;
     this._live = 0;
+    // Reduced-flash scale, 1 = unreduced. Applied to peak at spawn AND to the live value each
+    // update, so lowering it mid-flight dims lights already in the air rather than only the next one.
+    this.intensityScale = 1;
     for (let i = 0; i < capacity; i++) {
+      // intensity 0, visible TRUE. See the file header: a dead slot is dark, never hidden.
       const l = new THREE.PointLight(0xffffff, 0, 100, 2);
       l.name = `vfxnext:eventLight${i}`;
-      l.visible = false;
       this.lights.push(l);
     }
+  }
+
+  /** Reduced-flash control. Mirrors the live owner's `accessibility.eventLightPeakScale`. */
+  setIntensityScale(scale) {
+    this.intensityScale = Number.isFinite(scale) ? Math.max(0, scale) : 1;
+    return this;
   }
 
   addTo(scene) { for (const l of this.lights) scene.add(l); return this; }
@@ -56,8 +80,7 @@ export class LightPool {
     l.position.set(x, y, z);
     l.color.set(color);
     l.distance = distance;
-    l.visible = true;
-    l.intensity = peak;
+    l.intensity = peak * this.intensityScale;
     const s = i * 4;
     this.state[s] = 0; this.state[s + 1] = life; this.state[s + 2] = peak;
     this.state[s + 3] = falloff === 'linear' ? FALLOFF_LINEAR : FALLOFF_FLASH;
@@ -75,15 +98,14 @@ export class LightPool {
       const age = this.state[s] / this.state[s + 1];
       if (age >= 1) {
         this.alive[i] = 0;
-        this.lights[i].intensity = 0;
-        this.lights[i].visible = false;
+        this.lights[i].intensity = 0; // dark, never hidden — see the file header
         continue;
       }
       live++;
       const k = this.state[s + 3] === FALLOFF_FLASH
         ? Math.pow(1 - age, 3.2)
         : (1 - age) * (age < 0.15 ? age / 0.15 : 1);
-      this.lights[i].intensity = this.state[s + 2] * k;
+      this.lights[i].intensity = this.state[s + 2] * k * this.intensityScale;
     }
     this._live = live;
   }
@@ -92,7 +114,7 @@ export class LightPool {
 
   clear() {
     this.alive.fill(0);
-    for (const l of this.lights) { l.intensity = 0; l.visible = false; }
+    for (const l of this.lights) l.intensity = 0; // dark, never hidden
     this._live = 0;
   }
 }
