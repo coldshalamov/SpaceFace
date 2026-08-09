@@ -7,11 +7,13 @@ This is the repository's implementation front door. It routes an agent to the sm
 
 Before changing anything:
 
-1. Run `git status --short`, `git worktree list`, and inspect the current branch/HEAD.
+1. Run `git status --short` and inspect the current branch/HEAD. Do not create a worktree by default.
 2. Read root [`AGENTS.md`](./AGENTS.md).
 3. Read only the relevant sections of [`ARCHITECTURE.md`](./ARCHITECTURE.md) and [`design/GDD_2_0.md`](./design/GDD_2_0.md).
 4. Read the volatile lease board: [`design/program/NOW.md`](./design/program/NOW.md).
-5. Run `node scripts/program-dispatch.mjs --next` for the first exact claim-ready unit,
+5. If the user did not name an exact unit, use the copy-ready
+   [`design/program/AGENT_TASK_PROMPTS.md`](./design/program/AGENT_TASK_PROMPTS.md), then run
+   `node scripts/program-dispatch.mjs --next` for the first exact dependency-front unit,
    `node scripts/program-dispatch.mjs --ready` for every currently claim-ready unit, or
    `node scripts/program-dispatch.mjs --id PQ-XXX` for one parent outcome. The dispatcher includes
    implementation, acceptance-repair, capture, evidence-review, performance, and integration units, so a
@@ -19,10 +21,16 @@ Before changing anything:
    [`program-queue.json`](./design/program/roadmap/program-queue.json) only when maintaining its
    index/dispatch units or diagnosing dependency/identity history.
 6. Open the returned packet in [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md).
-   If no active packet exists, stop and ask the integrator to admit one from the template; do not
-   leapfrog to a later row or self-authorize implementation.
+   If an already-queued unit lacks an executable packet, shape the smallest packet from the template
+   as part of that unit instead of stopping for a missing coordinator. Do not invent a new outcome that is
+   absent from both the queue and the user's direction.
 7. Use [`docs/MODULE_MAP.md`](./docs/MODULE_MAP.md), then generated [`docs/SYSTEM_REGISTRY.md`](./docs/SYSTEM_REGISTRY.md) or [`docs/EVENT_ROUTING.md`](./docs/EVENT_ROUTING.md), to locate live owners. Search only those owners, their tests, and their checks.
 8. Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md) through a terminal receipt.
+9. Add one short `NOW.md` row only when mutation begins. Reading, research, testing, and review hold
+   no file. Release the row as soon as mutation stops; task-long path reservations are forbidden.
+10. Finish one unit, commit and push its exact result, update its receipt/status, and return
+    `RESULT: DONE` or `RESULT: NOT DONE` using the template in `02_REMAINING_WORK.md`. Do not begin a
+    second unit in the same task.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
@@ -52,6 +60,51 @@ It grants no lease, priority, or dispatch authority: implementation still requir
 packet from the queue, and any overlapping Physics-as-Spectacle row remains downstream of that
 packet's R5/five-minute-Ceres/R8 gates. Craft and acceptance still belong to
 `docs/visual-assets/` below.
+
+**Material flatness (G0-2 is DONE; ROI items 3-5 are part-finished).** The corrected roughness
+audit has been run and its tooling is committed. Measure with
+`node scripts/measure-orm-roughness.mjs <glb...>` — it resolves ORM maps through the glTF material
+graph, never by filename, which is what invalidated the earlier audit. Its reference check:
+`engine_ion_small` reads 0.2015 against the independently derived 0.2011.
+
+Measured state, superseding the withdrawn "twenty assets at stdev exactly zero" headline:
+
+| Asset | Roughness stdev | Reading |
+|---|---:|---|
+| Ten kit hulls (`hull_*.glb`) | **0.0000** | 1024² textures holding one constant |
+| `wholeship_kestrel` | 0.05–0.07 | not flat, but ~3x under reference |
+| `engine_ion_small` | 0.2015 | healthy — **ROI item 4 is largely a non-issue** |
+
+Root cause for the hulls: the ORM is packed correctly and six hulls carry a real per-material AO
+bake in R, matching their authored source PNGs to four decimals. The geometry-derived data was
+authored, baked and shipped into the channel that only modulates ambient light, while the channel
+deciding specular response got a flat class value. The other four (frigate, capital, multirole,
+gunship) had no AO anywhere because each GLB carries LOD0/LOD1/LOD2 as **coincident meshes at
+identical bounds**, so the bake self-occluded to black. `tools/blender/bake_hull_ao.py` removes the
+coincident shells first; all four are now repaired at source and committed.
+
+**Remaining work, in order.** Nothing below is blocked and no GLB has been half-modified — source
+hulls are untouched, so this resumes from a clean state:
+
+1. **Apply the repack (ROI item 5).** `node tools/art/repack_orm_roughness.mjs assets/ships/parts/hulls/hull_*.glb`
+   — dry-run verified on all ten, landing G stdev 0.15–0.17 against the 0.2015 reference, with each
+   material's mean roughness held and R/B copied byte-for-byte. Then rebuild releases via
+   `node tools/art/build_release_parts.mjs <partId...>` and refresh `release_manifest.json` source
+   and release hashes, or `check:assets:live` and the receipts check will disagree with disk.
+2. **Kestrel hull (ROI item 3).** Same tool applies; its `Material_EngineCeramic` (0.0512) and
+   `Material_Rubber` (0.0496) are the near-flat targets. The separate per-zone paint variety wants
+   `assets/ships/foundry/spacepunk_markings_v1/` — 32 authored cells, `runtimeWired: false`, whose
+   contract requires GLB integration plus a KTX2 release, so it is Blender work and not a code wiring
+   task. Note the live player ship is `assets/ships/parts/wholeships/kestrel.glb`; the
+   `kestrel_borrowed_time_v4/` tree is a candidate the runtime does not load.
+3. **Verify what a check inspects, not that it passed.** `check:graphics:asset-receipts` covered
+   `rockA` only and stayed green through weeks of two corrupt asteroid rocks; `stats().bakedTexMB`
+   reported configured sizes rather than allocated ones. Extend receipts coverage before treating it
+   as item 5's gate.
+
+No independent G7 art verdict has been obtained for any of the above — the codex image-generation CLI
+remains unrepaired (G0-3), and per `docs/visual-assets/README.md` that substitution is recorded here
+rather than left implicit.
 
 **Graphics / visual assets:** every player-facing graphics task starts at
 [`docs/visual-assets/README.md`](./docs/visual-assets/README.md), which routes authored 3D, portraits,
@@ -171,6 +224,10 @@ For cross-system game-direction expansion, start at
 durable portfolio axes and player-story coherence, never priority, leases, implementation, status, or
 acceptance. Shape one bounded slice, then return to §1 and admit it through the normal program route;
 graphics-only work still follows the standing graphics route above.
+The optional
+[`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
+captures the useful PR #92/ChatGPT research loop for comparing alternatives and cutting weak ideas;
+it supplies no task, ownership, gate, quota, or acceptance authority.
 
 ## 3. Authority and truth
 
@@ -194,15 +251,18 @@ buggy implementation is current.
 
 | Surface | Lifetime | Owns | Must not own |
 |---|---|---|---|
-| [`NOW.md`](./design/program/NOW.md) | volatile | active worktrees, leases, mutexes, protected foreign work, immediate blockers | history, detailed plans, test transcripts |
-| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, unit dependencies, mutexes, broad checks/evidence, coarse parent state | current leases, implementation prose, acceptance transcripts |
+| [`NOW.md`](./design/program/NOW.md) | volatile | threads actually mutating now, exact dirty hunks, brief publication windows, unassigned dirty work | history, task-long ownership, subsystem lanes, dependencies, completion, test transcripts |
+| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, integration dependencies, coordination hints, broad checks/evidence, coarse parent state | active mutation windows, implementation prose, acceptance transcripts |
 | [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
 | `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
 | module/event/system maps | generated or maintained reference | low-context code navigation | product priority or completion claims |
 
 Status is two-dimensional:
 
-- **Lifecycle:** `planned → ready → claimed → implemented → integrated`, with `blocked`, `deferred`, and `historical` as explicit dispositions.
+- **Lifecycle:** `planned → ready → claimed → implemented → integrated`, with `deferred` and
+  `historical` as explicit dispositions. The legacy `blocked` enum is reserved for a proven external
+  impossibility; internal dependencies, another thread, dirty files, tools, reviews, or hardware do
+  not qualify.
 - **Acceptance:** `unproven → focused_green → route_accepted → milestone_accepted`.
 
 These axes do not imply each other. Integrated code may still lack route acceptance; a source asset may be implemented but not runtime-wired; a focused-green packet is not automatically fun, readable, or complete.
@@ -211,17 +271,17 @@ The existing queue's `state` field is transitional and can contain legacy accept
 
 ## 5. Selecting and shaping work
 
-Choose the first claim-ready dispatch unit whose dependencies are done, whose required owner seams
-exist, and whose mutexes are free. `--ready` may expose several disjoint units at once; each still
-receives its own owner and receipt. Then reduce the selected unit to the smallest coherent slice that
-can reach its declared terminal state. The dispatch command cannot see every live process or
-unrecorded owner change, so it never grants a claim by itself.
+Choose the first dependency-front dispatch unit, or an exact unit named by the user, and reduce it to
+the smallest coherent slice that can reach its declared terminal state. `--ready` is the preferred
+integration order, not a list of the only work that exists. `NOW.md` prevents one dirty hunk from
+being overwritten: if that exact hunk is actively changing, continue the task's disjoint work or take
+the next returned unit. Never turn the overlap into a blocked packet, subsystem, or roadmap.
 
 An executable packet must name:
 
 - one player outcome and one normal route;
 - current owner modules and the events/APIs they expose;
-- entry conditions and blockers;
+- integration dependencies and any exact live handoff needed at mutation time;
 - exact or bounded write surfaces;
 - explicit non-goals;
 - deterministic/save/single-writer invariants;
@@ -265,7 +325,7 @@ are:
   another affected acceptance attempt;
 - unchanged failure fingerprints block reruns;
 - evidence review closes with discovery, repair, and a causal re-review rather than a succession of
-  open-ended fresh audits; use a separate reviewer when one exists, but a solo integrator may issue
+  open-ended fresh audits; use a separate reviewer when one exists, but the finishing agent may issue
   the verdict from retained evidence and must disclose that it is a self-review;
 - unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
 - every execution ends `PASS`, `FAIL`, `BLOCKED`, or `DEFERRED` with an exact-revision receipt.
@@ -299,7 +359,7 @@ Documentation has a declared lifetime:
 - `STABLE` files route and define durable contracts; they contain no live snapshots.
 - `DURABLE` files preserve long-lived research, evidence, or rationale. They may inform planning,
   but never grant a lease, dispatch authority, acceptance, or priority over an admitted packet.
-- `VOLATILE` files contain leases/current state, a refresh base, and an expiry condition.
+- `VOLATILE` files contain current mutation/status facts, a refresh base, and an expiry condition.
 - `ACTIVE_PACKET` files guide one admitted packet and retire into evidence when done.
 - `GENERATED` files are rebuilt from code.
 - `HISTORICAL` files can explain a decision but cannot direct implementation unless explicitly reactivated.
@@ -310,6 +370,9 @@ Run `node scripts/check-program-docs.mjs` after changing the program control sur
 
 ## 10. Checkoff
 
-The feature agent updates its active packet checklist and returns a receipt. The integrator alone updates global lifecycle/acceptance state, queue fields, generated indexes, and shared status pages after verifying the exact candidate revision.
+The agent that finishes a unit updates that unit's packet checklist, receipt, queue row, and shared
+status in the same bounded transaction after verifying the exact candidate revision. No separate
+coordinator is required. A named human or independent-review gate remains a separate task only when
+the packet explicitly requires that evidence.
 
 A receipt must say what changed, what passed, what route was observed, what performance profile was measured, what remains unproven, and which follow-ups were deliberately excluded. “Tests pass” is not a substitute for those facts; neither is a screenshot a substitute for simulation truth.
