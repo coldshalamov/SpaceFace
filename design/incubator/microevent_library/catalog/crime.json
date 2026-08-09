@@ -1,0 +1,236 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "crime",
+  "events": [
+    {
+      "id": "ev_pirate_scouts_convoy",
+      "title": "Pirate scouts shadow a convoy",
+      "category": "crime",
+      "durationS": [60, 120],
+      "participants": [{ "role": "pirate", "count": 2 }, { "role": "hauler", "count": 2 }, { "role": "escort", "count": 1, "optional": true }],
+      "environment": ["convoy in transit (existing convoy encounter)"],
+      "arrangement": "Two small hulls pace the convoy from 140-160 wu, at the speed-revealed band edge - visible only to a player who is moving",
+      "startConditions": "Convoy transits while pirate weight is nonzero; ambush encounter pre-stage",
+      "visibleCue": "Two contacts holding EXACT convoy speed without joining it - honest traffic overtakes or falls behind; only a shadow paces",
+      "phases": [
+        { "name": "pace", "durationS": 45, "visible": "Shadows hold formation off the convoy's quarter, dark hulls, no strobes - the ABSENCE of signals is the signal", "signals": [] },
+        { "name": "probe", "durationS": 15, "visible": "One shadow closes to 80 wu, counts the escort, drifts back out - a visible headcount", "signals": [] },
+        { "name": "decide", "durationS": 20, "visible": "Either both break away (escort too strong - the convoy never knows how close it came) or they light drives and the existing ambush encounter fires", "signals": ["breaking_the_pattern"] }
+      ],
+      "completion": "Most runs end in the break-away: the player who noticed the shadows watched a robbery be priced and declined",
+      "interruptions": [
+        { "trigger": "Escort paints a shadow", "outcome": "Immediate break-away; the convoy's escort visibly worked" },
+        { "trigger": "Player engages a shadow", "outcome": "Both flee or fight per existing pirate archetype" }
+      ],
+      "playerInterference": ["Warn the convoy by flying to it (proximity is the message)", "Join the ambush when it fires", "Hunt the scouts before they decide"],
+      "criminalOpportunity": "This IS the criminal opportunity, dramatized - and a player can do the same scouting arithmetic on any convoy",
+      "aftermath": "If the ambush fires it runs the existing encounter with its loot/wreck outcomes",
+      "systems": ["encounterDirector.convoy", "encounterDirector.ambush", "traffic.spawnRole", "ai.passive"],
+      "fallback": "Convoy despawns: shadows break to sector edge and despawn",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "Pre-stages the EXISTING ambush encounter with a visible reconnaissance act; the decline branch costs nothing and sells the world hardest."
+    },
+    {
+      "id": "ev_scavengers_at_fresh_wreck",
+      "title": "Scavengers strip a fresh wreck before the law arrives",
+      "category": "crime",
+      "durationS": [45, 90],
+      "participants": [{ "role": "smuggler", "count": 2, "note": "scavenger dress: rust accents" }, { "role": "patrol", "count": 1, "optional": true }],
+      "environment": ["wreck (class fresh - a recent kill, not an old field)"],
+      "arrangement": "Two small hulls at the wreck, working FAST, nose-in / nose-out alternating so one always faces the lane",
+      "startConditions": "A fresh wreck exists (combat aftermath) with unclaimed salvage budget; no salvor assigned",
+      "visibleCue": "Hulls at a wreck with NO salvage umbrellas - cutting light without confession light means the work is not licensed",
+      "phases": [
+        { "name": "swoop", "durationS": 12, "visible": "Both arrive fast and hard-stop at the wreck - salvors approach, scavengers pounce", "signals": ["stacking"] },
+        { "name": "strip", "durationS": 40, "visible": "Bare cut arcs, no hoods; pickups yanked aboard at double cadence; the lookout's nose never leaves the lane", "signals": ["picking_the_bones"] },
+        { "name": "scatter", "durationS": 15, "visible": "At a timer or a patrol contact both bolt in DIFFERENT directions - guilt has a geometry", "signals": ["breaking_the_pattern", "clean_burn"] }
+      ],
+      "completion": "Wreck's easy salvage gone; scavengers vanish separately with partial loads",
+      "interruptions": [
+        { "trigger": "Patrol arrives early", "outcome": "Immediate scatter; dropped pickups spray behind the runners" },
+        { "trigger": "Player approaches", "outcome": "Lookout paints you; if you keep closing they scatter (you might be law, and they never check)" }
+      ],
+      "playerInterference": ["Beat them to the wreck", "Rob the robbers - their cradles are full and their guns are poor", "Call it in by leading a patrol over (proximity chaining)"],
+      "criminalOpportunity": "The event is a tutorial: fresh wrecks pay best in the first two minutes, before anyone official arrives",
+      "aftermath": "Wreck salvage budget visibly reduced; scattered pickups persist briefly",
+      "systems": ["wrecks.spawn", "salvage.strip", "pickups.spawn", "signatureVfx", "traffic.spawnRole"],
+      "fallback": "Wreck despawns: scavengers scatter immediately (their reason left)",
+      "tier": "first15",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_smuggler_dumps_cache",
+      "title": "Smuggler dead-drops a cache",
+      "category": "crime",
+      "durationS": [30, 60],
+      "participants": [{ "role": "smuggler", "count": 1 }],
+      "environment": ["distinctive rock or lane-furniture marker away from lanes (the drop point wants a LANDMARK)"],
+      "arrangement": "Smuggler leaves the lane on a wide arc, passes the landmark at low speed WITHOUT stopping, and rejoins traffic elsewhere",
+      "startConditions": "Smuggler-flagged trader with a hot manifest and patrol pressure in-sector",
+      "visibleCue": "A trader flying a lane exit that serves no destination - the arc is smooth, unhurried and completely pointless unless you saw what fell",
+      "phases": [
+        { "name": "drift_out", "durationS": 15, "visible": "Casual lane exit, dim bar, nothing to see", "signals": ["clean_burn"] },
+        { "name": "drop", "durationS": 6, "visible": "One unlit pickup separates at the landmark - no strobe, no plume; you catch it by silhouette occlusion or not at all", "signals": [] },
+        { "name": "rejoin", "durationS": 20, "visible": "Long arc back into traffic at a different bearing; the hull now flies honestly lighter", "signals": ["clean_burn"] }
+      ],
+      "completion": "Cache sits dark at the landmark; someone (ev_criminal_handoff, or a returning smuggler, or the player) collects it later",
+      "interruptions": [
+        { "trigger": "Scanned during drift_out", "outcome": "No drop this pass; the smuggler orbits the sector and retries once" }
+      ],
+      "playerInterference": ["Take the cache (it is real contraband-class cargo)", "Stake out the landmark for the pickup party", "Sell the location by leading someone there"],
+      "criminalOpportunity": "The drop TEACHES the mechanic: quiet objects near landmarks are worth checking - and the player can run dead drops in reverse",
+      "aftermath": "PERSISTENT cache pickup until claimed; a claimed cache spawns the collection visit within the session (chaining hook)",
+      "systems": ["traffic.spawnRole", "pickups.spawn", "donor.laneFurnitureProp", "signatureVfx"],
+      "fallback": "Smuggler killed before the drop: cargo spills at the kill site instead - the cache becomes a spill, same loot different story",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_criminal_handoff",
+      "title": "Two criminals trade cargo far from witnesses",
+      "category": "crime",
+      "durationS": [45, 90],
+      "participants": [{ "role": "smuggler", "count": 1 }, { "role": "pirate", "count": 1 }],
+      "environment": ["empty quarter, ideally near a cold landmark; 200+ wu from stations and beats"],
+      "arrangement": "Both arrive from different bearings, park tail-to-tail 6 wu apart (guns facing OUT - the geometry of mutual distrust)",
+      "startConditions": "A smuggler with cargo and a pirate with none in-sector; low patrol presence",
+      "visibleCue": "Two hulls parked tail-to-tail in nowhere - honest transfers park parallel; only distrust parks back-to-back",
+      "phases": [
+        { "name": "converge", "durationS": 20, "visible": "Separate quiet approaches from opposite bearings, both dark", "signals": ["clean_burn"] },
+        { "name": "standoff", "durationS": 10, "visible": "Tail-to-tail hold; ten still seconds - the negotiation you cannot hear", "signals": [] },
+        { "name": "swap", "durationS": 20, "visible": "Three pickups cross the gap one at a time, each fully landed before the next leaves - nobody extends credit out here", "signals": ["mouth_open"] },
+        { "name": "part", "durationS": 15, "visible": "Both depart on their arrival bearings reversed, never showing each other a stern", "signals": ["clean_burn"] }
+      ],
+      "completion": "Cargo changed hands off the books; both vanish into ordinary traffic",
+      "interruptions": [
+        { "trigger": "ANY third contact within 150 wu", "outcome": "Instant split, swap incomplete; remaining pickups drift at the site" },
+        { "trigger": "Patrol contact", "outcome": "Both bolt on diverging vectors; the pickups stay - evidence" }
+      ],
+      "playerInterference": ["Interrupt at pickup two of three and take the stranded piece", "Destroy either party mid-swap for both loads", "Just watch: you now know two hulls and one habit"],
+      "criminalOpportunity": "This is the fence mechanic performed in the open - the player learns handoffs exist, then finds them",
+      "aftermath": "The receiving hull carries the cargo for the rest of its session run (scannable)",
+      "systems": ["traffic.spawnRole", "pickups.spawn", "traffic.manifest", "signatureVfx", "ai.passive"],
+      "fallback": "One party never arrives: the other waits 20 s, drops NOTHING, and leaves - a stood-up meet reads exactly like one",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_raider_hits_lone_miner",
+      "title": "Raider hits an isolated miner",
+      "category": "crime",
+      "durationS": [45, 90],
+      "participants": [{ "role": "pirate", "count": 1 }, { "role": "miner", "count": 1 }],
+      "environment": ["field slot 250+ wu from the nearest patrol beat"],
+      "arrangement": "Raider approaches down the miner's blind cone (the working side - the one direction a cutting miner cannot watch)",
+      "startConditions": "Miner in WORK at an isolated slot; pirate weight nonzero; existing ambush logic targeting a worker instead of a lane",
+      "visibleCue": "A dark hull sliding into the dust plume behind a working miner - the cone that protects the work blinds the worker",
+      "phases": [
+        { "name": "stalk", "durationS": 20, "visible": "Raider drifts up the spall stream, closing unlit", "signals": [] },
+        { "name": "strike", "durationS": 10, "visible": "One warning burst across the bow; miner's cone dies; both hold still - the stick-up frame", "signals": ["breaking_the_pattern"] },
+        { "name": "toll", "durationS": 20, "visible": "Miner jettisons part of its load (pickups); raider tractors them in while the miner sits dark", "signals": ["mouth_open"] },
+        { "name": "leave", "durationS": 15, "visible": "Raider departs; miner relights and either resumes or limps home short", "signals": ["blind_cone", "home_under_rock"] }
+      ],
+      "completion": "A robbery, not a murder: the region's ecology keeps its miner and the raider keeps its schedule - most runs end bloodless",
+      "interruptions": [
+        { "trigger": "Miner refuses (brave roll)", "outcome": "Existing combat; usually a wreck and a full spill" },
+        { "trigger": "Patrol or player closes during toll", "outcome": "Raider bolts with whatever is already aboard" }
+      ],
+      "playerInterference": ["Intervene during stalk (the raider breaks off - hunts hate witnesses)", "Take the jettisoned toll yourself mid-tractor - robbing the robber at his own stick-up", "Escort miners you see working alone"],
+      "criminalOpportunity": "The toll pattern is reusable BY the player against any loaded worker - the event demonstrates the verb",
+      "aftermath": "Tolled miner's next cycles run closer to the patrol ring (visible learned caution); the raider re-arms elsewhere",
+      "systems": ["encounterDirector.ambush", "npcJobs.phaseGraph", "pickups.spawn", "signatureVfx", "ai.passive"],
+      "fallback": "Miner despawns mid-toll: raider takes the drifting pickups and leaves - the scene still resolves",
+      "tier": "next20",
+      "blockedOn": null,
+      "diagramMermaid": "sequenceDiagram\n  participant R as Raider\n  participant M as Miner\n  R->>M: drifts up the spall stream (unlit)\n  R->>M: warning burst across the bow\n  M->>M: cone dies, holds still\n  M-->>R: jettisons partial load\n  R->>R: tractors pickups aboard\n  R->>R: departs\n  M->>M: relights, resumes or limps home"
+    },
+    {
+      "id": "ev_wreck_tow_theft",
+      "title": "Pirate tug steals a disabled hull",
+      "category": "crime",
+      "durationS": [90, 180],
+      "participants": [{ "role": "tug", "count": 1, "note": "pirate-flagged" }, { "role": "hauler", "count": 1, "note": "the disabled victim" }],
+      "environment": ["disabled hull (aftermath of ev_disabled_distress or combat)"],
+      "arrangement": "Tug arrives at a drifting disabled hull BEFORE the lawful responders, kisses on, and walks it toward the sector edge",
+      "startConditions": "A disabled-ship state exists with the lawful recovery delayed (response timer lost the race)",
+      "visibleCue": "A tug whose approach is right but whose HEADING is wrong - recovery walks hulls toward stations; theft walks them away",
+      "phases": [
+        { "name": "claim_jump", "durationS": 20, "visible": "Tug hard-docks the disabled hull, no floods, no apron courtesy", "signals": ["stacking"] },
+        { "name": "walk_away", "durationS": 90, "visible": "Pair moves at walking pace toward the boundary - the slowest getaway in crime, in full view", "signals": ["heavy_burn"] },
+        { "name": "vanish", "durationS": 20, "visible": "Pair exits at the sector edge; the disabled crew's distress keeps flashing all the way out - the detail that makes it ugly", "signals": ["breaking_the_pattern"] }
+      ],
+      "completion": "Hull and cargo gone; the lawful tender arrives at empty space and sweeps it - a visible failure of the response system",
+      "interruptions": [
+        { "trigger": "Rescue/patrol intercepts the walk", "outcome": "Tug drops the hull and bolts; recovery proceeds late but succeeds" },
+        { "trigger": "Player destroys the tug", "outcome": "Hull drifts free again, re-arming the lawful recovery event" }
+      ],
+      "playerInterference": ["Break the tow by killing the tug (the walk is 90 slow seconds of vulnerability)", "Escort the theft for a cut (you are now a pirate)", "Race to disabled hulls before EITHER side arrives"],
+      "criminalOpportunity": "The whole event IS one - and it prices the disabled-hull economy: whoever arrives first owns the outcome",
+      "aftermath": "Stolen hulls seed the pirate nest's salvage stock (campaign pressure blip); saved hulls owe the region a story",
+      "systems": ["traffic.spawnRole", "encounterDirector.distress", "signatureVfx", "donor.activityPackHull", "encounterDirector.pressure"],
+      "fallback": "Disabled hull despawns mid-walk: tug diverts to scavenge mode at the nearest wreck",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "The 'tow' is the same parented-drift link as ev_tug_repositions_cargo - one link flag, two moralities."
+    },
+    {
+      "id": "ev_claim_jump",
+      "title": "Claim jumper works a staked rock",
+      "category": "crime",
+      "durationS": [60, 120],
+      "participants": [{ "role": "miner", "count": 2, "note": "one owner, one jumper" }],
+      "environment": ["rock carrying a claim mark (aftermath of ev_prospector_stakes_claim)"],
+      "arrangement": "Jumper cuts the STAKED rock; owner returns mid-theft; the argument is flown, not spoken",
+      "startConditions": "A claimed rock exists with its owner absent (mid-cycle elsewhere)",
+      "visibleCue": "A cut cone lighting a rock that carries someone else's lit stake - the two lights disagree and any pilot can read it",
+      "phases": [
+        { "name": "poach", "durationS": 30, "visible": "Jumper works the seam fast, positioned to keep the stake OUT of its own floodlight - even machines look guilty", "signals": ["blind_cone"] },
+        { "name": "owner_returns", "durationS": 15, "visible": "Owner arrives hot, then hard-stops 30 wu off and PAINTS the jumper - accusation by lamp", "signals": ["stacking"] },
+        { "name": "push", "durationS": 25, "visible": "Owner flies tightening orbits between jumper and rock, herding without firing; jumper's cone stutters - working under pressure", "signals": ["blind_cone"] },
+        { "name": "yield_or_fight", "durationS": 20, "visible": "Usually the jumper breaks off with a part load; sometimes it stands and the existing combat resolves it", "signals": ["breaking_the_pattern"] }
+      ],
+      "completion": "Owner resumes its rock, cutting closer to the stake than before - possession re-performed",
+      "interruptions": [
+        { "trigger": "Player fires on either", "outcome": "Both flee; the rock keeps its stake and its scar" }
+      ],
+      "playerInterference": ["Back the owner (herd alongside)", "Back the jumper", "Poach the rock YOURSELF while they argue - three-body crime"],
+      "criminalOpportunity": "Demonstrates that claims are enforced by presence, not law - absent owners lose ore, and the player owns a stake verb too",
+      "aftermath": "Jumped claims lose yield; owners that win re-stake with a second mark (a double-marked rock is a story artifact)",
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "signatureVfx.reaction", "sectorZones.slot", "ai.passive"],
+      "fallback": "Owner never returns: the jumper strips the rock and leaves; the orphaned stake stays as archaeology",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "The brief's 'prospectors arguing through movement' - herding orbits are steering, the accusation is the existing PAINT reaction, and nobody speaks."
+    },
+    {
+      "id": "ev_toll_gate_popup",
+      "title": "Pirates run a pop-up toll on a bend",
+      "category": "crime",
+      "durationS": [90, 180],
+      "participants": [{ "role": "pirate", "count": 2 }, { "role": "hauler", "count": 1 }],
+      "environment": ["lane bend or diversion choke (composes with ev_lane_spot_closure's bulge)"],
+      "arrangement": "Two pirates flank the choke at 40 wu; traffic is stopped one hull at a time; a 'paid' hull passes while the next is held",
+      "startConditions": "Existing toll encounter script; sited at a choke instead of open lane",
+      "visibleCue": "Traffic STACKING at a bend - honest space never queues in the open, so a queue in nowhere means a hand is out",
+      "phases": [
+        { "name": "setup", "durationS": 20, "visible": "Pirates take flanking stations, running lights OFF then suddenly ON together - the gate declaring itself", "signals": ["on_the_pin"] },
+        { "name": "collect", "durationS": 90, "visible": "Each held hull jettisons a token pickup and is waved past; the pile between the pirates grows - a visible till", "signals": ["mouth_open"] },
+        { "name": "fold", "durationS": 20, "visible": "At a patrol contact or quota both scoop the till and bolt on diverging vectors", "signals": ["breaking_the_pattern"] }
+      ],
+      "completion": "Gate folds before the law arrives; traffic unknots; the bend remembers nothing",
+      "interruptions": [
+        { "trigger": "A held hull refuses", "outcome": "Existing toll-script violence branch; the queue scatters" },
+        { "trigger": "Patrol arrives mid-collect", "outcome": "Fold immediately; till pickups left drifting - free money with a story" }
+      ],
+      "playerInterference": ["Pay the toll (cheapest outcome)", "Break the gate (two targets holding still)", "Rob the TILL mid-collect - the pile is just pickups"],
+      "criminalOpportunity": "The till pile is the single richest unattended object in the region for ninety seconds",
+      "aftermath": "Folded tolls re-site at a different choke next session window; the campaign pressure deck ticks",
+      "systems": ["encounterDirector.toll", "pickups.spawn", "signatureVfx", "traffic.spawnRole", "encounterDirector.pressure"],
+      "fallback": "Both pirates lost: queue dissolves; till pickups persist",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The toll script exists; this stages it at a choke with the queue and the till made visible - the encounter's economy externalized into objects."
+    }
+  ]
+}

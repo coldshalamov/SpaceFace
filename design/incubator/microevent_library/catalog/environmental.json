@@ -1,0 +1,162 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "environmental",
+  "events": [
+    {
+      "id": "ev_meteor_passage",
+      "title": "Meteor crosses the system",
+      "category": "environmental",
+      "durationS": [20, 45],
+      "participants": [{ "role": "asteroid", "count": 1, "note": "fast mover, not a field member" }],
+      "environment": [],
+      "arrangement": "One large rock crosses the whole pocket on a straight line at 3-4x traffic speed, entering and exiting at the speed-revealed band",
+      "startConditions": "Environmental spawn roll (rare enough to stay an event: 1-2 per hour class)",
+      "visibleCue": "A contact moving too fast on too straight a line with NO drive glow - mass without intent reads instantly as nature",
+      "phases": [
+        { "name": "inbound", "durationS": 10, "visible": "The rock crests the pocket edge trailing a thin dust line", "signals": [] },
+        { "name": "passage", "durationS": 15, "visible": "Crosses the lane band; every hull's passive avoidance bulges in sequence as it passes - a wave through traffic, nature parting the sea", "signals": [] },
+        { "name": "gone", "durationS": 10, "visible": "Exits; the dust line hangs a moment longer than the rock", "signals": [] }
+      ],
+      "completion": "Nothing changed - and everyone briefly shared the same sky. That is the event",
+      "interruptions": [
+        { "trigger": "Player destroys it mid-passage", "outcome": "Fragment spray on the original vector; ore pickups for the quick" }
+      ],
+      "playerInterference": ["Chase it (physics-earned overspeed territory)", "Crack it for the ore spray", "Just watch it go - with everyone else"],
+      "criminalOpportunity": "Every eye in the pocket tracks the rock for fifteen seconds - the region's best natural distraction",
+      "aftermath": "None, unless cracked (fragments persist briefly)",
+      "systems": ["pickups.spawn", "traffic.spawnRole", "ai.passive", "vfx.substrate"],
+      "fallback": "None needed - a rock cannot despawn wrongly; it only leaves",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_anomaly_diversion",
+      "title": "Anomaly forces a traffic diversion",
+      "category": "environmental",
+      "durationS": [120, 180],
+      "participants": [{ "role": "surveyor", "count": 1 }, { "role": "patrol", "count": 1, "optional": true }],
+      "environment": ["anomaly point (existing whisper-encounter class phenomenon)"],
+      "arrangement": "Anomaly manifests near the lane; traffic bends away; ONE hull - the surveyor - flies toward what everything else flees",
+      "startConditions": "Existing anomaly_whisper encounter fires within 100 wu of a lane",
+      "visibleCue": "The lane bending away from a point with nothing visibly there - absence with authority; then one small hull turning IN",
+      "phases": [
+        { "name": "manifest", "durationS": 30, "visible": "Whisper phenomenon plays (existing encounter VFX); nearest hulls side-step first, the bend propagating up-lane", "signals": [] },
+        { "name": "divert", "durationS": 90, "visible": "Traffic runs the bent line; patrol cones the near edge if present (composes with ev_lane_spot_closure)", "signals": ["on_the_pin"] },
+        { "name": "approach_of_one", "durationS": 40, "visible": "The surveyor closes to reading range and holds, pin crabbed, green rings slow and deliberate - courage as choreography", "signals": ["reading_the_dark"] },
+        { "name": "fade", "durationS": 30, "visible": "Phenomenon subsides; the surveyor drops one marker at the site; traffic straightens over a minute", "signals": [] }
+      ],
+      "completion": "Lane restored; one lit marker where it happened - the map gains a haunted spot",
+      "interruptions": [
+        { "trigger": "Surveyor flees (bad roll)", "outcome": "Unread anomaly; marker never placed; the whisper's mystery survives intact" }
+      ],
+      "playerInterference": ["Fly into the anomaly yourself (existing whisper interaction)", "Follow the surveyor in - the only hull that knows what it is doing", "Loot the marker later"],
+      "criminalOpportunity": "The bent lane is a scheduled choke while it lasts; and whatever the surveyor learned is worth shadowing",
+      "aftermath": "Marker persists; the site's slot records the visit (later whisper events weight toward marked sites - the world builds its own mythology)",
+      "systems": ["encounterDirector.whisper", "npcJobs.phaseGraph", "signatureVfx", "pickups.spawn", "ai.passive"],
+      "fallback": "Surveyor unavailable: the diversion runs without the approach-of-one - nature unexamined",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_gravity_snag",
+      "title": "Gravity eddy captures a wreck fragment",
+      "category": "environmental",
+      "durationS": [90, 180],
+      "participants": [{ "role": "wreck", "count": 1 }, { "role": "salvor", "count": 1, "optional": true }],
+      "environment": ["gravity eddy point", "wreck fragment"],
+      "arrangement": "A fragment drifts into the eddy and settles into a visible slow orbit around empty space - a one-piece ring system",
+      "startConditions": "Eddy field active near a wreck field",
+      "visibleCue": "Debris ORBITING nothing - motion that violates the pocket's flat physics announces the exception",
+      "phases": [
+        { "name": "capture", "durationS": 40, "visible": "Fragment's line bends into a closing spiral", "signals": [] },
+        { "name": "ring", "durationS": 90, "visible": "Stable slow orbit; dust tail spreads along the path", "signals": [] },
+        { "name": "visit", "durationS": 50, "visible": "A salvor arrives, matches the orbit - the strangest station-keeping job in the belt - and cuts the fragment free", "signals": ["picking_the_bones"] }
+      ],
+      "completion": "Fragment recovered or orbit decays; the eddy stays, invisibly waiting",
+      "interruptions": [{ "trigger": "Player enters the eddy", "outcome": "Your own line bends - the field teaches itself" }],
+      "playerInterference": ["Harvest the orbiting fragment", "Throw cargo INTO the eddy and watch it ring (physics as a toy)"],
+      "criminalOpportunity": "An eddy is a natural cache: things thrown in stay findable - the dead-drop that nature runs",
+      "aftermath": "Eddy site persists as a known hazard/utility",
+      "systems": ["future.gravityField", "pickups.spawn", "signatureVfx"],
+      "fallback": "Salvor never comes: the orbit decays over the session",
+      "tier": "blocked",
+      "blockedOn": "future.gravityField - no local gravity/force-field affects entity motion; the flat drift model cannot orbit"
+    },
+    {
+      "id": "ev_static_squall",
+      "title": "Static squall closes the worksite",
+      "category": "environmental",
+      "durationS": [120, 180],
+      "participants": [{ "role": "miner", "count": 2 }, { "role": "tender", "count": 1, "optional": true }],
+      "environment": ["work pocket", "squall volume (charged dust bank)"],
+      "arrangement": "A charged dust bank rolls across the field; work stops ahead of it; hulls shelter leeward of the biggest rocks",
+      "startConditions": "Environmental scheduler; squall vector crosses an active field",
+      "visibleCue": "Miners stowing gear while the sky is still clear - the workers always know before you do",
+      "phases": [
+        { "name": "warning", "durationS": 30, "visible": "Deploy scalars reverse across the pocket (arms fold, umbrellas close); hulls reposition leeward", "signals": [] },
+        { "name": "squall", "durationS": 90, "visible": "Dust bank crosses; lamps arc and flicker inside it; every hull dark and still in rock shadow", "signals": [] },
+        { "name": "all_clear", "durationS": 30, "visible": "Cones relight one by one as the bank clears - the pocket rebooting trade by trade", "signals": ["blind_cone", "hull_open"] }
+      ],
+      "completion": "Work resumes; the squall exits the pocket edge",
+      "interruptions": [{ "trigger": "A hull caught in the open", "outcome": "Takes visible arc damage, may chain into the disabled/distress events" }],
+      "playerInterference": ["Shelter with the miners (they made room for you at the rock)", "Fly the squall for bravado (damage ticks)", "Loot unattended sites mid-squall"],
+      "criminalOpportunity": "The squall is a scheduled blackout: everything unattended, everyone blind, for ninety seconds",
+      "aftermath": "None; the ritual is the content",
+      "systems": ["future.gravityField", "signatureVfx.deploy", "npcJobs.phaseGraph", "ai.passive"],
+      "fallback": "No shelter rocks in the pocket: hulls run for the edge instead - a visible evacuation rather than a shelter",
+      "tier": "blocked",
+      "blockedOn": "future environmental volume (shares the field-volume mechanic with gravity): no damaging/occluding weather volume exists; the stow-and-shelter choreography is ready the day one does"
+    },
+    {
+      "id": "ev_rock_calving",
+      "title": "Asteroid calves under its own stress",
+      "category": "environmental",
+      "durationS": [45, 90],
+      "participants": [{ "role": "asteroid", "count": 1 }, { "role": "miner", "count": 1, "optional": true }],
+      "environment": ["large field asteroid (worked or natural)"],
+      "arrangement": "A big rock splits into two bodies plus a fragment spray; the halves drift apart at reading speed",
+      "startConditions": "Heavily-worked rock passes a stress threshold (mining events accelerate it - consequence chaining), or natural roll",
+      "visibleCue": "A dust jet from a rock nobody is cutting - the rock announcing its own event",
+      "phases": [
+        { "name": "groan", "durationS": 15, "visible": "Dust jets from a spreading seam line across the face", "signals": [] },
+        { "name": "calve", "durationS": 10, "visible": "The rock separates; two bodies, one bright fresh face each, fragment spray between", "signals": [] },
+        { "name": "drift", "durationS": 40, "visible": "Halves part slowly; any working miner backs off during calve then re-approaches the RICHER face - the professionals judge instantly", "signals": ["stacking", "blind_cone"] }
+      ],
+      "completion": "The field permanently gains a body; fresh faces are visibly brighter ore",
+      "interruptions": [{ "trigger": "Player inside the seam line at calve", "outcome": "Fragment damage; your own fault, and legible in advance" }],
+      "playerInterference": ["Mine the fresh face (yield bonus window)", "Grab the spray pickups", "Crack the calf further"],
+      "criminalOpportunity": "Fresh faces draw every miner in range within minutes - a predictable gathering of loaded targets follows each calving",
+      "aftermath": "PERSISTENT: the field's body count changes; fresh-face yield flag for the session; the pocket map is different now",
+      "systems": ["pickups.spawn", "sectorZones.slot", "npcJobs.phaseGraph", "signatureVfx", "vfx.substrate"],
+      "fallback": "No miner present: the calving happens for nobody - and a player who stumbles on the doubled rock later reads the fresh faces anyway",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "Split = swap one asteroid entity for two smaller + pickup spray; the visualFactory's seeded rock variants already make the halves look related."
+    },
+    {
+      "id": "ev_debris_stream_crossing",
+      "title": "Fast debris stream rakes the corridor",
+      "category": "environmental",
+      "durationS": [60, 120],
+      "participants": [{ "role": "patrol", "count": 1, "optional": true }, { "role": "sweeper", "count": 1, "optional": true }],
+      "environment": ["8-10 small fast debris objects on parallel vectors"],
+      "arrangement": "A ribbon of fast small debris crosses the corridor diagonally over a minute - the accident event's dangerous cousin (fast and linear where that one is slow and cloudy)",
+      "startConditions": "Environmental scheduler; upstream battle or calving seeds the stream vector",
+      "visibleCue": "The first strike: one lane pin sparks and tumbles - furniture takes the hit before anyone else, and everyone sees it",
+      "phases": [
+        { "name": "first_strike", "durationS": 15, "visible": "A pin or marker takes a visible hit; its strobe dies mid-blink", "signals": [] },
+        { "name": "rake", "durationS": 60, "visible": "The ribbon crosses; traffic holds at BOTH edges in visible clumps rather than threading - fast debris changes the etiquette from thread to wait", "signals": ["on_the_pin"] },
+        { "name": "pass_and_count", "durationS": 30, "visible": "Stream exits; traffic re-flows; the sweeper starts on the strike damage; the dead pin stays dark", "signals": ["blind_cone"] }
+      ],
+      "completion": "Corridor restored, minus one lamp - the region keeps a scar",
+      "interruptions": [{ "trigger": "A hull caught mid-corridor", "outcome": "Visible strikes; chains into the disabled/distress family" }],
+      "playerInterference": ["Thread the stream (skill expression; the etiquette exists to be defied)", "Guard the waiting clumps - they are toll-vulnerable", "Repair or salvage the dead pin"],
+      "criminalOpportunity": "The waiting clumps at either edge are pre-gathered, stationary and impatient - a toll or ambush wired by weather",
+      "aftermath": "Dead furniture persists (repairable by later tender events); strike scars on struck hulls",
+      "systems": ["pickups.spawn", "traffic.spawnRole", "signatureVfx", "donor.laneFurnitureProp", "ai.passive"],
+      "fallback": "No furniture in the pocket: first_strike falls on a rock instead - less legible, still legible",
+      "tier": "standard",
+      "blockedOn": null
+    }
+  ]
+}

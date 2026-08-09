@@ -1,0 +1,242 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "accident",
+  "events": [
+    {
+      "id": "ev_disabled_hauler_recovery",
+      "title": "Disabled hauler recovery",
+      "category": "accident",
+      "durationS": [120, 180],
+      "participants": [
+        { "role": "hauler", "count": 1, "note": "the casualty" },
+        { "role": "tender", "count": 1 },
+        { "role": "tug", "count": 1, "optional": true },
+        { "role": "patrol", "count": 1, "optional": true, "note": "lawful jurisdiction only" }
+      ],
+      "environment": ["lane segment"],
+      "arrangement": "Hauler drifts off lane-center shedding speed; responders stack around it - tender abeam, tug astern, patrol standing 60 wu off",
+      "startConditions": "Hauler wear/damage roll mid-transit (or combat aftermath with a survivor)",
+      "visibleCue": "A loaded hull decelerating where no destination exists, drive glow dying stutter by stutter",
+      "phases": [
+        { "name": "failure", "durationS": 15, "visible": "Drive dies; hauler coasts off-lane in a slow visible yaw nobody is correcting", "signals": [] },
+        { "name": "distress", "durationS": 20, "visible": "Whole-hull red/white alternation begins (the existing distress code); passing traffic bulges one extra width around it", "signals": ["breaking_the_pattern"] },
+        { "name": "response", "durationS": 30, "visible": "Tender DEPARTs its berth and runs the leg; patrol takes overwatch if lawful; tug trails", "signals": ["spine_wake", "clean_burn", "on_the_pin"] },
+        { "name": "work", "durationS": 45, "visible": "Tender abeam: red corners, weld stitch, white bar - hull_open at a casualty instead of a client", "signals": ["hull_open"] },
+        { "name": "resolve", "durationS": 30, "visible": "Either the hauler's drive relights and it limps on, or the tug kisses on and walks it home", "signals": ["spine_wake", "heavy_burn"] }
+      ],
+      "completion": "Lane traffic re-centers; the casualty either resumes (repaired) or is walked to the station (towed)",
+      "interruptions": [
+        { "trigger": "Responders beaten to the site by a pirate tug", "outcome": "Chains into ev_wreck_tow_theft" },
+        { "trigger": "Tender killed on approach", "outcome": "Distress continues; second response window opens; scavenger events key on the delay" },
+        { "trigger": "Everyone dies (player massacre)", "outcome": "The hauler becomes an honest wreck with full cargo - the player's to salvage" }
+      ],
+      "playerInterference": ["Help: kill nothing, park between the casualty and trouble", "Steal cargo DURING the response delay", "Attack the tug mid-tow", "Protect the recovery for ambient rep", "Salvage everything if it all goes wrong"],
+      "criminalOpportunity": "The response delay is a countdown everyone can see - the freshest cargo in space belongs to whoever disrespects it first",
+      "aftermath": "Repaired hauler runs visibly slower for the session; towed hulls park at the station apron as persistent set dressing",
+      "systems": ["encounterDirector.distress", "npcJobs.phaseGraph", "signatureVfx", "traffic.spawnRole", "wrecks.spawn", "ai.passive"],
+      "fallback": "Casualty despawns: responders converge, sweep the empty point, disperse - a false alarm that still reads as a system working",
+      "tier": "first15",
+      "blockedOn": null,
+      "diagramMermaid": "sequenceDiagram\n  participant H as Hauler\n  participant T as Tender\n  participant G as Tug\n  participant P as Patrol\n  H->>H: drive dies, coasts off-lane\n  H->>H: distress alternation begins\n  Note over H: passing traffic gives one extra width\n  T->>H: DEPART + straight response leg\n  P->>P: overwatch 60 wu (lawful only)\n  G->>H: trails in, holds astern\n  T-->>H: hull_open work (red corners, weld stitch)\n  alt drive relights\n    H->>H: limps on, slower\n  else tow\n    G->>H: kiss + walk to station\n  end",
+      "notes": "The brief's worked example. Every beat maps to an existing system; the only new state is 'disabled' (a speed-zero + distress flag the kernel can already hold via FLEE-style override)."
+    },
+    {
+      "id": "ev_miner_collision",
+      "title": "Two miners clip at a crowded seam",
+      "category": "accident",
+      "durationS": [40, 80],
+      "participants": [{ "role": "miner", "count": 2 }],
+      "environment": ["one rich rock with two assigned slots (the crowding IS the cause)"],
+      "arrangement": "Both work the same face 20 wu apart; one repositioning hop crosses the other's line",
+      "startConditions": "Two miners share a field slot radius (the rich-seam event's greed phase makes this likely - deliberate chaining)",
+      "visibleCue": "Two cut cones converging on one face - anyone who has watched miners knows the spacing is wrong",
+      "phases": [
+        { "name": "crowd", "durationS": 15, "visible": "Cones drift closer; spall streams begin to cross", "signals": ["blind_cone"] },
+        { "name": "clip", "durationS": 5, "visible": "A repositioning hop grazes the neighbor - visible lurch, both cones die, a spray of hull-fragment pickups", "signals": [] },
+        { "name": "back_off", "durationS": 20, "visible": "Both hulls drift apart tumbling slightly; one flashes distress briefly; dust hangs where they hit", "signals": ["breaking_the_pattern"] },
+        { "name": "sort_out", "durationS": 25, "visible": "The less-damaged one re-approaches the rock; the other limps home early with a wobble in its line", "signals": ["blind_cone", "home_under_rock"] }
+      ],
+      "completion": "One miner works on; one limps home; the seam keeps a debris sparkle - the cheapest possible accident with a full story arc",
+      "interruptions": [
+        { "trigger": "The limper's damage roll worsens", "outcome": "It goes fully disabled - chains into the recovery event with a miner casualty" }
+      ],
+      "playerInterference": ["Grab the collision fragments", "Escort the limper home", "Take the vacated slot and mine it"],
+      "criminalOpportunity": "A limping loaded miner alone on a home leg is the raider event's ideal prey - the chain is obvious and legible",
+      "aftermath": "Field slot marks single-occupancy for the session (the world learns); fragment pickups persist",
+      "systems": ["npcJobs.phaseGraph", "pickups.spawn", "signatureVfx", "sectorZones.slot"],
+      "fallback": "Either miner despawns mid-scene: the other resumes; fragments persist",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "No physics collision needed - the clip is choreographed (timed lurch + fragment spawn), which also keeps it deterministic."
+    },
+    {
+      "id": "ev_pod_breaks_clamp",
+      "title": "Cargo pod escapes a station clamp",
+      "category": "accident",
+      "durationS": [45, 90],
+      "participants": [{ "role": "station", "count": 1 }, { "role": "tug", "count": 1, "optional": true }],
+      "environment": ["station cargo face with a pod stack", "1 pod object (pickup class)"],
+      "arrangement": "Pod separates from the stack on a slow tumbling vector toward the lane; tug launches after it",
+      "startConditions": "Station cargo face active (hauler_dock or cargo_tractor profile running); failure roll",
+      "visibleCue": "One pod in the stack starts BLINKING its clamp strobe out of rhythm with the rest - wrongness in a pattern the player has seen right a hundred times",
+      "phases": [
+        { "name": "shear", "durationS": 10, "visible": "Pod separates, tumbling slowly, clamp strobe still blinking wrong", "signals": [] },
+        { "name": "drift", "durationS": 30, "visible": "Pod crosses toward the lane; near traffic bulges around its projected line - everyone can do the math", "signals": [] },
+        { "name": "chase", "durationS": 25, "visible": "Tug launches (patrol_launch profile geometry, tug dressing) and runs the pod down", "signals": ["spine_wake", "stacking"] },
+        { "name": "recover", "durationS": 20, "visible": "Kiss, drift-match, walk back to the stack - ev_tug_repositions_cargo's second half, caused instead of scheduled", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Pod re-stacked; the stack's strobes all blink in rhythm again - closure you can SEE",
+      "interruptions": [
+        { "trigger": "Pod crosses the lane before the tug arrives", "outcome": "Near-miss bulge in traffic; pod exits the pocket and becomes a drifting prize" },
+        { "trigger": "No tug available", "outcome": "Pod drifts free; re-arms ev_tug_repositions_cargo for the next tug spawn" }
+      ],
+      "playerInterference": ["Catch the pod first (finders keepers, with a witness)", "Nudge it INTO the lane for chaos", "Return it to the stack yourself - the station notices (ambient rep)"],
+      "criminalOpportunity": "A pod off the clamp is legally ambiguous cargo for exactly as long as the chase lasts",
+      "aftermath": "Recovered or not, the stack runs one pod short or whole - visible either way",
+      "systems": ["stationSideEvents.cargo_tractor", "stationSideEvents.patrol_launch", "pickups.spawn", "signatureVfx", "ai.passive"],
+      "fallback": "Tug lost mid-chase: pod keeps drifting; the event degrades into free salvage",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_disabled_distress",
+      "title": "Disabled ship broadcasts distress",
+      "category": "accident",
+      "durationS": [60, 150],
+      "participants": [{ "role": "courier", "count": 1, "note": "any small hull works; courier reads most sympathetic" }, { "role": "rescue", "count": 1 }],
+      "environment": ["open pocket, off-lane"],
+      "arrangement": "Casualty adrift with a slow tumble; rescue approaches on the textbook wide arc, floods on early",
+      "startConditions": "Existing distress encounter script fires with a civilian casualty",
+      "visibleCue": "The red/white whole-hull alternation - the one signal every player learns first because everything else in the code defers to it",
+      "phases": [
+        { "name": "alone", "durationS": 30, "visible": "Casualty tumbles and flashes; traffic gives it space but nobody stops - the worst part, and it is authored", "signals": ["breaking_the_pattern"] },
+        { "name": "answer", "durationS": 30, "visible": "Rescue arrives floods-first (we-see-you doctrine), red-white STEADY against the casualty's alternation", "signals": ["stacking"] },
+        { "name": "alongside", "durationS": 40, "visible": "Rescue matches tumble, takes the casualty into its bay shadow; the alternation SLOWS as power transfers - recovery you can read at 150 wu", "signals": ["hull_open"] },
+        { "name": "away", "durationS": 25, "visible": "Pair departs for the station together, casualty dark now, rescue's steady bars lit", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Both reach the station; the pocket's traffic re-centers",
+      "interruptions": [
+        { "trigger": "Rescue intercepted or killed", "outcome": "Casualty keeps flashing; scavenger and tow-theft events key on the extended window" },
+        { "trigger": "Player reaches the casualty first and holds station 20 s", "outcome": "Counts as the response; the rescue diverts back - the world credits the player by proximity" }
+      ],
+      "playerInterference": ["Answer the distress yourself", "Loot the casualty WHILE it flashes (the region's darkest legible act)", "Escort the recovery pair home"],
+      "criminalOpportunity": "A flashing hull is a beacon for everyone - the same signal that summons rescue prices the victim for wolves",
+      "aftermath": "Saved couriers re-run their route next window (the same hull, a continuity detail); looted ones become wrecks",
+      "systems": ["encounterDirector.distress", "traffic.spawnRole", "signatureVfx", "wrecks.spawn", "ai.passive"],
+      "fallback": "Rescue role unavailable: the existing distress script's default resolution runs (timeout despawn) - the event only ADDS the visible response when one exists",
+      "tier": "first15",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_tanker_leak_evac",
+      "title": "Tanker leak forces a work-site evacuation",
+      "category": "accident",
+      "durationS": [90, 180],
+      "participants": [{ "role": "tanker", "count": 1, "note": "mule + manifest until donor promoted" }, { "role": "miner", "count": 2 }, { "role": "patrol", "count": 1, "optional": true }],
+      "environment": ["work pocket with active miners"],
+      "arrangement": "Leaking tanker at the pocket's heart; a visible venting plume; everything else moving AWAY in order of sense",
+      "startConditions": "Loaded tanker takes damage or fails a transfer (composes with ev_tanker_loads_at_harvester interruptions)",
+      "visibleCue": "A continuous white venting jet from a tank seam - the one plume in the game that means RUN, and it points sideways not aft",
+      "phases": [
+        { "name": "vent", "durationS": 20, "visible": "Jet starts; tanker's own crew code goes to distress alternation; it turns AWAY from the workers - doctrine even in failure", "signals": ["breaking_the_pattern"] },
+        { "name": "scatter", "durationS": 30, "visible": "Miners stow gear (deploy scalar reversing - visible arms folding) and clear out in different directions; the pocket empties inside a minute", "signals": ["clean_burn"] },
+        { "name": "stand_off", "durationS": 60, "visible": "Tanker drifts alone venting; patrol cones the approach at 150 wu if lawful; the emptiness IS the event", "signals": ["on_the_pin"] },
+        { "name": "resolve", "durationS": 40, "visible": "Vent exhausts: either the tanker limps off half-empty, or the seam fails and the existing big secondary fires - wreck, flash, and a debris ring", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Pocket repopulates over the next windows; either a surviving tanker or a rich, dangerous wreck field",
+      "interruptions": [
+        { "trigger": "Anything ignites the plume (weapons fire through it)", "outcome": "Immediate secondary - and the shooter is visibly the cause" }
+      ],
+      "playerInterference": ["Fly the plume (damage tick, bravado)", "Shoot the tank and own the consequence", "Wait out the stand-off and salvage first"],
+      "criminalOpportunity": "An evacuated pocket is an unlocked room: every claim, stake and cache in it sits unwatched for two minutes",
+      "aftermath": "Detonation leaves a persistent wreck field (class battlefield) that seeds salvage/scavenge events for the session",
+      "systems": ["traffic.manifest", "signatureVfx", "signatureVfx.deploy", "wrecks.spawn", "pickups.spawn", "ai.passive", "vfx.substrate"],
+      "fallback": "Miners despawn instead of scattering: the stand-off still reads (one hull venting alone)",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_debris_on_route",
+      "title": "Debris field drifts across the route",
+      "category": "accident",
+      "durationS": [120, 180],
+      "participants": [{ "role": "sweeper", "count": 1, "note": "mule + scoop dressing until donor promoted" }, { "role": "patrol", "count": 1, "optional": true }],
+      "environment": ["cluster of 8-12 debris pickups with a shared slow drift vector crossing a lane"],
+      "arrangement": "Debris enters at the pocket edge and crosses the lane over ~2 minutes; traffic threads or bulges around it",
+      "startConditions": "Wreck-field aftermath upwind, or scheduled environmental spawn",
+      "visibleCue": "Sparkles where nothing should sparkle - a constellation moving as one against the parallax",
+      "phases": [
+        { "name": "ingress", "durationS": 40, "visible": "Debris crosses the pocket edge; the first hauler swerves and the lane's whole file inherits the bend", "signals": [] },
+        { "name": "thread", "durationS": 60, "visible": "Traffic threads the gaps; near-misses read as small side-steps; optionally a patrol cones the worst of it (composes with ev_lane_spot_closure)", "signals": ["on_the_pin"] },
+        { "name": "sweep", "durationS": 60, "visible": "Sweeper arrives and eats the field piece by piece, cage visibly filling - municipal heroism at 12 wu/min", "signals": ["blind_cone", "spilling_the_count"] }
+      ],
+      "completion": "Lane straightens as the field thins; the sweeper hauls its full cage to the scrap yard",
+      "interruptions": [
+        { "trigger": "No sweeper role available", "outcome": "The field crosses and exits the pocket naturally - the event still reads without the janitor" }
+      ],
+      "playerInterference": ["Collect the debris yourself (it is all pickups)", "Tow the biggest piece off-lane and the bend relaxes early", "Shoot the debris - fragments thin faster but scatter wider (visible tradeoff)"],
+      "criminalOpportunity": "Bent traffic at a known point for two minutes - the pop-up toll's site-selection event",
+      "aftermath": "Swept debris ticks the scrap market; unswept pieces persist at the pocket edge",
+      "systems": ["pickups.spawn", "traffic.spawnRole", "signatureVfx", "donor.activityPackHull", "ai.passive"],
+      "fallback": "Sweeper lost: remaining debris keeps drifting; re-arms next window",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_repair_tug_response",
+      "title": "Repair tug answers a drive-out call",
+      "category": "accident",
+      "durationS": [60, 120],
+      "participants": [{ "role": "tender", "count": 1 }, { "role": "tug", "count": 1 }, { "role": "surveyor", "count": 1, "note": "the casualty - deep-field worker far from lanes" }],
+      "environment": ["far pocket edge, 150+ wu from lanes"],
+      "arrangement": "Dead surveyor at the far edge; tender and tug fly out TOGETHER in loose column - the pairing itself says the job is uncertain",
+      "startConditions": "Surveyor job fails its cycle (drive-out roll) beyond the tender's usual client range",
+      "visibleCue": "Two service hulls leaving TOGETHER on one bearing with no client visible - a formation that only means somebody far away is in trouble",
+      "phases": [
+        { "name": "column_out", "durationS": 30, "visible": "Tender leads, tug trails 20 wu; both clean-burn on a dead-straight rescue bearing", "signals": ["spine_wake", "clean_burn"] },
+        { "name": "triage", "durationS": 25, "visible": "Tender works the casualty first - hull_open, weld stitch on the drive housing", "signals": ["hull_open"] },
+        { "name": "verdict", "durationS": 30, "visible": "Either the surveyor's pin relights (fixed - tender's gamble won) or the tug moves in and takes the tow (the pairing existed for this)", "signals": ["reading_the_dark", "heavy_burn"] },
+        { "name": "column_home", "durationS": 30, "visible": "All hulls return in column, casualty under tow or under power - the shape of the column tells the ending at any range", "signals": ["clean_burn", "heavy_burn"] }
+      ],
+      "completion": "The far edge is empty again; the story was legible entirely from formation shapes",
+      "interruptions": [
+        { "trigger": "Ambush on the column (isolated, predictable route)", "outcome": "Tug bolts with the tender covering; casualty left - re-arms as a scavenger/tow-theft target" }
+      ],
+      "playerInterference": ["Shadow the column out (they lead you to the deep-field find the surveyor died near)", "Hit the column (three soft targets, far from help)", "Fix the surveyor first with your own repair verb if you carry one"],
+      "criminalOpportunity": "The column's outbound bearing is a straight line to something worth a surveyor's life - free intel",
+      "aftermath": "Saved surveyors resume the probe line; failed ones leave the line dark and a wreck at its end",
+      "systems": ["npcJobs.phaseGraph", "traffic.spawnRole", "signatureVfx", "encounterDirector.distress", "donor.activityPackHull"],
+      "fallback": "Casualty despawns: the column arrives, sweeps once, returns empty - a body never found",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_rescue_arrival_muster",
+      "title": "Rescue lifter musters at a multi-casualty scene",
+      "category": "accident",
+      "durationS": [90, 180],
+      "participants": [{ "role": "rescue", "count": 1 }, { "role": "tender", "count": 1 }, { "role": "patrol", "count": 1 }, { "role": "wreck", "count": 2 }],
+      "environment": ["fresh battlefield (post-combat pocket with 2+ wrecks and survivors flag)"],
+      "arrangement": "Rescue takes scene command at the centroid; tender and patrol orbit assigned quadrants; floods light the field like a work yard",
+      "startConditions": "A combat event ends with multiple wrecks inside one pocket (the big-fight aftermath)",
+      "visibleCue": "Mast floods rising over a dark battlefield - the region's brightest object appearing exactly where its darkest hour just ended",
+      "phases": [
+        { "name": "arrive", "durationS": 25, "visible": "Rescue arrives floods-first, bars steady; parks at the centroid", "signals": ["stacking"] },
+        { "name": "grid_search", "durationS": 60, "visible": "Rescue walks a visible expanding square; tender trails it welding what can be welded; patrol holds the perimeter", "signals": ["hull_open", "on_the_pin"] },
+        { "name": "recover", "durationS": 45, "visible": "Survivor pods (pickups) tractor into the bay one by one - each one a small visible save", "signals": ["mouth_open"] },
+        { "name": "stand_down", "durationS": 30, "visible": "Floods die one mast at a time; the column leaves; the field is just wrecks now - ready for the salvage economy", "signals": ["clean_burn"] }
+      ],
+      "completion": "Survivors recovered; the battlefield transitions from emergency scene to salvage field - a visible change of legal state",
+      "interruptions": [
+        { "trigger": "Scavengers hit during grid_search", "outcome": "Patrol engages; rescue NEVER stops searching - doctrine visible under fire" }
+      ],
+      "playerInterference": ["Recover pods yourself into your hold (the rescue accepts the help - and the region notes it)", "Loot wrecks DURING the search under the patrol's nose", "Kill the rescue and the region remembers that hardest of all (campaign pressure)"],
+      "criminalOpportunity": "The wrecks are off-limits only as long as the floods burn - the stand-down moment starts the gold rush, and everyone watching knows the clock",
+      "aftermath": "Field becomes ordinary salvage; saved-pod count feeds campaign pressure valence",
+      "systems": ["encounterDirector.distress", "wrecks.spawn", "pickups.spawn", "signatureVfx", "encounterDirector.pressure", "donor.activityPackHull"],
+      "fallback": "Rescue lost: tender continues a reduced search alone - smaller lights, same shape; the doctrine survives its flagship",
+      "tier": "standard",
+      "blockedOn": null
+    }
+  ]
+}

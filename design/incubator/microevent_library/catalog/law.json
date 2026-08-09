@@ -1,0 +1,206 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "law",
+  "events": [
+    {
+      "id": "ev_patrol_scans_suspect",
+      "title": "Patrol scans a suspicious ship",
+      "category": "law",
+      "durationS": [30, 60],
+      "participants": [{ "role": "patrol", "count": 1 }, { "role": "smuggler", "count": 1, "note": "any trader-archetype hull works; smuggler makes the best story" }],
+      "environment": [],
+      "arrangement": "Patrol closes to 30 wu abeam of the subject on a matched-velocity parallel",
+      "startConditions": "Existing patrol_scan encounter trigger; subject selected by role weight (smuggler > courier > hauler)",
+      "visibleCue": "The patrol's metronome sweep STOPS - a lamp that has swept all day locking onto one hull is the loudest quiet signal in the code",
+      "phases": [
+        { "name": "shadow", "durationS": 12, "visible": "Patrol matches course one lane-width off, sweep still running", "signals": ["on_the_pin"] },
+        { "name": "lock", "durationS": 10, "visible": "Sweep stops ON the subject (PAINT reaction geometry, blue); subject holds course too perfectly", "signals": ["on_the_pin"] },
+        { "name": "read", "durationS": 15, "visible": "Both fly straight and parallel - the pause where paperwork happens; nearby traffic gives the pair one extra width", "signals": [] },
+        { "name": "release", "durationS": 8, "visible": "Sweep resumes; patrol peels off in a visible quarter-turn - the all-clear everyone can read", "signals": ["on_the_pin"] }
+      ],
+      "completion": "Both resume routes; the region watched the law work and nothing burned",
+      "interruptions": [
+        { "trigger": "Subject bolts during lock", "outcome": "Chains into ev_smuggler_breaks (patrol pursues per existing intent-steering)" },
+        { "trigger": "Subject is clean courier and patrol is needed elsewhere (threat event)", "outcome": "Lock aborts; patrol diverts - law has priorities" }
+      ],
+      "playerInterference": ["Fly between them and the lock transfers to YOU (you asked for it)", "Attack the patrol mid-read - the subject bolts free regardless of guilt"],
+      "criminalOpportunity": "Every second the patrol spends reading one hull is a second the rest of the lane is unwatched - other events may key on scan-in-progress",
+      "aftermath": "Scanned-clean subjects are exempt from re-scan for the session (the law remembers)",
+      "systems": ["encounterDirector.whisper", "traffic.spawnRole", "signatureVfx", "signatureVfx.reaction", "ai.passive"],
+      "fallback": "Subject despawns mid-lock: patrol sweeps once through empty space and resumes - unbothered",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The patrol_scan encounter trigger and PAINT reaction both exist; this formalizes the four-beat visible choreography around them."
+    },
+    {
+      "id": "ev_customs_pullover",
+      "title": "Customs pulls a hauler aside",
+      "category": "law",
+      "durationS": [60, 120],
+      "participants": [{ "role": "customs", "count": 1, "note": "wasp hull + authority accent until customs_cutter promoted" }, { "role": "hauler", "count": 1 }],
+      "environment": ["lane with an off-lane inspection point 60 wu abeam"],
+      "arrangement": "Customs ahead-left of the hauler; both decelerate and translate to the inspection point; hauler holds nose-out",
+      "startConditions": "Lawful-jurisdiction sector; hauler with manifest crosses the customs beat",
+      "visibleCue": "Two hulls leaving the lane TOGETHER at matched speed, the front one steering the pair - unmistakably an escort-to-the-side, not a convoy",
+      "phases": [
+        { "name": "flag_down", "durationS": 15, "visible": "Customs takes the lead-abeam slot with the steady arc-blue bar lit (no honest trade carries that light)", "signals": ["on_the_pin"] },
+        { "name": "pull_aside", "durationS": 20, "visible": "Pair translates off-lane in formation; lane traffic flows past them", "signals": ["stacking"] },
+        { "name": "inspect", "durationS": 40, "visible": "Hauler holds; customs flies ONE slow orbit around it, lock-lamp on the cargo spine the whole way - the walkaround made spatial", "signals": ["on_the_pin"] },
+        { "name": "wave_on", "durationS": 10, "visible": "Customs breaks orbit and flashes the release; hauler spines up and rejoins the lane", "signals": ["spine_wake"] }
+      ],
+      "completion": "Hauler resumes with a session 'inspected' flag; customs returns to its beat",
+      "interruptions": [
+        { "trigger": "Hauler refuses the pull (smuggler-flagged manifest)", "outcome": "Chains into ev_smuggler_breaks with customs as pursuer" },
+        { "trigger": "Combat in the pocket", "outcome": "Inspection aborts; hauler is waved on unexamined - a crime window the player can watch open" }
+      ],
+      "playerInterference": ["Get scanned yourself if you cross the orbit line", "Rob the PARKED hauler while the law circles it (audacity has a market)", "Kill the customs mid-orbit and the hauler flees - grateful or guilty, you never learn which"],
+      "criminalOpportunity": "The inspection point is fixed per beat: contraband movers learn to cross elsewhere - and so can the player",
+      "aftermath": "Inspected flag; if inspection aborted, the hauler keeps a visible unexamined marker (scanner readout nuance)",
+      "systems": ["traffic.spawnRole", "signatureVfx", "scanner.roleReadout", "donor.activityPackHull", "ai.passive"],
+      "fallback": "Customs despawns mid-orbit: hauler waits one beat, then leaves - slightly too fast",
+      "tier": "next20",
+      "blockedOn": null,
+      "diagramMermaid": "sequenceDiagram\n  participant C as Customs\n  participant H as Hauler\n  participant L as Lane traffic\n  C->>H: takes lead-abeam, arc-blue bar lit\n  C->>H: steers pair off-lane\n  L-->>L: flows past, one width wider\n  C->>C: one slow orbit, lock on cargo spine\n  C->>H: release flash\n  H->>H: spine_wake, rejoins lane"
+    },
+    {
+      "id": "ev_hazmat_escort",
+      "title": "Patrol escorts a hazardous tanker",
+      "category": "law",
+      "durationS": [60, 120],
+      "participants": [{ "role": "patrol", "count": 1 }, { "role": "tanker", "count": 1, "note": "mule + volatile manifest until donor promoted" }],
+      "environment": ["lane transit across the pocket"],
+      "arrangement": "Tanker on lane center; patrol holds the borrowed-shadow slot ahead-flank, pin toward the CLIENT, guns toward the world",
+      "startConditions": "Loaded tanker transits a lawful sector (escort flag on the traffic role pairing)",
+      "visibleCue": "An escort formation around a hull that is visibly CARGO, not a VIP - mass with a bodyguard means the mass is dangerous",
+      "phases": [
+        { "name": "join", "durationS": 15, "visible": "Patrol slides into the flank slot; its pin lamp faces the tanker (the one Working-Light signal with no profile yet - drawn with the existing sweep lamp held steady)", "signals": ["on_the_pin"] },
+        { "name": "transit", "durationS": 60, "visible": "Pair crosses the pocket; other traffic yields TWO widths instead of one - the deference measures the danger", "signals": ["heavy_burn", "on_the_pin"] },
+        { "name": "handoff", "durationS": 15, "visible": "At the boundary the patrol breaks in a wide arc and returns to its ring; the tanker continues alone", "signals": ["clean_burn"] }
+      ],
+      "completion": "Tanker leaves the sector; patrol resumes its 4-beat ring",
+      "interruptions": [
+        { "trigger": "Pirate contact within 520 wu", "outcome": "Patrol interposes between threat and tanker (existing squad escort behavior); tanker holds course - it cannot maneuver anyway" }
+      ],
+      "playerInterference": ["Fly the second flank yourself and the patrol accepts the geometry (adjacency)", "Bait the escort off with a distress flash, leaving the tanker naked (the classic two-crew job)"],
+      "criminalOpportunity": "The escort ADVERTISES the cargo's value; splitting the pair is the whole game",
+      "aftermath": "Delivered volatiles blip the destination market",
+      "systems": ["traffic.escort", "encounterDirector.squad", "signatureVfx", "traffic.manifest", "ai.passive"],
+      "fallback": "Patrol lost: tanker continues alone at reduced speed - visibly more careful",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Escort slotting exists (escorts:true) but is convoy-anchored - pairing an escort to a single cargo hull plus the doubled passive-avoid radius is a small addition, so this sits at the top of next20 rather than first15."
+    },
+    {
+      "id": "ev_smuggler_breaks",
+      "title": "Smuggler breaks from inspection",
+      "category": "law",
+      "durationS": [30, 75],
+      "participants": [{ "role": "smuggler", "count": 1 }, { "role": "patrol", "count": 1 }],
+      "environment": ["open pocket with at least one asteroid cluster for the break line"],
+      "arrangement": "Starts from ev_patrol_scans_suspect lock geometry; break vector through the nearest clutter",
+      "startConditions": "Scan lock on a smuggler-flagged subject",
+      "visibleCue": "The subject's too-perfect course wobbles once - the tell before the bolt - then the drive lights FULL",
+      "phases": [
+        { "name": "bolt", "durationS": 8, "visible": "Smuggler breaks 90 degrees through the clutter, burning hard; a clean_burn bar on a hull that motion says is HEAVY - the forgery visible in real time", "signals": ["clean_burn", "breaking_the_pattern"] },
+        { "name": "pursuit", "durationS": 30, "visible": "Patrol pursues per existing intent-steering; the pair carves visible arcs through the rocks", "signals": ["on_the_pin"] },
+        { "name": "jettison", "durationS": 8, "visible": "Smuggler dumps three cargo pickups in a spray to shed mass - and evidence", "signals": [] },
+        { "name": "resolve", "durationS": 20, "visible": "Either the patrol breaks off to secure the jettison (cargo beats collar), or it runs the smuggler down (existing combat)", "signals": [] }
+      ],
+      "completion": "Most runs end with the patrol loitering over the dumped cargo and the smuggler gone - the law got SOMETHING, the runner kept the hull",
+      "interruptions": [
+        { "trigger": "Smuggler cornered (speed matched)", "outcome": "Existing combat resolution; wreck + full cargo spill" }
+      ],
+      "playerInterference": ["Grab the jettisoned cargo before the patrol secures it (visible theft under a badge)", "Body-block the smuggler's line for the patrol", "Screen the smuggler from the patrol - you are now interesting to the law"],
+      "criminalOpportunity": "The jettison spray is free contraband IF you beat the patrol to it - a 15-second window with a witness",
+      "aftermath": "Dumped pickups persist if unclaimed; the escaped smuggler role re-weights toward this sector's edges for the session",
+      "systems": ["encounterDirector.whisper", "traffic.spawnRole", "pickups.spawn", "signatureVfx", "ai.passive"],
+      "fallback": "Patrol lost mid-chase: smuggler keeps the cargo and vanishes at the boundary - crime pays sometimes, visibly",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "Jettison = pickups.spawn with inherited velocity; the chase is existing pursuit steering. The heavy-motion/clean-lamp contradiction needs no new tech - the signal layer already reads loaded from the phase graph, and a forged flag is one boolean."
+    },
+    {
+      "id": "ev_lane_spot_closure",
+      "title": "Authorities cone off a lane segment",
+      "category": "law",
+      "durationS": [90, 180],
+      "participants": [{ "role": "patrol", "count": 2 }],
+      "environment": ["lane segment", "4 temporary marker props (lane_furniture ash pins / everyday_space_kit strobes as dressing)"],
+      "arrangement": "Two patrols hold at the segment's ends; markers drop in a rectangle around the closed span; traffic diverts one lane-width around it",
+      "startConditions": "Aftermath hook from a debris/accident event on the lane, or scheduled sweep",
+      "visibleCue": "A patrol PLACING objects - authority that stops to build something is rarer than authority that chases",
+      "phases": [
+        { "name": "cone_off", "durationS": 25, "visible": "Lead patrol drops four strobing markers in sequence, flying the rectangle", "signals": ["on_the_pin"] },
+        { "name": "divert", "durationS": 90, "visible": "Through-traffic bends around the marked box in a visible bypass bulge; second patrol holds at the choke like a crossing guard", "signals": ["on_the_pin"] },
+        { "name": "clear", "durationS": 25, "visible": "Markers collected in reverse order; traffic snaps back to lane center", "signals": [] }
+      ],
+      "completion": "Lane restored; markers gone; whatever was inside the box (debris, wreck work) finished its business unbothered",
+      "interruptions": [
+        { "trigger": "A patrol pulled away by combat", "outcome": "Markers stay but the choke goes unmanned - traffic starts cutting the corner within seconds, visibly" }
+      ],
+      "playerInterference": ["Fly through the box (nothing physically stops you - one patrol paints you disapprovingly)", "Steal a marker (it is a prop-pickup; petty crime at its pettiest)"],
+      "criminalOpportunity": "The diverted route squeezes all traffic through one predictable bend for two minutes - toll and ambush events can key on an active closure",
+      "aftermath": "None (markers recovered) - unless a marker was stolen, which the patrol notes",
+      "systems": ["traffic.spawnRole", "pickups.spawn", "donor.laneFurnitureProp", "signatureVfx", "ai.passive"],
+      "fallback": "Both patrols lost: markers persist unmanned until the session ends - an abandoned closure that keeps bending traffic is its own story",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "The divert is the passive-avoidance radius applied to four static markers - no traffic-law system needed for the SPOT closure. A true sector-wide lane closure with rerouted spawns is future.laneClosure and lives in the blocked list (ev_lane_closure_full)."
+    },
+    {
+      "id": "ev_patrol_shift_change",
+      "title": "Patrol shift change at the beat corner",
+      "category": "law",
+      "durationS": [30, 60],
+      "participants": [{ "role": "patrol", "count": 2 }],
+      "environment": ["patrol ring corner point (beat0..beat3 already exist)"],
+      "arrangement": "Off-going patrol holds at the corner; relief arrives from the station on a straight leg; 5 wu abeam pass",
+      "startConditions": "Patrol job cycle timer expires while a relief spawn is available",
+      "visibleCue": "TWO identical authority hulls in one place, neither hostile - the rarest formation in a quiet sector",
+      "phases": [
+        { "name": "hold_short", "durationS": 15, "visible": "Off-going patrol parks at its beat corner, sweep still running - the watch is never unmanned", "signals": ["on_the_pin"] },
+        { "name": "relief_inbound", "durationS": 20, "visible": "Relief launches from the station (existing patrol_launch profile) and flies the leg out", "signals": ["spine_wake", "clean_burn"] },
+        { "name": "pass_the_pin", "durationS": 8, "visible": "Slow abeam pass; the off-going sweep STOPS as the relief's STARTS - one continuous watch, two hulls", "signals": ["on_the_pin"] },
+        { "name": "stand_down", "durationS": 15, "visible": "Old patrol flies home dark and fast - off duty reads different from on", "signals": ["clean_burn"] }
+      ],
+      "completion": "Relief walks the same 4-beat ring; the old hull docks",
+      "interruptions": [
+        { "trigger": "Relief never launches", "outcome": "Off-going patrol extends its shift - and its ring visibly widens with impatience (speed +10%)" }
+      ],
+      "playerInterference": ["Time crimes to the pass-the-pin moment: both sweeps are pointed at each other for eight seconds", "Follow the off-duty hull home to find the barracks berth"],
+      "criminalOpportunity": "Shift change is the oldest hole in every guard schedule - this event TEACHES the player the beat's clock by showing it",
+      "aftermath": "None; the ring continues under new management",
+      "systems": ["npcJobs.phaseGraph", "stationSideEvents.patrol_launch", "signatureVfx", "traffic.spawnRole"],
+      "fallback": "Relief killed en route: off-going patrol re-arms its own cycle (double shift; the widened-ring tell persists)",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The patrol HOLD phase, the ring, and the station patrol_launch profile all exist - this is scheduling plus one lamp handshake."
+    },
+    {
+      "id": "ev_lane_closure_full",
+      "title": "Sector lane closed and traffic rerouted",
+      "category": "law",
+      "durationS": [120, 180],
+      "participants": [{ "role": "patrol", "count": 3 }, { "role": "hauler", "count": 3, "optional": true }],
+      "environment": ["a full lane between two stations", "barrier props"],
+      "arrangement": "Closure spans the whole lane; ALL traffic re-routes onto the secondary lane, doubling its density",
+      "startConditions": "Major incident aftermath (tanker burn, battlefield wreck) on the primary lane",
+      "visibleCue": "The busy lane goes EMPTY while the quiet one doubles - the region's traffic map visibly redrawn",
+      "phases": [
+        { "name": "close", "durationS": 40, "visible": "Patrols sweep the lane clear, escorting stragglers off it", "signals": ["on_the_pin"] },
+        { "name": "reroute", "durationS": 100, "visible": "Secondary lane runs at double density with visible congestion spacing", "signals": [] },
+        { "name": "reopen", "durationS": 40, "visible": "Barriers lift; traffic redistributes over a minute", "signals": [] }
+      ],
+      "completion": "Normal flow restored",
+      "interruptions": [{ "trigger": "Incident worsens", "outcome": "Closure extends" }],
+      "playerInterference": ["Run the empty closed lane (fastest path in the region, if you dare)", "Work the congested secondary - targets every 20 wu"],
+      "criminalOpportunity": "Doubled density on the secondary is a toll operator's dream shift",
+      "aftermath": "Traffic pattern memory for the session",
+      "systems": ["future.laneClosure", "traffic.spawnRole", "encounterDirector.toll"],
+      "fallback": "Patrols lost: closure dissolves organically",
+      "tier": "blocked",
+      "blockedOn": "future.laneClosure - traffic spawn/routing has no lane-graph concept to close; spot closures (ev_lane_spot_closure) cover the readable version until then",
+      "notes": "Kept in the catalog because the SPOT closure event chains toward it and the incident aftermath hooks already name it."
+    }
+  ]
+}

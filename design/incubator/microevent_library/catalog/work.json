@@ -1,0 +1,244 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "work",
+  "events": [
+    {
+      "id": "ev_rich_seam_strike",
+      "title": "Miner strikes a rich seam",
+      "category": "work",
+      "durationS": [40, 90],
+      "participants": [{ "role": "miner", "count": 1 }],
+      "environment": ["asteroid with a workable seam (the miner's existing field: route target)"],
+      "arrangement": "Miner at cut range (<26 wu) off the rock face, inside a pocket the player can fly through",
+      "startConditions": "Miner in WORK phase; seeded 'rich' roll on the field slot",
+      "visibleCue": "The steady amber cut-beam suddenly doubles its spall - face-spall streaks fly at twice cadence",
+      "phases": [
+        { "name": "cutting", "durationS": 15, "visible": "Ordinary blind_cone work against the seam", "signals": ["blind_cone"] },
+        { "name": "strike", "durationS": 8, "visible": "Beam holds one spot; dense spall; the flank lamp arc widens to full deploy", "signals": ["blind_cone"] },
+        { "name": "greed", "durationS": 30, "visible": "Miner repositions twice along the same face, short hops, cutting each time - a hull working FAST reads different from a hull working steady", "signals": ["blind_cone", "stacking"] },
+        { "name": "haul_out", "durationS": 20, "visible": "Loaded chevrons walk the stack; miner departs for home heavier than usual", "signals": ["home_under_rock", "heavy_burn"] }
+      ],
+      "completion": "Miner leaves for its refinery with the loaded return read; the seam keeps a brighter scar decal-of-light (lamp) for a while",
+      "interruptions": [
+        { "trigger": "Miner takes damage", "outcome": "Drops to breaking_the_pattern and flees per existing FLEE_RADIUS logic; seam stays rich" },
+        { "trigger": "Player parks inside the cut cone", "outcome": "Existing GO_DARK reaction: the miner shutters and waits" }
+      ],
+      "playerInterference": ["Mine the same seam alongside (rich yield while the window lasts)", "Follow the loaded miner home to find its refinery", "Destroy the miner and take the spill"],
+      "criminalOpportunity": "A pirate or claim-jumper who reads the doubled spall knows the load is worth taking on the return leg",
+      "aftermath": "Field slot keeps a +yield flag for a few cycles; two extra ore pickups if the miner dies loaded",
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "signatureVfx.reaction", "pickups.spawn", "vfx.substrate"],
+      "fallback": "If the rock resolves invalid (restore id-shift), the existing type-guard already falls back to the short fixed cut-beam and the event quietly ends at haul_out",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "Pure re-parameterization of the existing miner cycle: cadence, hop waypoints, and a yield flag. No new choreography runner needed."
+    },
+    {
+      "id": "ev_miner_calls_hauler",
+      "title": "Full miner calls a hauler out",
+      "category": "work",
+      "durationS": [60, 120],
+      "participants": [{ "role": "miner", "count": 1 }, { "role": "hauler", "count": 1 }],
+      "environment": ["asteroid field slot", "shared transfer point 30 wu off the field edge"],
+      "arrangement": "Miner holds at the transfer point; hauler arrives from the nearest station lane; both inside one camera pocket",
+      "startConditions": "Miner completes WORK loaded while a hauler with no manifest is in-sector",
+      "visibleCue": "The miner does NOT turn for home - it holds at the field edge flashing the load strobe, nose out",
+      "phases": [
+        { "name": "call", "durationS": 12, "visible": "Miner station-keeps, heavy_burn strobe running while parked - a loaded hull holding still is itself the signal", "signals": ["heavy_burn", "on_the_pin"] },
+        { "name": "answer", "durationS": 25, "visible": "Hauler breaks its ambient loiter, flies a visible straight leg to the field edge", "signals": ["clean_burn", "stacking"] },
+        { "name": "transfer", "durationS": 20, "visible": "Both hulls parallel, 8 wu apart; miner runs spilling_the_count, hauler runs mouth_open; dust drifts between them", "signals": ["spilling_the_count", "mouth_open"] },
+        { "name": "split", "durationS": 15, "visible": "Hauler leaves heavy toward the station; miner turns back to the seam empty", "signals": ["heavy_burn", "clean_burn"] }
+      ],
+      "completion": "Two ships leave in opposite directions, one visibly loaded, one visibly empty - readable as a handoff by anyone",
+      "interruptions": [
+        { "trigger": "Hauler destroyed en route", "outcome": "Miner waits out a 20 s timer then hauls home itself (existing return leg)" },
+        { "trigger": "Threat enters 520 wu", "outcome": "Both flee per existing logic; the load stays with the miner" }
+      ],
+      "playerInterference": ["Dock-adjacent players can undercut: destroy the hauler and the miner becomes a slow loaded target", "Escort the transfer for ambient rep", "Sit between them and both GO_DARK/BRIGHTEN react per role"],
+      "criminalOpportunity": "The transfer window is the softest moment - two parked hulls, one already unloading",
+      "aftermath": "Hauler carries a real manifest (existing traffic.manifest) that a scan reads as ore",
+      "systems": ["npcJobs.phaseGraph", "npcJobsRuntime.assign", "traffic.manifest", "signatureVfx", "scanner.roleReadout"],
+      "fallback": "Either actor despawning reverts the other to its ordinary cycle at the next phase edge",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "Both cycles already exist; the new piece is one shared waypoint and a wait-with-timeout, which the kernel's timed phases already express.",
+      "diagramMermaid": "sequenceDiagram\n  participant M as Miner\n  participant H as Hauler\n  M->>M: WORK completes loaded\n  M->>H: holds at field edge (heavy_burn strobe)\n  H->>M: straight leg to transfer point\n  M-->>H: spilling_the_count / mouth_open (20 s)\n  H->>H: departs heavy to station\n  M->>M: returns empty to seam"
+    },
+    {
+      "id": "ev_tanker_loads_at_harvester",
+      "title": "Tanker loads at an ice harvester",
+      "category": "work",
+      "durationS": [50, 100],
+      "participants": [{ "role": "tanker", "count": 1, "note": "runs on ship_mule + volatile manifest until the donor hull is promoted" }, { "role": "miner", "count": 1, "note": "ice-cutting variant of the ordinary cycle" }],
+      "environment": ["ice asteroid (cmdty_ice_water source)", "optional everyday_space_kit formed-vessel prop as the harvester's standpipe"],
+      "arrangement": "Miner works the ice face; tanker noses to a standpipe point 15 wu off, BOW toward it - couplings before cranes",
+      "startConditions": "Ice field slot active with a miner in WORK; tanker role spawn available",
+      "visibleCue": "A hull approaching a work site nose-first and slowing to a crawl - nothing else in the fleet leads with its bow",
+      "phases": [
+        { "name": "approach", "durationS": 20, "visible": "Tanker's long flat stacking approach, far wider than a fighter would fly", "signals": ["stacking"] },
+        { "name": "couple", "durationS": 10, "visible": "Bow-hold 6 wu off the standpipe; white flood lights the coupling point", "signals": ["mouth_open"] },
+        { "name": "load", "durationS": 35, "visible": "mouth_open cadence at the BOW; miner's spall keeps falling behind it - two trades working one rock", "signals": ["mouth_open", "blind_cone"] },
+        { "name": "depart_heavy", "durationS": 15, "visible": "Tanker leaves with the mass strobe; wide turn, no hurry", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Tanker departs visibly heavy toward the station; miner keeps cutting",
+      "interruptions": [
+        { "trigger": "Combat within 520 wu", "outcome": "Tanker breaks off FIRST (volatile doctrine), miner follows existing flee" }
+      ],
+      "playerInterference": ["Scan the departing tanker: volatile manifest", "A hit on a loaded tanker produces the existing big secondary (wreck class fresh + burn VFX)"],
+      "criminalOpportunity": "Loaded volatiles are the highest value-per-shot target in the region - and everyone can read the strobe",
+      "aftermath": "Station fuel market blips down on delivery (market news system exists)",
+      "systems": ["npcJobs.phaseGraph", "traffic.manifest", "signatureVfx", "donor.activityPackHull", "donor.everydaySpaceProp", "wrecks.spawn"],
+      "fallback": "No tanker available: miner's cycle continues alone; the standpipe prop just sits there (props never depend on actors)",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Needs a 'tanker' TRAFFIC_ROLES entry (hauler clone + manifest filter). Everything else is the hauler graph with the transfer at route index 1 instead of 0."
+    },
+    {
+      "id": "ev_cutter_strips_wreck",
+      "title": "Salvage cutter strips a wreck, piece by piece",
+      "category": "work",
+      "durationS": [60, 120],
+      "participants": [{ "role": "salvor", "count": 1 }],
+      "environment": ["wreck (class fresh or battlefield)"],
+      "arrangement": "Salvor holds 10-14 wu off the wreck's long axis, working side toward it",
+      "startConditions": "Existing salvor job (yard<->hulk) reaches WORK at a wreck inside a traveled pocket",
+      "visibleCue": "Three hooded amber umbrellas swing out and light the wreck's flank from above - salvage light is confession light",
+      "phases": [
+        { "name": "survey_cut", "durationS": 15, "visible": "picking_the_bones: cutter arc walks the seam line", "signals": ["picking_the_bones"] },
+        { "name": "sever", "durationS": 20, "visible": "Arc holds one point; a plate-sized fragment separates from the wreck (pickup spawn with the wreck's drift)", "signals": ["picking_the_bones"] },
+        { "name": "wrangle", "durationS": 20, "visible": "The LOAD act that makes a salvor a salvor: tether streak from the hip reel to the fragment, fragment reels in", "signals": ["picking_the_bones"] },
+        { "name": "stack", "durationS": 12, "visible": "Fragment vanishes into the cradle; drum stack lamp ticks the tally", "signals": ["spilling_the_count"] }
+      ],
+      "completion": "Repeats until the wreck's salvage budget empties (existing salvage.strip), then home_under_rock back to the yard",
+      "interruptions": [
+        { "trigger": "Player tethers the same fragment", "outcome": "Salvor's WATCH reaction; it yields the piece and cuts the next one - no combat over one plate" },
+        { "trigger": "Salvor destroyed", "outcome": "Fragment pickups remain; the wreck keeps its remaining budget" }
+      ],
+      "playerInterference": ["Steal cut fragments before the wrangle", "Cut the far side yourself - two crews stripping one hulk reads instantly", "Kill the salvor for its loaded cradle"],
+      "criminalOpportunity": "Fragments mid-wrangle are free-floating cargo with a witness who will not fight for them",
+      "aftermath": "Wreck visually diminishes (existing wreck stages if present; else fragment count is the read); scrap pickups persist",
+      "systems": ["npcJobs.phaseGraph", "salvage.strip", "pickups.spawn", "signatureVfx", "signatureVfx.reaction", "wrecks.spawn"],
+      "fallback": "Wreck despawns mid-cut: salvor plays one confused sweep (existing sweep lamp) and departs for the yard empty",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The salvor kernel cycle IS this event; the addition is spawning the severed fragment as a pickup between WORK and LOAD so the wrangle has a visible object."
+    },
+    {
+      "id": "ev_tug_repositions_cargo",
+      "title": "Tug walks a drifting pod back to the stack",
+      "category": "work",
+      "durationS": [45, 90],
+      "participants": [{ "role": "tug", "count": 1, "note": "runs on ship_mule until donor hull promoted" }],
+      "environment": ["free-floating cargo pod (pickup or everyday_space_kit berth pod as dressing)", "station or platform with a marked stack point"],
+      "arrangement": "Pod adrift 40-80 wu off a station; tug approaches from the dock side; stack point in the pocket",
+      "startConditions": "A pod exists off-stack (seeded, or aftermath of ev_pod_breaks_clamp)",
+      "visibleCue": "A hull flying NOSE-FIRST at a dead object, decelerating to a crawl nobody else uses",
+      "phases": [
+        { "name": "line_up", "durationS": 15, "visible": "stacking flown for the POD - the tug's whole grammar is approaches on behalf of things", "signals": ["stacking"] },
+        { "name": "kiss", "durationS": 8, "visible": "Contact hold at 2 wu; cradle floods on; pod picks up the tug's exact drift", "signals": [] },
+        { "name": "walk", "durationS": 30, "visible": "Pair moves as one at walking pace toward the stack, thruster ticks in count - seven, eight, nine, kiss", "signals": ["heavy_burn"] },
+        { "name": "set", "durationS": 10, "visible": "Pod released at the stack point with matched velocity; tug backs off two lengths", "signals": ["clean_burn"] }
+      ],
+      "completion": "Pod sits in the stack; tug loiters at the apron or answers the next stray",
+      "interruptions": [
+        { "trigger": "Pod destroyed", "outcome": "Tug aborts to apron loiter; debris pickups spawn" },
+        { "trigger": "Player tethers the pod first", "outcome": "Tug station-keeps and WATCHes; yields the job" }
+      ],
+      "playerInterference": ["Steal the pod (it is real cargo)", "Nudge the pod away and watch the tug patiently re-approach", "Do the job first with your own tether"],
+      "criminalOpportunity": "A pod mid-walk is claimed property in the open - taking it in front of the tug is a witnessed theft",
+      "aftermath": "Stack gains one pod (persists in sector state)",
+      "systems": ["traffic.spawnRole", "pickups.spawn", "signatureVfx", "donor.activityPackHull", "donor.everydaySpaceProp", "vfx.substrate"],
+      "fallback": "Tug despawns: pod stays adrift; the event re-arms for the next tug spawn",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "The 'carry' is parented drift (pod copies tug velocity while linked) - no tow physics needed; the Massline tether system already proves object-carrying reads fine."
+    },
+    {
+      "id": "ev_tender_services_miner",
+      "title": "Repair tender services a miner at the seam",
+      "category": "work",
+      "durationS": [60, 120],
+      "participants": [{ "role": "tender", "count": 1 }, { "role": "miner", "count": 1 }],
+      "environment": ["asteroid field with an active miner"],
+      "arrangement": "Miner holds at its rock, cone dark; tender parks 6 wu abeam, working side inward",
+      "startConditions": "Existing tender job (berth<->client) with the client resolved to a working miner whose wear timer fired",
+      "visibleCue": "A miner's cut-beam dies mid-shift and the hull just SITS there - wrong for the trade, and the first responder is not a rescue ship",
+      "phases": [
+        { "name": "callout", "durationS": 20, "visible": "Tender's DEPART wake and a clean fast leg to the field", "signals": ["spine_wake", "clean_burn"] },
+        { "name": "hard_stand", "durationS": 10, "visible": "Tender station-keeps abeam; four red corners come on; white bar deploys", "signals": ["hull_open"] },
+        { "name": "work", "durationS": 45, "visible": "Weld stitch walks the miner's drill housing; miner stays dark and still - crew outside, do not push", "signals": ["hull_open"] },
+        { "name": "first_light", "durationS": 10, "visible": "Miner's cone relights and takes a test cut; tender strikes the bar and departs", "signals": ["blind_cone", "spine_wake"] }
+      ],
+      "completion": "Miner resumes its ordinary cycle; tender returns to berth - the whole story is one light dying and coming back",
+      "interruptions": [
+        { "trigger": "Player noses inside the red corners", "outcome": "Existing FLINCH reaction: corners brighten, weld star suppressed until you leave" },
+        { "trigger": "Tender killed mid-work", "outcome": "Miner stays dark, then limps home at half speed - a visible consequence trail" }
+      ],
+      "playerInterference": ["Guard the repair", "Kill the DARK miner (it cannot flee well mid-service)", "Scan both: tender manifest reads parts"],
+      "criminalOpportunity": "Two parked hulls, one disabled, one crewed-outside: the softest double target the working world produces",
+      "aftermath": "Miner's wear timer resets; if the repair failed, the miner's next three cycles run at reduced speed (visible limp)",
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "signatureVfx.reaction", "traffic.manifest"],
+      "fallback": "Client miner despawns: tender flies the leg, sweeps once, returns (the existing no-client path)",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The tender cycle exists end-to-end; the addition is pausing the CLIENT's cycle during service - one flag read by the miner's stepper."
+    },
+    {
+      "id": "ev_surveyor_probe_line",
+      "title": "Surveyor lays a probe line",
+      "category": "work",
+      "durationS": [60, 120],
+      "participants": [{ "role": "surveyor", "count": 1 }],
+      "environment": ["empty quarter of a pocket (no station within 200 wu)", "3 probe objects (pickup-class, lane_furniture lane-pin as dressing)"],
+      "arrangement": "Three drop points 40 wu apart on a line crossing the pocket; surveyor flies them in order",
+      "startConditions": "Existing surveyor 4-mark lattice job; probe-drop variant selected",
+      "visibleCue": "The sideways-flying hull: a surveyor on the line crabs with its boom out, motion no other trade uses",
+      "phases": [
+        { "name": "mark_run", "durationS": 25, "visible": "reading_the_dark pulse rings while crabbing to the first drop point", "signals": ["reading_the_dark"] },
+        { "name": "drop_1", "durationS": 8, "visible": "A small lit object separates and stays - green pin lamp at rest", "signals": ["reading_the_dark"] },
+        { "name": "drop_2", "durationS": 20, "visible": "Same at point two; the line becomes visible as two green dots behind the mover", "signals": ["reading_the_dark"] },
+        { "name": "drop_3_close", "durationS": 25, "visible": "Third drop; surveyor holds at the far end and the three probes pulse ONCE in sequence - a wave down the line", "signals": ["reading_the_dark", "on_the_pin"] }
+      ],
+      "completion": "Probe line persists, pulsing lazily; surveyor departs to its next mark",
+      "interruptions": [
+        { "trigger": "Probe destroyed", "outcome": "Surveyor returns and re-drops ONE replacement, once; twice and it abandons the line" }
+      ],
+      "playerInterference": ["Shoot probes (they are objects)", "Steal a probe (pickup) and the survey line goes dark behind you", "Follow the line - it points at the surveyor's find"],
+      "criminalOpportunity": "A probe line is a treasure map drawn in public: prospectors and pirates can both read where it is pointing",
+      "aftermath": "Probes persist for the session as sector objects; a later rich-seam or anomaly event can seed AT the line's far end (composability hook)",
+      "systems": ["npcJobs.phaseGraph", "pickups.spawn", "signatureVfx", "donor.laneFurnitureProp", "sectorZones.slot"],
+      "fallback": "Surveyor lost mid-line: placed probes stay; the wave-pulse close never fires (an unfinished line reads as exactly that)",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Drop = pickup spawn at self position; the sequence pulse is three timed lamp calls. The surveyor mark-lattice job already flies the geometry."
+    },
+    {
+      "id": "ev_prospector_stakes_claim",
+      "title": "Prospector fires a claim stake",
+      "category": "work",
+      "durationS": [30, 60],
+      "participants": [{ "role": "miner", "count": 1, "note": "prospector variant; donor hull prospector_skiff when promoted" }],
+      "environment": ["unworked asteroid", "claim stake object (lane_furniture claim mark is the existing prop class)"],
+      "arrangement": "Small hull hunting across a field at reading pace, then one rock at close range",
+      "startConditions": "Prospector-variant miner finishes a reading_the_dark hunt with a positive roll",
+      "visibleCue": "A tiny hull that hunts like a surveyor but is dressed like a miner - and then it SHOOTS the rock",
+      "phases": [
+        { "name": "hunt", "durationS": 20, "visible": "Slow pass with green pulse ring - wrong signal for a mining hull, which is the tell it is prospecting", "signals": ["reading_the_dark"] },
+        { "name": "stake", "durationS": 5, "visible": "One projectile arc to the rock face; a lit claim mark appears where it hits (amber tick)", "signals": [] },
+        { "name": "circle", "durationS": 15, "visible": "One tight possession orbit of the rock - animals and prospectors do this identically", "signals": ["clean_burn"] },
+        { "name": "leave_or_cut", "durationS": 15, "visible": "Either departs (registering the claim) or unfolds arms and starts cutting immediately", "signals": ["blind_cone"] }
+      ],
+      "completion": "Rock carries a persistent lit claim mark; a miner (this one or another) works THAT rock preferentially later",
+      "interruptions": [
+        { "trigger": "Another ship approaches during circle", "outcome": "Prospector holds the orbit between intruder and stake - the movement-only argument from the brief" }
+      ],
+      "playerInterference": ["Shoot the stake off the rock (claim erased - witnessed vandalism)", "Mine the claimed rock and the owner reacts (PAINT + hold-off orbit)", "Stake an adjacent rock with the existing claim beacon verb (U)"],
+      "criminalOpportunity": "Claim jumping is the founding crime of the belt - the stake tells everyone exactly what is worth stealing",
+      "aftermath": "Claim mark persists on the rock; field slot records an owner id",
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "pickups.spawn", "donor.laneFurnitureProp", "sectorZones.slot"],
+      "fallback": "Prospector dies after staking: the mark persists unowned - free real estate with a story attached",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "The player already has a claim-beacon verb (U); this mirrors it for NPCs. Stake projectile = existing projectile VFX with a spawn-on-impact prop."
+    }
+  ]
+}
