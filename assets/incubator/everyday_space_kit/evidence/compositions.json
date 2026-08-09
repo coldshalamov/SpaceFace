@@ -1,0 +1,629 @@
+{
+  "schema": "spaceface.everydaySpaceKit.compositions.v1",
+  "note": "replay by instancing source GLBs at positionM/yawDeg; staging entries are render-only props, listed so a wiring lane knows what VFX/geology to substitute",
+  "scenes": [
+    {
+      "id": "comp1_mining_worksite",
+      "title": "active mining worksite",
+      "instances": [
+        {
+          "asset": "drill_platform",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "crusher_module",
+          "positionM": [
+            26,
+            -6,
+            0
+          ],
+          "yawDeg": 175
+        },
+        {
+          "asset": "conveyor_truss",
+          "positionM": [
+            46,
+            0,
+            1.2
+          ],
+          "yawDeg": 20
+        },
+        {
+          "asset": "ore_bulk_container",
+          "positionM": [
+            62,
+            10,
+            0
+          ],
+          "yawDeg": 12
+        },
+        {
+          "asset": "ore_bulk_container",
+          "positionM": [
+            63,
+            1,
+            0
+          ],
+          "yawDeg": -8
+        },
+        {
+          "asset": "extraction_mast",
+          "positionM": [
+            -12,
+            10,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "extraction_mast",
+          "positionM": [
+            14,
+            16,
+            0
+          ],
+          "yawDeg": 40
+        },
+        {
+          "asset": "radiator_bank",
+          "positionM": [
+            -6,
+            -24,
+            0
+          ],
+          "yawDeg": 90
+        },
+        {
+          "asset": "slurry_tank",
+          "positionM": [
+            16,
+            -22,
+            0
+          ],
+          "yawDeg": 10
+        },
+        {
+          "asset": "power_skid",
+          "positionM": [
+            -12,
+            -8,
+            0
+          ],
+          "yawDeg": 30
+        }
+      ],
+      "stagingProps": [
+        "seamed boulder under the drill bit",
+        "amber cut beam bit-to-rock",
+        "cable trunk power_skid-to-drill"
+      ],
+      "camera": {
+        "targetM": [
+          22,
+          -2,
+          0
+        ],
+        "radiusM": 76
+      }
+    },
+    {
+      "id": "comp2_refinery_loading",
+      "title": "refinery loading dock",
+      "instances": [
+        {
+          "asset": "freight_platform",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "container_rack",
+          "positionM": [
+            20,
+            9,
+            0
+          ],
+          "yawDeg": 90
+        },
+        {
+          "asset": "container_rack",
+          "positionM": [
+            20,
+            -8,
+            0
+          ],
+          "yawDeg": 90
+        },
+        {
+          "asset": "transfer_arm",
+          "positionM": [
+            4,
+            13,
+            0
+          ],
+          "yawDeg": -35
+        },
+        {
+          "asset": "tanker_coupling",
+          "positionM": [
+            -17,
+            -10,
+            0
+          ],
+          "yawDeg": 25
+        },
+        {
+          "asset": "worklight_tower",
+          "positionM": [
+            -15,
+            11,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "cargo_pod_standard",
+          "positionM": [
+            28,
+            1,
+            0.8
+          ],
+          "yawDeg": 5
+        },
+        {
+          "asset": "cargo_pod_hazmat",
+          "positionM": [
+            -12,
+            -16,
+            1.0
+          ],
+          "yawDeg": -12
+        },
+        {
+          "asset": "traffic_signal",
+          "positionM": [
+            -8,
+            -18,
+            0
+          ],
+          "yawDeg": 90
+        }
+      ],
+      "stagingProps": [
+        "pod hanging at the transfer-arm grapple",
+        "tanker berth held clear"
+      ],
+      "camera": {
+        "targetM": [
+          4,
+          -1,
+          2
+        ],
+        "radiusM": 62
+      }
+    },
+    {
+      "id": "comp3_customs_checkpoint",
+      "title": "customs checkpoint",
+      "instances": [
+        {
+          "asset": "transponder_gate",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "customs_pylon",
+          "positionM": [
+            -9,
+            15,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "customs_pylon",
+          "positionM": [
+            -9,
+            -15,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "inspection_platform",
+          "positionM": [
+            -30,
+            19,
+            0
+          ],
+          "yawDeg": -15
+        },
+        {
+          "asset": "interdiction_buoy",
+          "positionM": [
+            16,
+            11,
+            3
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "interdiction_buoy",
+          "positionM": [
+            16,
+            -11,
+            3
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "sensor_mast",
+          "positionM": [
+            -22,
+            -15,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "traffic_signal",
+          "positionM": [
+            8,
+            13,
+            0
+          ],
+          "yawDeg": 180
+        }
+      ],
+      "stagingProps": [
+        "held pod in the inspection cradle",
+        "arc-blue scan beam pylon-to-pod"
+      ],
+      "camera": {
+        "targetM": [
+          -8,
+          0,
+          5
+        ],
+        "radiusM": 64
+      }
+    },
+    {
+      "id": "comp4_repair_yard",
+      "title": "repair yard",
+      "instances": [
+        {
+          "asset": "maintenance_gantry",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "repair_scaffold",
+          "positionM": [
+            1.5,
+            6.8,
+            1.6
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "welding_drone",
+          "positionM": [
+            3,
+            4.2,
+            5.6
+          ],
+          "yawDeg": -20
+        },
+        {
+          "asset": "welding_drone",
+          "positionM": [
+            -4,
+            4.8,
+            4.4
+          ],
+          "yawDeg": 160
+        },
+        {
+          "asset": "welding_drone",
+          "positionM": [
+            5,
+            -3.8,
+            5.2
+          ],
+          "yawDeg": 90
+        },
+        {
+          "asset": "parts_rack",
+          "positionM": [
+            -15,
+            -8,
+            0
+          ],
+          "yawDeg": 10
+        },
+        {
+          "asset": "power_skid",
+          "positionM": [
+            14,
+            -10,
+            0
+          ],
+          "yawDeg": -5
+        },
+        {
+          "asset": "worklight_tower",
+          "positionM": [
+            -14,
+            10,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "worklight_tower",
+          "positionM": [
+            16,
+            8,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "repair_scaffold_bent",
+          "positionM": [
+            -18,
+            3,
+            0
+          ],
+          "yawDeg": 75
+        }
+      ],
+      "stagingProps": [
+        "scorched client hull slab under the gantry",
+        "blue weld arcs drone-to-hull",
+        "cable trunk power_skid-to-gantry-leg"
+      ],
+      "camera": {
+        "targetM": [
+          -1,
+          0,
+          3
+        ],
+        "radiusM": 56
+      }
+    },
+    {
+      "id": "comp5_shipbreaking_yard",
+      "title": "salvage / shipbreaking yard",
+      "instances": [
+        {
+          "asset": "hull_rack",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "salvage_clamp",
+          "positionM": [
+            15,
+            -8,
+            0
+          ],
+          "yawDeg": -30
+        },
+        {
+          "asset": "scrap_cage",
+          "positionM": [
+            -14,
+            -11,
+            0
+          ],
+          "yawDeg": 8
+        },
+        {
+          "asset": "scrap_cage",
+          "positionM": [
+            -22,
+            -4,
+            0
+          ],
+          "yawDeg": -14
+        },
+        {
+          "asset": "improvised_dock",
+          "positionM": [
+            -6,
+            15,
+            0
+          ],
+          "yawDeg": 170
+        },
+        {
+          "asset": "illicit_transfer_frame",
+          "positionM": [
+            17,
+            12,
+            0
+          ],
+          "yawDeg": -60
+        },
+        {
+          "asset": "pirate_sensor_mast",
+          "positionM": [
+            -21,
+            9,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "power_skid_patched",
+          "positionM": [
+            8,
+            -15,
+            0
+          ],
+          "yawDeg": 12
+        },
+        {
+          "asset": "cargo_pod_standard_breached",
+          "positionM": [
+            24,
+            2,
+            0.6
+          ],
+          "yawDeg": 33
+        }
+      ],
+      "stagingProps": [
+        "drifting cut slabs",
+        "orange cutter arc at the clamp jaw"
+      ],
+      "camera": {
+        "targetM": [
+          0,
+          0,
+          3
+        ],
+        "radiusM": 62
+      }
+    },
+    {
+      "id": "comp6_station_construction",
+      "title": "station construction zone",
+      "instances": [
+        {
+          "asset": "construction_frame",
+          "positionM": [
+            0,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "maintenance_gantry",
+          "positionM": [
+            6,
+            0,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "welding_drone",
+          "positionM": [
+            10,
+            2,
+            4
+          ],
+          "yawDeg": -140
+        },
+        {
+          "asset": "welding_drone",
+          "positionM": [
+            -2,
+            -3,
+            5
+          ],
+          "yawDeg": 30
+        },
+        {
+          "asset": "solar_array",
+          "positionM": [
+            -26,
+            15,
+            2
+          ],
+          "yawDeg": 20
+        },
+        {
+          "asset": "comms_array",
+          "positionM": [
+            24,
+            -14,
+            0
+          ],
+          "yawDeg": -25
+        },
+        {
+          "asset": "habitat_pod",
+          "positionM": [
+            -22,
+            -13,
+            1
+          ],
+          "yawDeg": 5
+        },
+        {
+          "asset": "utility_module",
+          "positionM": [
+            -15,
+            -13,
+            0.5
+          ],
+          "yawDeg": 5
+        },
+        {
+          "asset": "power_skid",
+          "positionM": [
+            -8,
+            -15,
+            0
+          ],
+          "yawDeg": 0
+        },
+        {
+          "asset": "parts_rack",
+          "positionM": [
+            14,
+            11,
+            0
+          ],
+          "yawDeg": -80
+        },
+        {
+          "asset": "worklight_tower",
+          "positionM": [
+            -16,
+            8,
+            0
+          ],
+          "yawDeg": 0
+        }
+      ],
+      "stagingProps": [
+        "staged skin panels at the bare bays",
+        "blue weld arcs on the forward ribs"
+      ],
+      "camera": {
+        "targetM": [
+          0,
+          -1,
+          2
+        ],
+        "radiusM": 58
+      }
+    }
+  ]
+}

@@ -1,0 +1,1860 @@
+{
+  "schema": "spaceface.everydaySpaceKit.v1",
+  "provenance": {
+    "builderPath": "tools/blender/build_everyday_space_kit.py",
+    "builderSha256AtAssetGeneration": "116a1f23e75d1edf8f883ddb2af8dcb54694c3da2a7e3c0ad8aff2771553180b",
+    "blenderVersionAtAssetGeneration": "5.1.2",
+    "gltfGeneratorRecords": [
+      "Khronos glTF Blender I/O v5.1.20"
+    ],
+    "canonicalFullBuildCommandForRevalidation": "blender --background --factory-startup --python tools/blender/build_everyday_space_kit.py -- --render --distances --sheets --compositions",
+    "byteReproducibilityStatus": "unverified_until_two_full_builds_match_under_the_same_pinned_toolchain"
+  },
+  "assets": [
+    {
+      "id": "cargo_pod_standard",
+      "status": "design_candidate",
+      "triangles": 168,
+      "sizeM": [
+        6.12,
+        3.4,
+        3.23
+      ],
+      "parts": 7,
+      "sockets": [
+        "SOCKET_Clamp_Dorsal",
+        "SOCKET_Hoist_Center"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.015
+        ],
+        "halfExtentsM": [
+          3.06,
+          1.7,
+          1.615
+        ]
+      },
+      "bytes": 17624,
+      "sha256": "881fd6e5d74e1eccfe4271942198c6c5b78cdd8899ce92ef8f29e7dd71095ce7",
+      "family": "cargo",
+      "role": "Berth-standard 6x3x3 freight pod \u2014 the unit of this economy",
+      "states": "active=racked/clamped; abandoned=drifting loose; see _breached variant",
+      "placement": "racks, hauler spines, platform decks, customs cradles \u2014 everywhere",
+      "lodPlan": "LOD1: body+end frames; LOD2: single box",
+      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_standard.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "cargo_pod_hazmat",
+      "status": "design_candidate",
+      "triangles": 404,
+      "sizeM": [
+        6.12,
+        3.4,
+        3.55
+      ],
+      "parts": 12,
+      "sockets": [
+        "SOCKET_Clamp_Dorsal"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.175
+        ],
+        "halfExtentsM": [
+          3.06,
+          1.7,
+          1.775
+        ]
+      },
+      "bytes": 39500,
+      "sha256": "3e7b2cf7f7a28ca523c7cb2da5e5024c88aa7683f7ff002c1be54b1707c069c0",
+      "family": "cargo",
+      "role": "volatile-cargo pod: white shell, red banding, relief domes",
+      "states": "as cargo_pod_standard; hazard read must survive LOD1",
+      "placement": "tanker couplings, refinery aprons, NEVER inside habitat clusters",
+      "lodPlan": "LOD1: body+bands; LOD2: single box (bands baked to texture)",
+      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_hazmat.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "cargo_pod_standard_breached",
+      "status": "design_candidate",
+      "triangles": 264,
+      "sizeM": [
+        6.12,
+        6.436,
+        3.409
+      ],
+      "parts": 15,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -1.518,
+          -0.074
+        ],
+        "halfExtentsM": [
+          3.06,
+          3.218,
+          1.704
+        ]
+      },
+      "bytes": 30812,
+      "sha256": "f8ed41dc99f3c9253a13f2bde3a77e6e5ddac8b7e6d5419986ac2c427219ea0b",
+      "family": "cargo",
+      "role": "breached pod: torn flank, spilled crates, no lights",
+      "states": "this IS the damaged state of cargo_pod_standard",
+      "placement": "wreck fields, salvage yards, pirate ambush sites",
+      "lodPlan": "LOD1: drop spill crates; LOD2: single box",
+      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_standard_breached.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "ore_bulk_container",
+      "status": "design_candidate",
+      "triangles": 720,
+      "sizeM": [
+        10.2,
+        5.275,
+        4.76
+      ],
+      "parts": 16,
+      "sockets": [
+        "SOCKET_Hoist_Center"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.062,
+          0.355
+        ],
+        "halfExtentsM": [
+          5.1,
+          2.637,
+          2.38
+        ]
+      },
+      "bytes": 65944,
+      "sha256": "3f3206c9dc4c95d1ab6565993924bfb96001af1378ace2446fff2fce03215f38",
+      "family": "cargo",
+      "role": "open-top bulk ore box, load proud of the rim (show your mass)",
+      "states": "active=ore mound present; abandoned=empty box (subtraction)",
+      "placement": "mining worksites, conveyor discharge, barge loading aprons",
+      "lodPlan": "LOD1: box+ore as one; LOD2: single box",
+      "render": "assets/incubator/everyday_space_kit/evidence/ore_bulk_container.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "container_rack",
+      "status": "design_candidate",
+      "triangles": 6600,
+      "sizeM": [
+        13.539,
+        8.36,
+        11.7
+      ],
+      "parts": 53,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Bay_Free"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          1.78
+        ],
+        "halfExtentsM": [
+          6.769,
+          4.18,
+          5.85
+        ]
+      },
+      "bytes": 433856,
+      "sha256": "25d0d93e59fbc41d0f466baa03d2f55c9cfd7b2c6030f74b04b70cb46c931f28",
+      "family": "cargo",
+      "role": "six-bay pod rack; the lit green bay says \"space available\"",
+      "states": "active=pods+bay lamps; see _abandoned variant",
+      "placement": "station aprons, freight platforms, trade corridors",
+      "lodPlan": "LOD1: rails as boxes, pods keep; LOD2: filled box block",
+      "render": "assets/incubator/everyday_space_kit/evidence/container_rack.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "container_rack_abandoned",
+      "status": "design_candidate",
+      "triangles": 5144,
+      "sizeM": [
+        14.064,
+        9.576,
+        11.482
+      ],
+      "parts": 14,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.263,
+          0.608,
+          1.529
+        ],
+        "halfExtentsM": [
+          7.032,
+          4.788,
+          5.741
+        ]
+      },
+      "bytes": 320448,
+      "sha256": "e305605d33a614f9382d1639df3b61832d5f2cf60ab7ef8729f29dfc38ce4f6c",
+      "family": "cargo",
+      "role": "stripped dead rack: cargo gone, lamps gone, one leg buckled",
+      "states": "this IS the abandoned state of container_rack",
+      "placement": "derelict claims, pirate fringes, decayed trade corridors",
+      "lodPlan": "LOD1: keep silhouette incl. fallen rail; LOD2: open frame box",
+      "render": "assets/incubator/everyday_space_kit/evidence/container_rack_abandoned.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "transfer_arm",
+      "status": "design_candidate",
+      "triangles": 1128,
+      "sizeM": [
+        20.3,
+        4.6,
+        10.45
+      ],
+      "parts": 18,
+      "sockets": [
+        "SOCKET_Grapple",
+        "SOCKET_Slew_Base"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          6.25,
+          0.0,
+          5.175
+        ],
+        "halfExtentsM": [
+          10.15,
+          2.3,
+          5.225
+        ]
+      },
+      "bytes": 89332,
+      "sha256": "e582ca18ad3d63498dcdf5e212d4e2bf853496752a1e94e7e26d9a9a6370dd76",
+      "family": "cargo",
+      "role": "slew-ring cargo crane, two-segment boom, four-finger grapple",
+      "states": "active=boom out+flood on; cold=boom parked over counterweight (pose at instancing)",
+      "placement": "freight platforms, refinery aprons, dock edges \u2014 reach must overlap a rack",
+      "lodPlan": "LOD1: booms as boxes; LOD2: post+single bent box",
+      "render": "assets/incubator/everyday_space_kit/evidence/transfer_arm.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "tanker_coupling",
+      "status": "design_candidate",
+      "triangles": 712,
+      "sizeM": [
+        12.2,
+        6.2,
+        7.617
+      ],
+      "parts": 22,
+      "sockets": [
+        "SOCKET_Berth_Tanker",
+        "SOCKET_Coupler"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          2.0,
+          0.1,
+          3.808
+        ],
+        "halfExtentsM": [
+          6.1,
+          3.1,
+          3.808
+        ]
+      },
+      "bytes": 61020,
+      "sha256": "63c66dbbe9fef007031b8528318ac3b0ffc4c8bd46df07219d12febfbcbdf5f3",
+      "family": "cargo",
+      "role": "volatile transfer manifold: risers, insulated hose boom, drip shield",
+      "states": "active=flood lit, hose down to coupler; cold=hose racked vertical (re-pose)",
+      "placement": "refinery flanks, fuel depots; berth socket marks where the tanker holds",
+      "lodPlan": "LOD1: merge risers; LOD2: base+tower box",
+      "render": "assets/incubator/everyday_space_kit/evidence/tanker_coupling.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "freight_platform",
+      "status": "design_candidate",
+      "triangles": 4152,
+      "sizeM": [
+        26.4,
+        14.45,
+        9.985
+      ],
+      "parts": 47,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Crane_Mount"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.025,
+          4.142
+        ],
+        "halfExtentsM": [
+          13.2,
+          7.225,
+          4.992
+        ]
+      },
+      "bytes": 293024,
+      "sha256": "407aad21bd1f49c3e5507fe68d55dbe5eae4f6c1a1f5e67aeb5eb85839e86b29",
+      "family": "cargo",
+      "role": "open freight deck: rack rows, crew cab, flood masts, handed approach",
+      "states": "active=pods+lights; abandoned=strip pods, kill lights, keep hazard edge",
+      "placement": "trade corridors, station aprons; the small-depot answer (hero hubs stay stations)",
+      "lodPlan": "LOD1: deck+cab+pods; LOD2: slab",
+      "render": "assets/incubator/everyday_space_kit/evidence/freight_platform.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "drill_platform",
+      "status": "design_candidate",
+      "triangles": 2008,
+      "sizeM": [
+        14.7,
+        14.7,
+        11.74
+      ],
+      "parts": 32,
+      "sockets": [
+        "SOCKET_Drill_Bit",
+        "SOCKET_Power_In"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          -1.63
+        ],
+        "halfExtentsM": [
+          7.35,
+          7.35,
+          5.87
+        ]
+      },
+      "bytes": 148092,
+      "sha256": "35daeb6228157b3562c59bc05e5569d42c0a9fb61b76b54fb27ad2883d3af0b6",
+      "family": "mining",
+      "role": "anchored seam drill: four outrigger anchors, ring deck, lit bit",
+      "states": "active=amber floods on bit; see _cold variant (stowed+dark)",
+      "placement": "ON an asteroid seam \u2014 feet must contact rock; pairs with power_skid via trunk",
+      "lodPlan": "LOD1: legs as boxes; LOD2: house+column silhouette",
+      "render": "assets/incubator/everyday_space_kit/evidence/drill_platform.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "drill_platform_cold",
+      "status": "design_candidate",
+      "triangles": 1688,
+      "sizeM": [
+        14.6,
+        14.6,
+        10.145
+      ],
+      "parts": 18,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          -1.128
+        ],
+        "halfExtentsM": [
+          7.3,
+          7.3,
+          5.073
+        ]
+      },
+      "bytes": 114996,
+      "sha256": "b22b370806d20e887cb8d64e874998b61c3082db786962bc749a2f71fb20755f",
+      "family": "mining",
+      "role": "cold drill: bit stowed and clamped on deck, hatch dogged, no light",
+      "states": "this IS the cold/inactive state of drill_platform",
+      "placement": "played-out seams, disputed claims awaiting arbitration",
+      "lodPlan": "as drill_platform",
+      "render": "assets/incubator/everyday_space_kit/evidence/drill_platform_cold.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "crusher_module",
+      "status": "design_candidate",
+      "triangles": 628,
+      "sizeM": [
+        11.954,
+        10.889,
+        9.25
+      ],
+      "parts": 19,
+      "sockets": [
+        "SOCKET_Discharge",
+        "SOCKET_Feed"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.532,
+          0.0,
+          1.93
+        ],
+        "halfExtentsM": [
+          5.977,
+          5.445,
+          4.625
+        ]
+      },
+      "bytes": 62248,
+      "sha256": "4be10ef86163df97088a3231d092a3e573ab7dcf5fe3734dbbd455c608936896",
+      "family": "mining",
+      "role": "jaw crusher: funnel hopper, armored cheeks, scorched discharge chute",
+      "states": "active=feed lumps+amber light; cold=empty hopper, no light",
+      "placement": "between drill and conveyor/containers; discharge points at the take-away",
+      "lodPlan": "LOD1: hopper as one box; LOD2: two stacked boxes",
+      "render": "assets/incubator/everyday_space_kit/evidence/crusher_module.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "ore_sorter",
+      "status": "design_candidate",
+      "triangles": 1460,
+      "sizeM": [
+        9.698,
+        4.5,
+        7.397
+      ],
+      "parts": 21,
+      "sockets": [
+        "SOCKET_Feed",
+        "SOCKET_Grade_Out"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.094,
+          0.0,
+          1.699
+        ],
+        "halfExtentsM": [
+          4.849,
+          2.25,
+          3.699
+        ]
+      },
+      "bytes": 109844,
+      "sha256": "1a815506d6519d0566b28308ce5925c371d53a292b8f9ad3026b2b47fd7a7007",
+      "family": "mining",
+      "role": "inclined grizzly screen over three grade hoppers with tell-tale lamps",
+      "states": "active=feed on screen, lamps lit; cold=bare screen, dark",
+      "placement": "crusher discharge side; hoppers feed containers or barge baskets",
+      "lodPlan": "LOD1: hoppers as cylinders; LOD2: wedge box",
+      "render": "assets/incubator/everyday_space_kit/evidence/ore_sorter.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "slurry_tank",
+      "status": "design_candidate",
+      "triangles": 2368,
+      "sizeM": [
+        11.19,
+        4.504,
+        5.76
+      ],
+      "parts": 20,
+      "sockets": [
+        "SOCKET_Pipe_Out"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.455,
+          0.0,
+          0.02
+        ],
+        "halfExtentsM": [
+          5.595,
+          2.252,
+          2.88
+        ]
+      },
+      "bytes": 171540,
+      "sha256": "6e516d26c17b68f5e56303988e2aac4b3b26d7053f1155768b767d3aec778f50",
+      "family": "mining",
+      "role": "three formed spheres in a hazard-ended cradle + insulated downpipe",
+      "states": "active=level lamp; abandoned=lamp gone, one dome scorched",
+      "placement": "refinery process side; pipe-out aims at the next vessel",
+      "lodPlan": "LOD1: keep spheres, drop pipes; LOD2: three-lobe blob",
+      "render": "assets/incubator/everyday_space_kit/evidence/slurry_tank.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "radiator_bank",
+      "status": "design_candidate",
+      "triangles": 880,
+      "sizeM": [
+        17.0,
+        1.6,
+        7.05
+      ],
+      "parts": 23,
+      "sockets": [
+        "SOCKET_Coolant_In"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          2.475
+        ],
+        "halfExtentsM": [
+          8.5,
+          0.8,
+          3.525
+        ]
+      },
+      "bytes": 73640,
+      "sha256": "5ce61f4d0932b88132954b956fc51dcbfbf286d222b2354f51670b4cdc5c8bb0",
+      "family": "mining",
+      "role": "six-fin heat rejection bank, cores glowing furnace-amber",
+      "states": "active=hot cores; cold=swap cores to esk_bare_steel at instancing (dark fins)",
+      "placement": "shadow side of any process plant; NEVER between a habitat and its view",
+      "lodPlan": "LOD1: fins keep (they ARE the read); LOD2: single glowing slab",
+      "render": "assets/incubator/everyday_space_kit/evidence/radiator_bank.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "conveyor_truss",
+      "status": "design_candidate",
+      "triangles": 2824,
+      "sizeM": [
+        27.0,
+        4.6,
+        6.83
+      ],
+      "parts": 31,
+      "sockets": [
+        "SOCKET_Discharge_End",
+        "SOCKET_Feed_End"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.6,
+          -0.8,
+          -1.015
+        ],
+        "halfExtentsM": [
+          13.5,
+          2.3,
+          3.415
+        ]
+      },
+      "bytes": 216756,
+      "sha256": "00e35363973a7a22dbc398ed44536bec159eb7f74acaa3eb2edce8bb5a805d1d",
+      "family": "mining",
+      "role": "24 m span-gauge bucket conveyor with drive house, part-loaded",
+      "states": "active=loaded buckets+lamps; abandoned=empty buckets, belt gap, dark",
+      "placement": "crusher/sorter to containers; chains end-to-end (integer bays)",
+      "lodPlan": "LOD1: buckets merged strip; LOD2: box girder",
+      "render": "assets/incubator/everyday_space_kit/evidence/conveyor_truss.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "extraction_mast",
+      "status": "design_candidate",
+      "triangles": 728,
+      "sizeM": [
+        5.94,
+        4.48,
+        13.091
+      ],
+      "parts": 12,
+      "sockets": [
+        "SOCKET_Head"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.98,
+          1.156,
+          6.515
+        ],
+        "halfExtentsM": [
+          2.97,
+          2.24,
+          6.545
+        ]
+      },
+      "bytes": 59436,
+      "sha256": "217307c074be716b1a728ce79ef4980db981c3d406ef02645af449330162a054",
+      "family": "mining",
+      "role": "yard mast in extraction fit: three amber floods + claim strobe",
+      "states": "active=lit; cold=dark (the unlit yard is a dead yard)",
+      "placement": "worksite perimeter, one per ~40 m of active face",
+      "lodPlan": "LOD1: column as box; LOD2: single post",
+      "render": "assets/incubator/everyday_space_kit/evidence/extraction_mast.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "maintenance_gantry",
+      "status": "design_candidate",
+      "triangles": 1716,
+      "sizeM": [
+        4.0,
+        20.1,
+        10.711
+      ],
+      "parts": 18,
+      "sockets": [
+        "SOCKET_Berth",
+        "SOCKET_Hook"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.45,
+          0.0,
+          5.314
+        ],
+        "halfExtentsM": [
+          2.0,
+          10.05,
+          5.356
+        ]
+      },
+      "bytes": 122464,
+      "sha256": "9556abd595965ea4dc999e9693ab4afc441c18c09dc51dd1d19ee7a9752e39f2",
+      "family": "service",
+      "role": "portal gantry a small hull parks under: trolley hoist + tool booms",
+      "states": "active=blue-white floods down; cold=trolley parked at leg, dark",
+      "placement": "repair yards, construction sites; berth socket is the client position",
+      "lodPlan": "LOD1: trusses as box girders; LOD2: portal outline",
+      "render": "assets/incubator/everyday_space_kit/evidence/maintenance_gantry.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "repair_scaffold",
+      "status": "design_candidate",
+      "triangles": 504,
+      "sizeM": [
+        7.521,
+        3.04,
+        9.152
+      ],
+      "parts": 15,
+      "sockets": [
+        "SOCKET_Clamp"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.03,
+          3.094
+        ],
+        "halfExtentsM": [
+          3.761,
+          1.52,
+          4.576
+        ]
+      },
+      "bytes": 44752,
+      "sha256": "6eb251352834191d2cc0be4932087944611ff22b47f4b811c9110af5a3e32c99",
+      "family": "service",
+      "role": "clamp-on hull scaffold: two work decks, parts basket, rail lamps",
+      "states": "active=lamps lit; see _bent variant",
+      "placement": "clamped to a hull or frame under repair \u2014 clamp jaws must touch the client",
+      "lodPlan": "LOD1: rails merged; LOD2: open box",
+      "render": "assets/incubator/everyday_space_kit/evidence/repair_scaffold.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "repair_scaffold_bent",
+      "status": "design_candidate",
+      "triangles": 308,
+      "sizeM": [
+        7.399,
+        3.801,
+        9.152
+      ],
+      "parts": 12,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.182,
+          -0.117,
+          3.094
+        ],
+        "halfExtentsM": [
+          3.7,
+          1.9,
+          4.576
+        ]
+      },
+      "bytes": 30416,
+      "sha256": "9a9b4d8fbef32d33d9525ce1240b7801bbd4450b4bc2833cd0f1172ed751dcd5",
+      "family": "service",
+      "role": "impact-bent scaffold: kinked posts, sprung deck, one clamp gone",
+      "states": "this IS the damaged state of repair_scaffold",
+      "placement": "accident sites, hard-luck yards, salvage auctions",
+      "lodPlan": "as repair_scaffold \u2014 the kink must survive LOD1",
+      "render": "assets/incubator/everyday_space_kit/evidence/repair_scaffold_bent.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "construction_frame",
+      "status": "design_candidate",
+      "triangles": 2024,
+      "sizeM": [
+        27.218,
+        12.937,
+        8.127
+      ],
+      "parts": 34,
+      "sockets": [
+        "SOCKET_Keel_Fwd",
+        "SOCKET_Next_Panel"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          1.932,
+          0.583
+        ],
+        "halfExtentsM": [
+          13.609,
+          6.469,
+          4.063
+        ]
+      },
+      "bytes": 154392,
+      "sha256": "d3f5ccc606ee115705839b85f70c1e3d3fa30d09f96a9f801976c5568a1593dc",
+      "family": "service",
+      "role": "26 m keel section mid-build: skinned aft, bare ribs forward, panels staged",
+      "states": "this asset IS the under-construction state; completed = a future hull",
+      "placement": "station growth edges, shipyard anchorages; keel axis on the build line",
+      "lodPlan": "LOD1: ribs merged, skins keep; LOD2: half-skinned box",
+      "render": "assets/incubator/everyday_space_kit/evidence/construction_frame.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "welding_drone",
+      "status": "design_candidate",
+      "triangles": 352,
+      "sizeM": [
+        2.062,
+        1.086,
+        0.83
+      ],
+      "parts": 11,
+      "sockets": [
+        "SOCKET_Torch"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.414,
+          0.0,
+          0.015
+        ],
+        "halfExtentsM": [
+          1.031,
+          0.543,
+          0.415
+        ]
+      },
+      "bytes": 33872,
+      "sha256": "cde533f4ade58bd4ea0f870ea6e10565df9c1fbe3350fcfdedab116f21a7f995",
+      "family": "service",
+      "role": "1.9 m free-flying welder: twin manipulators, torch, quad thrusters",
+      "states": "active=torch lens lit (VFX arc at SOCKET_Torch); stowed=racked on parts_rack",
+      "placement": "swarming any service scene; scale-checks large plant in every board",
+      "lodPlan": "LOD1: body+arms; LOD2: sprite/impostor recommended",
+      "render": "assets/incubator/everyday_space_kit/evidence/welding_drone.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "parts_rack",
+      "status": "design_candidate",
+      "triangles": 412,
+      "sizeM": [
+        8.62,
+        4.0,
+        5.029
+      ],
+      "parts": 23,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.21,
+          0.0,
+          2.414
+        ],
+        "halfExtentsM": [
+          4.31,
+          2.0,
+          2.514
+        ]
+      },
+      "bytes": 44680,
+      "sha256": "d24c0aa068a5b1f81734224e679538b4152bf3b1b9e38b782e3cb3d6e521fe54",
+      "family": "service",
+      "role": "A-frame stock rack: leaning mixed hull plates + spar tubes in cradles",
+      "states": "full=as built; depleted=fewer plates (subtraction at instancing)",
+      "placement": "beside every gantry/scaffold; the \"work is ongoing\" consumable read",
+      "lodPlan": "LOD1: plates merged wedge; LOD2: wedge box",
+      "render": "assets/incubator/everyday_space_kit/evidence/parts_rack.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "power_skid",
+      "status": "design_candidate",
+      "triangles": 644,
+      "sizeM": [
+        8.249,
+        3.484,
+        5.0
+      ],
+      "parts": 16,
+      "sockets": [
+        "SOCKET_Hoist_Center",
+        "SOCKET_Power_Out"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.026,
+          -0.242,
+          2.35
+        ],
+        "halfExtentsM": [
+          4.124,
+          1.742,
+          2.5
+        ]
+      },
+      "bytes": 59000,
+      "sha256": "892ae5a40f31f972da0aed6cdd1a26179a878500131d44f8b8292f84ef5ff247",
+      "family": "service",
+      "role": "portable reactor skid: formed core, hot fin, cabinet, visible cable run",
+      "states": "active=amber status+hot fin; cold=dark; see _patched (salvage) variant",
+      "placement": "wherever plant runs \u2014 the trunk should visibly reach what it powers",
+      "lodPlan": "LOD1: core+cabinet; LOD2: single box",
+      "render": "assets/incubator/everyday_space_kit/evidence/power_skid.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "worklight_tower",
+      "status": "design_candidate",
+      "triangles": 768,
+      "sizeM": [
+        3.0,
+        3.0,
+        15.82
+      ],
+      "parts": 11,
+      "sockets": [
+        "SOCKET_Head"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          7.91
+        ],
+        "halfExtentsM": [
+          1.5,
+          1.5,
+          7.91
+        ]
+      },
+      "bytes": 60712,
+      "sha256": "5795cea61800626bc2ffa4ee23b5c63a2d4dfcad9921e50d6695ec055db78dda",
+      "family": "service",
+      "role": "yard mast in flood fit: three big white-warm heads (work happens here)",
+      "states": "active=lit; cold=dark",
+      "placement": "every active worksite; aim heads AT the work, not at the camera",
+      "lodPlan": "LOD1: column as box; LOD2: post + one lens",
+      "render": "assets/incubator/everyday_space_kit/evidence/worklight_tower.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "customs_pylon",
+      "status": "design_candidate",
+      "triangles": 208,
+      "sizeM": [
+        3.4,
+        3.4,
+        14.16
+      ],
+      "parts": 10,
+      "sockets": [
+        "SOCKET_Scan_Emitter"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          7.08
+        ],
+        "halfExtentsM": [
+          1.7,
+          1.7,
+          7.08
+        ]
+      },
+      "bytes": 23152,
+      "sha256": "effe00aad391279c18b16ee6d700d9e2b872396b0873e63438b458c127755ddb",
+      "family": "law",
+      "role": "customs scan pylon: navy monolith, lit aperture slot, white crest",
+      "states": "active=slot+aperture lit; the state machine (sweep/lock) is VFX at the socket",
+      "placement": "paired astride lanes, ahead of transponder gates, at station approaches",
+      "lodPlan": "LOD1: column+head; LOD2: single pillar (slot baked)",
+      "render": "assets/incubator/everyday_space_kit/evidence/customs_pylon.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "inspection_platform",
+      "status": "design_candidate",
+      "triangles": 388,
+      "sizeM": [
+        20.4,
+        10.4,
+        5.687
+      ],
+      "parts": 23,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Berth"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          1.994
+        ],
+        "halfExtentsM": [
+          10.2,
+          5.2,
+          2.844
+        ]
+      },
+      "bytes": 45396,
+      "sha256": "6c3f57f9aa234a18b2b38ea73a852ef0fe670747030744d3600b6c2337204b59",
+      "family": "law",
+      "role": "floodlit holding dock: clamp cradle, perimeter arc-blue, watch cab",
+      "states": "active=strips+floods; occupied=held craft at SOCKET_Berth (instancing)",
+      "placement": "off-lane behind customs pylons \u2014 where the pulled-over go",
+      "lodPlan": "LOD1: deck+jaws+cab; LOD2: slab with lit edges",
+      "render": "assets/incubator/everyday_space_kit/evidence/inspection_platform.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "interdiction_buoy",
+      "status": "design_candidate",
+      "triangles": 656,
+      "sizeM": [
+        7.4,
+        6.618,
+        4.94
+      ],
+      "parts": 12,
+      "sockets": [
+        "SOCKET_Field_Emitter"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.27
+        ],
+        "halfExtentsM": [
+          3.7,
+          3.309,
+          2.47
+        ]
+      },
+      "bytes": 53880,
+      "sha256": "4576a891af023ddd1cd7b47a141762a50ec976952c1ec78b17fd0f8a5c365797",
+      "family": "law",
+      "role": "interdiction buoy: spiked bicone that reads THREAT, not guidance",
+      "states": "armed=strobes lit; the deterrent silhouette works even dark",
+      "placement": "closed lanes, exclusion rings, impound perimeters \u2014 in the flight path",
+      "lodPlan": "LOD1: bicone+4 spikes; LOD2: octahedron",
+      "render": "assets/incubator/everyday_space_kit/evidence/interdiction_buoy.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "transponder_gate",
+      "status": "design_candidate",
+      "triangles": 1916,
+      "sizeM": [
+        2.4,
+        22.4,
+        13.242
+      ],
+      "parts": 16,
+      "sockets": [
+        "SOCKET_Lane_Center"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          6.579
+        ],
+        "halfExtentsM": [
+          1.2,
+          11.2,
+          6.621
+        ]
+      },
+      "bytes": 132384,
+      "sha256": "26f708759ce63fd5591e664a832dba90cffc8a73fb0c9d15483e6f298dc3ecb6",
+      "family": "law",
+      "role": "lane gate: green pass pods on the crossbeam, red hold edges, white crest",
+      "states": "open=green lenses; closed=swap to red at instancing (paired lens boxes)",
+      "placement": "across a lane; approach face is +X (lenses face the incoming pilot)",
+      "lodPlan": "LOD1: portal as box girders; LOD2: goalpost outline",
+      "render": "assets/incubator/everyday_space_kit/evidence/transponder_gate.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "sensor_mast",
+      "status": "design_candidate",
+      "triangles": 1248,
+      "sizeM": [
+        5.29,
+        4.084,
+        13.331
+      ],
+      "parts": 17,
+      "sockets": [
+        "SOCKET_Listen"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.655,
+          0.242,
+          6.635
+        ],
+        "halfExtentsM": [
+          2.645,
+          2.042,
+          6.665
+        ]
+      },
+      "bytes": 96832,
+      "sha256": "d519a18451c68c71e1d54a82e9f17f3f51b40020733988b96a8300be9aae4d89",
+      "family": "law",
+      "role": "listening mast: one big + two small dishes and a signals drum",
+      "states": "active=authority strobe; passive plant otherwise (it just watches)",
+      "placement": "checkpoint flanks, border sectors; big dish aims along the watched lane",
+      "lodPlan": "LOD1: dishes as cones; LOD2: post+cone",
+      "render": "assets/incubator/everyday_space_kit/evidence/sensor_mast.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "traffic_signal",
+      "status": "design_candidate",
+      "triangles": 256,
+      "sizeM": [
+        4.75,
+        2.4,
+        8.16
+      ],
+      "parts": 10,
+      "sockets": [
+        "SOCKET_Signal_Face"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.575,
+          0.0,
+          4.08
+        ],
+        "halfExtentsM": [
+          2.375,
+          1.2,
+          4.08
+        ]
+      },
+      "bytes": 27400,
+      "sha256": "01f84251bf6d8cf17d88ec6092b6c25f566a60562e60800778f0866cd1a5b9cf",
+      "family": "law",
+      "role": "counterweighted lane signal: stacked go/hold/stop faces one approach",
+      "states": "live=all three lenses authored; a wiring lane picks the active one",
+      "placement": "dock throats, one-at-a-time passages, loading apron entries",
+      "lodPlan": "LOD1: mast+board; LOD2: lollipop",
+      "render": "assets/incubator/everyday_space_kit/evidence/traffic_signal.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "habitat_pod",
+      "status": "design_candidate",
+      "triangles": 840,
+      "sizeM": [
+        11.777,
+        7.6,
+        7.19
+      ],
+      "parts": 18,
+      "sockets": [
+        "SOCKET_Airlock"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.095
+        ],
+        "halfExtentsM": [
+          5.889,
+          3.8,
+          3.595
+        ]
+      },
+      "bytes": 73252,
+      "sha256": "e05f259a023267de36b085c1270f6218b49b75c4b6e21cac1016b82a924d8986",
+      "family": "civic",
+      "role": "crew habitat capsule: lit window row, airlock collar, solar cross",
+      "states": "occupied=windows warm; see _derelict variant",
+      "placement": "clustered near worksites and platforms \u2014 proof somebody sleeps here",
+      "lodPlan": "LOD1: capsule+wings; LOD2: capsule (windows baked)",
+      "render": "assets/incubator/everyday_space_kit/evidence/habitat_pod.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "habitat_pod_derelict",
+      "status": "design_candidate",
+      "triangles": 720,
+      "sizeM": [
+        11.777,
+        7.414,
+        6.38
+      ],
+      "parts": 16,
+      "sockets": [],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.093,
+          0.728
+        ],
+        "halfExtentsM": [
+          5.889,
+          3.707,
+          3.19
+        ]
+      },
+      "bytes": 62708,
+      "sha256": "41fddd04433f0601f40241f2196d34ecf68502590bfbce7102869d092232b363",
+      "family": "civic",
+      "role": "dead habitat: dark windows, snapped wing, hatch swung open",
+      "states": "this IS the derelict state of habitat_pod",
+      "placement": "failed claims, quarantine buffers, pirate territory edges",
+      "lodPlan": "as habitat_pod; the snapped wing must survive LOD1",
+      "render": "assets/incubator/everyday_space_kit/evidence/habitat_pod_derelict.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "shuttle_dock",
+      "status": "design_candidate",
+      "triangles": 1800,
+      "sizeM": [
+        27.394,
+        10.4,
+        8.659
+      ],
+      "parts": 35,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Cradle"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          5.427,
+          0.0,
+          3.479
+        ],
+        "halfExtentsM": [
+          13.697,
+          5.2,
+          4.329
+        ]
+      },
+      "bytes": 154012,
+      "sha256": "53eca811b72daf39994c891ea0d4b2765739cb464c1f646e7b2dab9c895b3104",
+      "family": "civic",
+      "role": "shuttle cradle dock: twin hoops, handed approach light lane, glazed walkway",
+      "states": "active=approach lights+cabin glow; cold=dark lane (closed to traffic)",
+      "placement": "habitat clusters, passenger platforms; approach lane must stay clear",
+      "lodPlan": "LOD1: hoops+walkway; LOD2: slab+arch",
+      "render": "assets/incubator/everyday_space_kit/evidence/shuttle_dock.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "observation_blister",
+      "status": "design_candidate",
+      "triangles": 1200,
+      "sizeM": [
+        6.287,
+        6.3,
+        7.74
+      ],
+      "parts": 8,
+      "sockets": [
+        "SOCKET_Dome_Focus"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          3.87
+        ],
+        "halfExtentsM": [
+          3.143,
+          3.15,
+          3.87
+        ]
+      },
+      "bytes": 87144,
+      "sha256": "3a15b3347ff27e879a19561a2a580ba4787877664eff51a25eefcaa005605e98",
+      "family": "civic",
+      "role": "glazed observation dome on a stalk, warm-lit floor, ring balcony",
+      "states": "occupied=floor glow; vacant=dark dome",
+      "placement": "platform corners, habitat clusters \u2014 pointed at the best view",
+      "lodPlan": "LOD1: dome+stalk; LOD2: ball on post",
+      "render": "assets/incubator/everyday_space_kit/evidence/observation_blister.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "comms_array",
+      "status": "design_candidate",
+      "triangles": 908,
+      "sizeM": [
+        7.386,
+        6.6,
+        7.771
+      ],
+      "parts": 19,
+      "sockets": [
+        "SOCKET_Dish_Axis"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.792,
+          -0.3,
+          3.885
+        ],
+        "halfExtentsM": [
+          3.693,
+          3.3,
+          3.885
+        ]
+      },
+      "bytes": 77532,
+      "sha256": "ec85b8139248330928d6ce69fd17f866462296618b68112dda351b29cf733e41",
+      "family": "civic",
+      "role": "relay farm: one big steerable dish, two subs, manned kiosk",
+      "states": "live=kiosk glow+rim strobes; dead=dark (a cut-off outpost)",
+      "placement": "habitat clusters, platform edges, claim sites \u2014 aimed at the sky, not the ground",
+      "lodPlan": "LOD1: dishes as cones; LOD2: pedestal+one cone",
+      "render": "assets/incubator/everyday_space_kit/evidence/comms_array.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "solar_array",
+      "status": "design_candidate",
+      "triangles": 1148,
+      "sizeM": [
+        4.6,
+        21.46,
+        3.7
+      ],
+      "parts": 17,
+      "sockets": [
+        "SOCKET_Gimbal",
+        "SOCKET_Power_Out"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          1.85
+        ],
+        "halfExtentsM": [
+          2.3,
+          10.73,
+          1.85
+        ]
+      },
+      "bytes": 88020,
+      "sha256": "aebb28d911761f925f056500615da59d0b97a0f3f806d3b3a188ff5e34e9ee32",
+      "family": "civic",
+      "role": "sun-tracking twin-wing array on span-gauge spines, handed tip lights",
+      "states": "live=amber status; wings feather edge-on when cold (re-pose at instancing)",
+      "placement": "sunward side of anything inhabited; never shadowed by radiators",
+      "lodPlan": "LOD1: wings as two boxes; LOD2: cross silhouette",
+      "render": "assets/incubator/everyday_space_kit/evidence/solar_array.png",
+      "distanceViews": [
+        95,
+        125,
+        165
+      ]
+    },
+    {
+      "id": "utility_module",
+      "status": "design_candidate",
+      "triangles": 276,
+      "sizeM": [
+        6.12,
+        4.32,
+        4.85
+      ],
+      "parts": 14,
+      "sockets": [
+        "SOCKET_Hoist_Center"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.03,
+          -0.06,
+          0.575
+        ],
+        "halfExtentsM": [
+          3.06,
+          2.16,
+          2.425
+        ]
+      },
+      "bytes": 30636,
+      "sha256": "b33bda82f78a118ac1903392983d37df7e30aecd2c4cb759ea768d4a599f4311",
+      "family": "civic",
+      "role": "life-support box: external pipe runs, vent, hatches, lift lugs",
+      "states": "running=amber status; failed=dark + one hatch open (instancing)",
+      "placement": "bolted near habitats and cabs \u2014 one per three crewed modules",
+      "lodPlan": "LOD1: body+fins; LOD2: single box",
+      "render": "assets/incubator/everyday_space_kit/evidence/utility_module.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "passenger_platform",
+      "status": "design_candidate",
+      "triangles": 568,
+      "sizeM": [
+        16.504,
+        4.0,
+        5.77
+      ],
+      "parts": 32,
+      "sockets": [
+        "SOCKET_Gate",
+        "SOCKET_Shuttle_Side"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.252,
+          0.0,
+          2.885
+        ],
+        "halfExtentsM": [
+          8.252,
+          2.0,
+          2.885
+        ]
+      },
+      "bytes": 59732,
+      "sha256": "780a689e2d5ba8c61b99282f33a0f5aa7de23366e50b48342423370730370bcf",
+      "family": "civic",
+      "role": "covered boarding walkway: glow canopy, guide lights, green gate arch",
+      "states": "boarding=green gate+guides; closed=gate dark",
+      "placement": "between habitat clusters and shuttle docks; gate faces the dock",
+      "lodPlan": "LOD1: deck+canopy; LOD2: lit bar",
+      "render": "assets/incubator/everyday_space_kit/evidence/passenger_platform.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "salvage_clamp",
+      "status": "design_candidate",
+      "triangles": 328,
+      "sizeM": [
+        5.6,
+        3.6,
+        7.475
+      ],
+      "parts": 18,
+      "sockets": [
+        "SOCKET_Jaw"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          3.738
+        ],
+        "halfExtentsM": [
+          2.8,
+          1.8,
+          3.738
+        ]
+      },
+      "bytes": 35784,
+      "sha256": "b183cf90990118e39438eecd398688a16133fce5e05e9ef69875fa6fb73deaea",
+      "family": "salvage",
+      "role": "free-standing grab: winch, A-frame, scorched jaws, hooded red lamp",
+      "states": "working=jaws at a carcass; idle=jaws hang empty",
+      "placement": "shipbreaking yards, wreck fields \u2014 jaws toward the meat",
+      "lodPlan": "LOD1: frame+jaws; LOD2: tripod blob",
+      "render": "assets/incubator/everyday_space_kit/evidence/salvage_clamp.png",
+      "distanceViews": [
+        30,
+        60,
+        110
+      ]
+    },
+    {
+      "id": "scrap_cage",
+      "status": "design_candidate",
+      "triangles": 588,
+      "sizeM": [
+        11.112,
+        6.23,
+        5.704
+      ],
+      "parts": 11,
+      "sockets": [
+        "SOCKET_Gate"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          -0.856,
+          0.085,
+          0.098
+        ],
+        "halfExtentsM": [
+          5.556,
+          3.115,
+          2.852
+        ]
+      },
+      "bytes": 48544,
+      "sha256": "88d317853f6e05eaf999175fc1314a7a0fe8b91080fb656338d5f3425db461c8",
+      "family": "salvage",
+      "role": "scrap holding cage, crushed hull chunks inside, gate swung open",
+      "states": "full=junk load; empty=bare cage (subtraction)",
+      "placement": "shipbreaking yards, black-market aprons; gate faces the work",
+      "lodPlan": "LOD1: cage as lattice box+junk lump; LOD2: solid box",
+      "render": "assets/incubator/everyday_space_kit/evidence/scrap_cage.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "hull_rack",
+      "status": "design_candidate",
+      "triangles": 3604,
+      "sizeM": [
+        17.121,
+        7.14,
+        7.485
+      ],
+      "parts": 29,
+      "sockets": [
+        "SOCKET_Next_Section"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.0,
+          3.172
+        ],
+        "halfExtentsM": [
+          8.561,
+          3.57,
+          3.743
+        ]
+      },
+      "bytes": 240368,
+      "sha256": "e24802458d6c8c81ac0f86743561f5218921372cc38f6646e094168491aed08a",
+      "family": "salvage",
+      "role": "shipbreaking rack: three stripped rib sections, torch scars, part skins",
+      "states": "working=sections racked; picked-clean=empty frame",
+      "placement": "the centerpiece of any breaking yard; sections read as somebody's ex-ship",
+      "lodPlan": "LOD1: sections as open boxes; LOD2: goalpost pair",
+      "render": "assets/incubator/everyday_space_kit/evidence/hull_rack.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "illicit_transfer_frame",
+      "status": "design_candidate",
+      "triangles": 544,
+      "sizeM": [
+        9.386,
+        12.1,
+        4.475
+      ],
+      "parts": 25,
+      "sockets": [
+        "SOCKET_Berth_A",
+        "SOCKET_Berth_B"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          3.493,
+          0.05,
+          1.462
+        ],
+        "halfExtentsM": [
+          4.693,
+          6.05,
+          2.237
+        ]
+      },
+      "bytes": 55504,
+      "sha256": "6d02ba5c06e9931d3b6e17ee048893f9f5d004d000a84010e7737c0c91e56ef5",
+      "family": "salvage",
+      "role": "smuggler transfer frame: two stolen-parts berths, hooded light only",
+      "states": "live=pod in berth A; the missing nav/strobe lights ARE the tell",
+      "placement": "shadow sides of rocks, off-lane voids, blackmarket approaches",
+      "lodPlan": "LOD1: spine+berth frames; LOD2: H-frame",
+      "render": "assets/incubator/everyday_space_kit/evidence/illicit_transfer_frame.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "improvised_dock",
+      "status": "design_candidate",
+      "triangles": 876,
+      "sizeM": [
+        9.16,
+        12.47,
+        4.458
+      ],
+      "parts": 22,
+      "sockets": [
+        "SOCKET_Berth"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.52,
+          4.535,
+          0.629
+        ],
+        "halfExtentsM": [
+          4.58,
+          6.235,
+          2.229
+        ]
+      },
+      "bytes": 75456,
+      "sha256": "8194ce3aa5061346f88068d0b71b649b57d816c79152bcdbb145ba064e54961b",
+      "family": "salvage",
+      "role": "cobbled dock: pod-turned-shack, two-gauge scavenged arm, dim red window",
+      "states": "occupied=window glow; the mismatched gauges never change",
+      "placement": "pirate coves, unlicensed claims, anywhere authority is not",
+      "lodPlan": "LOD1: pod+arm; LOD2: L-shape",
+      "render": "assets/incubator/everyday_space_kit/evidence/improvised_dock.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "pirate_sensor_mast",
+      "status": "design_candidate",
+      "triangles": 1120,
+      "sizeM": [
+        5.969,
+        7.9,
+        11.61
+      ],
+      "parts": 20,
+      "sockets": [
+        "SOCKET_Listen"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          0.034,
+          -0.2,
+          5.719
+        ],
+        "halfExtentsM": [
+          2.984,
+          3.95,
+          5.805
+        ]
+      },
+      "bytes": 87284,
+      "sha256": "0c148e3dcfb9cfd85e7d472479437b37ec5ab2de043df5587c34be16b56ffdfb",
+      "family": "salvage",
+      "role": "pirate ear: leaning spliced mast, stolen navy dish aimed at the lane",
+      "states": "watching=hooded tell-tale only; never a strobe",
+      "placement": "rock shadows overlooking trade lanes; dish axis = the watched lane",
+      "lodPlan": "LOD1: mast+big dish; LOD2: leaning post",
+      "render": "assets/incubator/everyday_space_kit/evidence/pirate_sensor_mast.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    },
+    {
+      "id": "power_skid_patched",
+      "status": "design_candidate",
+      "triangles": 656,
+      "sizeM": [
+        8.249,
+        3.484,
+        5.65
+      ],
+      "parts": 17,
+      "sockets": [
+        "SOCKET_Power_Out"
+      ],
+      "collisionProxy": {
+        "kind": "box",
+        "centerM": [
+          1.026,
+          -0.242,
+          2.675
+        ],
+        "halfExtentsM": [
+          4.124,
+          1.742,
+          2.825
+        ]
+      },
+      "bytes": 60992,
+      "sha256": "2a6fe8fa38f44bb42547b4e69f5f73981561dff5c78ffca34aac148022c0f57b",
+      "family": "salvage",
+      "role": "stolen reactor skid: patched core, wrong fin, hooded status lamp",
+      "states": "this IS the faction-modified state of power_skid",
+      "placement": "powering illicit frames and improvised docks (trunk must reach)",
+      "lodPlan": "as power_skid",
+      "render": "assets/incubator/everyday_space_kit/evidence/power_skid_patched.png",
+      "distanceViews": [
+        60,
+        95,
+        145
+      ]
+    }
+  ]
+}
