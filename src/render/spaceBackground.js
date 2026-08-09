@@ -1283,6 +1283,27 @@ export class SpaceBackground {
     return rt;
   }
 
+  // 1x1 stand-in for a nebula tile that no consumer can currently see. Carries the same wrap/filter
+  // configuration as a real tile so every sampler stays valid and no shader branches on tile state;
+  // it simply costs ~4 bytes instead of ~16 MB. Never rendered into: an unwritten target reads as
+  // transparent black, which is exactly what the composite already produces at zero opacity.
+  _makeStubRT() {
+    const rt = new THREE.WebGLRenderTarget(1, 1, {
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+      generateMipmaps: false,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      wrapS: THREE.RepeatWrapping,
+      wrapT: THREE.RepeatWrapping,
+      depthBuffer: false,
+      stencilBuffer: false,
+    });
+    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    rt.isNebulaStub = true;
+    return rt;
+  }
+
   _makePlanetRT(size) {
     const rt = new THREE.WebGLRenderTarget(size, size, {
       format: THREE.RGBAFormat,
@@ -1463,29 +1484,30 @@ export class SpaceBackground {
     l0Mat.dispose();
     this.l0Target = l0;
 
-    // L1 — main nebula (alpha blend; carries the dust lanes)
-    const l1 = this._makeRT(sizes.L1_nebula);
-    const l1Mat = new THREE.ShaderMaterial({
-      vertexShader: QUAD_VERT,
-      fragmentShader: NEBULA_FRAG,
-      uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L1'),
-      transparent: true,
-    });
-    this._bakeLayer(l1Mat, l1);
-    l1Mat.dispose();
-    this.l1Target = l1;
-
-    // L2 — sparser glow wisps (additive; minimal dust)
-    const l2 = this._makeRT(sizes.L2_wisps);
-    const l2Mat = new THREE.ShaderMaterial({
-      vertexShader: QUAD_VERT,
-      fragmentShader: NEBULA_FRAG,
-      uniforms: this._nebulaBakeUniforms(p, bakeSeed, 'L2'),
-      transparent: true,
-    });
-    this._bakeLayer(l2Mat, l2);
-    l2Mat.dispose();
-    this.l2Target = l2;
+    // L1/L2 — nebula tiles, baked only when something can actually see them.
+    //
+    // LAYER_COMPOSITE_FRAG multiplies both through the resolved sector opacity
+    // (`l1.a * uNebulaOpacity`, `l2.a * uNebulaOpacity`), so at nebulaOpacity 0 the two mix() calls
+    // are identities and the tiles contribute exactly zero pixels. All five shipped sector profiles
+    // currently resolve to 0, which made this the single largest piece of pure waste in the bake:
+    // full-resolution tile residency plus the dominant share of bakeAll's cost, re-paid on every
+    // sector change, for output that is provably byte-identical without it.
+    //
+    // The capability is deliberately NOT removed. Authored l1Alpha/l2Alpha stay live in the
+    // profiles, and _ensureNebulaBake() promotes the stubs to real tiles the instant a consumer
+    // appears — either the opacity is raised, or a wormhole spawns (the wormhole samples uL1
+    // directly and does NOT go through uNebulaOpacity, so it needs a real tile at zero opacity).
+    // Deferral is tracked PER LAYER because the two tiles have different consumers: the wormhole
+    // lens samples L1 only. Promoting both for a wormhole would hand back the larger half of the
+    // saving for a tile nothing reads.
+    const nebulaVisible = this.nebulaOpacity > 0;
+    this._nebulaBakePending = { L1: !nebulaVisible, L2: !nebulaVisible };
+    this.l1Target = nebulaVisible
+      ? this._bakeNebulaTarget(p, bakeSeed, 'L1', sizes.L1_nebula)
+      : this._makeStubRT();
+    this.l2Target = nebulaVisible
+      ? this._bakeNebulaTarget(p, bakeSeed, 'L2', sizes.L2_wisps)
+      : this._makeStubRT();
 
     this.bakeTimer = ((typeof performance !== 'undefined') ? performance.now() : 0) - t0;
     this._buildLayers();
@@ -1545,7 +1567,10 @@ export class SpaceBackground {
       })],
     ];
     for (const [target, material] of entries) {
-      if (target) this._bakeLayer(material, target);
+      // Deferred nebula stubs hold no pixels by design, so there is nothing to refill. Rendering a
+      // full nebula into a 1x1 stand-in would burn a program link during restoration and write a
+      // colour the composite immediately multiplies away.
+      if (target && !target.isNebulaStub) this._bakeLayer(material, target);
       material.dispose(); // fresh restored-context material; safe to retire immediately
     }
 
@@ -1565,6 +1590,59 @@ export class SpaceBackground {
       if (!activePlanetKeys.has(key)) this.planetCache.delete(key);
     }
     this.planetCacheOrder = this.planetCacheOrder.filter((key) => activePlanetKeys.has(key));
+  }
+
+  // Full-resolution bake of one nebula tile. Shared by bakeAll, onContextRestore and the deferred
+  // promotion path so all three produce byte-identical tiles from the same seed and palette.
+  _bakeNebulaTarget(p, bakeSeed, layer, size) {
+    const rt = this._makeRT(size);
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: QUAD_VERT,
+      fragmentShader: NEBULA_FRAG,
+      uniforms: this._nebulaBakeUniforms(p, bakeSeed, layer),
+      transparent: true,
+    });
+    this._bakeLayer(mat, rt);
+    mat.dispose();
+    return rt;
+  }
+
+  // Promote deferred nebula stubs to real tiles and rewire every live consumer.
+  //
+  // Call before ANY code path that samples l1Target/l2Target outside the opacity-gated composite.
+  // Pass 'L1' or 'L2' to promote just that tile; omit to promote both. Idempotent and cheap when
+  // nothing is pending, so calling it defensively is correct.
+  _ensureNebulaBake(only) {
+    const pending = this._nebulaBakePending;
+    if (!pending) return;
+    const wantL1 = pending.L1 && only !== 'L2';
+    const wantL2 = pending.L2 && only !== 'L1';
+    if (!wantL1 && !wantL2) return;
+
+    const p = this._paletteColors(this.currentPaletteName);
+    const bakeSeed = (this.skySeed % 100000) * 0.001;
+    const sizes = this.bakeSizes;
+
+    if (wantL1) {
+      const stub = this.l1Target;
+      this.l1Target = this._bakeNebulaTarget(p, bakeSeed, 'L1', sizes.L1_nebula);
+      pending.L1 = false;
+      // The composite holds its sampler on BOTH the layer descriptor and the material uniform.
+      // A stale reference is invisible in review and surfaces only as a tile that never appears.
+      if (this.layers && this.layers.length >= 2) this.layers[1].tex = this.l1Target.texture;
+      if (this.layerMaterial) this.layerMaterial.uniforms.uL1.value = this.l1Target.texture;
+      if (this.wormhole) this.wormhole.material.uniforms.uL1.value = this.l1Target.texture;
+      if (stub) stub.dispose();
+    }
+
+    if (wantL2) {
+      const stub = this.l2Target;
+      this.l2Target = this._bakeNebulaTarget(p, bakeSeed, 'L2', sizes.L2_wisps);
+      pending.L2 = false;
+      if (this.layers && this.layers.length >= 3) this.layers[2].tex = this.l2Target.texture;
+      if (this.layerMaterial) this.layerMaterial.uniforms.uL2.value = this.l2Target.texture;
+      if (stub) stub.dispose();
+    }
   }
 
   _disposeBakeTargets() {
@@ -2301,6 +2379,11 @@ export class SpaceBackground {
   }
 
   _spawnWormhole(spec) {
+    // The wormhole lens samples uL1 directly and never multiplies by uNebulaOpacity, so it is the
+    // one consumer that needs a real nebula tile even in a sector whose nebula is fully suppressed.
+    // Promote before reading the texture; the mesh captures the reference at construction.
+    // L1 ONLY — the lens never reads L2, so L2 stays deferred and keeps its share of the saving.
+    this._ensureNebulaBake('L1');
     const size = spec.frac * this.H * this.heroSizeK * 2.2;
     const pal = PALETTES[this.currentPaletteName];
     const mesh = createWormholePipelineMesh({
@@ -2686,8 +2769,12 @@ export class SpaceBackground {
   }
 
   stats() {
-    const s = this.bakeSizes;
-    const texMB = ((s.L0_void ** 2 + s.L1_nebula ** 2 + s.L2_wisps ** 2) * 4 * 1.34) / (1024 * 1024);
+    // Measure ACTUAL tile residency, not the configured tier sizes. The nebula tiles are deferred
+    // to 1x1 stand-ins while no consumer can see them, so a figure derived from bakeSizes reports
+    // memory that is not allocated — a counter blind to the exact thing it exists to measure, and
+    // one that would keep reading "32.2 MB" no matter how much was reclaimed. 1.34 is the mip tail.
+    const texMB = [this.l0Target, this.l1Target, this.l2Target]
+      .reduce((bytes, t) => bytes + (t ? t.width * t.height * 4 * 1.34 : 0), 0) / (1024 * 1024);
     return {
       tier: this.tierName,
       H_world: this.H,
@@ -2707,6 +2794,9 @@ export class SpaceBackground {
       wormhole: !!this.wormhole,
       heroCandidates: this.heroPlacement.length,
       bakedTexMB: Math.round(texMB * 10) / 10,
+      nebulaDeferred: this._nebulaBakePending
+        ? [this._nebulaBakePending.L1 ? 'L1' : null, this._nebulaBakePending.L2 ? 'L2' : null].filter(Boolean)
+        : [],
       palette: this.currentPaletteName,
       intensity: this.bgIntensity,
     };
