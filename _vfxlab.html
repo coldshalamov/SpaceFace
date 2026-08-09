@@ -1,0 +1,565 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>VFX Next Lab</title>
+<!-- Inline icon: the capture harness treats ANY console error as a suspect cell, so a stray
+     favicon 404 would either mask real failures or train us to ignore them. Same approach as
+     index.html. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070b12'/%3E%3Cpath d='M8 44 L32 12 L56 44' fill='none' stroke='%23ff8a2a' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='44' r='6' fill='%23fff3d0'/%3E%3C/svg%3E" />
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace}
+  #ui{position:fixed;left:10px;top:10px;color:#cfe6ff;background:rgba(6,10,18,.72);border:1px solid rgba(120,170,255,.22);
+      border-radius:8px;padding:10px 12px;max-width:290px;backdrop-filter:blur(6px)}
+  #ui h1{font-size:12px;margin:0 0 8px;letter-spacing:.10em;text-transform:uppercase;color:#7fb4ff}
+  #ui label{display:flex;align-items:center;gap:8px;margin:5px 0;color:#9fbcdd}
+  #ui label span{flex:0 0 88px}
+  #ui input[type=range]{flex:1;height:14px}
+  #ui select{flex:1;background:#0d1522;color:#cfe6ff;border:1px solid rgba(120,170,255,.3);border-radius:4px;padding:3px}
+  #ui .val{flex:0 0 40px;text-align:right;color:#e8f2ff}
+  #ui .hint{margin-top:8px;color:#5d7899;font-size:11px}
+  #cost{position:fixed;right:10px;top:10px;color:#bfe0c8;background:rgba(6,14,10,.72);
+        border:1px solid rgba(110,220,150,.20);border-radius:8px;padding:10px 12px;white-space:pre;min-width:236px}
+  #cost b{color:#7fe0a0;font-weight:600}
+  .warn{color:#ffb060}
+  .over{color:#ff6a6a}
+  #title{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);color:#8fb8e8;letter-spacing:.16em;
+         text-transform:uppercase;background:rgba(6,10,18,.6);padding:5px 14px;border-radius:20px}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<div id="ui"></div>
+<div id="cost"></div>
+<div id="title"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+import { createVfxNext, ALL_FAMILIES, totalDeclaredBudget } from './src/vfxnext/index.js';
+import { scratchForce, setPos, setDir, setAxis, setVelocity, setSurface, makeRng } from './src/vfxnext/core/force.js';
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Parameters. EVERY knob is a query param so a capture is a URL, and a URL is reproducible.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const q = new URLSearchParams(location.search);
+const num = (k, d) => { const v = parseFloat(q.get(k)); return Number.isFinite(v) ? v : d; };
+
+const P = {
+  fx:        q.get('fx') || 'impact_concussion',
+  // Camera distance in world units. The R1 production bands (design/graphics-sprints/
+  // CAMERA_VISIBLE_BUBBLE.md, and bible §2) are the only distances that can APPROVE an effect:
+  //   45  near   — diagnostic only
+  //   110 normal — the acceptance view
+  //   155 sling  — speed-revealed continuation
+  cam:       num('cam', 110),
+  bg:        num('bg', 0.06),      // background brightness 0..1
+  speed:     num('speed', 1),      // time scale
+  n:         num('n', 1),          // concurrent effect instances
+  quality:   num('quality', 1),    // density LOD 0..1
+  intensity: num('intensity', 1),  // global brightness (reduced-flash accessibility hook)
+  sev:       num('sev', -1),       // severity override; -1 = scripted
+  bloom:     num('bloom', 0.42),
+  exposure:  num('exposure', 0.95),
+  seed:      num('seed', 0x5FACE),
+  t:         q.get('t') === null ? null : num('t', 0), // deterministic capture time
+  grid:      q.get('grid') === '1',
+  W:         num('w', 1280),
+  H:         num('h', 800),
+};
+
+const CAPTURE = P.t !== null;
+const FIXED_DT = 1 / 60;
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Renderer
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(P.W, P.H);
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = P.exposure;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+// EffectComposer issues several render calls per frame and Three resets info on each one, so the
+// default autoReset reports only the last pass — which is why an untouched readout claims "1 draw
+// call" for a scene with hundreds. Reset manually, once per frame, before the composer runs.
+renderer.info.autoReset = false;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, P.W / P.H, 0.5, 20000);
+
+const composer = new EffectComposer(renderer);
+composer.setSize(P.W, P.H);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(P.W, P.H), P.bloom, 0.62, 0.72);
+composer.addPass(bloomPass);
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The set. A lit hull, an asteroid to strike, a star field, and a background whose brightness is
+// a knob — because "dark effects disappearing against dark environments" and its inverse are both
+// named failure modes, and neither can be judged on one background.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const key = new THREE.DirectionalLight(0xfff0d8, 2.1);
+key.position.set(0.5, 0.9, 0.6);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x4d78c8, 0.75);
+fill.position.set(-0.7, -0.3, -0.5);
+scene.add(fill);
+scene.add(new THREE.AmbientLight(0x1a2436, 0.5));
+
+function setBackground(b) {
+  const c = new THREE.Color().setRGB(0.02 + b * 0.42, 0.035 + b * 0.46, 0.06 + b * 0.55);
+  scene.background = c;
+  scene.fog = null;
+}
+setBackground(P.bg);
+
+// Starfield — a true void makes every effect look good and is therefore a dishonest test bed.
+{
+  const N = 2600, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const rng = makeRng(99);
+  for (let i = 0; i < N; i++) {
+    const r = 1400 + rng() * 3000;
+    const u = rng() * 2 - 1, phi = rng() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    pos[i * 3] = r * s * Math.cos(phi); pos[i * 3 + 1] = r * u; pos[i * 3 + 2] = r * s * Math.sin(phi);
+    const w = 0.55 + rng() * 0.45;
+    col[i * 3] = w; col[i * 3 + 1] = w * (0.9 + rng() * 0.1); col[i * 3 + 2] = w;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 2.4, sizeAttenuation: false, vertexColors: true })));
+}
+
+/** Reference hull. Not a hero asset — a readable industrial silhouette with faction paint, a warning
+ *  band and a nozzle, so the bloom-off and grayscale review cells have real material to judge. */
+function buildHull() {
+  const g = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color: 0x9aa6b4, roughness: 0.55, metalness: 0.65 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0xd4622a, roughness: 0.62, metalness: 0.28 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2b3138, roughness: 0.78, metalness: 0.5 });
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(2.1, 8.4, 6, 16), paint);
+  body.rotation.z = Math.PI / 2;
+  g.add(body);
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.9, 2.6), dark);
+  spine.position.set(-1.2, 1.7, 0); g.add(spine);
+  for (const s of [1, -1]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.5, 3.2), paint);
+    wing.position.set(-2.4, 0, s * 3.0); wing.rotation.x = s * 0.16; g.add(wing);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 3.3), accent);
+    tip.position.set(-4.2, 0, s * 3.0); g.add(tip);
+  }
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(2.16, 2.16, 0.9, 20), accent);
+  band.rotation.z = Math.PI / 2; band.position.x = 1.4; g.add(band);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.0, 1.8, 18, 1, true), dark);
+  nozzle.rotation.z = Math.PI / 2; nozzle.position.x = -6.3; g.add(nozzle);
+  return g;
+}
+
+const hull = buildHull();
+scene.add(hull);
+
+const rock = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(9, 2),
+  new THREE.MeshStandardMaterial({ color: 0x6a6156, roughness: 0.94, metalness: 0.05, flatShading: true }),
+);
+rock.position.set(24, -4, -8);
+scene.add(rock);
+
+if (P.grid) {
+  const gh = new THREE.GridHelper(400, 40, 0x203450, 0x162236);
+  gh.position.y = -22; scene.add(gh);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The library under test
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const stage = createVfxNext(scene);
+stage.quality = P.quality;
+stage.intensity = P.intensity;
+
+const PALETTES = {
+  hot:   { core: 0xfff3d0, sheath: 0xff7a2a, debris: 0x8e959e },
+  cold:  { core: 0xe8f4ff, sheath: 0x3f7cff, debris: 0x7f8894 },
+  viole: { core: 0xffffff, sheath: 0x9a4cff, debris: 0x8e959e },
+};
+
+/** Per-family lab scenario. `kind` decides emit-vs-hold; `build` writes a ForceRecord from the
+ *  scripted clock so every capture at the same `?t=` shows the same instant of the same event. */
+const SCENARIOS = {
+  impact_normal: {
+    kind: 'oneshot', period: 0.55, at: 0.12, label: '1 · Normal weapon impact',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, 1.5 + (rng() - 0.5) * 3, (rng() - 0.5) * 3, (rng() - 0.5) * 3);
+      setDir(f, -0.82, -0.16, -0.55);
+      setSurface(f, 0.82, 0.16, 0.55);
+      setVelocity(f, -6, 0, 0);
+      f.radius = 1.6; f.severity = 0.7; f.impulse = 14; f.seed = (P.seed + i * 977) >>> 0;
+      Object.assign(f, { coreColor: PALETTES.hot.core, sheathColor: PALETTES.hot.sheath, debrisColor: PALETTES.hot.debris });
+      return f;
+    },
+  },
+  impact_concussion: {
+    kind: 'oneshot', period: 1.4, at: 0.15, label: '2 · Heavy kinetic / concussion impact',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, 2.0, (rng() - 0.5) * 2, (rng() - 0.5) * 2);
+      setDir(f, -0.94, -0.10, -0.32);
+      setSurface(f, 0.94, 0.10, 0.32);
+      setVelocity(f, -14, 1, 0);
+      f.radius = 3.0; f.severity = 0.9; f.impulse = 74; f.seed = (P.seed + i * 613) >>> 0;
+      Object.assign(f, { coreColor: PALETTES.hot.core, sheathColor: PALETTES.hot.sheath, debrisColor: PALETTES.hot.debris });
+      return f;
+    },
+  },
+  // Same family, unoriented axis only: proves the collision branch. If this looks identical to the
+  // signed case, the causality contract is not being honoured.
+  impact_collision_axis: {
+    kind: 'oneshot', family: 'impact_concussion', period: 1.4, at: 0.15,
+    label: '2b · Hull collision (UNORIENTED axis — symmetric response)',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, 2.0, (rng() - 0.5) * 2, (rng() - 0.5) * 2);
+      setAxis(f, 0.94, 0.10, 0.32);           // note: setAxis, never setDir
+      setVelocity(f, -14, 1, 0);
+      f.radius = 3.0; f.severity = 0.85; f.impulse = 66; f.seed = (P.seed + i * 613) >>> 0;
+      Object.assign(f, { coreColor: PALETTES.hot.core, sheathColor: PALETTES.hot.sheath, debrisColor: PALETTES.hot.debris });
+      return f;
+    },
+  },
+  destruction_light: {
+    kind: 'oneshot', period: 2.6, at: 0.2, label: '3 · Light-ship destruction',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, (rng() - 0.5) * 6, (rng() - 0.5) * 5, (rng() - 0.5) * 6);
+      setDir(f, -0.7, 0.15, -0.7);
+      // Fast lateral motion: the acceptance test for inherited velocity is that the whole event
+      // travels with the wreck instead of hanging where the ship used to be.
+      setVelocity(f, -68, 4, -26);
+      f.radius = 4.0; f.severity = 0.85; f.impulse = 60; f.seed = (P.seed + i * 331) >>> 0;
+      Object.assign(f, { coreColor: PALETTES.hot.core, sheathColor: PALETTES.hot.sheath, debrisColor: PALETTES.hot.debris });
+      return f;
+    },
+  },
+  explosion_heavy: {
+    kind: 'oneshot', period: 4.2, at: 0.25, label: '4 · Heavy explosion (multi-stage)',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, (rng() - 0.5) * 8, (rng() - 0.5) * 6, (rng() - 0.5) * 8);
+      setDir(f, -0.5, 0.2, -0.84);
+      setVelocity(f, -34, 2, -12);
+      f.radius = 8.0; f.severity = 1.0; f.impulse = 220; f.seed = (P.seed + i * 149) >>> 0;
+      Object.assign(f, { coreColor: PALETTES.hot.core, sheathColor: PALETTES.hot.sheath, debrisColor: PALETTES.hot.debris });
+      return f;
+    },
+  },
+  thruster_boost: {
+    kind: 'sustained', label: '5 · Boost / thruster transition',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, -7.2, 0, i * 9);
+      setDir(f, 1, 0, 0);
+      setVelocity(f, 0, 0, 0);
+      f.radius = 2.2; f.seed = (P.seed + i * 71) >>> 0;
+      // Scripted throttle ramp: idle -> cruise -> BOOST -> back. The point of the sweep is that a
+      // reviewer sees the structural change at the boost knee without touching a control.
+      f.severity = P.sev >= 0 ? P.sev : 0.5 + 0.5 * Math.sin(t * 0.9 - Math.PI / 2);
+      f.sheathColor = 0x4aa0ff;
+      return f;
+    },
+  },
+  speed_extreme: {
+    kind: 'sustained', label: '6 · Extreme-speed flight',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, 0, 0, i * 14);
+      setVelocity(f, 0, 0, -430);
+      f.radius = 3.2; f.seed = (P.seed + i * 53) >>> 0;
+      f.severity = P.sev >= 0 ? P.sev : 0.55 + 0.45 * Math.sin(t * 0.6);
+      return f;
+    },
+  },
+  massline_latch: {
+    kind: 'oneshot', period: 1.1, at: 0.15, label: '7 · Massline latch',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, -6, 0, i * 8);
+      setDir(f, 0.93, 0.16, -0.33);
+      setVelocity(f, 6, 0, 0);
+      f.radius = 44; f.impulse = 0.2; f.seed = (P.seed + i * 211) >>> 0;
+      f.coreColor = 0xd8ccff; f.sheathColor = 0x6a3cff;
+      return f;
+    },
+  },
+  massline_tension: {
+    kind: 'sustained', label: '8 · Massline high tension',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, -6, 0, i * 8);
+      setDir(f, 0.93, 0.16, -0.33);
+      setVelocity(f, 10, 0, 0);
+      f.radius = 44; f.seed = (P.seed + i * 211) >>> 0;
+      // Full sweep slack -> breaking so the "ordinary load must not look like imminent snapping"
+      // requirement is judged across the whole range, not at one flattering value.
+      f.impulse = P.sev >= 0 ? P.sev : 0.5 + 0.5 * Math.sin(t * 0.55 - Math.PI / 2);
+      f.coreColor = 0xffffff; f.sheathColor = 0x7a3cff;
+      return f;
+    },
+  },
+  massline_release: {
+    kind: 'oneshot', period: 1.6, at: 0.2, label: '9 · Massline release / snap',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, -6, 0, i * 8);
+      setDir(f, 0.93, 0.16, -0.33);
+      setVelocity(f, 92, 6, -34);   // retained momentum — the burst must obey this
+      f.radius = 44; f.impulse = 0.95; f.seed = (P.seed + i * 211) >>> 0;
+      f.coreColor = 0xffffff; f.sheathColor = 0x9a4cff;
+      return f;
+    },
+  },
+  field_attractor: {
+    kind: 'sustained', label: '10 · Attractive gravity field',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, i * 34, 0, 0);
+      setVelocity(f, 0, 0, 0);
+      f.radius = 22; f.seed = (P.seed + i * 89) >>> 0;
+      f.severity = P.sev >= 0 ? P.sev : 0.55 + 0.45 * Math.sin(t * 0.5);
+      return f;
+    },
+  },
+  field_repulsor: {
+    kind: 'sustained', label: '11 · Repulsor / anti-gravity field',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, i * 34, 0, 0);
+      setVelocity(f, 0, 0, 0);
+      f.radius = 22; f.seed = (P.seed + i * 89) >>> 0;
+      f.severity = P.sev >= 0 ? P.sev : 0.55 + 0.45 * Math.sin(t * 0.5);
+      return f;
+    },
+  },
+  reentry: {
+    kind: 'sustained', label: '12 · Atmospheric reentry',
+    build(t, i, rng) {
+      const f = scratchForce();
+      setPos(f, 0, 0, i * 20);
+      setVelocity(f, -140, -18, 0);
+      f.radius = 5.0; f.seed = (P.seed + i * 37) >>> 0;
+      f.debrisColor = 0x7a7268;
+      // The 22 s ramp is the family's whole design; the lab plays it on loop so a reviewer can see
+      // entry, peak heating and breakup without scrubbing.
+      f.severity = P.sev >= 0 ? P.sev : Math.min(1, ((t % 22) / 22) * 1.25);
+      return f;
+    },
+  },
+};
+
+const SCENARIO_IDS = Object.keys(SCENARIOS);
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Driving the scenario
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+let current = SCENARIOS[P.fx] ? P.fx : 'impact_concussion';
+let simTime = 0;
+let nextFire = 0;
+const rng = makeRng(P.seed);
+
+function familyIdOf(scn) { return scn.family || null; }
+
+function resetScenario() {
+  stage.clear();
+  simTime = 0;
+  nextFire = SCENARIOS[current].at ?? 0;
+}
+
+function step(dt) {
+  const scn = SCENARIOS[current];
+  const famId = familyIdOf(scn) || current;
+  simTime += dt;
+
+  if (scn.kind === 'oneshot') {
+    while (simTime >= nextFire) {
+      for (let i = 0; i < P.n; i++) stage.emit(famId, scn.build(nextFire, i, rng));
+      nextFire += scn.period;
+    }
+  } else {
+    for (let i = 0; i < P.n; i++) {
+      // Concurrency for sustained families needs distinct hold slots; the stage keys them by id,
+      // so the lab suffixes the id. This is the per-emitter-state limitation called out in
+      // families/propulsion.js made visible rather than hidden.
+      stage.hold(famId, scn.build(simTime, i, rng));
+      if (i > 0) break;
+    }
+  }
+  stage.update(dt, camera);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Camera. Framing is fixed by the R1 bands; the lab never invents a beauty camera.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+function placeCamera(t) {
+  const d = P.cam;
+  // Slight, slow orbit so motion review has parallax; frozen in capture mode for matched cells.
+  const a = CAPTURE ? 0.62 : 0.62 + Math.sin(t * 0.06) * 0.10;
+  const el = 0.20;
+  camera.position.set(Math.cos(a) * d * Math.cos(el), Math.sin(el) * d, Math.sin(a) * d * Math.cos(el));
+  camera.lookAt(0, 0, 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Cost readout
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const costEl = document.getElementById('cost');
+const declared = totalDeclaredBudget();
+let frameMs = 0, fps = 0, acc = 0, frames = 0;
+
+function bar(v, cap) {
+  const pct = cap ? v / cap : 0;
+  const cls = pct > 0.95 ? 'over' : pct > 0.7 ? 'warn' : '';
+  const n = Math.round(pct * 16);
+  return `<span class="${cls}">${String(v).padStart(4)}/${String(cap).padEnd(4)} ${'█'.repeat(n)}${'·'.repeat(16 - n)}</span>`;
+}
+
+function drawCost() {
+  const c = stage.cost();
+  const info = renderer.info.render;
+  costEl.innerHTML =
+`<b>COST</b>
+cpu frame  ${CAPTURE ? '  (capture: single deterministic frame)' : `${frameMs.toFixed(2)} ms    ${fps.toFixed(0)} fps`}
+draw calls ${info.calls}   tris ${(info.triangles / 1000).toFixed(1)}k
+vfx draws  ${c.drawCalls}  (5 substrates)
+
+<b>POOLS</b>
+sparks  ${bar(c.sparks, c.sparksCap)}
+smoke   ${bar(c.smoke, c.smokeCap)}
+debris  ${bar(c.debris, c.debrisCap)}
+fronts  ${bar(c.fronts, c.frontsCap)}
+ribbons ${bar(c.ribbons, c.ribbonsCap)}
+lights  ${bar(c.lights, c.lightsCap)}
+sched   ${c.scheduled}/96  dropped ${c.scheduleDropped}
+held    ${c.sustained}
+
+<b>LIVE CAPS (src/render/vfx.js)</b>
+PARTICLE_CAP        1500/3000/4000
+SPRITE_CAP          256
+TRAIL_STREAK_CAP    96
+EVENT_LIGHT_POOL    6   (lab uses ${c.lightsCap})
+
+<b>ALL 12 FAMILIES AT ONCE</b>
+sparks ${declared.sparks}  debris ${declared.debris}
+ribbons ${declared.ribbons}  lights ${declared.lights}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Controls
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+function buildUi() {
+  const ui = document.getElementById('ui');
+  const opts = SCENARIO_IDS.map((id) => `<option value="${id}"${id === current ? ' selected' : ''}>${SCENARIOS[id].label}</option>`).join('');
+  ui.innerHTML = `<h1>VFX Next Lab</h1>
+    <label><span>effect</span><select id="c-fx">${opts}</select></label>
+    <label><span>camera</span><input id="c-cam" type="range" min="25" max="220" step="1" value="${P.cam}"><i class="val" id="v-cam">${P.cam}</i></label>
+    <label><span>background</span><input id="c-bg" type="range" min="0" max="1" step="0.01" value="${P.bg}"><i class="val" id="v-bg">${P.bg}</i></label>
+    <label><span>time scale</span><input id="c-speed" type="range" min="0" max="2" step="0.05" value="${P.speed}"><i class="val" id="v-speed">${P.speed}</i></label>
+    <label><span>concurrent</span><input id="c-n" type="range" min="1" max="12" step="1" value="${P.n}"><i class="val" id="v-n">${P.n}</i></label>
+    <label><span>quality</span><input id="c-quality" type="range" min="0.1" max="1" step="0.05" value="${P.quality}"><i class="val" id="v-quality">${P.quality}</i></label>
+    <label><span>intensity</span><input id="c-intensity" type="range" min="0" max="1" step="0.05" value="${P.intensity}"><i class="val" id="v-intensity">${P.intensity}</i></label>
+    <label><span>bloom</span><input id="c-bloom" type="range" min="0" max="1.2" step="0.02" value="${P.bloom}"><i class="val" id="v-bloom">${P.bloom}</i></label>
+    <div class="hint">45 near · <b>110 normal (acceptance)</b> · 155 sling<br>
+    keys: [ ] effect · 0 bloom off · r reset</div>`;
+
+  const bind = (id, key, fn) => {
+    const el = document.getElementById('c-' + id);
+    const out = document.getElementById('v-' + id);
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      P[key] = v; if (out) out.textContent = v;
+      if (fn) fn(v);
+    });
+  };
+  document.getElementById('c-fx').addEventListener('change', (e) => { current = e.target.value; resetScenario(); syncTitle(); });
+  bind('cam', 'cam');
+  bind('bg', 'bg', setBackground);
+  bind('speed', 'speed');
+  bind('n', 'n', () => resetScenario());
+  bind('quality', 'quality', (v) => { stage.quality = v; });
+  bind('intensity', 'intensity', (v) => { stage.intensity = v; });
+  bind('bloom', 'bloom', (v) => { bloomPass.strength = v; });
+
+  addEventListener('keydown', (e) => {
+    if (e.key === '[' || e.key === ']') {
+      const i = SCENARIO_IDS.indexOf(current);
+      const d = e.key === ']' ? 1 : -1;
+      current = SCENARIO_IDS[(i + d + SCENARIO_IDS.length) % SCENARIO_IDS.length];
+      document.getElementById('c-fx').value = current;
+      resetScenario(); syncTitle();
+    } else if (e.key === '0') {
+      bloomPass.strength = bloomPass.strength > 0 ? 0 : P.bloom;
+    } else if (e.key === 'r') {
+      resetScenario();
+    }
+  });
+}
+
+function syncTitle() {
+  document.getElementById('title').textContent =
+    `${SCENARIOS[current].label}  ·  cam ${Math.round(P.cam)} wu  ·  bg ${P.bg.toFixed(2)}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Run
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+if (CAPTURE) {
+  // DETERMINISTIC CAPTURE. Fixed timestep to the requested instant, then exactly one render. No
+  // rAF, no wall clock — the same URL produces the same pixels, which is what makes a matched
+  // evidence sheet possible at all (bible §5.1: an unmatched cell is EVIDENCE_INVALID).
+  document.getElementById('ui').style.display = 'none';
+  resetScenario();
+  // Place the camera BEFORE stepping. stage.screenScale()/count() read camera position for LOD, so
+  // simulating with the camera still at its default origin gives every spawn the wrong density and
+  // makes a capture disagree with the interactive view it is supposed to document.
+  placeCamera(P.t);
+  const steps = Math.max(1, Math.round(P.t / FIXED_DT));
+  for (let i = 0; i < steps; i++) step(FIXED_DT);
+  renderer.info.reset();
+  composer.render();
+  drawCost();
+  syncTitle();
+  window.__vfxlabReady = true;
+  window.__vfxlabCost = stage.cost();
+} else {
+  buildUi();
+  syncTitle();
+  resetScenario();
+  let last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const wall = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    const t0 = performance.now();
+    step(wall * P.speed);
+    placeCamera(simTime);
+    renderer.info.reset();
+    composer.render();
+    const t1 = performance.now();
+    acc += t1 - t0; frames++;
+    if (frames >= 20) { frameMs = acc / frames; fps = 1000 / Math.max(0.001, (now - (frame._last || now)) / frames); acc = 0; frames = 0; frame._last = now; }
+    drawCost();
+  }
+  requestAnimationFrame(frame);
+}
+
+// Exposed for the capture harness and for console poking.
+window.__vfxlab = { stage, SCENARIOS, P, setBackground, step, placeCamera, composer };
+</script>
+</body>
+</html>
