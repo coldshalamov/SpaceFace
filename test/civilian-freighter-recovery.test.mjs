@@ -48,6 +48,10 @@ function boot({
   data = {},
   ai = {},
   withSave = false,
+  sectorId = 'sector_tethys_junction',
+  stationId = 'station_custody_test',
+  stationFactionId = 'faction_scn',
+  stationPos = { x: 0, z: 0 },
 } = {}) {
   const voices = [];
   const sim = createSimulation({
@@ -57,14 +61,18 @@ function boot({
   });
   const { state, bus } = sim;
   state.mode = 'flight';
-  state.world.currentSectorId = 'sector_tethys_junction';
+  state.world.currentSectorId = sectorId;
   const station = sim.spawn({
     type: 'station',
     team: 2,
-    factionId: 'faction_scn',
-    pos: { x: 0, z: 0 },
+    factionId: stationFactionId,
+    pos: { ...stationPos },
     radius: 90,
-    data: { stationId: 'station_custody_test', factionId: 'faction_scn', size: 'M' },
+    // The focused save harness omits `world`, which normally rematerializes current-sector
+    // stations before persistent NPC recovery. Preserve this exact station only in save cases so
+    // the canonical entity restore presents C with the same production-order destination truth.
+    flags: withSave ? { persistent: true } : {},
+    data: { stationId, factionId: stationFactionId, sectorId, size: 'M' },
   });
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 1200, z: 0 }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200,
@@ -232,14 +240,85 @@ test('an NPC-caused drive disable opens one timed civilian Massline recovery wit
   assert.equal(option.manifestId, 'fm_curtain_47');
   assert.equal(option.freighterKey, 'curtain-convoy:hauler:0');
   assert.equal(option.remainingQty, 8);
+  assert.equal(option.destinationStationId, 'station_custody_test');
   assert.ok(Number.isFinite(option.deadlineAt));
   assert.equal(option.deadlineAt, t.state.simTime + CIVILIAN_RECOVERY_WINDOW_S);
   assert.equal(t.freighter.data.surrenderRecovery.recoveryKind, 'civilian_disabled');
+  assert.equal(t.freighter.data.surrenderRecovery.sectorId, 'sector_tethys_junction');
   assert.equal(t.freighter.flags.persistent, true, 'an open recovery keeps the physical hull in real Continue saves');
   assert.deepEqual(t.freighter.data.ai, before.ai);
   assert.deepEqual(t.freighter.data.intent, before.intent);
   assert.deepEqual({ ...t.freighter.vel }, before.vel);
   assert.equal(t.freighter.data.despawnAt, undefined);
+});
+
+test('curtain-convoy civilians receive no false lawful-cover offer at Sker or Ashfall outlaw stations', () => {
+  const outlawSectors = [
+    ['sector_sker_haven', 'station_sker', 'faction_reach', { x: -540, z: 680 }],
+    ['sector_ashfall_reach', 'station_ashcache', 'faction_vael', { x: -820, z: 480 }],
+  ];
+  for (let index = 0; index < outlawSectors.length; index++) {
+    const [sectorId, stationId, stationFactionId, stationPos] = outlawSectors[index];
+    const t = boot({
+      seed: 47040 + index,
+      sectorId,
+      stationId,
+      stationFactionId,
+      stationPos,
+    });
+
+    disable(t);
+
+    assert.equal(t.state.world.currentSectorId, sectorId);
+    assert.equal(t.station.data.stationId, stationId);
+    assert.equal(t.events['surrender:option'].length, 0, `${stationId} provides no lawful handoff`);
+    assert.equal(t.freighter.data.surrenderRecovery, undefined);
+    assert.notEqual(t.freighter.flags.persistent, true);
+  }
+});
+
+test('a prefetched lawful station from a neighboring sector cannot legalize an outlaw-sector offer', () => {
+  const t = boot({
+    seed: 470421,
+    sectorId: 'sector_sker_haven',
+    stationId: 'station_sker',
+    stationFactionId: 'faction_reach',
+    stationPos: { x: -540, z: 680 },
+  });
+  t.sim.spawn({
+    type: 'station',
+    team: 2,
+    factionId: 'faction_scn',
+    pos: { x: 0, z: 0 },
+    radius: 90,
+    data: {
+      stationId: 'station_prefetched_lawful',
+      factionId: 'faction_scn',
+      sectorId: 'sector_tethys_junction',
+      size: 'M',
+    },
+  });
+
+  disable(t);
+
+  assert.equal(t.events['surrender:option'].length, 0);
+  assert.equal(t.freighter.data.surrenderRecovery, undefined);
+  assert.notEqual(t.freighter.flags.persistent, true);
+});
+
+test('a lawful station beyond the 75-second physical ceiling does not create a recovery offer', () => {
+  const t = boot({
+    seed: 47042,
+    stationId: 'station_unreachable_lawful',
+    stationFactionId: 'faction_scn',
+    stationPos: { x: -9000, z: 0 },
+  });
+
+  disable(t);
+
+  assert.equal(t.events['surrender:option'].length, 0);
+  assert.equal(t.freighter.data.surrenderRecovery, undefined);
+  assert.notEqual(t.freighter.flags.persistent, true);
 });
 
 test('a pre-existing canonical Massline is adopted at disable without requiring a fake relatch', () => {
@@ -481,6 +560,26 @@ test('a valid JSON-rematerialized annotation re-adopts durable manifest identity
   assert.equal(t.events['freight:recovery'].length, 1);
   assert.equal(t.events['freight:recovery'][0].id, `${stableRecordId}:recovered`);
   assert.equal(t.events['freight:recovery'][0].entityId, rematerialized.id);
+});
+
+test('a stale saved destination fails closed after current-sector stations are materialized', () => {
+  const t = boot({ seed: 472405 });
+  disable(t);
+  const annotation = JSON.parse(JSON.stringify(t.freighter.data.surrenderRecovery));
+  const manifestCopy = JSON.parse(JSON.stringify(t.freighter.data.cargoManifest));
+  t.bus.emit('save:restoring', { slot: 'continue' });
+  t.freighter.alive = false;
+  t.station.alive = false;
+  const rematerialized = spawnRematerializedFreighter(t, annotation, manifestCopy);
+
+  t.sim.step();
+
+  assert.equal(Object.keys(t.state.surrenderRecovery.records).length, 0);
+  assert.equal(rematerialized.data.surrenderRecovery.phase, 'lost');
+  assert.equal(rematerialized.data.surrenderRecovery.lostReason, 'destination_unavailable');
+  assert.equal(rematerialized.data.surrenderRecovery.ownedPersistent, false);
+  assert.notEqual(rematerialized.flags.persistent, true);
+  assert.equal(t.events['surrender:option'].length, 1, 'only the original live offer was published');
 });
 
 test('invalid saved civilian annotations fail closed once and release only recovery-owned persistence', () => {

@@ -16,6 +16,7 @@ export const CIVILIAN_RECOVERY_WINDOW_S = 75;
 
 const CUSTODY_DESPAWN_S = 1.5;
 const ESCAPE_DESPAWN_S = 12;
+const CIVILIAN_RECOVERY_FALLBACK_SPEED_WU_S = 120;
 const RECEIPT_CAP = 32;
 // Exact retirement beats a rotating replay window. If a single uninterrupted run ever saturates
 // this multi-hour safety budget, new settlements fail closed instead of reopening an old identity.
@@ -195,6 +196,21 @@ export const surrenderRecovery = {
       rejectSavedCivilianIdentity(entity, saved, 'invalid_saved_annotation');
       return null;
     }
+    const currentSectorId = boundedIdentity(state.world && state.world.currentSectorId);
+    const savedDestinationStationId = recoveryKind === RECOVERY_CIVILIAN_DISABLED && saved
+      && boundedIdentity(saved.sectorId) === currentSectorId
+      ? boundedIdentity(saved.destinationStationId)
+      : null;
+    const destination = recoveryKind === RECOVERY_CIVILIAN_DISABLED
+      ? reachableCivilianRecoveryDestination(state, entity, savedDestinationStationId)
+      : null;
+    // A field-rescue offer is a physical contract, not flavor text. Pirate stations provide no
+    // lawful handoff, and a lawful ring that cannot be reached even at the player's unloaded speed
+    // ceiling cannot truthfully be offered inside the authored 75-second window.
+    if (recoveryKind === RECOVERY_CIVILIAN_DISABLED && !destination) {
+      if (saved) rejectSavedCivilianIdentity(entity, saved, 'destination_unavailable');
+      return null;
+    }
     const startedTick = recoveryKind === RECOVERY_CIVILIAN_DISABLED && Number.isInteger(saved && saved.startedTick)
       ? saved.startedTick
       : (Number.isInteger(state.tick) ? state.tick : Math.max(0, Math.round(now * 60)));
@@ -223,6 +239,7 @@ export const surrenderRecovery = {
       squadId: payload.squadId || null,
       factionId: entity.factionId || payload.factionId || null,
       sectorId: state.world && state.world.currentSectorId || null,
+      destinationStationId: destination && destination.stationId || null,
       reason: payload.reason || recoveryKind,
       recoveryKind,
       phase: restoredPhase,
@@ -966,7 +983,9 @@ function annotate(entity, record, instruction) {
     escapeAt: record.escapeAt,
     deadlineAt: record.deadlineAt,
     startedTick: record.startedTick,
+    sectorId: record.sectorId || null,
     stationId: record.stationId || null,
+    destinationStationId: record.destinationStationId || null,
     rewardCr: record.rewardCr,
     lostReason: record.lostReason || null,
     manifestId: record.manifest && record.manifest.manifestId || null,
@@ -1009,6 +1028,7 @@ function publicRecord(record, entity) {
     manifestId: record.manifest && record.manifest.manifestId || null,
     freighterKey: record.manifest && record.manifest.freighterKey || null,
     remainingQty: record.manifest && record.manifest.totalQty || 0,
+    destinationStationId: record.destinationStationId || null,
     secureReel_wu: SURRENDER_SECURE_REEL_WU,
     instruction: entity && entity.data && entity.data.surrenderRecovery && entity.data.surrenderRecovery.instruction || null,
     lostReason: record.lostReason || null,
@@ -1028,6 +1048,51 @@ function initialInstruction(record) {
   return record.recoveryKind === RECOVERY_DRIVE_DISABLED
     ? 'Drive disabled. Latch with massline. Reel inside 60. Tow to station custody.'
     : 'Latch with massline. Reel inside 60. Tow to station custody.';
+}
+
+function reachableCivilianRecoveryDestination(state, entity, requiredStationId = null) {
+  if (!state || !entity || !entity.pos) return null;
+  const currentSectorId = boundedIdentity(state.world && state.world.currentSectorId);
+  if (!currentSectorId) return null;
+  const index = state.entityIndex;
+  const stations = index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)
+    ? index.stations
+    : (state.entityList || []).filter((candidate) => candidate && candidate.type === 'station');
+  const player = entityFor(state, state.playerId);
+  const authoredMaxSpeed = Number(player && player.maxSpeed);
+  const maxSpeed = Number.isFinite(authoredMaxSpeed) && authoredMaxSpeed > 0
+    ? authoredMaxSpeed
+    : CIVILIAN_RECOVERY_FALLBACK_SPEED_WU_S;
+  const maxTravelWU = maxSpeed * CIVILIAN_RECOVERY_WINDOW_S;
+  const seen = new Set();
+  const candidates = [];
+
+  for (const probe of stations) {
+    if (!probe || probe.alive === false || !probe.pos) continue;
+    if (boundedIdentity(probe.data && probe.data.sectorId) !== currentSectorId) continue;
+    const jurisdiction = protectedStationAt(state, probe);
+    if (!jurisdiction || !jurisdiction.stationId || seen.has(jurisdiction.stationId)) continue;
+    if (requiredStationId && String(jurisdiction.stationId) !== requiredStationId) continue;
+    const anchor = jurisdiction.entityId != null
+      ? entityFor(state, jurisdiction.entityId)
+      : stations.find((station) => station && String(station.data && station.data.stationId
+        || station.stationId || station.id) === String(jurisdiction.stationId));
+    if (!anchor || anchor.alive === false || !anchor.pos) continue;
+    seen.add(jurisdiction.stationId);
+    const dx = Number(entity.pos.x) - Number(anchor.pos.x);
+    const dz = Number(entity.pos.z) - Number(anchor.pos.z);
+    if (!Number.isFinite(dx) || !Number.isFinite(dz)) continue;
+    const radius = Math.max(0, Number(jurisdiction.radius) || 0);
+    const travelWU = Math.max(0, Math.hypot(dx, dz) - radius);
+    if (travelWU <= maxTravelWU) candidates.push({
+      stationId: String(jurisdiction.stationId),
+      factionId: jurisdiction.factionId || null,
+      travelWU,
+    });
+  }
+
+  candidates.sort((a, b) => a.travelWU - b.travelWU || a.stationId.localeCompare(b.stationId));
+  return candidates[0] || null;
 }
 
 function awayFrom(entity, player) {
