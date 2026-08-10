@@ -1,6 +1,26 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace inference lanes — the development entrypoint
 
+```
+SPACEFACE COMMANDS
+
+NEXT
+Continue the existing admitted program.
+Use the normal queue/dispatcher.
+
+INFERENCE <Nx> [optional scope]
+Spend creative/production inference making the game richer,
+better, more polished, and closer to the intended SpaceFace.
+
+Examples:
+INFERENCE 1x
+INFERENCE 3x NPCS
+INFERENCE 5x WORLD
+INFERENCE 3x GRAPHICS
+INFERENCE 5x POLISH
+WF-01 3x
+```
+
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
 

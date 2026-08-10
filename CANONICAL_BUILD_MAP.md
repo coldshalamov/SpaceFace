@@ -36,16 +36,17 @@ Several threads may follow these steps at once in the same checkout. The first t
 edits records its exact files in `NOW.md`; the others take the next returned task or continue on
 disjoint files. No coordinator, task-long reservation, or worktree is required.
 
-**Two doors for "what to work on":**
+**Two doors for "what to work on"** — the `SPACEFACE COMMANDS` block at the top of
+[`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md):
 
-- **Known exact task** → the queue/dispatcher above (`program-dispatch --next/--ready/--id`) is
-  unchanged and authoritative for finishing existing admitted work.
-- **Make the game richer** (expand, improve, deepen, diversify, populate, polish NPCs, enemies,
-  sectors, economy, story, graphics, VFX, audio, gameplay feel, content, a playable slice) → start at
-  [`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). It indexes the reusable
-  inference workflows (`WF-01`–`WF-19`) and the `1x`/`3x`/`5x` scale shorthand, and routes every
-  concrete result back through the normal ownership/packet/acceptance system. Use the lanes to spend
-  inference; do not use them to bypass the queue.
+- `NEXT` → continue the existing admitted program. Use the normal queue/dispatcher above
+  (`program-dispatch --next/--ready/--id`), unchanged and authoritative for finishing admitted work.
+- `INFERENCE <Nx> [optional scope]` (e.g. `INFERENCE 3x NPCS`, `INFERENCE 5x WORLD`,
+  `INFERENCE 3x GRAPHICS`, `INFERENCE 5x POLISH`, `WF-01 3x`) → spend creative/production inference
+  making the game richer, better, more polished, and closer to the intended SpaceFace. `INFERENCE_LANES.md`
+  indexes the reusable workflows (`WF-01`–`WF-19`) and the `1x`/`3x`/`5x` scale shorthand, and routes
+  every concrete result back through the normal ownership/packet/acceptance system. Use the lanes to
+  spend inference; do not use them to bypass the queue.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
