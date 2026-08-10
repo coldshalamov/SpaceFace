@@ -63,7 +63,7 @@
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
       "tris": 14550,
-      "bytes": 3391768,
+      "bytes": 3677036,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -123,7 +123,7 @@
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
       "tris": 4690,
-      "bytes": 2287184,
+      "bytes": 2811496,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -183,7 +183,7 @@
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
       "tris": 12991,
-      "bytes": 3536024,
+      "bytes": 3960108,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -243,7 +243,7 @@
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
       "tris": 4621,
-      "bytes": 2750480,
+      "bytes": 3213976,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -303,7 +303,7 @@
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
       "tris": 4539,
-      "bytes": 2797140,
+      "bytes": 3263456,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -363,7 +363,7 @@
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
       "tris": 4596,
-      "bytes": 2766500,
+      "bytes": 3260756,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -423,7 +423,7 @@
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
       "tris": 4685,
-      "bytes": 1899032,
+      "bytes": 3229000,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -483,7 +483,7 @@
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
       "tris": 4882,
-      "bytes": 1929836,
+      "bytes": 3019044,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -543,7 +543,7 @@
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
       "tris": 3534,
-      "bytes": 1864252,
+      "bytes": 3143036,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -603,7 +603,7 @@
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
       "tris": 4671,
-      "bytes": 1994300,
+      "bytes": 3733500,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -2919,8 +2919,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 1112,
-      "bytes": 1868420,
+      "tris": 1755,
+      "bytes": 1867224,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2971,8 +2971,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 2044,
-      "bytes": 2815544,
+      "tris": 3239,
+      "bytes": 2814260,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
