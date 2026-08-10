@@ -15,11 +15,15 @@ import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligib
 import { massline2Flag } from '../data/featureFlags.js';
 import { isHostileToPlayer } from './scanner.js';
 
-const SHARD_REWARD_SALT = 'loot_shards_reward_v2';
-const SHARD_SCRAP_PICKUPS = 2;
-const SHARD_SCRAP_MIN = 4;
-const SHARD_SCRAP_MAX = 6;          // each scrap pickup rolls in [MIN, MAX]
-const SHARD_ELECTRONICS_QTY = 2;
+const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
+// Vision-alignment reward fountain: hostile kills must pay agency now, not pocket change against
+// 5-figure module prices. Scrap + electronics + refined metals form a magnetized burst; bulk salvage
+// beam work remains on the wreck for derelict career play.
+const SHARD_SCRAP_PICKUPS = 4;
+const SHARD_SCRAP_MIN = 12;
+const SHARD_SCRAP_MAX = 18;         // each scrap pickup rolls in [MIN, MAX]
+const SHARD_ELECTRONICS_QTY = 5;
+const SHARD_ALLOYS_QTY = 3;
 
 export function lootShardItemsFor(seed, victim) {
   const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
@@ -31,7 +35,21 @@ export function lootShardItemsFor(seed, victim) {
     });
   }
   items.push({ commodityId: 'cmdty_salvage_electronics', qty: SHARD_ELECTRONICS_QTY });
+  items.push({ commodityId: 'cmdty_alloys', qty: SHARD_ALLOYS_QTY });
   return items;
+}
+
+/** Expected-value helper for tests and balance audit (basePrice at equilibrium). */
+export function lootShardBasePriceEv(items, commodityBasePriceById) {
+  if (!Array.isArray(items) || !commodityBasePriceById) return 0;
+  let total = 0;
+  for (const it of items) {
+    if (!it || !it.commodityId) continue;
+    const price = Number(commodityBasePriceById.get?.(it.commodityId)
+      ?? commodityBasePriceById[it.commodityId]) || 0;
+    total += price * Math.max(0, Number(it.qty) || 0);
+  }
+  return total;
 }
 
 export const lootShards = {

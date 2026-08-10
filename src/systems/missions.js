@@ -81,6 +81,7 @@ import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
+import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
@@ -2848,6 +2849,9 @@ export const missions = {
 
   _onScan(p) {
     this._identifyContract47aB2(p || {});
+    // Sensor Array L (and any future scanRpBonus module): ordinary freeflight scan pulses grant
+    // research points through the missions researchPoints writer — the module flag was previously dead.
+    this._grantFittedScanRpBonus(p || {});
     // recon_scan: a scan completed. We accept either a targeted scan (targetId matches a spawned
     // beacon) or a generic sector scan (targetId null) as one unit of progress.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -2883,6 +2887,35 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  /**
+   * Ambient freeflight scan RP from fitted modules (`mods.scanRpBonus`). Only fires when the pulse
+   * actually found something (asteroid/wreck/anomaly/signal), so empty spam does not mint RP.
+   * Missions remains the sole positive researchPoints writer for this seam.
+   */
+  _grantFittedScanRpBonus(payload) {
+    const state = this.state;
+    if (!state || !state.player) return 0;
+    const bonus = Math.max(0, Math.round(maxFittedModuleMod(state, 'scanRpBonus', 0)));
+    if (!(bonus > 0)) return 0;
+    const found = payload && payload.found && typeof payload.found === 'object' ? payload.found : null;
+    const signalCount = Math.max(0, Number(payload && payload.signalCount) || 0);
+    const foundCount = found
+      ? Math.max(0, Number(found.asteroids) || 0)
+        + Math.max(0, Number(found.wrecks) || 0)
+        + Math.max(0, Number(found.anomalies) || 0)
+      : 0;
+    if (foundCount + signalCount <= 0) return 0;
+    state.player.researchPoints = (state.player.researchPoints || 0) + bonus;
+    if (this.bus) {
+      this.bus.emit('research:pointsChanged', {
+        researchPoints: state.player.researchPoints,
+        source: 'scan_rp_bonus',
+        granted: bonus,
+      });
+    }
+    return bonus;
   },
 
   _onLandmarkProbeScan(payload) {

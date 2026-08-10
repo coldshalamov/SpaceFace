@@ -6,7 +6,7 @@
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FACTION_PALETTES } from '../data/palettes.js';
+import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -7183,9 +7183,11 @@ function paletteFor(entity) {
     const free = FACTION_PALETTES.faction_free;
     base = { hull: free.hull, accent: free.accent, thruster: free.thruster, dark: free.secondary };
   } else if (entity.team === 1) {
-    base = { hull: '#7a3540', accent: '#ff5470', thruster: '#ff7a3c', dark: '#241116' };
+    const hostile = TEAM_FALLBACK_PALETTES.hostile;
+    base = { hull: hostile.hull, accent: hostile.accent, thruster: hostile.thruster, dark: hostile.dark };
   } else {
-    base = { hull: '#6b7280', accent: '#b0b8c4', thruster: '#aebfd6', dark: '#171c24' };
+    const civilian = TEAM_FALLBACK_PALETTES.civilian;
+    base = { hull: civilian.hull, accent: civilian.accent, thruster: civilian.thruster, dark: civilian.dark };
   }
   return paletteWithShipAppearance(entity, base);
 }

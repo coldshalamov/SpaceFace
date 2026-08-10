@@ -296,36 +296,39 @@ test('ambient player kill keeps its authored bounty and loot', () => {
     'authored pickup placement uses the same identity-bound reward stream');
   assert.ok(shardDrop, 'live lootShards listener emits through loot:drop');
   assert.equal(shardDrop.credits, undefined, 'shards never mint credits directly');
-  assert.equal(shardDrop.items.length, 3, 'accepted hostile kill creates a visible multi-pickup burst');
+  assert.equal(shardDrop.items.length, 6, 'accepted hostile kill creates a visible multi-pickup burst');
   assert.notEqual(run.target.id, repeat.target.id, 'rematerialized identity is not coupled to a live entity id');
   assert.deepEqual(shardDrop.items, repeatShardDrop?.items,
     'same seed plus durable victim identity produces the same bounded burst after rematerialization');
-  assert.equal(shardDrop.items.filter((item) => item.commodityId === 'cmdty_scrap_metal').length, 2);
+  assert.equal(shardDrop.items.filter((item) => item.commodityId === 'cmdty_scrap_metal').length, 4);
   assert.equal(shardDrop.items.filter((item) => item.commodityId === 'cmdty_salvage_electronics').length, 1);
+  assert.equal(shardDrop.items.filter((item) => item.commodityId === 'cmdty_alloys').length, 1);
   for (const item of shardDrop.items.filter((entry) => entry.commodityId === 'cmdty_scrap_metal')) {
-    assert.ok(item.qty >= 4 && item.qty <= 6, `scrap shard quantity ${item.qty} stays bounded`);
+    assert.ok(item.qty >= 12 && item.qty <= 18, `scrap shard quantity ${item.qty} stays bounded`);
   }
-  assert.equal(shardDrop.items.find((item) => item.commodityId === 'cmdty_salvage_electronics')?.qty, 2);
-  assert.ok(commodityValue(shardDrop.items) >= 174, 'burst base commodity value is at least 174cr');
-  assert.ok(commodityValue(shardDrop.items) <= 206, 'burst base commodity value is at most 206cr');
+  assert.equal(shardDrop.items.find((item) => item.commodityId === 'cmdty_salvage_electronics')?.qty, 5);
+  assert.equal(shardDrop.items.find((item) => item.commodityId === 'cmdty_alloys')?.qty, 3);
+  assert.ok(commodityValue(shardDrop.items) >= 1000, 'burst base commodity value is at least 1000cr');
+  assert.ok(commodityValue(shardDrop.items) <= 1400, 'burst base commodity value is at most 1400cr');
 
   const pickups = run.state.entityList.filter((entity) => entity.type === 'pickup');
-  assert.equal(pickups.length, 4, 'three shard pickups coexist with the authored loot pickup');
+  assert.equal(pickups.length, 7, 'six shard pickups coexist with the authored loot pickup');
   assert.equal(pickups.filter((entity) => (
     entity.data?.commodityId === 'cmdty_scrap_metal'
       || entity.data?.commodityId === 'cmdty_salvage_electronics'
-  )).length, 3);
+      || entity.data?.commodityId === 'cmdty_alloys'
+  )).length, 6);
   assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 1,
     'instant shards do not replace beam salvage');
 
   run.sim.step();
-  assert.ok(run.state.miningRuntime.diagnostics.pickupsMagnetized >= 3,
+  assert.ok(run.state.miningRuntime.diagnostics.pickupsMagnetized >= 6,
     'the live mining path magnetizes the shard burst toward the player');
   run.sim.dispose();
   repeat.sim.dispose();
 });
 
-test('hostile craft contact death enters the same three-pickup reward fountain', () => {
+test('hostile craft contact death enters the same multi-pickup reward fountain', () => {
   const run = bootRewardScenario({
     collisionRoute: true,
     hostile: true,
@@ -338,8 +341,8 @@ test('hostile craft contact death enters the same three-pickup reward fountain',
   assert.equal(run.killedEvents[0].killerId, run.player.id,
     'pre-contact player approach survives through the death receipt');
   assert.ok(shardDrop, 'hostile collision death remains reward eligible');
-  assert.equal(shardDrop.items.length, 3, 'the accepted kill creates the bounded visible burst');
-  assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 3);
+  assert.equal(shardDrop.items.length, 6, 'the accepted kill creates the bounded visible burst');
+  assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 6);
   assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 1,
     'instant collision rewards preserve the durable wreck salvage route');
   run.sim.dispose();
@@ -496,26 +499,38 @@ test('neutral player kill never receives the hostile shard burst', () => {
   run.sim.dispose();
 });
 
-test('non-player kills stay excluded from the player reward fountain', () => {
+test('non-player kills publish a deterministic zero-credit receipt without player reward leakage', () => {
   const run = bootRewardScenario({ playerKill: false, authoredReward: true });
+  const repeat = bootRewardScenario({
+    playerKill: false,
+    authoredReward: true,
+    preSpawnCount: 3,
+  });
 
   assert.equal(run.target.data.bountyCr, 120, 'the killed NPC carried authored credits and loot');
   assert.ok(run.target.data.loot, 'the regression exercises the authored loot path');
   assert.deepEqual(run.creditEvents, []);
-  assert.deepEqual(run.lootDrops, []);
+  assert.equal(run.lootDrops.length, 1, 'ambient observers retain the shipped world receipt');
+  assert.equal(run.lootDrops[0].credits, 0, 'the NPC receipt cannot expose player credits');
+  assert.deepEqual(run.lootDrops[0].items, [{ id: 'cmdty_ore', qty: 1 }]);
+  assert.deepEqual(run.lootDrops, repeat.lootDrops,
+    'the receipt follows durable victim identity instead of a mutable combat RNG cursor');
   assert.equal(run.state.entityList.some((entity) => entity.type === 'pickup'), false);
+  assert.equal(repeat.state.entityList.some((entity) => entity.type === 'pickup'), false,
+    'receipt metadata cannot materialize player-collectible cargo');
   assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 1,
     'the existing ship-wreck salvage path is independent of shard eligibility');
   run.sim.dispose();
+  repeat.sim.dispose();
 });
 
-test('hostile drone kills retain the pre-existing three-pickup shard eligibility', () => {
+test('hostile drone kills retain multi-pickup shard eligibility', () => {
   const run = bootRewardScenario({ targetType: 'drone', authoredReward: false });
   const shardDrop = shardDropsOf(run)[0];
 
   assert.ok(shardDrop);
-  assert.equal(shardDrop.items.length, 3);
-  assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 3);
+  assert.equal(shardDrop.items.length, 6);
+  assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 6);
   assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 0,
     'drone rewards do not broaden the ship-only beam-salvage wreck owner');
   run.sim.dispose();

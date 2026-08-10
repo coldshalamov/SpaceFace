@@ -119,6 +119,30 @@ export const FACTION_PALETTES = {
   },
 };
 
+// Unfactioned team fallbacks when entity.factionId is missing. VISION.md arcade-industrial: no
+// slate-grey NPC wash. Team 0 borrows Free Frontier; team 1 is saturated hostile crimson; other
+// teams read as industrial cobalt-steel civilians.
+export const TEAM_FALLBACK_PALETTES = Object.freeze({
+  player: Object.freeze({
+    hull: FACTION_PALETTES.faction_free.hull,
+    accent: FACTION_PALETTES.faction_free.accent,
+    thruster: FACTION_PALETTES.faction_free.thruster,
+    dark: FACTION_PALETTES.faction_free.secondary,
+  }),
+  hostile: Object.freeze({
+    hull: '#9a2a38',
+    accent: '#ff5470',
+    thruster: '#ff7a3c',
+    dark: '#241116',
+  }),
+  civilian: Object.freeze({
+    hull: '#3d5f7a',
+    accent: '#7ec8e8',
+    thruster: '#5ad0ff',
+    dark: '#142028',
+  }),
+});
+
 // PAINT_PROFILES — the soul of the art direction. Maps a faction's `personality` to a paint profile
 // that the render track reads to decide how grimy/chrome/graffitied a ship looks. This makes the
 // "dirty outlaw vs clean authority" contrast DATA-DRIVEN: every NPC inherits its look from its

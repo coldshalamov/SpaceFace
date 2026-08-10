@@ -145,7 +145,8 @@ export const MODULES = [
   },
   {
     id: 'mod_sensor_array_l', name: 'Sensor Array L', slotType: 'utility', size: 'L', tier: 3, mass: 8, price: 36000, requiresTech: 'tech_long_range_survey',
-    energyDraw: 5, mods: { radarRangePct: 0.60, scanRpBonus: true },
+    // scanRpBonus: research points granted per ordinary freeflight scan pulse (missions writer).
+    energyDraw: 5, mods: { radarRangePct: 0.60, scanRpBonus: 2 },
   },
   {
     id: 'mod_drone_bay_l', name: 'Drone Bay L', slotType: 'utility', size: 'L', tier: 3, mass: 14, price: 80000, requiresTech: 'tech_drone_control',
