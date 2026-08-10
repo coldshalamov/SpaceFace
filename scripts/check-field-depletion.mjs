@@ -169,7 +169,7 @@ function testPackageRegistrySaveAndScope() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ fieldDepletion \} from '\.\.\/systems\/fieldDepletion\.js';/,
     'registry imports fieldDepletion');
-  assert.match(registry, /mining, fieldDepletion, cargo/,
+  assert.match(registry, /\['mining', mining\],\s*\['fieldDepletion', fieldDepletion\],\s*\['cargo', cargo\]/,
     'fieldDepletion registers immediately after mining and before later economy/cargo readers');
 
   const save = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
