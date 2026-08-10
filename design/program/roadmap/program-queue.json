@@ -5265,7 +5265,7 @@
       "priority": 258,
       "title": "Dress the two anonymous Ceres wreck slots from the aftermath pack",
       "kind": "implementation",
-      "state": "ready",
+      "state": "integrated",
       "dependsOn": [],
       "mutexes": [
         "blender",
