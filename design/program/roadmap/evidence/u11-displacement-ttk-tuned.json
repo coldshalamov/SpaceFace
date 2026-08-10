@@ -1,0 +1,3073 @@
+{
+  "schemaVersion": 1,
+  "packet": "U11-TUNED",
+  "title": "displacement-vs-TTK telemetry tuned",
+  "environment": {
+    "sourceCommit": "62d84ca54248aa82e388d5f51d8c3693d5e33eec",
+    "generatedBy": "scripts/bench-displacement-ttk.mjs",
+    "node": "v24.15.0",
+    "platform": "win32",
+    "runtimeProfile": "production",
+    "deterministicClock": {
+      "dtS": 0.016667,
+      "maxTicks": 2700,
+      "maxSimS": 45
+    },
+    "seedList": [
+      11001,
+      11002,
+      11003,
+      11004,
+      11005,
+      11006,
+      11007,
+      11008,
+      11009,
+      11010,
+      11011,
+      11012,
+      11013,
+      11014,
+      11015,
+      11016,
+      11017,
+      11018,
+      11019,
+      11020
+    ],
+    "scenarioCount": 80
+  },
+  "scenario": {
+    "tactics": {
+      "GUNFIRE": {
+        "weaponId": "wpn_pulse_laser_s",
+        "script": "perfect sustained Pulse Laser S fire until kill or timeout"
+      },
+      "DISPLACEMENT": {
+        "weaponId": "wpn_concussion_cannon_m",
+        "script": "repeat Concussion Cannon M impulse along the target-to-rock line; terrain contact is emitted only after integrated motion reaches the rock"
+      }
+    },
+    "hulls": [
+      {
+        "class": "light",
+        "enemyTypeId": "wasp_swarmer",
+        "hull": 55,
+        "armor": 8,
+        "armorFlat": 0,
+        "shield": 25,
+        "mass": 16,
+        "radius": 12
+      },
+      {
+        "class": "medium",
+        "enemyTypeId": "reaver_pirate",
+        "hull": 120,
+        "armor": 30,
+        "armorFlat": 1,
+        "shield": 50,
+        "mass": 60,
+        "radius": 18
+      }
+    ],
+    "rock": {
+      "id": 90,
+      "type": "asteroid",
+      "radius": 32,
+      "mass": 1000000
+    },
+    "thirdParties": [
+      {
+        "id": 3,
+        "role": "collateral sentinel",
+        "expectedDamage": 0
+      }
+    ],
+    "aiIntentSurface": "scripted target intent is present; collisionConsequences control override is measured after the tick slot where tacticalAI normally writes/revalidates firing intent"
+  },
+  "mechanismNotes": [
+    {
+      "id": "collision_damage_cap",
+      "finding": "Terrain collision damage is capped at 190 per consequence and only begins above deltaV 8.",
+      "refs": [
+        "src/combat/impulseKernel.js:18",
+        "src/combat/impulseKernel.js:20",
+        "src/combat/impulseKernel.js:126",
+        "src/combat/impulseKernel.js:135"
+      ]
+    },
+    {
+      "id": "concussion_impulse_budget",
+      "finding": "Concussion Cannon M supplies 420 momentum per hit: about 26.25 wu/s on the light hull and 7 wu/s on the medium hull before contact response.",
+      "refs": [
+        "src/data/weapons.js:185",
+        "src/data/weapons.js:189",
+        "src/data/weapons.js:190"
+      ]
+    },
+    {
+      "id": "kill_attribution_summary",
+      "finding": "Across displacement runs: 20 collision-attributed kills, 20 direct-weapon-attributed kills, 0 survivals.",
+      "refs": [
+        "src/systems/collisionConsequences.js:202",
+        "src/combat/damage.js:275"
+      ]
+    },
+    {
+      "id": "ai_recovery_surface",
+      "finding": "The headless target does not run the full tacticalAI stack; it exposes the same mutable intent surface and measures collisionConsequences overriding fire/move intent after the tacticalAI slot would normally write or revalidate it.",
+      "refs": [
+        "src/systems/tacticalAI.js:123",
+        "src/systems/tacticalAI.js:165",
+        "src/systems/collisionConsequences.js:90",
+        "src/systems/collisionConsequences.js:91"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "seed": 11001,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 144.140606,
+        "z": 3.112302
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11001,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.466667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 88,
+        "simTimeS": 1.466667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 194.322976,
+        "z": 3.112302
+      },
+      "notes": []
+    },
+    {
+      "seed": 11002,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 139.987946,
+        "z": 3.815582
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11002,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.516667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 91,
+        "simTimeS": 1.516667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 193.008018,
+        "z": 3.815582
+      },
+      "notes": []
+    },
+    {
+      "seed": 11003,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 153.13863,
+        "z": 3.767767
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11003,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.766667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 106,
+        "simTimeS": 1.766667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 219.161678,
+        "z": 3.767767
+      },
+      "notes": []
+    },
+    {
+      "seed": 11004,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 143.978937,
+        "z": -4.807558
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11004,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.633333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 98,
+        "simTimeS": 1.633333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 203.126475,
+        "z": -4.807558
+      },
+      "notes": []
+    },
+    {
+      "seed": 11005,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 136.574081,
+        "z": -2.747268
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11005,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.966667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 118,
+        "simTimeS": 1.966667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 213.135511,
+        "z": -2.747268
+      },
+      "notes": []
+    },
+    {
+      "seed": 11006,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 152.924274,
+        "z": 4.264401
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11006,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.85,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 111,
+        "simTimeS": 1.85,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 223.759576,
+        "z": 4.264401
+      },
+      "notes": []
+    },
+    {
+      "seed": 11007,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 147.095918,
+        "z": 4.282457
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11007,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.583333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 95,
+        "simTimeS": 1.583333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 203.372745,
+        "z": 4.282457
+      },
+      "notes": []
+    },
+    {
+      "seed": 11008,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 132.610406,
+        "z": 4.070015
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11008,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.516667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 91,
+        "simTimeS": 1.516667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 186.032514,
+        "z": 4.070015
+      },
+      "notes": []
+    },
+    {
+      "seed": 11009,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 144.440094,
+        "z": 2.788665
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11009,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.733333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 104,
+        "simTimeS": 1.733333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 208.995686,
+        "z": 2.788665
+      },
+      "notes": []
+    },
+    {
+      "seed": 11010,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 146.379135,
+        "z": -4.009291
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11010,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.533333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 92,
+        "simTimeS": 1.533333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 200.643752,
+        "z": -4.009291
+      },
+      "notes": []
+    },
+    {
+      "seed": 11011,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 143.255681,
+        "z": 1.236795
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11011,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.7,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 102,
+        "simTimeS": 1.7,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 206.209937,
+        "z": 1.236795
+      },
+      "notes": []
+    },
+    {
+      "seed": 11012,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 134.17759,
+        "z": 3.304605
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11012,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.966667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 118,
+        "simTimeS": 1.966667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 211.164933,
+        "z": 3.304605
+      },
+      "notes": []
+    },
+    {
+      "seed": 11013,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 151.695932,
+        "z": 1.242263
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11013,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.966667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 118,
+        "simTimeS": 1.966667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 228.374026,
+        "z": 1.242263
+      },
+      "notes": []
+    },
+    {
+      "seed": 11014,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 144.739806,
+        "z": -1.708199
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11014,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.616667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 97,
+        "simTimeS": 1.616667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 203.487499,
+        "z": -1.708199
+      },
+      "notes": []
+    },
+    {
+      "seed": 11015,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 141.001947,
+        "z": 1.619897
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11015,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.966667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 118,
+        "simTimeS": 1.966667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 217.862842,
+        "z": 1.619897
+      },
+      "notes": []
+    },
+    {
+      "seed": 11016,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 136.658251,
+        "z": 3.336629
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11016,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.483333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 89,
+        "simTimeS": 1.483333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 187.812864,
+        "z": 3.336629
+      },
+      "notes": []
+    },
+    {
+      "seed": 11017,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 140.224141,
+        "z": -4.898969
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11017,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.966667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 118,
+        "simTimeS": 1.966667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 217.285053,
+        "z": -4.898969
+      },
+      "notes": []
+    },
+    {
+      "seed": 11018,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 154.416889,
+        "z": -1.23875
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11018,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.733333,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 104,
+        "simTimeS": 1.733333,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 219.337411,
+        "z": -1.23875
+      },
+      "notes": []
+    },
+    {
+      "seed": 11019,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 149.406942,
+        "z": 1.107172
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11019,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.766667,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 106,
+        "simTimeS": 1.766667,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 215.304609,
+        "z": 1.107172
+      },
+      "notes": []
+    },
+    {
+      "seed": 11020,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 2.566667,
+      "inputEffort": 15,
+      "shotsFired": 15,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 101.79576,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.46875,
+        "x": 152.138436,
+        "z": 2.740992
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11020,
+      "hullClass": "light",
+      "hullArchetype": "wasp_swarmer",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 1.9,
+      "inputEffort": 2,
+      "shotsFired": 2,
+      "collisions": 1,
+      "terrainCollisionDamage": 105.216265,
+      "directWeaponDamage": 22.632,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": {
+        "tick": 114,
+        "simTimeS": 1.9,
+        "speed": 52.5,
+        "exchangedMomentum": 840
+      },
+      "kill": {
+        "cause": "collision_terrain",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 18.375,
+        "x": 225.232639,
+        "z": 2.740992
+      },
+      "notes": []
+    },
+    {
+      "seed": 11001,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 144.556543,
+        "z": 3.112302
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11001,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 158,
+      "firstTerrainImpact": {
+        "tick": 198,
+        "simTimeS": 3.3,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 192.388456,
+        "z": 3.112302
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11002,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 140.403883,
+        "z": 3.815582
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11002,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 158,
+      "firstTerrainImpact": {
+        "tick": 204,
+        "simTimeS": 3.4,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 191.038953,
+        "z": 3.815582
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11003,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 153.554567,
+        "z": 3.767767
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11003,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 10,
+      "inputEffort": 11,
+      "shotsFired": 11,
+      "collisions": 6,
+      "terrainCollisionDamage": 101.231995,
+      "directWeaponDamage": 120.887299,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 135,
+      "firstTerrainImpact": {
+        "tick": 232,
+        "simTimeS": 3.866667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.19036,
+        "x": 217.864769,
+        "z": 3.767767
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11004,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 144.394874,
+        "z": -4.807558
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11004,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 3,
+      "terrainCollisionDamage": 102.56154,
+      "directWeaponDamage": 119.557754,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 181,
+      "firstTerrainImpact": {
+        "tick": 218,
+        "simTimeS": 3.633333,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 3.472,
+        "x": 199.657275,
+        "z": -4.807558
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11005,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 136.990018,
+        "z": -2.747268
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11005,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 47,
+      "firstTerrainImpact": {
+        "tick": 252,
+        "simTimeS": 4.2,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 203.539678,
+        "z": -2.747268
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11006,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 153.340211,
+        "z": 4.264401
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11006,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 57,
+      "firstTerrainImpact": {
+        "tick": 242,
+        "simTimeS": 4.033333,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 212.122076,
+        "z": 4.264401
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11007,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 147.511855,
+        "z": 4.282457
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11007,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 140,
+      "firstTerrainImpact": {
+        "tick": 211,
+        "simTimeS": 3.516667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 201.369135,
+        "z": 4.282457
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11008,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 133.026343,
+        "z": 4.070015
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11008,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 158,
+      "firstTerrainImpact": {
+        "tick": 205,
+        "simTimeS": 3.416667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 184.063449,
+        "z": 4.070015
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11009,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 144.856031,
+        "z": 2.788665
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11009,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 3,
+      "terrainCollisionDamage": 102.56154,
+      "directWeaponDamage": 119.557754,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 181,
+      "firstTerrainImpact": {
+        "tick": 229,
+        "simTimeS": 3.816667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 3.472,
+        "x": 205.761686,
+        "z": 2.788665
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11010,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 146.795072,
+        "z": -4.009291
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11010,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 158,
+      "firstTerrainImpact": {
+        "tick": 207,
+        "simTimeS": 3.45,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 198.640142,
+        "z": -4.009291
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11011,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 143.671618,
+        "z": 1.236795
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11011,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 3,
+      "terrainCollisionDamage": 102.56154,
+      "directWeaponDamage": 119.557754,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 181,
+      "firstTerrainImpact": {
+        "tick": 226,
+        "simTimeS": 3.766667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 3.472,
+        "x": 202.917137,
+        "z": 1.236795
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11012,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 134.593527,
+        "z": 3.304605
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11012,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 46,
+      "firstTerrainImpact": {
+        "tick": 253,
+        "simTimeS": 4.216667,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 201.773266,
+        "z": 3.304605
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11013,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 152.111869,
+        "z": 1.242263
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11013,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 47,
+      "firstTerrainImpact": {
+        "tick": 252,
+        "simTimeS": 4.2,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 218.778193,
+        "z": 1.242263
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11014,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 145.155743,
+        "z": -1.708199
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11014,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 3,
+      "terrainCollisionDamage": 102.56154,
+      "directWeaponDamage": 119.557754,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 181,
+      "firstTerrainImpact": {
+        "tick": 217,
+        "simTimeS": 3.616667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 3.472,
+        "x": 200.018299,
+        "z": -1.708199
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11015,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 141.417884,
+        "z": 1.619897
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11015,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 47,
+      "firstTerrainImpact": {
+        "tick": 252,
+        "simTimeS": 4.2,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 208.267009,
+        "z": 1.619897
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11016,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 137.074188,
+        "z": 3.336629
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11016,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 4,
+      "terrainCollisionDamage": 102.430533,
+      "directWeaponDamage": 119.688761,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 158,
+      "firstTerrainImpact": {
+        "tick": 200,
+        "simTimeS": 3.333333,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 4.9273,
+        "x": 185.878344,
+        "z": 3.336629
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11017,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 140.640078,
+        "z": -4.898969
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11017,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 46,
+      "firstTerrainImpact": {
+        "tick": 253,
+        "simTimeS": 4.216667,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 207.893386,
+        "z": -4.898969
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11018,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 154.832826,
+        "z": -1.23875
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11018,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 9,
+      "inputEffort": 10,
+      "shotsFired": 10,
+      "collisions": 3,
+      "terrainCollisionDamage": 102.56154,
+      "directWeaponDamage": 119.557754,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 181,
+      "firstTerrainImpact": {
+        "tick": 230,
+        "simTimeS": 3.833333,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 3.472,
+        "x": 216.103411,
+        "z": -1.23875
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11019,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 149.822879,
+        "z": 1.107172
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11019,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 10,
+      "inputEffort": 11,
+      "shotsFired": 11,
+      "collisions": 6,
+      "terrainCollisionDamage": 101.231995,
+      "directWeaponDamage": 120.887299,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 1,
+      "controlSuppressionTicks": 135,
+      "firstTerrainImpact": {
+        "tick": 232,
+        "simTimeS": 3.866667,
+        "speed": 28,
+        "exchangedMomentum": 1680
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.19036,
+        "x": 214.0077,
+        "z": 1.107172
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    },
+    {
+      "seed": 11020,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "GUNFIRE",
+      "killed": true,
+      "ttkS": 6.6,
+      "inputEffort": 37,
+      "shotsFired": 37,
+      "collisions": 0,
+      "terrainCollisionDamage": 0,
+      "directWeaponDamage": 223.25336,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 0,
+      "firstTerrainImpact": null,
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_pulse_laser_s"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 0.308333,
+        "x": 152.554373,
+        "z": 2.740992
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target"
+      ]
+    },
+    {
+      "seed": 11020,
+      "hullClass": "medium",
+      "hullArchetype": "reaver_pirate",
+      "tactic": "DISPLACEMENT",
+      "killed": true,
+      "ttkS": 5,
+      "inputEffort": 6,
+      "shotsFired": 6,
+      "collisions": 1,
+      "terrainCollisionDamage": 190.637003,
+      "directWeaponDamage": 61.362997,
+      "collateralDamage": 0,
+      "escapeRecoveryEvents": 0,
+      "controlSuppressionTicks": 53,
+      "firstTerrainImpact": {
+        "tick": 246,
+        "simTimeS": 4.1,
+        "speed": 35,
+        "exchangedMomentum": 2100
+      },
+      "kill": {
+        "cause": "weapon",
+        "killerId": 1,
+        "weaponId": "wpn_concussion_cannon_m"
+      },
+      "final": {
+        "hull": 0,
+        "armor": 0,
+        "shield": 0,
+        "speed": 5.25,
+        "x": 214.411806,
+        "z": 2.740992
+      },
+      "notes": [
+        "kill_attributed_to_direct_weapon_damage_before_collision_finished_target",
+        "terrain_collision_damage_contributed_but_did_not_by_itself_cover_initial_effective_hp"
+      ]
+    }
+  ],
+  "aggregates": [
+    {
+      "hullClass": "light",
+      "tactic": "GUNFIRE",
+      "runs": 20,
+      "kills": 20,
+      "survivors": 0,
+      "medianTtkS": 2.566667,
+      "p90TtkS": 2.566667,
+      "medianInputEffort": 15,
+      "p90InputEffort": 15,
+      "meanCollisionDamage": 0,
+      "meanDirectWeaponDamage": 101.79576,
+      "escapeRecoveryEvents": 0,
+      "collateralDamage": 0,
+      "killCauseCounts": {
+        "weapon": 20
+      },
+      "outcomeVariance": {
+        "ttkStddevS": 0,
+        "inputEffortStddev": 0,
+        "killRate": 1
+      }
+    },
+    {
+      "hullClass": "light",
+      "tactic": "DISPLACEMENT",
+      "runs": 20,
+      "kills": 20,
+      "survivors": 0,
+      "medianTtkS": 1.733333,
+      "p90TtkS": 1.966667,
+      "medianInputEffort": 2,
+      "p90InputEffort": 2,
+      "meanCollisionDamage": 105.216265,
+      "meanDirectWeaponDamage": 22.632,
+      "escapeRecoveryEvents": 0,
+      "collateralDamage": 0,
+      "killCauseCounts": {
+        "collision_terrain": 20
+      },
+      "outcomeVariance": {
+        "ttkStddevS": 0.177553,
+        "inputEffortStddev": 0,
+        "killRate": 1
+      }
+    },
+    {
+      "hullClass": "medium",
+      "tactic": "GUNFIRE",
+      "runs": 20,
+      "kills": 20,
+      "survivors": 0,
+      "medianTtkS": 6.6,
+      "p90TtkS": 6.6,
+      "medianInputEffort": 37,
+      "p90InputEffort": 37,
+      "meanCollisionDamage": 0,
+      "meanDirectWeaponDamage": 223.25336,
+      "escapeRecoveryEvents": 0,
+      "collateralDamage": 0,
+      "killCauseCounts": {
+        "weapon": 20
+      },
+      "outcomeVariance": {
+        "ttkStddevS": 0,
+        "inputEffortStddev": 0,
+        "killRate": 1
+      }
+    },
+    {
+      "hullClass": "medium",
+      "tactic": "DISPLACEMENT",
+      "runs": 20,
+      "kills": 20,
+      "survivors": 0,
+      "medianTtkS": 9,
+      "p90TtkS": 9,
+      "medianInputEffort": 10,
+      "p90InputEffort": 10,
+      "meanCollisionDamage": 133.215695,
+      "meanDirectWeaponDamage": 99.361846,
+      "escapeRecoveryEvents": 13,
+      "collateralDamage": 0,
+      "killCauseCounts": {
+        "weapon": 20
+      },
+      "outcomeVariance": {
+        "ttkStddevS": 2.002498,
+        "inputEffortStddev": 2.002498,
+        "killRate": 1
+      }
+    }
+  ],
+  "baselineTable": {
+    "light:GUNFIRE": {
+      "medianTtkS": 2.566667,
+      "p90TtkS": 2.566667,
+      "kills": 20,
+      "survivors": 0,
+      "medianInputEffort": 15
+    },
+    "light:DISPLACEMENT": {
+      "medianTtkS": 1.733333,
+      "p90TtkS": 1.966667,
+      "kills": 20,
+      "survivors": 0,
+      "medianInputEffort": 2
+    },
+    "medium:GUNFIRE": {
+      "medianTtkS": 6.6,
+      "p90TtkS": 6.6,
+      "kills": 20,
+      "survivors": 0,
+      "medianInputEffort": 37
+    },
+    "medium:DISPLACEMENT": {
+      "medianTtkS": 9,
+      "p90TtkS": 9,
+      "kills": 20,
+      "survivors": 0,
+      "medianInputEffort": 10
+    }
+  }
+}

@@ -15,9 +15,22 @@ export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   minMomentum: 1,
   staggerDeltaV: 3,
   tumbleDeltaV: 18,
+  // Damage begins once closing speed exceeds this; low enough that medium concussion stacks start
+  // accruing terrain payoff before a long multi-hit charge, high enough that gentle scrapes stay soft.
   damageDeltaV: 8,
   maxStaggerTicks: 90,
-  maxDamage: 60,
+  // Medium-mass universal ceiling. Lighter hulls scale up via damageMassRef / mass (boosted up to
+  // maxDamageMassBoost) so a committed terrain slam can finish them; heavier hulls compress toward
+  // maxDamage * maxDamageMassFloor. Craft contact still multiplies by SURFACE_DAMAGE_MULTIPLIER.craft.
+  maxDamage: 190,
+  damageMassRef: 60,
+  maxDamageMassBoost: 2.5,
+  maxDamageMassFloor: 0.5,
+  // True kinetic-energy scale: impactDamage ≈ energyProxy * energyDamageScale * surfaceMult.
+  // U11 WF-15: light (mass ~16) at a committed concussion-stack deltaV (~50) is near-lethal on terrain.
+  // Medium first slam at ~28 wu/s needs ~0.011 so post-softener remaining hull dies on the wall
+  // rather than on the next concussion tick. Impulse stays at the siege-lance budget (420).
+  energyDamageScale: 0.007,
   maxDebris: 18,
 });
 
@@ -132,13 +145,21 @@ export function resolveCollisionConsequence(input = {}) {
       ? 0
       : SURFACE_DAMAGE_MULTIPLIER.craft * positive(input.craftDamageMultiplier, 1))
     : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0);
-  const impactDamage = clamp(
-    Math.sqrt(energyProxy) * 0.12 * surfaceDamageMultiplier,
-    0,
-    COLLISION_CONSEQUENCE_LIMITS.maxDamage,
+  // Mass-relative ceiling: thin light hulls can crumple under a committed slam; mass-anchored
+  // hulls keep the universal medium-class cap (or lower). The player never consumes this path —
+  // collisionConsequences skips state.playerId before routing impactDamage.
+  const massRelativeCap = COLLISION_CONSEQUENCE_LIMITS.maxDamage * clamp(
+    COLLISION_CONSEQUENCE_LIMITS.damageMassRef / mass,
+    COLLISION_CONSEQUENCE_LIMITS.maxDamageMassFloor,
+    COLLISION_CONSEQUENCE_LIMITS.maxDamageMassBoost,
   );
-  const damage01 = COLLISION_CONSEQUENCE_LIMITS.maxDamage > 0
-    ? impactDamage / COLLISION_CONSEQUENCE_LIMITS.maxDamage : 0;
+  const impactDamage = clamp(
+    energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+    0,
+    massRelativeCap,
+  );
+  const damage01 = massRelativeCap > 0
+    ? impactDamage / massRelativeCap : 0;
   const debrisCount = impactDamage > 0
     ? clamp(Math.ceil(3 + damage01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
     : 0;
