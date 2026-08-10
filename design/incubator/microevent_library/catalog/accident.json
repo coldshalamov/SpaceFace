@@ -38,7 +38,7 @@
       "tier": "first15",
       "blockedOn": null,
       "diagramMermaid": "sequenceDiagram\n  participant H as Hauler\n  participant T as Tender\n  participant G as Tug\n  participant P as Patrol\n  H->>H: drive dies, coasts off-lane\n  H->>H: distress alternation begins\n  Note over H: passing traffic gives one extra width\n  T->>H: DEPART + straight response leg\n  P->>P: overwatch 60 wu (lawful only)\n  G->>H: trails in, holds astern\n  T-->>H: hull_open work (red corners, weld stitch)\n  alt drive relights\n    H->>H: limps on, slower\n  else tow\n    G->>H: kiss + walk to station\n  end",
-      "notes": "The brief's worked example. Every beat maps to an existing system; the only new state is 'disabled' (a speed-zero + distress flag the kernel can already hold via FLEE-style override)."
+      "notes": "The brief's worked example. Every beat maps to an existing system; the only new state is 'disabled' (a speed-zero + distress flag the kernel can already hold via FLEE-style override). PQ-045.causal-chain: LIVE on Ceres as link 4; actors ceres_refinery_hauler + ceres_refinery_tender (optional bind); requires hauler_stressed; stamps ceresCausalDisabled for the failure window; seeds miner_wear+hauler_recovered at work so tender-services can open under the concurrency cap while resolve finishes."
     },
     {
       "id": "ev_miner_collision",

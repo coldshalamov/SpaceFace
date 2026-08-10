@@ -180,6 +180,8 @@ const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
 const CERES_AMBUSH_HAULER_SLOT_ID = 'ceres_ambush_loaded_hauler';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
+const CERES_CATHEDRAL_SALVOR_SLOT_ID = 'ceres_cathedral_salvor';
+const CERES_CATHEDRAL_PATROL_SLOT_ID = 'ceres_cathedral_patrol';
 const CERES_CINDER_HOOK_ID = 'ceres_cinder_sluice_service';
 const CERES_ACTIVITY_CAST = Object.freeze([
   ...CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots
@@ -196,6 +198,115 @@ const CERES_PRIMARY_ACTION_BY_JOB_KIND = Object.freeze({
   salvor: Object.freeze({ action: 'work', phase: NPC_JOB_PHASE.WORK, intentField: 'field' }),
   patrol: Object.freeze({ action: 'hold', phase: NPC_JOB_PHASE.HOLD, intentField: 'at' }),
 });
+
+// ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
+// Six catalog microevents form ONE authored causal story in the Ceres reference sector. This is a
+// choreography timer bound to the cast that already flies — not a generic ambient-event policy
+// layer. Concurrency is hard-capped at two active links; later links wait on seeds, not on a
+// cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
+// envelope), identity keys are worldRecordSlotId / jobId, and movement stays with npcJobsRuntime.
+const CERES_CAUSAL_CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
+const CERES_CAUSAL_CHAIN_EVENT = 'traffic:ceresCausalChain';
+const CERES_CAUSAL_CHAIN_MAX_CONCURRENT = 2;
+const CERES_CAUSAL_CHAIN_MAX_PHASE_STEPS = 12;
+const CERES_CAUSAL_RICH_YIELD_MULT = 2;
+const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
+const CERES_CAUSAL_CHAIN = Object.freeze([
+  Object.freeze({
+    id: 'ev_rich_seam_strike',
+    actorSlots: Object.freeze([CERES_SEAM_MINER_SLOT_ID]),
+    // Starts from cast live; no prior seed.
+    requires: Object.freeze([]),
+    // Seeds after the strike phase so the hauler call can overlap the greed/haul window (cap=2).
+    seedAtPhase: 'strike',
+    seeds: Object.freeze(['rich_seam', 'miner_loaded']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'cutting', durationS: 15, cue: 'blind_cone' }),
+      Object.freeze({ name: 'strike', durationS: 8, cue: 'blind_cone' }),
+      Object.freeze({ name: 'greed', durationS: 30, cue: 'blind_cone' }),
+      Object.freeze({ name: 'haul_out', durationS: 20, cue: 'home_under_rock' }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'ev_miner_calls_hauler',
+    actorSlots: Object.freeze([CERES_SEAM_MINER_SLOT_ID, CERES_REFINERY_HAULER_SLOT_ID]),
+    requires: Object.freeze(['miner_loaded']),
+    seedAtPhase: 'transfer',
+    seeds: Object.freeze(['ore_handoff', 'hauler_ore_manifest']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'call', durationS: 12, cue: 'heavy_burn' }),
+      Object.freeze({ name: 'answer', durationS: 25, cue: 'clean_burn' }),
+      Object.freeze({ name: 'transfer', durationS: 20, cue: 'mouth_open' }),
+      Object.freeze({ name: 'split', durationS: 15, cue: 'heavy_burn' }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'ev_patrol_scans_suspect',
+    actorSlots: Object.freeze([CERES_CATHEDRAL_PATROL_SLOT_ID, CERES_REFINERY_HAULER_SLOT_ID]),
+    requires: Object.freeze(['hauler_ore_manifest']),
+    seedAtPhase: 'release',
+    seeds: Object.freeze(['scan_complete', 'hauler_stressed']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'shadow', durationS: 12, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'lock', durationS: 10, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'read', durationS: 15, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'release', durationS: 8, cue: 'on_the_pin' }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'ev_disabled_hauler_recovery',
+    actorSlots: Object.freeze([CERES_REFINERY_HAULER_SLOT_ID, CERES_TENDER_SLOT_ID]),
+    requires: Object.freeze(['hauler_stressed']),
+    // Seed miner wear when the tender is already working the casualty so the next link can open
+    // under the concurrency cap while resolve finishes.
+    seedAtPhase: 'work',
+    seeds: Object.freeze(['miner_wear', 'hauler_recovered']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'failure', durationS: 15, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'distress', durationS: 20, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'response', durationS: 30, cue: 'spine_wake' }),
+      Object.freeze({ name: 'work', durationS: 45, cue: 'hull_open' }),
+      Object.freeze({ name: 'resolve', durationS: 30, cue: 'heavy_burn' }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'ev_tender_services_miner',
+    actorSlots: Object.freeze([CERES_TENDER_SLOT_ID, CERES_SEAM_MINER_SLOT_ID]),
+    requires: Object.freeze(['miner_wear']),
+    // Early aftermath seed lets the grave salvor open while the miner is still dark for service.
+    seedAtPhase: 'callout',
+    seeds: Object.freeze(['aftermath_open', 'miner_serviced']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'callout', durationS: 20, cue: 'spine_wake' }),
+      Object.freeze({ name: 'hard_stand', durationS: 10, cue: 'hull_open' }),
+      Object.freeze({ name: 'work', durationS: 45, cue: 'hull_open' }),
+      Object.freeze({ name: 'first_light', durationS: 10, cue: 'blind_cone' }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'ev_cutter_strips_wreck',
+    actorSlots: Object.freeze([CERES_CATHEDRAL_SALVOR_SLOT_ID]),
+    // Opens once the service callout seeds aftermath — concurrent with tender_services_miner.
+    requires: Object.freeze(['aftermath_open']),
+    seedAtPhase: 'stack',
+    seeds: Object.freeze(['wreck_stripped', 'chain_complete']),
+    phases: Object.freeze([
+      Object.freeze({ name: 'survey_cut', durationS: 15, cue: 'picking_the_bones' }),
+      Object.freeze({ name: 'sever', durationS: 20, cue: 'picking_the_bones' }),
+      Object.freeze({ name: 'wrangle', durationS: 20, cue: 'picking_the_bones' }),
+      Object.freeze({ name: 'stack', durationS: 12, cue: 'spilling_the_count' }),
+    ]),
+  }),
+]);
+const CERES_CAUSAL_CHAIN_BY_ID = new Map(CERES_CAUSAL_CHAIN.map((entry) => [entry.id, entry]));
+
+// Exported for focused characterization tests (seconds-scale, seed-pinned). Not a new runtime seam.
+export {
+  CERES_CAUSAL_CHAIN,
+  CERES_CAUSAL_CHAIN_EVENT,
+  CERES_CAUSAL_CHAIN_SCHEMA,
+  CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
+};
 
 function terminalWorldRecord(record) {
   return !!record && (record.alive === false
@@ -437,6 +548,8 @@ export const traffic = {
     this._committedCeresArrivalIds = new Set();
     this._causalRunEpoch = 0;
     this._restoreEpochPending = false;
+    // PQ-045.causal-chain: instance-only ledger (never written into state.traffic / save).
+    this._ceresCausal = null;
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
@@ -465,10 +578,12 @@ export const traffic = {
       // The incoming envelope is authoritative: a Continue to an earlier completion boundary must
       // be able to surface that legitimate action again.
       this._resetTransientCausalLedgers(false);
+      this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
       const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
+      if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
     });
     const refreshClaimTravel = () => this._applyClaimTravelHooks(
       this.state.world && this.state.world.currentSectorId,
@@ -520,6 +635,7 @@ export const traffic = {
       this._materializeCeresActivityCast(sector);
       this._ensureNamedLaneContact(sectorId, sector, this._sectorStations());
       this._applyWorldSiteTrafficHooks(sectorId);
+      this._ensureCeresCausalChain('sector_enter');
       return;
     }
     this._resetRngForSector(sectorId);
@@ -1538,6 +1654,7 @@ export const traffic = {
     // Hard exit drops the view and every view-scoped causality ledger. Continuous handoff uses
     // _pruneDead only and keeps them (M2 durable identity).
     this._resetTransientCausalLedgers(true);
+    this._resetCeresCausalChain('cleanup');
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
@@ -1561,6 +1678,11 @@ export const traffic = {
     if (!list || list.length === 0) return;
     const stations = this._sectorStations();
     if (stations.length === 0) return;
+
+    // Timer-cadence only: one chain step per traffic update, not a freighter scan.
+    if (state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._stepCeresCausalChain(dt);
+    }
 
     let lostWorldSiteRoute = false;
     let lostClaimTravelRoute = false;
@@ -2573,6 +2695,9 @@ export const traffic = {
     try {
       const commodityId = dominantAsteroidCommodity(asteroid);
       const authoredYield = Math.max(1, Math.floor(Number(asteroid.data && asteroid.data.yieldU) || NPC_MINER_WORK_BATCH_U));
+      // Keep the field-owner extraction batch at the ordinary parcel size. The rich-seam microevent
+      // advertises yield through the chain ledger + miner cargo stamp (see _applyCeresCausalPhaseEffects),
+      // not by rewriting the mining:npcExtraction quantum — that quantum is already pinned by owner tests.
       const extractedU = Math.min(NPC_MINER_WORK_BATCH_U, authoredYield);
       const manifest = this._buildMinerManifest(context.entity, seq, commodityId, extractedU);
       if (!this._setTrafficManifest(context.entity, context.rec, manifest)) throw new Error('miner_manifest_rejected');
@@ -2633,6 +2758,387 @@ export const traffic = {
     this.state.traffic.appliedJobActionIds = [];
     this._committedCeresArrivalIds.clear();
     this._committedCeresMinerWorkIds.clear();
+  },
+
+  // ── PQ-045.causal-chain — Ceres-only choreography timer ────────────────────────────────────────
+
+  _resetCeresCausalChain(reason = 'reset') {
+    if (this._ceresCausal && this._ceresCausal.active && this._ceresCausal.active.length) {
+      for (const live of this._ceresCausal.active.slice()) {
+        this._emitCeresCausalReceipt(live, 'abort', { reason: String(reason || 'reset') });
+      }
+    }
+    this._ceresCausal = null;
+  },
+
+  _ensureCeresCausalChain(reason = 'ensure') {
+    if (!this.state || !this.state.world || this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) {
+      this._resetCeresCausalChain('wrong_sector');
+      return null;
+    }
+    if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
+      return this._ceresCausal;
+    }
+    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._ceresCausal = {
+      schema: CERES_CAUSAL_CHAIN_SCHEMA,
+      cycle: 0,
+      nextIndex: 0,
+      active: [],
+      completed: [],
+      seeds: Object.create(null),
+      nextEligibleAt: simTime,
+      startedAt: simTime,
+      reason: String(reason || 'ensure'),
+    };
+    this._emitCeresCausalReceipt(null, 'chain_ready', {
+      reason: String(reason || 'ensure'),
+      cycle: 0,
+    });
+    return this._ceresCausal;
+  },
+
+  /**
+   * Resolve a Ceres cast (or tender reuse) actor by stable slot id. Does not allocate and does not
+   * walk the full entity map every call: freighter ledger first, then a single tender fall-through.
+   */
+  _ceresCausalActorBySlot(slotId) {
+    if (typeof slotId !== 'string' || !slotId) return null;
+    const freighters = this.state && this.state.traffic && this.state.traffic.freighters;
+    if (Array.isArray(freighters)) {
+      for (let i = 0; i < freighters.length; i++) {
+        const rec = freighters[i];
+        if (!rec || rec.activityActorSlotId !== slotId) continue;
+        const entity = liveEntity(this.state, rec.id);
+        if (entity && entity.alive !== false) return { entity, rec, slotId };
+      }
+    }
+    // Tender is owned by factionPresence (excluded from traffic job cast) but still has the stable
+    // activity slot id stamped when adopted. One linear pass of freighters already missed it; probe
+    // by worldRecordId without a full entity scan when the cast map can name it.
+    if (slotId === CERES_TENDER_SLOT_ID) {
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const worldRecordId = stableRecordId(
+        seed,
+        CERES_ACTIVITY_SECTOR_ID,
+        RECORD_KIND.CONVOY,
+        `ceres:activity:${CERES_TENDER_SLOT_ID}`,
+      );
+      const entity = entityWithWorldRecord(this.state, worldRecordId);
+      if (entity && entity.alive !== false) return { entity, rec: null, slotId };
+    }
+    return null;
+  },
+
+  _ceresCausalRequiredActorsLive(def) {
+    if (!def || !Array.isArray(def.actorSlots)) return false;
+    for (let i = 0; i < def.actorSlots.length; i++) {
+      const slotId = def.actorSlots[i];
+      // Tender is optional for chain bookkeeping: the Pitborn yard tender may lag rematerialization.
+      if (slotId === CERES_TENDER_SLOT_ID) continue;
+      if (!this._ceresCausalActorBySlot(slotId)) return false;
+    }
+    return true;
+  },
+
+  _ceresCausalSeedsReady(requires) {
+    const seeds = this._ceresCausal && this._ceresCausal.seeds;
+    if (!seeds) return false;
+    if (!Array.isArray(requires) || requires.length === 0) return true;
+    for (let i = 0; i < requires.length; i++) {
+      if (seeds[requires[i]] !== true) return false;
+    }
+    return true;
+  },
+
+  _emitCeresCausalReceipt(live, kind, extra = null) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const chain = this._ceresCausal;
+    const payload = {
+      schema: CERES_CAUSAL_CHAIN_SCHEMA,
+      kind: String(kind || 'tick'),
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      simTime: Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0,
+      cycle: chain ? chain.cycle | 0 : 0,
+      activeCount: chain && Array.isArray(chain.active) ? chain.active.length : 0,
+      completed: chain && Array.isArray(chain.completed) ? chain.completed.slice() : [],
+      seeds: chain && chain.seeds ? { ...chain.seeds } : {},
+      eventId: live && live.eventId || null,
+      phase: live && live.phase || null,
+      phaseIndex: live && Number.isInteger(live.phaseIndex) ? live.phaseIndex : null,
+      actorSlotIds: live && Array.isArray(live.actorSlotIds) ? live.actorSlotIds.slice() : [],
+      cue: live && live.cue || null,
+      ...(extra && typeof extra === 'object' ? extra : {}),
+    };
+    this.bus.emit(CERES_CAUSAL_CHAIN_EVENT, payload);
+  },
+
+  _startCeresCausalEvent(def, simTime) {
+    if (!def || !this._ceresCausal) return null;
+    const phase = def.phases[0];
+    const live = {
+      eventId: def.id,
+      phaseIndex: 0,
+      phase: phase.name,
+      cue: phase.cue || null,
+      phaseEndsAt: simTime + phase.durationS,
+      actorSlotIds: def.actorSlots.slice(),
+      seeded: false,
+    };
+    this._ceresCausal.active.push(live);
+    // Stamp a transient presentation cue on the primary actor (not a movement intent).
+    this._stampCeresCausalCue(live, true);
+    if (def.id === 'ev_disabled_hauler_recovery') {
+      this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, true);
+    }
+    if (def.id === 'ev_tender_services_miner') {
+      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, true);
+    }
+    this._emitCeresCausalReceipt(live, 'event_start');
+    return live;
+  },
+
+  _stampCeresCausalCue(live, active) {
+    if (!live || !Array.isArray(live.actorSlotIds)) return;
+    for (let i = 0; i < live.actorSlotIds.length; i++) {
+      const bound = this._ceresCausalActorBySlot(live.actorSlotIds[i]);
+      if (!bound || !bound.entity || !bound.entity.data) continue;
+      if (active) {
+        bound.entity.data.ceresCausalEventId = live.eventId;
+        bound.entity.data.ceresCausalPhase = live.phase;
+        bound.entity.data.ceresCausalCue = live.cue;
+      } else if (bound.entity.data.ceresCausalEventId === live.eventId) {
+        bound.entity.data.ceresCausalEventId = null;
+        bound.entity.data.ceresCausalPhase = null;
+        bound.entity.data.ceresCausalCue = null;
+      }
+    }
+  },
+
+  _setCeresCausalDisabled(slotId, disabled) {
+    const bound = this._ceresCausalActorBySlot(slotId);
+    if (!bound || !bound.entity || !bound.entity.data) return;
+    bound.entity.data.ceresCausalDisabled = disabled === true;
+    if (bound.rec) bound.rec.ceresCausalDisabled = disabled === true;
+  },
+
+  _setCeresCausalServiceHold(slotId, hold) {
+    const bound = this._ceresCausalActorBySlot(slotId);
+    if (!bound || !bound.entity || !bound.entity.data) return;
+    bound.entity.data.ceresCausalServiceHold = hold === true;
+  },
+
+  _applyCeresCausalPhaseEffects(def, live, phaseName) {
+    if (!def || !live) return;
+    if (def.id === 'ev_rich_seam_strike' && phaseName === 'strike') {
+      // Ensure the miner carries a readable loaded return even before the next work receipt.
+      const bound = this._ceresCausalActorBySlot(CERES_SEAM_MINER_SLOT_ID);
+      if (bound && bound.entity) {
+        const existing = bound.entity.data && bound.entity.data.cargoManifest;
+        if (!existing || !validCausalManifest(existing)) {
+          const manifest = this._buildMinerManifest(
+            bound.entity,
+            Math.max(0, (this.state.tick | 0)),
+            'cmdty_ore_iron',
+            NPC_MINER_WORK_BATCH_U * CERES_CAUSAL_RICH_YIELD_MULT,
+          );
+          this._setTrafficManifest(bound.entity, bound.rec, manifest);
+        }
+      }
+    }
+    if (def.id === 'ev_miner_calls_hauler' && phaseName === 'transfer') {
+      this._applyCeresCausalOreHandoff();
+    }
+    if (def.id === 'ev_disabled_hauler_recovery' && phaseName === 'resolve') {
+      this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, false);
+    }
+    if (def.id === 'ev_tender_services_miner' && phaseName === 'first_light') {
+      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, false);
+    }
+  },
+
+  /**
+   * Transfer a real ore manifest from the loaded miner to the refinery hauler through the existing
+   * traffic.manifest ownership (no economy wallet write — hauler delivery still goes through freight
+   * arrival when its job unloads).
+   */
+  _applyCeresCausalOreHandoff() {
+    const miner = this._ceresCausalActorBySlot(CERES_SEAM_MINER_SLOT_ID);
+    const hauler = this._ceresCausalActorBySlot(CERES_REFINERY_HAULER_SLOT_ID);
+    if (!miner || !hauler || !miner.entity || !hauler.entity) return false;
+    let manifest = miner.entity.data && miner.entity.data.cargoManifest;
+    if (!validCausalManifest(manifest)) {
+      manifest = this._buildMinerManifest(
+        miner.entity,
+        Math.max(0, (this.state.tick | 0)),
+        'cmdty_ore_iron',
+        NPC_MINER_WORK_BATCH_U * CERES_CAUSAL_RICH_YIELD_MULT,
+      );
+    }
+    // Hauler receives a freight-shaped copy; miner drops to empty (hand-off, not duplication).
+    const haulerManifest = {
+      manifestId: `ceres-chain-handoff:${hauler.entity.data && hauler.entity.data.worldRecordId || hauler.entity.id}:${this.state.tick | 0}`,
+      lines: manifest.lines.map((line) => ({ commodityId: line.commodityId, qty: line.qty | 0 })),
+      totalQty: manifest.totalQty | 0,
+    };
+    this._setTrafficManifest(hauler.entity, hauler.rec, haulerManifest);
+    this._setTrafficManifest(
+      miner.entity,
+      miner.rec,
+      this._buildMinerManifest(miner.entity, Math.max(0, (this.state.tick | 0)), null, 0),
+    );
+    // One-shot hauler jobs read payload.manifest at assign time; stamp the live entity so the next
+    // recommission carries the ore without inventing a second freight writer.
+    if (hauler.entity.data) hauler.entity.data.cargoManifest = haulerManifest;
+    if (hauler.rec) hauler.rec.manifest = haulerManifest;
+    return true;
+  },
+
+  _seedCeresCausalEvent(def, live) {
+    if (!def || !live || live.seeded || !this._ceresCausal) return;
+    if (live.phase !== def.seedAtPhase) return;
+    live.seeded = true;
+    for (let i = 0; i < def.seeds.length; i++) {
+      this._ceresCausal.seeds[def.seeds[i]] = true;
+    }
+    this._applyCeresCausalPhaseEffects(def, live, live.phase);
+    this._emitCeresCausalReceipt(live, 'seed', {
+      seeded: def.seeds.slice(),
+    });
+  },
+
+  _completeCeresCausalEvent(live, outcome = 'complete') {
+    if (!live || !this._ceresCausal) return;
+    const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
+    if (def && !live.seeded && outcome === 'complete') {
+      // Fail-closed: if the event ends without hitting seedAtPhase (shortened/interrupted path
+      // already handled), still plant seeds so the chain cannot soft-lock.
+      live.phase = def.seedAtPhase;
+      this._seedCeresCausalEvent(def, live);
+    }
+    this._stampCeresCausalCue(live, false);
+    if (def && def.id === 'ev_disabled_hauler_recovery') {
+      this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, false);
+    }
+    if (def && def.id === 'ev_tender_services_miner') {
+      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, false);
+    }
+    const active = this._ceresCausal.active;
+    const idx = active.indexOf(live);
+    if (idx >= 0) active.splice(idx, 1);
+    if (outcome === 'complete' && !this._ceresCausal.completed.includes(live.eventId)) {
+      this._ceresCausal.completed.push(live.eventId);
+    }
+    this._emitCeresCausalReceipt(live, outcome === 'complete' ? 'event_complete' : 'event_interrupt', {
+      outcome,
+    });
+  },
+
+  _advanceCeresCausalLive(live, simTime) {
+    if (!live || !this._ceresCausal) return;
+    const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
+    if (!def) {
+      this._completeCeresCausalEvent(live, 'abort');
+      return;
+    }
+    // Primary-actor death is the catalog interruption path; fall back and free the concurrency slot.
+    if (!this._ceresCausalRequiredActorsLive(def)) {
+      this._completeCeresCausalEvent(live, 'fallback');
+      return;
+    }
+    let steps = 0;
+    while (simTime >= live.phaseEndsAt && steps < CERES_CAUSAL_CHAIN_MAX_PHASE_STEPS) {
+      steps += 1;
+      this._seedCeresCausalEvent(def, live);
+      const nextIndex = live.phaseIndex + 1;
+      if (nextIndex >= def.phases.length) {
+        this._completeCeresCausalEvent(live, 'complete');
+        return;
+      }
+      const next = def.phases[nextIndex];
+      live.phaseIndex = nextIndex;
+      live.phase = next.name;
+      live.cue = next.cue || null;
+      live.phaseEndsAt = Math.max(live.phaseEndsAt, simTime) + next.durationS;
+      this._stampCeresCausalCue(live, true);
+      this._applyCeresCausalPhaseEffects(def, live, live.phase);
+      this._seedCeresCausalEvent(def, live);
+      this._emitCeresCausalReceipt(live, 'phase');
+    }
+  },
+
+  _tryStartNextCeresCausalEvents(simTime) {
+    const chain = this._ceresCausal;
+    if (!chain) return;
+    if (simTime < chain.nextEligibleAt) return;
+    while (chain.active.length < CERES_CAUSAL_CHAIN_MAX_CONCURRENT
+      && chain.nextIndex < CERES_CAUSAL_CHAIN.length) {
+      const def = CERES_CAUSAL_CHAIN[chain.nextIndex];
+      if (!this._ceresCausalSeedsReady(def.requires)) break;
+      if (!this._ceresCausalRequiredActorsLive(def)) break;
+      // Do not start a second copy of a still-active or already-completed event in this cycle.
+      if (chain.completed.includes(def.id)
+        || chain.active.some((live) => live && live.eventId === def.id)) {
+        chain.nextIndex += 1;
+        continue;
+      }
+      this._startCeresCausalEvent(def, simTime);
+      chain.nextIndex += 1;
+    }
+    if (chain.nextIndex >= CERES_CAUSAL_CHAIN.length
+      && chain.active.length === 0
+      && chain.completed.length >= CERES_CAUSAL_CHAIN.length) {
+      // Full cycle resolved with no player input. Gap, then re-arm from the seam strike again.
+      chain.cycle = (chain.cycle | 0) + 1;
+      chain.nextIndex = 0;
+      chain.completed = [];
+      chain.seeds = Object.create(null);
+      chain.nextEligibleAt = simTime + CERES_CAUSAL_CHAIN_CYCLE_GAP_S;
+      this._emitCeresCausalReceipt(null, 'cycle_complete', {
+        cycle: chain.cycle,
+        nextEligibleAt: chain.nextEligibleAt,
+      });
+    }
+  },
+
+  _stepCeresCausalChain(dt) {
+    const chain = this._ensureCeresCausalChain('step');
+    if (!chain) return;
+    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    // Advance active links first so a finishing seed can admit the next link in the same step.
+    if (Array.isArray(chain.active) && chain.active.length) {
+      const snapshot = chain.active.slice();
+      for (let i = 0; i < snapshot.length; i++) {
+        if (chain.active.includes(snapshot[i])) this._advanceCeresCausalLive(snapshot[i], simTime);
+      }
+    }
+    this._tryStartNextCeresCausalEvents(simTime);
+    // dt is accepted for call-site symmetry with traffic.update; phase ends are absolute simTime.
+    void dt;
+  },
+
+  /** Test/support seam: return a frozen snapshot of the transient chain ledger. */
+  getCeresCausalChainSnapshot() {
+    const chain = this._ceresCausal;
+    if (!chain) return null;
+    return Object.freeze({
+      schema: chain.schema,
+      cycle: chain.cycle | 0,
+      nextIndex: chain.nextIndex | 0,
+      activeCount: Array.isArray(chain.active) ? chain.active.length : 0,
+      active: Object.freeze((chain.active || []).map((live) => Object.freeze({
+        eventId: live.eventId,
+        phase: live.phase,
+        phaseIndex: live.phaseIndex,
+        cue: live.cue,
+        phaseEndsAt: live.phaseEndsAt,
+        actorSlotIds: Object.freeze((live.actorSlotIds || []).slice()),
+        seeded: live.seeded === true,
+      }))),
+      completed: Object.freeze((chain.completed || []).slice()),
+      seeds: Object.freeze({ ...(chain.seeds || {}) }),
+      nextEligibleAt: chain.nextEligibleAt,
+    });
   },
 
   _onNpcJobUnload(intent) {
@@ -2908,6 +3414,7 @@ export const traffic = {
     ]) {
       if (ledger && typeof ledger.clear === 'function') ledger.clear();
     }
+    this._resetCeresCausalChain('new_game');
     this.state.traffic = {
       freighters: [],
       appliedArrivalIds: [],

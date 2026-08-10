@@ -30,7 +30,7 @@
       "fallback": "Subject despawns mid-lock: patrol sweeps once through empty space and resumes - unbothered",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "The patrol_scan encounter trigger and PAINT reaction both exist; this formalizes the four-beat visible choreography around them."
+      "notes": "The patrol_scan encounter trigger and PAINT reaction both exist; this formalizes the four-beat visible choreography around them. PQ-045.causal-chain: LIVE on Ceres as link 3; actors ceres_cathedral_patrol + ceres_refinery_hauler (loaded after ore handoff); requires hauler_ore_manifest; seeds scan_complete+hauler_stressed at release so recovery can open."
     },
     {
       "id": "ev_customs_pullover",
