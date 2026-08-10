@@ -112,6 +112,8 @@ const PLACE_FILES = Object.freeze([
   'places/place_station_billboard.glb',
   'places/place_memorial_array.glb',
   'places/place_dead_hulk.glb',
+  'places/place_ceres_bait_wreck.glb',
+  'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
   'places/place_mining_drone.glb',
   'places/place_asteroid_rock_a.glb',

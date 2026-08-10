@@ -1328,6 +1328,44 @@
       "ktx2Textures": 26,
       "meshoptBufferViews": 97,
       "contractNodeCount": 30
+    },
+    {
+      "id": "place_ceres_bait_wreck",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_bait_wreck.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb",
+      "sourceSha256": "e6f9993c210e9a6d7c7801296174cfe0fc4f15d48218fa5b2064fb3174714bff",
+      "releaseSha256": "90d2700c241c21723425d194aae79b7bdfdd6e8c57d3d075741a5232427e8d64",
+      "sourceBytes": 4731648,
+      "releaseBytes": 1805264,
+      "textures": 21,
+      "ktx2Textures": 21,
+      "meshoptBufferViews": 58,
+      "contractNodeCount": 25,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_ceres_grave_shard",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ceres_grave_shard.glb",
+      "release": "assets/ships/release/parts/places/place_ceres_grave_shard.glb",
+      "sourceSha256": "02c26c8c2028b20bb2f31a3e61c51392d6ec113ed44a1c588a214d05e21d02bd",
+      "releaseSha256": "a69e3d2b1652067ea2eb91b500ca1128ad9a3cbaeef060661b6a7c7e45883764",
+      "sourceBytes": 3134404,
+      "releaseBytes": 1205788,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

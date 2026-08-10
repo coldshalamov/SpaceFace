@@ -2749,6 +2749,115 @@
       }
     },
     {
+      "id": "place_ceres_bait_wreck",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_ceres_bait_wreck.glb",
+      "tris": 4138,
+      "bytes": 4731648,
+      "textureSize": 512,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "note": "PQ-045 Ceres Throughline bait wreck — authored-down wreck_aftermath composition (liner bow/boatbay, freighter hopper, armor slab) with LOD0/1/2 and PBR roles.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core",
+        "SOCKET_BlackBox"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -34.3155,
+          -24.6237,
+          -18.0725
+        ],
+        "max": [
+          34.3155,
+          24.6237,
+          18.0725
+        ],
+        "dimensionsM": [
+          68.631,
+          49.2473,
+          36.1449
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_grave_shard",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_ceres_grave_shard.glb",
+      "tris": 989,
+      "bytes": 3134404,
+      "textureSize": 512,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "note": "PQ-045 Ceres Cathedral grave shard — authored-down wreck_aftermath composition (hopper lid, liner panel, instanced grating) with LOD0/1/2 and PBR roles.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Tether_Massline",
+        "SOCKET_Salvage_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -15.7783,
+          -11.0977,
+          -8.1875
+        ],
+        "max": [
+          15.7783,
+          11.0977,
+          8.1875
+        ],
+        "dimensionsM": [
+          31.5566,
+          22.1953,
+          16.375
+        ]
+      }
+    },
+    {
       "id": "place_conveyor_barge",
       "category": "places",
       "priority": "P1",
