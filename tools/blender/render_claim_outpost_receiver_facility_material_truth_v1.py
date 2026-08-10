@@ -248,7 +248,8 @@ def configure_scene(asset_id: str):
     scene.render.film_transparent = False
     scene.render.use_file_extension = True
     scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 0.82
+    # Slightly lifted exposure so institutional shell vs guarded charcoal remain separable in stills.
+    scene.view_settings.exposure = 0.95
     return collection, camera, target
 
 
@@ -258,19 +259,19 @@ def configure_lighting(collection, target, mode: str) -> None:
             bpy.data.objects.remove(obj, do_unlink=True)
     background = bpy.context.scene.world.node_tree.nodes.get("Background")
     if mode == "grazing":
-        background.inputs["Strength"].default_value = 0.10
+        background.inputs["Strength"].default_value = 0.12
         add_area_light(collection, "SF_GRAZE_KEY", target + Vector((18, 22, 175)),
-                       105000.0, (1.0, 0.82, 0.60), 22.0, target)
+                       120000.0, (1.0, 0.84, 0.62), 22.0, target)
         add_area_light(collection, "SF_GRAZE_RIM", target + Vector((-90, 15, -120)),
-                       38000.0, (0.34, 0.55, 1.0), 30.0, target)
+                       42000.0, (0.36, 0.56, 1.0), 30.0, target)
     else:
-        background.inputs["Strength"].default_value = 0.38
+        background.inputs["Strength"].default_value = 0.48
         add_area_light(collection, "SF_KEY", target + Vector((120, 150, 110)),
-                       88000.0, (1.0, 0.88, 0.72), 55.0, target)
+                       102000.0, (1.0, 0.90, 0.74), 55.0, target)
         add_area_light(collection, "SF_FILL", target + Vector((-100, 80, 130)),
-                       44000.0, (0.50, 0.68, 1.0), 65.0, target)
+                       56000.0, (0.52, 0.70, 1.0), 65.0, target)
         add_area_light(collection, "SF_RIM", target + Vector((-130, 20, -100)),
-                       64000.0, (0.30, 0.55, 1.0), 45.0, target)
+                       72000.0, (0.32, 0.56, 1.0), 45.0, target)
 
 
 def view_contracts(asset_id: str, target: Vector) -> dict:
@@ -513,7 +514,7 @@ def render() -> dict:
         "baselineManifest": identity(BASELINE_MANIFEST),
         "resolution": {"width": RESOLUTION[0], "height": RESOLUTION[1]},
         "renderEngine": "BLENDER_EEVEE",
-        "colorManagement": {"look": "AgX - Medium High Contrast", "exposure": 0.82},
+        "colorManagement": {"look": "AgX - Medium High Contrast", "exposure": 0.95},
         "runtimeEquivalentAuthority": {
             "viewport": {"width": 1440, "height": 900},
             "subjectRadius": 24,

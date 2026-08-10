@@ -6,24 +6,24 @@
   "status": "pass",
   "buildReport": {
     "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/build-report.json",
-    "sha256": "5515acb1dde9052cc71ecf64b4de551fb90238ba738dc8fbc0024df46e5830de",
-    "bytes": 54545
+    "bytes": 54578,
+    "sha256": "ba2ef8da7ffb692bb6f9e9bdcdd301e5e32c1cb33b0921309fbe04f48d9c607f"
   },
   "candidate": {
     "path": "assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_refinery.glb",
-    "sha256": "c36ea2f39e16313eb943cf06b41020011bbb0e573a0ca0060c478ee0df63cb82",
-    "bytes": 3088608
+    "bytes": 5936100,
+    "sha256": "d1ad55b71ceada961728932e9fcc561b3249901db649cc65ab737068b98de9bf"
   },
   "validators": {
     "foundry": {
       "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_refinery/validation/foundry/place_claim_outpost_refinery.glb.report.json",
-      "sha256": "6cba0eb20e03fc1c689c85df5a8424fa4b7740f9a3a4837fcfbaebc8f859e8d1",
-      "bytes": 6477
+      "bytes": 6360,
+      "sha256": "33f50d343bd758deedacdaf89dcd563df49678b9ca0870100310d9828f5b6ffc"
     },
     "khronos": {
       "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_refinery/validation/khronos/place_claim_outpost_refinery.glb.report.json",
-      "sha256": "94486d4ae2b7a172aca23cb61ae6f6e45d48914d5c53b4779ca6c3bae07d4afb",
-      "bytes": 5621
+      "bytes": 5621,
+      "sha256": "9fc135e4bf0f68bed6e34a90eba22d32fd954e068a95d0c92d688b4aa376a03f"
     }
   }
 }

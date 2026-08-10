@@ -78,12 +78,13 @@ TARGETS = {
             "size": (102.5226, 30.1696, 94.0452),
         },
         "visualCenterXZ": {"x": 4.2387, "z": 0.0},
+        # Lawful catcher: institutional cool shell, steel mechanism, restrained liner, readable without emission.
         "materialProfiles": {
-            "Material_Hull": ((0.37, 0.43, 0.49), 0.02, 0.57, "rolled_coating", 11),
-            "Material_Mechanical": ((0.22, 0.26, 0.30), 0.86, 0.32, "machined_alloy", 17),
-            "Material_Accent": ((0.12, 0.42, 0.53), 0.03, 0.49, "capture_liner", 23),
-            "Material_Glass": ((0.025, 0.095, 0.125), 0.00, 0.16, "smoked_optic", 29),
-            "Material_Warm": ((0.58, 0.31, 0.10), 0.08, 0.46, "damped_contact", 31),
+            "Material_Hull": ((0.50, 0.56, 0.62), 0.04, 0.52, "rolled_coating", 11),
+            "Material_Mechanical": ((0.30, 0.34, 0.38), 0.88, 0.28, "machined_alloy", 17),
+            "Material_Accent": ((0.10, 0.46, 0.56), 0.02, 0.46, "capture_liner", 23),
+            "Material_Glass": ((0.04, 0.11, 0.15), 0.00, 0.14, "smoked_optic", 29),
+            "Material_Warm": ((0.64, 0.38, 0.14), 0.10, 0.42, "damped_contact", 31),
         },
     },
     "place_claim_outpost_refinery": {
@@ -98,12 +99,13 @@ TARGETS = {
             "size": (106.3652, 48.5996, 97.8878),
         },
         "visualCenterXZ": {"x": 2.3174, "z": -1.9213},
+        # Covert fence: charcoal guarded plates, warmer worked alloy, ochre service plates — not a recolor of catcher.
         "materialProfiles": {
-            "Material_Hull": ((0.20, 0.235, 0.25), 0.03, 0.64, "guarded_plate", 41),
-            "Material_Mechanical": ((0.25, 0.235, 0.21), 0.82, 0.37, "worked_alloy", 43),
-            "Material_Accent": ((0.34, 0.27, 0.12), 0.02, 0.54, "service_plate", 47),
-            "Material_Glass": ((0.055, 0.065, 0.058), 0.00, 0.19, "smoked_optic", 53),
-            "Material_Warm": ((0.52, 0.24, 0.075), 0.18, 0.50, "transfer_interface", 59),
+            "Material_Hull": ((0.16, 0.18, 0.17), 0.05, 0.68, "guarded_plate", 41),
+            "Material_Mechanical": ((0.40, 0.34, 0.26), 0.84, 0.34, "worked_alloy", 43),
+            "Material_Accent": ((0.46, 0.36, 0.16), 0.03, 0.50, "service_plate", 47),
+            "Material_Glass": ((0.05, 0.06, 0.05), 0.00, 0.18, "smoked_optic", 53),
+            "Material_Warm": ((0.58, 0.30, 0.10), 0.20, 0.46, "transfer_interface", 59),
         },
     },
 }
@@ -265,44 +267,69 @@ def material_maps(asset_id: str, name: str, profile: tuple) -> dict:
     color, metallic, roughness, grammar, seed = profile
 
     def base_pixel(u, v):
+        # Directional manufacture, not flat tint: panel seams, tool paths, and localized service wear.
         if grammar in {"machined_alloy", "worked_alloy"}:
-            variation = 0.035 * math.sin(math.tau * (u * (18 + seed % 5) + v * 0.35))
-            variation += 0.014 * math.sin(math.tau * (v * 2.0 + seed * 0.031))
-        elif grammar in {"rolled_coating", "guarded_plate"}:
-            variation = 0.028 * math.sin(math.tau * (u * 1.25 + seed * 0.017))
-            variation += 0.018 * math.cos(math.tau * (v * 2.4 - seed * 0.011))
+            tool = 0.045 * math.sin(math.tau * (u * (22 + seed % 7) + v * 0.28))
+            band = 0.018 * math.sin(math.tau * (v * 3.2 + seed * 0.029))
+            wear = 0.012 * max(0.0, math.sin(math.tau * (u * 2.4 + v * 1.1 + seed * 0.02)))
+            variation = tool + band + wear
+        elif grammar == "rolled_coating":
+            panel = 0.040 * math.sin(math.tau * (u * 1.15 + seed * 0.013))
+            seam = 0.028 * math.cos(math.tau * (v * 2.8 - seed * 0.009))
+            patch = 0.016 * max(0.0, math.sin(math.tau * (u * 4.0 + v * 0.7)))
+            variation = panel + seam + patch
+        elif grammar == "guarded_plate":
+            panel = 0.034 * math.sin(math.tau * (u * 0.95 + seed * 0.015))
+            scrape = 0.022 * math.cos(math.tau * (v * 3.4 - u * 0.5 + seed * 0.01))
+            soot = -0.018 * max(0.0, math.sin(math.tau * (u * 1.6 + v * 2.1)))
+            variation = panel + scrape + soot
         elif grammar in {"capture_liner", "service_plate"}:
-            variation = 0.020 * math.cos(math.tau * (u * 5.0 + v * 0.55 + seed * 0.019))
+            stripe = 0.030 * math.cos(math.tau * (u * 6.0 + v * 0.4 + seed * 0.017))
+            edge = 0.018 * math.sin(math.tau * (v * 5.0 + seed * 0.011))
+            variation = stripe + edge
         elif grammar in {"damped_contact", "transfer_interface"}:
-            variation = 0.030 * math.sin(math.tau * (u * 3.2 + v * 1.4 + seed * 0.013))
+            polish = 0.040 * math.sin(math.tau * (u * 3.6 + v * 1.5 + seed * 0.012))
+            heat = 0.020 * math.cos(math.tau * (v * 2.0 - u * 0.8))
+            variation = polish + heat
         else:
-            variation = 0.010 * math.cos(math.tau * (u * 1.1 + v * 0.7))
-        factor = max(0.82, min(1.14, 1.0 + variation))
+            variation = 0.012 * math.cos(math.tau * (u * 1.1 + v * 0.7))
+        factor = max(0.78, min(1.18, 1.0 + variation))
         return tuple(min(1.0, channel * factor) for channel in color) + (1.0,)
 
     def orm_pixel(u, v):
         if grammar in {"machined_alloy", "worked_alloy"}:
-            delta = 0.035 * math.sin(math.tau * (u * 13.0 + seed * 0.021))
-        elif grammar in {"rolled_coating", "guarded_plate"}:
-            delta = 0.024 * math.cos(math.tau * (v * 2.2 + seed * 0.017))
+            delta = 0.048 * math.sin(math.tau * (u * 16.0 + seed * 0.019))
+            delta -= 0.020 * max(0.0, math.sin(math.tau * (v * 4.0 + u)))
+        elif grammar == "rolled_coating":
+            delta = 0.030 * math.cos(math.tau * (v * 2.4 + seed * 0.015))
+            delta += 0.018 * math.sin(math.tau * (u * 1.6))
+        elif grammar == "guarded_plate":
+            delta = 0.036 * math.cos(math.tau * (v * 2.6 + seed * 0.014))
+            delta += 0.022 * max(0.0, math.sin(math.tau * (u * 3.0 + v)))
         elif grammar == "smoked_optic":
-            delta = 0.008 * math.sin(math.tau * (u + v))
+            delta = 0.010 * math.sin(math.tau * (u + v))
         else:
-            delta = 0.018 * math.sin(math.tau * (u * 3.1 + v * 1.7 + seed * 0.01))
-        return (1.0, max(0.08, min(0.95, roughness + delta)), metallic, 1.0)
+            delta = 0.024 * math.sin(math.tau * (u * 3.4 + v * 1.9 + seed * 0.01))
+        ao = 0.88 + 0.12 * abs(math.sin(math.tau * (u * 2.0 + v * 1.3 + seed * 0.007)))
+        return (ao, max(0.08, min(0.95, roughness + delta)), metallic, 1.0)
 
     def normal_pixel(u, v):
         if grammar in {"machined_alloy", "worked_alloy"}:
-            nx = 0.5 + 0.010 * math.sin(math.tau * (u * 26.0 + seed * 0.01))
-            ny = 0.5 + 0.003 * math.cos(math.tau * v * 3.0)
+            nx = 0.5 + 0.016 * math.sin(math.tau * (u * 28.0 + seed * 0.01))
+            ny = 0.5 + 0.006 * math.cos(math.tau * v * 4.0)
+        elif grammar in {"rolled_coating", "guarded_plate"}:
+            nx = 0.5 + 0.010 * math.sin(math.tau * (u * 3.2 + seed * 0.008))
+            ny = 0.5 + 0.012 * math.cos(math.tau * (v * 5.0 - seed * 0.006))
+            # Soft plate-seam ridges.
+            nx += 0.008 * math.sin(math.tau * (u * 1.0 + seed * 0.02))
         elif grammar in {"damped_contact", "transfer_interface"}:
-            nx = 0.5 + 0.006 * math.sin(math.tau * (u * 5.0 + v * 2.0))
-            ny = 0.5 + 0.006 * math.cos(math.tau * (v * 4.0 - u))
+            nx = 0.5 + 0.010 * math.sin(math.tau * (u * 6.0 + v * 2.0))
+            ny = 0.5 + 0.010 * math.cos(math.tau * (v * 5.0 - u))
         elif grammar == "smoked_optic":
             nx = ny = 0.5
         else:
-            nx = 0.5 + 0.004 * math.sin(math.tau * (u * 4.0 + seed * 0.01))
-            ny = 0.5 + 0.004 * math.cos(math.tau * (v * 3.0 - seed * 0.01))
+            nx = 0.5 + 0.007 * math.sin(math.tau * (u * 5.0 + seed * 0.01))
+            ny = 0.5 + 0.007 * math.cos(math.tau * (v * 4.0 - seed * 0.01))
         return (nx, ny, 1.0, 1.0)
 
     token = asset_id.removeprefix("place_claim_outpost_").title()
@@ -368,7 +395,7 @@ def retune_materials(asset_id: str, spec: dict) -> tuple[dict, dict]:
         normal_node.name = f"{name}_Normal"
         normal_node.image = maps["normal"]
         normal_map = nodes.new("ShaderNodeNormalMap")
-        normal_map.inputs["Strength"].default_value = 0.28 if grammar != "smoked_optic" else 0.0
+        normal_map.inputs["Strength"].default_value = 0.42 if grammar != "smoked_optic" else 0.0
         links.new(normal_node.outputs["Color"], normal_map.inputs["Color"])
         links.new(normal_map.outputs["Normal"], shader.inputs["Normal"])
         material.diffuse_color = (*color, 1.0)
@@ -394,6 +421,7 @@ def add_bevel(obj, lod: int, width: float) -> None:
 
 def loft_case(collection, materials, lod: int, name: str, sections, center_y: float, center_z: float,
               material="Material_Hull", bevel=0.18):
+    """Axis-aligned +X loft used sparingly for tapered channels, never as the whole facility."""
     vertices = []
     for x, half_y, half_z in sections:
         vertices.extend((
@@ -457,6 +485,8 @@ def cylinder_between(collection, materials, lod: int, name: str, start, end, rad
     start = Vector(start)
     end = Vector(end)
     delta = end - start
+    if delta.length < 1e-6:
+        raise RuntimeError(f"{name}: zero-length cylinder")
     vertices = (20, 14, 8)[lod]
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=delta.length,
                                        end_fill_type="NGON", location=(start + end) * 0.5)
@@ -476,23 +506,113 @@ def bounded_box(collection, materials, lod, name, size, location, material, beve
     return sf.box(collection, materials, lod, name, size, location, material, bevel, rotation)
 
 
+def panel_plate(collection, materials, lod, name, size, location, material="Material_Hull",
+                bevel=0.12, rotation=(0, 0, 0)):
+    """Thin folded plate with plate-thickness bevel — not a blank blockout slab."""
+    thickness = min(size)
+    return bounded_box(collection, materials, lod, name, size, location, material,
+                       max(0.06, min(bevel, thickness * 0.35)), rotation)
+
+
+def channel_rail(collection, materials, lod, name, x0, x1, y, z, half_height, flange, web,
+                 material="Material_Mechanical"):
+    """U-channel guide: two flanges + web so the capture path reads as formed steel, not a bar."""
+    mid_x = (x0 + x1) * 0.5
+    length = abs(x1 - x0)
+    panel_plate(collection, materials, lod, f"{name}_Web", (length, web, half_height * 2.0),
+                (mid_x, y, z), material, 0.10)
+    panel_plate(collection, materials, lod, f"{name}_FlangeIn", (length, half_height * 2.0, flange),
+                (mid_x, y, z - half_height + flange * 0.5), material, 0.08)
+    panel_plate(collection, materials, lod, f"{name}_FlangeOut", (length, half_height * 2.0, flange),
+                (mid_x, y, z + half_height - flange * 0.5), material, 0.08)
+
+
+def rectangular_frame(collection, materials, lod, name, center, outer_size, inner_size,
+                      depth, material="Material_Hull", bevel=0.12, axis="x"):
+    """Closed manufactured frame with real thickness around an open mouth."""
+    cx, cy, cz = center
+    if axis == "x":
+        # Opening faces +X; frame lies in YZ with depth along X.
+        outer_y, outer_z = (value * 0.5 for value in outer_size)
+        inner_y, inner_z = (value * 0.5 for value in inner_size)
+        low_x, high_x = cx - depth * 0.5, cx + depth * 0.5
+        outer = ((-outer_y, -outer_z), (outer_y, -outer_z), (outer_y, outer_z), (-outer_y, outer_z))
+        inner = ((-inner_y, -inner_z), (inner_y, -inner_z), (inner_y, inner_z), (-inner_y, inner_z))
+        vertices = [
+            (x, cy + y, cz + z)
+            for x in (low_x, high_x)
+            for loop in (outer, inner)
+            for y, z in loop
+        ]
+    else:
+        # Opening faces +Z; frame lies in XY with depth along Z.
+        outer_x, outer_y = (value * 0.5 for value in outer_size)
+        inner_x, inner_y = (value * 0.5 for value in inner_size)
+        low_z, high_z = cz - depth * 0.5, cz + depth * 0.5
+        outer = ((-outer_x, -outer_y), (outer_x, -outer_y), (outer_x, outer_y), (-outer_x, outer_y))
+        inner = ((-inner_x, -inner_y), (inner_x, -inner_y), (inner_x, inner_y), (-inner_x, inner_y))
+        vertices = [
+            (cx + x, cy + y, z)
+            for z in (low_z, high_z)
+            for loop in (outer, inner)
+            for x, y in loop
+        ]
+    faces = []
+    outer_back, inner_back, outer_front, inner_front = range(0, 4), range(4, 8), range(8, 12), range(12, 16)
+    for index in range(4):
+        nxt = (index + 1) % 4
+        faces.extend((
+            (outer_front[index], outer_front[nxt], inner_front[nxt], inner_front[index]),
+            (outer_back[nxt], outer_back[index], inner_back[index], inner_back[nxt]),
+            (outer_back[index], outer_back[nxt], outer_front[nxt], outer_front[index]),
+            (inner_back[nxt], inner_back[index], inner_front[index], inner_front[nxt]),
+        ))
+    mesh = bpy.data.meshes.new(f"LOD{lod}_{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(f"LOD{lod}_{name}", mesh)
+    collection.objects.link(obj)
+    obj.data.materials.append(materials[material])
+    add_bevel(obj, lod, bevel)
+    sf.tag(obj, lod, material, name)
+    return obj
+
+
+def clevis_yoke(collection, materials, lod, name, origin, side: int) -> None:
+    """Rooted jaw pivot: cheek plates, pin, and clevis fork carrying load into the frame."""
+    ox, oy, oz = origin
+    z = oz + side * 0.0
+    bounded_box(collection, materials, lod, f"{name}_CheekA", (2.4, 3.6, 0.7),
+                (ox - 1.2, oy, z + side * 1.6), "Material_Mechanical", 0.10)
+    bounded_box(collection, materials, lod, f"{name}_CheekB", (2.4, 3.6, 0.7),
+                (ox - 1.2, oy, z + side * 3.4), "Material_Mechanical", 0.10)
+    cylinder_between(collection, materials, lod, f"{name}_Pin",
+                     (ox - 1.2, oy, z + side * 1.4), (ox - 1.2, oy, z + side * 3.6),
+                     (0.42, 0.52, 0.68)[lod], "Material_Warm")
+    bounded_box(collection, materials, lod, f"{name}_Fork", (3.2, 2.0, 1.4),
+                (ox + 1.4, oy, z + side * 2.5), "Material_Mechanical", 0.12)
+    if lod < 2:
+        cylinder_between(collection, materials, lod, f"{name}_Bolt",
+                         (ox + 1.4, oy - 1.1, z + side * 2.5), (ox + 1.4, oy + 1.1, z + side * 2.5),
+                         (0.22, 0.30, 0.40)[lod], "Material_Warm")
+
+
 def build_module_interfaces(collection, materials, lod: int) -> None:
     sockets = ((-20, 1, -20), (-20, 1, 20), (20, 1, -20), (20, 1, 20))
     for index, location in enumerate(sockets):
-        bounded_box(collection, materials, lod, f"ModuleClevis_{index}", (6.4, 1.8, 6.4),
-                    location, "Material_Warm", 0.22)
+        # Reinforced collar + load beam, not a floating warm cube.
+        rectangular_frame(collection, materials, lod, f"ModuleCollar_{index}",
+                          location, (7.2, 7.2), (4.6, 4.6), 1.6, "Material_Warm", 0.14, axis="x")
+        bounded_box(collection, materials, lod, f"ModulePad_{index}", (5.2, 0.7, 5.2),
+                    (location[0], location[1] - 0.9, location[2]), "Material_Mechanical", 0.10)
         sf.beam_between(collection, materials, lod, f"ModuleLoadRoot_{index}",
                         (location[0] * 0.54, -4.0, location[2] * 0.54), location,
                         (0.86, 1.02, 1.22)[lod], "Material_Mechanical")
 
 
 def build_catcher(collection, materials, lod: int) -> None:
-    # Stepped manufactured claim shell; no faceted rock, torus, or blank primary box.
-    loft_case(collection, materials, lod, "ClaimServiceShell",
-              ((-33.0, 4.8, 8.0), (-25.0, 7.2, 13.5), (-9.0, 9.5, 19.0),
-               (8.0, 9.0, 18.0), (20.0, 6.5, 14.0), (27.0, 4.8, 11.0)),
-              -3.0, 0.0, "Material_Hull", 0.34)
-    # Billed visible envelope shoes and their load paths establish every frozen negative extent.
+    """Lawful catcher: open fork mouth, rooted jaws/load path, partial impound — not a lofted blob."""
+    # ---- Envelope shoes (exact frozen AABB extrema) ----
     bounded_box(collection, materials, lod, "AftAnchorShoe", (4.0, 5.0, 12.0),
                 (-45.0226, -8.5, 0.0), "Material_Mechanical", 0.25)
     bounded_box(collection, materials, lod, "PortAnchorShoe", (12.0, 5.0, 4.0),
@@ -507,66 +627,145 @@ def build_catcher(collection, materials, lod: int) -> None:
     )):
         sf.beam_between(collection, materials, lod, f"AnchorLoadPath_{index}", start, end,
                         (1.15, 1.38, 1.65)[lod], "Material_Mechanical")
+        if lod < 2:
+            sf.beam_between(collection, materials, lod, f"AnchorGusset_{index}",
+                            (start[0], start[1] + 2.0, start[2]), end,
+                            (0.62, 0.78, 0.95)[lod], "Material_Warm")
 
-    # Open +X capture path: separated rails and crossmembers retain real negative space.
-    for side in (-1, 1):
-        z = side * 7.2
-        loft_case(collection, materials, lod, f"CaptureGuideRail_{side}",
-                  ((15.0, 0.75, 1.05), (31.0, 0.95, 1.20), (50.0, 1.20, 1.55)),
-                  -0.5, z, "Material_Mechanical", 0.15)
-    for index, x in enumerate((18.0, 29.0, 40.0)):
-        bounded_box(collection, materials, lod, f"CaptureCrossmember_{index}",
-                    (2.2, 1.4, 17.0), (x, -2.0, 0.0), "Material_Hull", 0.18)
+    # ---- Stepped claim-base shell as panel assembly (not one smooth loft) ----
+    panel_plate(collection, materials, lod, "ShellKeel", (42.0, 3.2, 22.0),
+                (-4.0, -8.0, 0.0), "Material_Hull", 0.20)
+    panel_plate(collection, materials, lod, "ShellAftBulkhead", (4.5, 14.0, 28.0),
+                (-28.0, -1.0, 0.0), "Material_Hull", 0.22)
+    panel_plate(collection, materials, lod, "ShellPortPlate", (30.0, 12.0, 3.4),
+                (-6.0, -1.0, -16.5), "Material_Hull", 0.18)
+    panel_plate(collection, materials, lod, "ShellStarboardPlate", (30.0, 12.0, 3.4),
+                (-6.0, -1.0, 16.5), "Material_Hull", 0.18)
+    panel_plate(collection, materials, lod, "ShellRoofAft", (22.0, 2.4, 24.0),
+                (-14.0, 6.2, 0.0), "Material_Hull", 0.16)
+    panel_plate(collection, materials, lod, "ShellRoofForward", (16.0, 2.0, 18.0),
+                (8.0, 5.0, 0.0), "Material_Hull", 0.14)
+    # Shoulders / recess breaks so the shell reads manufactured plate, not clay.
+    panel_plate(collection, materials, lod, "ShellPortShoulder", (10.0, 4.0, 2.2),
+                (6.0, 3.5, -12.0), "Material_Hull", 0.12)
+    panel_plate(collection, materials, lod, "ShellStarboardShoulder", (10.0, 4.0, 2.2),
+                (6.0, 3.5, 12.0), "Material_Hull", 0.12)
+    if lod < 2:
+        access_count = (3, 2)[lod]
+        for index in range(access_count):
+            x = -18.0 + index * 8.0
+            panel_plate(collection, materials, lod, f"ServiceHatch_{index}", (3.2, 2.4, 0.35),
+                        (x, 1.0, -18.1), "Material_Mechanical", 0.06)
+            panel_plate(collection, materials, lod, f"ServiceHatchMirror_{index}", (3.2, 2.4, 0.35),
+                        (x, 1.0, 18.1), "Material_Mechanical", 0.06)
 
-    # Paired jaw carriages taper toward the corridor without closing into a hoop.
+    # ---- Open +X capture fork: U-channel rails, truss crossmembers, clear centerline ----
     for side in (-1, 1):
-        z = side * 11.0
-        loft_case(collection, materials, lod, f"JawCarriage_{side}",
-                  ((32.0, 2.8, 4.0), (41.0, 3.7, 3.5), (49.0, 3.2, 2.6)),
-                  2.2, z, "Material_Mechanical", 0.30)
-        bounded_box(collection, materials, lod, f"JawContactLiner_{side}",
-                    (10.5, 3.2, 0.85), (44.0, 2.2, side * 7.95),
-                    "Material_Accent", 0.10)
+        channel_rail(collection, materials, lod, f"CaptureGuideRail_{side}",
+                     14.0, 50.0, -0.4, side * 7.6, 1.35, 0.55, 0.72, "Material_Mechanical")
+        # Outer secondary rail for mouth depth / silhouette fork.
+        channel_rail(collection, materials, lod, f"CaptureOuterRail_{side}",
+                     28.0, 52.0, 1.8, side * 12.4, 1.55, 0.48, 0.64, "Material_Hull")
+    # Crossmembers sit BELOW the dock centerline sample y=2 so approach stays clear.
+    for index, x in enumerate((18.0, 28.0, 38.0, 46.0)[: (4, 3, 2)[lod]]):
+        sf.beam_between(collection, materials, lod, f"CaptureCrossmember_{index}",
+                        (x, -1.6, -7.0), (x, -1.6, 7.0),
+                        (1.05, 1.25, 1.55)[lod], "Material_Hull")
+        if lod < 2:
+            sf.beam_between(collection, materials, lod, f"CaptureBrace_{index}",
+                            (x - 2.0, -1.0, -6.5), (x + 2.0, -1.0, 6.5),
+                            (0.55, 0.70, 0.90)[lod], "Material_Mechanical")
+    # Mouth throat as separated manufactured lips — open centerline (AABB must not cover y=2,z=0).
+    panel_plate(collection, materials, lod, "MouthUpperLip", (3.2, 2.0, 18.0),
+                (51.5, 7.5, 0.0), "Material_Hull", 0.12)
+    panel_plate(collection, materials, lod, "MouthLowerLip", (3.2, 1.6, 16.0),
+                (51.5, -3.2, 0.0), "Material_Hull", 0.12)
+    for side in (-1, 1):
+        panel_plate(collection, materials, lod, f"MouthCheek_{side}",
+                    (3.2, 8.0, 2.8), (51.5, 2.0, side * 10.5), "Material_Hull", 0.12)
+        bounded_box(collection, materials, lod, f"MouthBumper_{side}",
+                    (3.0, 6.5, 3.8), (54.0, 2.2, side * 12.2),
+                    "Material_Warm", 0.20)
+
+    # ---- Paired jaw carriages: clevis roots, carriages, replaceable liners, dampers ----
+    for side in (-1, 1):
+        clevis_yoke(collection, materials, lod, f"JawPivot_{side}",
+                    (30.0, 3.2, side * 10.5), side)
+        # Carriage body as stepped plate stack, not a single loft slab.
+        panel_plate(collection, materials, lod, f"JawCarriageBody_{side}",
+                    (14.0, 4.2, 3.6), (40.0, 2.4, side * 11.2), "Material_Mechanical", 0.18)
+        panel_plate(collection, materials, lod, f"JawCarriageArm_{side}",
+                    (8.0, 2.6, 2.2), (48.0, 2.0, side * 9.4), "Material_Mechanical", 0.14)
+        # Replaceable contact liner faces the corridor (accent, non-emissive).
+        panel_plate(collection, materials, lod, f"JawContactLiner_{side}",
+                    (11.0, 3.4, 0.55), (44.0, 2.2, side * 7.55), "Material_Accent", 0.06)
+        if lod < 2:
+            bolt_count = (3, 2)[lod]
+            for index in range(bolt_count):
+                x = 40.0 + index * 3.5
+                cylinder_between(collection, materials, lod, f"LinerBolt_{side}_{index}",
+                                 (x, 0.6, side * 7.55), (x, 3.8, side * 7.55),
+                                 (0.16, 0.22, 0.30)[lod], "Material_Warm")
+        # Short-stroke damper into crossmember root.
         cylinder_between(collection, materials, lod, f"JawDamper_{side}",
-                         (29.0, 5.8, side * 18.0), (39.0, 3.7, side * 13.0),
+                         (29.0, 5.6, side * 17.5), (38.5, 3.6, side * 13.0),
                          (0.78, 0.92, 1.10)[lod], "Material_Warm")
         cylinder_between(collection, materials, lod, f"DamperRod_{side}",
-                         (38.7, 3.7, side * 13.0), (43.0, 2.7, side * 10.2),
-                         (0.38, 0.48, 0.62)[lod], "Material_Mechanical")
-        bounded_box(collection, materials, lod, f"MouthBumper_{side}",
-                    (3.0, 7.2, 4.8), (54.0, 2.2, side * 12.2),
-                    "Material_Warm", 0.24)
+                         (38.3, 3.6, side * 12.9), (43.0, 2.6, side * 10.0),
+                         (0.36, 0.46, 0.60)[lod], "Material_Mechanical")
+        bounded_box(collection, materials, lod, f"DamperMount_{side}",
+                    (2.4, 2.8, 2.0), (28.5, 5.4, side * 17.8), "Material_Mechanical", 0.12)
 
-    # Stepped impound enclosure remains open to the capture corridor and exposes real inspection depth.
-    loft_case(collection, materials, lod, "ImpoundShellPort",
-              ((-6.0, 5.6, 3.0), (4.0, 7.3, 4.2), (17.0, 6.2, 3.2)),
-              2.0, -16.5, "Material_Hull", 0.28)
-    loft_case(collection, materials, lod, "ImpoundShellStarboard",
-              ((-6.0, 5.6, 3.0), (4.0, 7.3, 4.2), (17.0, 6.2, 3.2)),
-              2.0, 16.5, "Material_Hull", 0.28)
-    bounded_box(collection, materials, lod, "InspectionReturn", (12.0, 7.0, 1.2),
-                (6.0, 3.0, -12.2), "Material_Mechanical", 0.12)
+    # ---- Partial impound / quarantine: stepped walls with real inspection gap ----
+    panel_plate(collection, materials, lod, "ImpoundPortWall", (22.0, 10.0, 2.8),
+                (4.0, 2.5, -17.5), "Material_Hull", 0.16)
+    panel_plate(collection, materials, lod, "ImpoundStarboardWall", (22.0, 10.0, 2.8),
+                (4.0, 2.5, 17.5), "Material_Hull", 0.16)
+    panel_plate(collection, materials, lod, "ImpoundRoof", (18.0, 1.8, 28.0),
+                (4.0, 8.0, 0.0), "Material_Hull", 0.12)
+    panel_plate(collection, materials, lod, "ImpoundAftReturn", (2.2, 10.0, 26.0),
+                (-6.0, 2.5, 0.0), "Material_Mechanical", 0.12)
+    # Inspection strip: hooded optics on a recessed return plate (readable without emission).
+    panel_plate(collection, materials, lod, "InspectionReturn", (14.0, 6.5, 1.0),
+                (6.0, 3.2, -14.5), "Material_Mechanical", 0.08)
     window_count = (4, 3, 2)[lod]
     for index in range(window_count):
-        x = 2.0 + index * (8.0 / max(1, window_count - 1))
+        x = 1.0 + index * (10.0 / max(1, window_count - 1))
         bounded_box(collection, materials, lod, f"InspectionOptic_{index}",
-                    (1.35, 1.05, 0.32), (x, 4.8, -11.45), "Material_Glass", 0.05)
-    # The authority/service cap is visible construction and fixes the exact +Y extent.
-    vertical_loft(collection, materials, lod, "AuthorityServicePylon",
-                  ((5.0, 2.6, 2.1), (9.0, 2.2, 1.8), (11.5, 1.5, 1.3)),
-                  -20.0, -12.0, "Material_Hull", 0.14)
+                    (1.5, 1.15, 0.28), (x, 4.6, -14.0), "Material_Glass", 0.04)
+        if lod == 0:
+            panel_plate(collection, materials, lod, f"OpticHood_{index}",
+                        (1.8, 0.35, 0.9), (x, 5.4, -14.2), "Material_Warm", 0.04)
+
+    # ---- Authority / service mast (exact +Y) and status fixtures ----
+    cylinder_between(collection, materials, lod, "AuthorityMast",
+                     (-20.0, 5.5, -12.0), (-20.0, 11.2, -12.0),
+                     (0.55, 0.68, 0.85)[lod], "Material_Mechanical")
     bounded_box(collection, materials, lod, "AuthorityCap", (3.0, 1.0, 2.6),
                 (-20.0, 12.0, -12.0), "Material_Accent", 0.10)
+    panel_plate(collection, materials, lod, "AuthorityBase", (4.5, 1.2, 3.5),
+                (-20.0, 5.0, -12.0), "Material_Hull", 0.10)
+    if lod < 2:
+        panel_plate(collection, materials, lod, "StatusBoard", (0.4, 2.8, 4.0),
+                    (-18.5, 3.5, -10.0), "Material_Accent", 0.05)
+        bounded_box(collection, materials, lod, "StatusOptic", (0.3, 1.2, 1.6),
+                    (-18.25, 3.5, -10.0), "Material_Glass", 0.04)
+
+    # Thermal / service trunk on aft roof.
+    if lod < 2:
+        panel_plate(collection, materials, lod, "ThermalSink", (8.0, 1.6, 3.0),
+                    (-16.0, 7.6, 8.0), "Material_Mechanical", 0.08)
+        for index in range((4, 2)[lod]):
+            x = -18.5 + index * 1.6
+            panel_plate(collection, materials, lod, f"ThermalFin_{index}",
+                        (0.35, 1.8, 2.4), (x, 8.2, 8.0), "Material_Warm", 0.04)
+
     build_module_interfaces(collection, materials, lod)
 
 
 def build_refinery(collection, materials, lod: int) -> None:
-    # Asymmetric process mass: folded shell and one authored separator, never a tank row.
-    loft_case(collection, materials, lod, "RefineryProcessShell",
-              ((-39.0, 4.8, 9.0), (-28.0, 7.5, 16.0), (-10.0, 9.8, 20.0),
-               (8.0, 8.0, 17.0), (20.0, 5.5, 12.0)),
-              -3.5, -4.0, "Material_Hull", 0.34)
-    # Billed, visible load/shield members establish all frozen extrema.
+    """Covert fence: offset baffle, deep handoff bay, cassette, process tower — not a catcher recolor."""
+    # ---- Envelope feet (exact frozen AABB extrema) ----
     bounded_box(collection, materials, lod, "AftProcessFoot", (4.0, 5.0, 12.0),
                 (-48.8652, -8.5, -8.0), "Material_Mechanical", 0.24)
     bounded_box(collection, materials, lod, "DeepShieldFoot", (11.0, 5.0, 4.0),
@@ -581,78 +780,169 @@ def build_refinery(collection, materials, lod: int) -> None:
     )):
         sf.beam_between(collection, materials, lod, f"ProcessLoadPath_{index}", start, end,
                         (1.18, 1.42, 1.70)[lod], "Material_Mechanical")
+        if lod < 2:
+            sf.beam_between(collection, materials, lod, f"ProcessGusset_{index}",
+                            (start[0], start[1] + 1.8, start[2]), end,
+                            (0.65, 0.80, 0.98)[lod], "Material_Warm")
 
-    # Offset privacy baffle: layered, thick, and rooted; the frozen dock centerline remains open.
-    loft_case(collection, materials, lod, "PrivacyBaffle",
-              ((38.0, 7.5, 7.2), (47.0, 9.2, 8.6), (53.5, 8.3, 7.8)),
-              3.0, -14.5, "Material_Hull", 0.30)
-    bounded_box(collection, materials, lod, "BaffleOuterReturn", (4.0, 13.0, 3.0),
-                (53.5, 3.0, -5.5), "Material_Mechanical", 0.22)
-    bounded_box(collection, materials, lod, "BaffleExtentLip", (4.0, 8.0, 3.0),
-                (53.5, 2.0, -23.0), "Material_Hull", 0.20)
+    # ---- Asymmetric industrial process mass (L-shaped; not the catcher shell) ----
+    panel_plate(collection, materials, lod, "ProcessKeel", (48.0, 3.4, 20.0),
+                (-8.0, -8.2, -6.0), "Material_Hull", 0.20)
+    panel_plate(collection, materials, lod, "ProcessAftMass", (14.0, 14.0, 26.0),
+                (-30.0, -1.0, -8.0), "Material_Hull", 0.22)
+    panel_plate(collection, materials, lod, "ProcessPortWing", (28.0, 11.0, 4.0),
+                (-8.0, -1.5, -18.0), "Material_Hull", 0.18)
+    panel_plate(collection, materials, lod, "ProcessStarboardStagger", (18.0, 9.0, 3.5),
+                (4.0, -2.0, 6.0), "Material_Hull", 0.16)
+    panel_plate(collection, materials, lod, "ProcessRoof", (26.0, 2.2, 22.0),
+                (-12.0, 6.5, -6.0), "Material_Hull", 0.14)
+    # Quiet process tank / vessel — one supported form, not a drum row.
+    if lod < 2:
+        sf.cyl(collection, materials, lod, "ProcessVessel",
+               (4.2, 4.6, 5.2)[lod], 10.0, (-22.0, 2.0, 4.0), "Material_Mechanical",
+               vertices=(16, 12, 8)[lod], rot=(0.0, math.pi / 2, 0.15))
+        cylinder_between(collection, materials, lod, "VesselSaddleA",
+                         (-26.0, -4.0, 4.0), (-26.0, 0.5, 4.0),
+                         (0.55, 0.68, 0.85)[lod], "Material_Warm")
+        cylinder_between(collection, materials, lod, "VesselSaddleB",
+                         (-18.0, -4.0, 4.0), (-18.0, 0.5, 4.0),
+                         (0.55, 0.68, 0.85)[lod], "Material_Warm")
 
-    # Deep handoff bay: five separate closed manufactured surfaces create rim/walls/floor/return.
-    bounded_box(collection, materials, lod, "BayFloor", (28.0, 2.0, 20.0),
-                (36.0, -3.0, 13.0), "Material_Mechanical", 0.18)
-    bounded_box(collection, materials, lod, "BayRoof", (28.0, 2.2, 20.0),
-                (36.0, 10.5, 13.0), "Material_Hull", 0.18)
-    bounded_box(collection, materials, lod, "BayOuterWall", (28.0, 13.5, 2.2),
-                (36.0, 3.75, 24.1), "Material_Hull", 0.18)
-    bounded_box(collection, materials, lod, "BayInnerWall", (20.0, 13.5, 2.2),
-                (32.0, 3.75, 3.9), "Material_Hull", 0.18)
-    bounded_box(collection, materials, lod, "BayRearReturn", (2.4, 13.5, 20.0),
-                (22.0, 3.75, 13.0), "Material_Mechanical", 0.18)
-    bounded_box(collection, materials, lod, "ShutterPocket", (6.0, 10.0, 2.0),
-                (26.0, 4.0, 22.0), "Material_Accent", 0.16)
+    # ---- Offset privacy baffle: layered shield blocking direct bay sightline ----
+    panel_plate(collection, materials, lod, "BaffleOuter", (4.5, 18.0, 16.0),
+                (48.0, 3.5, -14.0), "Material_Hull", 0.20)
+    panel_plate(collection, materials, lod, "BaffleInner", (3.0, 15.0, 12.0),
+                (44.0, 3.0, -16.5), "Material_Hull", 0.16)
+    panel_plate(collection, materials, lod, "BaffleReturn", (6.0, 14.0, 2.5),
+                (50.5, 3.0, -6.0), "Material_Mechanical", 0.14)
+    panel_plate(collection, materials, lod, "BaffleExtentLip", (4.0, 8.0, 3.0),
+                (53.5, 2.0, -23.0), "Material_Hull", 0.14)
+    # Root brackets from process mass into baffle.
+    for index, (start, end) in enumerate((
+        ((20.0, 0.0, -12.0), (44.0, 1.5, -15.0)),
+        ((18.0, 4.0, -10.0), (43.0, 5.0, -14.0)),
+        ((16.0, -2.0, -8.0), (45.0, 0.0, -12.0)),
+    )[: (3, 2, 1)[lod]]):
+        sf.beam_between(collection, materials, lod, f"BaffleRoot_{index}", start, end,
+                        (1.05, 1.25, 1.55)[lod], "Material_Mechanical")
+
+    # ---- Deep recessed handoff bay (rim / walls / floor / return / shutter pocket) ----
+    # Floor and roof establish cavity depth; walls leave +X approach open at z=0 centerline.
+    panel_plate(collection, materials, lod, "BayFloor", (26.0, 1.6, 18.0),
+                (36.0, -3.2, 14.0), "Material_Mechanical", 0.12)
+    panel_plate(collection, materials, lod, "BayRoof", (26.0, 1.8, 18.0),
+                (36.0, 10.8, 14.0), "Material_Hull", 0.12)
+    panel_plate(collection, materials, lod, "BayOuterWall", (26.0, 14.0, 2.0),
+                (36.0, 3.8, 23.5), "Material_Hull", 0.14)
+    panel_plate(collection, materials, lod, "BayInnerWall", (18.0, 14.0, 2.0),
+                (32.0, 3.8, 4.5), "Material_Hull", 0.14)
+    panel_plate(collection, materials, lod, "BayRearReturn", (2.2, 14.0, 18.0),
+                (22.5, 3.8, 14.0), "Material_Mechanical", 0.12)
+    # Mouth rim frame faces +X into the handoff corridor (offset to +Z, not on frozen z=0 path).
+    rectangular_frame(collection, materials, lod, "BayMouthRim",
+                      (50.0, 3.5, 14.0), (12.0, 16.0), (7.0, 10.0), 2.2,
+                      "Material_Hull", 0.14, axis="x")
+    panel_plate(collection, materials, lod, "ShutterPocket", (5.5, 9.0, 1.6),
+                (26.0, 4.0, 22.2), "Material_Accent", 0.10)
+    if lod < 2:
+        panel_plate(collection, materials, lod, "ShutterEdge", (0.5, 8.0, 1.2),
+                    (28.5, 4.0, 22.2), "Material_Warm", 0.05)
+    # Transfer rails and capture clamps inside the bay.
     for side in (-1, 1):
-        z = 13.0 + side * 4.8
-        loft_case(collection, materials, lod, f"TransferRail_{side}",
-                  ((23.5, 0.65, 0.8), (36.0, 0.8, 0.95), (51.0, 0.9, 1.15)),
-                  -0.8, z, "Material_Warm", 0.12)
-        bounded_box(collection, materials, lod, f"TransferClamp_{side}",
-                    (5.0, 3.8, 2.4), (39.0, 1.8, 13.0 + side * 7.2),
-                    "Material_Mechanical", 0.16)
-    # A visible bay lip reaches exact +X without becoming a hidden extent pin.
+        channel_rail(collection, materials, lod, f"TransferRail_{side}",
+                     24.0, 50.0, -0.6, 14.0 + side * 4.6, 0.85, 0.40, 0.55, "Material_Warm")
+        panel_plate(collection, materials, lod, f"TransferClampBody_{side}",
+                    (4.5, 3.2, 2.0), (39.0, 1.6, 14.0 + side * 7.0), "Material_Mechanical", 0.12)
+        panel_plate(collection, materials, lod, f"TransferClampLiner_{side}",
+                    (3.5, 2.4, 0.4), (39.0, 1.6, 14.0 + side * 5.6), "Material_Accent", 0.05)
+        if lod < 2:
+            cylinder_between(collection, materials, lod, f"ClampPivot_{side}",
+                             (37.0, 1.6, 14.0 + side * 7.0), (41.0, 1.6, 14.0 + side * 7.0),
+                             (0.28, 0.36, 0.48)[lod], "Material_Warm")
     bounded_box(collection, materials, lod, "BayMouthStop", (3.0, 5.0, 4.0),
-                (54.0, 0.0, 20.0), "Material_Warm", 0.18)
-    bounded_box(collection, materials, lod, "BayInspectionOptic", (0.5, 2.0, 4.0),
-                (23.4, 4.5, 13.0), "Material_Glass", 0.05)
+                (54.0, 0.0, 20.0), "Material_Warm", 0.16)
+    bounded_box(collection, materials, lod, "BayInspectionOptic", (0.45, 2.0, 3.5),
+                (23.7, 4.5, 14.0), "Material_Glass", 0.04)
+    if lod == 0:
+        panel_plate(collection, materials, lod, "BayOpticHood", (0.8, 0.4, 4.0),
+                    (23.9, 5.7, 14.0), "Material_Warm", 0.04)
 
-    # Shielded off-axis storage cassette with stepped door, hinges, and service clearance.
-    loft_case(collection, materials, lod, "StorageCassette",
-              ((-12.0, 5.2, 7.5), (0.0, 7.0, 9.0), (15.0, 6.2, 8.0), (22.0, 4.5, 6.5)),
-              3.0, -25.0, "Material_Hull", 0.30)
-    bounded_box(collection, materials, lod, "CassetteDoorReturn", (2.0, 10.0, 11.0),
-                (21.5, 3.0, -25.0), "Material_Accent", 0.16)
+    # ---- Shielded off-axis storage cassette ----
+    panel_plate(collection, materials, lod, "CassetteHull", (28.0, 10.0, 12.0),
+                (4.0, 3.0, -26.0), "Material_Hull", 0.18)
+    panel_plate(collection, materials, lod, "CassetteDoor", (1.8, 9.0, 10.0),
+                (18.5, 3.0, -26.0), "Material_Accent", 0.12)
+    panel_plate(collection, materials, lod, "CassetteDoorReturn", (1.2, 8.0, 9.0),
+                (17.2, 3.0, -26.0), "Material_Mechanical", 0.08)
     hinge_count = (4, 3, 2)[lod]
     for index in range(hinge_count):
-        y = -0.5 + index * (7.0 / max(1, hinge_count - 1))
+        y = -1.0 + index * (7.5 / max(1, hinge_count - 1))
         cylinder_between(collection, materials, lod, f"CassetteHinge_{index}",
-                         (22.6, y, -30.0), (22.6, y + 1.5, -30.0),
-                         (0.34, 0.44, 0.56)[lod], "Material_Mechanical")
+                         (18.8, y, -31.0), (18.8, y + 1.4, -31.0),
+                         (0.32, 0.42, 0.54)[lod], "Material_Mechanical")
+    if lod < 2:
+        for index in range((3, 2)[lod]):
+            z = -30.0 + index * 3.5
+            panel_plate(collection, materials, lod, f"CassetteLatch_{index}",
+                        (0.5, 1.2, 1.6), (19.2, 5.5, z), "Material_Warm", 0.05)
+    # Cassette load frame into process mass.
+    sf.beam_between(collection, materials, lod, "CassetteLoadA",
+                    (-8.0, 0.0, -18.0), (0.0, 1.0, -24.0),
+                    (1.10, 1.30, 1.55)[lod], "Material_Mechanical")
+    sf.beam_between(collection, materials, lod, "CassetteLoadB",
+                    (-6.0, 4.0, -16.0), (2.0, 4.5, -22.0),
+                    (1.00, 1.20, 1.45)[lod], "Material_Mechanical")
 
-    # One faceted separator tower supplies the refinery read; it is not a repeated drum cluster.
+    # ---- Process separator tower (exact +Y) — industrial height cue ----
     vertical_loft(collection, materials, lod, "ProcessSeparator",
-                  ((4.0, 5.2, 4.8), (14.0, 4.6, 4.2), (24.0, 3.6, 3.2), (29.6, 2.4, 2.2)),
-                  -23.0, 17.0, "Material_Mechanical", 0.22)
+                  ((4.0, 4.8, 4.4), (12.0, 4.2, 3.8), (20.0, 3.4, 3.0),
+                   (26.0, 2.6, 2.4), (29.6, 2.0, 1.9)),
+                  -23.0, 17.0, "Material_Mechanical", 0.18)
     bounded_box(collection, materials, lod, "SeparatorCap", (4.8, 1.0, 4.4),
-                (-23.0, 30.43, 17.0), "Material_Warm", 0.12)
-    # Compact, rooted manifold and protected routes.
+                (-23.0, 30.43, 17.0), "Material_Warm", 0.10)
+    if lod < 2:
+        for index, y in enumerate((10.0, 18.0, 24.0)[: (3, 2)[lod]]):
+            panel_plate(collection, materials, lod, f"SeparatorRing_{index}",
+                        (6.5, 0.6, 6.0), (-23.0, y, 17.0), "Material_Hull", 0.08)
+        cylinder_between(collection, materials, lod, "SeparatorRiser",
+                         (-23.0, 4.0, 12.0), (-23.0, 8.0, 15.0),
+                         (0.45, 0.55, 0.70)[lod], "Material_Warm")
+
+    # ---- Service manifold and protected conduits ----
+    panel_plate(collection, materials, lod, "ServiceManifold", (10.0, 4.5, 3.5),
+                (-5.0, 4.5, 18.5), "Material_Mechanical", 0.12)
     valve_count = (4, 3, 2)[lod]
-    bounded_box(collection, materials, lod, "ServiceManifold", (10.0, 5.0, 4.0),
-                (-5.0, 5.0, 20.0), "Material_Mechanical", 0.18)
     for index in range(valve_count):
         x = -8.0 + index * (6.0 / max(1, valve_count - 1))
         cylinder_between(collection, materials, lod, f"ManifoldValve_{index}",
-                         (x, 7.0, 22.0), (x, 9.0, 22.0),
-                         (0.42, 0.52, 0.66)[lod], "Material_Warm")
-    routes = (((-5, 4, 18), (10, 1, 13), (24, 0, 13)),
-              ((-8, 6, 19), (-14, 12, 17), (-20, 16, 17)))
-    for route_index, route in enumerate(routes[: 2 if lod < 2 else 1]):
+                         (x, 6.5, 20.2), (x, 8.8, 20.2),
+                         (0.40, 0.50, 0.64)[lod], "Material_Warm")
+        if lod == 0:
+            bounded_box(collection, materials, lod, f"ValveHandwheel_{index}",
+                        (0.9, 0.25, 0.9), (x, 9.0, 20.2), "Material_Accent", 0.04)
+    routes = (
+        ((-5, 4, 17), (12, 1, 14), (24, 0, 14)),
+        ((-8, 6, 18), (-14, 12, 17), (-20, 18, 17)),
+        ((-4, 5, 19), (6, 3, 16), (20, 2, 15)),
+    )
+    for route_index, route in enumerate(routes[: (3, 2, 1)[lod]]):
         for segment in range(len(route) - 1):
             cylinder_between(collection, materials, lod, f"ProtectedConduit_{route_index}_{segment}",
                              route[segment], route[segment + 1],
-                             (0.34, 0.46, 0.62)[lod], "Material_Mechanical")
+                             (0.32, 0.44, 0.58)[lod], "Material_Mechanical")
+            if lod == 0 and segment == 0:
+                bounded_box(collection, materials, lod, f"ConduitSaddle_{route_index}",
+                            (1.2, 0.8, 1.2), route[segment], "Material_Warm", 0.06)
+
+    # Low-output covert status fixtures — no neon identity.
+    if lod < 2:
+        bounded_box(collection, materials, lod, "CovertOpticA",
+                    (0.4, 1.0, 1.4), (42.0, 8.0, -10.0), "Material_Glass", 0.04)
+        bounded_box(collection, materials, lod, "CovertOpticB",
+                    (0.4, 1.0, 1.4), (24.0, 7.5, 20.0), "Material_Glass", 0.04)
+        panel_plate(collection, materials, lod, "CovertHoodA",
+                    (0.8, 0.3, 1.8), (42.0, 8.7, -10.0), "Material_Warm", 0.04)
+
     build_module_interfaces(collection, materials, lod)
 
 

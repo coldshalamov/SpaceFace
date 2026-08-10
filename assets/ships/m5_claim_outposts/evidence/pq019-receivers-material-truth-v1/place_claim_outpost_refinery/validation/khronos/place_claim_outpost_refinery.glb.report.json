@@ -21,7 +21,7 @@
         "pointer": "/buffers/0",
         "mimeType": "application/gltf-buffer",
         "storage": "glb",
-        "byteLength": 3062436
+        "byteLength": 5909840
       },
       {
         "pointer": "/images/0",
@@ -226,8 +226,8 @@
     "hasTextures": true,
     "hasDefaultScene": true,
     "drawCallCount": 16,
-    "totalVertexCount": 50722,
-    "totalTriangleCount": 19328,
+    "totalVertexCount": 97834,
+    "totalTriangleCount": 36784,
     "maxUVs": 1,
     "maxInfluences": 0,
     "maxAttributes": 4
