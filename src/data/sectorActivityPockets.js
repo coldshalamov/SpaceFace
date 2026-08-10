@@ -44,7 +44,31 @@ if (CINDER_SLUICE_SECTOR_ID !== CERES_ACTIVITY_SECTOR_ID) {
   throw new Error(`Cinder Sluice belongs to ${CINDER_SLUICE_SECTOR_ID}, not ${CERES_ACTIVITY_SECTOR_ID}`);
 }
 
-const MARK_DISTANCE_WU = Object.freeze([102, 116]);
+// ── Route topology (PQ-045.route-topology) ──────────────────────────────────────────────────────
+// Every route used to be built from one shared pair of cardinal marks, so four pockets with four
+// different fictions all read as the same back-and-forth. A two-mark route only has two geometric
+// degrees of freedom worth anything: the angle the two marks subtend at the pocket anchor (SWEEP)
+// and how far apart they actually are (SPAN). Those are what a player sees — sweep is the shape the
+// traffic traces, and span is the speed, because npcJobsRuntime derives speed as span/durationS and
+// the durations are fixed. So each pocket is given its own sweep/span band, chosen from what that
+// pocket's work IS:
+//
+//   Working Seam      tight wedge   ~60-75 deg    close, repetitive extraction beside one ore face
+//   Cathedral Grave   quarter arc  ~100-110 deg   working and patrolling AROUND a grave, not through
+//   Refinery Pocket   wide oblique ~135-150 deg   long call-outs across a yard between hub and client
+//   Ambush Run        transit lane ~165-180 deg   the Throughline is a lane; you cross it end to end
+//
+// Bearings are taken from geography that already exists rather than chosen. A mark that names a real
+// object is aimed from that object: on its true bearing where the mark is simply a destination (the
+// cargo pod, the grave shard), and deliberately held around from it where the runtime physically
+// drives the actor to the live entity (the disabled hull, the ore clast) — there, an on-bearing mark
+// would make live-target tracking and authored-waypoint fallback indistinguishable, which is the
+// defect PQ-045 has been unpicking all along. The Ambush lane axis is the bearing between the two
+// authored collision anchors, (48,64)->(150,20). Both held-off separations are asserted, not assumed.
+//
+// Distinctness is not a claim made in this comment. It is computed from the marks and enforced at
+// module load in CERES_ROUTE_TOPOLOGY below, and re-derived independently in
+// test/ceres-active-pockets.test.mjs. Retuning a mark until two pockets collide fails both.
 
 function point(x, z) {
   return Object.freeze({ x, z });
@@ -204,8 +228,11 @@ const refineryObjects = Object.freeze([
   //      (42 + 24 + 12 = 78 WU). Closer in, the tender would materialize already inside its berth,
   //      and the controller's correct response — reverse out to clearance — would be the first thing
   //      a player entering Ceres ever saw it do.
-  //   3. 0.54 rad off the bearing from that spawn to the authored client mark, so servicing the real
+  //   3. 0.59 rad off the bearing from that spawn to the authored client mark, so servicing the real
   //      casualty is visibly a different heading rather than an invisible refinement of the old one.
+  //      PQ-045.route-topology re-aimed that client mark and deliberately did NOT move it onto the
+  //      hull's own bearing, which would have collapsed this separation to 0.13 rad and quietly
+  //      undone the reason the hull sits here. The separation is asserted, not just described.
   objectSlot({
     id: 'ceres_refinery_disabled_hull',
     pocketId: refineryId,
@@ -280,9 +307,13 @@ const refineryActors = Object.freeze([
       jobKind: 'hauler',
       durationS: 24,
       receiptType: 'freight:arrival',
+      // Wide oblique, 135.6 deg / 206.3 WU. The approach mark sits on the cargo pod's true bearing
+      // (-17.8 deg vs the pod's own -17.9); the station leg swings back across the yard rather than
+      // running through the hub, so the freight run reads as a long call-out between two stations
+      // of work instead of a shuttle that happens to pass the anchor.
       marks: [
-        mark('refinery_cargo_approach', MARK_DISTANCE_WU[0], 0, 'object:ceres_refinery_cargo_pod'),
-        mark('refinery_station_approach', -MARK_DISTANCE_WU[1], 0, 'dest:station_ceres'),
+        mark('refinery_cargo_approach', 112, -36, 'object:ceres_refinery_cargo_pod'),
+        mark('refinery_station_approach', -49, 93, 'dest:station_ceres'),
       ],
     }),
   }),
@@ -306,9 +337,13 @@ const refineryActors = Object.freeze([
       id: 'ceres_refinery_tender_service',
       jobKind: 'tender',
       durationS: 28,
+      // Wide oblique, 147.0 deg / 217.7 WU — the same yard-crossing family as the hauler but a
+      // longer, slower swing, and aimed at the opposite quadrant because its client is. The berth
+      // sits on the tender's own spawn side (127.8 deg vs a spawn bearing of 151.4), so it leaves
+      // from where it lives. The client mark keeps its 0.59 rad offset from the real hull bearing.
       marks: [
-        mark('refinery_tender_berth', 0, MARK_DISTANCE_WU[0], 'station:station_ceres:service-berth'),
-        mark('refinery_tender_client', 0, -MARK_DISTANCE_WU[1], 'object:ceres_refinery_disabled_hull'),
+        mark('refinery_tender_berth', -66, 85, 'station:station_ceres:service-berth'),
+        mark('refinery_tender_client', 10, -119, 'object:ceres_refinery_disabled_hull'),
       ],
     }),
   }),
@@ -326,9 +361,20 @@ const seamActors = Object.freeze([
       jobKind: 'miner',
       durationS: 24,
       receiptType: 'mining:npcExtraction',
+      // Tight wedge, 62.1 deg / 123.8 WU — the shortest span at Ceres, so the miner is also the
+      // slowest thing in the sector. That is the point: it is working one face, not travelling.
+      //
+      // The ore-face mark is a holding point BESIDE the clast, not on its bearing, for the same
+      // reason the tender's client mark is held off the disabled hull: npcJobsRuntime drives this
+      // actor to the live rock, and if the authored fallback pointed the same way as the live
+      // target, "it is tracking the real ore" and "it is flying its authored waypoint" would be
+      // indistinguishable on screen and in test. ceres-activity-runtime-lifecycle asserts that
+      // separation exceeds 0.25 rad from an approach 200 WU west of the live clast; no point on the
+      // clast's own bearing can satisfy it (the whole band tops out near 0.15 rad), so this mark is
+      // deliberately ~38 deg around from the rock and the constraint is re-asserted next door.
       marks: [
-        mark('seam_miner_work_pad', MARK_DISTANCE_WU[0], 0, 'activity:seam-work-pad'),
-        mark('seam_miner_ore_face', 0, MARK_DISTANCE_WU[1], 'field:slot:ceres_seam_ore_clast'),
+        mark('seam_miner_work_pad', -29, -117, 'activity:seam-work-pad'),
+        mark('seam_miner_ore_face', -116, -29, 'field:slot:ceres_seam_ore_clast'),
       ],
     }),
   }),
@@ -342,9 +388,12 @@ const seamActors = Object.freeze([
       id: 'ceres_seam_survey_sweep',
       jobKind: 'surveyor',
       durationS: 26,
+      // Tight wedge, 71.9 deg / 143.8 WU — same close-work family as the miner, opened a little
+      // wider and swept across the quadrant the miner is not in, so the two seam actors read as one
+      // crew covering different ground rather than two copies of the same patrol.
       marks: [
-        mark('seam_survey_mark_a', -MARK_DISTANCE_WU[0], 0, 'activity:scan-mark-a'),
-        mark('seam_survey_mark_b', 0, -MARK_DISTANCE_WU[1], 'activity:scan-mark-b'),
+        mark('seam_survey_mark_a', 123, 4, 'activity:scan-mark-a'),
+        mark('seam_survey_mark_b', 34, 117, 'activity:scan-mark-b'),
       ],
     }),
   }),
@@ -361,9 +410,13 @@ const ambushActors = Object.freeze([
       id: 'ceres_ambush_loaded_crossing',
       jobKind: 'hauler',
       durationS: 22,
+      // Transit lane, 180.0 deg / 243.7 WU — the only route at Ceres that still runs straight
+      // through its anchor, because the Throughline is the one pocket where a lane IS the fiction.
+      // Re-aimed off the cardinal axis onto the authored lane bearing: the two collision anchors at
+      // (48,64) and (150,20) define -23.34 deg, and these marks run -23.20/156.80.
       marks: [
-        mark('ambush_hauler_inbound', MARK_DISTANCE_WU[0], 0, 'activity:throughline-inbound'),
-        mark('ambush_hauler_outbound', -MARK_DISTANCE_WU[1], 0, 'activity:throughline-outbound'),
+        mark('ambush_hauler_inbound', -112, 48, 'activity:throughline-inbound'),
+        mark('ambush_hauler_outbound', 112, -48, 'activity:throughline-outbound'),
       ],
     }),
   }),
@@ -378,9 +431,13 @@ const ambushActors = Object.freeze([
       id: 'ceres_ambush_escort_crossing',
       jobKind: 'patrol',
       durationS: 20,
+      // Transit lane, 168.1 deg / 227.6 WU. The escort runs the same lane as its ward but not the
+      // same line: 6 deg canted off the axis and pulled inside it, so it crosses the hauler's track
+      // twice per pass instead of trailing it down an identical straight. Still the fastest pair at
+      // Ceres, which is what an escort keeping station on a loaded hauler should look like.
       marks: [
-        mark('ambush_escort_inbound', 0, MARK_DISTANCE_WU[0], 'actor:ceres_ambush_loaded_hauler'),
-        mark('ambush_escort_outbound', 0, -MARK_DISTANCE_WU[1], 'actor:ceres_ambush_loaded_hauler'),
+        mark('ambush_escort_inbound', -109, 34, 'actor:ceres_ambush_loaded_hauler'),
+        mark('ambush_escort_outbound', 100, -56, 'actor:ceres_ambush_loaded_hauler'),
       ],
     }),
   }),
@@ -397,9 +454,12 @@ const cathedralActors = Object.freeze([
       id: 'ceres_cathedral_salvage_loop',
       jobKind: 'salvor',
       durationS: 30,
+      // Quarter arc, 101.0 deg / 182.8 WU. The salvor works its way AROUND the wreck rather than
+      // across it — the shard mark is on the grave shard's true bearing (161.12 deg vs the shard's
+      // 161.08) and the hulk leg turns a corner to reach the far face of the same site.
       marks: [
-        mark('cathedral_salvor_shard', MARK_DISTANCE_WU[0], 0, 'object:ceres_cathedral_grave_shard'),
-        mark('cathedral_salvor_hulk', -MARK_DISTANCE_WU[1], 0, 'world-site:world_site_wreck_cathedral'),
+        mark('cathedral_salvor_shard', -114, 39, 'object:ceres_cathedral_grave_shard'),
+        mark('cathedral_salvor_hulk', 58, 101, 'world-site:world_site_wreck_cathedral'),
       ],
     }),
   }),
@@ -414,9 +474,13 @@ const cathedralActors = Object.freeze([
       id: 'ceres_cathedral_patrol_perimeter',
       jobKind: 'patrol',
       durationS: 28,
+      // Quarter arc, 107.9 deg / 197.2 WU — the widest beat that still goes around the grave instead
+      // of through it, swung across the southern quadrants the salvor never enters. Same circling
+      // family as the salvor, a longer and faster leg, which is what a perimeter should be next to
+      // someone stopped and working.
       marks: [
-        mark('cathedral_patrol_beat_a', 0, MARK_DISTANCE_WU[0], 'activity:grave-perimeter-a'),
-        mark('cathedral_patrol_beat_b', 0, -MARK_DISTANCE_WU[1], 'activity:grave-perimeter-b'),
+        mark('cathedral_patrol_beat_a', 57, -108, 'activity:grave-perimeter-a'),
+        mark('cathedral_patrol_beat_b', -120, -21, 'activity:grave-perimeter-b'),
       ],
     }),
   }),
@@ -513,6 +577,76 @@ export const CERES_AUTHORED_ACTIVITY_SLOT_ORDER = Object.freeze([
   ...CERES_POCKET_ACTOR_SLOT_ORDER,
   ...CERES_ACTIVITY_SERVICE_SLOTS.map((slot) => slot.id),
 ]);
+
+// Topology classes are deliberately COARSE. A distinctness rule that compares exact floats is
+// satisfied by noise — two routes 0.4 deg apart would "differ" while reading identically in play —
+// so sweep is bucketed to 15 deg and span to 25 WU, and two routes only count as different when
+// they are different to the eye. Every authored route sits at least 3.4 deg and 4.6 WU clear of a
+// bucket edge, so this classifies a shape rather than a rounding.
+const SWEEP_CLASS_STEP_DEG = 15;
+const SPAN_CLASS_STEP_WU = 25;
+
+function markBearingDeg(offset) {
+  return (Math.atan2(offset.z, offset.x) * 180) / Math.PI;
+}
+
+/** The angle the two marks subtend at the pocket anchor: 0 = a radial poke, 180 = straight through. */
+function routeSweepDeg(marks) {
+  const spread = Math.abs(markBearingDeg(marks[1].offset) - markBearingDeg(marks[0].offset));
+  return spread > 180 ? 360 - spread : spread;
+}
+
+/** How far the actor actually travels between marks. npcJobsRuntime turns this into its speed. */
+function routeSpanWU(marks) {
+  return Math.hypot(
+    marks[1].offset.x - marks[0].offset.x,
+    marks[1].offset.z - marks[0].offset.z,
+  );
+}
+
+function routeTopology(slot) {
+  const sweepDeg = routeSweepDeg(slot.route.marks);
+  const spanWU = routeSpanWU(slot.route.marks);
+  return Object.freeze({
+    pocketId: slot.pocketId,
+    actorSlotId: slot.id,
+    routeId: slot.route.id,
+    sweepDeg: Math.round(sweepDeg * 1000) / 1000,
+    spanWU: Math.round(spanWU * 1000) / 1000,
+    sweepClassDeg: Math.round(sweepDeg / SWEEP_CLASS_STEP_DEG) * SWEEP_CLASS_STEP_DEG,
+    spanClassWU: Math.round(spanWU / SPAN_CLASS_STEP_WU) * SPAN_CLASS_STEP_WU,
+    speedWUPerS: Math.round((spanWU / slot.route.durationS) * 1000) / 1000,
+  });
+}
+
+/** Measured route shapes, derived from the marks themselves rather than declared alongside them. */
+export const CERES_ROUTE_TOPOLOGY = Object.freeze(CERES_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+export function ceresRouteTopologyClass(row) {
+  return `${row.sweepClassDeg}deg/${row.spanClassWU}wu`;
+}
+
+// Ceres is the propagation template for every other sector, so it has to satisfy the
+// no-two-places-share-a-topology rule against ITSELF first. This runs at module load, which means
+// the required gates enforce it: check:pq020:ceres-topology imports world, world imports this file.
+const routeTopologyClasses = CERES_ROUTE_TOPOLOGY.map(ceresRouteTopologyClass);
+if (new Set(routeTopologyClasses).size !== routeTopologyClasses.length) {
+  throw new Error(`Ceres routes share a topology class: ${CERES_ROUTE_TOPOLOGY
+    .map((row) => `${row.routeId}=${ceresRouteTopologyClass(row)}`).join(', ')}`);
+}
+const pocketTopologyClasses = CERES_ACTIVITY_POCKETS.map((entry) => CERES_ROUTE_TOPOLOGY
+  .filter((row) => row.pocketId === entry.id)
+  .map(ceresRouteTopologyClass)
+  .sort()
+  .join('+'));
+if (new Set(pocketTopologyClasses).size !== pocketTopologyClasses.length) {
+  throw new Error(`Ceres pockets share a route topology: ${pocketTopologyClasses.join(', ')}`);
+}
+if (CERES_ROUTE_TOPOLOGY.length !== CERES_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('every Ceres pocket actor must contribute exactly one measured route topology');
+}
 
 /** Sandbox acceptance entry; production pockets remain ship-agnostic and acceptance remains open. */
 export const CERES_REFERENCE_ACCEPTANCE_ENTRY = Object.freeze({

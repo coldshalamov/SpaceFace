@@ -17,7 +17,9 @@ import {
   CERES_AUTHORED_ACTIVITY_SLOT_ORDER,
   CERES_POCKET_ACTOR_SLOT_ORDER,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
+  CERES_ROUTE_TOPOLOGY,
   ceresActivityPocket,
+  ceresRouteTopologyClass,
   distanceFromPocketAnchor,
 } from '../src/data/sectorActivityPockets.js';
 import {
@@ -208,6 +210,187 @@ test('R5A positions and inert routes use the named-anchor camera bands', () => {
     actor('ceres_seam_miner').route.marks[1].targetRef,
     'field:slot:ceres_seam_ore_clast',
   );
+});
+
+// ── PQ-045.route-topology ───────────────────────────────────────────────────────────────────────
+// Ceres is the propagation template for every other sector, so it has to satisfy the
+// no-two-places-share-a-topology rule against itself first. Before this unit it did not: all eight
+// actors shared one pair of cardinal 102/116 WU marks, six of the eight routes were the identical
+// 180deg/218 WU colinear shuttle, and the other two were the identical 90deg/154.467 WU right angle
+// — three of the four pockets were geometrically indistinguishable from each other.
+//
+// A sibling unit learned the hard way that asserting distinctness in a COMMENT lets every trade
+// quietly collapse back to one behaviour, so it is computed here instead, from the marks, with the
+// bearing and distance maths written out independently of the module that ships the values.
+
+const DEG = 180 / Math.PI;
+
+function bearingDeg(fromX, fromZ, toX, toZ) {
+  return Math.atan2(toZ - fromZ, toX - fromX) * DEG;
+}
+
+function separationDeg(a, b) {
+  const spread = Math.abs(a - b) % 360;
+  return spread > 180 ? 360 - spread : spread;
+}
+
+/** Recomputed from the raw marks — deliberately not imported from the module under test. */
+function measureRoute(slot) {
+  const [first, second] = slot.route.marks;
+  return {
+    sweepDeg: separationDeg(
+      bearingDeg(0, 0, first.offset.x, first.offset.z),
+      bearingDeg(0, 0, second.offset.x, second.offset.z),
+    ),
+    spanWU: Math.sqrt(
+      (second.offset.x - first.offset.x) ** 2 + (second.offset.z - first.offset.z) ** 2,
+    ),
+  };
+}
+
+/** Distance to the nearest class boundary, which sit halfway between bucket centres. */
+function classEdgeMargin(value, step) {
+  const offsetIntoBucket = (((value - step / 2) % step) + step) % step;
+  return Math.min(offsetIntoBucket, step - offsetIntoBucket);
+}
+
+const EXPECTED_ROUTE_TOPOLOGY = Object.freeze([
+  ['ceres_refinery_pocket', 'ceres_refinery_freight_loop', '135deg/200wu'],
+  ['ceres_refinery_pocket', 'ceres_refinery_tender_service', '150deg/225wu'],
+  ['ceres_working_seam', 'ceres_seam_extraction_loop', '60deg/125wu'],
+  ['ceres_working_seam', 'ceres_seam_survey_sweep', '75deg/150wu'],
+  ['ceres_ambush_run', 'ceres_ambush_loaded_crossing', '180deg/250wu'],
+  ['ceres_ambush_run', 'ceres_ambush_escort_crossing', '165deg/225wu'],
+  ['ceres_cathedral_grave', 'ceres_cathedral_salvage_loop', '105deg/175wu'],
+  ['ceres_cathedral_grave', 'ceres_cathedral_patrol_perimeter', '105deg/200wu'],
+]);
+
+test('R5A no two Ceres routes and no two Ceres pockets share a route topology', () => {
+  const slots = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots);
+  assert.equal(CERES_ROUTE_TOPOLOGY.length, slots.length);
+
+  // The shipped measurements must agree with maths written here, so a broken derivation in the
+  // module cannot certify itself distinct.
+  for (const slot of slots) {
+    const row = CERES_ROUTE_TOPOLOGY.find((entry) => entry.actorSlotId === slot.id);
+    const measured = measureRoute(slot);
+    // The shipped values are published rounded to 3dp, so agreement is to that precision and no
+    // looser — 5e-4 is the most a correct rounding can differ by.
+    assert.ok(row, `${slot.id} contributes a measured topology`);
+    assert.ok(Math.abs(row.sweepDeg - measured.sweepDeg) <= 5e-4,
+      `${slot.id} sweep ${row.sweepDeg} disagrees with ${measured.sweepDeg}`);
+    assert.ok(Math.abs(row.spanWU - measured.spanWU) <= 5e-4,
+      `${slot.id} span ${row.spanWU} disagrees with ${measured.spanWU}`);
+    assert.ok(Math.abs(row.speedWUPerS - measured.spanWU / slot.route.durationS) < 1e-3,
+      `${slot.id} derived speed must stay span/durationS`);
+  }
+
+  // Distinctness, at both scopes the rule is stated at. Eight distinct routes make the four pockets
+  // distinct too, but the pocket claim is asserted in its own right because it is the one that
+  // gates propagation to other sectors.
+  const routeClasses = CERES_ROUTE_TOPOLOGY.map(ceresRouteTopologyClass);
+  assert.equal(new Set(routeClasses).size, routeClasses.length,
+    `every Ceres route needs its own topology; got ${routeClasses.join(', ')}`);
+  const pocketClasses = CERES_ACTIVITY_POCKETS.map((pocket) => CERES_ROUTE_TOPOLOGY
+    .filter((row) => row.pocketId === pocket.id)
+    .map(ceresRouteTopologyClass)
+    .sort()
+    .join('+'));
+  assert.equal(new Set(pocketClasses).size, CERES_ACTIVITY_POCKETS.length,
+    `no two Ceres pockets may share a topology; got ${pocketClasses.join(' | ')}`);
+
+  // Pin the authored design, not merely that something differs: a retune that stays technically
+  // distinct while abandoning each pocket's band is the failure this unit exists to prevent.
+  assert.deepEqual(
+    CERES_ROUTE_TOPOLOGY.map((row) => [row.pocketId, row.routeId, ceresRouteTopologyClass(row)]),
+    EXPECTED_ROUTE_TOPOLOGY.map((row) => [...row]),
+  );
+
+  // Coarse classes are only meaningful while the authored values sit clear of the bucket edges.
+  // Without this, a route could drift onto a boundary and its class would start reporting a
+  // difference that no player could see.
+  for (const row of CERES_ROUTE_TOPOLOGY) {
+    assert.ok(classEdgeMargin(row.sweepDeg, 15) >= 3,
+      `${row.routeId} sweep ${row.sweepDeg} sits too near a class edge`);
+    assert.ok(classEdgeMargin(row.spanWU, 25) >= 4,
+      `${row.routeId} span ${row.spanWU} sits too near a class edge`);
+  }
+
+  // Span is speed: durations are fixed and npcJobsRuntime divides by them. Keeping the spread inside
+  // the shipped envelope is what stops "give it its own topology" turning into a stalled or
+  // teleporting actor.
+  for (const row of CERES_ROUTE_TOPOLOGY) {
+    assert.ok(row.speedWUPerS >= 4 && row.speedWUPerS <= 13,
+      `${row.routeId} derives ${row.speedWUPerS} WU/s, outside the accepted Ceres motion envelope`);
+  }
+});
+
+test('R5A route bearings are taken from Ceres geography rather than chosen', () => {
+  const bearingOfMark = (slotId, markId) => {
+    const slot = actor(slotId);
+    const found = slot.route.marks.find((mark) => mark.id === markId);
+    return bearingDeg(0, 0, found.offset.x, found.offset.z);
+  };
+  const objectOffset = (slotId) => CERES_ACTIVITY_POCKETS
+    .flatMap((pocket) => pocket.objectSlots)
+    .find((slot) => slot.id === slotId).offset;
+
+  // A mark that is simply a destination points at the object it names. This is what makes the
+  // topology derived from the pocket's own fiction instead of a shape that merely happens to differ.
+  for (const [slotId, markId, objectSlotId] of [
+    ['ceres_refinery_hauler', 'refinery_cargo_approach', 'ceres_refinery_cargo_pod'],
+    ['ceres_cathedral_salvor', 'cathedral_salvor_shard', 'ceres_cathedral_grave_shard'],
+  ]) {
+    const target = objectOffset(objectSlotId);
+    assert.ok(
+      separationDeg(bearingOfMark(slotId, markId), bearingDeg(0, 0, target.x, target.z)) < 0.5,
+      `${markId} must sit on the true bearing of ${objectSlotId}`,
+    );
+  }
+
+  // The ore face is the other kind of mark: npcJobsRuntime physically drives the miner to the live
+  // clast, so the authored fallback has to point somewhere else or the two are indistinguishable.
+  // ceres-activity-runtime-lifecycle proves that by flying an approach 200 WU west of the live rock
+  // and requiring the two aims to differ by more than 0.25 rad. That is a cross-file constraint on
+  // THIS file's geometry, so it is restated here — retuning the mark toward the clast breaks a test
+  // in a file this unit is not allowed to touch, and it should fail here first, where it is caused.
+  const clast = objectOffset('ceres_seam_ore_clast');
+  const oreFace = actor('ceres_seam_miner').route.marks
+    .find((mark) => mark.id === 'seam_miner_ore_face').offset;
+  const approach = { x: clast.x - 200, z: clast.z };
+  const aimSeparation = separationDeg(
+    bearingDeg(approach.x, approach.z, clast.x, clast.z),
+    bearingDeg(approach.x, approach.z, oreFace.x, oreFace.z),
+  ) / DEG;
+  assert.ok(aimSeparation > 0.25,
+    `the miner's authored ore face must stay causally distinct from the live clast (${aimSeparation} rad)`);
+
+  // The Ambush lane runs down the axis the two authored collision anchors already define, so the one
+  // route still allowed to cross its own anchor is aimed by the sector, not by a cardinal default.
+  const anchors = ceresActivityPocket('ceres_ambush_run').collisionAnchorSlots;
+  const laneBearing = bearingDeg(
+    anchors[0].offset.x, anchors[0].offset.z,
+    anchors[1].offset.x, anchors[1].offset.z,
+  );
+  assert.ok(separationDeg(bearingOfMark('ceres_ambush_loaded_hauler', 'ambush_hauler_outbound'),
+    laneBearing) < 0.5, 'the loaded crossing runs the authored collision-anchor lane axis');
+  assert.equal(
+    CERES_ROUTE_TOPOLOGY.filter((row) => row.sweepClassDeg === 180).length, 1,
+    'exactly one Ceres route may still run straight through its own anchor',
+  );
+
+  // Inherited from PQ-045.tender-client-materialization: the tender's authored client mark is
+  // deliberately held OFF the disabled hull's own bearing, so closing on the real casualty is a
+  // visibly different heading. Re-aiming that mark onto the hull would collapse this to ~0.13 rad.
+  const tender = actor('ceres_refinery_tender');
+  const clientMark = tender.route.marks.find((mark) => mark.id === 'refinery_tender_client');
+  const hull = objectOffset('ceres_refinery_disabled_hull');
+  const spawnToHull = bearingDeg(tender.spawnOffset.x, tender.spawnOffset.z, hull.x, hull.z);
+  const spawnToMark = bearingDeg(
+    tender.spawnOffset.x, tender.spawnOffset.z, clientMark.offset.x, clientMark.offset.z,
+  );
+  assert.ok(separationDeg(spawnToHull, spawnToMark) / DEG > 0.5,
+    'the tender approaches its authored mark and its real client on distinct headings');
 });
 
 // The `activity:` namespace means "abstract choreography — no object is or ever will be this". That
