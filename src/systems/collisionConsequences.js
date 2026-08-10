@@ -12,7 +12,7 @@ import {
 import { ensureCombatant } from '../combat/runtime.js';
 import { appendCombatTrace } from '../combat/trace.js';
 import { COLLISION_TUMBLE_KIND, TUMBLE_STATUS_ID } from '../combat/tumbleStatus.js';
-import { combatFlag } from '../data/featureFlags.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   queuePhysicsTorqueImpulse,
   writePhysicsControl,
@@ -23,6 +23,7 @@ export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 const ZERO_FORCE = Object.freeze({ x: 0, y: 0, z: 0 });
 const CONTROL_PRIORITY = Object.freeze({ none: 0, stagger: 1, tumble: 2 });
 const DAMAGEABLE_MOTION = new Set(['ship', 'drone']);
+const RESOLVE_PENDING_CRAFT_CONTACT_EVENT = 'collisionConsequences:resolvePendingCraftContact';
 
 export const collisionConsequences = {
   id: 'collisionConsequences',
@@ -34,11 +35,16 @@ export const collisionConsequences = {
     this.registry = ctx.registry;
     this._pairTicks = new Map();
     this._controlStates = new WeakMap();
+    this._pendingCraftContacts = new Map();
     this._applicationEnabled = combatFlag('weaponImpulseConsequences');
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('physics:impact', (payload) => this._onImpact(payload || {})));
+      this._unsubs.push(this.bus.on('tether:whipImpact', (payload) => this._onWhipImpact(payload || {})));
+      this._unsubs.push(this.bus.on(RESOLVE_PENDING_CRAFT_CONTACT_EVENT,
+        (payload) => this._resolvePendingCraftContact(payload || {})));
       this._unsubs.push(this.bus.on('save:loaded', () => this._resetTransientState()));
+      this._unsubs.push(this.bus.on('game:started', () => this._resetTransientState()));
       this._unsubs.push(this.bus.on('game:newGame', () => this._resetTransientState()));
     }
   },
@@ -58,6 +64,7 @@ export const collisionConsequences = {
     }
     this._applicationEnabled = true;
     if (!state || state.mode !== 'flight') return;
+    this._resolveStrandedCraftContactsBefore(nonNegativeTick(state.tick));
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const tick = nonNegativeTick(state.tick);
@@ -99,22 +106,93 @@ export const collisionConsequences = {
     const exchangedMomentum = Math.max(0, finite(payload.impulse, payload.dp));
     if (!(exchangedMomentum > 0)) return;
 
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick);
+    // A player-propelled hull carries the cause of the whole contact. Share the freshest causal
+    // impulse across both consequence directions so the struck hull does not become an
+    // environment-attributed kill merely because the impulse was recorded on the incoming hull.
+    const causalProvenance = contactImpulseProvenance(a, b, tick)
+      || explicitContactProvenance(payload, tick);
+    if (isPotentialMasslineWhipContact(state, a, b)) {
+      this._deferCraftContact(a, b, payload, exchangedMomentum, tick, causalProvenance);
+      return;
+    }
+
+    this._resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, false);
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick) {
+  _deferCraftContact(a, b, payload, exchangedMomentum, tick, causalProvenance) {
+    const key = craftContactKey(tick, a.id, b.id);
+    this._pendingCraftContacts.set(key, {
+      key,
+      a,
+      b,
+      payload: snapshotContactPayload(payload, tick),
+      exchangedMomentum,
+      tick,
+      causalProvenance,
+    });
+    if (this.bus && typeof this.bus.queue === 'function') {
+      this.bus.queue(RESOLVE_PENDING_CRAFT_CONTACT_EVENT, { key });
+    }
+  },
+
+  _onWhipImpact(payload) {
+    if (!isDamageBearingWhipReceipt(this.state, payload)) return;
+    const key = craftContactKey(payload.tick, payload.targetId, payload.victimId);
+    const pending = this._pendingCraftContacts.get(key);
+    if (!pending) return;
+    this._pendingCraftContacts.delete(key);
+    // The authoritative observer has now claimed this exact tick + mass + victim contact. Resolve
+    // its control/presentation receipt immediately, before the downstream victim/recoil consumers,
+    // while leaving baseline craft damage at zero so there are exactly two authored damage packets.
+    this._resolveDeferredCraftContact(pending, true);
+  },
+
+  _resolvePendingCraftContact(payload) {
+    const key = typeof payload.key === 'string' ? payload.key : '';
+    const pending = this._pendingCraftContacts.get(key);
+    if (!pending) return;
+    this._pendingCraftContacts.delete(key);
+    this._resolveDeferredCraftContact(pending, false);
+  },
+
+  _resolveStrandedCraftContactsBefore(tick) {
+    for (const [key, pending] of this._pendingCraftContacts) {
+      if (pending.tick >= tick) continue;
+      this._pendingCraftContacts.delete(key);
+      this._resolveDeferredCraftContact(pending, false);
+    }
+  },
+
+  _resolveDeferredCraftContact(pending, suppressCraftDamage) {
+    this._resolveContact(
+      pending.a,
+      pending.b,
+      pending.payload,
+      pending.exchangedMomentum,
+      pending.tick,
+      pending.causalProvenance,
+      suppressCraftDamage,
+    );
+  },
+
+  _resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+  },
+
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick);
-    const provenance = ramPlate?.provenance || readRecentImpulseProvenance(target, tick);
+    const provenance = ramPlate?.provenance || causalProvenance;
     const receipt = resolveCollisionConsequence({
       target,
       other,
       exchangedMomentum,
       tick,
       provenance,
-      craftDamageMultiplier: ramPlate?.damageMultiplier || 0,
+      craftDamageMultiplier: ramPlate?.damageMultiplier,
+      suppressCraftDamage,
       pos: payload.pos,
       normal: payload.normal,
     });
@@ -241,6 +319,7 @@ export const collisionConsequences = {
   _resetTransientState() {
     this._pairTicks = new Map();
     this._controlStates = new WeakMap();
+    this._pendingCraftContacts = new Map();
   },
 };
 
@@ -290,6 +369,82 @@ function nonNegativeTick(value) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function contactImpulseProvenance(a, b, tick) {
+  const aProvenance = readRecentImpulseProvenance(a, tick);
+  const bProvenance = readRecentImpulseProvenance(b, tick);
+  if (!aProvenance) return bProvenance;
+  if (!bProvenance) return aProvenance;
+  if (aProvenance.appliedTick !== bProvenance.appliedTick) {
+    return aProvenance.appliedTick > bProvenance.appliedTick ? aProvenance : bProvenance;
+  }
+  if (aProvenance.magnitude !== bProvenance.magnitude) {
+    return aProvenance.magnitude > bProvenance.magnitude ? aProvenance : bProvenance;
+  }
+  return provenanceKey(aProvenance) <= provenanceKey(bProvenance) ? aProvenance : bProvenance;
+}
+
+function provenanceKey(value) {
+  return [value.actorId ?? '', value.weaponId ?? '', value.tag ?? ''].map(String).join('\u0000');
+}
+
+function isPotentialMasslineWhipContact(state, a, b) {
+  if (!DAMAGEABLE_MOTION.has(a.type) || !DAMAGEABLE_MOTION.has(b.type)) return false;
+  if (!masslineWhipDamageEnabled(state)) return false;
+  const playerState = state && state.player;
+  const runtime = playerState && playerState.masslineImpacts;
+  const tether = playerState && playerState.tether;
+  const runtimeMassId = runtime && runtime.tracking ? runtime.massId : null;
+  const tetherMassId = tether && tether.active ? tether.targetId : null;
+  return contactIncludesId(a, b, runtimeMassId) || contactIncludesId(a, b, tetherMassId);
+}
+
+function isDamageBearingWhipReceipt(state, payload) {
+  if (!payload || !Number.isFinite(payload.tick)) return false;
+  if (payload.targetId == null || payload.victimId == null) return false;
+  if (payload.rating !== 'solid' && payload.rating !== 'crushing') return false;
+  return masslineWhipDamageEnabled(state);
+}
+
+function masslineWhipDamageEnabled(state) {
+  const features = state && state.runtime && state.runtime.features;
+  return combatFlag('whipDamage', features) || massline2Flag('impactDamage', features);
+}
+
+function contactIncludesId(a, b, id) {
+  return id != null && (String(a.id) === String(id) || String(b.id) === String(id));
+}
+
+function craftContactKey(tick, aId, bId) {
+  return `${nonNegativeTick(tick)}\u0001${pairKey(aId, bId)}`;
+}
+
+function snapshotContactPayload(payload, tick) {
+  return Object.freeze({
+    tick,
+    pos: Object.freeze({
+      x: finite(payload && payload.pos && payload.pos.x),
+      z: finite(payload && payload.pos && payload.pos.z),
+    }),
+    normal: Object.freeze({
+      x: finite(payload && payload.normal && payload.normal.x),
+      z: finite(payload && payload.normal && payload.normal.z),
+    }),
+  });
+}
+
+function explicitContactProvenance(payload, tick) {
+  if (!payload || payload.causalActorId == null) return null;
+  const actorId = payload.causalActorId;
+  if (typeof actorId === 'number' && !Number.isFinite(actorId)) return null;
+  if (typeof actorId !== 'number' && (typeof actorId !== 'string' || actorId.length === 0)) return null;
+  return Object.freeze({
+    actorId,
+    weaponId: null,
+    tag: 'direct_contact',
+    appliedTick: tick,
+  });
 }
 
 function playerRamPlateImpact(entity, playerId, tick) {

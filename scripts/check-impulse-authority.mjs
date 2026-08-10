@@ -170,8 +170,9 @@ function assertUniversalWeaponIdentities() {
     'representative weapon families may not collapse onto one impulse identity');
 }
 
-// 7. The pure consequence contract distinguishes terrain payoff from craft contact and remains
-//    bounded under extreme input. Runtime routing is covered by weapon-impulse-consequence.test.mjs.
+// 7. The pure consequence contract gives both terrain and craft contact a bounded payoff. Runtime
+//    attribution, Ram Plate scaling, player immunity, and Massline ownership are covered by
+//    weapon-impulse-consequence.test.mjs.
 function assertCollisionConsequenceContract() {
   const target = { id: 2, type: 'ship', mass: 20, radius: 6 };
   const common = {
@@ -187,7 +188,10 @@ function assertCollisionConsequenceContract() {
   assert.equal(terrain.control, 'tumble');
   assert.ok(terrain.impactDamage > 0 && terrain.debrisCount > 0,
     'high-momentum terrain contact must produce bounded damage/debris payoff');
-  assert.equal(craft.impactDamage, 0, 'craft contact is physical control, not generic collision hull damage');
+  assert.ok(craft.impactDamage > 0,
+    'high-momentum craft contact must produce the authored baseline hull damage');
+  assert.ok(craft.impactDamage < terrain.impactDamage,
+    'the 0.6 craft baseline stays subordinate to a comparable terrain impact');
 }
 
 // 8. New weapon/impulse/consequence paths are gameplay requesters, never motion owners. The

@@ -25,7 +25,7 @@ const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
   terrain: 1.15,
   structure: 1,
   debris: 0.8,
-  craft: 0,
+  craft: 0.6,
   other: 0,
 });
 
@@ -125,8 +125,12 @@ export function resolveCollisionConsequence(input = {}) {
 
   const overDamageSpeed = Math.max(0, deltaV - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
   const energyProxy = 0.5 * mass * overDamageSpeed * overDamageSpeed;
+  // Craft contact has a real baseline; equipment such as the Ram Plate scales that baseline once
+  // rather than replacing it or adding a second collision-damage packet.
   const surfaceDamageMultiplier = surface === 'craft'
-    ? nonNegative(input.craftDamageMultiplier)
+    ? (input.suppressCraftDamage === true
+      ? 0
+      : SURFACE_DAMAGE_MULTIPLIER.craft * positive(input.craftDamageMultiplier, 1))
     : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0);
   const impactDamage = clamp(
     Math.sqrt(energyProxy) * 0.12 * surfaceDamageMultiplier,

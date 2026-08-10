@@ -125,8 +125,22 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
     other: { id: 1, type: 'ship', mass: 20, radius: 6 },
     craftDamageMultiplier: 1.8,
   });
-  assert.equal(ordinaryCraft.impactDamage, 0, 'ordinary craft contact remains non-damaging');
-  assert.ok(platedCraft.impactDamage > 0, 'an explicit Ram Plate multiplier activates craft impact damage');
+  assert.ok(Math.abs(ordinaryCraft.impactDamage / light.impactDamage - 0.6) < 1e-12,
+    'ordinary energetic craft contact applies the 0.6 baseline exactly');
+  assert.ok(platedCraft.impactDamage > ordinaryCraft.impactDamage,
+    'an explicit Ram Plate multiplier makes the same craft impact stronger');
+  assert.ok(platedCraft.impactDamage <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDamage,
+    'plated craft impact remains bounded by the universal damage ceiling');
+  assert.ok(Math.abs(platedCraft.impactDamage / ordinaryCraft.impactDamage - 1.8) < 1e-12,
+    'Ram Plate scales the craft baseline exactly once');
+  const masslineOwnedCraft = kernel.resolveCollisionConsequence({
+    ...common,
+    target: { id: 6, type: 'ship', mass: 20, radius: 6 },
+    other: { id: 1, type: 'ship', mass: 20, radius: 6 },
+    suppressCraftDamage: true,
+  });
+  assert.equal(masslineOwnedCraft.impactDamage, 0,
+    'an established Massline whip contact can retain control feedback without a baseline craft packet');
   assert.equal(kernel.resolveCollisionConsequence({ ...common, exchangedMomentum: 0,
     target: { id: 2, type: 'ship', mass: 20, radius: 6 } }), null,
   'zero momentum produces no fake consequence');
@@ -331,9 +345,12 @@ test('default physics adapter forwards angular impulse and publishes consequence
 });
 
 test('collision consequence runtime captures weapon setup into one terrain tumble receipt', async (t) => {
-  const previousFlag = COMBAT_FLAGS.weaponImpulseConsequences;
-  COMBAT_FLAGS.weaponImpulseConsequences = true;
-  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previousFlag; });
+  const previousFlags = {
+    weaponImpulseConsequences: COMBAT_FLAGS.weaponImpulseConsequences,
+    whipDamage: COMBAT_FLAGS.whipDamage,
+  };
+  Object.assign(COMBAT_FLAGS, { weaponImpulseConsequences: true, whipDamage: true });
+  t.after(() => { Object.assign(COMBAT_FLAGS, previousFlags); });
   const [module, impulse] = await Promise.all([collisionConsequencesModule(), impulseKernel()]);
   assert.ok(module?.collisionConsequences,
     'PQ-009 must provide the collisionConsequences runtime system');
@@ -424,6 +441,38 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     bus.emit('physics:impact', playerImpact);
     assert.equal(routed.length, 1, 'physical impacts preserve the existing no-player-hull-damage invariant');
 
+    impulse.clearImpulseProvenance(target);
+    state.tick += 30;
+    bus.emit('physics:impact', {
+      ...impact,
+      aId: target.id,
+      bId: attacker.id,
+      tick: state.tick,
+      playerInvolved: true,
+    });
+    assert.equal(routed.length, 2, 'ordinary craft contact routes one baseline damage packet');
+    assert.equal(routed[1].attackerId, null);
+    assert.equal(routed[1].targetId, target.id);
+    assert.equal(routed[1].packet.source.kind, 'collision_craft');
+    assert.equal(routed[1].packet.source.weaponId, null);
+    assert.ok(routed[1].packet.channels.kinetic > 0);
+    const ordinaryCraftDamage = routed[1].packet.channels.kinetic;
+
+    state.tick += 30;
+    bus.emit('physics:impact', {
+      ...impact,
+      aId: target.id,
+      bId: attacker.id,
+      tick: state.tick,
+      causalActorId: attacker.id,
+    });
+    assert.equal(routed.length, 3,
+      'an explicit contact actor routes the same ordinary baseline without inventing a weapon');
+    assert.equal(routed[2].attackerId, attacker.id);
+    assert.equal(routed[2].targetId, target.id);
+    assert.equal(routed[2].packet.source.weaponId, null);
+    assert.equal(routed[2].packet.source.impulseProvenance, 'direct_contact');
+
     attacker.data.derived.ramDamageDealtMult = 1.8;
     state.tick += 30;
     bus.emit('physics:impact', {
@@ -432,18 +481,55 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       bId: attacker.id,
       tick: state.tick,
     });
-    assert.equal(routed.length, 2, 'a fitted Ram Plate routes one player-driven craft impact');
-    assert.equal(routed[1].attackerId, attacker.id);
-    assert.equal(routed[1].targetId, target.id);
-    assert.equal(routed[1].packet.source.kind, 'collision_craft');
-    assert.equal(routed[1].packet.source.weaponId, 'mod_ram_plate');
-    assert.ok(routed[1].packet.channels.kinetic > 0);
+    assert.equal(routed.length, 4, 'a fitted Ram Plate routes one stronger player-driven craft impact');
+    assert.equal(routed[3].attackerId, attacker.id);
+    assert.equal(routed[3].targetId, target.id);
+    assert.equal(routed[3].packet.source.kind, 'collision_craft');
+    assert.equal(routed[3].packet.source.weaponId, 'mod_ram_plate');
+    assert.ok(routed[3].packet.channels.kinetic > ordinaryCraftDamage);
+    assert.ok(routed[3].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
 
-    bus.emit('game:newGame');
+    state.player = {
+      tether: { active: true, targetId: target.id, phase: 'loaded' },
+      masslineImpacts: { tracking: true, massId: target.id, impacts: [], latest: null },
+    };
+    state.tick += 30;
+    const beforePendingBoundary = routed.length;
+    bus.emit('physics:impact', {
+      ...impact,
+      aId: target.id,
+      bId: attacker.id,
+      tick: state.tick,
+    });
+    assert.equal(routed.length, beforePendingBoundary,
+      'a potential exact Massline contact waits until the end-of-step ownership handshake');
+    assert.equal(system._pendingCraftContacts.size, 1);
+    assert.equal(system._controlStates.has(target), true);
+
+    bus.emit('game:started');
+    assert.equal(system._pairTicks.size, 0, 'the canonical new-run boundary clears recycled-id cooldowns');
+    assert.equal(system._pendingCraftContacts.size, 0, 'the canonical new-run boundary drops stale queued contacts');
+    assert.equal(system._controlStates.has(target), false, 'the canonical new-run boundary drops stale control');
+    bus.flush();
+    assert.equal(routed.length, beforePendingBoundary,
+      'a resolver queued by the retired run cannot damage its old entities after game:started');
+
     state.tick = 0;
+    state.player = {
+      tether: { active: false, targetId: null, phase: 'idle' },
+      masslineImpacts: { tracking: false, massId: null, impacts: [], latest: null },
+    };
+    const replacementTarget = combatShip(target.id, target.team, target.pos.x);
+    replacementTarget.mass = target.mass;
+    replacementTarget.radius = target.radius;
+    const replacementTerrain = physicsEntity(
+      terrain.id, terrain.type, terrain.pos.x, terrain.vel.x, terrain.radius, terrain.mass,
+    );
+    state.entities.set(target.id, replacementTarget);
+    state.entities.set(terrain.id, replacementTerrain);
     bus.emit('physics:impact', { ...impact, tick: state.tick });
-    assert.equal(routed.length, 3,
-      'new-game tick reset must clear pair cooldowns instead of suppressing future collisions');
+    assert.equal(routed.length, 5,
+      'game:started must admit the same tick/pair ids when the fresh run reuses entity ids');
   } finally {
     system.destroy();
     bus.clear();
@@ -466,6 +552,194 @@ test('collision consequences are live on the default route at the last control-w
     'collision loss-of-control must overwrite the AI command for this tick');
   assert.ok(consequenceIndex < updates.indexOf('weapons'),
     'collision loss-of-control must clear fire before weapons consume intent');
+});
+
+test('only an exact solid Massline receipt suppresses its matching craft baseline', async () => {
+  const [module, impulse, { masslineImpacts }, { masslineImpactDamage }, { combat }, { MASSLINE2_FLAGS }] = await Promise.all([
+    collisionConsequencesModule(),
+    impulseKernel(),
+    import('../src/systems/masslineImpacts.js'),
+    import('../src/systems/masslineImpactDamage.js'),
+    import('../src/systems/combat.js'),
+    import('../src/data/featureFlags.js'),
+  ]);
+  const previous = {
+    weaponImpulseConsequences: COMBAT_FLAGS.weaponImpulseConsequences,
+    whipDamage: COMBAT_FLAGS.whipDamage,
+    enabled: MASSLINE2_FLAGS.enabled,
+    impactDamage: MASSLINE2_FLAGS.impactDamage,
+  };
+  Object.assign(COMBAT_FLAGS, { weaponImpulseConsequences: true, whipDamage: true });
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, impactDamage: true });
+
+  const bus = createBus();
+  const player = combatShip(31, 0, -40);
+  const thrown = combatShip(32, 1, 0);
+  const struck = combatShip(33, 1, 12);
+  const glanced = combatShip(34, 1, 300);
+  thrown.mass = struck.mass = glanced.mass = 20;
+  thrown.radius = struck.radius = glanced.radius = 6;
+  const state = {
+    tick: 50,
+    simTime: 50 / 60,
+    mode: 'flight',
+    playerId: player.id,
+    player: {
+      tether: { active: false, targetId: null, phase: 'idle' },
+      masslineImpacts: { tracking: false, slung: false, massId: null, impacts: [], latest: null },
+    },
+    entities: new Map([
+      [player.id, player],
+      [thrown.id, thrown],
+      [struck.id, struck],
+      [glanced.id, glanced],
+    ]),
+    entityList: [player, thrown, struck, glanced],
+    combat: { beams: [], threatTables: new Map() },
+  };
+  const routed = [];
+  const kernel = {
+    routeDamage(input) { routed.push(input); return { ok: true, totalApplied: input.packet.channels.kinetic }; },
+  };
+  const registry = { get(name) { return name === 'combat' ? { kernel } : null; } };
+  const consequences = Object.create(module.collisionConsequences);
+  const impactObserver = Object.create(masslineImpacts);
+  const masslineDamage = Object.create(masslineImpactDamage);
+  const combatSystem = Object.create(combat);
+  consequences.init({ state, bus, registry, helpers: {} });
+  impactObserver.init({ state, bus, registry, helpers: {} });
+  combatSystem.state = state;
+  combatSystem.bus = bus;
+  combatSystem.kernel = kernel;
+  const offWhipCombat = bus.on('tether:whipImpact', (payload) => combatSystem.onWhipImpact(payload || {}));
+  masslineDamage.init({ state, bus, registry });
+  const whipReceipts = [];
+  const offWhipReceipt = bus.on('tether:whipImpact', (payload) => whipReceipts.push(payload));
+
+  try {
+    impulse.recordImpulseProvenance(thrown, {
+      actorId: player.id,
+      weaponId: 'wpn_concussion_cannon_m',
+      tag: 'concussion_blast',
+      appliedTick: state.tick,
+      magnitude: 400,
+    });
+    const contact = {
+      consequenceKernelVersion: 1,
+      backend: 'rapier-dynamic',
+      tick: state.tick,
+      aId: thrown.id,
+      bId: struck.id,
+      dp: 400,
+      impulse: 400,
+      pos: { x: 6, z: 0 },
+      normal: { x: 1, z: 0 },
+    };
+    bus.emit('physics:impact', contact);
+
+    assert.equal(routed.length, 2, 'ordinary energetic craft contact damages both NPC hulls');
+    assert.deepEqual(new Set(routed.map((entry) => entry.targetId)), new Set([thrown.id, struck.id]));
+    assert.ok(routed.every((entry) => entry.attackerId === player.id),
+      'the incoming hull provenance crosses the contact and attributes both consequence directions');
+    assert.ok(routed.every((entry) => entry.packet.source.kind === 'collision_craft'));
+
+    routed.length = 0;
+    state.tick += 30;
+    state.simTime = state.tick / 60;
+    state.player.tether = { active: true, targetId: thrown.id, phase: 'loaded' };
+    thrown.pos.x = -28;
+    struck.pos.x = 200;
+    thrown.vel.x = 80;
+    bus.emit('physics:impact', {
+      ...contact,
+      tick: state.tick,
+      aId: thrown.id,
+      bId: player.id,
+    });
+    impactObserver.update(1 / 60, state);
+    bus.flush();
+    assert.deepEqual(routed.map((entry) => [entry.targetId, entry.packet.source.kind]), [
+      [thrown.id, 'collision_craft'],
+    ], 'reeling the tracked mass into the player returns ordinary baseline damage to the NPC mass');
+    assert.equal(whipReceipts.length, 0, 'player contact never fabricates a whip ownership receipt');
+
+    routed.length = 0;
+    state.tick += 30;
+    state.simTime = state.tick / 60;
+    thrown.pos.x = 0;
+    struck.pos.x = 12;
+    struck.vel.x = 0;
+    bus.emit('physics:impact', { ...contact, tick: state.tick });
+    impactObserver.update(1 / 60, state);
+    bus.flush();
+    assert.deepEqual(routed.map((entry) => [entry.targetId, entry.attackerId, entry.packet.source.kind]), [
+      [struck.id, player.id, 'massline_whip'],
+      [thrown.id, player.id, 'massline_whip_recoil'],
+    ], 'the first exact solid receipt leaves only the established victim-plus-recoil packets');
+    assert.equal(whipReceipts.at(-1)?.rating, 'solid');
+    assert.equal(whipReceipts.at(-1)?.targetId, thrown.id);
+    assert.equal(whipReceipts.at(-1)?.victimId, struck.id);
+
+    routed.length = 0;
+    state.tick += 30;
+    state.simTime = state.tick / 60;
+    bus.emit('physics:impact', { ...contact, tick: state.tick });
+    impactObserver.update(1 / 60, state);
+    bus.flush();
+    assert.deepEqual(new Set(routed.map((entry) => entry.packet.source.kind)), new Set(['collision_craft']));
+    assert.deepEqual(new Set(routed.map((entry) => entry.targetId)), new Set([thrown.id, struck.id]),
+      'a repeat contact after the consequence cooldown returns both ordinary craft baselines');
+    assert.equal(whipReceipts.length, 1,
+      'Massline one-per-victim ownership does not leak from the first contact into the repeat');
+
+    routed.length = 0;
+    state.tick += 30;
+    state.simTime = state.tick / 60;
+    struck.pos.x = 200;
+    glanced.pos.x = 12;
+    thrown.vel.x = 40;
+    bus.emit('physics:impact', {
+      ...contact,
+      tick: state.tick,
+      bId: glanced.id,
+    });
+    impactObserver.update(1 / 60, state);
+    bus.flush();
+    assert.equal(whipReceipts.at(-1)?.rating, 'glance');
+    assert.deepEqual(new Set(routed.map((entry) => entry.packet.source.kind)), new Set(['collision_craft']),
+      'a feedback-only glance cannot suppress the ordinary craft baseline');
+    assert.deepEqual(new Set(routed.map((entry) => entry.targetId)), new Set([thrown.id, glanced.id]));
+
+    routed.length = 0;
+    state.tick += 30;
+    state.simTime = state.tick / 60;
+    thrown.vel.x = 80;
+    bus.emit('physics:impact', {
+      ...contact,
+      tick: state.tick,
+      bId: glanced.id,
+    });
+    impactObserver.update(1 / 60, state);
+    bus.flush();
+    assert.deepEqual(new Set(routed.map((entry) => entry.packet.source.kind)), new Set(['collision_craft']));
+    assert.deepEqual(new Set(routed.map((entry) => entry.targetId)), new Set([thrown.id, glanced.id]));
+    assert.equal(whipReceipts.filter((entry) => entry.victimId === glanced.id).length, 1,
+      'a glance marks the victim for the run, so later speed alone cannot claim Massline ownership');
+  } finally {
+    offWhipReceipt();
+    offWhipCombat();
+    masslineDamage.destroy();
+    consequences.destroy();
+    Object.assign(COMBAT_FLAGS, {
+      weaponImpulseConsequences: previous.weaponImpulseConsequences,
+      whipDamage: previous.whipDamage,
+    });
+    Object.assign(MASSLINE2_FLAGS, {
+      enabled: previous.enabled,
+      impactDamage: previous.impactDamage,
+    });
+    bus.clear();
+  }
 });
 
 test('PQ-009 impact events do not also take the legacy Massline tumble-damage path', async () => {
