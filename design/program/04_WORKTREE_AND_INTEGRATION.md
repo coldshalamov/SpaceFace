@@ -38,6 +38,9 @@ not recommend creating more. Counts are a volatile snapshot and do not grant own
 | `C:\sf-agents\shield-r3-integration` | 12 | Unfinished VFX candidate; reconstruct or drop against current owners. |
 | `C:\sf-agents\station-ledger-a-list` | 2 | Unfinished UI candidate; integrate or drop with current evidence. |
 | `C:\sf-agents\vfx-damage-audit` | 12 | Unfinished VFX/audit candidate; reconcile into one explicit result. |
+| `C:\sf-agents\fable-causal-chain` | active | 2026-08-10 fable delegation campaign: PQ-045.causal-chain candidate + fix pass (branch `fable/pq045-causal-chain`); integrated then removed by the campaign controller when done. |
+| `C:\sf-agents\fable-orm-repack` | active | 2026-08-10 fable delegation campaign: hull ORM repack (integrated to master as `ebebc2d2`), now recycled as branch `fable/kestrel-repack`; removed by controller when done. |
+| `C:\sf-agents\fable-receipts-cov` | active | 2026-08-10 fable delegation campaign: asset-receipts coverage extension (branch `fable/receipts-coverage`); removed by controller when done. |
 
 Default concurrent work stays in the primary checkout. Threads reserve an exact file only during the
 short patch operation, reread before changing shared files, and release immediately afterward. The
