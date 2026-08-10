@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1c010371137b3a0b64988120c49fa5f95505aa00ef2152f06d30df80e5bebe38",
+  "contentHash": "fc81c2dbcca47a5c14794183e714d0f130a3aa3124ee9ab670d4455af2c61c5e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1078,8 +1078,8 @@
       "uri": "hull_corvette.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1e97fa028530174e1306a62bafe57a1109fa1913b323823af4dc8361ccc5397a",
+  "contentHash": "58fbf23c63026c96e92eeaed61f4221f9845c004da00311c7dc032e428a24c79",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4097,8 +4097,8 @@
       "uri": "place_dock_interior_military.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

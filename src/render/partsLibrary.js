@@ -900,15 +900,31 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
 // (`ship_kestrel`) from ever replacing the player's K0 whole-ship body.
+//
+// PQ-045 npc-identity work fleet (`assets/ships/npc_work_fleet/`): four occupational families
+// re-authored from the npc_activity_pack donor silhouettes so the working trades stop sharing
+// one modular hull. The ore barge is deliberately NOT `hauler` — that key is the accepted
+// helios_span, and a barge row under it would replace an accepted live asset in every sector.
+// `ore_carrier` is its own presentationRole with its own TRAFFIC_ROLES entry; job eligibility
+// gates on the separate `slot.jobKind`, never on presentationRole, so Ceres freight slots keep
+// their hauler jobs intact.
 const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'wholeships/helios_lark.glb',
   miner: 'wholeships/helios_cradle.glb',
   hauler: 'wholeships/helios_span.glb',
+  ore_carrier: 'wholeships/ore_barge.glb',
+  tender: 'wholeships/repair_tender.glb',
+  salvor: 'wholeships/salvage_cutter.glb',
+  surveyor: 'wholeships/survey_pin.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'SF_WHOLESHIP_HELIOS_LARK',
   miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
   hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
+  ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
+  tender: 'SF_WHOLESHIP_REPAIR_TENDER',
+  salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
+  surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),

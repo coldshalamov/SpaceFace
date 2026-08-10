@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ac77c967cf8261eb0bef5414ff383e470c578b045b0e419d0423e27405180b55",
+  "contentHash": "89df7491db1f11f6dcd221e3e37e9b2cc01f907f306319a2e22afb5319f1c4ee",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -768,8 +768,8 @@
       "uri": "weapon_turret_dual.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

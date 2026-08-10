@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5c399d19c23d0d698d3156ceb62774ea61c49e1fb2df9cf65da150a48be421dc",
+  "contentHash": "f9538b023f81980258c86c0fc30033f54f980f5b124c2f6b3e0b9680ff8c533f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -391,8 +391,8 @@
       "uri": "weapon_pulse_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

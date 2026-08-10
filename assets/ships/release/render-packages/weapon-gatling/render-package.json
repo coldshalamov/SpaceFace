@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d4d28aed05cf2787f4e9e072ed6f525fb9c8b10ae0d56cab97732a5dfe9cd8f9",
+  "contentHash": "741d2ff4537dc353f6c3ef41b6c72a3fa242be4dea84b717f340158612aced48",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -783,8 +783,8 @@
       "uri": "weapon_gatling.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

@@ -5217,7 +5217,7 @@
       "priority": 256,
       "title": "Wire four occupational NPC families so trades stop sharing one hull",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-manifest"
@@ -5231,7 +5231,9 @@
         "npm run check:baseline",
         "npm run check:assets:live"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md"
+      ],
       "brief": "ore_barge, repair_tender, salvage_cutter, survey_pin. WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE is keyed by presentationRole and hauler is already the accepted helios_span, so the barge needs a new ore_carrier presentationRole plus a TRAFFIC_ROLES entry or it silently inherits hauler ship/team/speed and the Cargo Hauler label. customs_cutter collides with a live hostile archetype and is deliberately excluded."
     },
     {

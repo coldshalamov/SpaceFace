@@ -4358,6 +4358,188 @@
         "accent": "furniture_signal_lens"
       },
       "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e8ee1f32538bbd27"
+    },
+    {
+      "id": "wholeship_ore_barge",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/ore_barge.glb",
+      "tris": 9254,
+      "bytes": 3860456,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Dorsal",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Work_Boom"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21.77,
+          -1.8,
+          -3.82
+        ],
+        "max": [
+          17.9,
+          4.7512,
+          3.82
+        ],
+        "dimensionsM": [
+          39.67,
+          6.5512,
+          7.64
+        ]
+      },
+      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Ore Barge, live traffic role ore_carrier; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (7752/1044/446 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_repair_tender",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/repair_tender.glb",
+      "tris": 6976,
+      "bytes": 3730264,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Umbilical_Dorsal",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Work_Boom"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -12.4,
+          -2.36,
+          -5.2677
+        ],
+        "max": [
+          12.4,
+          3.6199,
+          4.35
+        ],
+        "dimensionsM": [
+          24.8,
+          5.9799,
+          9.6177
+        ]
+      },
+      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Repair Tender, live traffic role tender; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (5652/920/392 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_salvage_cutter",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/salvage_cutter.glb",
+      "tris": 5472,
+      "bytes": 3666708,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Aft",
+        "SOCKET_Engine_Main",
+        "SOCKET_Tether_Port",
+        "SOCKET_Tether_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Work_Boom"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.1,
+          -2,
+          -3.67
+        ],
+        "max": [
+          10.85,
+          3.1098,
+          3.67
+        ],
+        "dimensionsM": [
+          20.95,
+          5.1098,
+          7.34
+        ]
+      },
+      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Salvage Cutter, live traffic role salvor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4400/742/318 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_survey_pin",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/survey_pin.glb",
+      "tris": 5066,
+      "bytes": 3635984,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Engine_Main",
+        "SOCKET_Scan_Pin",
+        "SOCKET_Sensor_Dorsal",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -11.1,
+          -1.5633,
+          -3.8921
+        ],
+        "max": [
+          9.8,
+          4.55,
+          4.05
+        ],
+        "dimensionsM": [
+          20.9,
+          6.1133,
+          7.9421
+        ]
+      },
+      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Survey Pin, live traffic role surveyor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4104/666/284 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
     }
   ],
   "runtimeSlots": {
@@ -4378,7 +4560,11 @@
       "wholeships/ashline_rig.glb",
       "wholeships/helios_lark.glb",
       "wholeships/helios_cradle.glb",
-      "wholeships/helios_span.glb"
+      "wholeships/helios_span.glb",
+      "wholeships/ore_barge.glb",
+      "wholeships/repair_tender.glb",
+      "wholeships/salvage_cutter.glb",
+      "wholeships/survey_pin.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",

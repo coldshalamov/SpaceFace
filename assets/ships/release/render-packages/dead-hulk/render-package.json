@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "61745ce2aeda22b6c9b20d1ae2dead5bb99c87f1dbd479a19565f6b465641a1c",
+  "contentHash": "92169908d74cd6658619a096b4a418b7a19248e05c9acb0a81d5cb31b381ba3c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1742,8 +1742,8 @@
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

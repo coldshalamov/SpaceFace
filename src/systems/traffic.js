@@ -160,7 +160,21 @@ const TRAFFIC_ROLES = {
               label: 'Salvage Cutter', docks: true, trades: true },
   tender:   { ship: 'ship_drifter',  team: 2, speed: 66, archetype: 'passive', weight: 6,
               label: 'Repair Tender', docks: true, trades: false },
+  // PQ-045: the ore barge is its own presentation role, NOT a hauler reskin — `hauler` already
+  // owns the accepted helios_span whole-ship, so a barge keyed as `hauler` would replace that
+  // asset in every sector while silently wearing the "Cargo Hauler" label. `ore_carrier` has its
+  // own TRAFFIC_ROLES entry and its own whole-ship binding (wholeships/ore_barge.glb), so ship,
+  // team, speed, label and hull all resolve to the barge. The Ironback def was the unused
+  // mining_barge hull class this trade always implied (ROLE_MATRIX row "ore carrier"). It docks
+  // at stations like any bulk hull but carries no market manifest: wiring it into freight
+  // causality (FREIGHT_TRADING_ROLES, economy) is a separate, deliberately excluded lane.
+  ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
+              label: 'Ore Barge', docks: true, trades: false },
 };
+
+// Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
+// not a new write seam — runtime ownership of role resolution is unchanged.
+export { TRAFFIC_ROLES };
 
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
@@ -296,8 +310,10 @@ export function trafficRoleMixForSector(sector, state = null) {
   for (const [id, role] of Object.entries(TRAFFIC_ROLES)) out[id] = role.weight;
   const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
   const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
-  // Industrial (mining/refinery) sectors: more miners + haulers.
-  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; }
+  // Industrial (mining/refinery) sectors: more miners + haulers. The ore barge plies the same
+  // declared extraction economy (it is the heavy logistics end of the miner's trade, not a
+  // contents-derived read — a sector that merely HAS rocks does not attract bulk carriers).
+  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5; }
   // A sector with authored ROCK is a sector somebody cuts, whether or not an `industries` flag was
   // ever set on it. Read the contents, not only the label.
   //

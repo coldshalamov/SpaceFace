@@ -1,0 +1,2935 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ore-barge.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        1.2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        1.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.anchor.socket-cargo-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.6,
+        4.15,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Dorsal",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.6,
+        4.15,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -21.35,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -21.35,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -21.9,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -21.9,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.4,
+        3.1,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.4,
+        3.1,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.anchor.socket-work-boom",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.6,
+        2.6,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Work_Boom",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.ore-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.6,
+        2.6,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ore-barge",
+  "collisions": [
+    {
+      "id": "sf.render.ore-barge.collision",
+      "nodeId": "sf.render.ore-barge.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a1270d67297bd87fe73f14f09a083ba67d97953c50670fecf178bd3dcab7f101",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-hook-drive-fan"
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-hook-drive-fan"
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-hook-drive-fan"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          16.31319808959961,
+          4.392205238342285,
+          3.512974739074707
+        ],
+        "min": [
+          -20.18320083618164,
+          -1.5422049760818481,
+          -3.512974739074707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "84c6f6c08d5b605b8aa29cb675ae3b6b8b9c818b0bae95bb7b028c9cab5af3e6",
+      "id": "sf.render.ore-barge.mesh.collision-hull.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "Cube",
+      "nodeId": "sf.render.ore-barge.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.550066068712567,
+          1.8200662743238694,
+          2.1700000762939453
+        ],
+        "min": [
+          -21.76993362611165,
+          0.37993377335984646,
+          -2.1700000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21ff605db3869da058d3d93a087e61f6a781bc5a5f6db22b96accd4977430ea9",
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-core.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.750119218253804,
+          2.2799564337175235,
+          2.630000114440918
+        ],
+        "min": [
+          -21.2598791032794,
+          -0.07995638603380772,
+          -2.630000114440918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea99f3a0b99c4341ae094f5b7138a5bfad40c4ddab4dbb767097a89a9a54c728",
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-fan.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 296
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.550028800964355,
+          3.3000380992889404,
+          1
+        ],
+        "min": [
+          -15.249970436096191,
+          2.799961805343628,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "332eb1154547e453fcc8ccc6ea1e6d178bb9abd80488a024946bf0c21cec3f40",
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-glass.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Merged_Material_Glass",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-merged-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          17.899999618530273,
+          3.4001922607421875,
+          3.818915367126465
+        ],
+        "min": [
+          -21.5,
+          -1.7558244466781616,
+          -3.818915367126465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56e665d49cb3818776313aaddf6bcc86616ab46cd86cd554226040acdbd95545",
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-hull.primitive.0",
+      "indexCount": 3540,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hull",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1088
+    },
+    {
+      "bounds": {
+        "max": [
+          14.5,
+          4.599194049835205,
+          3.749192714691162
+        ],
+        "min": [
+          -21.399999618530273,
+          -1.7991943359375,
+          -3.749192714691162
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "485006e00f0243680df0e4302402ecfeb851f69f8598d1167568e33de7e29415",
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-mechanical.primitive.0",
+      "indexCount": 17448,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Mechanical",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5264
+    },
+    {
+      "bounds": {
+        "max": [
+          6.213645935058594,
+          4.649683475494385,
+          3.4399735927581787
+        ],
+        "min": [
+          -10.613645553588867,
+          2.550316333770752,
+          -3.4399735927581787
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ee0e3553bc8c12367515ab78898639446a4bfc2866bf970f9cef17f0fcca96e",
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-warm.primitive.0",
+      "indexCount": 864,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Warm",
+      "nodeId": "sf.render.ore-barge.mesh.lod0-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.550029914976566,
+          1.8518561019369792,
+          2.224311590194702
+        ],
+        "min": [
+          -21.769969779847653,
+          0.3257178173592854,
+          -2.224311590194702
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "114e372ed3547d0ddaa90d62fb11f06060f84003c3665681fc0fbf31c998449f",
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-core.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.749969578532934,
+          2.2140905324101476,
+          2.719010353088379
+        ],
+        "min": [
+          -21.26002874300027,
+          -0.13233915601969026,
+          -2.6169228553771973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "35a483076abfead43625ec94683ea61fd2de98a70054498d2bc2ba01962cc650",
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-fan.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    },
+    {
+      "bounds": {
+        "max": [
+          17.888750076293945,
+          3.4003865718841553,
+          3.80741548538208
+        ],
+        "min": [
+          -21.5,
+          -1.758966088294983,
+          -3.8090009689331055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9778b6bc6fda69cfb983365543a894a94925ad55845ea2830ed16f867e8f270d",
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-hull.primitive.0",
+      "indexCount": 1482,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hull",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 597
+    },
+    {
+      "bounds": {
+        "max": [
+          13.741371154785156,
+          4.500635623931885,
+          3.018937826156616
+        ],
+        "min": [
+          -21.38701629638672,
+          -1.7902480363845825,
+          -3.018937826156616
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c78c659811eac27adce04acbc83ea561c7f6f7a0ef0ae8ec8fb1baa1a58e2070",
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-mechanical.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Mechanical",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 466
+    },
+    {
+      "bounds": {
+        "max": [
+          6.213645935058594,
+          4.727809429168701,
+          3.4120583534240723
+        ],
+        "min": [
+          -10.33365535736084,
+          3.1501924991607666,
+          -3.3998730182647705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fd727551a07f6bc27e390c59d7a87a0b61e16834bc25f2a84e5500cc4d23413e",
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-warm.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Warm",
+      "nodeId": "sf.render.ore-barge.mesh.lod1-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.54998597357458,
+          1.854186707337964,
+          2.2643370628356934
+        ],
+        "min": [
+          -21.77001372124964,
+          0.3359676067031735,
+          -2.2643370628356934
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c58defe45f27b0f4a3cac36a5ae6066aaf5002eb0dfe359e4a89204cb56715aa",
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-core.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 32
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.749902445672543,
+          2.4176755544842683,
+          2.6897237300872803
+        ],
+        "min": [
+          -21.26009587586066,
+          -0.15224482092275227,
+          -2.719010353088379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9e8c8d70fcac327e24e5c1629187616bd3a159d44a539e06c854bfe36d2bc70",
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-fan.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          17.88214874267578,
+          3.400278091430664,
+          3.8071794509887695
+        ],
+        "min": [
+          -21.455204010009766,
+          -1.7619467973709106,
+          -3.808903217315674
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b954350a6efd9e43fdaa9e5ebccca114b73bdbbfe6c96f16310233c6826c4e59",
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-hull.primitive.0",
+      "indexCount": 636,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hull",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 370
+    },
+    {
+      "bounds": {
+        "max": [
+          13.734002113342285,
+          4.499589920043945,
+          3.0075862407684326
+        ],
+        "min": [
+          -21.38701629638672,
+          -1.7771118879318237,
+          -3.0075862407684326
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6381108f2a87f72d70f319b02781b5a3fd59be36ac1fa8422ea540b0d6e636ed",
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-mechanical.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Mechanical",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 270
+    },
+    {
+      "bounds": {
+        "max": [
+          6.28671407699585,
+          4.751000881195068,
+          3.4123082160949707
+        ],
+        "min": [
+          -10.561071395874023,
+          3.177642583847046,
+          -3.325880765914917
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "58ca1ec8aa0a10657c7d3763ddea76df2c7fe9048fc1e0b5687aa718e5491f30",
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-warm.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Warm",
+      "nodeId": "sf.render.ore-barge.mesh.lod2-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "id": "material:13fdb96b072c0dff7bab6c6c",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "id": "material:2c37d87500caaa70babb7ae3",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "id": "material:a0d8ee82d649ef7245e3fc0d",
+      "name": "Material_Glass",
+      "pipelineKey": "blend:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Glass_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "id": "material:a9c0f1569d0d5917e18ea3f0",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "id": "material:f8837a41c4e3b29cc6907e7b",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ore-barge.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-core",
+      "localTransform": [
+        2.1700000762939453,
+        0,
+        0,
+        0,
+        0,
+        2.1700000762939453,
+        0,
+        0,
+        0,
+        0,
+        2.1700000762939453,
+        0,
+        -21.65999984741211,
+        1.100000023841858,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.1700000762939453,
+        0,
+        0,
+        0,
+        0,
+        2.1700000762939453,
+        0,
+        0,
+        0,
+        0,
+        2.1700000762939453,
+        0,
+        -21.65999984741211,
+        1.100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-hook-drive-fan",
+      "localTransform": [
+        2.630000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.630000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.630000114440918,
+        0,
+        -20.5049991607666,
+        1.100000023841858,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_FAN",
+      "nodeName": "LOD0_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.630000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.630000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.630000114440918,
+        0,
+        -20.5049991607666,
+        1.100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Merged_Material_Glass",
+      "nodeName": "LOD0_Merged_Material_Glass",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hull",
+      "nodeName": "LOD0_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Mechanical",
+      "nodeName": "LOD0_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod0-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Warm",
+      "nodeName": "LOD0_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-core",
+      "localTransform": [
+        2.224311590194702,
+        0,
+        0,
+        0,
+        0,
+        2.224311590194702,
+        0,
+        0,
+        0,
+        0,
+        2.224311590194702,
+        0,
+        -21.65999984741211,
+        1.0887869596481323,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.224311590194702,
+        0,
+        0,
+        0,
+        0,
+        2.224311590194702,
+        0,
+        0,
+        0,
+        0,
+        2.224311590194702,
+        0,
+        -21.65999984741211,
+        1.0887869596481323,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-hook-drive-fan",
+      "localTransform": [
+        2.667966604232788,
+        0,
+        0,
+        0,
+        0,
+        2.667966604232788,
+        0,
+        0,
+        0,
+        0,
+        2.667966604232788,
+        0,
+        -20.5049991607666,
+        1.0408756881952286,
+        0.05104374885559082,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_FAN",
+      "nodeName": "LOD1_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.667966604232788,
+        0,
+        0,
+        0,
+        0,
+        2.667966604232788,
+        0,
+        0,
+        0,
+        0,
+        2.667966604232788,
+        0,
+        -20.5049991607666,
+        1.0408756881952286,
+        0.05104374885559082,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hull",
+      "nodeName": "LOD1_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Mechanical",
+      "nodeName": "LOD1_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod1-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Warm",
+      "nodeName": "LOD1_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-core",
+      "localTransform": [
+        2.2643370628356934,
+        0,
+        0,
+        0,
+        0,
+        2.2643370628356934,
+        0,
+        0,
+        0,
+        0,
+        2.2643370628356934,
+        0,
+        -21.65999984741211,
+        1.0950771570205688,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.2643370628356934,
+        0,
+        0,
+        0,
+        0,
+        2.2643370628356934,
+        0,
+        0,
+        0,
+        0,
+        2.2643370628356934,
+        0,
+        -21.65999984741211,
+        1.0950771570205688,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-hook-drive-fan",
+      "localTransform": [
+        2.7043670415878296,
+        0,
+        0,
+        0,
+        0,
+        2.7043670415878296,
+        0,
+        0,
+        0,
+        0,
+        2.7043670415878296,
+        0,
+        -20.5049991607666,
+        1.132715366780758,
+        -0.014643311500549316,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_FAN",
+      "nodeName": "LOD2_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        2.7043670415878296,
+        0,
+        0,
+        0,
+        0,
+        2.7043670415878296,
+        0,
+        0,
+        0,
+        0,
+        2.7043670415878296,
+        0,
+        -20.5049991607666,
+        1.132715366780758,
+        -0.014643311500549316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hull",
+      "nodeName": "LOD2_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Mechanical",
+      "nodeName": "LOD2_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.mesh.lod2-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Warm",
+      "nodeName": "LOD2_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.ore-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-barge.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_NPCWORK_ORE_BARGE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "7a7bfffc321c6c507f367e3ebc4a59689ea10b49da07dcef9d121e779d8e4270"
+    },
+    "sourceGlb": {
+      "bytes": 2727724,
+      "sha256": "e5ae383ddb397a4d0a1d5dbb5e159f3ea6293404a1f2e5c52bbc363046febb9e",
+      "uri": "ore_barge.glb"
+    },
+    "sourceManifest": {
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 2915124,
+    "sha256": "b78fef8d06b52ba9163d103cd9dc037c0174a31497a9f1d23bb26e7e4f616d87",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -1.9350070513596833,
+        1.4759032726287842,
+        0
+      ],
+      "max": [
+        17.899999618530273,
+        4.751000881195068,
+        3.818915367126465
+      ],
+      "min": [
+        -21.77001372124964,
+        -1.7991943359375,
+        -3.818915367126465
+      ],
+      "size": [
+        39.67001333977991,
+        6.550195217132568,
+        7.63783073425293
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1,
+          1.2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Camera_Focus",
+          "role": "camera",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.6,
+          4.15,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Dorsal",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "forward": [
+            0,
+            1,
+            0
+          ],
+          "name": "SOCKET_Cargo_Dorsal",
+          "role": "cargo",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Dorsal",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-cargo-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -21.35,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Engine_Main",
+          "role": "engine",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -21.9,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Trail_Main",
+          "role": "vfx",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.4,
+          3.1,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "forward": [
+            0,
+            1,
+            0
+          ],
+          "name": "SOCKET_Utility_Dorsal",
+          "role": "utility",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.6,
+          2.6,
+          0,
+          1
+        ],
+        "name": "SOCKET_Work_Boom",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "forward": [
+            0,
+            -1,
+            0
+          ],
+          "name": "SOCKET_Work_Boom",
+          "role": "utility",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Work_Boom",
+            "recordIds": [
+              "sf.render.ore-barge.anchor.socket-work-boom"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 7,
+      "glass": 1,
+      "hull": 3,
+      "mechanical": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 25,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.1700000762939453,
+          0,
+          0,
+          0,
+          0,
+          2.1700000762939453,
+          0,
+          0,
+          0,
+          0,
+          2.1700000762939453,
+          0,
+          -21.65999984741211,
+          1.100000023841858,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 3,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            2.1700000762939453,
+            0,
+            0,
+            0,
+            0,
+            2.1700000762939453,
+            0,
+            0,
+            0,
+            0,
+            2.1700000762939453,
+            0,
+            -21.65999984741211,
+            1.100000023841858,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.630000114440918,
+          0,
+          0,
+          0,
+          0,
+          2.630000114440918,
+          0,
+          0,
+          0,
+          0,
+          2.630000114440918,
+          0,
+          -20.5049991607666,
+          1.100000023841858,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_FAN",
+        "planIndex": 4,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            2.630000114440918,
+            0,
+            0,
+            0,
+            0,
+            2.630000114440918,
+            0,
+            0,
+            0,
+            0,
+            2.630000114440918,
+            0,
+            -20.5049991607666,
+            1.100000023841858,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Glass",
+        "planIndex": 5,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": true,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "none"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hull",
+        "planIndex": 6,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Mechanical",
+        "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Warm",
+        "planIndex": 8,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.224311590194702,
+          0,
+          0,
+          0,
+          0,
+          2.224311590194702,
+          0,
+          0,
+          0,
+          0,
+          2.224311590194702,
+          0,
+          -21.65999984741211,
+          1.0887869596481323,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            2.224311590194702,
+            0,
+            0,
+            0,
+            0,
+            2.224311590194702,
+            0,
+            0,
+            0,
+            0,
+            2.224311590194702,
+            0,
+            -21.65999984741211,
+            1.0887869596481323,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.667966604232788,
+          0,
+          0,
+          0,
+          0,
+          2.667966604232788,
+          0,
+          0,
+          0,
+          0,
+          2.667966604232788,
+          0,
+          -20.5049991607666,
+          1.0408756881952286,
+          0.05104374885559082,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_FAN",
+        "planIndex": 10,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            2.667966604232788,
+            0,
+            0,
+            0,
+            0,
+            2.667966604232788,
+            0,
+            0,
+            0,
+            0,
+            2.667966604232788,
+            0,
+            -20.5049991607666,
+            1.0408756881952286,
+            0.05104374885559082,
+            1
+          ],
+          "instance": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hull",
+        "planIndex": 11,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Warm",
+        "planIndex": 13,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2643370628356934,
+          0,
+          0,
+          0,
+          0,
+          2.2643370628356934,
+          0,
+          0,
+          0,
+          0,
+          2.2643370628356934,
+          0,
+          -21.65999984741211,
+          1.0950771570205688,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 14,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            2.2643370628356934,
+            0,
+            0,
+            0,
+            0,
+            2.2643370628356934,
+            0,
+            0,
+            0,
+            0,
+            2.2643370628356934,
+            0,
+            -21.65999984741211,
+            1.0950771570205688,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.7043670415878296,
+          0,
+          0,
+          0,
+          0,
+          2.7043670415878296,
+          0,
+          0,
+          0,
+          0,
+          2.7043670415878296,
+          0,
+          -20.5049991607666,
+          1.132715366780758,
+          -0.014643311500549316,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_FAN",
+        "planIndex": 15,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            2.7043670415878296,
+            0,
+            0,
+            0,
+            0,
+            2.7043670415878296,
+            0,
+            0,
+            0,
+            0,
+            2.7043670415878296,
+            0,
+            -20.5049991607666,
+            1.132715366780758,
+            -0.014643311500549316,
+            1
+          ],
+          "instance": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hull",
+        "planIndex": 16,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Warm",
+        "planIndex": 18,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          17.899999618530273,
+          4.751000881195068,
+          3.818915367126465
+        ],
+        "min": [
+          -21.77001372124964,
+          -1.7991943359375,
+          -3.818915367126465
+        ]
+      },
+      "id": "sf.render.ore-barge.body",
+      "nodeIds": [
+        "sf.render.ore-barge.mesh.collision-hull",
+        "sf.render.ore-barge.mesh.lod0-hook-drive-core",
+        "sf.render.ore-barge.mesh.lod0-hook-drive-fan",
+        "sf.render.ore-barge.mesh.lod0-merged-material-glass",
+        "sf.render.ore-barge.mesh.lod0-merged-material-hull",
+        "sf.render.ore-barge.mesh.lod0-merged-material-mechanical",
+        "sf.render.ore-barge.mesh.lod0-merged-material-warm",
+        "sf.render.ore-barge.mesh.lod1-hook-drive-core",
+        "sf.render.ore-barge.mesh.lod1-hook-drive-fan",
+        "sf.render.ore-barge.mesh.lod1-merged-material-hull",
+        "sf.render.ore-barge.mesh.lod1-merged-material-mechanical",
+        "sf.render.ore-barge.mesh.lod1-merged-material-warm",
+        "sf.render.ore-barge.mesh.lod2-hook-drive-core",
+        "sf.render.ore-barge.mesh.lod2-hook-drive-fan",
+        "sf.render.ore-barge.mesh.lod2-merged-material-hull",
+        "sf.render.ore-barge.mesh.lod2-merged-material-mechanical",
+        "sf.render.ore-barge.mesh.lod2-merged-material-warm",
+        "sf.render.ore-barge.root"
+      ]
+    }
+  ]
+}

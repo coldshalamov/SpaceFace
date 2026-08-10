@@ -1230,6 +1230,74 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/weapon-gatling",
       "metadataUrl": "assets/ships/release/render-packages/weapon-gatling/render-package.json"
+    },
+    {
+      "key": "ore-barge",
+      "assetId": "sf.render.ore-barge",
+      "runtimeAssetId": "SF_WHOLESHIP_ORE_BARGE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ore_barge",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ore_barge.glb",
+      "releaseSha256": "e5ae383ddb397a4d0a1d5dbb5e159f3ea6293404a1f2e5c52bbc363046febb9e",
+      "releaseBytes": 2727724,
+      "rootNode": "SF_NPCWORK_ORE_BARGE_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/ore-barge",
+      "metadataUrl": "assets/ships/release/render-packages/ore-barge/render-package.json"
+    },
+    {
+      "key": "repair-tender",
+      "assetId": "sf.render.repair-tender",
+      "runtimeAssetId": "SF_WHOLESHIP_REPAIR_TENDER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_repair_tender",
+      "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb",
+      "releaseSha256": "ed9a05a89f397e353a8bbd6dca819665e628bdef10ddad22dccbe54d303673b6",
+      "releaseBytes": 2704308,
+      "rootNode": "SF_NPCWORK_REPAIR_TENDER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/repair-tender",
+      "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json"
+    },
+    {
+      "key": "salvage-cutter",
+      "assetId": "sf.render.salvage-cutter",
+      "runtimeAssetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_salvage_cutter",
+      "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
+      "releaseSha256": "2424ab27e5dd6d28357089c235dca0ef9bd4801f00942cd1f2a55e9ff305acf8",
+      "releaseBytes": 2684820,
+      "rootNode": "SF_NPCWORK_SALVAGE_CUTTER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/salvage-cutter",
+      "metadataUrl": "assets/ships/release/render-packages/salvage-cutter/render-package.json"
+    },
+    {
+      "key": "survey-pin",
+      "assetId": "sf.render.survey-pin",
+      "runtimeAssetId": "SF_WHOLESHIP_SURVEY_PIN",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_survey_pin",
+      "sourceUrl": "assets/ships/release/parts/wholeships/survey_pin.glb",
+      "releaseSha256": "9493f4214591fd9d2e205aefc3535a070226951dbadb3d6d3ba4d37d398b825a",
+      "releaseBytes": 2678508,
+      "rootNode": "SF_NPCWORK_SURVEY_PIN_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/survey-pin",
+      "metadataUrl": "assets/ships/release/render-packages/survey-pin/render-package.json"
     }
   ]
 }

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8c982b824348e9144186aa04797b70bc106d9759ab37c4459ddcbb739c92bf66",
+  "contentHash": "1f3a3beb3429d6d79d5bb7d30f5e0edddcb492f844a1da160f1156221463069c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -590,8 +590,8 @@
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

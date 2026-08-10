@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9cb02e46309d00397ad63bbad57d916f8f4560cec75391d7ac9fc3b0b04b2a19",
+  "contentHash": "bc309993f919dbd4aa2a946e7638ce7fd69e52cf4ad18d8cbafad85d28007918",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1646,8 +1646,8 @@
       "uri": "place_asteroid_graffiti.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

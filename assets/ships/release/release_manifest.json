@@ -1272,6 +1272,62 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 36,
       "contractNodeCount": 3
+    },
+    {
+      "id": "wholeship_ore_barge",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ore_barge.glb",
+      "release": "assets/ships/release/parts/wholeships/ore_barge.glb",
+      "sourceSha256": "9634fc804b108e00d13f34c00f46cdcb3fec2b26fef7483f799dc91c29046f6b",
+      "releaseSha256": "e5ae383ddb397a4d0a1d5dbb5e159f3ea6293404a1f2e5c52bbc363046febb9e",
+      "sourceBytes": 3860456,
+      "releaseBytes": 2727724,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 69,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_repair_tender",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/repair_tender.glb",
+      "release": "assets/ships/release/parts/wholeships/repair_tender.glb",
+      "sourceSha256": "e8c9d58de286f5a6d7907a08b9d6ed13b9c133d41c571259b79ade1006d3ebb8",
+      "releaseSha256": "ed9a05a89f397e353a8bbd6dca819665e628bdef10ddad22dccbe54d303673b6",
+      "sourceBytes": 3730264,
+      "releaseBytes": 2704308,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 81,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_salvage_cutter",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/salvage_cutter.glb",
+      "release": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
+      "sourceSha256": "37425121dca206859c40e5c786cebeb26af84327ccc65366905185891de81aaa",
+      "releaseSha256": "2424ab27e5dd6d28357089c235dca0ef9bd4801f00942cd1f2a55e9ff305acf8",
+      "sourceBytes": 3666708,
+      "releaseBytes": 2684820,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 69,
+      "contractNodeCount": 23
+    },
+    {
+      "id": "wholeship_survey_pin",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/survey_pin.glb",
+      "release": "assets/ships/release/parts/wholeships/survey_pin.glb",
+      "sourceSha256": "3448340a6168924c8a6ef7f6b007fb01c245fe251946819a467587245e789f6d",
+      "releaseSha256": "9493f4214591fd9d2e205aefc3535a070226951dbadb3d6d3ba4d37d398b825a",
+      "sourceBytes": 3635984,
+      "releaseBytes": 2678508,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 73,
+      "contractNodeCount": 23
     }
   ]
 }

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dd0ec4ca0656f27e1ed91bdaab86114f1fedf0eff7534ec80652d33dedbe540c",
+  "contentHash": "6b72cdce6a280ac43343c2a3c9cd5a66b4adc9ebd06594781aa86ed96e305032",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -390,8 +390,8 @@
       "uri": "weapon_lance.glb"
     },
     "sourceManifest": {
-      "bytes": 54580,
-      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519",
+      "bytes": 57392,
+      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
       "uri": "pilots.json"
     }
   },

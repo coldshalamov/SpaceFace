@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.provenance.v1",
+  "family": "npc_work_fleet",
+  "packet": "PQ-045-NPC-IDENTITY-WORK-FLEET-001",
+  "created": "2026-08-10",
+  "origin": "project-original",
+  "license": "same as repository",
+  "authors": ["SpaceFace agent (OpenCode/kimi)"],
+  "tools": {
+    "blender": "5.1.2 (C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe)",
+    "builder": "tools/blender/build_npc_work_fleet.py",
+    "renderer": "tools/blender/render_npc_work_fleet.py",
+    "publisher": "tools/art/publish_npc_work_fleet.mjs"
+  },
+  "donorReference": {
+    "pack": "assets/incubator/npc_activity_pack/",
+    "donorGlbs": [
+      "assets/incubator/npc_activity_pack/source/ore_barge.glb",
+      "assets/incubator/npc_activity_pack/source/repair_tender.glb",
+      "assets/incubator/npc_activity_pack/source/salvage_cutter.glb",
+      "assets/incubator/npc_activity_pack/source/survey_pin.glb"
+    ],
+    "controllingReview": "assets/incubator/npc_activity_pack/evidence/REVIEW-independent-2026-08-08.md",
+    "selectionLedger": "design/reference-sector/BINDING_REVIEW_AND_SELECTION_LEDGER.md §4.1",
+    "boundary": "Review verdict KEEP AS SOURCE-ONLY DONORS: select a family as a donor concept; re-author form and material zones; author LODs and the real release pipeline. No donor geometry, texture, or scene is copied into this family; the donor turntables and the fiction dossier froze the silhouettes."
+  },
+  "fiction": "design/fiction/THE_WORKING_FLEET.md §2 (ore carrier), §5 (repair tender), §7 (salvage cutter), §8 (survey pin); trades in design/fiction/THE_WORKING_TRADES.md",
+  "reproducibility": {
+    "statement": "The builder is deterministic (no RNG; hash-seeded procedural maps via numpy; fixed Blender version pinned above). Rebuild: blender --background --python tools/blender/build_npc_work_fleet.py --",
+    "evidenceRenders": "blender --background --python tools/blender/render_npc_work_fleet.py --"
+  },
+  "gateStatus": {
+    "evidenceReady": true,
+    "wholeAssetG1G2G4": "OPEN — no independent hash-bound visual review has been obtained for this family; see design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md",
+    "g7Independent": "OPEN"
+  }
+}

@@ -1,0 +1,1158 @@
+{
+  "schema": "spaceface.npcWorkFleetBuild.v1",
+  "packet": "PQ-045-NPC-IDENTITY-WORK-FLEET-001",
+  "family": "npc_work_fleet",
+  "blender": "5.1.2",
+  "builder": "tools/blender/build_npc_work_fleet.py",
+  "builderSha256": "54592c2f6039f55745691d26135ae0cbdbcf0aac6a579038b65b9bacc8a3c564",
+  "donorPack": "assets/incubator/npc_activity_pack/",
+  "donorReview": "assets/incubator/npc_activity_pack/evidence/REVIEW-independent-2026-08-08.md",
+  "ships": [
+    {
+      "id": "ore_barge",
+      "assetId": "SF_WHOLESHIP_ORE_BARGE",
+      "partId": "wholeship_ore_barge",
+      "trafficRole": "ore_carrier",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/ore_barge.glb",
+      "sha256": "40e37ef6a87d9046debefc485f1be03b22a53813863a2e0d6ba70e2245c527aa",
+      "bytes": 3862560,
+      "sourceParts": 90,
+      "fictionLengthM": 44.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 7752,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 1180,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 5816,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 288,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 5,
+          "triangles": 1044,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 494,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 380,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 60,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Barge_ArmorFlank_-1",
+            "Barge_ArmorFlank_1",
+            "Barge_Basket_0_0_rim_0",
+            "Barge_Basket_0_0_rim_1",
+            "Barge_Basket_0_0_rim_2",
+            "Barge_Basket_0_0_rim_3",
+            "Barge_Basket_0_1_rim_0",
+            "Barge_Basket_0_1_rim_1",
+            "Barge_Basket_0_1_rim_2",
+            "Barge_Basket_0_1_rim_3",
+            "Barge_Basket_0_2_rim_0",
+            "Barge_Basket_0_2_rim_1",
+            "Barge_Basket_0_2_rim_2",
+            "Barge_Basket_0_2_rim_3",
+            "Barge_Basket_1_0_rim_0",
+            "Barge_Basket_1_0_rim_1",
+            "Barge_Basket_1_0_rim_2",
+            "Barge_Basket_1_0_rim_3",
+            "Barge_Basket_1_1_rim_0",
+            "Barge_Basket_1_1_rim_1",
+            "Barge_Basket_1_1_rim_2",
+            "Barge_Basket_1_1_rim_3",
+            "Barge_Basket_1_2_rim_0",
+            "Barge_Basket_1_2_rim_1",
+            "Barge_Basket_1_2_rim_2",
+            "Barge_Basket_1_2_rim_3",
+            "BargeDeck_frame_0_-1",
+            "BargeDeck_frame_0_1",
+            "BargeDeck_frame_1_-1",
+            "BargeDeck_frame_1_1",
+            "BargeDeck_frame_2_-1",
+            "BargeDeck_frame_2_1",
+            "BargeDeck_frame_3_-1",
+            "BargeDeck_frame_3_1",
+            "BargeDeck_frame_4_-1",
+            "BargeDeck_frame_4_1",
+            "BargeDeck_frame_5_-1",
+            "BargeDeck_frame_5_1",
+            "BargeDeck_stringer_-1",
+            "BargeDeck_stringer_1",
+            "Barge_BoomSlew",
+            "Barge_Flood_0_mast",
+            "Barge_Flood_0_hood",
+            "Barge_Flood_0_lens",
+            "Barge_Flood_1_mast",
+            "Barge_Flood_1_hood",
+            "Barge_Flood_1_lens",
+            "Barge_Flood_2_mast",
+            "Barge_Flood_2_hood",
+            "Barge_Flood_2_lens",
+            "Barge_Flood_3_mast",
+            "Barge_Flood_3_hood",
+            "Barge_Flood_3_lens",
+            "Barge_BridgeGlass"
+          ],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 5,
+          "triangles": 446,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 212,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 162,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 24,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Barge_ArmorFlank_-1",
+            "Barge_ArmorFlank_1",
+            "Barge_Basket_0_0_rim_0",
+            "Barge_Basket_0_0_rim_1",
+            "Barge_Basket_0_0_rim_2",
+            "Barge_Basket_0_0_rim_3",
+            "Barge_Basket_0_1_rim_0",
+            "Barge_Basket_0_1_rim_1",
+            "Barge_Basket_0_1_rim_2",
+            "Barge_Basket_0_1_rim_3",
+            "Barge_Basket_0_2_rim_0",
+            "Barge_Basket_0_2_rim_1",
+            "Barge_Basket_0_2_rim_2",
+            "Barge_Basket_0_2_rim_3",
+            "Barge_Basket_1_0_rim_0",
+            "Barge_Basket_1_0_rim_1",
+            "Barge_Basket_1_0_rim_2",
+            "Barge_Basket_1_0_rim_3",
+            "Barge_Basket_1_1_rim_0",
+            "Barge_Basket_1_1_rim_1",
+            "Barge_Basket_1_1_rim_2",
+            "Barge_Basket_1_1_rim_3",
+            "Barge_Basket_1_2_rim_0",
+            "Barge_Basket_1_2_rim_1",
+            "Barge_Basket_1_2_rim_2",
+            "Barge_Basket_1_2_rim_3",
+            "BargeDeck_frame_0_-1",
+            "BargeDeck_frame_0_1",
+            "BargeDeck_frame_1_-1",
+            "BargeDeck_frame_1_1",
+            "BargeDeck_frame_2_-1",
+            "BargeDeck_frame_2_1",
+            "BargeDeck_frame_3_-1",
+            "BargeDeck_frame_3_1",
+            "BargeDeck_frame_4_-1",
+            "BargeDeck_frame_4_1",
+            "BargeDeck_frame_5_-1",
+            "BargeDeck_frame_5_1",
+            "BargeDeck_stringer_-1",
+            "BargeDeck_stringer_1",
+            "Barge_BoomSlew",
+            "Barge_Flood_0_mast",
+            "Barge_Flood_0_hood",
+            "Barge_Flood_0_lens",
+            "Barge_Flood_1_mast",
+            "Barge_Flood_1_hood",
+            "Barge_Flood_1_lens",
+            "Barge_Flood_2_mast",
+            "Barge_Flood_2_hood",
+            "Barge_Flood_2_lens",
+            "Barge_Flood_3_mast",
+            "Barge_Flood_3_hood",
+            "Barge_Flood_3_lens",
+            "Barge_BridgeGlass"
+          ],
+          "draw_estimate": 5
+        }
+      ],
+      "glb": {
+        "triangles": 9254,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Dorsal",
+          "SOCKET_Engine_Main",
+          "SOCKET_Trail_Main",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Work_Boom"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -21.770000457763672,
+            -1.7999999523162842,
+            -3.819999933242798
+          ],
+          "max": [
+            17.899999618530273,
+            4.650000095367432,
+            3.819999933242798
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -18.248199462890625,
+            -2.9670000076293945,
+            -3.514400005340576
+          ],
+          "max": [
+            18.248199462890625,
+            2.9670000076293945,
+            3.514400005340576
+          ],
+          "size": [
+            36.49639892578125,
+            5.934000015258789,
+            7.028800010681152
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 6.76
+    },
+    {
+      "id": "repair_tender",
+      "assetId": "SF_WHOLESHIP_REPAIR_TENDER",
+      "partId": "wholeship_repair_tender",
+      "trafficRole": "tender",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/repair_tender.glb",
+      "sha256": "30f8f639e87055718f370040cc2ceaef79adc75319b26788797f0408319fcaff",
+      "bytes": 3732856,
+      "sourceParts": 57,
+      "fictionLengthM": 24.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 7,
+          "triangles": 5652,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 948,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 3444,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 756,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Cyan",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 920,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 386,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 244,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 136,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tender_RackRailTop",
+            "Tender_RackClamp_-6.35",
+            "Tender_RackClamp_1.55",
+            "TenderMid_frame_0_-1",
+            "TenderMid_frame_0_1",
+            "TenderMid_frame_1_-1",
+            "TenderMid_frame_1_1",
+            "TenderMid_frame_2_-1",
+            "TenderMid_frame_2_1",
+            "TenderMid_frame_3_-1",
+            "TenderMid_frame_3_1",
+            "TenderMid_frame_4_-1",
+            "TenderMid_frame_4_1",
+            "TenderMid_frame_5_-1",
+            "TenderMid_frame_5_1",
+            "TenderMid_stringer_-1",
+            "TenderMid_stringer_1",
+            "Tender_WeldLens",
+            "Tender_WeldPetal_0",
+            "Tender_WeldPetal_1",
+            "Tender_WeldPetal_2",
+            "Tender_SoftCollar",
+            "Tender_CrewRail_-1",
+            "Tender_CrewRail_1",
+            "Tender_CornerLampHousing_0",
+            "Tender_CornerLamp_0",
+            "Tender_CornerLampHousing_1",
+            "Tender_CornerLamp_1",
+            "Tender_CornerLampHousing_2",
+            "Tender_CornerLamp_2",
+            "Tender_CornerLampHousing_3",
+            "Tender_CornerLamp_3",
+            "Tender_SafetyBar"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 392,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 164,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 104,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 58,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tender_RackRailTop",
+            "Tender_RackClamp_-6.35",
+            "Tender_RackClamp_1.55",
+            "TenderMid_frame_0_-1",
+            "TenderMid_frame_0_1",
+            "TenderMid_frame_1_-1",
+            "TenderMid_frame_1_1",
+            "TenderMid_frame_2_-1",
+            "TenderMid_frame_2_1",
+            "TenderMid_frame_3_-1",
+            "TenderMid_frame_3_1",
+            "TenderMid_frame_4_-1",
+            "TenderMid_frame_4_1",
+            "TenderMid_frame_5_-1",
+            "TenderMid_frame_5_1",
+            "TenderMid_stringer_-1",
+            "TenderMid_stringer_1",
+            "Tender_WeldLens",
+            "Tender_WeldPetal_0",
+            "Tender_WeldPetal_1",
+            "Tender_WeldPetal_2",
+            "Tender_SoftCollar",
+            "Tender_CrewRail_-1",
+            "Tender_CrewRail_1",
+            "Tender_CornerLampHousing_0",
+            "Tender_CornerLamp_0",
+            "Tender_CornerLampHousing_1",
+            "Tender_CornerLamp_1",
+            "Tender_CornerLampHousing_2",
+            "Tender_CornerLamp_2",
+            "Tender_CornerLampHousing_3",
+            "Tender_CornerLamp_3",
+            "Tender_SafetyBar"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 6976,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Trail_Main",
+          "SOCKET_Umbilical_Dorsal",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Work_Boom"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -12.399999618530273,
+            -2.359999895095825,
+            -5.265777111053467
+          ],
+          "max": [
+            12.399999618530273,
+            3.6199135780334473,
+            4.349999904632568
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -11.407999992370605,
+            -2.750760316848755,
+            -4.423257350921631
+          ],
+          "max": [
+            11.407999992370605,
+            2.750760316848755,
+            4.423257350921631
+          ],
+          "size": [
+            22.81599998474121,
+            5.50152063369751,
+            8.846514701843262
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.41
+    },
+    {
+      "id": "salvage_cutter",
+      "assetId": "SF_WHOLESHIP_SALVAGE_CUTTER",
+      "partId": "wholeship_salvage_cutter",
+      "trafficRole": "salvor",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/salvage_cutter.glb",
+      "sha256": "e694605d3dda0470bfcfc8ac7ef06052e1e5f3bb94eb4095d4c46049bfe1a2e3",
+      "bytes": 3668792,
+      "sourceParts": 58,
+      "fictionLengthM": 19.5,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 4400,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 648,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 2728,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 556,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 5,
+          "triangles": 742,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 272,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 316,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "CutterMid_frame_0_-1",
+            "CutterMid_frame_0_1",
+            "CutterMid_frame_1_-1",
+            "CutterMid_frame_1_1",
+            "CutterMid_frame_2_-1",
+            "CutterMid_frame_2_1",
+            "CutterMid_frame_3_-1",
+            "CutterMid_frame_3_1",
+            "CutterMid_frame_4_-1",
+            "CutterMid_frame_4_1",
+            "CutterMid_stringer_-1",
+            "CutterMid_stringer_1",
+            "Cutter_Patch_0",
+            "Cutter_Patch_1",
+            "Cutter_Patch_2",
+            "Cutter_BrightPlate",
+            "Cutter_ShearTipA",
+            "Cutter_ShearTipB",
+            "Cutter_ShearRam",
+            "Cutter_UmbArm_0",
+            "Cutter_UmbHood_0",
+            "Cutter_UmbLens_0",
+            "Cutter_UmbArm_1",
+            "Cutter_UmbHood_1",
+            "Cutter_UmbLens_1",
+            "Cutter_UmbArm_2",
+            "Cutter_UmbHood_2",
+            "Cutter_UmbLens_2",
+            "Cutter_TetherRim_-1",
+            "Cutter_TetherRim_1",
+            "Cutter_Drum_0",
+            "Cutter_Drum_1",
+            "Cutter_Drum_2",
+            "Cutter_DrumChain"
+          ],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 5,
+          "triangles": 318,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 116,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 136,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "CutterMid_frame_0_-1",
+            "CutterMid_frame_0_1",
+            "CutterMid_frame_1_-1",
+            "CutterMid_frame_1_1",
+            "CutterMid_frame_2_-1",
+            "CutterMid_frame_2_1",
+            "CutterMid_frame_3_-1",
+            "CutterMid_frame_3_1",
+            "CutterMid_frame_4_-1",
+            "CutterMid_frame_4_1",
+            "CutterMid_stringer_-1",
+            "CutterMid_stringer_1",
+            "Cutter_Patch_0",
+            "Cutter_Patch_1",
+            "Cutter_Patch_2",
+            "Cutter_BrightPlate",
+            "Cutter_ShearTipA",
+            "Cutter_ShearTipB",
+            "Cutter_ShearRam",
+            "Cutter_UmbArm_0",
+            "Cutter_UmbHood_0",
+            "Cutter_UmbLens_0",
+            "Cutter_UmbArm_1",
+            "Cutter_UmbHood_1",
+            "Cutter_UmbLens_1",
+            "Cutter_UmbArm_2",
+            "Cutter_UmbHood_2",
+            "Cutter_UmbLens_2",
+            "Cutter_TetherRim_-1",
+            "Cutter_TetherRim_1",
+            "Cutter_Drum_0",
+            "Cutter_Drum_1",
+            "Cutter_Drum_2",
+            "Cutter_DrumChain"
+          ],
+          "draw_estimate": 5
+        }
+      ],
+      "glb": {
+        "triangles": 5472,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Aft",
+          "SOCKET_Engine_Main",
+          "SOCKET_Tether_Port",
+          "SOCKET_Tether_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Work_Boom"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -10.09999942779541,
+            -2,
+            -3.669999837875366
+          ],
+          "max": [
+            10.84999942779541,
+            3.1097946166992188,
+            3.669999837875366
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -9.63700008392334,
+            -2.3505055904388428,
+            -3.3763999938964844
+          ],
+          "max": [
+            9.63700008392334,
+            2.3505055904388428,
+            3.3763999938964844
+          ],
+          "size": [
+            19.27400016784668,
+            4.7010111808776855,
+            6.752799987792969
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.0
+    },
+    {
+      "id": "survey_pin",
+      "assetId": "SF_WHOLESHIP_SURVEY_PIN",
+      "partId": "wholeship_survey_pin",
+      "trafficRole": "surveyor",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/survey_pin.glb",
+      "sha256": "66f0e32c264ed23fb2c2a35eff85c8f789f5652e5ed89bc367e4e798fe67dd95",
+      "bytes": 3638244,
+      "sourceParts": 48,
+      "fictionLengthM": 22.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 7,
+          "triangles": 4104,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 432,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 2760,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Cyan",
+              "tris": 516,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 108,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 120,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 60,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 5,
+          "triangles": 666,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 180,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 388,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 36,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 18,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "PinMid_frame_0_-1",
+            "PinMid_frame_0_1",
+            "PinMid_frame_1_-1",
+            "PinMid_frame_1_1",
+            "PinMid_frame_2_-1",
+            "PinMid_frame_2_1",
+            "PinMid_frame_3_-1",
+            "PinMid_frame_3_1",
+            "PinMid_frame_4_-1",
+            "PinMid_frame_4_1",
+            "PinMid_stringer_-1",
+            "PinMid_stringer_1",
+            "Pin_NoseChinLens",
+            "Pin_ColdStrip",
+            "Pin_SpineBrace_0",
+            "Pin_SpineBrace_1",
+            "Pin_SpineBrace_2",
+            "Pin_SpineBrace_3",
+            "Pin_SpineArray",
+            "Pin_PaddleInset_-1",
+            "Pin_PaddleInset_1",
+            "Pin_MastTip",
+            "Pin_CrabEmitter",
+            "Pin_GelDrum_0",
+            "Pin_GelDrum_1",
+            "Pin_GelDrum_2",
+            "Pin_GelRack"
+          ],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 5,
+          "triangles": 284,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 76,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 166,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 16,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 8,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "PinMid_frame_0_-1",
+            "PinMid_frame_0_1",
+            "PinMid_frame_1_-1",
+            "PinMid_frame_1_1",
+            "PinMid_frame_2_-1",
+            "PinMid_frame_2_1",
+            "PinMid_frame_3_-1",
+            "PinMid_frame_3_1",
+            "PinMid_frame_4_-1",
+            "PinMid_frame_4_1",
+            "PinMid_stringer_-1",
+            "PinMid_stringer_1",
+            "Pin_NoseChinLens",
+            "Pin_ColdStrip",
+            "Pin_SpineBrace_0",
+            "Pin_SpineBrace_1",
+            "Pin_SpineBrace_2",
+            "Pin_SpineBrace_3",
+            "Pin_SpineArray",
+            "Pin_PaddleInset_-1",
+            "Pin_PaddleInset_1",
+            "Pin_MastTip",
+            "Pin_CrabEmitter",
+            "Pin_GelDrum_0",
+            "Pin_GelDrum_1",
+            "Pin_GelDrum_2",
+            "Pin_GelRack"
+          ],
+          "draw_estimate": 5
+        }
+      ],
+      "glb": {
+        "triangles": 5066,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Engine_Main",
+          "SOCKET_Scan_Pin",
+          "SOCKET_Sensor_Dorsal",
+          "SOCKET_Trail_Main",
+          "SOCKET_Utility_Dorsal"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -11.100000381469727,
+            -1.5573081970214844,
+            -3.891417980194092
+          ],
+          "max": [
+            9.800000190734863,
+            4.550000190734863,
+            4.050000190734863
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -9.614001274108887,
+            -2.8093619346618652,
+            -3.65305233001709
+          ],
+          "max": [
+            9.614001274108887,
+            2.8093619346618652,
+            3.65305233001709
+          ],
+          "size": [
+            19.228002548217773,
+            5.6187238693237305,
+            7.30610466003418
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 4.7
+    }
+  ]
+}
