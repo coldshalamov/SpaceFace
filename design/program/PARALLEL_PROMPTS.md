@@ -3,136 +3,150 @@
 
 ```yaml
 refreshed: 2026-08-09
-baseCommit: b2a94ac1
+round: 2
+baseCommit: c555f989
 expiresAfterCommits: 40
 ```
 
-These two units share **zero files**, verified pairwise against the queue. Run them at the same time.
-Each ends by checking itself off, so the dispatcher stops handing it out.
+**Round 1 is complete and checked off** — `PQ-045.vfx-recipes` and
+`PQ-045.tender-client-materialization` are both `state: done` with receipts, and both left the ready
+list. The check-off recipe below is the one that worked; do not change it.
 
-**The check-off block is the point.** It was tested end-to-end: writing the receipt and flipping the
-two fields removes the unit from `--ready` (13 → 12) and keeps the queue schema valid. Setting
-`state: done` **without** a `receiptRefs` entry makes the queue schema-invalid and the whole
-dispatcher stops working — which is why units have been going un-checked-off and reappearing.
+Round 2's two units share **zero files**, verified pairwise. Both attack the same complaint from
+different angles: the world reads as repetitive. One makes the four Ceres areas structurally
+different; the other stops four NPC trades flying the same hull.
 
----
-
-## PROMPT 1 — visual effects
-
-```
-Work the queue unit PQ-045.vfx-recipes end to end, then check it off. Do not start a second unit.
-
-WHAT: Port five finished VFX NEXT recipes into the live effect system.
-  impact_concussion, destruction_light, massline_latch, massline_tension, massline_release
-
-ONLY FILE YOU MAY EDIT: src/render/vfx.js
-
-RULES
-- Recipes only. No code from src/vfxnext/ ships, and its LightPool does not travel.
-- Port them against the LIVE pools and the existing _flashLight().
-- speed_extreme is REJECTED and out of scope: velocityLanguage.js owns speed language and its one
-  sanctioned exceptional-speed output is already spent.
-- EVENT_LIGHT_POOL_SIZE = 6 is a hard ceiling AND a shader cache key that precompile.js must match.
-- Three recorded invisible-effect traps: a reversed smoothstep is undefined; RingGeometry UVs are
-  planar; cross + cameraPosition billboarding yields NaN.
-- Do not reduce any quality setting to buy performance.
-
-MUST PASS BEFORE YOU CHECK OFF
-  npm run check:baseline
-  npm run check:presentation
-
-Another agent is working PQ-045.tender-client-materialization in this same checkout. It touches
-none of your files. Do not revert, clean, stash, or commit anything outside src/render/vfx.js.
-
-CHECK OFF (do all four; this is what stops the task being handed out again)
-1. Write design/program/roadmap/receipts/PQ-045-vfx-recipes-REPORT.md saying what changed, what
-   passed, what you did NOT prove, and anything you deliberately left out.
-2. In design/program/roadmap/program-queue.json find the unit with "id": "PQ-045.vfx-recipes" and
-   set BOTH fields together:
-       "state": "done"
-       "receiptRefs": ["design/program/roadmap/receipts/PQ-045-vfx-recipes-REPORT.md"]
-   Setting state without receiptRefs makes the queue schema INVALID and breaks the dispatcher.
-3. Verify it worked:
-       node scripts/program-dispatch.mjs --ready
-   PQ-045.vfx-recipes must NOT appear as an "id" in the output. If the command prints
-   "queue schema is invalid", you missed receiptRefs. Fix it before continuing.
-4. Commit ONLY your exact paths, never a bare `git add -A`:
-       git commit -m "<message>" -- src/render/vfx.js design/program/roadmap/receipts/PQ-045-vfx-recipes-REPORT.md design/program/roadmap/program-queue.json
-
-Finish by reporting DONE or NOT DONE in plain language a non-programmer can read.
-```
+**Do not hand out `PQ-019.receiver-facility-reauthor`.** It has ~100 staged files in the working tree
+from an agent that is mid-task or stopped there. Leave those files alone entirely.
 
 ---
 
-## PROMPT 2 — the missing disabled ship
+## PROMPT 1 — make the four Ceres areas actually different
 
 ```
-Work the queue unit PQ-045.tender-client-materialization end to end, then check it off. Do not start
-a second unit.
+Work the queue unit PQ-045.route-topology end to end, then check it off. Do not start a second unit.
 
-WHAT: The Pitborn repair tender flies out to service a disabled ship that does not exist.
-activity:disabled-hull is the one route reference claiming a physical service client with no live
-object. Make it real.
+WHAT: Four Ceres pockets have four different fictions but read as the same back-and-forth.
+Measured today: all eight actors use the identical 102/116 WU cardinal marks, six of the eight
+routes are 218.000 WU colinear shuttles, and the other two are 154.467 WU right angles. Give each
+pocket its own route topology so its fiction is legible from how the traffic moves.
 
 FILES YOU MAY EDIT
   src/data/sectorActivityPockets.js
-  src/systems/factionPresence.js
-  src/systems/npcJobsRuntime.js
-  src/systems/world.js
-  scripts/lib/ceresFiveMinuteAcceptance.mjs
   test/ceres-active-pockets.test.mjs
-  test/ceres-activity-faction-tender.test.mjs
-  test/ceres-activity-runtime-lifecycle.test.mjs
-  test/ceres-five-minute-acceptance.test.mjs
 
 RULES
-- Add ONE stable disabled-hull object authority. Single writer.
-- Preserve the tender's exact targetRef through its factionPresence job projection AND through
-  save/Continue. A restored ship must still be servicing the same client.
-- Materialize and bind through world; steer the tender to a safe berth through the EXISTING job
-  owner. Do not write a parallel steering path.
-- Update the fixed five-minute object census to include it.
-- Do NOT touch the seven other activity:* marks. They are abstract scan/throughline/perimeter
-  choreography, not missing entities.
+- Ceres must satisfy the no-two-places-share-a-topology rule AGAINST ITSELF before it can serve as
+  the propagation template for other sectors. Two pockets matching each other is a failure.
+- Derive each topology from that pocket's existing fiction. Do not invent new fictions, and do not
+  randomize — a shuffled route is still not a designed one.
+- Enforce distinctness IN THE TEST, not in prose. A sibling unit already learned this: asserting
+  distinctness in a comment let every trade collapse to the same behaviour unnoticed.
+- Do not change actor counts, job kinds, or timings. This is route geometry only.
 
 MUST PASS BEFORE YOU CHECK OFF
-  node --test test/ceres-active-pockets.test.mjs test/ceres-activity-faction-tender.test.mjs test/ceres-activity-runtime-lifecycle.test.mjs test/ceres-five-minute-acceptance.test.mjs
-  npm run check:pq020:ceres-topology
   npm run check:baseline
+  npm run check:pq020:ceres-topology
 
-Another agent is working PQ-045.vfx-recipes (src/render/vfx.js) in this same checkout. It touches
-none of your files. Do not revert, clean, stash, or commit anything outside your list above.
+Another agent is working PQ-045.npc-identity (src/render/partsLibrary.js, src/systems/traffic.js)
+in this same checkout. It touches none of your files. Also: ~100 staged files under
+assets/ships/m5_claim_outposts/ belong to a different task — do not revert, clean, stash, or
+commit them.
 
-CHECK OFF (do all four; this is what stops the task being handed out again)
-1. Write design/program/roadmap/receipts/PQ-045-tender-client-materialization-REPORT.md saying what
-   changed, what passed, what you did NOT prove, and anything you deliberately left out.
-2. In design/program/roadmap/program-queue.json find the unit with
-   "id": "PQ-045.tender-client-materialization" and set BOTH fields together:
+CHECK OFF (all four; this is what stops the task being handed out again)
+1. Write design/program/roadmap/receipts/PQ-045-route-topology-REPORT.md saying what changed, what
+   passed, what you did NOT prove, and anything you deliberately left out.
+2. In design/program/roadmap/program-queue.json find "id": "PQ-045.route-topology" and set BOTH:
        "state": "done"
-       "receiptRefs": ["design/program/roadmap/receipts/PQ-045-tender-client-materialization-REPORT.md"]
+       "receiptRefs": ["design/program/roadmap/receipts/PQ-045-route-topology-REPORT.md"]
    Setting state without receiptRefs makes the queue schema INVALID and breaks the dispatcher.
-3. Verify it worked:
-       node scripts/program-dispatch.mjs --ready
-   PQ-045.tender-client-materialization must NOT appear as an "id" in the output. If the command
-   prints "queue schema is invalid", you missed receiptRefs. Fix it before continuing.
+3. Verify: node scripts/program-dispatch.mjs --ready
+   PQ-045.route-topology must NOT appear as an "id". If it prints "queue schema is invalid" you
+   missed receiptRefs. Fix before continuing.
 4. Commit ONLY your exact paths, never a bare `git add -A`:
-       git commit -m "<message>" -- <your edited files> design/program/roadmap/receipts/PQ-045-tender-client-materialization-REPORT.md design/program/roadmap/program-queue.json
+       git commit -m "<message>" -- src/data/sectorActivityPockets.js test/ceres-active-pockets.test.mjs design/program/roadmap/receipts/PQ-045-route-topology-REPORT.md design/program/roadmap/program-queue.json
 
 Finish by reporting DONE or NOT DONE in plain language a non-programmer can read.
 ```
 
 ---
 
-## One collision to expect
+## PROMPT 2 — stop four NPC trades flying the same ship
 
-Both prompts end by editing `design/program/roadmap/program-queue.json` — different units inside the
-same file. If the second finisher hits a conflict, it re-reads the file, re-applies **only its own
-two fields**, and commits. It must not revert the other unit's `done`.
+```
+Work the queue unit PQ-045.npc-identity end to end, then check it off. Do not start a second unit.
 
-## What comes next
+WHAT: Four occupational NPC families all present as the same hull. Give each its own identity:
+  ore_barge, repair_tender, salvage_cutter, survey_pin
 
-After PROMPT 2 lands, `PQ-045.route-topology` unlocks (it genuinely shares
-`sectorActivityPockets.js`, the one real dependency in the cluster). Five more implementation units
-are already free and need no waiting: `PQ-045.npc-identity`, `PQ-045.prop-promotion`,
-`PQ-045.wreck-dressing`, `PQ-018.cathedral-reauthor`, and `PQ-019.receiver-facility-reauthor` —
-though PQ-019 had an agent working it as of `b2a94ac1`.
+FILES YOU MAY EDIT
+  src/render/partsLibrary.js
+  src/systems/traffic.js
+  assets/incubator/npc_activity_pack/
+
+THE TRAP THAT WILL BITE YOU SILENTLY
+WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE is keyed by presentationRole, and `hauler` is ALREADY the accepted
+helios_span. So the ore barge needs a NEW `ore_carrier` presentationRole PLUS its own TRAFFIC_ROLES
+entry. Without both, it silently inherits hauler's ship, team, speed AND the "Cargo Hauler" label —
+and nothing reports the failure. Verify each of the four resolves to a DISTINCT hull and a distinct
+label at runtime, and assert that in a test rather than in a comment.
+
+RULES
+- customs_cutter is deliberately EXCLUDED: it collides with a live hostile archetype.
+- assets/incubator/npc_activity_pack/ is a source-only donor pack whose independent review rejects
+  wholesale promotion — primitive blockout forms, flat materials, 8 scale deltas, no authored LODs.
+  Use it to SELECT and adapt a silhouette. Do not bulk-promote it and do not replace an accepted
+  asset with it.
+- Do not change job kinds, phase timing, or the job kernel. This is presentation identity only.
+- If an authored load fails, assetLoader returns null and partsLibrary substitutes procedural
+  geometry — the ship stays VISIBLE, so a broken wire looks like an art problem. Check
+  getAuthoredAssetDiagnostic before concluding anything about how something looks.
+
+MUST PASS BEFORE YOU CHECK OFF
+  npm run check:baseline
+  npm run check:assets:live
+
+Another agent is working PQ-045.route-topology (src/data/sectorActivityPockets.js) in this same
+checkout. It touches none of your files. Also: ~100 staged files under
+assets/ships/m5_claim_outposts/ belong to a different task — do not revert, clean, stash, or
+commit them.
+
+CHECK OFF (all four; this is what stops the task being handed out again)
+1. Write design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md saying what changed, what
+   passed, what you did NOT prove, and anything you deliberately left out.
+2. In design/program/roadmap/program-queue.json find "id": "PQ-045.npc-identity" and set BOTH:
+       "state": "done"
+       "receiptRefs": ["design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md"]
+   Setting state without receiptRefs makes the queue schema INVALID and breaks the dispatcher.
+3. Verify: node scripts/program-dispatch.mjs --ready
+   PQ-045.npc-identity must NOT appear as an "id". If it prints "queue schema is invalid" you
+   missed receiptRefs. Fix before continuing.
+4. Commit ONLY your exact paths, never a bare `git add -A`:
+       git commit -m "<message>" -- src/render/partsLibrary.js src/systems/traffic.js design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md design/program/roadmap/program-queue.json
+
+Finish by reporting DONE or NOT DONE in plain language a non-programmer can read.
+```
+
+---
+
+## The one place they can touch
+
+Both end by editing `design/program/roadmap/program-queue.json` — different entries in the same
+file. If the second finisher hits a conflict, it re-reads, re-applies **only its own two fields**,
+and commits. It must not revert the other unit's `done`.
+
+## Queue state at `c555f989`
+
+Ready: 12 units, 6 of them implementation.
+
+| Unit | Status for dispatch |
+|---|---|
+| `PQ-045.route-topology` | **Round 2, prompt 1** |
+| `PQ-045.npc-identity` | **Round 2, prompt 2** |
+| `PQ-045.prop-promotion` | Free. Collides with cathedral + wreck-dressing on `assets/ships/parts/` |
+| `PQ-045.wreck-dressing` | Free. Collides with prop-promotion and both re-authors |
+| `PQ-018.cathedral-reauthor` | Free, but collides with every other asset task on the two manifests |
+| `PQ-019.receiver-facility-reauthor` | **OCCUPIED** — ~100 staged files in the tree |
+
+`PQ-045.causal-chain` unlocks when route-topology lands. After that only `PQ-045.five-minute-h1`
+remains in the cluster, and it needs all five siblings done.
