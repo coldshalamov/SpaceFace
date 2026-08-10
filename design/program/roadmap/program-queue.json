@@ -5116,7 +5116,7 @@
       "priority": 270,
       "title": "Resolve two late target-motion lifecycle hypotheses without reopening the packet",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "integrated",
       "dependsOn": [
         "PQ-045.choreography-repair"
       ],
