@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-10
-baseCommit: f773e086b2d702b98555e2c13c111ebd64a0028d
+baseCommit: 0eb09fdfe51e0a49e169b7dbef5d752179d2472e
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -33,6 +33,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-047.living-freight-5x | codex-root | MUTATING | `src/systems/encounterScripts.js`, `test/pirate-predation-authority.test.mjs` | project the exact bounded pirate-to-carrier approach relation through the existing physical telegraph owner, then complete spec and quality review |
+| PQ-018.cathedral-reauthor | external-blender-lane | MUTATING (live Blender process authoring since 15:40) | `assets/ships/parts/blender/place_landmark_wreck_cathedral.blend`, `assets/ships/parts/places/place_landmark_wreck_cathedral.glb`, `assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/**` | do NOT claim PQ-018 from the dispatcher while this row stands; let the running authoring freeze one blend/glb pair, then regenerate captures/manifests (2026-08-10 controller advisory; evaluation evidence retained by fable controller) |
 
 ## Uncommitted work without a confirmed live thread
 
@@ -41,7 +43,7 @@ not active leases and do not prevent other tasks from proceeding.
 
 | Work | Exact paths | Plain next action |
 |---|---|---|
-| PQ-019 receiver Phase A candidate (`REVISE`) | `assets/ships/m5_claim_outposts/**`; `test/pq019-receiver-facility-material-truth-pipeline.test.mjs`; `tools/art/promote_claim_outpost_receiver_facility_material_truth_v1.mjs`; `tools/blender/{build,render}_claim_outpost_receiver_facility_material_truth_v1.py`; `--class/` | Assign the receiver prompt, revise to exact-source KEEP or discard, then publish a `DONE`/`NOT DONE` handoff. |
+| _(none)_ | — | — |
 
 ## Start another task
 
