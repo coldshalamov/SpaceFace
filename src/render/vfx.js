@@ -11,6 +11,11 @@
 //   Lifecycle:       init (L88) · inspect/diagnostics (L126) · _initPools (L147) · _subscribe (L256) · update (L1928)
 //   Spawn helpers:   _spawnParticle (L318) · _spawnSprite (L337) · _activate/_retireParticle (L371/377) · _activate/_retireSprite (L394/399)
 //   Combat effects:  _onFire/muzzle flash (L590) · _onProjectileHit (L635) · _onDamage/shield ripple (L676) · _impactSparks (L746)
+//   VFX NEXT ports:  impact_concussion → 'concussive-slam' case + _onCollisionConsequence ·
+//                    destruction_light → _emitDestructionLightBeats (ignition, non-capital) ·
+//                    massline_latch → _onTetherLatch · massline_tension → _updateTetherCable ·
+//                    massline_release → _onTetherSnap target-end momentum-aimed burst (the R3B
+//                    clean-release grammar is acceptance-pinned particle-silent)
 //   Explosions:      _onKilled · _onDestroyed · _queueExplosion · _emitExplosionPhase
 //   Mining:          _initMiningBeam (L1072) · _onMiningStart/Stop (L1112/1128) · _updateMiningBeam (L1136) · _onMiningTick (L1607) · _onMiningYield (L1649) · _initSeamMarkers (L1397)
 //   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483) · _initArcPreview/_updateArcPreview (rung 12, after _updateTetherCable)
@@ -251,6 +256,15 @@ const SPRITE_CAP = 256;
 const TRAIL_STREAK_CAP = 96;
 const CONTACT_SPARK_COOLDOWN_TICKS = 6;
 const COLLISION_PRESENTATION_CACHE_CAP = 128;
+
+// destruction_light port palette, as plain frozen RGB records. The explosion-phase capture
+// harnesses drive the emitters through a prototype facade that has no THREE.Color scratch
+// (_c0/_c1), and _spawnParticle only reads .r/.g/.b — so these keep the ported beats
+// allocation-free without touching shared scratch state.
+const DESTRUCTION_LIGHT_JET_CORE = Object.freeze({ r: 0xdf / 255, g: 0xf2 / 255, b: 1.0 });
+const DESTRUCTION_LIGHT_JET_TAIL = Object.freeze({ r: 0x2f / 255, g: 0x6c / 255, b: 1.0 });
+const DESTRUCTION_LIGHT_CINDER_CORE = Object.freeze({ r: 1.0, g: 0xd9 / 255, b: 0xa0 / 255 });
+const DESTRUCTION_LIGHT_CINDER_TAIL = Object.freeze({ r: 0x7a / 255, g: 0x1f / 255, b: 0x04 / 255 });
 
 function isCollisionEntityId(value) {
   return (typeof value === 'number' && Number.isFinite(value))
@@ -2455,6 +2469,60 @@ export const vfx = {
           0.65, profile.coreColor, materialColor, 3.4);
         break;
       }
+      case 'concussive-slam': {
+        // impact_concussion port (VFX NEXT recipe, signed-direction branch — a slug knows its
+        // approach; the axis-only branch lives in _onCollisionConsequence). The family's identity
+        // is a compressed flash that COLLAPSES while the shock front expands beneath it — two
+        // things growing at once reads as one soft blob. Ported onto the live pools: no vfxnext
+        // code ships. Sizes carry the lab calibration (event radius 3 wu at the 110 wu band).
+        const slamScale = 3 * scale;
+        const reflectAngle = Math.atan2(-az, -ax); // spall opens back toward the shooter
+        // 1 — compressed impact flash: size0 > size1 so it collapses as the front expands.
+        this._spawnSprite(SPR_FLASH, surfaceX, 0.26, surfaceZ, 0.10,
+          3.4 * slamScale, 1.1 * slamScale, 0.95, 0, '#ffffff', 0, 0, 1, normalAngle);
+        // 2 — leading shock front oriented across the force path and bowed forward along it (the
+        // recipe's DOME): opposed bars elongated on the contact normal, centres pushed a touch
+        // along the approach. SPR_FLASH carries aspect+roll, so the front is structure, not a card.
+        for (const side of [-1, 1]) {
+          this._spawnSprite(SPR_FLASH,
+            surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.24,
+            surfaceZ + nz * side * 0.3 * slamScale + az * 0.22 * slamScale,
+            0.34, 0.6 * slamScale, 2.8 * slamScale, 0.72, 0,
+            '#fff4e0', 0, 0, 3.2, normalAngle);
+        }
+        // 3 — trailing pressure wash: genuinely slower and dimmer than the lead front. Two fronts
+        // at different speeds is what turns "a ring" into "a shock".
+        for (const side of [-1, 1]) {
+          this._spawnSprite(SPR_FLASH,
+            surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.22,
+            surfaceZ + nz * side * 0.24 * slamScale + az * 0.13 * slamScale,
+            0.5, 1.0 * slamScale, 2.2 * slamScale, 0.38, 0,
+            profile.accentColor, 0, 0, 3.0, normalAngle);
+        }
+        // 4 — debris kick + wide spark cone thrown back along the approach (spall reads as
+        // "hit from over there"), with short trails on the largest fragments only.
+        this._impactParticleCone(surfaceX, surfaceZ, reflectAngle, 0.85, 34, 97,
+          Math.max(6, Math.round(profile.fragmentCount * burst * 0.8)), 0.5, 1.5,
+          '#fffaf0', profile.accentColor, 2.2);
+        for (let k = 0; k < 4; k++) {
+          const a = reflectAngle + (k - 1.5) * 0.38 + (Math.random() - 0.5) * 0.2;
+          this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
+            0.5 + Math.random() * 0.3, 0.16 * scale, (2.2 + k * 0.5) * scale, 0.7,
+            k % 2 ? '#ffd9a8' : profile.accentColor,
+            Math.cos(a) * (20 + k * 6) * scale, Math.sin(a) * (20 + k * 6) * scale,
+            Math.cos(a), Math.sin(a));
+        }
+        // 5 — surface dust: slow, warm, and still saying "something hit here" after the light dies.
+        for (let k = 0; k < 3; k++) {
+          const a = reflectAngle + (Math.random() - 0.5) * 1.4;
+          this._spawnSprite(SPR_PUFF,
+            surfaceX + Math.cos(a) * 0.3 * slamScale, 0.06,
+            surfaceZ + Math.sin(a) * 0.3 * slamScale,
+            1.3 + Math.random() * 1.1, 0.5 * slamScale, 2.0 * slamScale, 0.4, 0,
+            '#8a6a52', Math.cos(a) * 4, Math.sin(a) * 4, 2.0, a);
+        }
+        break;
+      }
       default: {
         // Kinetic/autocannon: an attached incidence gouge and tight cool-metal fragment fan.
         this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
@@ -3261,6 +3329,59 @@ export const vfx = {
     return !!entry;
   },
 
+  // destruction_light port (VFX NEXT recipe): the beats that make a light hull's death
+  // specifically a SHIP dying rather than a generic fireball — the drive over-runs for a moment
+  // and dumps one directional jet back along the hull's own heading before it cuts, and a few
+  // cinders outlive the flash. The recipe's "not a small heavy explosion" structure (no pressure
+  // front, no secondaries, breakup as the body) is already the live small/ordinary phased path;
+  // these are the ship-specific beats that path lacked. Deterministic off the entry serial like
+  // every explosion-phase element — never Math.random in this emitter. Capital hulls keep their
+  // own beat sheet untouched.
+  _emitDestructionLightBeats(entry, scale, reduced) {
+    if (!entry || entry.classId === 'capital') return;
+    const x = entry.x;
+    const z = entry.z;
+    const r = entry.radius;
+    const serial = entry.serial;
+    const vx = Number.isFinite(entry.targetVelocityX) ? entry.targetVelocityX : 0;
+    const vz = Number.isFinite(entry.targetVelocityZ) ? entry.targetVelocityZ : 0;
+    const spd = Math.hypot(vx, vz);
+    if (spd > 1) {
+      // Engine flare-out: aimed by the inherited velocity, so it always points where the ship was
+      // going. The jet leaves through the stern and is gone in a fifth of a second.
+      const bx = -vx / spd;
+      const bz = -vz / spd;
+      const sternX = x + bx * r * 0.4;
+      const sternZ = z + bz * r * 0.4;
+      const jetAngle = Math.atan2(bz, bx);
+      const jets = reduced ? 6 : 10;
+      for (let k = 0; k < jets; k++) {
+        const a = jetAngle + explosionPatternSigned(serial, 'ignition', k, 26) * 0.30;
+        const s2 = (60 + explosionPattern01(serial, 'ignition', k, 27) * 90) * (reduced ? 0.6 : 1);
+        this._spawnParticle(sternX, sternZ,
+          vx * 0.35 + Math.cos(a) * s2, vz * 0.35 + Math.sin(a) * s2,
+          0.20 + explosionPattern01(serial, 'ignition', k, 28) * 0.20,
+          0.9 * scale, 0.2 * scale,
+          DESTRUCTION_LIGHT_JET_CORE, DESTRUCTION_LIGHT_JET_TAIL, 2.2, 0, 0, a, 0.7);
+      }
+      this._spawnSprite(SPR_FLASH, sternX, 0.30, sternZ, 0.22,
+        3.6 * scale, 0.4 * scale, 0.85, 0, '#eaf6ff', 0, 0, 1.6, jetAngle);
+    }
+    // Long cinders drifting on the inherited velocity: the part of a light death still on screen
+    // a second later — what makes a firefight leave a trace.
+    const cinders = reduced ? 2 : 4;
+    const baseAngle = Math.atan2(entry.dirZ, entry.dirX);
+    for (let k = 0; k < cinders; k++) {
+      const a = baseAngle + explosionPatternSigned(serial, 'ignition', k, 29) * 1.6;
+      const s2 = (30 + explosionPattern01(serial, 'ignition', k, 30) * 110) * (reduced ? 0.55 : 1);
+      this._spawnParticle(x, z,
+        vx * 0.8 + Math.cos(a) * s2, vz * 0.8 + Math.sin(a) * s2,
+        1.1 + explosionPattern01(serial, 'ignition', k, 31) * 1.6,
+        0.7 * scale, 0.1 * scale,
+        DESTRUCTION_LIGHT_CINDER_CORE, DESTRUCTION_LIGHT_CINDER_TAIL, 0.6, 0, 0, a, 0.6);
+    }
+  },
+
   _emitExplosionPhase(phase, entry) {
     if (entry && entry.cause && entry.cause !== 'generic') {
       this._emitCausalExplosionPhase(phase, entry);
@@ -3366,6 +3487,7 @@ export const vfx = {
           reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
       }
       this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 12 : 7.5) * scale, 11, 120 + r * 5);
+      this._emitDestructionLightBeats(entry, scale, reduced);
       return;
     }
 
@@ -3795,6 +3917,7 @@ export const vfx = {
         this._flashLight({ x, z }, cause === 'kinetic' ? '#fff0d0' : '#ff9a48',
           (cause === 'kinetic' ? 5.8 : 8.2) * scale, 11, 110 + r * 4);
       }
+      this._emitDestructionLightBeats(entry, scale, reduced);
       return;
     }
 
@@ -5469,6 +5592,9 @@ export const vfx = {
       strainSmooth: 0,
       loadSmooth: 0,
       reelGlow: 0,
+      sparkAcc: 0,        // massline_tension port: framerate-independent spark-shed accumulator
+      stressFlashAt: -1,  // last endpoint stress flash (visualTime seconds)
+      stressFlashEnd: false, // alternates which endpoint flashes
     };
     this._tetherColorCool = new THREE.Color('#39d0ff');
     this._tetherColorWarm = new THREE.Color('#ffb35c');
@@ -6042,18 +6168,39 @@ export const vfx = {
     // so ordinary play NEVER sparks (measured: 0 spark ticks in 240 ticks of full opposing thrust
     // on a 640-mass rock), and only an overload phase or a genuinely large strain gets here.
     // A break is an engineered event; its telegraph has to be too.
+    //
+    // massline_tension port (VFX NEXT recipe): the shed is rate-accumulated (framerate-independent
+    // — the chance-per-frame version it replaces spawned twice as much at 120 Hz), drawn from the
+    // MID-SPAN rather than the endpoints, and ejected along the contact plane with speed scaled by
+    // load. Matter leaving the line is the most legible "this is at its limit" signal there is.
     // Spawn expects galactic-global XZ.
     if (l > TETHER_SPARK_LOAD) {
       const heat = (l - TETHER_SPARK_LOAD) / (1 - TETHER_SPARK_LOAD);
-      const sparkChance = heat * 0.9 * (this._burst || 1);
-      const sparks = Math.random() < sparkChance ? (overload ? 2 : 1) : 0;
-      for (let k = 0; k < sparks; k++) {
-        const frac = Math.random();
+      cable.sparkAcc = Math.min(8, cable.sparkAcc + heat * 90 * (this._burst || 1) * dt);
+      const shedCount = Math.floor(cable.sparkAcc);
+      cable.sparkAcc -= shedCount;
+      for (let k = 0; k < shedCount; k++) {
+        const frac = 0.2 + Math.random() * 0.6;
         this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
-        const lateral = (Math.random() - 0.5) * (14 + heat * 26);
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const eject = (10 + Math.random() * 26) * (0.5 + heat * 0.5) * side;
         this._spawnParticle(axG + dx * frac, azG + dz * frac,
-          px * lateral, pz * lateral,
-          0.12 + Math.random() * 0.14, 1.0 + heat * 0.8, 0.0, this._c0, this._c1, 3.2, 1.4, 0);
+          px * eject, pz * eject,
+          0.2 + Math.random() * 0.35, 1.0 + heat * 0.8, 0.0, this._c0, this._c1, 2.2, 1.4, 0);
+      }
+    } else if (cable.sparkAcc !== 0) {
+      cable.sparkAcc = 0;
+    }
+    // massline_tension port: endpoint stress flashes live only in the top decile of load and on a
+    // throttled cadence, alternating ends — reserved so they still mean something when they fire.
+    if (overload) {
+      if (visualTime - cable.stressFlashAt > 0.09) {
+        cable.stressFlashAt = visualTime;
+        cable.stressFlashEnd = !cable.stressFlashEnd;
+        const endX = cable.stressFlashEnd ? axG : bxG;
+        const endZ = cable.stressFlashEnd ? azG : bzG;
+        this._spawnSprite(SPR_FLASH, endX, 1.5, endZ, 0.07, 1.6, 4.4, 0.8, 0.0,
+          '#ffffff', 0, 0);
       }
     }
   },
@@ -6222,17 +6369,36 @@ export const vfx = {
     // Spark exactly at the two visible cable endpoints. The prior 34-per-end burst could consume 68
     // particle slots before the recoil ribbon and lights were admitted; preserve the dual-end read
     // with a quality-scaled 14..22 budget instead.
+    //
+    // massline_release port (VFX NEXT recipe, beat 3): on the TARGET end the burst obeys the
+    // released body's ACTUAL retained velocity — directions collapse into a cone around it, speeds
+    // and streak lengths scale with it — so the break hands the frame to the body's momentum
+    // instead of an isotropic starburst. Counts, endpoint positions and the per-quality budget are
+    // unchanged (acceptance-pinned); a target at rest keeps the uniform burst. The source end
+    // recoils rather than departs, so it keeps the uniform read.
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
+    const targetVelX = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
+    const targetVelZ = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
+    const targetSpeed = Math.hypot(targetVelX, targetVelZ);
+    const momentumAimed = targetSpeed > 1;
+    const releaseAngle = momentumAimed ? Math.atan2(targetVelZ, targetVelX) : 0;
     for (let end = 0; end < 2; end++) {
       const endX = end === 0 ? endpoints.ax : endpoints.bx;
       const endZ = end === 0 ? endpoints.az : endpoints.bz;
       const n = Math.min(22, Math.max(14, Math.round(22 * (this._burst || 1))));
+      const aimed = end === 1 && momentumAimed;
       for (let k = 0; k < n; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const v = 34 + Math.random() * 110;
-        // Spark trails inherit their own direction so they streak instead of dotting.
+        const a = aimed
+          ? releaseAngle + (Math.random() - 0.5) * 1.1
+          : Math.random() * Math.PI * 2;
+        const v = aimed
+          ? targetSpeed + (34 + Math.random() * 110) * (0.6 + Math.random() * 0.9) * 0.55
+          : 34 + Math.random() * 110;
+        // Spark trails inherit their own direction so they streak instead of dotting; the aimed
+        // end stretches them further with the retained speed.
+        const stretch = aimed ? 0.85 * (1 + Math.min(2, targetSpeed / 120)) : 0.85;
         this._spawnParticle(endX, endZ, Math.cos(a) * v, Math.sin(a) * v,
-          0.24 + Math.random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, 0.85);
+          0.24 + Math.random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, stretch);
       }
       this._spawnSprite(SPR_FLASH, endX, 0, endZ, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
       // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
@@ -6356,6 +6522,10 @@ export const vfx = {
         axisX, axisZ,
         0.88 + score * 0.08,
       );
+      // massline_release's loud particle beat deliberately does NOT enter this path: the accepted
+      // R3B clean-release grammar is the paired endpoints + this one actual-velocity streak, and
+      // its acceptance contract pins the rated release at zero added particles/lights. The
+      // recipe's momentum spray lives on the break path instead (see _onTetherSnap).
     }
 
     const last = this._lastMasslineReleaseVfx;
@@ -6393,7 +6563,10 @@ export const vfx = {
   },
 
   // Latch spark at BOTH ends when a tether attaches (tether:attached).
-  // Top-50 rank-2: nose + target cyan ring, denser sparks, punchier light (Steam still readable).
+  // massline_latch port (VFX NEXT recipe): the read of "a connection was made" is both ends
+  // firing together (the flash pair), an oriented contact mark showing WHICH WAY the line leaves
+  // the anchor, one pulse that genuinely travels the chord ship -> anchor, and sparks thrown in
+  // the plane of contact — a disc around the line axis, not a ball. Ported onto the live pools.
   _onTetherLatch(p) {
     this._resetMasslineReleaseArc();
     this._emitJuiceCue('presentation.tether.attach', p, 1);
@@ -6409,7 +6582,9 @@ export const vfx = {
     }
     if (target && target.pos) ends.push({ x: target.pos.x, z: target.pos.z });
     if (!ends.length) return;
+    const anchor = ends.length > 1 ? ends[1] : null;
     for (const pos of ends) {
+      if (anchor && pos === anchor) continue; // the anchor end is rendered by the recipe below
       const n = Math.max(12, Math.round(20 * (this._burst || 1)));
       for (let k = 0; k < n; k++) {
         const a = Math.random() * Math.PI * 2;
@@ -6419,6 +6594,40 @@ export const vfx = {
       }
       this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
       this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.2, 12, 140);
+    }
+    if (!anchor) return;
+    const ship = ends[0];
+    let dirX = anchor.x - ship.x;
+    let dirZ = anchor.z - ship.z;
+    const chord = Math.hypot(dirX, dirZ);
+    // Simultaneous anchor flash + light: both ends firing together is the connection read.
+    this._spawnSprite(SPR_FLASH, anchor.x, 0, anchor.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
+    this._flashLight({ x: anchor.x, z: anchor.z }, '#39d0ff', 3.2, 12, 140);
+    if (!(chord > 1e-3)) return;
+    dirX /= chord;
+    dirZ /= chord;
+    const perpAngle = Math.atan2(-dirX, dirZ); // the contact plane: perpendicular to the line
+    // Anchor contact mark: a short oriented streak along the line axis at the anchor, so at
+    // gameplay zoom you can see which way the line leaves — the tell that the tether bit into
+    // something rather than merely reaching it.
+    this._spawnProjectileTrailStreak(anchor.x, 0.3, anchor.z, 0.30,
+      0.34, Math.min(9, Math.max(2.5, chord * 0.2)), 0.85, '#d7f7ff',
+      -dirX * 4, -dirZ * 4, -dirX, -dirZ);
+    // The travelling pulse: one bright streak that crosses the chord in its lifetime and dies at
+    // the anchor — a segment of the line lighting up, not a particle flying near it.
+    const pulseLife = 0.22;
+    this._spawnProjectileTrailStreak(ship.x, 0.34, ship.z, pulseLife,
+      0.42, 3.4, 0.95, '#ffffff',
+      dirX * (chord / pulseLife), dirZ * (chord / pulseLife), dirX, dirZ);
+    // Spark ring thrown off the anchor IN the plane of contact: a disc around the line axis —
+    // alternating the two perpendicular directions with jitter, never an isotropic ball.
+    this._c0.set('#eaf6ff');
+    const n = Math.max(10, Math.round(14 * (this._burst || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = perpAngle + (k % 2 ? Math.PI : 0) + (Math.random() - 0.5) * 0.6;
+      const v = 14 + Math.random() * 30;
+      this._spawnParticle(anchor.x, anchor.z, Math.cos(a) * v, Math.sin(a) * v,
+        0.18 + Math.random() * 0.3, 1.35, 0.0, this._c0, this._c1, 2.8, 0, 0);
     }
   },
 
@@ -6539,6 +6748,26 @@ export const vfx = {
         axisX * side * (reduced ? 4 : 10), axisZ * side * (reduced ? 4 : 10),
         axisX * side, axisZ * side,
       );
+    }
+    // impact_concussion port (VFX NEXT recipe, axis-only branch): the compressed core flash
+    // COLLAPSES (size0 > size1) against the expanding compression bars above — the timing split
+    // that keeps a heavy slam from reading as one soft blob — and a genuinely slower, dimmer
+    // second front pair trails the lead bars (two fronts at different speeds turn "a ring" into
+    // "a shock"). Bilateral like every element here: the SG-02 receipt licenses no side. Full
+    // motion only — the reduced profile keeps the accepted bilateral bar pair alone, and the
+    // SPR_FLASH auto transform applies its opacity/size scaling exactly once, same as the bars.
+    if (!reduced) {
+      this._spawnSprite(SPR_FLASH,
+        pos.x, 0.24, pos.z,
+        0.10, 3.4 * authoredScale, 1.1 * authoredScale, 0.92, 0.0,
+        '#ffffff', 0, 0, 1, axisAngle);
+      for (const side of [-1, 1]) {
+        this._spawnSprite(SPR_FLASH,
+          pos.x + axisX * side * 0.14 * authoredScale, 0.20,
+          pos.z + axisZ * side * 0.14 * authoredScale,
+          0.34, 1.2 * authoredScale, 3.8 * authoredScale, 0.34, 0.0,
+          terrain ? '#e8c49a' : '#b8cfe8', 0, 0, 3.0, axisAngle);
+      }
     }
     if (acc.eventLightPeakScale > 0) {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',

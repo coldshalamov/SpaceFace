@@ -5245,7 +5245,7 @@
       "priority": 259,
       "title": "Port five VFX NEXT recipes into the live presentation owner",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -5255,7 +5255,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-vfx-recipes-REPORT.md"
+      ],
       "brief": "impact_concussion, destruction_light, massline_latch, massline_tension, massline_release — recipes only, against the live pools and _flashLight(). No vfxnext code ships and its LightPool does not travel. speed_extreme is rejected: velocityLanguage.js owns speed language and its one sanctioned exceptional-speed output is already spent."
     },
     {
