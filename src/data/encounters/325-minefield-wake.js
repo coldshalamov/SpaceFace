@@ -16,7 +16,7 @@ export const trigger = deepFreeze({
   gates: {
     minCargoValue: 180,
     maxSecurity: 0.7,
-    minStoryBeat: 1,
+    storyBeatMin: 1,
     minSectorTier: 2,
   },
 });

@@ -13,7 +13,7 @@
 //      produce identical encounter logs (runtime determinism).
 //   4. QUIET EXISTS — in a safe-core soak the majority of the timeline has no meaningful
 //      encounter live (spending pressure buys quiet).
-//   5. GATES — a gated shape (bounty_hunter) never fires without its motive, fires once given it.
+//   5. GATES — motive and story progression gates reject early, then admit at their authored edge.
 
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -59,6 +59,10 @@ function ok(label) { sections++; console.log(`  ✓ ${label}`); }
     for (const [re, why] of forbidden) {
       assert.equal(re.test(src), false, `${f}: ${why}`);
     }
+  }
+  for (const [id, shape] of Object.entries(ENCOUNTERS)) {
+    assert.equal(Object.hasOwn(shape.gates || {}, 'minStoryBeat'), false,
+      `${id}: use the runtime gate key storyBeatMin, not the ignored minStoryBeat alias`);
   }
   ok('static discipline: no Math.random / wall clock / single-writer violations');
 }
@@ -215,7 +219,7 @@ function soakSker(seed) {
   ok(`quiet exists: ${quiet}/600 s of the Helios soak had no meaningful encounter live`);
 }
 
-// ─── 5. gates: bounty_hunter never fires without a bounty, fires with one ────────────────────────
+// ─── 5. gates: motive and story progression ─────────────────────────────────────────────────────
 {
   const { sim, state } = boot(9, 'sector_sker_haven', { x: -540, z: 680 }, null);
   const dir = state.encounterDirector;
@@ -237,6 +241,20 @@ function soakSker(seed) {
   for (let s = 0; s < 90 && !fired; s++) { sim.runTicks(60); dir.pressure.combat = 120; }
   assert.equal(fired, 1, 'bounty_hunter must fire once a bounty stands');
   ok('gates: bounty_hunter fires only with a standing bounty');
+}
+
+{
+  const { sim, state } = boot(9, 'sector_io_reach', { x: 0, z: 0 }, null);
+  const dir = sim.registry.get('encounterDirector');
+  const shape = ENCOUNTERS.curtain_convoy;
+  state.story = { beatIndex: 0 };
+  assert.equal(dir._gatesPass(shape, state), false,
+    'curtain_convoy must remain gated before its authored first story beat');
+  state.story.beatIndex = 1;
+  assert.equal(dir._gatesPass(shape, state), true,
+    'curtain_convoy should become eligible at its authored story beat');
+  sim.dispose();
+  ok('gates: curtain convoy opens at story beat 1, never at beat 0');
 }
 
 console.log(`[check-encounter-director] PASS — ${sections} sections green`);
