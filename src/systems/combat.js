@@ -7,9 +7,10 @@ import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
 import { removeCargo } from './cargo.js';
-import { mulberry32, hash32 } from '../core/rng.js';
+import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
+import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -23,6 +24,7 @@ import {
 import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { sampleFactionBehavior } from '../data/factionDoctrines.js';
+import { isHostileToPlayer } from './scanner.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -426,7 +428,6 @@ export const combat = {
   init(ctx) {
     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this.registry = ctx.registry || null;
-    this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
     this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
     this._pendingPlayerRecovery = null;
     this._recoveryInFlight = false;
@@ -556,19 +557,27 @@ export const combat = {
       return;
     }
     if (!t.alive) return;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const targetHostileToPlayer = lethal && typeof lethal.targetHostileToPlayer === 'boolean'
+      ? lethal.targetHostileToPlayer
+      : !!isHostileToPlayer(t, player && player.team, state);
     t.alive = false;
     const killedByPlayer = killerId === state.playerId;
     // Mission targets settle through missions' synchronous entity:killed listener. Paying their
     // archetype bounty/loot here as well makes one contract kill resolve through two reward
     // authorities. The durable mission identity survives sector rematerialization and Continue;
     // ambient enemies have neither tag and retain the normal combat reward path below.
-    const missionOwnsReward = d.missionId != null || d.missionTag != null;
-    const factionLawful = !!(d.ai && d.ai.lawful);
+    const missionOwns = missionOwnsReward(t);
+    const authoredRewardEligible = killedByPlayer && !missionOwns;
+    const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
+      ? lethal.factionLawful
+      : !!(d.ai && d.ai.lawful);
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
-      factionId: t.factionId, factionLawful, bountyCr: d.bountyCr || 0,
+      factionId: t.factionId, factionLawful, bountyCr: missionOwns ? 0 : (d.bountyCr || 0),
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
+      targetHostileToPlayer,
       presentation,
     });
     // World event, not a player event: this fires for EVERY entity killed, so with no position it hit
@@ -577,21 +586,22 @@ export const combat = {
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
     bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
-    if (bounty > 0 && killedByPlayer && !missionOwnsReward) {
+    if (bounty > 0 && authoredRewardEligible) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     }
-    if (d.loot) {
-      const { credits, items } = this.rollLoot(d.loot);
-      const creditedLoot = killedByPlayer && !missionOwnsReward ? credits : 0;
-      if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
-      if (!missionOwnsReward) {
-        bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits: creditedLoot, items });
-      }
+    if (d.loot && authoredRewardEligible) {
+      // Current run seed + durable victim identity makes authored rewards stable across entity-id
+      // rematerialization and save/load without a private combat cursor to serialize or reset.
+      const rewardRng = createVictimRewardRng(
+        state.meta && state.meta.seed,
+        t,
+        'combat_authored_loot_v1',
+      );
+      const { credits, items } = this.rollLoot(d.loot, rewardRng);
+      if (credits > 0) bus.emit('economy:grantCredits', { amount: credits, reason: 'loot' });
+      bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits, items });
       for (const it of items) {
-        const ang = this.rng() * Math.PI * 2, sp = 18 + this.rng() * 28;
-        // Consume the same deterministic combat RNG draws for a contract target, but do not create
-        // a second reward pickup. This keeps subsequent encounter rolls stable across the repair.
-        if (missionOwnsReward) continue;
+        const ang = rewardRng() * Math.PI * 2, sp = 18 + rewardRng() * 28;
         const kind = lootPickupKind(it.id);
         this.helpers.spawnEntity({
           type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },
@@ -754,8 +764,12 @@ export const combat = {
     t._invulnUntil = null;
   },
 
-  rollLoot(loot) {
-    const r = this.rng;
+  rollLoot(loot, r) {
+    // Production supplies the stateless per-victim stream explicitly. The optional `this.rng`
+    // fallback is dependency injection used by the offline loot-table audit; combat init never owns
+    // or advances such a cursor.
+    r = typeof r === 'function' ? r : (this && typeof this.rng === 'function' ? this.rng : null);
+    if (!r) throw new TypeError('rollLoot requires an injected deterministic RNG');
     const cr0 = (loot.creditsRange && loot.creditsRange[0]) || 0;
     const cr1 = (loot.creditsRange && loot.creditsRange[1]) || 0;
     const credits = Math.round(cr0 + (cr1 - cr0) * r());

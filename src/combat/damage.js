@@ -6,11 +6,22 @@ import { difficultyDamageScale } from '../data/difficulty.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { recordImpulseProvenance } from './impulseKernel.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
+import {
+  currentPlayerRewardIdentity,
+  readPlayerFirstHitTruth,
+  writePlayerFirstHitTruth,
+} from './rewardEligibility.js';
 
 export function createDamageRouter(context, statusService, options = {}) {
   const { state, catalog, bus, helpers } = context;
   const physics = helpers && helpers.combatPhysics;
   const onKill = typeof options.onKill === 'function' ? options.onKill : null;
+
+  // AI victims persist first-hit legal/reward provenance inside their existing data.ai world record,
+  // so sector capture/rematerialization and Continue cannot turn later retaliation into pre-existing
+  // hostility. Non-AI/local-only targets have no durable record and use this object-lifetime fallback.
+  const playerDamageTruthByTarget = new WeakMap();
 
   // Reusable scratch channel objects for routeDamage. routeDamage is non-reentrant within a router
   // (damage routing never synchronously triggers another route), so six stable slots cover the full
@@ -167,6 +178,44 @@ export function createDamageRouter(context, statusService, options = {}) {
       impulseApplied: impulseResult.applied,
       packet,
     };
+    // Freeze canonical target truth on the player's first accepted hit for this victim lifetime.
+    // Synchronous combat:damage listeners may grant retaliation authority, and later projectiles
+    // must not reinterpret that self-defense response as pre-existing hostility. AI receipts travel
+    // through world-record capture/save/rematerialization; the WeakMap is only for non-durable targets.
+    // Non-player hits still publish current truth but never seed or replace player provenance.
+    const playerId = state.playerId;
+    const player = entity(playerId);
+    const playerAttack = !!player && result.attackerId === playerId;
+    const playerIdentity = playerAttack ? currentPlayerRewardIdentity(state, player) : null;
+    const durableTruth = playerAttack ? readPlayerFirstHitTruth(target, playerIdentity) : null;
+    const fallbackTruth = playerAttack && !durableTruth ? playerDamageTruthByTarget.get(target) : null;
+    const frozenTruth = durableTruth || (
+      fallbackTruth && fallbackTruth.playerIdentity === playerIdentity ? fallbackTruth : null
+    );
+    let factionLawful;
+    let targetHostileToPlayer;
+    if (frozenTruth) {
+      factionLawful = frozenTruth.factionLawful;
+      targetHostileToPlayer = frozenTruth.targetHostileToPlayer;
+    } else {
+      factionLawful = !!(target.data && target.data.ai && target.data.ai.lawful);
+      targetHostileToPlayer = !!isHostileToPlayer(target, player && player.team, state);
+      if (playerAttack) {
+        const durableRecord = writePlayerFirstHitTruth(
+          target,
+          playerIdentity,
+          factionLawful,
+          targetHostileToPlayer,
+        );
+        if (!durableRecord) {
+          playerDamageTruthByTarget.set(target, Object.freeze({
+            playerIdentity,
+            factionLawful,
+            targetHostileToPlayer,
+          }));
+        }
+      }
+    }
 
     appendCombatTrace(state.combat, state.tick, 'damage.routed', {
       actorId: result.attackerId,
@@ -189,7 +238,6 @@ export function createDamageRouter(context, statusService, options = {}) {
 
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
     if (bus) {
-      const factionLawful = !!(target.data && target.data.ai && target.data.ai.lawful);
       bus.emit('combat:damage', {
         targetId: target.id,
         attackerId: result.attackerId,
@@ -216,6 +264,7 @@ export function createDamageRouter(context, statusService, options = {}) {
         normal: packet.hit && packet.hit.normal || null,
         factionId: target.factionId || null,
         factionLawful,
+        targetHostileToPlayer,
         subsystemId,
         origin,
         weaponId: origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null,
@@ -223,7 +272,13 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
 
     if (before.hull > 0 && target.hull <= 0) {
-      if (onKill) onKill(target, result.attackerId, { origin, packet, result });
+      if (onKill) onKill(target, result.attackerId, {
+        origin,
+        packet,
+        result,
+        factionLawful,
+        targetHostileToPlayer,
+      });
       else fallbackKill(target, result.attackerId);
     }
     return result;

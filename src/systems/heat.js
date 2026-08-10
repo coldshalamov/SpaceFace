@@ -22,7 +22,23 @@
 // real consequences. All clamp at 1.
 const HEAT_MAX = 1;
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
-const KILL_CLASS_MULT = { station: 1.0, capital: 0.6, large: 0.4, fighter: 0.25, default: 0.15 };
+// Combat emits `victimClass: t.data.shipClass || t.type`. Civilian traffic commonly has no
+// authored shipClass, so its live class is the generic `ship`. Pricing that through the old
+// `default` multiplier produced 0.042 heat, which was immediately below WANTED for a clean hauler
+// kill. Authored civilian hulls use frigate/hauler/freighter while ambient traffic often emits the
+// generic ship class; all are headline piracy victims. Keep `default` conservative for genuinely
+// unclassified entity kinds.
+const KILL_CLASS_MULT = {
+  station: 1.0,
+  capital: 0.6,
+  large: 0.4,
+  ship: 0.6,
+  frigate: 0.6,
+  hauler: 0.6,
+  freighter: 0.6,
+  fighter: 0.25,
+  default: 0.15,
+};
 const HIT_NONHOSTILE = 0.012;      // chip per unprovoked hit (capped per second below)
 const HIT_CAP_PER_S = 0.06;        // so a beam doesn't max heat in one burst
 const BUST_CONTRABAND = 0.16;      // smuggling scan bust
@@ -42,7 +58,6 @@ const THEFT_INCIDENT = 0.22;
 // make every future crime type free until someone remembered to add a row here.
 const INCIDENT_HEAT_DEFAULT = 0.12;
 const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
-const APPLIED_INCIDENT_CAP = 32;
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -136,14 +151,12 @@ export const heat = {
     const player = this.state.player;
     if (player && typeof player.heat !== 'number') player.heat = 0;
     if (player) ensureHeatZone(player);
-    this._lastHitT = -1e9;
-    this._lastEmit = -1;
-    this._burstAccrued = 0;
+    this._resetTransientTiming();
 
     const bus = this.bus;
 
-    // Piracy: killing a ship that isn't already hostile to the player. We use the faction system's
-    // notion of "is this faction aggro toward the player" as the test for "was this a clean victim."
+    // Piracy: killing a ship that isn't already hostile to the player. Production combat receipts
+    // carry scanner's canonical team/context classification; older producers fall back to standing.
     bus.on('entity:killed', (p) => this._onKill(p));
 
     // Unprovoked attacks: chipping a non-hostile ship's hull/shield. Capped per-second so a beam
@@ -155,8 +168,17 @@ export const heat = {
       if (p && p.found) this._raise(BUST_CONTRABAND, 'smuggling bust');
     });
 
-    // A faction going hostile is the strongest "the law noticed" signal short of a kill.
-    bus.on('faction:aggro', () => this._raise(FactionsAggroAdd, 'faction hostile'));
+    // A faction going hostile is the strongest "the law noticed" signal short of a kill. The same
+    // event also announces de-escalation, which must not itself create a fresh WANTED incident.
+    bus.on('faction:aggro', (p) => {
+      if (p && p.isAggro === false) return;
+      this._raise(FactionsAggroAdd, 'faction hostile');
+    });
+
+    // These boundaries may move simTime backwards while the system instance survives. Per-burst
+    // clocks are transient and must not inherit a future timestamp into a new/restored run.
+    bus.on('game:started', () => this._resetTransientTiming());
+    bus.on('save:loaded', () => this._resetTransientTiming());
 
     // Intentional clear (e.g. Ending A record expunge). Sole heat writer path via _setHeat.
     bus.on('heat:clear', (p) => {
@@ -218,8 +240,6 @@ export const heat = {
     // which is the survivable failure.
     const ledger = ensureAppliedIncidentIds(player);
     ledger[incidentReceiptId] = true;
-    const keys = Object.keys(ledger);
-    while (keys.length > APPLIED_INCIDENT_CAP) delete ledger[keys.shift()];
 
     this._raise(delta, `law incident (${receipt.kind})`);
     return { applied: true, reason: null, incidentReceiptId, delta };
@@ -232,6 +252,20 @@ export const heat = {
     return !!(f && f.aggro);
   },
 
+  _receiptTargetIsHostile(payload) {
+    if (payload && typeof payload.targetHostileToPlayer === 'boolean') {
+      return payload.targetHostileToPlayer;
+    }
+    // Compatibility for older/synthetic publishers that do not yet carry canonical target truth.
+    return this._victimIsHostile(payload && payload.factionId);
+  },
+
+  _resetTransientTiming() {
+    this._lastHitT = -1e9;
+    this._lastEmit = -1e9;
+    this._burstAccrued = 0;
+  },
+
   _onKill(p) {
     if (!p || p.killerId !== this.state.playerId) return;
     // Lawful victims (patrol_lawman / factionLawful) are ALWAYS piracy — killing a cop is the
@@ -240,7 +274,7 @@ export const heat = {
       this._raise(KILL_NONHOSTILE * 1.3, 'lawful kill');
       return;
     }
-    if (this._victimIsHostile(p.factionId)) return; // legitimate combat, no heat
+    if (this._receiptTargetIsHostile(p)) return; // legitimate combat, no heat
     const cls = p.victimClass || 'default';
     const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : KILL_CLASS_MULT.default;
     this._raise(KILL_NONHOSTILE * mult, 'piracy kill (' + cls + ')');
@@ -248,7 +282,7 @@ export const heat = {
 
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
-    if (p.factionLawful || !this._victimIsHostile(p.factionId)) {
+    if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
       const now = this.state.simTime;
       if (now - this._lastHitT < 1.0) {
         // within the per-second cap window: only raise if under the burst budget
@@ -393,5 +427,4 @@ export const THRESHOLD = WANTED_THRESHOLD;
 export const INCIDENT_HEAT = Object.freeze({
   byKind: INCIDENT_HEAT_BY_KIND,
   fallback: INCIDENT_HEAT_DEFAULT,
-  appliedCap: APPLIED_INCIDENT_CAP,
 });
