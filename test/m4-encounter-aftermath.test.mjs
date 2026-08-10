@@ -119,7 +119,10 @@ test('aftermath markers rematerialize once after travel and Continue, then stay 
   const continuedSpawns = resumedHarness.bus.log.filter((entry) => entry.name === 'aftermathWreck:spawned');
   assert.equal(continuedSpawns.length, 1, 'Continue plus enter rematerializes exactly one wreck');
 
-  resumedHarness.bus.emit('salvage:completed', { wreckId: continuedSpawns[0].payload.entityId });
+  resumedHarness.bus.emit('salvage:completed', {
+    wreckId: continuedSpawns[0].payload.entityId,
+    markerId: continuedSpawns[0].payload.markerId,
+  });
   assert.equal(aftermathForSector(resumed, 'sector_helios_prime').length, 0);
   const afterSalvageSave = aftermathWrecks.serialize();
   aftermathWrecks.deserialize(afterSalvageSave);
@@ -200,25 +203,34 @@ test('missions preserve legacy lifecycle payloads alongside encounter aftermath 
   const acceptedMission = state.missions.active[0];
   acceptedMission.chainNextSeed = null;
   const accepted = bus.log.find((entry) => entry.name === 'mission:accepted');
-  assert.deepEqual(accepted.payload, {
-    missionId: acceptedMission.id,
-    type: acceptedMission.type,
-    storyTag: 'm4:aftermath-contract',
-    source: 'encounterAftermath',
-    causeFingerprint: cause.fingerprint,
+  assert.deepEqual({
+    missionId: accepted.payload.missionId,
+    type: accepted.payload.type,
+    storyTag: accepted.payload.storyTag,
+    source: accepted.payload.source,
+    causeFingerprint: accepted.payload.causeFingerprint,
+  }, {
+    missionId: acceptedMission.id, type: acceptedMission.type, storyTag: 'm4:aftermath-contract',
+    source: 'encounterAftermath', causeFingerprint: cause.fingerprint,
   });
+  assert.equal(accepted.payload.sourceOfferId, boarded.id, 'external offer provenance survives acceptance');
 
   missions._completeMission(acceptedMission, 0);
   const completed = bus.log.find((entry) => entry.name === 'mission:completed');
   assert.equal(Number.isFinite(completed.payload.repMult), true);
-  assert.deepEqual(completed.payload, {
-    missionId: acceptedMission.id,
-    type: acceptedMission.type,
-    factionId: acceptedMission.factionId,
+  assert.deepEqual({
+    missionId: completed.payload.missionId,
+    type: completed.payload.type,
+    factionId: completed.payload.factionId,
     repMult: completed.payload.repMult,
-    source: 'encounterAftermath',
-    causeFingerprint: cause.fingerprint,
+    source: completed.payload.source,
+    causeFingerprint: completed.payload.causeFingerprint,
+  }, {
+    missionId: acceptedMission.id, type: acceptedMission.type, factionId: acceptedMission.factionId,
+    repMult: completed.payload.repMult, source: 'encounterAftermath', causeFingerprint: cause.fingerprint,
   });
+  assert.equal(completed.payload.causeTag, 'security');
+  assert.ok(completed.payload.rewardCr > 0, 'completion retains the settled reward receipt');
 
   const failedMission = missions._instanceFromOffer({ ...boarded, id: `${boarded.id}_failed` });
   state.missions.active.push(failedMission);

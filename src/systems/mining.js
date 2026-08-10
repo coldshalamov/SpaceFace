@@ -839,7 +839,19 @@ export const mining = {
     const isShip = p.type === 'ship' || p.victimClass === 'ship';
     if (!isShip) return;
     const pos = p.pos || { x: 0, z: 0 };
-    this.helpers.spawnEntity({
+    const aftermathOwner = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('aftermathWrecks')
+      : null;
+    const aftermathPlan = aftermathOwner && typeof aftermathOwner.immediateWreckPlan === 'function'
+      ? aftermathOwner.immediateWreckPlan(p)
+      : null;
+    // A duplicate kill notification for a marker whose wreck is already live must not mint a second
+    // salvage pool. The durable owner has already checked entity liveness for this exact marker.
+    if (aftermathPlan && aftermathPlan.entityId != null) {
+      return this.state.entities && this.state.entities.get(aftermathPlan.entityId) || null;
+    }
+
+    const spec = aftermathPlan && aftermathPlan.spec || {
       type: 'wreck', pos: { x: pos.x, z: pos.z }, radius: 7, mass: 1e6,
       hull: 1, hullMax: 1,
       data: {
@@ -852,7 +864,12 @@ export const mining = {
         salvagePool: this._lootToPool(),
         salvageTimeLeft: SALVAGE_TIME_DEFAULT,
       },
-    });
+    };
+    const wreck = this.helpers.spawnEntity(spec);
+    if (wreck && aftermathPlan && aftermathOwner && typeof aftermathOwner.bindImmediateWreck === 'function') {
+      aftermathOwner.bindImmediateWreck(aftermathPlan.markerId, wreck);
+    }
+    return wreck;
   },
 
   // Default salvage contents for a destroyed ship (scrap + a chance of electronics).
@@ -894,7 +911,11 @@ export const mining = {
 
     remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {
-      this.bus.emit('salvage:completed', { wreckId: wreck.id, loot: got });
+      this.bus.emit('salvage:completed', {
+        wreckId: wreck.id,
+        markerId: d.markerId || d.provenance && d.provenance.markerId || null,
+        loot: got,
+      });
       // Mark recovered so the intervention loop reports recovered=true (it reads e.data._salvaged).
       // _drainWreck only runs while the player's salvage beam is on the wreck, so reaching completion
       // here means the player did recover cargo (vs an untouched wreck despawning).

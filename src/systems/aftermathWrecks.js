@@ -22,6 +22,7 @@ const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
 const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
+const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
 const STATION_INFO = new Map();
@@ -103,13 +104,55 @@ function classForVictim(victimClass) {
   return 'battlefield';
 }
 
-function poolForMarker(marker) {
+function initialPoolForMarker(marker) {
   const cls = marker && marker.victimClass || '';
   if (String(cls).toLowerCase().includes('drone')) return { cmdty_scrap_metal: 2, cmdty_ore_iron: 1 };
   if (marker && marker.wreckClass === 'military') {
     return { cmdty_scrap_metal: 2, cmdty_salvage_electronics: 2 };
   }
   return { ...DEFAULT_POOL };
+}
+
+function normalizeSalvagePool(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const pool = {};
+  for (const [commodityId, rawQty] of Object.entries(input)) {
+    const qty = Math.max(0, Math.floor(Number(rawQty) || 0));
+    if (qty > 0) pool[commodityId] = qty;
+  }
+  return pool;
+}
+
+function boundedIdentityText(value) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text ? text.slice(0, FREIGHT_IDENTITY_TEXT_MAX) : null;
+}
+
+function freightIdentityFor(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const manifestId = boundedIdentityText(input.manifestId);
+  const freighterKey = boundedIdentityText(input.freighterKey);
+  const role = boundedIdentityText(input.role);
+  if (!manifestId && !freighterKey && !role) return null;
+  return { manifestId, freighterKey, role };
+}
+
+function isBoundWreck(entity, markerId) {
+  const data = entity && entity.data;
+  return !!(entity && entity.alive !== false && entity.type === 'wreck' && data
+    && data.markerId === markerId
+    && data.provenance && data.provenance.markerId === markerId);
+}
+
+// The marker owns the pool. Live immediate/rematerialized wrecks receive this same object, so
+// partial salvage cannot fork an anonymous combat pool from the durable aftermath pool.
+function poolForMarker(marker) {
+  if (!marker) return { ...DEFAULT_POOL };
+  if (!Object.prototype.hasOwnProperty.call(marker, 'salvagePool')) {
+    marker.salvagePool = initialPoolForMarker(marker);
+  }
+  return marker.salvagePool;
 }
 
 function aftermathLine(marker) {
@@ -148,7 +191,7 @@ function makeMarker(state, payload, entity) {
     || null;
   const wreckClass = classForVictim(victimClass);
   const cls = wreckClassById(wreckClass) || wreckClassById('battlefield');
-  return {
+  const marker = {
     schemaVersion: STATE_VERSION,
     markerId: markerIdFor(state, sectorId, { ...payload, id: victimId, encounterFingerprint }),
     sectorId,
@@ -170,8 +213,11 @@ function makeMarker(state, payload, entity) {
     encounterId: encounterCausality && encounterCausality.encounterId || data.ai && data.ai.encounterId || null,
     encounterFingerprint,
     motiveId: encounterCausality && encounterCausality.motiveId || null,
+    freightIdentity: freightIdentityFor(data.cargoManifest),
     cause: null,
   };
+  marker.salvagePool = initialPoolForMarker(marker);
+  return marker;
 }
 
 function trimCauses(causes) {
@@ -217,7 +263,7 @@ function rememberCause(state, bus, payload) {
   return merged;
 }
 
-function rememberMarker(state, bus, marker) {
+function rememberMarker(state, bus, marker, onEvicted = null) {
   const own = ensureAftermathState(state);
   if (!own || !marker || !marker.sectorId || !marker.markerId) return null;
   const arr = own.bySector[marker.sectorId] || (own.bySector[marker.sectorId] = []);
@@ -226,7 +272,10 @@ function rememberMarker(state, bus, marker) {
     marker.cause = clonePlain(own.causes[marker.encounterFingerprint]);
   }
   arr.unshift(marker);
-  if (arr.length > MAX_PER_SECTOR) arr.length = MAX_PER_SECTOR;
+  if (arr.length > MAX_PER_SECTOR) {
+    const evicted = arr.splice(MAX_PER_SECTOR);
+    if (typeof onEvicted === 'function') onEvicted(evicted);
+  }
   if (bus && typeof bus.emit === 'function') {
     const headline = newsLine(marker);
     bus.emit('aftermathWreck:recorded', clonePlain(marker));
@@ -271,8 +320,11 @@ function normalizeMarker(input) {
     encounterId: input.encounterId || null,
     encounterFingerprint: input.encounterFingerprint || null,
     motiveId: input.motiveId || null,
+    freightIdentity: freightIdentityFor(input.freightIdentity),
     cause: normalizeCausalAftermath(input.cause),
   };
+  const savedPool = normalizeSalvagePool(input.salvagePool);
+  marker.salvagePool = savedPool == null ? initialPoolForMarker(marker) : savedPool;
   return marker;
 }
 
@@ -293,12 +345,13 @@ export const aftermathWrecks = {
     this.helpers = ctx && ctx.helpers || {};
     this._spawned = new Map();
     this._pendingOffers = new Map();
+    this._saveRestoring = false;
     ensureAftermathState(this.state);
 
     this._onKilled = (payload) => this._recordKill(payload || {});
     this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
-    this._onSalvageCompleted = (payload) => this._completeByEntity(payload && payload.wreckId);
+    this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
     this._onEncounterResolved = (payload) => rememberCause(this.state, this.bus, payload || {});
     this._onDocked = (payload) => this._offerAtStation(payload && payload.stationId);
     this._onOfferBoarded = (payload) => this._markOfferBoarded(payload || {});
@@ -306,10 +359,13 @@ export const aftermathWrecks = {
     this._onMissionCompleted = (payload) => this._settleMission(payload || {}, true);
     this._onMissionFailed = (payload) => this._settleMission(payload || {}, false);
     this._onNewGame = () => this.newGame();
+    this._onSaveRestoring = () => { this._saveRestoring = true; };
     this._onSaveLoaded = () => {
+      this._saveRestoring = false;
       this._spawned.clear();
       this._spawnForSector(this.state && this.state.world && this.state.world.currentSectorId);
     };
+    this._onSaveError = () => { this._saveRestoring = false; };
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
@@ -323,12 +379,16 @@ export const aftermathWrecks = {
       this.bus.on('mission:completed', this._onMissionCompleted);
       this.bus.on('mission:failed', this._onMissionFailed);
       this.bus.on('mission:expired', this._onMissionFailed);
+      this.bus.on('game:new', this._onNewGame);
       this.bus.on('game:newGame', this._onNewGame);
+      this.bus.on('save:restoring', this._onSaveRestoring);
       this.bus.on('save:loaded', this._onSaveLoaded);
+      this.bus.on('save:error', this._onSaveError);
     }
   },
 
   newGame() {
+    this._saveRestoring = false;
     if (this.state) this.state.aftermathWrecks = { schemaVersion: STATE_VERSION, bySector: {}, causes: {}, seed: seedOf(this.state) };
     if (this._spawned) this._spawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
@@ -337,7 +397,69 @@ export const aftermathWrecks = {
   _recordKill(payload) {
     const entity = entityFor(this.state, payload.id);
     const marker = makeMarker(this.state, payload, entity);
-    return rememberMarker(this.state, this.bus, marker);
+    return rememberMarker(this.state, this.bus, marker, (evicted) => {
+      if (!this._spawned) return;
+      for (const item of evicted) {
+        if (item && item.markerId) this._spawned.delete(item.markerId);
+      }
+    });
+  },
+
+  // Production init order registers this system before mining. By the time mining observes the same
+  // entity:killed event, the durable marker therefore exists and can author the one immediate wreck
+  // spec. Returning null is deliberate: kills outside named zones keep mining's ordinary fallback.
+  immediateWreckPlan(payload) {
+    const entity = entityFor(this.state, payload && payload.id);
+    const candidate = makeMarker(this.state, payload || {}, entity);
+    if (!candidate) return null;
+    const marker = aftermathForSector(this.state, candidate.sectorId)
+      .find((item) => item && item.markerId === candidate.markerId);
+    if (!marker) return null;
+    const existing = this._resolveBoundWreck(marker.markerId);
+    return {
+      markerId: marker.markerId,
+      entityId: existing && existing.alive !== false ? existing.id : null,
+      spec: existing && existing.alive !== false ? null : this._specForMarker(marker),
+    };
+  },
+
+  // Mining remains the immediate wreck spawner; aftermath owns identity and persistence. This bind
+  // adopts the durable provenance/pool defensively, then teaches sector-entry rematerialization that
+  // this marker is already live.
+  bindImmediateWreck(markerId, entity) {
+    if (!markerId || !entity || !this.state || !this._spawned) return null;
+    const marker = this._markerById(markerId);
+    if (!marker) return null;
+    const existing = this._resolveBoundWreck(markerId);
+    if (existing && existing.alive !== false && existing.id !== entity.id) return existing;
+
+    const identity = this._specForMarker(marker);
+    entity.data = Object.assign(entity.data || {}, identity.data);
+    entity.data.salvagePool = poolForMarker(marker);
+    return this._bindLiveMarker(marker, entity) ? entity : null;
+  },
+
+  _resolveBoundWreck(markerId) {
+    if (!markerId || !this._spawned) return null;
+    const entityId = this._spawned.get(markerId);
+    if (entityId == null) return null;
+    const entity = entityFor(this.state, entityId);
+    if (!isBoundWreck(entity, markerId)) {
+      this._spawned.delete(markerId);
+      return null;
+    }
+    return entity;
+  },
+
+  _markerById(markerId) {
+    const own = ensureAftermathState(this.state);
+    for (const markers of Object.values(own && own.bySector || {})) {
+      const marker = Array.isArray(markers)
+        ? markers.find((item) => item && item.markerId === markerId)
+        : null;
+      if (marker) return marker;
+    }
+    return null;
   },
 
   _offerAtStation(stationId) {
@@ -433,26 +555,37 @@ export const aftermathWrecks = {
 
   _spawnForSector(sectorId) {
     const state = this.state;
+    // Save restore re-enters the incoming sector before this system receives/deserializes the
+    // incoming aftermath bag. Spawning in that window would materialize the outgoing run's markers
+    // as orphaned, salvageable wrecks. The save:loaded edge below owns the one post-deserialize spawn.
+    if (this._saveRestoring) return 0;
     if (!state || !sectorId || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
     const markers = aftermathForSector(state, sectorId).slice(0, MAX_SPAWNED_PER_SECTOR);
     let count = 0;
     for (const marker of markers) {
-      const existingId = this._spawned.get(marker.markerId);
-      if (existingId != null && entityFor(state, existingId)) continue;
+      if (this._resolveBoundWreck(marker.markerId)) continue;
       const entity = this.helpers.spawnEntity(this._specForMarker(marker));
       if (!entity) continue;
-      this._spawned.set(marker.markerId, entity.id);
+      this._bindLiveMarker(marker, entity);
       count++;
-      if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('aftermathWreck:spawned', {
-          markerId: marker.markerId,
-          entityId: entity.id,
-          sectorId,
-          zoneId: marker.zoneId,
-        });
-      }
     }
     return count;
+  },
+
+  _bindLiveMarker(marker, entity) {
+    if (!marker || !entity || !this._spawned) return false;
+    if (!isBoundWreck(entity, marker.markerId)) return false;
+    const alreadyBound = this._spawned.get(marker.markerId) === entity.id;
+    this._spawned.set(marker.markerId, entity.id);
+    if (!alreadyBound && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('aftermathWreck:spawned', {
+        markerId: marker.markerId,
+        entityId: entity.id,
+        sectorId: marker.sectorId,
+        zoneId: marker.zoneId,
+      });
+    }
+    return true;
   },
 
   _specForMarker(marker) {
@@ -489,6 +622,7 @@ export const aftermathWrecks = {
           encounterId: marker.encounterId,
           fingerprint: marker.encounterFingerprint,
           motiveId: marker.motiveId,
+          freightIdentity: clonePlain(marker.freightIdentity),
           evidence: marker.cause && marker.cause.evidence || null,
           remedy: marker.cause && marker.cause.remedy || null,
         },
@@ -509,16 +643,17 @@ export const aftermathWrecks = {
     for (const marker of markers) this._spawned.delete(marker.markerId);
   },
 
-  _completeByEntity(wreckId) {
-    if (wreckId == null || !this._spawned || !this.state) return false;
-    let markerId = null;
-    for (const [mid, eid] of this._spawned.entries()) {
-      if (eid === wreckId) {
-        markerId = mid;
-        break;
-      }
-    }
-    if (!markerId) return false;
+  _completeByEntity(payload) {
+    const wreckId = payload && typeof payload === 'object' ? payload.wreckId : payload;
+    const claimedMarkerId = payload && typeof payload === 'object' ? payload.markerId : null;
+    // The producer includes markerId for durable aftermath wrecks. A numeric entity ID alone is not
+    // proof: IDs are recycled across New Game/travel and a delayed event could otherwise consume a
+    // different wreck that happens to inherit the same number.
+    if (wreckId == null || !claimedMarkerId || !this._spawned || !this.state) return false;
+    if (this._spawned.get(claimedMarkerId) !== wreckId) return false;
+    const live = this._resolveBoundWreck(claimedMarkerId);
+    if (!live || live.id !== wreckId) return false;
+    const markerId = claimedMarkerId;
     const own = ensureAftermathState(this.state);
     for (const sectorId of Object.keys(own.bySector)) {
       const before = own.bySector[sectorId] || [];
@@ -577,13 +712,17 @@ export const aftermathWrecks = {
       if (this._onMissionCompleted) this.bus.off('mission:completed', this._onMissionCompleted);
       if (this._onMissionFailed) this.bus.off('mission:failed', this._onMissionFailed);
       if (this._onMissionFailed) this.bus.off('mission:expired', this._onMissionFailed);
+      if (this._onNewGame) this.bus.off('game:new', this._onNewGame);
       if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
+      if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
       if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
+      if (this._onSaveError) this.bus.off('save:error', this._onSaveError);
     }
     this._onKilled = this._onSectorEnter = this._onSectorExit = null;
     this._onSalvageCompleted = this._onEncounterResolved = this._onDocked = null;
     this._onOfferBoarded = this._onMissionAccepted = this._onMissionCompleted = this._onMissionFailed = null;
-    this._onNewGame = this._onSaveLoaded = null;
+    this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;
+    this._saveRestoring = false;
     if (this._spawned) this._spawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
