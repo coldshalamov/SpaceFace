@@ -12,6 +12,8 @@ import { actions } from '../src/systems/actions.js';
 import { cargo } from '../src/systems/cargo.js';
 import { combat } from '../src/systems/combat.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { heat } from '../src/systems/heat.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { surrenderRecovery } from '../src/systems/surrenderRecovery.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -20,13 +22,14 @@ const SECTOR_ID = 'sector_tethys_junction';
 const STATION_ID = 'st_tethys_hub';
 const ANCHOR = Object.freeze({ x: 6200, z: 4800 });
 
-function boot(seed = 47501, { withSave = false, withMotion = false } = {}) {
+function boot(seed = 47501, { withSave = false, withMotion = false, withLaw = false } = {}) {
   // Production listener order is material here: combat registers first, civilian recovery sees a
   // kill before the later encounter observer, and cargo owns player acceptance before custody.
   const tactical = withMotion ? createTacticalAISystem() : null;
+  const lawSystems = withLaw ? [lawSecurity, heat] : [];
   const systems = withMotion
-    ? [tactical, physics, aiPorts, actions, combat, surrenderRecovery, cargo, spawnBudget, encounterDirector]
-    : [combat, surrenderRecovery, cargo, spawnBudget, encounterDirector];
+    ? [...lawSystems, tactical, physics, aiPorts, actions, combat, surrenderRecovery, cargo, spawnBudget, encounterDirector]
+    : [...lawSystems, combat, surrenderRecovery, cargo, spawnBudget, encounterDirector];
   if (withSave) systems.push(save);
   const updateOrder = withMotion
     ? [tactical, actions, aiPorts, physics, combat, surrenderRecovery, cargo, encounterDirector]
@@ -45,12 +48,21 @@ function boot(seed = 47501, { withSave = false, withMotion = false } = {}) {
     data: { intent: {}, ai: {} },
   });
   state.playerId = player.id;
+  // Production sectors materialize their authored station as an entity. Civilian recovery now
+  // admits only a lawful destination reachable inside its physical tow window, so the composed
+  // B/C fixture must expose that same world fact rather than metadata alone.
+  sim.spawn({
+    type: 'station', team: 2, factionId: 'faction_mts',
+    pos: { x: ANCHOR.x + 1200, z: ANCHOR.z }, radius: 42,
+    data: { stationId: STATION_ID, factionId: 'faction_mts', sectorId: SECTOR_ID, dockRadius: 72 },
+  });
   const names = [
     'freight:cargoSpilled', 'freight:custodyChanged', 'freight:manifestRemaining',
     'freight:custodyReceipt', 'freight:raiderEscaped', 'freight:custodyRebound',
     'pickup:collected',
     'economy:applyTradePressure', 'economy:grantCredits', 'loot:drop',
     'freight:loss', 'news:headline', 'encounter:resolved',
+    'law:reportIncidentReceipt', 'law:incidentReceipt', 'heat:changed',
   ];
   const events = Object.fromEntries(names.map((name) => [name, []]));
   for (const name of names) bus.on(name, (payload) => events[name].push(structuredClone(payload)));
@@ -141,6 +153,19 @@ function collectByRaider(h, live, pod) {
   h.bus.emit('pickup:collected', payload);
   if (payload.rejectedAmount <= 0) pod.alive = false;
   return payload;
+}
+
+function addLawStation(h, pos, distance = 100, suffix = '') {
+  return h.sim.spawn({
+    type: 'station', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x + distance, z: pos.z }, radius: 42,
+    data: {
+      stationId: `station_freight_witness${suffix}`,
+      factionId: 'faction_scn',
+      sectorId: SECTOR_ID,
+      dockRadius: 72,
+    },
+  });
 }
 
 function commodityVolume(commodityId) {
@@ -250,6 +275,169 @@ test('the real player pickup seam moves only that pod to player custody and wins
     'the observer never performs a second cargo write');
   assert.equal(h.events['economy:grantCredits'].length, 0);
   assert.equal(h.events['loot:drop'].length, 0);
+});
+
+test('witnessed player collection of civilian manifest cargo reports one law-owned theft incident', () => {
+  const h = boot(47521, { withLaw: true });
+  const live = fire(h, ':witnessed-theft');
+  disable(h, live);
+  const record = live.data.freightCargoCustody;
+  const [pod] = pods(h, live);
+  addLawStation(h, pod.pos, 100, ':witnessed');
+  const heatBefore = h.state.player.heat;
+
+  const payload = collectByPlayer(h, pod);
+
+  const accepted = h.events['law:reportIncidentReceipt'].filter((receipt) => receipt.accepted === true);
+  assert.equal(accepted.length, 1);
+  assert.equal(accepted[0].kind, 'payload_theft');
+  assert.equal(accepted[0].offenderEntityId, h.state.playerId);
+  assert.equal(accepted[0].payloadStableId, record.manifestId);
+  assert.equal(accepted[0].validatedWitnessedTheft, true);
+  assert.ok(h.state.player.heat > heatBefore, 'only heat consumes the signed law receipt');
+
+  h.director._routeToScript('convoy', 'pickupCollected', payload);
+  assert.equal(
+    h.events['law:reportIncidentReceipt'].filter((receipt) => receipt.accepted === true).length,
+    1,
+    'a duplicate observer delivery cannot report or apply the theft twice',
+  );
+});
+
+test('partial then complete witnessed collection remains one manifest-theft incident', () => {
+  const h = boot(47527, { withLaw: true });
+  const live = fire(h, ':partial-theft');
+  disable(h, live);
+  const [pod] = pods(h, live);
+  const originalQty = pod.data.amount;
+  addLawStation(h, pod.pos, 100, ':partial');
+  h.state.player.cargo.capVolume = h.state.player.cargo.usedVolume
+    + commodityVolume(pod.data.commodityId) + 1e-6;
+
+  const partial = collectByPlayer(h, pod);
+  assert.equal(partial.acceptedAmount, 1);
+  assert.equal(partial.rejectedAmount, originalQty - 1);
+  const heatAfterFirst = h.state.player.heat;
+  h.state.player.cargo.capVolume = 999;
+  collectByPlayer(h, pod);
+
+  assert.equal(
+    h.events['law:reportIncidentReceipt'].filter((receipt) => receipt.accepted === true).length,
+    1,
+  );
+  assert.equal(h.events['law:incidentReceipt'].length, 1);
+  assert.equal(h.state.player.heat, heatAfterFirst);
+  assert.equal(live.data.freightCargoCustody.playerCollectedQty, originalQty);
+  assertConserved(live.data.freightCargoCustody);
+});
+
+test('an unseen manifest seizure is denied by law and never becomes a heat write', () => {
+  const h = boot(47522, { withLaw: true });
+  const live = fire(h, ':unseen-theft');
+  disable(h, live);
+  const [pod] = pods(h, live);
+  addLawStation(h, pod.pos, 525, ':unseen');
+  const heatBefore = h.state.player.heat;
+
+  collectByPlayer(h, pod);
+
+  assert.equal(h.events['law:reportIncidentReceipt'].length, 1, 'law explicitly answers the report');
+  assert.equal(h.events['law:reportIncidentReceipt'][0].accepted, false);
+  assert.equal(h.events['law:reportIncidentReceipt'][0].reason, 'no_witness');
+  assert.equal(h.events['law:incidentReceipt'].length, 0, 'a denial never enters the incident ledger');
+  assert.equal(h.state.player.heat, heatBefore);
+  assert.equal(live.data.freightCargoCustody.lawTheftIncidentReceiptId, null);
+});
+
+test('lawful recovery authorization makes later manifest pickup noncriminal', () => {
+  const h = boot(47523, { withLaw: true });
+  const live = fire(h, ':lawful-recovery-pickup');
+  const { carrier } = disable(h, live);
+  const record = live.data.freightCargoCustody;
+  const [pod] = pods(h, live);
+  addLawStation(h, pod.pos, 100, ':recovery');
+  h.bus.emit('freight:recovery', {
+    id: `civilian-recovery:${record.manifestId}:recovered`,
+    outcome: 'recovered',
+    entityId: carrier.id,
+    stationId: STATION_ID,
+    manifestId: record.manifestId,
+    freighterKey: record.freighterKey,
+    remainingQty: record.carrierQty,
+    manifest: structuredClone(carrier.data.cargoManifest),
+  });
+  assert.equal(record.carrierRecovered, true);
+  const heatBefore = h.state.player.heat;
+
+  collectByPlayer(h, pod);
+
+  assert.equal(record.playerCollectedQty, pod.data.amount);
+  assert.equal(h.events['law:reportIncidentReceipt'].length, 0);
+  assert.equal(h.events['law:incidentReceipt'].length, 0);
+  assert.equal(h.state.player.heat, heatBefore);
+});
+
+test('cargo respilled from the hostile raider keeps civilian title but is not a player theft', () => {
+  const h = boot(47524, { withLaw: true });
+  const live = fire(h, ':hostile-respill');
+  const { raider } = disable(h, live);
+  const record = live.data.freightCargoCustody;
+  const [initialPod] = pods(h, live);
+  collectByRaider(h, live, initialPod);
+  h.state.player.tether = { active: true, targetId: raider.id, attachmentId: 'test-hostile-respill' };
+  h.sim.runTicks(61);
+  const respilled = pods(h, live).find((entity) => entity.alive !== false);
+  assert.ok(respilled);
+  const respilledRecord = record.pods.find((pod) => pod.entityId === respilled.id);
+  assert.equal(respilledRecord.custodySourceKind, 'hostile_raider');
+  assert.equal(respilledRecord.sourceCustodianStableId, record.raiderIdentityKey);
+  assert.equal(respilled.data.freightCustodyPod.legalOwnerStableId, record.legalOwnerStableId);
+  addLawStation(h, respilled.pos, 100, ':hostile');
+  const heatBefore = h.state.player.heat;
+
+  collectByPlayer(h, respilled);
+
+  assert.equal(h.events['law:reportIncidentReceipt'].length, 0);
+  assert.equal(h.events['law:incidentReceipt'].length, 0);
+  assert.equal(h.state.player.heat, heatBefore);
+  assertConserved(record);
+});
+
+test('accepted freight theft remains exactly once across process-restart Continue', () => {
+  const before = boot(47525, { withLaw: true, withSave: true });
+  const live = fire(before, ':law-save-once');
+  const { carrier, raider } = disable(before, live);
+  kill(before, carrier, raider.id);
+  const record = live.data.freightCargoCustody;
+  const livePods = pods(before, live).filter((entity) => entity.alive !== false);
+  assert.ok(livePods.length > 1);
+  addLawStation(before, livePods[0].pos, 100, ':save');
+  collectByPlayer(before, livePods[0]);
+  assert.ok(record.lawTheftIncidentReceiptId);
+  const appliedHeat = before.state.player.heat;
+  const envelope = before.sim.registry.get('save').serialize('freight-theft-once');
+
+  const after = boot(47526, { withLaw: true, withSave: true });
+  assert.equal(after.sim.registry.get('save').loadEnvelope(
+    JSON.parse(JSON.stringify(envelope)), 'freight-theft-once',
+  ), true);
+  const resumed = after.state.encounterDirector.live[live.id];
+  assert.ok(resumed);
+  const resumedRecord = resumed.data.freightCargoCustody;
+  assert.equal(resumedRecord.lawTheftIncidentReceiptId, record.lawTheftIncidentReceiptId);
+  assert.equal(resumedRecord.lawTheftReportId, record.lawTheftReportId);
+  assert.equal(resumedRecord.lawTheftCausalTick, record.lawTheftCausalTick);
+  assert.equal(after.state.player.heat, appliedHeat);
+  const [remaining] = pods(after, resumed).filter((entity) => entity.alive !== false);
+  assert.ok(remaining);
+
+  collectByPlayer(after, remaining);
+
+  assert.equal(after.events['law:reportIncidentReceipt'].length, 0,
+    'the restored custody receipt blocks a second law report even though law session state is fresh');
+  assert.equal(after.events['law:incidentReceipt'].length, 0);
+  assert.equal(after.state.player.heat, appliedHeat);
+  assertConserved(resumedRecord);
 });
 
 test('zero and partial cargo acceptance retain or reduce the same physical pod without ledger drift', () => {

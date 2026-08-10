@@ -987,6 +987,9 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
   const carrierIdentityKey = carrier.data.predationIdentityKey;
   const custodyId = `${source.manifest.manifestId}:custody:${carrierIdentityKey}`;
   const now = d.now();
+  const civilianOwner = carrier.team === 2
+    && carrier.data.predationRole === 'manifest_carrier'
+    && carrier.data.freightCustody?.status === 'carrier';
   const record = {
     version: 1,
     custodyId,
@@ -999,6 +1002,14 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
     manifestId: source.manifest.manifestId,
     freighterKey: source.manifest.freighterKey,
     commodityId: source.commodityId,
+    legalOwnerKind: civilianOwner ? 'civilian' : 'other',
+    legalOwnerStableId: civilianOwner ? source.manifest.freighterKey : null,
+    legalOwnerFactionId: civilianOwner && typeof carrier.factionId === 'string'
+      ? carrier.factionId
+      : null,
+    lawTheftReportId: null,
+    lawTheftCausalTick: null,
+    lawTheftIncidentReceiptId: null,
     initialQty: source.qty,
     carrierQty: source.qty,
     playerCollectedQty: 0,
@@ -1128,6 +1139,9 @@ function freightCustodySnapshot(record, reason, now) {
     manifestId: record.manifestId,
     freighterKey: record.freighterKey,
     commodityId: record.commodityId,
+    legalOwnerKind: record.legalOwnerKind,
+    legalOwnerStableId: record.legalOwnerStableId,
+    lawTheftIncidentReceiptId: record.lawTheftIncidentReceiptId,
     initialQty: record.initialQty,
     carrierRemainingQty: record.carrierQty,
     livePodQty,
@@ -1263,11 +1277,24 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
         commodityId: record.commodityId,
         podIndex,
         cause,
+        legalOwnerStableId: record.legalOwnerStableId,
+        custodySourceKind: record.legalOwnerKind === 'civilian' ? 'lawful_carrier' : 'other_carrier',
+        sourceCustodianStableId: record.carrierIdentityKey,
       },
     });
     if (!pod) continue;
     Object.defineProperty(pod, FREIGHT_POD_INSTANCE, { value: podIdentity, configurable: true });
-    record.pods.push({ podIdentity, entityId: pod.id, podIndex, instanceSeq: 0, qty, status: 'live', cause });
+    record.pods.push({
+      podIdentity,
+      entityId: pod.id,
+      podIndex,
+      instanceSeq: 0,
+      qty,
+      status: 'live',
+      cause,
+      custodySourceKind: record.legalOwnerKind === 'civilian' ? 'lawful_carrier' : 'other_carrier',
+      sourceCustodianStableId: record.carrierIdentityKey,
+    });
     spawnedQty += qty;
   }
   if (spawnedQty <= 0) return false;
@@ -1295,6 +1322,9 @@ function podEntityForRecord(state, record, pod) {
     && entity[FREIGHT_POD_INSTANCE] === pod.podIdentity
     && annotation && annotation.podIdentity === pod.podIdentity
     && annotation.custodyId === record.custodyId
+    && annotation.legalOwnerStableId === record.legalOwnerStableId
+    && annotation.custodySourceKind === pod.custodySourceKind
+    && annotation.sourceCustodianStableId === pod.sourceCustodianStableId
     && Math.floor(Number(annotation.qty) || 0) === pod.qty
     && Math.floor(Number(entity.data.amount) || 0) === pod.qty
     ? entity
@@ -1306,7 +1336,10 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
   const entity = podEntityForRecord(state, record, pod);
   if (!entity) return false;
   pod.status = status;
-  if (status === 'player_collected') record.playerCollectedQty += pod.qty;
+  if (status === 'player_collected') {
+    record.playerCollectedQty += pod.qty;
+    if (typeof d.reportFreightTheft === 'function') d.reportFreightTheft(live, record, pod, entity);
+  }
   else if (status === 'raider_secured') {
     record.raiderSecuredQty += pod.qty;
     const raider = selectedFreightRaider(live, state);
@@ -1350,6 +1383,7 @@ function collectFreightPod(d, live, state, payload) {
       } else {
         entity.data.amount = rejected;
       }
+      if (typeof d.reportFreightTheft === 'function') d.reportFreightTheft(live, record, pod, entity);
       publishFreightCustody(d, live, record, 'player_partially_collected');
       return true;
     }
@@ -1438,6 +1472,9 @@ function respillFreightFromRaider(d, live, state, record, raider, reason) {
         commodityId: record.commodityId,
         podIndex: podRecord.podIndex,
         cause: reason,
+        legalOwnerStableId: record.legalOwnerStableId,
+        custodySourceKind: 'hostile_raider',
+        sourceCustodianStableId: record.raiderIdentityKey,
       },
     });
     if (!entity) continue;
@@ -1447,6 +1484,8 @@ function respillFreightFromRaider(d, live, state, record, raider, reason) {
     podRecord.instanceSeq = instanceSeq;
     podRecord.status = 'live';
     podRecord.cause = reason;
+    podRecord.custodySourceKind = 'hostile_raider';
+    podRecord.sourceCustodianStableId = record.raiderIdentityKey;
     record.raiderSecuredQty -= podRecord.qty;
     respilledQty += podRecord.qty;
     respilledCount++;
@@ -1892,8 +1931,13 @@ function restoreFreightCargoCustody(d, state, envelope) {
     Object.defineProperty(entity, FREIGHT_POD_INSTANCE, { value: pod.podIdentity, configurable: true });
     entity.flags = entity.flags || {};
     entity.flags.persistent = true;
-    entity.data.freightCustodyPod.status = 'live';
-    entity.data.freightCustodyPod.qty = pod.qty;
+    Object.assign(entity.data.freightCustodyPod, {
+      status: 'live',
+      qty: pod.qty,
+      legalOwnerStableId: record.legalOwnerStableId,
+      custodySourceKind: pod.custodySourceKind,
+      sourceCustodianStableId: pod.sourceCustodianStableId,
+    });
     if (typeof d.resizeFreightPickup === 'function') d.resizeFreightPickup(entity, record.commodityId, pod.qty);
     pod.entityId = entity.id;
     live.ids.push(entity.id);

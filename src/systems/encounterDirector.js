@@ -129,6 +129,8 @@ const FREIGHT_CUSTODY_SAVE_VERSION = 1;
 const FREIGHT_CUSTODY_SAVE_CAP = 4;
 const FREIGHT_CUSTODY_POD_SAVE_CAP = 3;
 const FREIGHT_CUSTODY_ESCAPE_RADIUS_DEFAULT = 600;
+const FREIGHT_THEFT_LAW_KIND = 'payload_theft';
+const FREIGHT_THEFT_OFFENDER_STABLE_ID = 'player';
 
 export const encounterDirector = {
   name: 'encounterDirector',
@@ -137,6 +139,7 @@ export const encounterDirector = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
+    this.registry = ctx.registry || null;
     this._saveRestoring = false;
     this._freightCustodyRebindPasses = 0;
     ensureDirectorState(this.state);
@@ -943,6 +946,47 @@ export const encounterDirector = {
     data.amount = amount;
     data.freightCargoPhysics = physical;
     return true;
+  },
+
+  /** Report the first player seizure from this exact civilian custody chain to the law owner.
+   * The director supplies stable provenance and a canonical world point; lawSecurity alone decides
+   * jurisdiction/witnesses, and heat alone consumes an accepted receipt. */
+  reportFreightTheft(live, record, pod, entity) {
+    if (!live || !record || !pod || !entity || record.terminal
+      || record.lawTheftIncidentReceiptId
+      || record.legalOwnerKind !== 'civilian'
+      || typeof record.legalOwnerStableId !== 'string' || !record.legalOwnerStableId
+      || record.carrierRecovered === true
+      || pod.custodySourceKind !== 'lawful_carrier'
+      || pod.sourceCustodianStableId !== record.carrierIdentityKey
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return null;
+    const law = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('lawSecurity')
+      : null;
+    if (!law || typeof law.reportIncident !== 'function') return null;
+
+    const causalTick = Number.isInteger(this.state && this.state.tick)
+      ? Math.max(0, this.state.tick)
+      : 0;
+    const reportId = `freight:${hash32(
+      record.custodyId,
+      record.legalOwnerStableId,
+      FREIGHT_THEFT_OFFENDER_STABLE_ID,
+    ).toString(36)}:${FREIGHT_THEFT_LAW_KIND}`;
+    const receipt = law.reportIncident({
+      reportId,
+      kind: FREIGHT_THEFT_LAW_KIND,
+      offenderStableId: FREIGHT_THEFT_OFFENDER_STABLE_ID,
+      offenderEntityId: this.state && this.state.playerId,
+      payloadStableId: record.manifestId,
+      causalTick,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+    });
+    if (!receipt || receipt.accepted !== true) return receipt || null;
+    record.lawTheftReportId = reportId;
+    record.lawTheftCausalTick = causalTick;
+    record.lawTheftIncidentReceiptId = receipt.incidentReceiptId;
+    return receipt;
   },
 
   persistOpenFreightCustody(live, record) {
@@ -2273,6 +2317,8 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
       qty,
       status,
       cause: boundedFreightString(rawPod.cause),
+      custodySourceKind: boundedFreightString(rawPod.custodySourceKind),
+      sourceCustodianStableId: boundedFreightString(rawPod.sourceCustodianStableId),
     });
   }
 
@@ -2295,6 +2341,25 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
   const carrierIdentityKey = boundedFreightString(recordRaw.carrierIdentityKey);
   if (!manifestId || !freighterKey || !commodityId || !carrierIdentityKey) return null;
   const raiderIdentityKey = boundedFreightString(recordRaw.raiderIdentityKey);
+  const rawLegalOwnerKind = boundedFreightString(recordRaw.legalOwnerKind);
+  const legalOwnerKind = rawLegalOwnerKind == null
+    ? 'civilian' // compatibility: every v1 persisted custody came from curtain_convoy's civilian
+    : (rawLegalOwnerKind === 'civilian' ? 'civilian' : 'other');
+  const legalOwnerStableId = boundedFreightString(recordRaw.legalOwnerStableId)
+    || (legalOwnerKind === 'civilian' ? freighterKey : null);
+  const legalOwnerFactionId = boundedFreightString(recordRaw.legalOwnerFactionId);
+  for (const pod of pods) {
+    if (pod.custodySourceKind == null) {
+      pod.custodySourceKind = inferFreightPodCustodySource(pod.cause, legalOwnerKind);
+    } else if (!['lawful_carrier', 'hostile_raider', 'other_carrier'].includes(pod.custodySourceKind)) {
+      pod.custodySourceKind = 'other_carrier'; // malformed provenance can never create a crime
+    }
+    if (!pod.sourceCustodianStableId) {
+      pod.sourceCustodianStableId = pod.custodySourceKind === 'hostile_raider'
+        ? raiderIdentityKey
+        : carrierIdentityKey;
+    }
+  }
   const predationRaw = liveRaw.plan && liveRaw.plan.predation && typeof liveRaw.plan.predation === 'object'
     ? liveRaw.plan.predation
     : {};
@@ -2355,6 +2420,15 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
       manifestId,
       freighterKey,
       commodityId,
+      legalOwnerKind,
+      legalOwnerStableId,
+      legalOwnerFactionId,
+      lawTheftReportId: boundedFreightString(recordRaw.lawTheftReportId),
+      lawTheftCausalTick: Number.isInteger(recordRaw.lawTheftCausalTick)
+        && recordRaw.lawTheftCausalTick >= 0
+        ? recordRaw.lawTheftCausalTick
+        : null,
+      lawTheftIncidentReceiptId: boundedFreightString(recordRaw.lawTheftIncidentReceiptId),
       initialQty,
       carrierQty,
       playerCollectedQty,
@@ -2409,6 +2483,12 @@ function normalizeFreightPredation(raw) {
     leashRadius: Math.max(400, finiteFreightNumber(raw.leashRadius, 2600)),
     escapeHoldS: Math.max(1, finiteFreightNumber(raw.escapeHoldS, 3)),
   };
+}
+
+function inferFreightPodCustodySource(cause, legalOwnerKind) {
+  const value = String(cause || '');
+  if (value.startsWith('raider_') || value === 'custody_timeout_respill') return 'hostile_raider';
+  return legalOwnerKind === 'civilian' ? 'lawful_carrier' : 'other_carrier';
 }
 
 function normalizeFreightManifest(raw) {
