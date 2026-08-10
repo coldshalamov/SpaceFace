@@ -121,6 +121,14 @@ const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const CIVIL_ZONE_TYPES = new Set(['civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint', 'refinery_approach', 'colony']);
+const FREIGHT_PICKUP_MASS_MIN = 8;
+const FREIGHT_PICKUP_MASS_MAX = 80;
+const FREIGHT_PICKUP_RADIUS_MIN = 2.2;
+const FREIGHT_PICKUP_RADIUS_MAX = 5.5;
+const FREIGHT_CUSTODY_SAVE_VERSION = 1;
+const FREIGHT_CUSTODY_SAVE_CAP = 4;
+const FREIGHT_CUSTODY_POD_SAVE_CAP = 3;
+const FREIGHT_CUSTODY_ESCAPE_RADIUS_DEFAULT = 600;
 
 export const encounterDirector = {
   name: 'encounterDirector',
@@ -130,6 +138,7 @@ export const encounterDirector = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._saveRestoring = false;
+    this._freightCustodyRebindPasses = 0;
     ensureDirectorState(this.state);
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -139,6 +148,9 @@ export const encounterDirector = {
       // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
       this.bus.on('save:restoring', () => {
         this._saveRestoring = true;
+        // Restore is a transport boundary, not a custody outcome. The already-serialized stats
+        // envelope plus persistent actors reconstruct the coordinator after save:loaded; settling
+        // here would mint loss/news while saveSystem is merely clearing the outgoing entity set.
         clearAllPredationBindings(this.state, 'save_restoring');
       });
       this.bus.on('save:loaded', () => this._onSaveLoaded());
@@ -149,6 +161,10 @@ export const encounterDirector = {
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+      this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
+      this.bus.on('pickup:collected', (p) => this._routeToScript('convoy', 'pickupCollected', p));
+      this.bus.on('freight:recovery', (p) => this._routeToScript('convoy', 'freightRecovered', p));
+      this.bus.on('freight:recoveryAbandoned', (p) => this._routeToScript('convoy', 'freightRecoveryAbandoned', p));
       this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
       this.bus.on('combat:damage', (p) => this._onCombatDamage(p));
       this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
@@ -172,6 +188,7 @@ export const encounterDirector = {
 
   newGame() {
     this._saveRestoring = false;
+    this._routeToScript('convoy', 'lifecycle', { reason: 'new_game' });
     clearAllPredationBindings(this.state, 'new_game');
     this.state.encounterDirector = freshState();
     ensureNamed(this.state.encounterDirector);
@@ -179,6 +196,11 @@ export const encounterDirector = {
 
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    if (this._freightCustodyRebindPasses > 0) {
+      this._freightCustodyRebindPasses--;
+      this._restorePersistedFreightCustodies();
+      this._rebindPersistedFreightCustodyCarriers();
+    }
     const dir = ensureDirectorState(state);
     this._sampleCeresActivityAmbush(dir, state);
     dir._accum = (dir._accum || 0) + dt;
@@ -222,6 +244,7 @@ export const encounterDirector = {
   },
 
   _onSectorExit(p) {
+    if (this._saveRestoring) return;
     // Continuous free-flight membership is a soft handoff — preserve live encounters, pending
     // beats, and active spawn ledger so fights can cross Voronoi edges (M2-C1). Hard teardown
     // only for intentional jump / load / non-continuous boundaries.
@@ -237,6 +260,7 @@ export const encounterDirector = {
       if (live.script === 'namedHunter' && script) {
         script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
+        if (live.script === 'convoy') this._scriptEvent(live, 'lifecycle', { reason: 'sector_exit' });
         this.abort(live, 'sector_exit');
       }
     }
@@ -260,6 +284,11 @@ export const encounterDirector = {
     }
     state.encounterDirector = fresh;
     ensureNamed(fresh);
+    this._restorePersistedFreightCustodies();
+    this._rebindPersistedFreightCustodyCarriers();
+    // Some load owners publish save:loaded before their final entity-index rebuild. Two bounded
+    // update passes catch that production ordering without turning this into a permanent scan.
+    this._freightCustodyRebindPasses = 2;
     // Absolute cooldown stamps from another timeline are clamped into sane range.
     const now = state.simTime || 0;
     for (const k of Object.keys(fresh.cooldowns)) {
@@ -268,6 +297,46 @@ export const encounterDirector = {
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
     }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
+  },
+
+  _restorePersistedFreightCustodies() {
+    const dir = ensureDirectorState(this.state);
+    const envelopes = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies);
+    dir.stats.openFreightCustodies = envelopes;
+    const script = ENCOUNTER_SCRIPTS.convoy;
+    if (!script || typeof script.restoreCustody !== 'function') return 0;
+    let restored = 0;
+    for (const envelope of envelopes) {
+      const existing = dir.live[envelope.encounterId];
+      if (existing && existing.data && existing.data.freightCargoCustody
+        && existing.data.freightCargoCustody.custodyId === envelope.custodyId) continue;
+      if (script.restoreCustody(this, this.state, envelope)) restored++;
+    }
+    return restored;
+  },
+
+  _rebindPersistedFreightCustodyCarriers() {
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return 0;
+    let rebound = 0;
+    for (const entity of entities.values()) {
+      const binding = persistedFreightCarrierBinding(entity);
+      if (!binding || binding.custody.carrierId === entity.id) continue;
+      const previousCarrierId = binding.custody.carrierId;
+      binding.custody.carrierId = entity.id;
+      binding.data.freightCustodyCarrierIdentityKey = binding.identityKey;
+      rebound++;
+      this.emit('freight:custodyRebound', {
+        entityId: entity.id,
+        previousCarrierId,
+        encounterId: binding.custody.encounterId,
+        manifestId: binding.manifest.manifestId,
+        freighterKey: binding.manifest.freighterKey,
+        carrierIdentityKey: binding.identityKey,
+        t: this.now(),
+      });
+    }
+    return rebound;
   },
 
   // Build the deterministic schedule for a sector-day. Pure aside from writing dir.pending.
@@ -833,6 +902,82 @@ export const encounterDirector = {
     });
   },
 
+  /** Physical manifest cargo uses the ordinary pickup contract. Cargo remains the sole player-hold
+   * writer; the director only owns the encounter annotation and observes pickup:collected. */
+  spawnFreightPickup(live, opts) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const qty = Math.max(0, Math.floor(Number(opts && opts.qty) || 0));
+    if (typeof spawnEntity !== 'function' || !live || !opts || !opts.pos || !opts.commodityId || qty <= 0) return null;
+    const physical = freightPickupPhysicalSpec(String(opts.commodityId), qty);
+    const entity = spawnEntity({
+      type: 'pickup',
+      pos: { x: Number(opts.pos.x) || 0, z: Number(opts.pos.z) || 0 },
+      vel: { x: Number(opts.vel && opts.vel.x) || 0, z: Number(opts.vel && opts.vel.z) || 0 },
+      radius: physical.radius,
+      mass: physical.bodyMass,
+      collides: true,
+      flags: { persistent: true },
+      data: {
+        kind: 'cargo',
+        commodityId: String(opts.commodityId),
+        amount: qty,
+        despawnAt: this.now() + Math.max(10, Number(opts.ttlS) || 90),
+        encounterId: live.id,
+        freightCustodyPod: { ...(opts.custody || {}), qty },
+        freightCargoPhysics: physical,
+      },
+    });
+    if (!entity || entity.id == null) return null;
+    live.ids.push(entity.id);
+    live.roles[entity.id] = 'freight_pod';
+    return entity;
+  },
+
+  resizeFreightPickup(entity, commodityId, qty) {
+    const amount = Math.max(0, Math.floor(Number(qty) || 0));
+    if (!entity || entity.type !== 'pickup' || amount <= 0) return false;
+    const physical = freightPickupPhysicalSpec(String(commodityId || ''), amount);
+    entity.mass = physical.bodyMass;
+    entity.radius = physical.radius;
+    const data = entity.data || (entity.data = {});
+    data.amount = amount;
+    data.freightCargoPhysics = physical;
+    return true;
+  },
+
+  persistOpenFreightCustody(live, record) {
+    const dir = ensureDirectorState(this.state);
+    if (!record || record.terminal) return this.clearOpenFreightCustody(record && record.custodyId);
+    const envelope = buildPersistedFreightCustodyEnvelope(live, record, this.now());
+    if (!envelope) return false;
+    const envelopes = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies)
+      .filter((candidate) => candidate.custodyId !== envelope.custodyId);
+    envelopes.push(envelope);
+    dir.stats.openFreightCustodies = envelopes.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+    return true;
+  },
+
+  clearOpenFreightCustody(custodyId) {
+    if (typeof custodyId !== 'string' || !custodyId) return false;
+    const dir = ensureDirectorState(this.state);
+    const before = normalizePersistedFreightCustodies(dir.stats.openFreightCustodies);
+    const after = before.filter((candidate) => candidate.custodyId !== custodyId);
+    dir.stats.openFreightCustodies = after;
+    return after.length !== before.length;
+  },
+
+  retireFreightPickup(entity, reason) {
+    if (!entity || entity.type !== 'pickup') return false;
+    const data = entity.data || (entity.data = {});
+    const pod = data.freightCustodyPod;
+    if (!pod || typeof pod !== 'object') return false;
+    pod.status = reason || 'retired';
+    data.despawnAt = this.now();
+    entity.collides = false;
+    if (entity.flags) delete entity.flags.persistent;
+    return true;
+  },
+
   // ── live-entity helpers ─────────────────────────────────────────────────────────────────────
   entsOf(live, role) {
     const out = [];
@@ -1170,8 +1315,18 @@ export const encounterDirector = {
     // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed.
     for (const lid of Object.keys(dir.live)) {
       const live = dir.live[lid];
+      const liveIndex = live.ids.indexOf(id);
+      if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+        this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+      }
       if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
         this._scriptEvent(live, 'cacheGone', { id });
+      }
+      if (liveIndex !== -1) {
+        for (let index = live.ids.length - 1; index >= 0; index--) {
+          if (live.ids[index] === id) live.ids.splice(index, 1);
+        }
+        if (live.roles && typeof live.roles === 'object') delete live.roles[id];
       }
     }
   },
@@ -1993,6 +2148,326 @@ function zoneLevelBand(zone) {
   return [lo, hi];
 }
 
+function freightPickupPhysicalSpec(commodityId, qty) {
+  const commodity = CMDTY.get(commodityId);
+  const massPerUnit = Math.max(0.05, Math.min(4, Number(commodity && commodity.massPerU) || 1));
+  const volumePerUnit = Math.max(0.05, Math.min(4, Number(commodity && commodity.volPerU) || 1));
+  const totalMass = qty * massPerUnit;
+  const totalVolume = qty * volumePerUnit;
+  const bodyMass = Math.max(
+    FREIGHT_PICKUP_MASS_MIN,
+    Math.min(FREIGHT_PICKUP_MASS_MAX, 6 + totalMass * 8 + totalVolume * 2),
+  );
+  const radius = Math.max(
+    FREIGHT_PICKUP_RADIUS_MIN,
+    Math.min(FREIGHT_PICKUP_RADIUS_MAX, 1.85 + Math.cbrt(totalVolume) * 0.8),
+  );
+  return {
+    version: 1,
+    qty,
+    massPerUnit,
+    volumePerUnit,
+    totalMass,
+    totalVolume,
+    bodyMass,
+    radius,
+  };
+}
+
+function buildPersistedFreightCustodyEnvelope(live, record, savedAt = null) {
+  if (!live || !live.data || !record) return null;
+  const data = live.data;
+  const predation = live.plan && live.plan.predation || {};
+  return normalizePersistedFreightCustodyEnvelope({
+    version: FREIGHT_CUSTODY_SAVE_VERSION,
+    custodyId: record.custodyId,
+    encounterId: live.id,
+    savedAt,
+    live: {
+      shapeId: live.shapeId,
+      script: live.script,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      zoneName: live.zoneName,
+      factionId: live.factionId,
+      squadId: live.squadId,
+      anchor: live.anchor,
+      zoneRadius: live.zoneRadius,
+      phase: live.phase,
+      startedAt: live.startedAt,
+      deadlineAt: live.deadlineAt,
+      vars: live.vars,
+      plan: {
+        variantKind: live.plan && live.plan.variantKind,
+        predation,
+      },
+      data: {
+        end: data.end,
+        destId: data.destId,
+        destName: data.destName,
+        cargoId: data.cargoId,
+        perHauler: data.perHauler,
+        initialHaulerCount: data.initialHaulerCount,
+        initialCargoUnits: data.initialCargoUnits,
+        freightManifest: data.freightManifest,
+        robbed: data.robbed,
+        lossKillerId: data.lossKillerId,
+        guardKills: data.guardKills,
+        noticed: data.noticed,
+        freightCarrierRecovered: data.freightCarrierRecovered,
+        freightCarrierArrived: data.freightCarrierArrived,
+        predationStatus: data.predationStatus,
+        predationEndReason: data.predationEndReason,
+        predationTargetIdentityKey: data.predationTargetIdentityKey,
+        predationRaiderIdentityKey: data.predationRaiderIdentityKey,
+      },
+    },
+    record,
+  });
+}
+
+function normalizePersistedFreightCustodies(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of value.slice(-FREIGHT_CUSTODY_SAVE_CAP * 2)) {
+    const envelope = normalizePersistedFreightCustodyEnvelope(raw);
+    if (!envelope || seen.has(envelope.custodyId)) continue;
+    seen.add(envelope.custodyId);
+    out.push(envelope);
+  }
+  return out.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+}
+
+function normalizePersistedFreightCustodyEnvelope(raw) {
+  if (!raw || typeof raw !== 'object' || raw.version !== FREIGHT_CUSTODY_SAVE_VERSION) return null;
+  const custodyId = boundedFreightString(raw.custodyId);
+  const encounterId = boundedFreightString(raw.encounterId);
+  const liveRaw = raw.live && typeof raw.live === 'object' ? raw.live : null;
+  const recordRaw = raw.record && typeof raw.record === 'object' ? raw.record : null;
+  const shapeId = boundedFreightString(liveRaw && liveRaw.shapeId);
+  const script = boundedFreightString(liveRaw && liveRaw.script);
+  if (!custodyId || !encounterId || !liveRaw || !recordRaw || !ENCOUNTERS[shapeId]
+    || (script !== 'convoy' && script !== 'traderRun')
+    || boundedFreightString(recordRaw.custodyId) !== custodyId
+    || boundedFreightString(recordRaw.encounterId) !== encounterId
+    || recordRaw.terminal === true) return null;
+
+  const pods = [];
+  const rawPods = Array.isArray(recordRaw.pods) ? recordRaw.pods : [];
+  if (rawPods.length > FREIGHT_CUSTODY_POD_SAVE_CAP) return null;
+  const podIdentities = new Set();
+  for (const rawPod of rawPods) {
+    if (!rawPod || typeof rawPod !== 'object') return null;
+    const podIdentity = boundedFreightString(rawPod.podIdentity);
+    const status = boundedFreightString(rawPod.status);
+    const qty = nonnegativeFreightInt(rawPod.qty);
+    if (!podIdentity || podIdentities.has(podIdentity) || qty <= 0
+      || !['live', 'player_collected', 'raider_secured', 'lost'].includes(status)) return null;
+    podIdentities.add(podIdentity);
+    pods.push({
+      podIdentity,
+      entityId: rawPod.entityId == null ? null : rawPod.entityId,
+      podIndex: nonnegativeFreightInt(rawPod.podIndex),
+      instanceSeq: nonnegativeFreightInt(rawPod.instanceSeq),
+      qty,
+      status,
+      cause: boundedFreightString(rawPod.cause),
+    });
+  }
+
+  const initialQty = nonnegativeFreightInt(recordRaw.initialQty);
+  const carrierQty = nonnegativeFreightInt(recordRaw.carrierQty);
+  const playerCollectedQty = nonnegativeFreightInt(recordRaw.playerCollectedQty);
+  const raiderSecuredQty = nonnegativeFreightInt(recordRaw.raiderSecuredQty);
+  const stationRecoveredQty = nonnegativeFreightInt(recordRaw.stationRecoveredQty);
+  const deliveredQty = nonnegativeFreightInt(recordRaw.deliveredQty);
+  const lostQty = nonnegativeFreightInt(recordRaw.lostQty);
+  const livePodQty = pods.reduce((sum, pod) => sum + (pod.status === 'live' ? pod.qty : 0), 0);
+  const securedPodQty = pods.reduce((sum, pod) => sum + (pod.status === 'raider_secured' ? pod.qty : 0), 0);
+  if (initialQty <= 0 || raiderSecuredQty !== securedPodQty
+    || carrierQty + livePodQty + playerCollectedQty + raiderSecuredQty
+      + stationRecoveredQty + deliveredQty + lostQty !== initialQty) return null;
+
+  const manifestId = boundedFreightString(recordRaw.manifestId);
+  const freighterKey = boundedFreightString(recordRaw.freighterKey);
+  const commodityId = boundedFreightString(recordRaw.commodityId);
+  const carrierIdentityKey = boundedFreightString(recordRaw.carrierIdentityKey);
+  if (!manifestId || !freighterKey || !commodityId || !carrierIdentityKey) return null;
+  const raiderIdentityKey = boundedFreightString(recordRaw.raiderIdentityKey);
+  const predationRaw = liveRaw.plan && liveRaw.plan.predation && typeof liveRaw.plan.predation === 'object'
+    ? liveRaw.plan.predation
+    : {};
+  const dataRaw = liveRaw.data && typeof liveRaw.data === 'object' ? liveRaw.data : {};
+  return {
+    version: FREIGHT_CUSTODY_SAVE_VERSION,
+    custodyId,
+    encounterId,
+    savedAt: finiteFreightNumber(raw.savedAt, 0),
+    live: {
+      shapeId,
+      script,
+      sectorId: boundedFreightString(liveRaw.sectorId),
+      zoneId: boundedFreightString(liveRaw.zoneId),
+      zoneName: boundedFreightString(liveRaw.zoneName),
+      factionId: boundedFreightString(liveRaw.factionId),
+      squadId: boundedFreightString(liveRaw.squadId) || `${encounterId}:squad`,
+      anchor: finiteFreightVec(liveRaw.anchor),
+      zoneRadius: Math.max(1, finiteFreightNumber(liveRaw.zoneRadius, 400)),
+      phase: boundedFreightString(liveRaw.phase) || 'transit',
+      startedAt: finiteFreightNumber(liveRaw.startedAt, 0),
+      deadlineAt: finiteFreightNumber(liveRaw.deadlineAt, 0),
+      vars: normalizeFreightVars(liveRaw.vars),
+      plan: {
+        variantKind: boundedFreightString(liveRaw.plan && liveRaw.plan.variantKind) || shapeId,
+        predation: normalizeFreightPredation(predationRaw),
+      },
+      data: {
+        end: finiteFreightVec(dataRaw.end),
+        destId: boundedFreightString(dataRaw.destId),
+        destName: boundedFreightString(dataRaw.destName),
+        cargoId: boundedFreightString(dataRaw.cargoId) || commodityId,
+        perHauler: nonnegativeFreightInt(dataRaw.perHauler),
+        initialHaulerCount: nonnegativeFreightInt(dataRaw.initialHaulerCount),
+        initialCargoUnits: nonnegativeFreightInt(dataRaw.initialCargoUnits),
+        freightManifest: normalizeFreightManifest(dataRaw.freightManifest),
+        robbed: dataRaw.robbed === true,
+        lossKillerId: dataRaw.lossKillerId == null ? null : dataRaw.lossKillerId,
+        guardKills: nonnegativeFreightInt(dataRaw.guardKills),
+        noticed: dataRaw.noticed === true,
+        freightCarrierRecovered: dataRaw.freightCarrierRecovered === true,
+        freightCarrierArrived: dataRaw.freightCarrierArrived === true,
+        predationStatus: boundedFreightString(dataRaw.predationStatus),
+        predationEndReason: boundedFreightString(dataRaw.predationEndReason),
+        predationTargetIdentityKey: boundedFreightString(dataRaw.predationTargetIdentityKey) || carrierIdentityKey,
+        predationRaiderIdentityKey: boundedFreightString(dataRaw.predationRaiderIdentityKey) || raiderIdentityKey,
+      },
+    },
+    record: {
+      version: 1,
+      custodyId,
+      receiptId: boundedFreightString(recordRaw.receiptId) || `${custodyId}:receipt`,
+      encounterId,
+      carrierId: recordRaw.carrierId == null ? null : recordRaw.carrierId,
+      carrierIdentityKey,
+      raiderId: recordRaw.raiderId == null ? null : recordRaw.raiderId,
+      raiderIdentityKey,
+      manifestId,
+      freighterKey,
+      commodityId,
+      initialQty,
+      carrierQty,
+      playerCollectedQty,
+      raiderSecuredQty,
+      stationRecoveredQty,
+      deliveredQty,
+      lostQty,
+      pods,
+      nextPodIndex: Math.max(pods.length, nonnegativeFreightInt(recordRaw.nextPodIndex)),
+      respillSeq: nonnegativeFreightInt(recordRaw.respillSeq),
+      disableSpilled: recordRaw.disableSpilled === true,
+      deathSpilled: recordRaw.deathSpilled === true,
+      spillWindowClosed: recordRaw.spillWindowClosed === true,
+      carrierDead: recordRaw.carrierDead === true,
+      carrierAbandoned: recordRaw.carrierAbandoned === true,
+      carrierRecovered: recordRaw.carrierRecovered === true,
+      carrierArrived: recordRaw.carrierArrived === true,
+      carrierDestructionPending: recordRaw.carrierDestructionPending === true,
+      raiderDead: recordRaw.raiderDead === true,
+      raiderEscaped: recordRaw.raiderEscaped === true,
+      raiderRecoveryClosed: recordRaw.raiderRecoveryClosed === true,
+      carrierPersistenceOwned: recordRaw.carrierPersistenceOwned === true,
+      raiderPersistenceOwned: recordRaw.raiderPersistenceOwned === true,
+      terminal: false,
+      receiptEmitted: false,
+      lossAccountedQty: nonnegativeFreightInt(recordRaw.lossAccountedQty),
+      startedAt: finiteFreightNumber(recordRaw.startedAt, 0),
+      deadlineAt: finiteFreightNumber(recordRaw.deadlineAt, 0),
+      escapeStartedAt: nullableFreightNumber(recordRaw.escapeStartedAt),
+      escapeDeadlineAt: nullableFreightNumber(recordRaw.escapeDeadlineAt),
+      escapeRadius: Math.max(1, finiteFreightNumber(recordRaw.escapeRadius, FREIGHT_CUSTODY_ESCAPE_RADIUS_DEFAULT)),
+      escapeOrigin: finiteFreightVec(recordRaw.escapeOrigin),
+      escapeTarget: finiteFreightVec(recordRaw.escapeTarget),
+      raiderLastPos: finiteFreightVec(recordRaw.raiderLastPos),
+      raiderLastVel: finiteFreightVec(recordRaw.raiderLastVel),
+      transitionSeq: nonnegativeFreightInt(recordRaw.transitionSeq),
+    },
+  };
+}
+
+function normalizeFreightPredation(raw) {
+  return {
+    enabled: raw.enabled === true,
+    carrierRole: boundedFreightString(raw.carrierRole) || 'hauler',
+    raiderRole: boundedFreightString(raw.raiderRole) || 'raider',
+    motive: boundedFreightString(raw.motive) || 'cargo_raid',
+    engagementTrigger: boundedFreightString(raw.engagementTrigger) || 'manifest_predation',
+    attackerDoctrineId: boundedFreightString(raw.attackerDoctrineId),
+    approachTelegraph: boundedFreightString(raw.approachTelegraph),
+    responseWindowS: Math.max(1, finiteFreightNumber(raw.responseWindowS, 1)),
+    objectiveS: Math.max(1, finiteFreightNumber(raw.objectiveS, 90)),
+    leashRadius: Math.max(400, finiteFreightNumber(raw.leashRadius, 2600)),
+    escapeHoldS: Math.max(1, finiteFreightNumber(raw.escapeHoldS, 3)),
+  };
+}
+
+function normalizeFreightManifest(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.lines)) return null;
+  const manifestId = boundedFreightString(raw.manifestId);
+  const freighterKey = boundedFreightString(raw.freighterKey);
+  if (!manifestId || !freighterKey) return null;
+  const lines = raw.lines.slice(0, 8).map((line) => ({
+    commodityId: boundedFreightString(line && line.commodityId),
+    qty: nonnegativeFreightInt(line && line.qty),
+  })).filter((line) => line.commodityId);
+  return {
+    manifestId,
+    freighterKey,
+    role: boundedFreightString(raw.role) || 'hauler',
+    lines,
+    totalQty: nonnegativeFreightInt(raw.totalQty),
+  };
+}
+
+function normalizeFreightVars(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  for (const key of Object.keys(raw).sort().slice(0, 12)) {
+    const safeKey = boundedFreightString(key, 48);
+    const value = raw[key];
+    if (!safeKey || !['string', 'number', 'boolean'].includes(typeof value)) continue;
+    out[safeKey] = typeof value === 'number' ? finiteFreightNumber(value, 0) : value;
+  }
+  return out;
+}
+
+function boundedFreightString(value, max = 160) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function finiteFreightNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function nullableFreightNumber(value) {
+  if (value == null) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function nonnegativeFreightInt(value) {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function finiteFreightVec(value) {
+  if (!value || typeof value !== 'object') return null;
+  const x = Number(value.x), z = Number(value.z);
+  return Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null;
+}
+
 // ═══ STATE ════════════════════════════════════════════════════════════════════════════════════════
 
 function freshState() {
@@ -2009,7 +2484,13 @@ function freshState() {
     named: {},
     externalNamed: {},
     receipts: [],
-    stats: { fired: 0, resolved: 0, fizzled: 0, appliedFreightLossIds: [] },
+    stats: {
+      fired: 0,
+      resolved: 0,
+      fizzled: 0,
+      appliedFreightLossIds: [],
+      openFreightCustodies: [],
+    },
     lastMeaningfulAt: -1e9,
     lastAmbientAt: -1e9,
     lastMajorAt: -1e9,
@@ -2065,6 +2546,7 @@ function clearAllPredationBindings(state, reason = 'lifecycle_boundary') {
 function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
   const data = entity && entity.data;
   if (!data || data.predationEncounterId !== encounterId) return false;
+  const persistedCarrier = persistedFreightCarrierBinding(entity);
   const ai = data.ai;
   if (data.predationRole === 'raider' && ai) {
     ai.passive = true;
@@ -2089,9 +2571,34 @@ function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
     });
   }
   delete data.predationEncounterId;
-  delete data.predationIdentityKey;
+  // A disabled civilian recovery is persisted independently of the transient encounter. Preserve
+  // only its stable carrier key so save rematerialization can rebind the numeric entity id; every
+  // raider/spilled/malformed state still loses predation identity and cannot revive authority.
+  if (!persistedCarrier) delete data.predationIdentityKey;
   delete data.predationRole;
   return true;
+}
+
+function persistedFreightCarrierBinding(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'ship' || entity.team !== 2) return null;
+  const data = entity.data;
+  const ai = data && data.ai;
+  const manifest = data && data.cargoManifest;
+  const custody = data && data.freightCustody;
+  const identityKey = data && data.predationIdentityKey;
+  const role = String(ai && (ai.encounterRole || ai.role) || data && data.role || '').toLowerCase();
+  if (!data || !ai || ai.passive !== true || !/(^|[\s_-])(hauler|freight|freighter)([\s_-]|$)/.test(role)
+    || typeof identityKey !== 'string' || !identityKey
+    || !manifest || typeof manifest.manifestId !== 'string' || !manifest.manifestId
+    || typeof manifest.freighterKey !== 'string' || !manifest.freighterKey
+    || !Array.isArray(manifest.lines) || !manifest.lines.some((line) => (
+      line && typeof line.commodityId === 'string' && Number(line.qty) > 0
+    ))
+    || !custody || custody.status !== 'carrier'
+    || custody.manifestId !== manifest.manifestId
+    || custody.carrierIdentityKey !== identityKey
+    || typeof custody.encounterId !== 'string' || !custody.encounterId) return null;
+  return { data, ai, manifest, custody, identityKey };
 }
 
 function ensureDirectorState(state) {
@@ -2114,6 +2621,10 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.receipts)) d.receipts = [];
   if (!d.stats || typeof d.stats !== 'object') d.stats = { fired: 0, resolved: 0, fizzled: 0 };
   d.stats.appliedFreightLossIds = normalizeAppliedFreightLossIds(d.stats.appliedFreightLossIds, 64);
+  if (!Array.isArray(d.stats.openFreightCustodies)) d.stats.openFreightCustodies = [];
+  if (d.stats.openFreightCustodies.length > FREIGHT_CUSTODY_SAVE_CAP) {
+    d.stats.openFreightCustodies = d.stats.openFreightCustodies.slice(-FREIGHT_CUSTODY_SAVE_CAP);
+  }
   if (!Array.isArray(d.stats.recentFingerprints)) d.stats.recentFingerprints = [];
   if (!Array.isArray(d.stats.recentVarietyKeys)) d.stats.recentVarietyKeys = [];
   if (d.stats.recentFingerprints.length > 12) d.stats.recentFingerprints = d.stats.recentFingerprints.slice(-12);

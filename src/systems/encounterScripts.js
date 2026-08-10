@@ -20,7 +20,7 @@
 //   * passive ships are unrostered, so the director may steer them by writing data.intent
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
-import { NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
+import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
 import { aceById } from '../data/namedAces.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -35,6 +35,7 @@ import { markEntityGhost } from './scanner.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE } from './mines.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
+import { buildEncounterCausality } from '../world/encounterCausality.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -49,6 +50,15 @@ const CONVOY_ARRIVE_R = 240;      // convoy centroid inside this of the endpoint
 const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the convoy "witnessed"
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
 const PREDATION_MIN_RESPONSE_S = 1;
+const FREIGHT_POD_LIMIT = 3;
+const FREIGHT_POD_TTL_S = 90;
+const FREIGHT_CUSTODY_WINDOW_S = 80;
+const FREIGHT_RAIDER_CONTACT_PAD = 1;
+const FREIGHT_RAIDER_ESCAPE_R = 600;
+const FREIGHT_RAIDER_ESCAPE_S = 20;
+const FREIGHT_CARRIER_INSTANCE = Symbol('freightCarrierInstance');
+const FREIGHT_RAIDER_INSTANCE = Symbol('freightRaiderInstance');
+const FREIGHT_POD_INSTANCE = Symbol('freightPodInstance');
 const DIST_TELL_R = 1500;         // scan-pulse inside this of a distress site reads the signal
 const CLAIM_TELEGRAPH_S = 3;      // arrival breath: read formation/motive before weapons open
 const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate retreat
@@ -608,19 +618,29 @@ function convoyFire(d, live, state, isConvoy) {
       out.scanLabel = `Hauler — ${cargo.label}`;
       out.pos = { x: start.x + (rng() - 0.5) * 120 - i * 40, z: start.z + (rng() - 0.5) * 120 };
     } else if (sh.role === 'raider') {
-      // A readable approach curtain behind the carrier. These actors stay passive through the
-      // response window; once the exact selected relation opens, tacticalAI alone owns motion/fire.
-      const trail = 430 + i * 46;
-      const side = (i % 2 === 0 ? -1 : 1) * (90 + Math.floor(i / 2) * 34);
-      out.pos = {
-        x: start.x - routeX * trail + sideX * side,
-        z: start.z - routeZ * trail + sideZ * side,
-      };
+      out.pos = { ...start }; // resolved carrier-relative below once the full composition is known
     } else {
       out.pos = { x: start.x + (rng() - 0.5) * 200, z: start.z + (rng() - 0.5) * 200 };
     }
     return out;
   });
+  const carrierStart = ships.find((ship) => ship.role === 'hauler')?.pos || start;
+  const curtainAngles = [-0.87, -0.29, 0.29, 0.87];
+  let curtainIndex = 0;
+  for (const ship of ships) {
+    if (ship.role !== 'raider') continue;
+    // Keep the threat readable in the same camera bubble as its prey. Four points across a rear arc
+    // remain 125–135 WU from the carrier and at least ~70 WU apart without consuming another RNG.
+    const angle = curtainAngles[curtainIndex % curtainAngles.length];
+    const radius = 125 + (curtainIndex % 2) * 10;
+    const trail = Math.cos(angle) * radius;
+    const side = Math.sin(angle) * radius;
+    ship.pos = {
+      x: carrierStart.x - routeX * trail + sideX * side,
+      z: carrierStart.z - routeZ * trail + sideZ * side,
+    };
+    curtainIndex++;
+  }
   const ids = d.spawnShips(live, ships);
   if (!ids.length) return d.abort(live, 'no_budget');
 
@@ -665,6 +685,11 @@ function attachConvoyCargoManifests(d, live, commodityId, perHauler) {
       ? aggregate.manifestId
       : `${aggregate.manifestId}:carrier:${i}`;
     entity.data = entity.data || {};
+    // This authored manifest is the only physical cargo reward owner for the civilian hull. Keep
+    // lootTableId as its render/archetype identity, but suppress the generic combat bounty/roll.
+    entity.data.bountyCr = 0;
+    entity.data.loot = null;
+    entity.data.freightRewardOwner = 'manifest_custody';
     entity.data.cargoManifest = {
       manifestId,
       freighterKey: haulers.length === 1
@@ -717,6 +742,16 @@ function initializeConvoyPredation(d, live, state) {
   // hull for the bounded theft relation. A malformed all-screen roster fails closed.
   const raider = raiders.find((candidate) => !isPdScreenActor(candidate));
   if (!raider) return false;
+  Object.defineProperty(target, FREIGHT_CARRIER_INSTANCE, {
+    value: target.data.predationIdentityKey,
+    configurable: true,
+  });
+  target.data.freightCustodyCarrierIdentityKey = target.data.predationIdentityKey;
+  Object.defineProperty(raider, FREIGHT_RAIDER_INSTANCE, {
+    value: raider.data.predationIdentityKey,
+    configurable: true,
+  });
+  raider.data.freightCustodyRaiderIdentityKey = raider.data.predationIdentityKey;
   const ai = raider.data.ai;
   const responseWindowS = Math.max(
     PREDATION_MIN_RESPONSE_S,
@@ -899,39 +934,1060 @@ function compareEntityIds(a, b) {
   return String(a && a.id).localeCompare(String(b && b.id));
 }
 
+function selectedFreightCarrier(live, state, allowDead = false) {
+  if (!live || !live.data || !state || !state.entities) return null;
+  const id = live.data.predationTargetId;
+  const identity = live.data.predationTargetIdentityKey;
+  const entity = id == null ? null : state.entities.get(id);
+  if (!entity || (!allowDead && entity.alive === false) || live.roles[id] !== 'hauler') return null;
+  const data = entity.data || {};
+  if (!identity || data.predationIdentityKey !== identity
+    || data.freightCustodyCarrierIdentityKey !== identity
+    || entity[FREIGHT_CARRIER_INSTANCE] !== identity) return null;
+  return entity;
+}
+
+function selectedFreightRaider(live, state, allowDead = false) {
+  if (!live || !live.data || !state || !state.entities) return null;
+  const id = live.data.predationRaiderId;
+  const identity = live.data.predationRaiderIdentityKey;
+  const entity = id == null ? null : state.entities.get(id);
+  if (!entity || (!allowDead && entity.alive === false) || live.roles[id] !== 'raider') return null;
+  const data = entity.data || {};
+  if (!identity || data.freightCustodyRaiderIdentityKey !== identity
+    || entity[FREIGHT_RAIDER_INSTANCE] !== identity) return null;
+  return entity;
+}
+
+function authoredManifestLine(carrier) {
+  const manifest = carrier && carrier.data && carrier.data.cargoManifest;
+  if (!manifest || typeof manifest.manifestId !== 'string' || !manifest.manifestId
+    || typeof manifest.freighterKey !== 'string' || !manifest.freighterKey
+    || !Array.isArray(manifest.lines)) return null;
+  const lines = manifest.lines.filter((line) => (
+    line && typeof line.commodityId === 'string' && line.commodityId && Number(line.qty) > 0
+  ));
+  if (!lines.length || lines.some((line) => line.commodityId !== lines[0].commodityId)) return null;
+  const qty = lines.reduce((sum, line) => sum + Math.max(0, Math.floor(Number(line.qty) || 0)), 0);
+  if (qty <= 0) return null;
+  return { manifest, commodityId: lines[0].commodityId, qty };
+}
+
+function ensureFreightCargoCustody(d, live, state, carrier) {
+  const existing = live.data.freightCargoCustody;
+  if (existing) {
+    return existing.carrierId === carrier.id
+      && existing.carrierIdentityKey === carrier.data.predationIdentityKey
+      && existing.manifestId === carrier.data.cargoManifest?.manifestId
+      ? existing
+      : null;
+  }
+  const source = authoredManifestLine(carrier);
+  if (!source) return null;
+  const carrierIdentityKey = carrier.data.predationIdentityKey;
+  const custodyId = `${source.manifest.manifestId}:custody:${carrierIdentityKey}`;
+  const now = d.now();
+  const record = {
+    version: 1,
+    custodyId,
+    receiptId: `${custodyId}:receipt`,
+    encounterId: live.id,
+    carrierId: carrier.id,
+    carrierIdentityKey,
+    raiderId: live.data.predationRaiderId,
+    raiderIdentityKey: live.data.predationRaiderIdentityKey,
+    manifestId: source.manifest.manifestId,
+    freighterKey: source.manifest.freighterKey,
+    commodityId: source.commodityId,
+    initialQty: source.qty,
+    carrierQty: source.qty,
+    playerCollectedQty: 0,
+    raiderSecuredQty: 0,
+    stationRecoveredQty: 0,
+    deliveredQty: 0,
+    lostQty: 0,
+    pods: [],
+    nextPodIndex: 0,
+    respillSeq: 0,
+    disableSpilled: false,
+    deathSpilled: false,
+    spillWindowClosed: false,
+    carrierDead: false,
+    carrierAbandoned: false,
+    carrierRecovered: false,
+    carrierArrived: false,
+    carrierDestructionPending: false,
+    raiderDead: false,
+    raiderEscaped: false,
+    raiderRecoveryClosed: false,
+    carrierPersistenceOwned: false,
+    raiderPersistenceOwned: false,
+    terminal: false,
+    receiptEmitted: false,
+    lossAccountedQty: 0,
+    startedAt: now,
+    deadlineAt: now + FREIGHT_CUSTODY_WINDOW_S,
+    escapeStartedAt: null,
+    escapeDeadlineAt: null,
+    escapeRadius: FREIGHT_RAIDER_ESCAPE_R,
+    escapeOrigin: null,
+    escapeTarget: null,
+    transitionSeq: 0,
+  };
+  record.carrierPersistenceOwned = claimFreightCustodyPersistence(carrier, record, 'carrier');
+  live.data.freightCargoCustody = record;
+  return record;
+}
+
+function splitFreightQty(qty, slots) {
+  const count = Math.max(0, Math.min(slots | 0, qty | 0));
+  if (!count) return [];
+  const base = Math.floor(qty / count);
+  const extra = qty % count;
+  return Array.from({ length: count }, (_, index) => base + (index < extra ? 1 : 0));
+}
+
+function updateCarrierManifest(record, carrier) {
+  const manifest = carrier && carrier.data && carrier.data.cargoManifest;
+  if (!manifest || manifest.manifestId !== record.manifestId || manifest.freighterKey !== record.freighterKey) return false;
+  let assigned = false;
+  for (const line of manifest.lines || []) {
+    if (!line || line.commodityId !== record.commodityId) continue;
+    line.qty = assigned ? 0 : record.carrierQty;
+    assigned = true;
+  }
+  if (!assigned && record.carrierQty > 0) return false;
+  manifest.totalQty = record.carrierQty;
+  const custody = carrier.data.freightCustody;
+  if (custody && custody.manifestId === record.manifestId
+    && custody.carrierIdentityKey === record.carrierIdentityKey) {
+    custody.status = record.carrierQty > 0 ? 'carrier' : 'spilled';
+    custody.carrierId = carrier.id;
+  }
+  return true;
+}
+
+function claimFreightCustodyPersistence(entity, record, role) {
+  if (!entity || !record) return false;
+  const alreadyPersistent = entity.flags && entity.flags.persistent === true;
+  // surrenderRecovery is registered first in production and may be the owner that made this
+  // disabled carrier persistent. Adopt that exact owned flag before installing our handoff marker;
+  // an unrelated pre-persistent actor (including a C annotation with ownedPersistent=false) stays
+  // externally owned and must not have its persistence cleared by freight custody later.
+  const adoptsCivilianRecoveryPersistence = alreadyPersistent
+    && activeCivilianRecoveryOwnsPersistence(entity);
+  entity.flags = entity.flags || {};
+  entity.flags.persistent = true;
+  const data = entity.data || (entity.data = {});
+  data.freightCustodyPersistence = { custodyId: record.custodyId, role };
+  return !alreadyPersistent || adoptsCivilianRecoveryPersistence;
+}
+
+function activeCivilianRecoveryOwnsPersistence(entity) {
+  const annotation = entity && entity.data && entity.data.surrenderRecovery;
+  return !!(annotation && annotation.recoveryKind === 'civilian_disabled'
+    && annotation.ownedPersistent === true
+    && annotation.phase !== 'lost' && annotation.phase !== 'recovered');
+}
+
+function releaseFreightCustodyPersistence(entity, record, owned) {
+  if (!entity || !record) return false;
+  const data = entity.data || {};
+  const marker = data.freightCustodyPersistence;
+  if (marker && marker.custodyId === record.custodyId) delete data.freightCustodyPersistence;
+  if (!owned || activeCivilianRecoveryOwnsPersistence(entity) || !entity.flags) return false;
+  delete entity.flags.persistent;
+  return true;
+}
+
+function releaseFreightCustodyActors(live, state, record) {
+  if (!record || !state || !state.entities) return;
+  const carrier = selectedFreightCarrier(live, state, true);
+  const raider = selectedFreightRaider(live, state, true);
+  releaseFreightCustodyPersistence(carrier, record, record.carrierPersistenceOwned);
+  releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+  record.carrierPersistenceOwned = false;
+  record.raiderPersistenceOwned = false;
+}
+
+function liveFreightPodQty(record) {
+  return record.pods.reduce((sum, pod) => sum + (pod.status === 'live' ? pod.qty : 0), 0);
+}
+
+function freightCustodySnapshot(record, reason, now) {
+  const livePodQty = liveFreightPodQty(record);
+  const accountedQty = record.carrierQty + livePodQty + record.playerCollectedQty
+    + record.raiderSecuredQty + record.stationRecoveredQty + record.deliveredQty + record.lostQty;
+  return {
+    receiptId: record.receiptId,
+    custodyId: record.custodyId,
+    encounterId: record.encounterId,
+    carrierId: record.carrierId,
+    carrierIdentityKey: record.carrierIdentityKey,
+    raiderId: record.raiderId,
+    manifestId: record.manifestId,
+    freighterKey: record.freighterKey,
+    commodityId: record.commodityId,
+    initialQty: record.initialQty,
+    carrierRemainingQty: record.carrierQty,
+    livePodQty,
+    playerCollectedQty: record.playerCollectedQty,
+    raiderSecuredQty: record.raiderSecuredQty,
+    stationRecoveredQty: record.stationRecoveredQty,
+    deliveredQty: record.deliveredQty,
+    lostQty: record.lostQty,
+    accountedQty,
+    podCount: record.pods.length,
+    livePodCount: record.pods.filter((pod) => pod.status === 'live').length,
+    terminal: record.terminal,
+    reason,
+    transitionSeq: record.transitionSeq,
+    t: now,
+  };
+}
+
+function publishFreightCustody(d, live, record, reason, carrier = null) {
+  record.transitionSeq += 1;
+  if (typeof d.persistOpenFreightCustody === 'function') d.persistOpenFreightCustody(live, record);
+  const snapshot = freightCustodySnapshot(record, reason, d.now());
+  d.emit('freight:custodyChanged', snapshot);
+  d.emit('freight:manifestRemaining', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    carrierId: record.carrierId,
+    carrierIdentityKey: record.carrierIdentityKey,
+    manifestId: record.manifestId,
+    freighterKey: record.freighterKey,
+    commodityId: record.commodityId,
+    remainingQty: record.carrierQty,
+    manifest: carrier && carrier.data && carrier.data.cargoManifest
+      ? {
+          manifestId: record.manifestId,
+          freighterKey: record.freighterKey,
+          role: carrier.data.cargoManifest.role,
+          lines: carrier.data.cargoManifest.lines.map((line) => ({ ...line })),
+          totalQty: carrier.data.cargoManifest.totalQty,
+        }
+      : null,
+    reason,
+    t: d.now(),
+  });
+  return snapshot;
+}
+
+function accountFreightDiversion(d, live, record) {
+  if (!record || record.lossAccountedQty > 0) return false;
+  const divertedQty = record.playerCollectedQty + record.raiderSecuredQty + record.lostQty;
+  if (divertedQty <= 0) return false;
+  const manifest = {
+    manifestId: record.manifestId,
+    freighterKey: record.freighterKey,
+    role: 'hauler',
+    lines: [{ commodityId: record.commodityId, qty: divertedQty }],
+    totalQty: divertedQty,
+  };
+  if (!d.freightLoss(live, {
+    manifest,
+    freighterKey: record.freighterKey,
+    stationId: live.data.destId,
+    killerId: live.data.lossKillerId,
+  })) return false;
+  record.lossAccountedQty = divertedQty;
+  return true;
+}
+
+function finishFreightCustody(d, live, record, outcome) {
+  if (!record || record.terminal) return false;
+  record.terminal = true;
+  record.outcome = outcome;
+  record.resolvedAt = d.now();
+  if (typeof d.clearOpenFreightCustody === 'function') d.clearOpenFreightCustody(record.custodyId);
+  releaseFreightCustodyActors(live, d.state, record);
+  accountFreightDiversion(d, live, record);
+  const snapshot = publishFreightCustody(d, live, record, outcome);
+  if (!record.receiptEmitted) {
+    record.receiptEmitted = true;
+    d.emit('freight:custodyReceipt', { ...snapshot, outcome });
+  }
+  return true;
+}
+
+function spawnFreightCargo(d, live, state, carrier, cause) {
+  if (!live.plan.predation || live.plan.predation.enabled !== true) return false;
+  const record = ensureFreightCargoCustody(d, live, state, carrier);
+  if (!record || record.terminal || record.carrierQty <= 0) return false;
+  if (cause === 'drive_disabled') {
+    if (record.disableSpilled) return false;
+    record.disableSpilled = true; // reserve before spawning; duplicate bus events cannot re-enter
+  } else if (cause === 'carrier_destroyed') {
+    if (record.deathSpilled) return false;
+    record.deathSpilled = true;
+    record.carrierDead = true;
+  } else {
+    return false;
+  }
+
+  const available = Math.max(0, FREIGHT_POD_LIMIT - record.pods.length);
+  const requested = cause === 'drive_disabled'
+    ? Math.max(1, Math.floor(record.carrierQty / 2))
+    : record.carrierQty;
+  const chunks = splitFreightQty(requested, cause === 'drive_disabled' ? Math.min(1, available) : available);
+  const rng = d.stream(live, `freight-cargo:${cause}`);
+  let spawnedQty = 0;
+  for (const qty of chunks) {
+    const podIndex = record.nextPodIndex++;
+    const podIdentity = `${record.custodyId}:pod:${podIndex}`;
+    const angle = rng() * Math.PI * 2;
+    const radius = (carrier.radius || 8) + 5 + rng() * 5;
+    const speed = 7 + rng() * 7;
+    const pod = d.spawnFreightPickup(live, {
+      commodityId: record.commodityId,
+      qty,
+      ttlS: FREIGHT_POD_TTL_S,
+      pos: {
+        x: carrier.pos.x + Math.cos(angle) * radius,
+        z: carrier.pos.z + Math.sin(angle) * radius,
+      },
+      vel: {
+        x: (carrier.vel && carrier.vel.x || 0) + Math.cos(angle) * speed,
+        z: (carrier.vel && carrier.vel.z || 0) + Math.sin(angle) * speed,
+      },
+      custody: {
+        status: 'live',
+        podIdentity,
+        custodyId: record.custodyId,
+        encounterId: live.id,
+        manifestId: record.manifestId,
+        freighterKey: record.freighterKey,
+        carrierIdentityKey: record.carrierIdentityKey,
+        commodityId: record.commodityId,
+        podIndex,
+        cause,
+      },
+    });
+    if (!pod) continue;
+    Object.defineProperty(pod, FREIGHT_POD_INSTANCE, { value: podIdentity, configurable: true });
+    record.pods.push({ podIdentity, entityId: pod.id, podIndex, instanceSeq: 0, qty, status: 'live', cause });
+    spawnedQty += qty;
+  }
+  if (spawnedQty <= 0) return false;
+  record.carrierQty -= spawnedQty;
+  updateCarrierManifest(record, carrier);
+  clearConvoyPredation(d, live, cause === 'carrier_destroyed' ? 'target_destroyed' : 'target_disabled');
+  publishFreightCustody(d, live, record, cause, carrier);
+  d.emit('freight:cargoSpilled', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    manifestId: record.manifestId,
+    carrierId: record.carrierId,
+    cause,
+    qty: spawnedQty,
+    podCount: record.pods.length,
+    t: d.now(),
+  });
+  return true;
+}
+
+function podEntityForRecord(state, record, pod) {
+  const entity = state.entities && state.entities.get(pod.entityId);
+  const annotation = entity && entity.data && entity.data.freightCustodyPod;
+  return entity && entity.alive !== false && entity.type === 'pickup'
+    && entity[FREIGHT_POD_INSTANCE] === pod.podIdentity
+    && annotation && annotation.podIdentity === pod.podIdentity
+    && annotation.custodyId === record.custodyId
+    && Math.floor(Number(annotation.qty) || 0) === pod.qty
+    && Math.floor(Number(entity.data.amount) || 0) === pod.qty
+    ? entity
+    : null;
+}
+
+function settleFreightPod(d, live, state, record, pod, status, reason) {
+  if (!pod || pod.status !== 'live') return false;
+  const entity = podEntityForRecord(state, record, pod);
+  if (!entity) return false;
+  pod.status = status;
+  if (status === 'player_collected') record.playerCollectedQty += pod.qty;
+  else if (status === 'raider_secured') {
+    record.raiderSecuredQty += pod.qty;
+    const raider = selectedFreightRaider(live, state);
+    if (raider) {
+      record.raiderId = raider.id;
+      record.raiderPersistenceOwned = claimFreightCustodyPersistence(raider, record, 'secured_raider')
+        || record.raiderPersistenceOwned;
+    }
+  }
+  else record.lostQty += pod.qty;
+  const annotation = entity.data.freightCustodyPod;
+  annotation.status = status;
+  entity.collides = false;
+  if (entity.flags) delete entity.flags.persistent;
+  if (status !== 'player_collected') d.retireFreightPickup(entity, status);
+  publishFreightCustody(d, live, record, reason);
+  return true;
+}
+
+function collectFreightPod(d, live, state, payload) {
+  const record = live.data.freightCargoCustody;
+  if (!record || record.terminal || !payload || payload.pickupId == null) return false;
+  const pod = record.pods.find((candidate) => candidate.entityId === payload.pickupId);
+  if (!pod || pod.status !== 'live' || payload.kind !== 'cargo'
+    || payload.commodityId !== record.commodityId || Math.floor(Number(payload.amount) || 0) !== pod.qty) return false;
+  if (payload.collectorId === state.playerId) {
+    const accepted = Number(payload.acceptedAmount);
+    const rejected = Number(payload.rejectedAmount);
+    if (!Number.isFinite(accepted) || !Number.isFinite(rejected)
+      || Math.floor(accepted) !== accepted || Math.floor(rejected) !== rejected
+      || accepted < 0 || rejected < 0 || accepted + rejected !== pod.qty) return false;
+    if (accepted <= 0) return false;
+    if (rejected > 0) {
+      const entity = podEntityForRecord(state, record, pod);
+      if (!entity) return false;
+      record.playerCollectedQty += accepted;
+      pod.qty = rejected;
+      entity.data.freightCustodyPod.qty = rejected;
+      if (typeof d.resizeFreightPickup === 'function') {
+        d.resizeFreightPickup(entity, record.commodityId, rejected);
+      } else {
+        entity.data.amount = rejected;
+      }
+      publishFreightCustody(d, live, record, 'player_partially_collected');
+      return true;
+    }
+    return settleFreightPod(d, live, state, record, pod, 'player_collected', 'player_collected');
+  }
+  const raider = selectedFreightRaider(live, state);
+  if (raider && payload.collectorId === raider.id) {
+    payload.acceptedAmount = pod.qty;
+    payload.rejectedAmount = 0;
+    return settleFreightPod(d, live, state, record, pod, 'raider_secured', 'raider_secured');
+  }
+  // Physics asks every overlapping ship through the same synchronous acceptance payload. Only the
+  // exact stable raider may take manifest custody; other NPC overlaps reject the pickup so the
+  // selected hull can still make real contact on a later physics step.
+  payload.acceptedAmount = 0;
+  payload.rejectedAmount = pod.qty;
+  payload.acceptanceRetryAt = d.now() + 0.25;
+  return false;
+}
+
+function freightRaiderTethered(state, entityId) {
+  const playerEntity = state.entities && state.entities.get(state.playerId);
+  const playerTether = state.player && state.player.tether || playerEntity && playerEntity.tether;
+  if (playerTether && playerTether.active === true && playerTether.targetId === entityId) return true;
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!attachments || typeof attachments !== 'object') return false;
+  return Object.values(attachments).some((attachment) => (
+    attachment && attachment.state === 'active'
+      && (attachment.ownerId === entityId || attachment.targetId === entityId)
+  ));
+}
+
+function freightRaiderIneligibleReason(state, raider) {
+  if (!raider) return 'identity_lost';
+  if (raider.alive === false) return 'destroyed';
+  if (raider.disabled === true) return 'drive_disabled';
+  const runtime = state.combat && state.combat.entities && state.combat.entities[String(raider.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  if (runtime && runtime.capabilities && runtime.capabilities.drive === false
+    || drive && drive.effectiveDisabled === true) return 'drive_disabled';
+  if (freightRaiderTethered(state, raider.id)) return 'tethered';
+  return null;
+}
+
+function respillFreightFromRaider(d, live, state, record, raider, reason) {
+  if (!record || record.terminal || record.raiderSecuredQty <= 0) return false;
+  const secured = record.pods
+    .filter((pod) => pod.status === 'raider_secured')
+    .sort((a, b) => a.podIndex - b.podIndex);
+  if (!secured.length) return false;
+  const liveCount = record.pods.filter((pod) => pod.status === 'live').length;
+  const slots = Math.max(0, FREIGHT_POD_LIMIT - liveCount);
+  if (slots <= 0) return false;
+  const sourcePos = raider && raider.pos || record.raiderLastPos || live.anchor || { x: 0, z: 0 };
+  const sourceVel = raider && raider.vel || { x: 0, z: 0 };
+  const respillSeq = record.respillSeq++;
+  const rng = d.stream(live, `freight-cargo:raider-respill:${respillSeq}:${reason}`);
+  let respilledQty = 0;
+  let respilledCount = 0;
+  for (const podRecord of secured.slice(0, slots)) {
+    const instanceSeq = Math.max(0, Number(podRecord.instanceSeq) || 0) + 1;
+    const podIdentity = `${record.custodyId}:pod:${podRecord.podIndex}:instance:${instanceSeq}`;
+    const angle = rng() * Math.PI * 2;
+    const radius = (raider && raider.radius || 8) + 5 + rng() * 5;
+    const speed = 7 + rng() * 7;
+    const entity = d.spawnFreightPickup(live, {
+      commodityId: record.commodityId,
+      qty: podRecord.qty,
+      ttlS: FREIGHT_POD_TTL_S,
+      pos: {
+        x: sourcePos.x + Math.cos(angle) * radius,
+        z: sourcePos.z + Math.sin(angle) * radius,
+      },
+      vel: {
+        x: (sourceVel.x || 0) + Math.cos(angle) * speed,
+        z: (sourceVel.z || 0) + Math.sin(angle) * speed,
+      },
+      custody: {
+        status: 'live',
+        podIdentity,
+        custodyId: record.custodyId,
+        encounterId: live.id,
+        manifestId: record.manifestId,
+        freighterKey: record.freighterKey,
+        carrierIdentityKey: record.carrierIdentityKey,
+        commodityId: record.commodityId,
+        podIndex: podRecord.podIndex,
+        cause: reason,
+      },
+    });
+    if (!entity) continue;
+    Object.defineProperty(entity, FREIGHT_POD_INSTANCE, { value: podIdentity, configurable: true });
+    podRecord.entityId = entity.id;
+    podRecord.podIdentity = podIdentity;
+    podRecord.instanceSeq = instanceSeq;
+    podRecord.status = 'live';
+    podRecord.cause = reason;
+    record.raiderSecuredQty -= podRecord.qty;
+    respilledQty += podRecord.qty;
+    respilledCount++;
+  }
+  if (respilledQty <= 0) return false;
+  record.raiderSecuredQty = Math.max(0, record.raiderSecuredQty);
+  if (record.raiderSecuredQty === 0) {
+    releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+    record.raiderPersistenceOwned = false;
+  }
+  record.escapeStartedAt = null;
+  record.escapeDeadlineAt = null;
+  record.escapeOrigin = null;
+  record.escapeTarget = null;
+  if (reason === 'raider_escape_stalled' || reason === 'custody_timeout_respill') {
+    record.raiderRecoveryClosed = true;
+  }
+  if (raider && raider.alive !== false && raider.data) {
+    const ai = raider.data.ai || (raider.data.ai = {});
+    ai.passive = true;
+    ai.predationStatus = 'cargo_respilled';
+    setEntityDoctrine(raider, {
+      activity: {
+        kind: ActivityKind.DISENGAGE,
+        reason: `${live.shapeId}:freight_${reason}`,
+        anchor: sourcePos,
+        leashRadius: Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600),
+        startedTick: state.tick | 0,
+        targetId: null,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+  }
+  publishFreightCustody(d, live, record, reason);
+  d.emit('freight:cargoSpilled', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    manifestId: record.manifestId,
+    carrierId: record.carrierId,
+    raiderId: record.raiderId,
+    cause: reason,
+    qty: respilledQty,
+    podCount: liveCount + respilledCount,
+    t: d.now(),
+  });
+  return true;
+}
+
+function beginFreightRaiderEscape(d, live, state, record, raider) {
+  if (record.escapeStartedAt != null) return;
+  const rng = d.stream(live, 'freight-raider-escape');
+  let dx = raider.pos.x - (live.anchor && live.anchor.x || 0);
+  let dz = raider.pos.z - (live.anchor && live.anchor.z || 0);
+  let len = Math.hypot(dx, dz);
+  if (!(len > 0.001)) {
+    const angle = rng() * Math.PI * 2;
+    dx = Math.cos(angle); dz = Math.sin(angle); len = 1;
+  }
+  const escapeRadius = FREIGHT_RAIDER_ESCAPE_R;
+  record.escapeStartedAt = d.now();
+  record.escapeDeadlineAt = d.now() + FREIGHT_RAIDER_ESCAPE_S;
+  record.escapeRadius = escapeRadius;
+  record.escapeOrigin = { x: raider.pos.x, z: raider.pos.z };
+  record.escapeTarget = {
+    x: raider.pos.x + dx / len * escapeRadius * 1.25,
+    z: raider.pos.z + dz / len * escapeRadius * 1.25,
+  };
+  const ai = raider.data.ai || (raider.data.ai = {});
+  ai.passive = false;
+  ai.motiveSatisfied = false;
+  ai.pirateDisengaged = false;
+  ai.predationStatus = 'cargo_escape';
+  setEntityDoctrine(raider, {
+    activity: {
+      kind: ActivityKind.FLEE,
+      reason: `${live.shapeId}:freight_custody_escape`,
+      anchor: record.escapeTarget,
+      leashRadius: escapeRadius * 1.5,
+      startedTick: state.tick | 0,
+      deadlineTick: (state.tick | 0) + Math.ceil(FREIGHT_RAIDER_ESCAPE_S * 60),
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+  publishFreightCustody(d, live, record, 'raider_escape_started');
+}
+
+function tickFreightCargoCustody(d, live, state, now) {
+  const record = live.data.freightCargoCustody;
+  if (!record || record.terminal) return;
+
+  for (const pod of record.pods) {
+    if (pod.status !== 'live') continue;
+    const entity = podEntityForRecord(state, record, pod);
+    if (!entity) {
+      pod.status = 'lost';
+      record.lostQty += pod.qty;
+      publishFreightCustody(d, live, record, 'pod_lost');
+    }
+  }
+
+  let livePods = record.pods
+    .filter((pod) => pod.status === 'live')
+    .map((pod) => ({ pod, entity: podEntityForRecord(state, record, pod) }))
+    .filter((entry) => entry.entity);
+  const raider = selectedFreightRaider(live, state, true);
+  if (raider) {
+    record.raiderLastPos = { x: raider.pos.x, z: raider.pos.z };
+    record.raiderLastVel = { x: raider.vel && raider.vel.x || 0, z: raider.vel && raider.vel.z || 0 };
+  }
+  const raiderIneligible = record.raiderEscaped ? null : freightRaiderIneligibleReason(state, raider);
+  if (raiderIneligible === 'destroyed' || raiderIneligible === 'identity_lost') record.raiderDead = true;
+  if (raiderIneligible && record.raiderSecuredQty > 0 && !record.raiderEscaped) {
+    respillFreightFromRaider(d, live, state, record, raider, `raider_${raiderIneligible}`);
+    livePods = record.pods
+      .filter((pod) => pod.status === 'live')
+      .map((pod) => ({ pod, entity: podEntityForRecord(state, record, pod) }))
+      .filter((entry) => entry.entity);
+  }
+  const operationalRaider = !raiderIneligible && !record.raiderEscaped && !record.raiderRecoveryClosed
+    ? raider
+    : null;
+
+  if (livePods.length && operationalRaider) {
+    const ai = operationalRaider.data.ai || (operationalRaider.data.ai = {});
+    ai.passive = false;
+    ai.motiveSatisfied = false;
+    ai.pirateDisengaged = false;
+    ai.predationStatus = 'cargo_recovery';
+    livePods.sort((a, b) => {
+      const ad = dist2(operationalRaider.pos.x, operationalRaider.pos.z, a.entity.pos.x, a.entity.pos.z);
+      const bd = dist2(operationalRaider.pos.x, operationalRaider.pos.z, b.entity.pos.x, b.entity.pos.z);
+      return ad - bd || a.pod.podIndex - b.pod.podIndex;
+    });
+    const nearest = livePods[0];
+    const contactRange = Math.max(
+      1,
+      (Number(operationalRaider.radius) || 0) + (Number(nearest.entity.radius) || 0)
+        - FREIGHT_RAIDER_CONTACT_PAD,
+    );
+    setEntityDoctrine(operationalRaider, {
+      activity: {
+        kind: ActivityKind.TRANSIT,
+        reason: `${live.shapeId}:freight_pod_recovery`,
+        anchor: nearest.entity.pos,
+        leashRadius: Math.max(700, Number(live.plan.predation && live.plan.predation.leashRadius) || 2600),
+        preferredRange: contactRange,
+        startedTick: state.tick | 0,
+        targetId: nearest.entity.id,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+  }
+
+  const remainingLivePods = record.pods.some((pod) => pod.status === 'live');
+  if (!remainingLivePods && record.raiderSecuredQty > 0 && operationalRaider) {
+    beginFreightRaiderEscape(d, live, state, record, operationalRaider);
+    const escapeRadius = Math.max(1, Number(record.escapeRadius) || FREIGHT_RAIDER_ESCAPE_R);
+    const escapedLeash = dist2(
+      operationalRaider.pos.x,
+      operationalRaider.pos.z,
+      record.escapeOrigin.x,
+      record.escapeOrigin.z,
+    ) >= escapeRadius * escapeRadius;
+    if (!record.raiderEscaped && escapedLeash) {
+      record.raiderEscaped = true;
+      releaseFreightCustodyPersistence(operationalRaider, record, record.raiderPersistenceOwned);
+      record.raiderPersistenceOwned = false;
+      operationalRaider.data.despawnAt = now + 0.5;
+      d.emit('freight:raiderEscaped', {
+        encounterId: live.id,
+        custodyId: record.custodyId,
+        raiderId: operationalRaider.id,
+        qty: record.raiderSecuredQty,
+        reason: 'leash',
+        t: now,
+      });
+      if (record.carrierDead || record.carrierRecovered || record.carrierQty <= 0) {
+        finishFreightCustody(d, live, record,
+          record.playerCollectedQty > 0 || record.stationRecoveredQty > 0 ? 'split_custody' : 'raider_escaped');
+      } else {
+        publishFreightCustody(d, live, record, 'raider_escaped');
+      }
+      return;
+    }
+    if (!record.raiderEscaped && now >= record.escapeDeadlineAt) {
+      respillFreightFromRaider(d, live, state, record, operationalRaider, 'raider_escape_stalled');
+      return;
+    }
+  }
+
+  if (!remainingLivePods && record.raiderSecuredQty === 0
+    && (record.carrierDead || record.carrierRecovered || record.carrierAbandoned || record.carrierArrived)) {
+    finishFreightCustody(d, live, record,
+      record.playerCollectedQty > 0 ? 'player_recovered' : (record.carrierRecovered ? 'lawful_recovery' : 'lost'));
+    return;
+  }
+
+  if (now >= record.deadlineAt && !record.spillWindowClosed) {
+    if (record.raiderSecuredQty > 0 && !record.raiderEscaped) {
+      respillFreightFromRaider(d, live, state, record, operationalRaider || raider, 'custody_timeout_respill');
+    }
+    for (const pod of record.pods) {
+      if (pod.status !== 'live') continue;
+      const entity = podEntityForRecord(state, record, pod);
+      pod.status = 'lost';
+      record.lostQty += pod.qty;
+      if (entity) d.retireFreightPickup(entity, 'custody_timeout');
+    }
+    const carrier = selectedFreightCarrier(live, state, true);
+    const carrierCannotContinue = record.carrierDead || record.carrierAbandoned
+      || !carrier || carrier.alive === false || convoyTargetDisabled(state, carrier);
+    if (carrierCannotContinue && record.carrierQty > 0) {
+      record.lostQty += record.carrierQty;
+      record.carrierQty = 0;
+      record.carrierAbandoned = true;
+      if (carrier) updateCarrierManifest(record, carrier);
+    }
+    record.spillWindowClosed = true;
+    if (!carrierCannotContinue && record.carrierQty > 0) {
+      publishFreightCustody(d, live, record, 'custody_window_closed', carrier);
+      return;
+    }
+    finishFreightCustody(d, live, record,
+      record.raiderSecuredQty > 0 ? 'raider_secured' : (record.playerCollectedQty > 0 ? 'partial_recovery' : 'timed_out'));
+  }
+}
+
+function closeFreightCargoCustody(d, live, state, reason) {
+  const record = live.data.freightCargoCustody;
+  if (!record || record.terminal) return false;
+  for (const pod of record.pods) {
+    if (pod.status !== 'live') continue;
+    const entity = podEntityForRecord(state, record, pod);
+    pod.status = 'lost';
+    record.lostQty += pod.qty;
+    if (entity) d.retireFreightPickup(entity, reason);
+  }
+  if (record.carrierDead && record.carrierQty > 0) {
+    record.lostQty += record.carrierQty;
+    record.carrierQty = 0;
+  }
+  return finishFreightCustody(d, live, record, reason);
+}
+
+function restoreFreightCargoCustody(d, state, envelope) {
+  if (!d || !state || !state.entities || !envelope || !envelope.live || !envelope.record) return null;
+  const savedLive = envelope.live;
+  const savedRecord = envelope.record;
+  const shape = ENCOUNTERS[savedLive.shapeId];
+  if (!shape || (savedLive.script !== 'convoy' && savedLive.script !== 'traderRun')) return null;
+  const entities = Array.from(state.entities.values()).filter((entity) => entity && entity.alive !== false);
+  const carrierMatches = entities.filter((entity) => {
+    const data = entity.data || {};
+    const manifest = data.cargoManifest;
+    return entity.type === 'ship' && entity.team === 2
+      && data.freightCustodyCarrierIdentityKey === savedRecord.carrierIdentityKey
+      && manifest && manifest.manifestId === savedRecord.manifestId
+      && manifest.freighterKey === savedRecord.freighterKey;
+  });
+  const carrierRequired = savedRecord.carrierQty > 0 && !savedRecord.carrierDead
+    && !savedRecord.carrierRecovered && !savedRecord.carrierArrived && !savedRecord.carrierAbandoned;
+  if (carrierMatches.length > 1 || (carrierRequired && carrierMatches.length !== 1)) return null;
+  const carrier = carrierMatches[0] || null;
+
+  const raiderMatches = entities.filter((entity) => (
+    entity.type === 'ship'
+    && entity.data && entity.data.freightCustodyRaiderIdentityKey === savedRecord.raiderIdentityKey
+  ));
+  const raiderRequired = savedRecord.raiderSecuredQty > 0 && !savedRecord.raiderEscaped;
+  if (raiderMatches.length > 1 || (raiderRequired && raiderMatches.length !== 1)) return null;
+  const raider = raiderMatches[0] || null;
+
+  const podEntities = new Map();
+  for (const pod of savedRecord.pods) {
+    if (pod.status !== 'live') continue;
+    const matches = entities.filter((entity) => {
+      const annotation = entity.data && entity.data.freightCustodyPod;
+      return entity.type === 'pickup' && annotation
+        && annotation.podIdentity === pod.podIdentity
+        && annotation.custodyId === savedRecord.custodyId
+        && Math.floor(Number(annotation.qty) || 0) === pod.qty
+        && Math.floor(Number(entity.data.amount) || 0) === pod.qty;
+    });
+    if (matches.length !== 1) return null;
+    podEntities.set(pod.podIdentity, matches[0]);
+  }
+
+  const record = {
+    ...savedRecord,
+    pods: savedRecord.pods.map((pod) => ({ ...pod })),
+    escapeOrigin: savedRecord.escapeOrigin ? { ...savedRecord.escapeOrigin } : null,
+    escapeTarget: savedRecord.escapeTarget ? { ...savedRecord.escapeTarget } : null,
+    raiderLastPos: savedRecord.raiderLastPos ? { ...savedRecord.raiderLastPos } : null,
+    raiderLastVel: savedRecord.raiderLastVel ? { ...savedRecord.raiderLastVel } : null,
+    terminal: false,
+    receiptEmitted: false,
+  };
+  const plan = {
+    encounterId: envelope.encounterId,
+    squadId: savedLive.squadId,
+    sectorId: savedLive.sectorId,
+    zoneId: savedLive.zoneId,
+    zoneName: savedLive.zoneName,
+    factionId: savedLive.factionId,
+    variantKind: savedLive.plan.variantKind,
+    predation: { ...savedLive.plan.predation },
+  };
+  const aggregateManifest = savedLive.data.freightManifest
+    ? {
+        ...savedLive.data.freightManifest,
+        lines: savedLive.data.freightManifest.lines.map((line) => ({ ...line })),
+      }
+    : {
+        manifestId: record.manifestId,
+        freighterKey: record.freighterKey,
+        role: 'hauler',
+        lines: [{ commodityId: record.commodityId, qty: record.initialQty }],
+        totalQty: record.initialQty,
+      };
+  const live = {
+    id: envelope.encounterId,
+    shapeId: savedLive.shapeId,
+    script: savedLive.script,
+    shape,
+    plan,
+    tier: shape.tier,
+    deck: shape.deck,
+    sectorId: savedLive.sectorId,
+    zoneId: savedLive.zoneId,
+    zoneName: savedLive.zoneName,
+    factionId: savedLive.factionId,
+    squadId: savedLive.squadId,
+    anchor: savedLive.anchor ? { ...savedLive.anchor } : null,
+    zoneRadius: savedLive.zoneRadius,
+    phase: savedLive.phase || 'transit',
+    startedAt: savedLive.startedAt,
+    deadlineAt: savedLive.deadlineAt,
+    ids: [],
+    roles: {},
+    vars: { ...savedLive.vars },
+    data: {
+      ...savedLive.data,
+      end: savedLive.data.end ? { ...savedLive.data.end } : null,
+      freightManifest: aggregateManifest,
+      freightCargoCustody: record,
+      predationTargetId: carrier && carrier.id,
+      predationTargetIdentityKey: record.carrierIdentityKey,
+      predationRaiderId: raider && raider.id,
+      predationRaiderIdentityKey: record.raiderIdentityKey,
+    },
+    outcome: null,
+    primarySaid: true,
+    lastBarkAt: -1e9,
+  };
+  live.causality = buildEncounterCausality({
+    seed: state.meta && state.meta.seed,
+    encounterId: live.id,
+    shapeId: live.shapeId,
+    variantKind: plan.variantKind,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+    zoneName: live.zoneName,
+    factionId: live.factionId,
+    doctrineId: plan.predation.attackerDoctrineId,
+    script: live.script,
+  });
+
+  if (carrier) {
+    const data = carrier.data || (carrier.data = {});
+    data.predationEncounterId = live.id;
+    data.predationRole = 'manifest_carrier';
+    data.predationIdentityKey = record.carrierIdentityKey;
+    data.freightCustodyCarrierIdentityKey = record.carrierIdentityKey;
+    data.freightCustody = data.freightCustody || {};
+    Object.assign(data.freightCustody, {
+      status: record.carrierQty > 0 ? 'carrier' : (record.carrierArrived ? 'delivered' : 'spilled'),
+      carrierId: carrier.id,
+      carrierIdentityKey: record.carrierIdentityKey,
+      encounterId: live.id,
+      manifestId: record.manifestId,
+    });
+    Object.defineProperty(carrier, FREIGHT_CARRIER_INSTANCE, {
+      value: record.carrierIdentityKey,
+      configurable: true,
+    });
+    claimFreightCustodyPersistence(carrier, record, 'carrier');
+    record.carrierId = carrier.id;
+    updateCarrierManifest(record, carrier);
+    live.ids.push(carrier.id);
+    live.roles[carrier.id] = 'hauler';
+  } else {
+    record.carrierId = null;
+  }
+
+  if (raider) {
+    const data = raider.data || (raider.data = {});
+    const ai = data.ai || (data.ai = {});
+    data.predationEncounterId = live.id;
+    data.predationRole = 'raider';
+    data.predationIdentityKey = record.raiderIdentityKey;
+    data.freightCustodyRaiderIdentityKey = record.raiderIdentityKey;
+    Object.defineProperty(raider, FREIGHT_RAIDER_INSTANCE, {
+      value: record.raiderIdentityKey,
+      configurable: true,
+    });
+    if (record.raiderSecuredQty > 0 && !record.raiderEscaped) {
+      claimFreightCustodyPersistence(raider, record, 'secured_raider');
+      ai.passive = false;
+      ai.motiveSatisfied = false;
+      ai.pirateDisengaged = false;
+      ai.predationStatus = record.escapeStartedAt != null ? 'cargo_escape' : 'cargo_recovery';
+      if (record.escapeStartedAt != null && record.escapeTarget) {
+        const remainingS = Math.max(1, (record.escapeDeadlineAt || d.now() + 1) - d.now());
+        setEntityDoctrine(raider, {
+          activity: {
+            kind: ActivityKind.FLEE,
+            reason: `${live.shapeId}:freight_custody_escape`,
+            anchor: record.escapeTarget,
+            leashRadius: Math.max(1, record.escapeRadius) * 1.5,
+            startedTick: state.tick | 0,
+            deadlineTick: (state.tick | 0) + Math.ceil(remainingS * 60),
+            encounterId: live.id,
+          },
+          roe: RulesOfEngagement.HOLD_FIRE,
+        });
+      }
+    }
+    record.raiderId = raider.id;
+    record.raiderLastPos = { x: raider.pos.x, z: raider.pos.z };
+    record.raiderLastVel = { x: raider.vel && raider.vel.x || 0, z: raider.vel && raider.vel.z || 0 };
+    live.ids.push(raider.id);
+    live.roles[raider.id] = 'raider';
+  } else {
+    record.raiderId = null;
+  }
+
+  for (const pod of record.pods) {
+    if (pod.status !== 'live') continue;
+    const entity = podEntities.get(pod.podIdentity);
+    Object.defineProperty(entity, FREIGHT_POD_INSTANCE, { value: pod.podIdentity, configurable: true });
+    entity.flags = entity.flags || {};
+    entity.flags.persistent = true;
+    entity.data.freightCustodyPod.status = 'live';
+    entity.data.freightCustodyPod.qty = pod.qty;
+    if (typeof d.resizeFreightPickup === 'function') d.resizeFreightPickup(entity, record.commodityId, pod.qty);
+    pod.entityId = entity.id;
+    live.ids.push(entity.id);
+    live.roles[entity.id] = 'freight_pod';
+  }
+
+  const dir = state.encounterDirector;
+  if (!dir || !dir.live || dir.live[live.id]) return null;
+  dir.live[live.id] = live;
+  if (typeof d.persistOpenFreightCustody === 'function') d.persistOpenFreightCustody(live, record);
+  return live;
+}
+
 function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
   tickConvoyPredation(d, live, state, now);
+  tickFreightCargoCustody(d, live, state, now);
+  const custody = live.data.freightCargoCustody;
+  if (live.data.freightCarrierRecovered === true) {
+    if (custody && !custody.terminal) return;
+    d.despawnAll(live, 6);
+    return d.resolve(live, 'recovered', { vars: live.vars, speak: false });
+  }
+  if (custody && custody.terminal && custody.carrierAbandoned) {
+    d.despawnAll(live, 8);
+    return d.resolve(live, live.data.robbed ? 'robbed' : 'lost', {
+      vars: live.vars,
+      speak: live.data.noticed || live.data.robbed,
+    });
+  }
+  if (custody && custody.terminal && custody.carrierArrived) {
+    d.despawnAll(live, 8);
+    return d.resolve(live, live.data.robbed ? 'robbed' : 'arrived', {
+      vars: live.vars,
+      speak: isConvoy ? true : live.data.noticed,
+      channel: 'news',
+    });
+  }
   if (!haulers.length) {
     // All cargo dead: the initial manifest is retained even though its carriers are gone. Route
     // scarcity through the economy owner exactly once, then resolve as robbed/lost.
     const outcome = live.data.robbed ? 'robbed' : 'lost';
-    d.freightLoss(live, {
-      manifest: live.data.freightManifest,
-      stationId: live.data.destId,
-      killerId: live.data.lossKillerId,
-    });
+    if (custody) {
+      if (!custody.terminal) return;
+    } else {
+      d.freightLoss(live, {
+        manifest: live.data.freightManifest,
+        stationId: live.data.destId,
+        killerId: live.data.lossKillerId,
+      });
+    }
     d.despawnAll(live, 8);
     return d.resolve(live, outcome, { vars: live.vars, speak: live.data.noticed || live.data.robbed });
   }
   const end = live.data.end;
+  if (!end) return;
   // Only route-owned passive hulls receive director intent. The selected raider is rostered and
   // tacticalAI remains the sole writer of its movement/fire decisions.
-  for (const e of [...haulers, ...d.entsOf(live, 'escort')]) steerToward(e, end.x, end.z, 120);
+  for (const e of [...haulers, ...d.entsOf(live, 'escort')]) {
+    if (!convoyTargetDisabled(state, e)) steerToward(e, end.x, end.z, 120);
+  }
   if (p && !live.data.noticed) {
     for (const h of haulers) {
       if (dist2(p.pos.x, p.pos.z, h.pos.x, h.pos.z) <= CONVOY_NOTICE_R * CONVOY_NOTICE_R) { live.data.noticed = true; break; }
     }
   }
   const lead = haulers[0];
-  const arrived = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R || now >= live.deadlineAt;
-  if (!arrived) return;
+  const arrivedByPosition = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R;
+  if (!arrivedByPosition) return;
+
+  if (custody && custody.carrierArrived) return;
 
   // Arrival: surviving cargo applies bounded supply pressure at the destination market.
   clearConvoyPredation(d, live, 'carrier_arrived');
-  const units = Math.min(TRADE_PRESSURE_CAP, haulers.length * (live.data.perHauler | 0));
+  const arrivingQty = custody ? custody.carrierQty : haulers.length * (live.data.perHauler | 0);
+  const units = Math.min(TRADE_PRESSURE_CAP, arrivingQty);
   if (live.data.destId && units > 0) d.tradePressure(live.data.destId, live.data.cargoId, units);
+  if (custody && !custody.terminal) {
+    custody.deliveredQty += custody.carrierQty;
+    custody.carrierQty = 0;
+    custody.carrierArrived = true;
+    live.data.freightCarrierArrived = true;
+    updateCarrierManifest(custody, lead);
+    releaseFreightCustodyPersistence(lead, custody, custody.carrierPersistenceOwned);
+    custody.carrierPersistenceOwned = false;
+    lead.data = lead.data || {};
+    lead.data.despawnAt = now + 6;
+    publishFreightCustody(d, live, custody, 'carrier_arrived', lead);
+    const livePodsRemain = custody.pods.some((pod) => pod.status === 'live');
+    const raiderChoiceRemains = custody.raiderSecuredQty > 0 && !custody.raiderEscaped;
+    if (livePodsRemain || raiderChoiceRemains) return;
+    finishFreightCustody(d, live, custody, 'carrier_arrived');
+  }
   d.despawnAll(live, 6);                                // docked — off the board
   if (isConvoy && live.data.guardKills > 0) {
     d.grant(live.shape.guardPay || 200, 'convoy:guard');
@@ -947,12 +2003,112 @@ function convoyTick(d, live, state, now, isConvoy) {
 }
 
 const convoy = {
+  restoreCustody(d, state, envelope) { return restoreFreightCargoCustody(d, state, envelope); },
   fire(d, live, state) { convoyFire(d, live, state, true); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, true); },
   event(d, live, state, name, p) {
+    if (name === 'subsystemDisabled') {
+      if (!p || p.subsystemId !== 'subsystem_drive') return;
+      if (p.targetId === live.data.predationTargetId) {
+        const carrier = selectedFreightCarrier(live, state);
+        if (carrier) spawnFreightCargo(d, live, state, carrier, 'drive_disabled');
+      } else {
+        const record = live.data.freightCargoCustody;
+        if (record && p.targetId === record.raiderId) {
+          const raider = selectedFreightRaider(live, state, true);
+          respillFreightFromRaider(d, live, state, record, raider, 'raider_drive_disabled');
+        }
+      }
+      return;
+    }
+    if (name === 'pickupCollected') {
+      collectFreightPod(d, live, state, p);
+      return;
+    }
+    if (name === 'freightRecovered') {
+      const record = live.data.freightCargoCustody;
+      const manifestId = p && p.manifestId;
+      const matches = manifestId && (manifestId === (record && record.manifestId)
+        || manifestId === selectedFreightCarrier(live, state)?.data?.cargoManifest?.manifestId);
+      if (!matches || p.entityId !== live.data.predationTargetId) return;
+      live.data.freightCarrierRecovered = true;
+      clearConvoyPredation(d, live, 'lawful_recovery');
+      if (record && !record.terminal) {
+        record.carrierRecovered = true;
+        record.stationRecoveredQty += record.carrierQty;
+        record.carrierQty = 0;
+        publishFreightCustody(d, live, record, 'lawful_recovery');
+        if (!record.pods.some((pod) => pod.status === 'live')
+          && (record.raiderSecuredQty === 0 || record.raiderEscaped || record.raiderDead)) {
+          finishFreightCustody(d, live, record,
+            record.raiderSecuredQty > 0 || record.playerCollectedQty > 0 ? 'split_custody' : 'lawful_recovery');
+        }
+      }
+      return;
+    }
+    if (name === 'freightRecoveryAbandoned') {
+      const record = live.data.freightCargoCustody;
+      if (!record || !p || p.manifestId !== record.manifestId) return;
+      if (p.outcome === 'drive_restored') {
+        record.driveRestored = true;
+        publishFreightCustody(d, live, record, 'recovery_drive_restored');
+        return;
+      }
+      if (p.outcome === 'destroyed') {
+        // surrenderRecovery is registered before the director in production and therefore reports
+        // abandonment before this same entity:killed reaches squadKill. Keep the carrier remainder
+        // in carrier custody for that synchronous kill continuation to spill physically.
+        record.carrierDestructionPending = true;
+        publishFreightCustody(d, live, record, 'recovery_destroyed_pending_spill');
+        return;
+      }
+      const carrier = selectedFreightCarrier(live, state, true);
+      record.carrierAbandoned = true;
+      if (record.carrierQty > 0) {
+        record.lostQty += record.carrierQty;
+        record.carrierQty = 0;
+        if (carrier) updateCarrierManifest(record, carrier);
+      }
+      publishFreightCustody(d, live, record, `recovery_${p.outcome || 'abandoned'}`);
+      if (!record.pods.some((pod) => pod.status === 'live')
+        && (record.raiderSecuredQty === 0 || record.raiderEscaped || record.raiderDead)) {
+        finishFreightCustody(d, live, record, 'recovery_abandoned');
+      }
+      return;
+    }
+    if (name === 'entityGone') {
+      const record = live.data.freightCargoCustody;
+      if (!record || record.terminal || !p) return;
+      const pod = record.pods.find((candidate) => candidate.entityId === p.id && candidate.status === 'live');
+      if (pod) {
+        pod.status = 'lost';
+        record.lostQty += pod.qty;
+        publishFreightCustody(d, live, record, 'pod_destroyed');
+      } else if (p.id === record.raiderId) {
+        record.raiderDead = true;
+        respillFreightFromRaider(d, live, state, record, selectedFreightRaider(live, state, true) || p,
+          'raider_destroyed');
+        publishFreightCustody(d, live, record, 'raider_destroyed');
+      }
+      return;
+    }
+    if (name === 'lifecycle') {
+      const reason = p && p.reason || 'lifecycle';
+      if (reason === 'save_restoring' || reason === 'save_loaded') return;
+      closeFreightCargoCustody(d, live, state, reason);
+      return;
+    }
     if (name === 'squadKill') {
       const role = p && p.role;
       if (role === 'hauler') {
+        if (p.id === live.data.predationTargetId) {
+          const carrier = selectedFreightCarrier(live, state, true);
+          if (carrier) {
+            spawnFreightCargo(d, live, state, carrier, 'carrier_destroyed');
+            const record = live.data.freightCargoCustody;
+            if (record) record.carrierDestructionPending = false;
+          }
+        }
         if (p.id === live.data.predationTargetId) clearConvoyPredation(d, live, 'target_destroyed');
         if (p.byPlayer) {
           live.data.robbed = true;
@@ -961,6 +2117,13 @@ const convoy = {
         } else if (!live.data.robbed && p && p.killerId != null) live.data.lossKillerId = p.killerId;
       }
       if (role === 'raider') {
+        const record = live.data.freightCargoCustody;
+        if (record && p.id === record.raiderId) {
+          record.raiderDead = true;
+          respillFreightFromRaider(d, live, state, record, selectedFreightRaider(live, state, true),
+            'raider_destroyed');
+          publishFreightCustody(d, live, record, 'raider_destroyed');
+        }
         if (p.id === live.data.predationRaiderId) clearConvoyPredation(d, live, 'raider_destroyed');
         if (p.byPlayer) live.data.guardKills += 1;
       }
