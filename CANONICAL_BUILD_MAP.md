@@ -99,24 +99,29 @@ gunship) had no AO anywhere because each GLB carries LOD0/LOD1/LOD2 as **coincid
 identical bounds**, so the bake self-occluded to black. `tools/blender/bake_hull_ao.py` removes the
 coincident shells first; all four are now repaired at source and committed.
 
-**Remaining work, in order.** Nothing below is blocked and no GLB has been half-modified — source
-hulls are untouched, so this resumes from a clean state:
+**Remaining work — RESOLVED 2026-08-10** (commits `ebebc2d2`, `ceae0456`..`5e494efe` on master):
 
-1. **Apply the repack (ROI item 5).** `node tools/art/repack_orm_roughness.mjs assets/ships/parts/hulls/hull_*.glb`
-   — dry-run verified on all ten, landing G stdev 0.15–0.17 against the 0.2015 reference, with each
-   material's mean roughness held and R/B copied byte-for-byte. Then rebuild releases via
-   `node tools/art/build_release_parts.mjs <partId...>` and refresh `release_manifest.json` source
-   and release hashes, or `check:assets:live` and the receipts check will disagree with disk.
-2. **Kestrel hull (ROI item 3).** Same tool applies; its `Material_EngineCeramic` (0.0512) and
-   `Material_Rubber` (0.0496) are the near-flat targets. The separate per-zone paint variety wants
-   `assets/ships/foundry/spacepunk_markings_v1/` — 32 authored cells, `runtimeWired: false`, whose
-   contract requires GLB integration plus a KTX2 release, so it is Blender work and not a code wiring
-   task. Note the live player ship is `assets/ships/parts/wholeships/kestrel.glb`; the
-   `kestrel_borrowed_time_v4/` tree is a candidate the runtime does not load.
-3. **Verify what a check inspects, not that it passed.** `check:graphics:asset-receipts` covered
-   `rockA` only and stayed green through weeks of two corrupt asteroid rocks; `stats().bakedTexMB`
-   reported configured sizes rather than allocated ones. Extend receipts coverage before treating it
-   as item 5's gate.
+1. **Repack applied (ROI item 5) — DONE at `ebebc2d2`.** All 29 hull materials left stdev 0.0000,
+   landing 0.088–0.172 **proportional to each material's real AO signal** (the earlier "0.15–0.17"
+   line was an aggregate approximation; dry-run == apply byte-parity was verified independently).
+   Releases republished through `scripts/build-hull-release-assets.mjs` — the canonical hull lane
+   (ETC1S color/ORM + UASTC normals, GLBs + `release_manifest.json` in one transaction; 31.77 MiB
+   source → 5.65 MiB release). The generic `tools/art/build_release_parts.mjs` named here before
+   encodes UASTC-everything (~10x release size) and refreshes no manifest — do not use it for hulls.
+2. **Kestrel hull (ROI item 3) — no repack applicable; measured and closed 2026-08-10.** The tool's
+   `FLAT_G_STDEV = 0.02` gate correctly skips every Kestrel material (0.049–0.072 — authored
+   variation present, not the flat-defect class). Forcing amplification on the hero ship without an
+   art verdict was declined. The real remaining Kestrel surface work is the
+   `assets/ships/foundry/spacepunk_markings_v1/` integration (32 authored cells,
+   `runtimeWired: false`, Blender + KTX2 release work). Live player ship remains
+   `assets/ships/parts/wholeships/kestrel.glb`; `kestrel_borrowed_time_v4/` is not loaded.
+3. **Receipts coverage extended — DONE at `5e494efe`.** `check:graphics:asset-receipts` now
+   verifies manifest-vs-disk SHA/byte truth for all three rocks, the ten hulls, and the live player
+   ship, with per-asset diagnostics and a corruption-detection test. On its first run it caught and
+   forced repair of twelve stale `parts_manifest.json` rows (rockB/rockC family-source bytes and
+   LOD0-only tris; ten pre-repack hull byte counts). Still uncovered, recorded honestly: the ~37
+   other release-manifest assets, Kestrel LOD1/LOD2 rows, `stats().bakedTexMB`, and all G1–G7
+   visual gates.
 
 No independent G7 art verdict has been obtained for any of the above — the codex image-generation CLI
 remains unrepaired (G0-3), and per `docs/visual-assets/README.md` that substitution is recorded here
