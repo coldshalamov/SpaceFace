@@ -3257,7 +3257,7 @@ function checkHeatUsesTargetFactionContext() {
     flags: {},
     factionId: 'faction_vael',
     pos: { x: 10, z: 0 },
-    data: { ai: { lawful: false } },
+    data: { ai: { lawful: false, spawnContext: 'encounter' } },
     hull: 100,
     shieldMax: 0,
     shield: 0,
@@ -3272,7 +3272,7 @@ function checkHeatUsesTargetFactionContext() {
 
   combat.onHit({ targetId: hostile.id, ownerId: hostileState.playerId, damage: 5, damageType: 'kinetic', pos: { x: 10, z: 0 } });
 
-  assert.equal(hostileState.player.heat, 0, 'damaging an already-hostile faction should not raise piracy heat');
+  assert.equal(hostileState.player.heat, 0, 'damaging a canonically hostile encounter should not raise piracy heat');
 
   const lawman = {
     id: 3,
