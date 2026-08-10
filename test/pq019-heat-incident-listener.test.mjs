@@ -8,10 +8,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
-import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { physics } from '../src/core/physics.js';
+import { COMBAT_FLAGS, MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { heat, INCIDENT_HEAT, heatLevelFor, THRESHOLD as WANTED_THRESHOLD } from '../src/systems/heat.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { lootShards } from '../src/systems/lootShards.js';
 import {
   captureEntityRecord,
@@ -115,6 +117,13 @@ function playerHit(run, target, damage) {
 
 function lethalPlayerHit(run, target) {
   return playerHit(run, target, 1000);
+}
+
+function resolveCustomCraftContact(run, a, b) {
+  const dx = b.pos.x - a.pos.x;
+  const dz = b.pos.z - a.pos.z;
+  const dist = Math.hypot(dx, dz);
+  return run.sim.registry.get('physics').resolvePair(a, b, dist, dx, dz, run.bus, run.state);
 }
 
 function rematerializeThroughSavedWorldRecord(run, entity, recordId) {
@@ -406,6 +415,69 @@ test('production-order clean authored trader kill becomes WANTED and earns no ho
     `clean authored trader kill heat ${run.state.player.heat} must cross WANTED ${WANTED_THRESHOLD}`);
   assert.equal(shardDropsOf(run).length, 0,
     'a clean victim cannot become a hostile reward source by retaliating synchronously');
+  run.sim.dispose();
+}));
+
+test('player-initiated craft contact routes through combat into clean-civilian WANTED', (t) => withLootShardsEnabled(() => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+  const run = bootCombat([lawSecurity, physics, combat, lootShards, heat, collisionConsequences]);
+  run.state.factions.faction_free = { rep: 40, aggro: false };
+  Object.assign(run.player, {
+    pos: { x: -8, z: 0 }, vel: { x: 120, z: 0 }, radius: 10, mass: 20,
+  });
+  const trader = run.sim.spawn(makeEnemySpawnSpec('mule_trader', 1, { x: 8, z: 0 }, {
+    startedTick: run.state.tick,
+  }));
+  Object.assign(trader, {
+    pos: { x: 8, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 20,
+    hull: 1, hullMax: 1, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
+  });
+
+  resolveCustomCraftContact(run, run.player, trader);
+
+  assert.equal(run.damageEvents.length, 1, 'physical contact reaches the sole combat damage owner');
+  assert.equal(run.damageEvents[0].attackerId, run.player.id);
+  assert.equal(run.damageEvents[0].targetHostileToPlayer, false,
+    'clean truth is sampled before synchronous retaliation');
+  assert.equal(run.killedEvents.length, 1);
+  assert.equal(run.killedEvents[0].killerId, run.player.id);
+  assert.ok(run.state.player.heat >= WANTED_THRESHOLD,
+    `clean civilian ram heat ${run.state.player.heat} must cross WANTED ${WANTED_THRESHOLD}`);
+  assert.equal(shardDropsOf(run).length, 0, 'civilian contact death cannot mint hostile rewards');
+  assert.equal(run.player.hull, 200, 'player collision hull immunity remains intact');
+  run.sim.dispose();
+}));
+
+test('an NPC striking a stationary player never assigns player legal causality', (t) => withLootShardsEnabled(() => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+  const run = bootCombat([lawSecurity, physics, combat, lootShards, heat, collisionConsequences]);
+  run.state.factions.faction_free = { rep: 40, aggro: false };
+  Object.assign(run.player, {
+    pos: { x: -8, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 20,
+  });
+  run.player.data = run.player.data || {};
+  run.player.data.derived = { ...(run.player.data.derived || {}), ramDamageDealtMult: 1.8 };
+  const trader = run.sim.spawn(makeEnemySpawnSpec('mule_trader', 1, { x: 8, z: 0 }, {
+    startedTick: run.state.tick,
+  }));
+  Object.assign(trader, {
+    pos: { x: 8, z: 0 }, vel: { x: -120, z: 0 }, radius: 10, mass: 20,
+    hull: 1, hullMax: 1, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
+  });
+
+  resolveCustomCraftContact(run, run.player, trader);
+
+  assert.equal(run.damageEvents.length, 1);
+  assert.equal(run.damageEvents[0].attackerId, trader.id,
+    'pre-contact closing contribution, not player involvement or a fitted plate, owns the hit');
+  assert.equal(run.killedEvents[0]?.killerId, trader.id);
+  assert.equal(run.state.player.heat, 0, 'NPC-caused contact cannot make a stationary player WANTED');
+  assert.equal(shardDropsOf(run).length, 0, 'NPC-caused contact cannot enter the player reward fountain');
+  assert.equal(run.player.hull, 200, 'player collision hull immunity remains intact');
   run.sim.dispose();
 }));
 

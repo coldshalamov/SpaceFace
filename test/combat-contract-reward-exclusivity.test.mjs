@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
+import { physics } from '../src/core/physics.js';
 import { missionOwnsReward } from '../src/combat/rewardEligibility.js';
 import { COMMODITIES } from '../src/data/commodities.js';
-import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { COMBAT_FLAGS, MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { cargo } from '../src/systems/cargo.js';
 import { combat } from '../src/systems/combat.js';
+import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { economy } from '../src/systems/economy.js';
 import { lootShardItemsFor, lootShards } from '../src/systems/lootShards.js';
 import { mining } from '../src/systems/mining.js';
@@ -69,11 +71,14 @@ function bootRewardScenario({
   targetType = 'ship',
   rewardMarker = null,
   deferKill = false,
+  collisionRoute = false,
 } = {}) {
 
   const sim = createSimulation({
     seed,
-    systems: [economy, missions, combat, lootShards, mining, cargo],
+    systems: collisionRoute
+      ? [physics, economy, missions, combat, lootShards, mining, cargo, collisionConsequences]
+      : [economy, missions, combat, lootShards, mining, cargo],
   });
   const { state, bus, registry } = sim;
   state.mode = 'flight';
@@ -149,7 +154,34 @@ function bootRewardScenario({
   bus.on('loot:drop', (payload) => lootDrops.push(structuredClone(payload)));
   bus.on('entity:killed', (payload) => killedEvents.push(structuredClone(payload)));
 
-  if (!deferKill) withLootFlags(() => registry.get('combat').kill(target, killer.id));
+  if (!deferKill) {
+    if (collisionRoute) {
+      Object.assign(player, {
+        pos: { x: -8, z: 0 }, vel: { x: 120, z: 0 }, radius: 10, mass: 20,
+      });
+      Object.assign(target, {
+        pos: { x: 8, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 20,
+        hull: 1, hullMax: 1, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
+      });
+      const previousCollisionConsequences = COMBAT_FLAGS.weaponImpulseConsequences;
+      COMBAT_FLAGS.weaponImpulseConsequences = true;
+      try {
+        withLootFlags(() => registry.get('physics').resolvePair(
+          player,
+          target,
+          16,
+          16,
+          0,
+          bus,
+          state,
+        ));
+      } finally {
+        COMBAT_FLAGS.weaponImpulseConsequences = previousCollisionConsequences;
+      }
+    } else {
+      withLootFlags(() => registry.get('combat').kill(target, killer.id));
+    }
+  }
   return { sim, state, bus, player, killer, target, creditEvents, lootDrops, killedEvents };
 }
 
@@ -291,6 +323,26 @@ test('ambient player kill keeps its authored bounty and loot', () => {
     'the live mining path magnetizes the shard burst toward the player');
   run.sim.dispose();
   repeat.sim.dispose();
+});
+
+test('hostile craft contact death enters the same three-pickup reward fountain', () => {
+  const run = bootRewardScenario({
+    collisionRoute: true,
+    hostile: true,
+    authoredReward: false,
+    stableIdentity: 'reward-contact-hostile',
+  });
+  const shardDrop = shardDropsOf(run)[0];
+
+  assert.equal(run.killedEvents.length, 1, 'collision consequence crosses combat death once');
+  assert.equal(run.killedEvents[0].killerId, run.player.id,
+    'pre-contact player approach survives through the death receipt');
+  assert.ok(shardDrop, 'hostile collision death remains reward eligible');
+  assert.equal(shardDrop.items.length, 3, 'the accepted kill creates the bounded visible burst');
+  assert.equal(run.state.entityList.filter((entity) => entity.type === 'pickup').length, 3);
+  assert.equal(run.state.entityList.filter((entity) => entity.type === 'wreck').length, 1,
+    'instant collision rewards preserve the durable wreck salvage route');
+  run.sim.dispose();
 });
 
 test('stateless shard rolls follow current New Game seed and replay durable identity after load', () => {

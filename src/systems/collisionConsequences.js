@@ -183,7 +183,7 @@ export const collisionConsequences = {
   _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
-    const ramPlate = playerRamPlateImpact(other, state.playerId, tick);
+    const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
     const provenance = ramPlate?.provenance || causalProvenance;
     const receipt = resolveCollisionConsequence({
       target,
@@ -447,8 +447,9 @@ function explicitContactProvenance(payload, tick) {
   });
 }
 
-function playerRamPlateImpact(entity, playerId, tick) {
+function playerRamPlateImpact(entity, playerId, tick, provenance) {
   if (!entity || entity.id !== playerId) return null;
+  if (!provenance || provenance.actorId !== playerId || provenance.tag !== 'direct_contact') return null;
   const damageMultiplier = clamp(finite(entity.data?.derived?.ramDamageDealtMult), 0, 4);
   if (!(damageMultiplier > 0)) return null;
   return {

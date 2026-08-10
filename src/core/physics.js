@@ -2,7 +2,10 @@
 // collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
 import { Masks } from './entity.js';
-import { createSg02DynamicBodyOwner } from './sg02DynamicBodyOwner.js';
+import {
+  createSg02DynamicBodyOwner,
+  directContactCausalActorId,
+} from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
@@ -45,6 +48,7 @@ export const physics = {
     this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
     this._nearMissEmitted = new WeakSet();
     this._pairMaterialScratch = createPairMaterialRecord();
+    this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null };
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
     this._dockStationId = null;
@@ -351,6 +355,7 @@ export const physics = {
         // provenance/status expiry belongs to the canonical simulation tick.
         tick: state.tick,
         normal: receipt.normal,
+        causalActorId: receipt.causalActorId,
       });
       if (dp > 0) emitted++;
     }
@@ -608,16 +613,22 @@ export const physics = {
     if (ta === 'station' || tb === 'station') {
       // soft bounce off station hull
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+      const nx = dx / dist;
+      const nz = dz / dist;
+      const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
       pushApart(a, b, dist, dx, dz, material.push);
-      const impulseMag = impulse(a, b, dx / dist, dz / dist, material);
-      emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z });
+      const impulseMag = impulse(a, b, nx, nz, material);
+      emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z }, impactOptions);
       return;
     }
     // ship/ship and ship/asteroid: separate + restitution impulse
     const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+    const nx = dx / dist;
+    const nz = dz / dist;
+    const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
     pushApart(a, b, dist, dx, dz, material.push);
-    const impulseMag = impulse(a, b, dx / dist, dz / dist, material);
-    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z });
+    const impulseMag = impulse(a, b, nx, nz, material);
+    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z }, impactOptions);
     bus.emit('collision', {
       aId: a.id,
       bId: b.id,
@@ -1084,10 +1095,28 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     impulse: finiteOrZero(impulseMag),
     playerInvolved,
     playerDeltaV,
+    causalActorId: options.causalActorId == null ? null : options.causalActorId,
     pos: { x: finiteOrZero(pos && pos.x), z: finiteOrZero(pos && pos.z) },
     normal: normalizedPlanar(options.normal),
   });
   return dp;
+}
+
+function directContactImpactOptions(out, state, a, b, nx, nz) {
+  out.tick = Math.max(0, Math.trunc(state && state.tick || 0));
+  out.normal.x = nx;
+  out.normal.z = nz;
+  out.causalActorId = directContactCausalActorId(
+    a.id,
+    b.id,
+    a.vel && a.vel.x,
+    a.vel && a.vel.z,
+    b.vel && b.vel.x,
+    b.vel && b.vel.z,
+    nx,
+    nz,
+  );
+  return out;
 }
 
 function normalizedPlanar(value) {

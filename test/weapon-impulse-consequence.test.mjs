@@ -284,6 +284,8 @@ test('SG-02 reports deterministic bounded contact momentum for default-route con
       'reported contact momentum respects SG-02 structural-give bounds');
     assert.ok(Number.isFinite(contacts[0].pos.x) && Number.isFinite(contacts[0].pos.z));
     assert.ok(Math.abs(Math.hypot(contacts[0].normal.x, contacts[0].normal.z) - 1) < 1e-9);
+    assert.equal(contacts[0].causalActorId, ship.id,
+      'SG-02 retains the moving hull as the pre-solver direct-contact initiator');
     assert.deepEqual(owner.drainContactImpacts(), [], 'contact drain is atomic');
   } finally {
     owner.dispose();
@@ -317,6 +319,7 @@ test('default physics adapter forwards angular impulse and publishes consequence
         impulse: 640,
         pos: { x: -2, z: 1 },
         normal: { x: -1, z: 0 },
+        causalActorId: ship.id,
       }];
     },
     dispose() {},
@@ -337,10 +340,72 @@ test('default physics adapter forwards angular impulse and publishes consequence
     assert.equal(impacts[0].tick, state.tick,
       'game-state tick, not the owner-local lifetime tick, anchors provenance and control expiry');
     assert.deepEqual(impacts[0].normal, { x: -1, z: 0 });
+    assert.equal(impacts[0].causalActorId, ship.id,
+      'the adapter does not discard SG-02 direct-contact attribution');
     assert.ok(impacts[0].dp > 0);
   } finally {
     physics._disableSg02DynamicAuthority();
     bus.clear();
+  }
+});
+
+test('custom and SG-02 contacts agree on fair pre-contact initiators and fail closed on ties', async () => {
+  const [{ physics }, { createSg02DynamicBodyOwner, directContactCausalActorId }] = await Promise.all([
+    import('../src/core/physics.js'),
+    import('../src/core/sg02DynamicBodyOwner.js'),
+  ]);
+  assert.equal(directContactCausalActorId(1, 2, 50, 0, 100, 0, 1, 0), null,
+    'a faster separating lead body cannot turn a solver/CCD correction into player causality');
+  assert.equal(directContactCausalActorId(1, 2, 0, 80, 0, -40, 1, 0), null,
+    'pure tangential motion has no normal closure and therefore no direct-contact initiator');
+  assert.equal(directContactCausalActorId(1, 2, 75, 0, 75, 0, 1, 0), null,
+    'matched same-direction drift is non-closing even though A has positive world-space speed');
+  const scenarios = [
+    { label: 'moving A into stationary B', aVx: 120, bVx: 0, expected: 1 },
+    { label: 'stationary A struck by moving B', aVx: 0, bVx: -120, expected: 2 },
+    { label: 'equal head-on closing contributions', aVx: 60, bVx: -60, expected: null },
+  ];
+
+  for (const scenario of scenarios) {
+    const customA = physicsEntity(1, 'ship', -8, scenario.aVx, 10, 20);
+    const customB = physicsEntity(2, 'ship', 8, scenario.bVx, 10, 20);
+    const customState = {
+      tick: 12,
+      playerId: customA.id,
+      entities: new Map([[customA.id, customA], [customB.id, customB]]),
+      entityList: [customA, customB],
+    };
+    const customBus = createBus();
+    const customImpacts = [];
+    customBus.on('physics:impact', (payload) => customImpacts.push(payload));
+    physics.init({ state: customState, bus: customBus, helpers: {} });
+    physics.resolvePair(customA, customB, 16, 16, 0, customBus, customState);
+    assert.equal(customImpacts.length, 1, `${scenario.label}: custom emits one impact`);
+    assert.equal(customImpacts[0].causalActorId, scenario.expected, `${scenario.label}: custom attribution`);
+    physics._disableSg02DynamicAuthority();
+    customBus.clear();
+
+    const owner = await createSg02DynamicBodyOwner({
+      fixedDt: 1 / 60,
+      publishTelemetry: false,
+      captureContactImpacts: true,
+    });
+    try {
+      const rapierA = physicsEntity(1, 'ship', -8, scenario.aVx, 10, 20);
+      const rapierB = physicsEntity(2, 'ship', 8, scenario.bVx, 10, 20);
+      owner.syncFromEntities([rapierA, rapierB]);
+      let contacts = [];
+      for (let step = 0; step < 3 && contacts.length === 0; step++) {
+        owner.step(1 / 60);
+        contacts = owner.drainContactImpacts();
+      }
+      assert.equal(contacts.length, 1, `${scenario.label}: SG-02 emits one merged impact`);
+      assert.equal(contacts[0].causalActorId, scenario.expected, `${scenario.label}: SG-02 attribution`);
+      assert.equal(contacts[0].causalActorId, customImpacts[0].causalActorId,
+        `${scenario.label}: custom/Rapier parity`);
+    } finally {
+      owner.dispose();
+    }
   }
 });
 
@@ -441,6 +506,21 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     bus.emit('physics:impact', playerImpact);
     assert.equal(routed.length, 1, 'physical impacts preserve the existing no-player-hull-damage invariant');
 
+    attacker.data.derived.ramDamageDealtMult = 1.8;
+    state.tick += 30;
+    bus.emit('physics:impact', {
+      ...impact,
+      aId: target.id,
+      bId: attacker.id,
+      tick: state.tick,
+      causalActorId: attacker.id,
+    });
+    assert.equal(routed.length, 2);
+    assert.equal(routed[1].packet.source.weaponId, 'wpn_railgun_m',
+      'fresh impulse provenance remains authoritative over an incidental plated contact');
+    assert.equal(routed[1].packet.source.impulseProvenance, 'railgun_penetrator');
+    attacker.data.derived.ramDamageDealtMult = 0;
+
     impulse.clearImpulseProvenance(target);
     state.tick += 30;
     bus.emit('physics:impact', {
@@ -450,13 +530,13 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       playerInvolved: true,
     });
-    assert.equal(routed.length, 2, 'ordinary craft contact routes one baseline damage packet');
-    assert.equal(routed[1].attackerId, null);
-    assert.equal(routed[1].targetId, target.id);
-    assert.equal(routed[1].packet.source.kind, 'collision_craft');
-    assert.equal(routed[1].packet.source.weaponId, null);
-    assert.ok(routed[1].packet.channels.kinetic > 0);
-    const ordinaryCraftDamage = routed[1].packet.channels.kinetic;
+    assert.equal(routed.length, 3, 'ordinary craft contact routes one baseline damage packet');
+    assert.equal(routed[2].attackerId, null);
+    assert.equal(routed[2].targetId, target.id);
+    assert.equal(routed[2].packet.source.kind, 'collision_craft');
+    assert.equal(routed[2].packet.source.weaponId, null);
+    assert.ok(routed[2].packet.channels.kinetic > 0);
+    const ordinaryCraftDamage = routed[2].packet.channels.kinetic;
 
     state.tick += 30;
     bus.emit('physics:impact', {
@@ -466,12 +546,12 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       causalActorId: attacker.id,
     });
-    assert.equal(routed.length, 3,
+    assert.equal(routed.length, 4,
       'an explicit contact actor routes the same ordinary baseline without inventing a weapon');
-    assert.equal(routed[2].attackerId, attacker.id);
-    assert.equal(routed[2].targetId, target.id);
-    assert.equal(routed[2].packet.source.weaponId, null);
-    assert.equal(routed[2].packet.source.impulseProvenance, 'direct_contact');
+    assert.equal(routed[3].attackerId, attacker.id);
+    assert.equal(routed[3].targetId, target.id);
+    assert.equal(routed[3].packet.source.weaponId, null);
+    assert.equal(routed[3].packet.source.impulseProvenance, 'direct_contact');
 
     attacker.data.derived.ramDamageDealtMult = 1.8;
     state.tick += 30;
@@ -480,14 +560,15 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       aId: target.id,
       bId: attacker.id,
       tick: state.tick,
+      causalActorId: attacker.id,
     });
-    assert.equal(routed.length, 4, 'a fitted Ram Plate routes one stronger player-driven craft impact');
-    assert.equal(routed[3].attackerId, attacker.id);
-    assert.equal(routed[3].targetId, target.id);
-    assert.equal(routed[3].packet.source.kind, 'collision_craft');
-    assert.equal(routed[3].packet.source.weaponId, 'mod_ram_plate');
-    assert.ok(routed[3].packet.channels.kinetic > ordinaryCraftDamage);
-    assert.ok(routed[3].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
+    assert.equal(routed.length, 5, 'a fitted Ram Plate routes one stronger player-driven craft impact');
+    assert.equal(routed[4].attackerId, attacker.id);
+    assert.equal(routed[4].targetId, target.id);
+    assert.equal(routed[4].packet.source.kind, 'collision_craft');
+    assert.equal(routed[4].packet.source.weaponId, 'mod_ram_plate');
+    assert.ok(routed[4].packet.channels.kinetic > ordinaryCraftDamage);
+    assert.ok(routed[4].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
 
     state.player = {
       tether: { active: true, targetId: target.id, phase: 'loaded' },
@@ -528,7 +609,7 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     state.entities.set(target.id, replacementTarget);
     state.entities.set(terrain.id, replacementTerrain);
     bus.emit('physics:impact', { ...impact, tick: state.tick });
-    assert.equal(routed.length, 5,
+    assert.equal(routed.length, 6,
       'game:started must admit the same tick/pair ids when the fresh run reuses entity ids');
   } finally {
     system.destroy();

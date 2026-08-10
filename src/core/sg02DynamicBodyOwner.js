@@ -94,6 +94,27 @@ const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit
 // discrete collision sees the same contacts CCD would have caught.
 const CCD_GATE_ENABLE_SPEED = 150;   // wu/s, above every authored cruise max (~147)
 const CCD_GATE_DISABLE_SPEED = 120;  // hysteresis floor while enabled
+const DIRECT_CONTACT_CAUSAL_EPSILON = 1e-6;
+
+// Identify a direct-contact initiator from each body's pre-contact contribution toward the other.
+// The contact normal must point from A to B. World-space tangential speed is irrelevant, and a
+// degenerate/non-closing contact or numerical tie deliberately carries no actor. Positional scalar
+// arguments keep this shared custom/Rapier seam allocation-free inside the physics hot loop.
+export function directContactCausalActorId(aId, bId, aVx, aVz, bVx, bVz, nx, nz) {
+  const normalLength = Math.hypot(finite(nx), finite(nz));
+  if (!(normalLength > DIRECT_CONTACT_CAUSAL_EPSILON)) return null;
+  const normalX = finite(nx) / normalLength;
+  const normalZ = finite(nz) / normalLength;
+  const aNormalSpeed = finite(aVx) * normalX + finite(aVz) * normalZ;
+  const bNormalSpeed = finite(bVx) * normalX + finite(bVz) * normalZ;
+  const closureScale = Math.max(1, Math.abs(aNormalSpeed), Math.abs(bNormalSpeed));
+  if (aNormalSpeed - bNormalSpeed <= DIRECT_CONTACT_CAUSAL_EPSILON * closureScale) return null;
+  const aContribution = Math.max(0, aNormalSpeed);
+  const bContribution = Math.max(0, -bNormalSpeed);
+  const scale = Math.max(1, aContribution, bContribution);
+  if (Math.abs(aContribution - bContribution) <= DIRECT_CONTACT_CAUSAL_EPSILON * scale) return null;
+  return aContribution > bContribution ? aId : bId;
+}
 
 
 export async function createSg02DynamicBodyOwner(options = {}) {
@@ -810,8 +831,10 @@ export class Sg02DynamicBodyOwner {
       if (!(boundedImpulse > 0)) return;
 
       const direction = event.maxForceDirection();
-      let px = (finite(recA.body.translation().x) + finite(recB.body.translation().x)) * 0.5;
-      let pz = (finite(recA.body.translation().z) + finite(recB.body.translation().z)) * 0.5;
+      const translationA = recA.body.translation();
+      const translationB = recB.body.translation();
+      let px = (finite(translationA.x) + finite(translationB.x)) * 0.5;
+      let pz = (finite(translationA.z) + finite(translationB.z)) * 0.5;
       if (typeof this.world.contactPair === 'function') {
         this.world.contactPair(ownedA.collider, ownedB.collider, (manifold) => {
           if (manifold.numSolverContacts() < 1) return;
@@ -824,6 +847,20 @@ export class Sg02DynamicBodyOwner {
       const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
       const a = aFirst ? recA : recB;
       const b = aFirst ? recB : recA;
+      const aExpected = a.expected;
+      const bExpected = b.expected;
+      const aKinematics = a.kinematics;
+      const bKinematics = b.kinematics;
+      const causalActorId = directContactCausalActorId(
+        a.entity.id,
+        b.entity.id,
+        a.spec.dynamic ? aExpected && aExpected.vx : 0,
+        a.spec.dynamic ? aExpected && aExpected.vz : 0,
+        b.spec.dynamic ? bExpected && bExpected.vx : 0,
+        b.spec.dynamic ? bExpected && bExpected.vz : 0,
+        finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x),
+        finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z),
+      );
       const key = `${String(a.entity.id)}\u0000${String(b.entity.id)}`;
       const existing = merged.get(key);
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, Math.min(...dynamicCaps));
@@ -836,6 +873,7 @@ export class Sg02DynamicBodyOwner {
         impulse,
         pos: { x: finite(global.x), z: finite(global.z) },
         normal,
+        causalActorId,
       };
       merged.set(key, receipt);
     });
