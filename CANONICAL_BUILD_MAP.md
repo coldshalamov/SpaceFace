@@ -251,11 +251,12 @@ Use this order when sources disagree:
 
 1. the user's current direction;
 2. [`ARCHITECTURE.md`](./ARCHITECTURE.md) for technical invariants and owner boundaries;
-3. [`design/GDD_2_0.md`](./design/GDD_2_0.md) for product intent;
-4. `design/program/` for admitted work, live status, and acceptance;
-5. the selected active packet or activated spec;
-6. supporting plans and references;
-7. historical handoffs and archives, for archaeology only.
+3. [`design/VISION.md`](./design/VISION.md) for the owner's fantasy and UVP — wins on product emphasis;
+4. [`design/GDD_2_0.md`](./design/GDD_2_0.md) for product intent;
+5. `design/program/` for admitted work, live status, and acceptance;
+6. the selected active packet or activated spec;
+7. supporting plans and references;
+8. historical handoffs and archives, for archaeology only.
 
 A lower source cannot impose a palette, layout recipe, asset ceiling, implementation technique, process quota, permanent ownership lane, or gameplay prohibition that contradicts a higher source.
 

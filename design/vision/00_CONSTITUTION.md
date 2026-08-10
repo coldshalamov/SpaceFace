@@ -1,6 +1,7 @@
 # 00 — Product Constitution (supporting product framing)
 
-> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/VISION.md` (the
+> owner's fantasy and UVP — wins on product emphasis) > `design/GDD_2_0.md`
 > (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain. This file records supporting product framing and cannot override that chain.
@@ -22,7 +23,7 @@ A **browser/PC open space sandbox** in the *spirit* of Freelancer (travel gramma
 
 ## 2. Pillars (must serve at least one)
 
-1. **Playable first.** Soft death is fine; dying every few seconds is not. Fair TTK, readable enemies, undock grace, power-fantasy early game. **Flight must be easy to pilot** — weird center-spin physics and unreadable bank are bugs.
+1. **Playable first.** Soft death is fine; dying every few seconds is not. Fast TTK on ordinary enemies — readable, never sponges; per `design/VISION.md`, light enemies are almost ammunition — undock grace, power-fantasy early game. **Flight must be easy to pilot** — weird center-spin physics and unreadable bank are bugs.
 2. **Ship has a body.** Real nose / stern, readable bank, massline lever arm at the front — not a puck spinning on a center pin. **No sore-thumb geometry** (floating white boxes, junk pivots).
 3. **Massline is the toy.** Latch must work at combat speed (wide cone + Flyby Focus). Swing, reel-in, cut-whip must be usable strategies.
 4. **Open chart travel (Freelancer-like).** Open charted space; jump gates = go fast / continuous feel; **no loading screens** if we can help it. Density per system > empty radius.

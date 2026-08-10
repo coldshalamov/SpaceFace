@@ -33,7 +33,7 @@ when the player arrives.
 | 1 | **Every contact has a story** — convoys, patrols, distress, named bosses exist without you | 4 | Sit still 5 min in any sector; 3 legible events happen nearby | convoys haul Silt/recyclers; The Quiet run distress-bait; Concord scans-seals-clears |
 | 2 | **One glance, total comprehension** — one zoomable map; fog only at true frontier | 2 | New player finds "where is air cheap and who kills me on the way" in 10 s | the S0→S9 air gradient becomes literally visible |
 | 3 | **The economy breathes on-screen** — news ticker, forecast cones, dock event cards | 4 | Player makes a speculative trade off a news item and it pays | "MTS shorts Hollow's air futures" is a headline, not lore |
-| 4 | **Dogfights with a ceiling** — velocity-lead, momentum inherit, beams, overload/vent | 1 | A skilled pilot wins outnumbered by flying, not stats | — |
+| 4 | **Delightfully abusive physics combat** (reframed per `design/VISION.md`; was "dogfights with a ceiling") — velocity-lead, momentum inherit, impulse, displacement | 1 | A skilled pilot wins outnumbered by physics — throws, terrain, collateral — not stats | — |
 | 5 | **The story is in the paperwork** — dock-deny reasons, faction barks, manifest phases, Wren thread | 3 | Player grasps Vale is an administrator before any cutscene says so | this IS the theme-delivery mechanism |
 | 6 | **Light that sells the fiction** — bloom, ACES, ribbon trails, faction-distinct stations | 2 | Screenshots read as a shipped game | Vael stations glow with the best air in the system |
 

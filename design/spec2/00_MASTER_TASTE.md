@@ -1,6 +1,7 @@
 # SPEC2/00 — MASTER TASTE REFERENCE
 
-> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/VISION.md` (the
+> owner's fantasy and UVP — wins on product emphasis) > `design/GDD_2_0.md`
 > (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
 > This file is a historical taste and release-intent reference, not a visual constitution or rejection gate.
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that

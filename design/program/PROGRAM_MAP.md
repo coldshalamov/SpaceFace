@@ -9,6 +9,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 |---|---|
 | [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) | repository entry and work-selection algorithm |
 | [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) | engine invariants, ownership, loop, save, rendering contracts |
+| [`../VISION.md`](../VISION.md) | the owner's fantasy and UVP — wins on product emphasis |
 | [`../GDD_2_0.md`](../GDD_2_0.md) | product pillars and intended player experience |
 | [`roadmap/program-queue.json`](./roadmap/program-queue.json) | stable task identities and dependency graph |
 

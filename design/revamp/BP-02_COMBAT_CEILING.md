@@ -1,10 +1,17 @@
 # BP-02 — COMBAT CEILING
 
+> **SUPERSEDED EMPHASIS (2026-08-10):** this packet's framing predates `design/VISION.md`.
+> SpaceFace is **not** building symmetrical honorable dogfights — combat is swarm-scale and
+> delightfully abusive; see `design/PHYSICAL_PLAY_GRAMMAR.md` ("Combat framing: swarms, not
+> dogfights"). The individual mechanics below (velocity-lead, momentum inheritance, heat) remain
+> useful; the "dogfights with a ceiling" objective does not survive as stated.
+
 > **Extends** `SPEC3-F4` (§19 combat-feel, §20 weapons-tactics). The AI brains (`src/ai/`) are already deep —
 > this is about the *player's* skill ceiling and *readability*, not smarter enemies.
 
 ## Goal
-Objective #4: *dogfights with a ceiling*. A skilled pilot wins outnumbered by flying, not by stats.
+Objective #4, reframed per `design/VISION.md`: a skilled pilot wins outnumbered by **physics** —
+displacement, terrain, tethers, and collateral — not by stats, and not by symmetrical marksmanship.
 
 ## Scope (Wave-2 combat lane owns `combat.js`/`weapons.js` exclusively)
 - [ ] **Velocity-lead aim** — NPC fire leads player velocity; add a HUD **lead pip** so the player can do the

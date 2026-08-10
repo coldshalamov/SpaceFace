@@ -188,8 +188,10 @@ The damage kernel (shield→armor→hull, resists, status) is sound. The overhau
 ### 6.1 Damage triangle (make the existing model legible)
 - **Energy** strips shields fast, weak vs armor. **Kinetic** cracks armor, sheds vs shields.
   **Explosive** wrecks hull and pushes (physics!), intercepted by point-defense.
-- Target readout shows three segmented bars (shield / armor / hull) — color-coded, always visible
-  on the target panel and mirrored as thin arcs around the enemy silhouette in-world.
+- Target readout shows three segmented bars (shield / armor / hull) — color-coded, on the target
+  panel only. Do **not** mirror HP arcs around enemy silhouettes in-world (`design/VISION.md` bans
+  collapsing into an HP-bar dogfighting game): in-world damage state is told physically — venting,
+  fires, tumbling, shed armor plates, dimming engines.
 
 ### 6.2 AI readability (they're not "weird," they're mute)
 The archetype FSM (swarmer/sniper/brawler/pirate/capital) is solid. Add **intent telegraphy**:

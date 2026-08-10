@@ -7,10 +7,11 @@ Do not read this directory wholesale. Start at `design/program/README.md` for cu
 ## Authority
 
 1. Root `ARCHITECTURE.md` — technical contract.
-2. `GDD_2_0.md` — product pillars and intended experience.
-3. `program/` — verified status, admitted work, acceptance, integration, retained backlog.
-4. The specific activated plan/spec — task detail.
-5. Current code, checks, and player-route evidence — implementation truth.
+2. `VISION.md` — the owner's statement of the fantasy and UVP; wins on product emphasis.
+3. `GDD_2_0.md` — product pillars and intended experience.
+4. `program/` — verified status, admitted work, acceptance, integration, retained backlog.
+5. The specific activated plan/spec — task detail.
+6. Current code, checks, and player-route evidence — implementation truth.
 
 Archived documents, handoffs, reviews, worker packets, transcripts, and tool plans are history, not
 current authority. Superseded ADRs live under `_ARCHIVE/adr/`.

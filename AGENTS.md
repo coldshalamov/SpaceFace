@@ -61,7 +61,8 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 
 ## 4. Authority and current work
 
-When sources disagree: user direction → `ARCHITECTURE.md` → `design/GDD_2_0.md` →
+When sources disagree: user direction → `ARCHITECTURE.md` (technical) → `design/VISION.md`
+(the owner's fantasy and UVP — wins on product emphasis) → `design/GDD_2_0.md` →
 `design/program/` → the activated plan/spec → supporting references.
 
 Live code, current checks, and player-route evidence determine whether descriptive claims are true.
