@@ -137,9 +137,15 @@ export const encounterDirector = {
       this.bus.on('day:tick', () => this._planSector(this._currentSectorId()));
       this.bus.on('sector:exit', (p) => this._onSectorExit(p));
       // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
-      this.bus.on('save:restoring', () => { this._saveRestoring = true; });
+      this.bus.on('save:restoring', () => {
+        this._saveRestoring = true;
+        clearAllPredationBindings(this.state, 'save_restoring');
+      });
       this.bus.on('save:loaded', () => this._onSaveLoaded());
       this.bus.on('save:error', () => { this._saveRestoring = false; });
+      // Canonical fresh-run boundary. encounterDirector is intentionally not in the central reset
+      // list, so its own event owner must clear transient live pairings before numeric IDs recycle.
+      this.bus.on('game:new', () => this.newGame());
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
@@ -166,6 +172,7 @@ export const encounterDirector = {
 
   newGame() {
     this._saveRestoring = false;
+    clearAllPredationBindings(this.state, 'new_game');
     this.state.encounterDirector = freshState();
     ensureNamed(this.state.encounterDirector);
   },
@@ -243,6 +250,7 @@ export const encounterDirector = {
     this._saveRestoring = false;
     const state = this.state;
     const prev = state.encounterDirector;
+    clearAllPredationBindings(state, 'save_loaded');
     const fresh = freshState();
     if (prev && typeof prev === 'object') {
       if (prev.named && typeof prev.named === 'object' && !Array.isArray(prev.named)) fresh.named = prev.named;
@@ -872,6 +880,9 @@ export const encounterDirector = {
       if (!passive && e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.fire = false; }
     }
   },
+  clearPredation(live, reason) {
+    return clearPredationBindingsForLive(this.state, live, reason || 'objective_cleared');
+  },
   despawnAll(live, afterS, role) {
     if (live && live.data && live.data.adoptedWorldActors === true) return;
     const now = this.now();
@@ -971,6 +982,7 @@ export const encounterDirector = {
     const now = this.now();
     live.phase = 'done';
     live.outcome = outcome;
+    clearPredationBindingsForLive(this.state, live, `encounter_${outcome}`);
     const resolvedIdentity = resolvedEncounterFingerprint(live.causality, outcome);
     const resolvedCausality = {
       ...live.causality,
@@ -1036,6 +1048,7 @@ export const encounterDirector = {
     const now = this.now();
     live.phase = 'done';
     live.outcome = `aborted:${reason}`;
+    clearPredationBindingsForLive(this.state, live, `encounter_aborted:${reason}`);
     dir.stats.fizzled++;
     dir.cooldowns[live.shapeId] = Math.max(dir.cooldowns[live.shapeId] || 0, now + 60);
     dir.pressure[live.deck] = Math.min(POOL_MAX, dir.pressure[live.deck] + (live.shape.pressureCost || 0)); // it never happened
@@ -1828,8 +1841,36 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   } else if (enc.script === 'namedHunter') {
     // Composition is resolved at fire time from the live named-captain roster (grudges evolve).
   } else {
-    const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
-    addSquad(ships, enc.squad, factionId, enc.context, globalZone, levelBand, rng, mainRole);
+    const authoredPredation = enc.script === 'convoy'
+      && enc.predation && enc.predation.enabled === true && enc.civilian;
+    if (authoredPredation) {
+      // Carrier first means the three-slot admission floor always yields the physical premise:
+      // one manifest-bearing civilian, one readable PD curtain, and one offensive raider. Ordinary
+      // convoy/trader definitions retain their long-standing single-squad composition path below.
+      addSquad(
+        ships,
+        enc.civilian,
+        enc.civilian.factionId || zone.factionId || 'faction_free',
+        enc.civilian.context || 'civilian',
+        globalZone,
+        levelBand,
+        rng,
+        enc.predation.carrierRole || 'hauler',
+      );
+      addSquad(
+        ships,
+        enc.squad,
+        factionId,
+        enc.context,
+        globalZone,
+        levelBand,
+        rng,
+        enc.predation.raiderRole || 'raider',
+      );
+    } else {
+      const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
+      addSquad(ships, enc.squad, factionId, enc.context, globalZone, levelBand, rng, mainRole);
+    }
     if (enc.escort) addSquad(ships, enc.escort, enc.escort.factionId, enc.escort.context || 'patrol', globalZone, levelBand, rng, 'escort');
   }
 
@@ -1856,6 +1897,9 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     levelBand,
     delay: 0,
     ships,
+    predation: enc.predation && enc.predation.enabled === true
+      ? { ...enc.predation }
+      : null,
   };
 }
 
@@ -1982,6 +2026,74 @@ function ensureNamed(dir) {
   }
 }
 
+function clearPredationBindingsForLive(state, live, reason = 'objective_cleared') {
+  if (!state || !live || !live.data) return 0;
+  const hadBinding = live.data.predationStatus != null
+    || live.data.predationTargetId != null
+    || live.data.predationRaiderId != null;
+  if (!hadBinding) return 0;
+  live.data.predationStatus = 'cleared';
+  live.data.predationEndReason = String(reason || 'objective_cleared');
+  const entities = state.entities;
+  let cleared = 0;
+  for (const id of live.ids || []) {
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (clearPredationBindingOnEntity(state, entity, live.id, reason)) cleared++;
+  }
+  return cleared;
+}
+
+function clearAllPredationBindings(state, reason = 'lifecycle_boundary') {
+  if (!state || typeof state !== 'object') return 0;
+  let cleared = 0;
+  const liveRows = state.encounterDirector && state.encounterDirector.live;
+  if (liveRows && typeof liveRows === 'object') {
+    for (const live of Object.values(liveRows)) {
+      cleared += clearPredationBindingsForLive(state, live, reason);
+    }
+  }
+  const entities = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : (Array.isArray(state.entityList) ? state.entityList : []);
+  for (const entity of entities) {
+    const encounterId = entity && entity.data && entity.data.predationEncounterId;
+    if (encounterId && clearPredationBindingOnEntity(state, entity, encounterId, reason)) cleared++;
+  }
+  return cleared;
+}
+
+function clearPredationBindingOnEntity(state, entity, encounterId, reason) {
+  const data = entity && entity.data;
+  if (!data || data.predationEncounterId !== encounterId) return false;
+  const ai = data.ai;
+  if (data.predationRole === 'raider' && ai) {
+    ai.passive = true;
+    ai.motiveSatisfied = true;
+    ai.pirateDisengaged = true;
+    ai.predationStatus = 'cleared';
+    ai.predationEndReason = String(reason || 'objective_cleared');
+    delete ai.predationTargetId;
+    delete ai.predationTargetIdentityKey;
+    delete ai.predationObjective;
+    setEntityDoctrine(entity, {
+      activity: {
+        kind: ActivityKind.DISENGAGE,
+        reason: `predation:${String(reason || 'objective_cleared')}`,
+        anchor: entity.pos,
+        leashRadius: 2600,
+        startedTick: Number.isInteger(state.tick) ? state.tick : 0,
+        targetId: null,
+        encounterId,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+  }
+  delete data.predationEncounterId;
+  delete data.predationIdentityKey;
+  delete data.predationRole;
+  return true;
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -2054,6 +2166,7 @@ function encounterScriptFor(liveOrShape) {
 
 function encounterAdmissionMinimum(item, shape) {
   if (item && item.data && item.data.ceresActivityAmbush === true) return 0;
+  if (item && item.predation && item.predation.enabled === true) return 3;
   if (item && item.variantKind === 'distress_genuine') return 2;
   if (item && Array.isArray(item.ships) && item.ships.length > 0) return 1;
   // Named hunters assemble their roster inside the script from durable captain state.

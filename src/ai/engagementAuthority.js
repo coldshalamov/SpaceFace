@@ -68,6 +68,10 @@ export function authorizeAIEngagement({
   if (self.id == null || target.id == null || self.id === target.id) return denied('invalid_target');
   const ai = self.data && self.data.ai;
   if (!ai || ai.passive) return denied('passive');
+  if ((ai.predationTargetId != null || ai.predationStatus === 'active')
+    && !isAuthorizedPredationRelation(state, self, target)) {
+    return denied('predation_relation_stale');
+  }
   if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return denied('hold_fire');
   const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
   if (targetIsDisabled(state, target) && factionBehavior && factionBehavior.destroyTarget === false) {
@@ -167,6 +171,70 @@ export function is47aScavengerCounterplayAuthorized(state, self, target) {
     * SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU;
 }
 
+/**
+ * Target-specific authority for the authored curtain-convoy crime.
+ *
+ * Team 2 remains neutral everywhere else. The relation is live only while the director owns the
+ * exact encounter, exact raider entity, and exact manifest-carrier identity. Runtime Map identity,
+ * stable role keys, drive/custody state, deadline, and leash are all re-read at the final gate so a
+ * stale tactical frame or recycled numeric id cannot widen the exception.
+ */
+export function isAuthorizedPredationRelation(state, self, target) {
+  if (!state || !self || !target || self === target || self.type !== 'ship' || target.type !== 'ship') return false;
+  if (self.alive === false || target.alive === false || self.id == null || target.id == null) return false;
+  if (target.id === state.playerId || target.team !== 2) return false;
+  if (entityById(state, self.id) !== self || entityById(state, target.id) !== target) return false;
+
+  const selfData = self.data;
+  const targetData = target.data;
+  const ai = selfData && selfData.ai;
+  const targetAi = targetData && targetData.ai;
+  if (!ai || ai.passive === true || ai.predationStatus !== 'active') return false;
+  if (selfData.predationRole !== 'raider' || targetData?.predationRole !== 'manifest_carrier') return false;
+  if (ai.encounterRole !== 'raider' || targetAi?.encounterRole !== 'hauler') return false;
+  if (ai.motive !== 'cargo_raid' || ai.engagementTrigger !== 'manifest_predation') return false;
+  if (ai.motiveSatisfied === true || ai.pirateDisengaged === true) return false;
+
+  const encounterId = selfData.predationEncounterId;
+  const identityKey = targetData.predationIdentityKey;
+  if (!nonEmpty(encounterId) || !nonEmpty(identityKey)) return false;
+  if (targetData.predationEncounterId !== encounterId
+    || ai.encounterId !== encounterId || targetAi?.encounterId !== encounterId) return false;
+  if (ai.predationTargetId !== target.id || ai.predationTargetIdentityKey !== identityKey) return false;
+
+  const live = state.encounterDirector && state.encounterDirector.live
+    && state.encounterDirector.live[encounterId];
+  if (!live || live.phase === 'done' || live.id !== encounterId || live.shapeId !== 'curtain_convoy') return false;
+  if (live.data?.predationStatus !== 'active'
+    || live.data.predationRaiderId !== self.id
+    || live.data.predationTargetId !== target.id
+    || live.data.predationTargetIdentityKey !== identityKey) return false;
+  if (live.roles?.[self.id] !== 'raider' || live.roles?.[target.id] !== 'hauler') return false;
+
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!nonEmpty(sectorId) || live.sectorId !== sectorId
+    || ai.sectorId !== sectorId || targetAi?.sectorId !== sectorId) return false;
+  if (targetIsDisabled(state, target) || !manifestRemainsWithCarrier(target)) return false;
+
+  const objective = ai.predationObjective;
+  const nowTick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!objective || objective.kind !== 'interdict_manifest'
+    || objective.encounterId !== encounterId
+    || objective.targetId !== target.id
+    || objective.targetIdentityKey !== identityKey
+    || !Number.isInteger(objective.deadlineTick)
+    || nowTick > objective.deadlineTick) return false;
+  if (Number.isFinite(live.data.predationDeadlineAt)
+    && Number.isFinite(state.simTime)
+    && state.simTime > live.data.predationDeadlineAt) return false;
+
+  const leash = Number(ai.predationLeashRadius);
+  if (!Number.isFinite(leash) || leash <= 0 || !self.pos || !target.pos) return false;
+  const dx = self.pos.x - target.pos.x;
+  const dz = self.pos.z - target.pos.z;
+  return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
+}
+
 /** Fresh hostility oracle for tactical perception and final execution authority. */
 export function isHostileForAI(state, self, other) {
   if (!self || !other || self.team == null || other.team == null) return false;
@@ -174,6 +242,15 @@ export function isHostileForAI(state, self, other) {
 
   const selfAi = self.data && self.data.ai || {};
   const otherAi = other.data && other.data.ai || {};
+  // An authored predation role owns this actor's complete automatic hostility set while it is
+  // standing by, telegraphing, or active. Existing retaliation/security flags must not let the
+  // same raider peel off onto the player or another neutral before the bounded objective clears.
+  if (self.data?.predationRole === 'raider'
+    && (selfAi.predationStatus === 'standby'
+      || selfAi.predationStatus === 'telegraph'
+      || selfAi.predationStatus === 'active')) {
+    return isAuthorizedPredationRelation(state, self, other);
+  }
   // A named incident target outranks the coarse team number. This is the only sanctioned
   // same-team hostility path: lawful patrol response or direct self-defense, both explicit and
   // inspectable. It prevents team 1 from making patrols blind to team-1 raiders.
@@ -214,6 +291,18 @@ function targetIsDisabled(state, target) {
   const runtime = state && state.combat && state.combat.entities
     && state.combat.entities[String(target.id)];
   return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
+}
+
+function manifestRemainsWithCarrier(target) {
+  const data = target && target.data;
+  const manifest = data && data.cargoManifest;
+  if (!manifest || !nonEmpty(manifest.manifestId) || !Array.isArray(manifest.lines)) return false;
+  if (!manifest.lines.some((line) => line && nonEmpty(line.commodityId) && Number(line.qty) > 0)) return false;
+  const custody = data.freightCustody;
+  if (!custody) return true;
+  return custody.status === 'carrier'
+    && custody.carrierId === target.id
+    && custody.carrierIdentityKey === data.predationIdentityKey;
 }
 
 /**

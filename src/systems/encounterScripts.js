@@ -33,6 +33,8 @@ import {
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE } from './mines.js';
+import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
+import { isPdScreenActor } from '../ai/pdScreen.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -46,6 +48,7 @@ const ESCAPE_R = 2600;            // generic combat-escape distance
 const CONVOY_ARRIVE_R = 240;      // convoy centroid inside this of the endpoint = arrived
 const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the convoy "witnessed"
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
+const PREDATION_MIN_RESPONSE_S = 1;
 const DIST_TELL_R = 1500;         // scan-pulse inside this of a distress site reads the signal
 const CLAIM_TELEGRAPH_S = 3;      // arrival breath: read formation/motive before weapons open
 const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate retreat
@@ -590,13 +593,29 @@ function convoyFire(d, live, state, isConvoy) {
   const end = dest && dest.pos ? { x: dest.pos.x, z: dest.pos.z } : { x: zc.x - Math.cos(ang) * zr * 1.6, z: zc.z - Math.sin(ang) * zr * 1.6 };
   const band = live.shape.unitsPerHauler || [4, 8];
   const perHauler = Math.round(band[0] + rng() * Math.max(0, band[1] - band[0]));
+  const routeDx = end.x - start.x;
+  const routeDz = end.z - start.z;
+  const routeLen = Math.hypot(routeDx, routeDz) || 1;
+  const routeX = routeDx / routeLen;
+  const routeZ = routeDz / routeLen;
+  const sideX = -routeZ;
+  const sideZ = routeX;
 
   const ships = live.plan.ships.map((sh, i) => {
     const out = { ...sh, passive: true };
-    if (sh.role !== 'escort') {
+    if (sh.role === 'hauler') {
       out.team = 2;                                     // true civilians; killing them is piracy (heat)
       out.scanLabel = `Hauler — ${cargo.label}`;
       out.pos = { x: start.x + (rng() - 0.5) * 120 - i * 40, z: start.z + (rng() - 0.5) * 120 };
+    } else if (sh.role === 'raider') {
+      // A readable approach curtain behind the carrier. These actors stay passive through the
+      // response window; once the exact selected relation opens, tacticalAI alone owns motion/fire.
+      const trail = 430 + i * 46;
+      const side = (i % 2 === 0 ? -1 : 1) * (90 + Math.floor(i / 2) * 34);
+      out.pos = {
+        x: start.x - routeX * trail + sideX * side,
+        z: start.z - routeZ * trail + sideZ * side,
+      };
     } else {
       out.pos = { x: start.x + (rng() - 0.5) * 200, z: start.z + (rng() - 0.5) * 200 };
     }
@@ -630,12 +649,260 @@ function convoyFire(d, live, state, isConvoy) {
   live.vars.cargo = cargo.label;
   live.vars.dest = live.data.destName;
   live.vars.faction = FACTION_LABELS[live.factionId] || 'Meridian';
+  if (live.plan.predation && live.plan.predation.enabled === true) {
+    attachConvoyCargoManifests(d, live, cargo.commodityId, perHauler);
+    if (!initializeConvoyPredation(d, live, state)) return d.abort(live, 'predation_composition');
+  }
   d.say(live, isConvoy ? 'news' : 'info', live.shape.bark, live.vars, { primary: true });
+}
+
+function attachConvoyCargoManifests(d, live, commodityId, perHauler) {
+  const haulers = d.entsOf(live, 'hauler').slice().sort(compareEntityIds);
+  for (let i = 0; i < haulers.length; i++) {
+    const entity = haulers[i];
+    const aggregate = live.data.freightManifest;
+    const manifestId = haulers.length === 1
+      ? aggregate.manifestId
+      : `${aggregate.manifestId}:carrier:${i}`;
+    entity.data = entity.data || {};
+    entity.data.cargoManifest = {
+      manifestId,
+      freighterKey: haulers.length === 1
+        ? aggregate.freighterKey
+        : `${aggregate.freighterKey}:carrier:${i}`,
+      role: 'hauler',
+      lines: perHauler > 0 ? [{ commodityId, qty: perHauler }] : [],
+      totalQty: Math.max(0, perHauler | 0),
+    };
+  }
+}
+
+function initializeConvoyPredation(d, live, state) {
+  const config = live.plan.predation;
+  const carriers = d.entsOf(live, config.carrierRole || 'hauler').slice().sort(compareEntityIds);
+  const raiders = d.entsOf(live, config.raiderRole || 'raider').slice().sort(compareEntityIds);
+  if (!carriers.length || !raiders.length) return false;
+
+  for (let i = 0; i < carriers.length; i++) {
+    const carrier = carriers[i];
+    const data = carrier.data || (carrier.data = {});
+    data.predationEncounterId = live.id;
+    data.predationRole = 'manifest_carrier';
+    data.predationIdentityKey = `${live.id}:hauler:${i}`;
+    data.freightCustody = {
+      status: 'carrier',
+      carrierId: carrier.id,
+      carrierIdentityKey: data.predationIdentityKey,
+      encounterId: live.id,
+      manifestId: data.cargoManifest && data.cargoManifest.manifestId || null,
+    };
+  }
+  for (let i = 0; i < raiders.length; i++) {
+    const raider = raiders[i];
+    const data = raider.data || (raider.data = {});
+    const ai = data.ai || (data.ai = {});
+    data.predationEncounterId = live.id;
+    data.predationRole = 'raider';
+    data.predationIdentityKey = `${live.id}:raider:${i}`;
+    ai.predationStatus = 'standby';
+    ai.passive = true;
+    delete ai.predationTargetId;
+    delete ai.predationTargetIdentityKey;
+  }
+
+  const target = carriers[0];
+  // The authored anchor is a point-defense controller. Giving it the carrier as an ATTACK_RUN
+  // target makes the PD policy treat that same carrier as its protected charge and correctly
+  // refuse to fire. Keep the screen as the readable curtain and select the first stable offensive
+  // hull for the bounded theft relation. A malformed all-screen roster fails closed.
+  const raider = raiders.find((candidate) => !isPdScreenActor(candidate));
+  if (!raider) return false;
+  const ai = raider.data.ai;
+  const responseWindowS = Math.max(
+    PREDATION_MIN_RESPONSE_S,
+    Number(config.responseWindowS) || PREDATION_MIN_RESPONSE_S,
+  );
+  const objectiveS = Math.max(responseWindowS, Number(config.objectiveS) || 90);
+  const leashRadius = Math.max(400, Number(config.leashRadius) || 2600);
+  const startedTick = Number.isInteger(state.tick) ? state.tick : Math.round(d.now() * 60);
+  const deadlineTick = startedTick + Math.ceil(objectiveS * 60);
+
+  ai.motive = String(config.motive || 'cargo_raid');
+  ai.engagementTrigger = String(config.engagementTrigger || 'manifest_predation');
+  if (typeof config.attackerDoctrineId === 'string' && config.attackerDoctrineId.length > 0) {
+    ai.combatDoctrineId = config.attackerDoctrineId;
+  }
+  ai.approachTelegraph = String(config.approachTelegraph || 'pirate_approach');
+  ai.noFireResponseWindowS = responseWindowS;
+  ai.predationStatus = 'telegraph';
+  ai.predationTargetId = target.id;
+  ai.predationTargetIdentityKey = target.data.predationIdentityKey;
+  ai.predationLeashRadius = leashRadius;
+  ai.motiveSatisfied = false;
+  ai.pirateDisengaged = false;
+  ai.predationObjective = {
+    kind: 'interdict_manifest',
+    encounterId: live.id,
+    targetId: target.id,
+    targetIdentityKey: target.data.predationIdentityKey,
+    manifestId: target.data.cargoManifest.manifestId,
+    startedTick,
+    deadlineTick,
+    leashRadius,
+  };
+  setEntityDoctrine(raider, {
+    activity: {
+      kind: ActivityKind.HAIL_HOLD,
+      reason: `${live.shapeId}:predation_telegraph`,
+      anchor: raider.pos,
+      leashRadius,
+      startedTick,
+      deadlineTick,
+      targetId: target.id,
+      routeId: live.zoneId,
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+
+  live.data.predationStatus = 'telegraph';
+  live.data.predationRaiderId = raider.id;
+  live.data.predationRaiderIdentityKey = raider.data.predationIdentityKey;
+  live.data.predationTargetId = target.id;
+  live.data.predationTargetIdentityKey = target.data.predationIdentityKey;
+  live.data.predationStartedTick = startedTick;
+  live.data.predationNoFireUntil = d.now() + responseWindowS;
+  live.data.predationDeadlineAt = Math.min(live.deadlineAt, d.now() + objectiveS);
+  live.data.predationAwaySince = null;
+  live.data.predationEndReason = null;
+  d.emit('encounter:predationTelegraph', {
+    encounterId: live.id,
+    raiderId: raider.id,
+    raiderIdentityKey: raider.data.predationIdentityKey,
+    targetId: target.id,
+    targetIdentityKey: target.data.predationIdentityKey,
+    manifestId: target.data.cargoManifest.manifestId,
+    motive: ai.motive,
+    approachTelegraph: ai.approachTelegraph,
+    responseWindowS,
+    noFireUntil: live.data.predationNoFireUntil,
+    deadlineAt: live.data.predationDeadlineAt,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+  });
+  return true;
+}
+
+function tickConvoyPredation(d, live, state, now) {
+  if (!live.plan.predation || !['telegraph', 'active'].includes(live.data.predationStatus)) return;
+  const raider = state.entities && state.entities.get(live.data.predationRaiderId);
+  const target = state.entities && state.entities.get(live.data.predationTargetId);
+  const targetIdentity = live.data.predationTargetIdentityKey;
+  if (!raider || raider.alive === false || raider.data?.predationIdentityKey !== live.data.predationRaiderIdentityKey) {
+    clearConvoyPredation(d, live, 'raider_lost');
+    return;
+  }
+  if (!target || target.alive === false || target.data?.predationIdentityKey !== targetIdentity) {
+    clearConvoyPredation(d, live, 'target_lost');
+    return;
+  }
+  if (convoyTargetDisabled(state, target)) {
+    clearConvoyPredation(d, live, 'target_disabled');
+    return;
+  }
+  if (!manifestStillInCarrierCustody(target)) {
+    clearConvoyPredation(d, live, 'custody_changed');
+    return;
+  }
+  if (now >= live.data.predationDeadlineAt) {
+    clearConvoyPredation(d, live, 'objective_timeout');
+    return;
+  }
+
+  const config = live.plan.predation;
+  const leash = Math.max(400, Number(config.leashRadius) || 2600);
+  const separation2 = dist2(raider.pos.x, raider.pos.z, target.pos.x, target.pos.z);
+  if (separation2 > leash * leash) {
+    if (live.data.predationAwaySince == null) live.data.predationAwaySince = now;
+    if (now - live.data.predationAwaySince >= Math.max(1, Number(config.escapeHoldS) || 3)) {
+      clearConvoyPredation(d, live, 'target_escaped');
+    }
+    return;
+  }
+  live.data.predationAwaySince = null;
+
+  if (live.data.predationStatus === 'telegraph' && now >= live.data.predationNoFireUntil) {
+    const ai = raider.data.ai;
+    ai.passive = false;
+    ai.predationStatus = 'active';
+    setEntityDoctrine(raider, {
+      activity: {
+        kind: ActivityKind.ATTACK_RUN,
+        reason: `${live.shapeId}:manifest_predation`,
+        anchor: live.anchor,
+        leashRadius: leash,
+        startedTick: live.data.predationStartedTick,
+        deadlineTick: ai.predationObjective.deadlineTick,
+        targetId: target.id,
+        routeId: live.zoneId,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.WEAPONS_FREE,
+    });
+    live.data.predationStatus = 'active';
+    d.emit('encounter:predationEngaged', {
+      encounterId: live.id,
+      raiderId: raider.id,
+      targetId: target.id,
+      manifestId: target.data.cargoManifest.manifestId,
+      t: now,
+    });
+  }
+}
+
+function clearConvoyPredation(d, live, reason) {
+  if (!live || !live.data || !['telegraph', 'active'].includes(live.data.predationStatus)) return false;
+  const raiderId = live.data.predationRaiderId;
+  const targetId = live.data.predationTargetId;
+  d.clearPredation(live, reason);
+  d.emit('encounter:predationCleared', {
+    encounterId: live.id,
+    raiderId,
+    targetId,
+    reason,
+    t: d.now(),
+  });
+  return true;
+}
+
+function convoyTargetDisabled(state, target) {
+  if (!target || target.disabled === true) return true;
+  const runtime = state.combat && state.combat.entities && state.combat.entities[String(target.id)];
+  return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
+}
+
+function manifestStillInCarrierCustody(target) {
+  const data = target && target.data;
+  const manifest = data && data.cargoManifest;
+  if (!manifest || !Array.isArray(manifest.lines)
+    || !manifest.lines.some((line) => line && Number(line.qty) > 0)) return false;
+  const custody = data.freightCustody;
+  return !custody || (custody.status === 'carrier'
+    && custody.carrierId === target.id
+    && custody.carrierIdentityKey === data.predationIdentityKey);
+}
+
+function compareEntityIds(a, b) {
+  const an = Number(a && a.id);
+  const bn = Number(b && b.id);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return String(a && a.id).localeCompare(String(b && b.id));
 }
 
 function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
+  tickConvoyPredation(d, live, state, now);
   if (!haulers.length) {
     // All cargo dead: the initial manifest is retained even though its carriers are gone. Route
     // scarcity through the economy owner exactly once, then resolve as robbed/lost.
@@ -649,7 +916,9 @@ function convoyTick(d, live, state, now, isConvoy) {
     return d.resolve(live, outcome, { vars: live.vars, speak: live.data.noticed || live.data.robbed });
   }
   const end = live.data.end;
-  for (const e of d.entsOf(live)) steerToward(e, end.x, end.z, 120);  // passive ships fly the route
+  // Only route-owned passive hulls receive director intent. The selected raider is rostered and
+  // tacticalAI remains the sole writer of its movement/fire decisions.
+  for (const e of [...haulers, ...d.entsOf(live, 'escort')]) steerToward(e, end.x, end.z, 120);
   if (p && !live.data.noticed) {
     for (const h of haulers) {
       if (dist2(p.pos.x, p.pos.z, h.pos.x, h.pos.z) <= CONVOY_NOTICE_R * CONVOY_NOTICE_R) { live.data.noticed = true; break; }
@@ -660,6 +929,7 @@ function convoyTick(d, live, state, now, isConvoy) {
   if (!arrived) return;
 
   // Arrival: surviving cargo applies bounded supply pressure at the destination market.
+  clearConvoyPredation(d, live, 'carrier_arrived');
   const units = Math.min(TRADE_PRESSURE_CAP, haulers.length * (live.data.perHauler | 0));
   if (live.data.destId && units > 0) d.tradePressure(live.data.destId, live.data.cargoId, units);
   d.despawnAll(live, 6);                                // docked — off the board
@@ -682,12 +952,17 @@ const convoy = {
   event(d, live, state, name, p) {
     if (name === 'squadKill') {
       const role = p && p.role;
-      if (role !== 'escort') {
+      if (role === 'hauler') {
+        if (p.id === live.data.predationTargetId) clearConvoyPredation(d, live, 'target_destroyed');
         if (p.byPlayer) {
           live.data.robbed = true;
           if (p.killerId != null) live.data.lossKillerId = p.killerId;
           d.setPassive(live, false, 'escort');          // escorts go weapons-free (lawful gate applies)
         } else if (!live.data.robbed && p && p.killerId != null) live.data.lossKillerId = p.killerId;
+      }
+      if (role === 'raider') {
+        if (p.id === live.data.predationRaiderId) clearConvoyPredation(d, live, 'raider_destroyed');
+        if (p.byPlayer) live.data.guardKills += 1;
       }
     }
     if (name === 'guardKill') live.data.guardKills += 1; // player killed an attacker near the convoy

@@ -27,7 +27,11 @@ export default defineEncounter(trigger, {
   title: 'CURTAIN OVER THE CONVOY',
   primaryLine: 'TRAFFIC ALERT: freighter under PD screen. Raiders want the hold; the escort wants the lane.',
   squad: {
-    archetypes: ['pd_screen_escort', 'reaver_pirate', 'mine_layer_jackal'],
+    // The screen is the readable controller and always materializes first; the lighter raiders
+    // vary behind it. Runtime predation still selects by stable live identity rather than trusting
+    // this array order.
+    anchorArchetype: 'pd_screen_escort',
+    archetypes: ['reaver_pirate', 'mine_layer_jackal'],
     size: [2, 4],
     doctrine: 'scavenger',
     formation: 'wedge',
@@ -35,6 +39,23 @@ export default defineEncounter(trigger, {
   civilian: {
     archetypes: ['mule_trader'],
     size: [1, 1],
+    factionId: 'faction_mts',
+    context: 'civilian',
+    team: 2,
+    passive: true,
+  },
+  predation: {
+    enabled: true,
+    raiderRole: 'raider',
+    carrierRole: 'hauler',
+    motive: 'cargo_raid',
+    engagementTrigger: 'manifest_predation',
+    attackerDoctrineId: 'interceptor_flyby',
+    approachTelegraph: 'pd_curtain_closing',
+    responseWindowS: 1.25,
+    objectiveS: 90,
+    leashRadius: 2600,
+    escapeHoldS: 3,
   },
   bark: 'attack',
   choices: [
