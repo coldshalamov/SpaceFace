@@ -84,21 +84,30 @@ constant — the projection and lifecycle work is independent of which string is
 
 | Check | Result |
 |---|---|
-| `node --test` the four named suites | **70/70 pass** |
+| `node --test` the four named suites | **71/71 pass** |
 | `npm run check:pq020:ceres-topology` | **PASS** |
 | `npm run check:baseline` | **11/11 green** (identical to the entry measurement) |
 | adjacent suites: traffic-cast, visible-job-actions, npc-jobs-runtime-wiring, escort-formation, pq020 topology + proofs | **121/121 pass**, untouched |
 
-Three tests were added to `test/ceres-activity-faction-tender.test.mjs`, covering the live object and
-its binding, the steering, and the restore. Each was **mutation-checked** rather than trusted:
+Four tests were added to `test/ceres-activity-faction-tender.test.mjs`, covering the live object and
+its binding, the steering, the save/Continue restore, and a hard sector round trip. Each was
+**mutation-checked** rather than trusted:
 
 - Removing `targetRef` from the projection turns 8 tests red.
 - Removing `TENDER` from the waypoint selector turns the 3 new tests red.
 
 That matters because the obvious version of this test — asserting the restored waypoint's `targetRef`
 *string* — passes without any binding existing at all. The tests instead assert that
-`_currentCeresRealTargetBinding` returns a binding whose `targetRef` **is the live entity object**,
-before and after save/Continue.
+`_currentCeresRealTargetBinding` returns a binding whose `targetRef` **is the live entity object**.
+
+The save/Continue test alone was also not sufficient: it restores the job envelope but leaves the
+same tender and the same client alive in memory, so it proves the job-side restore rather than "a
+restored ship is still servicing the same client." The added hard round trip
+(`Ceres → sector_helios_prime → Ceres`) destroys and rebuilds **both** bodies — the tender comes back
+as a generic shell re-stamped by factionPresence adoption, and the client is dressed fresh with a new
+entity id — and then asserts exactly one live client and that the relationship rebinds to it,
+unambiguous. That is the path where a dropped identity marker or a lingering previous prop would have
+silently degraded the tender back to authored-coordinate motion.
 
 ### Cost declaration (required by the packet's performance budget)
 
@@ -117,7 +126,8 @@ objects already use, avoided that entirely.
 - **The longest-zero-visible-activity metric has shifted and is unmeasured.** Adding the slot to the
   census makes `countsTowardCeresPocketVisibility` return true for it, so the refinery pocket now has
   one more visible object. That moves the number the human verdict reads. I did not re-measure it.
-- **No live Browser/Electron run.** Everything above is headless.
+- **No live Browser/Electron run.** Everything above is headless. The rebuild-and-rebind path is
+  proven through the real `world.enterSector` seam, but still in a headless simulation.
 - **Long-horizon phase behavior is not proven.** The new tests set the job phase directly to reach the
   client leg. I did not run 18,000 ticks and observe the tender complete natural WORK cycles at its
   client.

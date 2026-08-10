@@ -497,8 +497,10 @@ test('the tender steers to a safe berth off its client through the existing job 
       'the tender aims at its live client, not at the authored coordinate');
     assert.ok(tender.data.intent.moveZ > 0, 'and closes on it rather than holding station');
 
-    // A safe berth means it stops CLEAR of the casualty instead of flying into it.
-    const standoff = 56;
+    // A safe berth means it stops CLEAR of the casualty instead of flying into it. Read the standoff
+    // from the admitted spec rather than restating it, so shrinking it below the client's own hull
+    // envelope fails here instead of quietly still passing.
+    const standoff = runtime._currentCeresRealTargetBinding(entry, tender).spec.standoffWU;
     assert.ok(standoff > client.radius,
       'the authored work berth clears the client hull envelope');
     tender.pos = { x: client.pos.x + standoff, z: client.pos.z };
@@ -543,6 +545,52 @@ test('Continue restores a tender still servicing the same client, not a bare coo
     assert.ok(binding, 'the relationship rebinds after restore rather than silently degrading');
     assert.equal(binding.targetRef, clients[0],
       'and it rebinds to the live object, proving more than a preserved string');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a hard sector round trip rebuilds both bodies and rebinds the same service relationship', () => {
+  const sim = tenderRuntime();
+  try {
+    const worldSystem = sim.registry.get('world');
+    const runtime = sim.registry.get('npcJobsRuntime');
+    const originalTender = sim.state.entities.get(sim.state.npcJobs.byId[TENDER_JOB_ID].entityId);
+    const originalClient = liveDisabledHulls(sim.state)[0];
+
+    worldSystem.enterSector('sector_helios_prime', {
+      fromSectorId: CERES_ACTIVITY_SECTOR_ID,
+      placePlayer: false,
+    });
+    sim.step(1 / 60); // let the core sweep actually remove the departed bodies
+    worldSystem.enterSector(CERES_ACTIVITY_SECTOR_ID, {
+      fromSectorId: 'sector_helios_prime',
+      placePlayer: false,
+    });
+
+    // Both ends of the relationship are genuinely new objects here: the tender is a rematerialized
+    // shell re-stamped by factionPresence adoption, and the client is a freshly dressed prop. If the
+    // adoption path dropped any identity marker, or if the previous client lingered and made the
+    // target ambiguous, the tender would silently fall back to flying at a bare coordinate.
+    const clients = liveDisabledHulls(sim.state);
+    assert.equal(clients.length, 1, 'the return leaves exactly one client, never a stale duplicate');
+    assert.notEqual(clients[0], originalClient, 'the client really was rebuilt, not merely retained');
+
+    const entry = sim.state.npcJobs.byId[TENDER_JOB_ID];
+    const tender = sim.state.entities.get(entry.entityId);
+    assert.notEqual(tender, originalTender, 'the tender really was rebuilt too');
+    assert.equal(tender.data.factionPresence.yardTender, true);
+    assert.equal(tender.data.durable, true);
+    assert.equal(tender.data.identityKey, TENDER_SLOT.worldRecordSlotId);
+    assert.equal(tender.data.activityActorSlotId, TENDER_SLOT.id);
+
+    entry.job.phase = 'transit';
+    entry.job.routeIndex = 0;
+    const binding = runtime._currentCeresRealTargetBinding(entry, tender);
+    assert.ok(binding, 'the restored ship is still an admitted service relationship');
+    assert.equal(binding.targetRef, clients[0],
+      'and it is servicing the same client, now bound to the rebuilt object');
+    assert.equal(binding.ambiguous, false);
   } finally {
     sim.dispose();
   }
