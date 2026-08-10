@@ -497,12 +497,16 @@ test('the tender steers to a safe berth off its client through the existing job 
       'the tender aims at its live client, not at the authored coordinate');
     assert.ok(tender.data.intent.moveZ > 0, 'and closes on it rather than holding station');
 
-    // A safe berth means it stops CLEAR of the casualty instead of flying into it. Read the standoff
-    // from the admitted spec rather than restating it, so shrinking it below the client's own hull
-    // envelope fails here instead of quietly still passing.
-    const standoff = runtime._currentCeresRealTargetBinding(entry, tender).spec.standoffWU;
-    assert.ok(standoff > client.radius,
-      'the authored work berth clears the client hull envelope');
+    // A safe berth means it stops CLEAR of the casualty rather than intersecting it. Both hulls have
+    // real size here, so the clearance that matters is the sum of the two radii — checking only the
+    // client's radius would call a berth "safe" while the tender's own 24 WU hull sat inside the
+    // wreck. Derive it the way the controller does instead of restating a number.
+    const spec = runtime._currentCeresRealTargetBinding(entry, tender).spec;
+    assert.equal(spec.standoffKind, 'collision',
+      'the work berth tracks live hull geometry rather than a hand-tuned constant');
+    const standoff = Math.max(spec.standoffWU, tender.radius + client.radius + 12);
+    assert.ok(standoff > tender.radius + client.radius,
+      'the berth clears both hulls, not merely the client centre');
     tender.pos = { x: client.pos.x + standoff, z: client.pos.z };
     tender.vel = { x: 0, z: 0 };
     runtime._drive(entry, tender);
@@ -583,6 +587,14 @@ test('a hard sector round trip rebuilds both bodies and rebinds the same service
     assert.equal(tender.data.durable, true);
     assert.equal(tender.data.identityKey, TENDER_SLOT.worldRecordSlotId);
     assert.equal(tender.data.activityActorSlotId, TENDER_SLOT.id);
+    // The work berth is derived from the LIVE actor radius, so canonical hull restoration is load
+    // bearing for clearance and not only for presentation: a rematerialized shell that kept a
+    // generic radius would compute a berth small enough to seat the tender inside the wreck.
+    assert.equal(tender.radius, 24, 'adoption restores the canonical hull the berth is derived from');
+    assert.equal(
+      Math.max(56, tender.radius + clients[0].radius + 12), 78,
+      'so the rebuilt tender parks at the same clearance a freshly spawned one does',
+    );
 
     entry.job.phase = 'transit';
     entry.job.routeIndex = 0;

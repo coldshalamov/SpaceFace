@@ -210,6 +210,39 @@ test('R5A positions and inert routes use the named-anchor camera bands', () => {
   );
 });
 
+// The `activity:` namespace means "abstract choreography — no object is or ever will be this". That
+// is a naming rule the runtime relies on but cannot check for itself: npcJobsRuntime only ever sees
+// the marks it was handed. Pinning it here is what stops a future slot being materialized while
+// keeping a name that promises it was not, which is exactly the defect PQ-045 existed to repair.
+test('R5A activity: marks stay abstract and never name a materialized object slot', () => {
+  const marks = CERES_ACTIVITY_POCKETS
+    .flatMap((pocket) => pocket.actorSlots)
+    .flatMap((slot) => slot.route.marks);
+  const abstract = marks.filter((mark) => String(mark.targetRef).startsWith('activity:'));
+  assert.deepEqual(abstract.map((mark) => mark.id).sort(), [
+    'ambush_hauler_inbound',
+    'ambush_hauler_outbound',
+    'cathedral_patrol_beat_a',
+    'cathedral_patrol_beat_b',
+    'seam_miner_work_pad',
+    'seam_survey_mark_a',
+    'seam_survey_mark_b',
+  ], 'exactly the seven scan/throughline/perimeter marks remain abstract choreography');
+
+  const objectSlotIds = new Set(CERES_ACTIVITY_POCKETS
+    .flatMap((pocket) => pocket.objectSlots)
+    .map((slot) => slot.id));
+  for (const mark of abstract) {
+    const named = String(mark.targetRef).slice('activity:'.length);
+    assert.equal(objectSlotIds.has(named), false,
+      `${mark.id} promises no object exists, so ${named} must not be a materialized slot`);
+  }
+  for (const slot of CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots)) {
+    assert.equal(String(slot.targetRef ?? '').startsWith('activity:'), false,
+      `${slot.id} is a real object, so it must not be referenced through the abstract namespace`);
+  }
+});
+
 test('R5A companion objects are logical world slots, not a second place registry', () => {
   assert.deepEqual(
     CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots.map((slot) => slot.id)),

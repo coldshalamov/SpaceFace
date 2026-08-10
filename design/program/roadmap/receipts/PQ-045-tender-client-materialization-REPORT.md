@@ -84,7 +84,7 @@ constant — the projection and lifecycle work is independent of which string is
 
 | Check | Result |
 |---|---|
-| `node --test` the four named suites | **71/71 pass** |
+| `node --test` the four named suites | **72/72 pass** |
 | `npm run check:pq020:ceres-topology` | **PASS** |
 | `npm run check:baseline` | **11/11 green** (identical to the entry measurement) |
 | adjacent suites: traffic-cast, visible-job-actions, npc-jobs-runtime-wiring, escort-formation, pq020 topology + proofs | **121/121 pass**, untouched |
@@ -93,8 +93,9 @@ Four tests were added to `test/ceres-activity-faction-tender.test.mjs`, covering
 its binding, the steering, the save/Continue restore, and a hard sector round trip. Each was
 **mutation-checked** rather than trusted:
 
-- Removing `targetRef` from the projection turns 8 tests red.
-- Removing `TENDER` from the waypoint selector turns the 3 new tests red.
+- Removing `targetRef` from the projection turns 9 tests red.
+- Removing `TENDER` from the waypoint selector turns 4 tests red.
+- Desyncing the spec's `targetRef` from the authored mark turns 10 tests red.
 
 That matters because the obvious version of this test — asserting the restored waypoint's `targetRef`
 *string* — passes without any binding existing at all. The tests instead assert that
@@ -108,6 +109,27 @@ as a generic shell re-stamped by factionPresence adoption, and the client is dre
 entity id — and then asserts exactly one live client and that the relationship rebinds to it,
 unambiguous. That is the path where a dropped identity marker or a lingering previous prop would have
 silently degraded the tender back to authored-coordinate motion.
+
+### The work berth, and a correction
+
+The first version of this authored a flat 56 WU standoff and claimed it cleared the casualty. That was
+wrong on the arithmetic: the client hull is 42 WU and the **tender itself is 24**, not the ~10 I had
+assumed, so at 56 the tender's own hull sat 10 WU inside the wreck. The claim was checked with
+`standoff > client.radius`, which is exactly the assertion that lets that error through.
+
+The berth is now `standoffKind: 'collision'`, which takes `max(standoffWU, actorR + targetR + 12)` from
+the live radii — 78 WU here, a real 12 WU gap between hull surfaces. The other fixed standoffs are
+hand-tuned against props where that would be wrong (the Cathedral root radius is 360 WU; the hauler
+deliberately noses inside the cargo barge). Here both bodies are real hulls of similar size, and the
+number now tracks the geometry instead of rotting silently if either is re-authored.
+
+Correcting it surfaced a second defect the flat number had hidden: at 78 WU the tender's **spawn point
+was inside its own berth**, so on every entry to Ceres its first action would have been reversing away
+from the wreck — the controller behaving correctly in response to bad authoring. The client offset
+moved from `(-58, -46)` to `(-65, -65)`, solved against three constraints at once: inside the immediate
+band, more than a berth clear of the tender spawn, and off the spawn→authored-mark bearing by 0.54 rad
+so that servicing the real casualty is a visibly different heading rather than an invisible refinement.
+Verified end to end: the tender turns, closes, and holds at the berth.
 
 ### Cost declaration (required by the packet's performance budget)
 
@@ -131,12 +153,19 @@ objects already use, avoided that entirely.
 - **Long-horizon phase behavior is not proven.** The new tests set the job phase directly to reach the
   client leg. I did not run 18,000 ticks and observe the tender complete natural WORK cycles at its
   client.
+- **The berth is geometrically correct but not artistically judged.** 12 WU of clearance between two
+  hulls is derived and verified, not composed: nobody has looked at whether a tender parked there
+  *reads* as welding a casualty rather than as loitering near one. That is a call for the human
+  five-minute review, and it is cheap to retune — the clearance margin is one constant in the spec.
 
 ## Deliberately left out
 
 - **The seven other `activity:*` marks are untouched.** They are abstract scan, throughline and
   perimeter choreography. Manufacturing objects for them was explicitly out of scope and would have
-  been wrong.
+  been wrong. `test/ceres-active-pockets.test.mjs` now pins that rule directly — exactly seven marks
+  keep the `activity:` prefix, none of them names a materialized slot, and no object slot is
+  referenced through that namespace. The runtime depends on this convention but cannot check it
+  itself, and it is precisely the convention whose violation created this unit's defect.
 - **The tender's first mark, `station:station_ceres:service-berth`, stays authored.** It names a face
   of a station that already exists; it is not a missing entity, and admitting it would have widened
   the exact-tuple language for no product gain.

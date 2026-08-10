@@ -203,10 +203,14 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
   }),
   // The tender's second mark. Its first mark (`station:station_ceres:service-berth`) stays authored:
   // the berth is a named face of a station this route never needs to physically resolve, whereas the
-  // client is the whole point of the call-out. The authored work berth is wider than the other fixed
-  // standoffs on purpose — it clears the 42 WU disabled-hull envelope plus the tender's own radius,
-  // so the tender holds station alongside the casualty instead of nosing inside it the way the
-  // freight hauler deliberately does with the cargo barge.
+  // client is the whole point of the call-out.
+  //
+  // This is the one relationship whose berth is DERIVED rather than authored flat. The other fixed
+  // standoffs are hand-tuned against props whose visual radius is either meaningless (the Cathedral
+  // root is 360 WU) or deliberately nosed into (the hauler tucks inside the cargo barge). Here both
+  // bodies are real hulls of comparable size, and a tender that intersects the casualty it is welding
+  // reads as a bug rather than as service. `collision` takes max(standoffWU, actorR + targetR + 12),
+  // so the clearance tracks the live geometry and cannot silently rot if either hull is re-authored.
   Object.freeze({
     actorSlotId: 'ceres_refinery_tender',
     worldRecordSlotId: 'ceres:activity:ceres_refinery_tender',
@@ -217,7 +221,7 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     entityType: 'fx',
     identityField: 'activityObjectSlotId',
     identityValue: 'ceres_refinery_disabled_hull',
-    standoffKind: 'fixed',
+    standoffKind: 'collision',
     standoffWU: 56,
     recordKind: RECORD_KIND.NPC,
     ownership: CERES_TARGET_OWNERSHIP.FACTION_PRESENCE,

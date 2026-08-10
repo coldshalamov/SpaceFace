@@ -196,11 +196,21 @@ const refineryObjects = Object.freeze([
   // an abstract `activity:` choreography mark. It sits inside the immediate band on the opposite
   // side of the anchor from the cargo pod, so the tender's berth->client leg reads as a call-out
   // across the refinery rather than a second approach to the freight staging area.
+  //
+  // Three constraints pin this offset, and it satisfies all of them at once with little room spare:
+  //   1. 91.9 WU from the anchor — objectSlot() throws above the 95 WU immediate band, so retuning
+  //      this outward is the failure a future edit is most likely to hit.
+  //   2. 91.4 WU from the tender's own spawn at (-44, 24), which must exceed the derived work berth
+  //      (42 + 24 + 12 = 78 WU). Closer in, the tender would materialize already inside its berth,
+  //      and the controller's correct response — reverse out to clearance — would be the first thing
+  //      a player entering Ceres ever saw it do.
+  //   3. 0.54 rad off the bearing from that spawn to the authored client mark, so servicing the real
+  //      casualty is visibly a different heading rather than an invisible refinement of the old one.
   objectSlot({
     id: 'ceres_refinery_disabled_hull',
     pocketId: refineryId,
     kind: 'disabled_service_client',
-    offset: point(-58, -46),
+    offset: point(-65, -65),
     runtimeOwner: 'world',
     targetRef: 'object:ceres_refinery_disabled_hull',
   }),
