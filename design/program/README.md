@@ -9,6 +9,7 @@ orient without ingesting the repository's history.
 
 | Need | Read |
 |---|---|
+| Make the game richer (NPCs, enemies, sectors, economy, story, graphics, VFX, audio, feel, content, a slice) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) — reusable `WF-01`–`WF-19` workflows and `1x`/`3x`/`5x` scale; concrete work still flows through the queue below |
 | Copy-ready prompt for any thread | [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) |
 | First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
 | Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |

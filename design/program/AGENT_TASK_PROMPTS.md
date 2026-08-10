@@ -12,6 +12,16 @@ These prompts are intentionally plain. The agent obtains technical detail from t
 live board, queue row, packet, code owners, and tests. Give one prompt to one thread. A thread finishes
 one task and stops; it does not start an open-ended campaign.
 
+## Which door? Exact task vs. develop the game
+
+- **Finish a known exact task** → use Prompts A/B/C below, or
+  `node scripts/program-dispatch.mjs --next/--ready/--id`. The queue is unchanged.
+- **Spend inference making the game richer** — NPCs, enemies, sectors, economy, story, graphics, VFX,
+  audio, gameplay feel, content, a playable slice → start at
+  [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). It indexes the reusable `WF-01`–`WF-19` workflows with
+  the `1x`/`3x`/`5x` scale shorthand and a copy-ready activation prompt. Concrete implementation work
+  the lane produces still goes through the normal ownership/packet/acceptance system.
+
 ## Starting several threads at once
 
 Give Prompt A to each thread, or give different concrete prompts from the bottom of this file. Each
