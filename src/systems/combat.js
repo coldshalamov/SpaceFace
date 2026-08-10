@@ -589,7 +589,7 @@ export const combat = {
     if (bounty > 0 && authoredRewardEligible) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     }
-    if (d.loot && authoredRewardEligible) {
+    if (d.loot && !missionOwns) {
       // Current run seed + durable victim identity makes authored rewards stable across entity-id
       // rematerialization and save/load without a private combat cursor to serialize or reset.
       const rewardRng = createVictimRewardRng(
@@ -598,16 +598,26 @@ export const combat = {
         'combat_authored_loot_v1',
       );
       const { credits, items } = this.rollLoot(d.loot, rewardRng);
-      if (credits > 0) bus.emit('economy:grantCredits', { amount: credits, reason: 'loot' });
-      bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits, items });
-      for (const it of items) {
-        const ang = rewardRng() * Math.PI * 2, sp = 18 + rewardRng() * 28;
-        const kind = lootPickupKind(it.id);
-        this.helpers.spawnEntity({
-          type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },
-          vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp }, radius: 2.2,
-          data: { kind, commodityId: it.id, amount: it.qty, despawnAt: state.simTime + 30 },
-        });
+      const creditedLoot = authoredRewardEligible ? credits : 0;
+      if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
+      // NPC-on-NPC kills still publish the deterministic world receipt used by observers, but
+      // authored credits and physical pickups remain player-earned. Commodity cargo continues to
+      // materialize only through its owning loot/custody systems, never this metadata-only receipt.
+      bus.emit('loot:drop', {
+        pos: { x: t.pos.x, z: t.pos.z },
+        credits: creditedLoot,
+        items,
+      });
+      if (authoredRewardEligible) {
+        for (const it of items) {
+          const ang = rewardRng() * Math.PI * 2, sp = 18 + rewardRng() * 28;
+          const kind = lootPickupKind(it.id);
+          this.helpers.spawnEntity({
+            type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },
+            vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp }, radius: 2.2,
+            data: { kind, commodityId: it.id, amount: it.qty, despawnAt: state.simTime + 30 },
+          });
+        }
       }
     }
   },
