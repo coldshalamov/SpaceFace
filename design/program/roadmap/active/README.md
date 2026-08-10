@@ -90,9 +90,14 @@ evidence triggers are proved.
 | [`PQ-041.md`](./PQ-041.md) | supported Electron 43.2 runtime | focused implementation on master; H1 harness repair plus exact-package/native acceptance remain |
 | [`PQ-042.md`](./PQ-042.md) | select one GPU correction—or no GPU change—from valid pass evidence | PQ-034–041 accepted; clean trace selects A/B/C/D |
 | [`PQ-045.md`](./PQ-045.md) | finish the R5 Ceres lived-world slice through exact dependency leaves | target motion integrated; tender client, topology, causal/NPC/art/VFX work, five-minute evidence, and human verdict; bounded late audit is independent |
+| [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
+
+PQ-046 retired through five exact leaf receipts at four production commits. The parent remains
+`focused_green`; no Browser/Electron `route_accepted` claim was inferred from deterministic render
+evidence or a foreign-dirty ordinary route.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that

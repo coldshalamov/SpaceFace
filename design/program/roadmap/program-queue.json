@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-09",
+  "updatedAt": "2026-08-10",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -76,7 +76,9 @@
         "PQ-041",
         "PQ-042",
         "PQ-043",
-        "PQ-044"
+        "PQ-044",
+        "PQ-045",
+        "PQ-046"
       ]
     },
     {
@@ -2193,6 +2195,43 @@
         "human-review"
       ],
       "brief": "Retroactively admit the R5 Ceres reference pocket and its five-minute acceptance harness, which landed on master 2026-08-08 with no queue row, no lease and no receipt, then carry the slice to a human-reviewed five-minute gate. That gate is the declared prerequisite for R8 showcase work and for any sector-propagation pass. PQ-020 established the Ceres geography and route and remains its owner; this row deliberately carries no hard dependsOn on it, because the R5 implementation has already landed and its own leaf chain supplies the real ordering."
+    },
+    {
+      "id": "PQ-046",
+      "priority": 46,
+      "title": "Five high-leverage vision unlocks",
+      "state": "integrated",
+      "canonical": [
+        "VISION-ALIGNMENT-PHASE-1"
+      ],
+      "aliases": [
+        "INFERENCE-5X-VISION"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/VISION_ALIGNMENT_PLAN.md",
+        "design/program/INFERENCE_LANES.md",
+        "design/VISION.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:v3:compare",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "physics-consequence",
+        "normal-camera-presentation",
+        "accessibility",
+        "law-and-crime",
+        "kill-rewards",
+        "spawn-authority",
+        "determinism"
+      ],
+      "brief": "The five selected Phase 1 inference outcomes are integrated at focused-green scope: craft collisions, visual energy, clean-ship WANTED causality, a three-pickup reward fountain, and cap-safe four-to-six light squads. Four independently published candidate commits share five leaf receipts because WANTED and rewards intentionally landed as one atomic law/reward slice; no parent Browser/Electron route-acceptance claim is made.",
+      "integratedCommit": "02419f0cdd8f2815b2943a13cf49b484c79c08fd, 489a35a96c5efed64b52b7d31b2d71f2bd1bb0f0, 0209c4cab61d799852f4256825a429fa8672f444, f773e086b2d702b98555e2c13c111ebd64a0028d",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md#portfolio-closeout",
+      "receipt": "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md"
     }
   ],
   "dispatchUnits": [
@@ -5310,6 +5349,167 @@
       ],
       "receiptRefs": [],
       "brief": "evaluateCeresHumanReview requires a named human reviewer, a timestamp, a KEEP or REVISE verdict and an explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. NO AGENT MAY SELF-GRANT THIS. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
+    },
+    {
+      "id": "PQ-046.craft-collision",
+      "parentId": "PQ-046",
+      "priority": 271,
+      "title": "Make craft collisions consequential",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/combat/impulseKernel.js",
+        "src/systems/collisionConsequences.js",
+        "test/weapon-impulse-consequence.test.mjs",
+        "scripts/check-impulse-authority.mjs"
+      ],
+      "checks": [
+        "node --test test/weapon-impulse-consequence.test.mjs",
+        "node scripts/check-impulse-authority.mjs",
+        "npm run check:sim:v3:compare",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-046-craft-collision-REPORT.md"
+      ],
+      "brief": "Ordinary solid craft contact now owns one bounded baseline damage consequence with causal attribution; Ram Plate multiplies it, exact Massline whip ownership suppresses only the duplicate packet, and player immunity remains intact."
+    },
+    {
+      "id": "PQ-046.visual-energy",
+      "parentId": "PQ-046",
+      "priority": 272,
+      "title": "Raise restrained visual energy and presentation parity",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "SAVE_SCHEMA.md",
+        "scripts/probe-bloom-slider.mjs",
+        "src/core/gameState.js",
+        "src/data/palettes.js",
+        "src/data/sectorVisualProfiles.js",
+        "src/render/bloom.js",
+        "src/render/post/spaceRenderGraph.js",
+        "src/render/renderer.js",
+        "src/render/ships/kestrelHero.js",
+        "src/render/vfx.js",
+        "src/ui/screens/settings.js",
+        "test/bloom-pass-timing-scratch.test.mjs",
+        "test/post-processing-restraint.test.mjs",
+        "test/render-target-pipeline-warmup.test.mjs",
+        "test/renderer-settings-runtime-truth.test.mjs",
+        "test/sector-visual-profiles.test.mjs",
+        "test/vfx-accessibility-profile.test.mjs"
+      ],
+      "checks": [
+        "node --test test/sector-visual-profiles.test.mjs test/vfx-accessibility-profile.test.mjs test/post-processing-restraint.test.mjs test/render-target-pipeline-warmup.test.mjs",
+        "npm run check:sector-palettes",
+        "node scripts/check-faction-kit.mjs",
+        "node scripts/check-kestrel-hero.mjs",
+        "node --test test/ship-appearance-schema.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-046-visual-energy-REPORT.md"
+      ],
+      "brief": "Default bloom, sector energy, and faction/Kestrel paint are raised within restraint bounds while one presentation policy preserves grade across direct, composite, and graph routes, applies render scale once, and carries reduced-motion/flash policy through both Massline representations."
+    },
+    {
+      "id": "PQ-046.clean-ship-wanted",
+      "parentId": "PQ-046",
+      "priority": 273,
+      "title": "Make a clean ordinary-ship kill cross WANTED",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/combat/damage.js",
+        "src/combat/rewardEligibility.js",
+        "src/systems/combat.js",
+        "src/systems/heat.js",
+        "test/pq019-heat-incident-listener.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq019-heat-incident-listener.test.mjs test/combat-contract-reward-exclusivity.test.mjs",
+        "npm run check:pq019b:seams",
+        "npm run check:baseline",
+        "npm run check:sim:v3:compare"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-046-clean-ship-wanted-REPORT.md"
+      ],
+      "brief": "The first accepted player hit freezes lawful/hostile truth under a durable victim identity, so retaliation, rematerialization, save/load, and receipt replay cannot launder a clean civilian kill; genuine hostiles remain legitimate combat."
+    },
+    {
+      "id": "PQ-046.reward-fountain",
+      "parentId": "PQ-046",
+      "priority": 274,
+      "title": "Turn eligible hostile kills into a valuable three-pickup fountain",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/combat/rewardEligibility.js",
+        "src/systems/combat.js",
+        "src/systems/lootShards.js",
+        "test/combat-contract-reward-exclusivity.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq019-heat-incident-listener.test.mjs test/combat-contract-reward-exclusivity.test.mjs",
+        "npm run check:pq019b:seams",
+        "npm run check:baseline",
+        "npm run check:sim:v3:compare"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-046-reward-fountain-REPORT.md"
+      ],
+      "brief": "Each eligible hostile player kill emits exactly three existing magnetized pickup entries at materially higher expected value, selected statelessly from the current run seed and durable victim identity; mission, neutral, missing-victim, non-player, and duplicate paths fail closed."
+    },
+    {
+      "id": "PQ-046.swarm-density",
+      "parentId": "PQ-046",
+      "priority": 275,
+      "title": "Raise cap-safe light-enemy squads to four through six",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "scripts/check-encounter-one-voice.mjs",
+        "src/core/runReset.js",
+        "src/data/encounters/020-ambush-snare.js",
+        "src/data/encounters/050-claim-threat.js",
+        "src/data/encounters/100-distress-call.js",
+        "src/data/encounters/328-pattern-refrain.js",
+        "src/systems/aiEncounter.js",
+        "src/systems/claims.js",
+        "src/systems/encounterDirector.js",
+        "src/systems/lawSecurity.js",
+        "src/systems/missions.js",
+        "src/systems/spawnBudget.js",
+        "src/systems/world.js",
+        "test/combat-ecology-roles.test.mjs",
+        "test/depth-program-encounter-loader.test.mjs",
+        "test/law-security-escalation.test.mjs",
+        "test/m2-continuous-handoff.test.mjs",
+        "test/swarm-density-authority.test.mjs"
+      ],
+      "checks": [
+        "node --test test/swarm-density-authority.test.mjs test/m2-continuous-handoff.test.mjs test/combat-ecology-roles.test.mjs test/depth-program-encounter-loader.test.mjs test/world-residency.test.mjs test/law-security-escalation.test.mjs",
+        "npm run check:encounter-index",
+        "npm run check:encounter-director",
+        "npm run check:baseline",
+        "npm run check:sim:v3:compare"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md"
+      ],
+      "brief": "The default sector cap is 24 with a hard ceiling of 40, native anchor-first squads fill to four through six light ships, and every encounter, mission, law, boss, world, and reinforcement producer remains reservation/bind/release gated through failure, retry, transition, and save."
     }
   ]
 }
