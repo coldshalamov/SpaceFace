@@ -5175,9 +5175,7 @@
       "title": "Wire four occupational NPC families so trades stop sharing one hull",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-045.tender-client-materialization"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "asset-manifest"
       ],
@@ -5200,9 +5198,7 @@
       "title": "Re-author the sixteen selected Everyday Space props to production standard",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-045.route-topology"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "blender",
         "asset-manifest"
@@ -5225,9 +5221,7 @@
       "title": "Dress the two anonymous Ceres wreck slots from the aftermath pack",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-045.route-topology"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "blender",
         "asset-manifest"
@@ -5250,9 +5244,7 @@
       "title": "Port five VFX NEXT recipes into the live presentation owner",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-045.causal-chain"
-      ],
+      "dependsOn": [],
       "mutexes": [],
       "paths": [
         "src/render/vfx.js"

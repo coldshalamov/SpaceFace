@@ -934,8 +934,34 @@ export function summarizeDispatchUnit(unit, control) {
   };
 }
 
+// Dispatch order: build work before proof work.
+//
+// Priority numbers were assigned per parent packet, so an old packet's capture unit carries a far
+// lower number than a new packet's implementation unit. Sorting on priority alone therefore handed
+// every fresh thread the same acceptance capture — `PQ-022.refinery-reauthor-h1` at priority 28 won
+// over nine ready implementation units at 230-259 — and threads reported "the next task is the
+// PQ-022 browser capture set" for work whose implementation had long since landed.
+//
+// Kind now orders first and priority breaks ties inside a kind, so `--next` returns something to
+// build. This changes ORDER ONLY: `--ready` still lists every ready unit, no unit is filtered out,
+// and captures/reviews stay dispatchable — they simply stop monopolizing the front of the queue.
+const DISPATCH_KIND_ORDER = Object.freeze({
+  implementation: 0,
+  acceptance_repair: 1,
+  integration: 2,
+  performance: 3,
+  acceptance_capture: 4,
+  acceptance_review: 5,
+  program_control: 6,
+});
+
 export function readyDispatchUnits(control) {
+  const rank = (unit) => {
+    const value = DISPATCH_KIND_ORDER[unit.kind];
+    // An unrecognized kind sorts between build work and proof work rather than silently first.
+    return Number.isInteger(value) ? value : 3.5;
+  };
   return [...control.dispatchUnits]
     .filter((unit) => dispatchUnitReady(unit, control))
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => rank(a) - rank(b) || a.priority - b.priority);
 }
