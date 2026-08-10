@@ -4017,8 +4017,8 @@
       "budgetClass": "landmark",
       "textureSize": 512,
       "mount": "origin",
-      "tris": 134436,
-      "bytes": 11155156,
+      "tris": 213496,
+      "bytes": 16993604,
       "hooks": [],
       "sockets": [
         "SOCKET_Flythrough_Entry",

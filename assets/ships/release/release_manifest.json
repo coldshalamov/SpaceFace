@@ -1246,20 +1246,6 @@
       "contractNodeCount": 33
     },
     {
-      "id": "place_landmark_wreck_cathedral",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
-      "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
-      "sourceSha256": "f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704",
-      "releaseSha256": "dc5510f88b128d9a40e427700fe4b0b212987db152f60757ef5035bda270a49a",
-      "sourceBytes": 11155156,
-      "releaseBytes": 6160084,
-      "textures": 26,
-      "ktx2Textures": 26,
-      "meshoptBufferViews": 97,
-      "contractNodeCount": 30
-    },
-    {
       "id": "weapon_gatling",
       "kind": "part:weapons",
       "source": "assets/ships/parts/weapons/weapon_gatling.glb",
@@ -1328,6 +1314,20 @@
       "ktx2Textures": 20,
       "meshoptBufferViews": 73,
       "contractNodeCount": 23
+    },
+    {
+      "id": "place_landmark_wreck_cathedral",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
+      "sourceSha256": "d77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd",
+      "releaseSha256": "b377d33d9eb59912ceb6be6b61ddf992cb386b460f431908f8925b366a2b64de",
+      "sourceBytes": 16993604,
+      "releaseBytes": 7183000,
+      "textures": 26,
+      "ktx2Textures": 26,
+      "meshoptBufferViews": 97,
+      "contractNodeCount": 30
     }
   ]
 }

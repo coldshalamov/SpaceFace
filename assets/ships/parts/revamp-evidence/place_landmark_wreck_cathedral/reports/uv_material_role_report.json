@@ -6,31 +6,31 @@
     "LOD0_Hull": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 15792,
+      "uvLoops": 17400,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009702670387923717,
-        0.009702666662633419
+        0.00904516875743866,
+        0.009045133367180824
       ],
       "uvMax": [
-        0.9902971982955933,
-        0.9890493750572205
+        0.986524224281311,
+        0.9909549355506897
       ]
     },
     "LOD0_ArmorScorched": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 48504,
+      "uvLoops": 71772,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.00951994676142931,
-        0.009519907645881176
+        0.00741788512095809,
+        0.007417870219796896
       ],
       "uvMax": [
-        0.9902058839797974,
-        0.9904800057411194
+        0.9925820827484131,
+        0.9789687395095825
       ]
     },
     "LOD0_AccentConcordBlueBurned": {
@@ -51,31 +51,31 @@
     "LOD0_MechanicalExposed": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 46716,
+      "uvLoops": 134748,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009321735240519047,
-        0.009321756660938263
+        0.0050691827200353146,
+        0.005069164093583822
       ],
       "uvMax": [
-        0.9897676110267639,
-        0.9906783103942871
+        0.9943640828132629,
+        0.9949306845664978
       ]
     },
     "LOD0_InteriorExposedAlloy": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 130188,
+      "uvLoops": 165456,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.008762095123529434,
-        0.008762077428400517
+        0.006051770411431789,
+        0.00605179974809289
       ],
       "uvMax": [
-        0.9912378191947937,
-        0.9897894263267517
+        0.9939481616020203,
+        0.9861034750938416
       ]
     },
     "LOD0_ConduitCopper": {
@@ -119,38 +119,38 @@
         0.002525401534512639
       ],
       "uvMax": [
-        0.9671459794044495,
+        0.9671459197998047,
         0.9974744915962219
       ]
     },
     "LOD1_Hull": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 9072,
+      "uvLoops": 10032,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009358987212181091,
-        0.009358993731439114
+        0.009093750268220901,
+        0.009093726053833961
       ],
       "uvMax": [
-        0.9906409978866577,
-        0.9885558485984802
+        0.990906298160553,
+        0.9875157475471497
       ]
     },
     "LOD1_ArmorScorched": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 23328,
+      "uvLoops": 34608,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009411334991455078,
-        0.009411348029971123
+        0.007715920452028513,
+        0.007715917658060789
       ],
       "uvMax": [
-        0.9905886054039001,
-        0.9893677830696106
+        0.9922841191291809,
+        0.9770105481147766
       ]
     },
     "LOD1_AccentConcordBlueBurned": {
@@ -171,31 +171,31 @@
     "LOD1_MechanicalExposed": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 20616,
+      "uvLoops": 59760,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009183605201542377,
-        0.009183615446090698
+        0.005623074248433113,
+        0.005623053293675184
       ],
       "uvMax": [
-        0.9902162551879883,
-        0.9908163547515869
+        0.9936347603797913,
+        0.9943769574165344
       ]
     },
     "LOD1_InteriorExposedAlloy": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 36000,
+      "uvLoops": 52884,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.00913197360932827,
-        0.009131964296102524
+        0.006581905763596296,
+        0.006581934168934822
       ],
       "uvMax": [
-        0.9908679723739624,
-        0.9905175566673279
+        0.9934180378913879,
+        0.9903258681297302
       ]
     },
     "LOD1_ConduitCopper": {
@@ -235,42 +235,42 @@
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.002484055468812585,
+        0.002484037773683667,
         0.0024840193800628185
       ],
       "uvMax": [
-        0.901167631149292,
+        0.9011676907539368,
         0.9975159764289856
       ]
     },
     "LOD2_Hull": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 3564,
+      "uvLoops": 4020,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009358938783407211,
-        0.009358950890600681
+        0.008996405638754368,
+        0.008996411226689816
       ],
       "uvMax": [
-        0.9736173748970032,
-        0.9906410574913025
+        0.9910034537315369,
+        0.9898790717124939
       ]
     },
     "LOD2_ArmorScorched": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 5676,
+      "uvLoops": 9936,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.009656555950641632,
-        0.0096565717831254
+        0.008358347229659557,
+        0.008358316496014595
       ],
       "uvMax": [
-        0.9903435707092285,
-        0.9899660348892212
+        0.9916417002677917,
+        0.9912236332893372
       ]
     },
     "LOD2_AccentConcordBlueBurned": {
@@ -291,31 +291,31 @@
     "LOD2_MechanicalExposed": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 6396,
+      "uvLoops": 17352,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.008747437968850136,
-        0.008747411891818047
+        0.0067067937925457954,
+        0.006706814281642437
       ],
       "uvMax": [
-        0.9887962341308594,
-        0.9912525415420532
+        0.9932931661605835,
+        0.9839458465576172
       ]
     },
     "LOD2_InteriorExposedAlloy": {
       "uvLayers": 1,
       "activeUv": "UVMap",
-      "uvLoops": 6084,
+      "uvLoops": 11148,
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.008701181970536709,
-        0.00870115589350462
+        0.007329065352678299,
+        0.0073290360160171986
       ],
       "uvMax": [
-        0.9911816120147705,
-        0.9912987947463989
+        0.9926708936691284,
+        0.9820635914802551
       ]
     },
     "LOD2_ConduitCopper": {
@@ -355,7 +355,7 @@
       "nonFiniteUvLoops": 0,
       "outOfUnitRangeUvLoops": 0,
       "uvMin": [
-        0.0026472327299416065,
+        0.002647226909175515,
         0.0026472434401512146
       ],
       "uvMax": [

@@ -420,9 +420,12 @@ test('the stabilized hull owns a reachable runtime impact and recovery path', ()
   bus.emit('sector:enter', { sectorId: SECTOR_ID });
 
   const componentEntities = [...state.entities.values()].filter(
-    (entity) => entity.alive !== false && entity.data?.worldSiteComponentId,
+    (entity) => entity.alive !== false
+      && entity.data?.worldSiteComponentId
+      && entity.data?.worldSiteId === SITE_ID,
   );
-  assert.equal(componentEntities.length, 7);
+  assert.equal(componentEntities.length, 7,
+    'exactly seven Cathedral component proxies materialize for this site');
   assert.ok(
     componentEntities.every((entity) => entity._noMesh === true),
     'the authored root is the only visible Cathedral identity',

@@ -36,33 +36,36 @@ REPORTS = EVIDENCE / "reports"
 BLEND = ROOT / "assets" / "ships" / "parts" / "blender" / f"{ASSET_ID}.blend"
 GLB = ROOT / "assets" / "ships" / "parts" / "places" / f"{ASSET_ID}.glb"
 EXPORTER = ROOT / "tools" / "blender" / "spaceface_export.py"
-BUILD_SEED = 18072026
+# Bump when silhouette-preserving construction language changes so texture seeds stay coherent.
+BUILD_SEED = 18082026
 REBUILD_TEXTURES = "--rebuild-textures" in sys.argv
 
+# Material separation is a G4 repair: armor/frame/interior/propulsion must not collapse to one
+# mottled grey clay read in neutral or production-dark light.
 MATERIAL_SPECS: dict[str, dict[str, Any]] = {
     "Material_Hull_ConcordGray": {
-        "role": "hull", "paletteTint": "none", "base": (0.235, 0.255, 0.275),
-        "rough": 0.61, "metal": 0.72, "pattern": "panel", "size": 512,
+        "role": "hull", "paletteTint": "none", "base": (0.168, 0.198, 0.238),
+        "rough": 0.58, "metal": 0.42, "pattern": "panel", "size": 512,
     },
     "Material_Armor_Scorched": {
-        "role": "heat_affected_alloy", "paletteTint": "none", "base": (0.105, 0.112, 0.120),
-        "rough": 0.76, "metal": 0.66, "pattern": "scorch", "size": 512,
+        "role": "heat_affected_alloy", "paletteTint": "none", "base": (0.072, 0.068, 0.062),
+        "rough": 0.82, "metal": 0.78, "pattern": "scorch", "size": 512,
     },
     "Material_Accent_ConcordBlue_Burned": {
-        "role": "maintenance_mark", "paletteTint": "none", "base": (0.035, 0.125, 0.315),
-        "rough": 0.67, "metal": 0.34, "pattern": "burned_paint", "size": 512,
+        "role": "maintenance_mark", "paletteTint": "none", "base": (0.028, 0.095, 0.285),
+        "rough": 0.70, "metal": 0.22, "pattern": "burned_paint", "size": 512,
     },
     "Material_Mechanical_Exposed": {
-        "role": "mechanical", "paletteTint": "none", "base": (0.075, 0.083, 0.092),
-        "rough": 0.50, "metal": 0.90, "pattern": "machinery", "size": 512,
+        "role": "mechanical", "paletteTint": "none", "base": (0.055, 0.060, 0.068),
+        "rough": 0.38, "metal": 0.94, "pattern": "machinery", "size": 512,
     },
     "Material_Interior_ExposedAlloy": {
-        "role": "exposed_alloy", "paletteTint": "none", "base": (0.255, 0.225, 0.190),
-        "rough": 0.54, "metal": 0.82, "pattern": "brushed", "size": 512,
+        "role": "exposed_alloy", "paletteTint": "none", "base": (0.42, 0.32, 0.22),
+        "rough": 0.48, "metal": 0.88, "pattern": "brushed", "size": 512,
     },
     "Material_Conduit_Copper": {
-        "role": "copper_coil", "paletteTint": "none", "base": (0.315, 0.115, 0.035),
-        "rough": 0.43, "metal": 0.91, "pattern": "conduit", "size": 512,
+        "role": "copper_coil", "paletteTint": "none", "base": (0.42, 0.14, 0.04),
+        "rough": 0.36, "metal": 0.95, "pattern": "conduit", "size": 512,
     },
     "Material_Emissive_ColdEmergency": {
         "role": "signal", "paletteTint": "none", "base": (0.018, 0.105, 0.155),
@@ -314,24 +317,104 @@ def make_sphere(collection: bpy.types.Collection, materials: dict[str, bpy.types
 def make_beam(collection: bpy.types.Collection, materials: dict[str, bpy.types.Material], lod: int,
               name: str, start, end, width: float, material_name: str, structure_role: str,
               matrix: Matrix = IDENTITY, bevel=0.20, damage_history: str | None = None) -> bpy.types.Object:
+    # Structural members use an I-section so they stop reading as square LEGO bars at gameplay scale.
+    return make_i_beam(
+        collection, materials, lod, name, start, end, width, material_name, structure_role,
+        matrix=matrix, bevel=bevel, damage_history=damage_history,
+    )
+
+
+def make_i_beam(collection: bpy.types.Collection, materials: dict[str, bpy.types.Material], lod: int,
+                name: str, start, end, width: float, material_name: str, structure_role: str,
+                matrix: Matrix = IDENTITY, bevel=0.18, damage_history: str | None = None,
+                flange_ratio: float = 1.35, web_ratio: float = 0.38) -> bpy.types.Object:
+    """Manufactured I-beam: web + dual flanges, oriented along start→end."""
     a, b = point(matrix, start), point(matrix, end)
     delta = b - a
-    midpoint = (a + b) * 0.5
-    bpy.ops.mesh.primitive_cube_add(size=1.0)
-    obj = bpy.context.object
-    obj.name = f"LOD{lod}_{name}"
-    obj.location = midpoint
+    length = max(0.05, delta.length)
+    flange_w = width * flange_ratio
+    flange_t = max(0.35, width * 0.22)
+    web_t = max(0.28, width * web_ratio)
+    web_h = width
+    # Local X along beam; Y flange width; Z web height.
+    hx, hy, hz = length * 0.5, flange_w * 0.5, web_h * 0.5
+    ft, wt = flange_t * 0.5, web_t * 0.5
+    # Outer box of the I: two flanges + web as one solid via verts (no separate objects).
+    verts = [
+        # bottom flange
+        (-hx, -hy, -hz), (hx, -hy, -hz), (hx, hy, -hz), (-hx, hy, -hz),
+        (-hx, -hy, -hz + flange_t), (hx, -hy, -hz + flange_t),
+        (hx, hy, -hz + flange_t), (-hx, hy, -hz + flange_t),
+        # top flange
+        (-hx, -hy, hz - flange_t), (hx, -hy, hz - flange_t),
+        (hx, hy, hz - flange_t), (-hx, hy, hz - flange_t),
+        (-hx, -hy, hz), (hx, -hy, hz), (hx, hy, hz), (-hx, hy, hz),
+        # web mid (for clean faces when lod high)
+        (-hx, -wt, -hz + flange_t), (hx, -wt, -hz + flange_t),
+        (hx, wt, -hz + flange_t), (-hx, wt, -hz + flange_t),
+        (-hx, -wt, hz - flange_t), (hx, -wt, hz - flange_t),
+        (hx, wt, hz - flange_t), (-hx, wt, hz - flange_t),
+    ]
+    faces = [
+        (0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
+        (8, 9, 10, 11), (12, 15, 14, 13), (8, 12, 13, 9), (9, 13, 14, 10),
+        (10, 14, 15, 11), (11, 15, 12, 8),
+        (16, 17, 21, 20), (17, 18, 22, 21), (18, 19, 23, 22), (19, 16, 20, 23),
+        (4, 5, 17, 16), (5, 6, 18, 17), (6, 7, 19, 18), (7, 4, 16, 19),
+        (20, 21, 9, 8), (21, 22, 10, 9), (22, 23, 11, 10), (23, 20, 8, 11),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_IMesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(f"LOD{lod}_{name}", mesh)
+    collection.objects.link(obj)
+    obj.location = (a + b) * 0.5
     obj.rotation_mode = "QUATERNION"
     obj.rotation_quaternion = delta.to_track_quat("X", "Z")
-    obj.scale = (delta.length, width, width)
-    select_only(obj)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.rotation_mode = "XYZ"
-    move_to_collection(obj, collection)
     material_for(obj, materials[material_name])
     tag(obj, lod, material_name, structure_role, damage_history)
-    apply_bevel_and_normals(obj, bevel, lod)
+    apply_bevel_and_normals(obj, min(bevel, flange_t * 0.4), lod)
     return obj
+
+
+def make_armor_shell(collection: bpy.types.Collection, materials: dict[str, bpy.types.Material], lod: int,
+                     name: str, size, location, material_name: str, structure_role: str,
+                     matrix: Matrix = IDENTITY, rotation=(0.0, 0.0, 0.0),
+                     thickness: float = 1.8, bevel=0.28,
+                     damage_history: str | None = None) -> list[bpy.types.Object]:
+    """Outer armor plate + inner stringer so hull banks read as shell, not solid LEGO bricks."""
+    sx, sy, sz = (float(v) for v in size)
+    outer = make_box(
+        collection, materials, lod, f"{name}_Plate", (sx, max(1.2, thickness), sz),
+        location, material_name, structure_role, matrix, rotation=rotation, bevel=bevel,
+        damage_history=damage_history,
+    )
+    # Slight inset stringer: mechanical frame behind armor.
+    stringer_loc = (
+        location[0],
+        location[1] + (-1.0 if location[1] >= 0 else 1.0) * (sy * 0.22),
+        location[2],
+    )
+    inner = make_box(
+        collection, materials, lod, f"{name}_Stringer",
+        (sx * 0.92, max(1.0, sy * 0.35), sz * 0.72),
+        stringer_loc, "Material_Mechanical_Exposed", "hull_stringer_frame", matrix,
+        rotation=rotation, bevel=max(0.16, bevel * 0.55),
+        damage_history=damage_history,
+    )
+    return [outer, inner]
+
+
+def make_rib_foot(collection: bpy.types.Collection, materials: dict[str, bpy.types.Material], lod: int,
+                  name: str, location, material_name: str, structure_role: str,
+                  matrix: Matrix = IDENTITY, side: float = 1.0) -> bpy.types.Object:
+    """Gusseted deck joint so ribs look rooted rather than floating bars."""
+    return make_box(
+        collection, materials, lod, name, (10.0, 14.0, 8.5), location,
+        material_name, structure_role, matrix,
+        rotation=(0, 0, math.radians(side * 3.5)), bevel=0.36,
+        damage_history="rib_foot_welded_to_deck_then_torn_at_break",
+    )
 
 
 def make_curve_tube(collection: bpy.types.Collection, materials: dict[str, bpy.types.Material], lod: int,
@@ -584,21 +667,36 @@ def create_materials() -> tuple[dict[str, bpy.types.Material], dict[str, dict[st
 
 def build_hull_mass(collection, materials, lod: int) -> None:
     # Both hull banks preserve a 72 m-wide, 58 m-high navigable central channel.
+    # G1/G2 repair: shell plates + stringers instead of solid brick stacks; I-beams for keels/rails.
     fore_centers = [28, 76, 124, 172, 216]
     aft_centers = [-28, -76, -124, -172]
     for side in (-1, 1):
         for index, x in enumerate(fore_centers):
             outer = 58 + index * 2.4
-            make_box(collection, materials, lod, f"ForeHull_{'P' if side < 0 else 'S'}_{index}",
-                     (46, 19, 34), (x, side * outer, 7 + (index % 2) * 4),
-                     "Material_Hull_ConcordGray", "layered_exterior_hull", FORE,
-                     rotation=(math.radians(side * 0.8), math.radians(-2.0 + index * 0.3),
-                               math.radians(side * (1.5 + index * 0.35))), bevel=0.72)
-            make_box(collection, materials, lod, f"ForeArmor_{'P' if side < 0 else 'S'}_{index}",
-                     (34 if index < 4 else 25, 4.0, 22),
-                     (x + 2, side * (outer + 11.0), 14 + (index % 2) * 5),
-                     "Material_Armor_Scorched", "outer_armor_layer", FORE,
-                     rotation=(0, math.radians(-3 + index), math.radians(side * 2.0)), bevel=0.38)
+            rot = (math.radians(side * 0.8), math.radians(-2.0 + index * 0.3),
+                   math.radians(side * (1.5 + index * 0.35)))
+            # Capital casemate: thick armored volume with inset panel + scorched outer plate
+            # (not solid LEGO brick, not paper-thin cage).
+            make_box(
+                collection, materials, lod, f"ForeHull_{'P' if side < 0 else 'S'}_{index}",
+                (46, 12, 30), (x, side * outer, 7 + (index % 2) * 4),
+                "Material_Hull_ConcordGray", "layered_exterior_hull", FORE,
+                rotation=rot, bevel=0.62,
+            )
+            make_box(
+                collection, materials, lod, f"ForeHullInset_{'P' if side < 0 else 'S'}_{index}",
+                (38, 2.2, 22), (x + 1, side * (outer + 6.2), 9 + (index % 2) * 3),
+                "Material_Mechanical_Exposed", "hull_service_inset", FORE,
+                rotation=rot, bevel=0.20,
+            )
+            make_box(
+                collection, materials, lod, f"ForeArmor_{'P' if side < 0 else 'S'}_{index}",
+                (34 if index < 4 else 25, 3.2, 20),
+                (x + 2, side * (outer + 9.5), 14 + (index % 2) * 5),
+                "Material_Armor_Scorched", "outer_armor_layer", FORE,
+                rotation=(0, math.radians(-3 + index), math.radians(side * 2.0)), bevel=0.30,
+                damage_history="outer_armor_scorched_and_lifted_at_break",
+            )
             if index in ({0, 2, 4} if side < 0 else {1, 3, 4}):
                 make_box(collection, materials, lod,
                          f"ConcordStripeFore_{'P' if side < 0 else 'S'}_{index}",
@@ -609,15 +707,27 @@ def build_hull_mass(collection, materials, lod: int) -> None:
                          damage_history="paint_burned_away_at_break_and_impact_faces")
         for index, x in enumerate(aft_centers):
             outer = 61 + index * 3.5
-            make_box(collection, materials, lod, f"AftHull_{'P' if side < 0 else 'S'}_{index}",
-                     (47, 21, 36), (x, side * outer, -1 - (index % 2) * 3),
-                     "Material_Hull_ConcordGray", "layered_exterior_hull", AFT,
-                     rotation=(math.radians(side * -1.2), math.radians(1.0 - index * 0.4),
-                               math.radians(side * (2.0 + index * 0.55))), bevel=0.78)
-            make_box(collection, materials, lod, f"AftArmor_{'P' if side < 0 else 'S'}_{index}",
-                     (36, 4.2, 23), (x - 2, side * (outer + 12), 7 - (index % 2) * 3),
-                     "Material_Armor_Scorched", "outer_armor_layer", AFT,
-                     rotation=(0, math.radians(2 - index), math.radians(side * -2.6)), bevel=0.42)
+            rot = (math.radians(side * -1.2), math.radians(1.0 - index * 0.4),
+                   math.radians(side * (2.0 + index * 0.55)))
+            make_box(
+                collection, materials, lod, f"AftHull_{'P' if side < 0 else 'S'}_{index}",
+                (47, 13, 32), (x, side * outer, -1 - (index % 2) * 3),
+                "Material_Hull_ConcordGray", "layered_exterior_hull", AFT,
+                rotation=rot, bevel=0.65,
+            )
+            make_box(
+                collection, materials, lod, f"AftHullInset_{'P' if side < 0 else 'S'}_{index}",
+                (40, 2.4, 24), (x - 1, side * (outer + 6.8), 2 - (index % 2) * 2),
+                "Material_Mechanical_Exposed", "hull_service_inset", AFT,
+                rotation=rot, bevel=0.20,
+            )
+            make_box(
+                collection, materials, lod, f"AftArmor_{'P' if side < 0 else 'S'}_{index}",
+                (36, 3.4, 21), (x - 2, side * (outer + 10.5), 7 - (index % 2) * 3),
+                "Material_Armor_Scorched", "outer_armor_layer", AFT,
+                rotation=(0, math.radians(2 - index), math.radians(side * -2.6)), bevel=0.32,
+                damage_history="engine_fire_scorched_outer_armor",
+            )
             if index in ({1, 3} if side < 0 else {0, 2}):
                 make_box(collection, materials, lod,
                          f"ConcordStripeAft_{'P' if side < 0 else 'S'}_{index}",
@@ -626,36 +736,46 @@ def build_hull_mass(collection, materials, lod: int) -> None:
                          AFT, rotation=(0, math.radians(2 - index), math.radians(side * -2.6)), bevel=0.14,
                          damage_history="paint_burned_away_at_break_and_engine_fire")
 
-        # Shoulder and lower-rail layers make the cruiser read as constructed around decks.
-        for matrix, prefix, x_center, length, y, z in (
-            (FORE, "Fore", 125, 205, side * 47, 46),
-            (AFT, "Aft", -103, 178, side * 49, 39),
-            (FORE, "ForeLower", 122, 200, side * 47, -31),
-            (AFT, "AftLower", -102, 176, side * 50, -34),
+        # Longitudinal I-rails along deck shoulders (manufactured frame, not square bars).
+        for matrix, prefix, x0, x1, y, z in (
+            (FORE, "Fore", 30, 220, side * 47, 46),
+            (AFT, "Aft", -180, -30, side * 49, 39),
+            (FORE, "ForeLower", 30, 215, side * 47, -31),
+            (AFT, "AftLower", -178, -28, side * 50, -34),
         ):
-            make_box(collection, materials, lod, f"{prefix}LongitudinalRail_{'P' if side < 0 else 'S'}",
-                     (length, 9.0, 9.0), (x_center, y, z), "Material_Mechanical_Exposed",
-                     "longitudinal_frame_rail", matrix, bevel=0.46)
+            make_i_beam(
+                collection, materials, lod, f"{prefix}LongitudinalRail_{'P' if side < 0 else 'S'}",
+                (x0, y, z), (x1, y, z), 7.5, "Material_Mechanical_Exposed",
+                "longitudinal_frame_rail", matrix, bevel=0.28,
+            )
 
-    # Broken keel and upper spine stop on either side of the catastrophic break.
-    make_box(collection, materials, lod, "ForeKeel", (206, 15, 15), (128, 0, -51),
-             "Material_Mechanical_Exposed", "broken_keel_fore", FORE, bevel=0.58,
-             damage_history="keel_shear_terminates_at_catastrophic_break")
-    make_box(collection, materials, lod, "AftKeel", (174, 16, 16), (-106, 0, -54),
-             "Material_Mechanical_Exposed", "broken_keel_aft", AFT, bevel=0.60,
-             damage_history="keel_shear_terminates_at_catastrophic_break")
-    make_box(collection, materials, lod, "ForeUpperSpine", (167, 14, 13), (140, 0, 61),
-             "Material_Hull_ConcordGray", "upper_superstructure_spine", FORE, bevel=0.62)
-    make_box(collection, materials, lod, "AftUpperSpine", (142, 15, 14), (-112, 0, 55),
-             "Material_Armor_Scorched", "upper_superstructure_spine", AFT, bevel=0.62)
+    # Broken keel / spine as I-sections that terminate at the rupture.
+    make_i_beam(collection, materials, lod, "ForeKeel",
+                (30, 0, -51), (230, 0, -51), 12.0, "Material_Mechanical_Exposed",
+                "broken_keel_fore", FORE, bevel=0.36,
+                damage_history="keel_shear_terminates_at_catastrophic_break")
+    make_i_beam(collection, materials, lod, "AftKeel",
+                (-190, 0, -54), (-20, 0, -54), 13.0, "Material_Mechanical_Exposed",
+                "broken_keel_aft", AFT, bevel=0.38,
+                damage_history="keel_shear_terminates_at_catastrophic_break")
+    make_i_beam(collection, materials, lod, "ForeUpperSpine",
+                (55, 0, 61), (220, 0, 61), 11.0, "Material_Hull_ConcordGray",
+                "upper_superstructure_spine", FORE, bevel=0.34)
+    make_i_beam(collection, materials, lod, "AftUpperSpine",
+                (-180, 0, 55), (-40, 0, 55), 11.5, "Material_Armor_Scorched",
+                "upper_superstructure_spine", AFT, bevel=0.34)
 
-    # Two pointed bow cheeks retain the Concord cruiser silhouette without closing the hangar axis.
-    make_wedge(collection, materials, lod, "BowPort", 72, 54, 55, (246, -69, 8),
-               "Material_Hull_ConcordGray", "recognizable_cruiser_bow", FORE,
-               rotation=(0, math.radians(-3), math.radians(-3)), bevel=0.80)
-    make_wedge(collection, materials, lod, "BowStarboard", 72, 54, 55, (246, 69, 8),
-               "Material_Hull_ConcordGray", "recognizable_cruiser_bow", FORE,
-               rotation=(0, math.radians(-3), math.radians(3)), bevel=0.80)
+    # Bow cheeks: wedge + edge armor return so they stop reading as polished primitives.
+    for side, label in ((-1, "Port"), (1, "Starboard")):
+        make_wedge(collection, materials, lod, f"Bow{label}", 72, 54, 55, (246, side * 69, 8),
+                   "Material_Hull_ConcordGray", "recognizable_cruiser_bow", FORE,
+                   rotation=(0, math.radians(-3), math.radians(side * 3)), bevel=0.70)
+        make_armor_shell(
+            collection, materials, lod, f"BowArmorCheek_{label}",
+            (48, 6, 28), (238, side * 78, 10),
+            "Material_Armor_Scorched", "bow_armor_cheek", FORE,
+            rotation=(0, math.radians(-2), math.radians(side * 4)), thickness=1.5, bevel=0.28,
+        )
 
 
 def build_ribcage_and_hangar(collection, materials, lod: int) -> None:
@@ -676,9 +796,18 @@ def build_ribcage_and_hangar(collection, materials, lod: int) -> None:
             make_beam(collection, materials, lod, f"Rib_{index}_{prefix}_Upper",
                       (x, side * 69 * side_scale, 18), (x, side * 40, 60), 4.7,
                       "Material_Mechanical_Exposed", "exposed_hangar_frame", matrix, bevel=0.32)
-            make_box(collection, materials, lod, f"RibFoot_{index}_{prefix}", (8, 12, 7),
-                     (x, side * 42, -30), "Material_Armor_Scorched", "rib_deck_joint", matrix,
-                     rotation=(0, 0, math.radians(side * 2.2)), bevel=0.32)
+            make_rib_foot(
+                collection, materials, lod, f"RibFoot_{index}_{prefix}",
+                (x, side * 42, -30), "Material_Armor_Scorched", "rib_deck_joint", matrix, side=side,
+            )
+            # Secondary gusset plate roots the rib into the deck edge.
+            if lod < 2:
+                make_box(
+                    collection, materials, lod, f"RibGusset_{index}_{prefix}",
+                    (6.5, 3.2, 11), (x + side * 2, side * 46, -22),
+                    "Material_Mechanical_Exposed", "rib_gusset", matrix,
+                    rotation=(math.radians(side * 8), 0, math.radians(side * 4)), bevel=0.18,
+                )
 
     # Decks are layered ledges on the cavity walls; none intrudes into the fly-through envelope.
     deck_segments = ((-128, 168, AFT), (104, 168, FORE))
@@ -687,29 +816,46 @@ def build_ribcage_and_hangar(collection, materials, lod: int) -> None:
             for segment_index, (x_center, length, matrix) in enumerate(deck_segments):
                 make_box(collection, materials, lod,
                          f"InteriorDeck_{'P' if side < 0 else 'S'}_{level}_{segment_index}",
-                         (length, 8.0, 3.8), (x_center, side * (42 + level * 4.0), z),
+                         (length, 7.2, 2.4), (x_center, side * (42 + level * 4.0), z),
                          "Material_Interior_ExposedAlloy", "exposed_interior_deck", matrix,
-                         bevel=0.24, damage_history="deck_ends_torn_open_at_break")
+                         bevel=0.18, damage_history="deck_ends_torn_open_at_break")
+                # Deck edge toe plate / armor lip.
+                make_box(collection, materials, lod,
+                         f"DeckToe_{'P' if side < 0 else 'S'}_{level}_{segment_index}",
+                         (length * 0.96, 1.4, 3.8),
+                         (x_center, side * (38.2 + level * 4.0), z + 1.8),
+                         "Material_Armor_Scorched", "deck_edge_toe", matrix, bevel=0.14)
                 if lod < 2:
                     make_box(collection, materials, lod,
                              f"DeckEdgeArmor_{'P' if side < 0 else 'S'}_{level}_{segment_index}",
-                             (length * 0.92, 2.0, 5.5),
-                             (x_center, side * (37.6 + level * 4.0), z + 3.5),
-                             "Material_Armor_Scorched", "deck_edge_armor", matrix, bevel=0.20)
+                             (length * 0.88, 1.6, 4.5),
+                             (x_center, side * (36.8 + level * 4.0), z + 3.0),
+                             "Material_Armor_Scorched", "deck_edge_armor", matrix, bevel=0.16)
 
-    # Jagged structural ends explain the separation instead of reading as two clean kit pieces.
+    # Torn members stay attached to their half (rooted fracture), not free-floating debris.
+    # Each shard starts at the bulkhead face and cantilevers outward.
     shards = [
-        (AFT, (-12, -48, 48), (22, -73, 71), 5.0, "AftPort"),
-        (AFT, (-8, 44, 28), (18, 83, 50), 4.5, "AftStarboard"),
-        (FORE, (8, -44, -24), (-16, -82, -50), 4.6, "ForePort"),
-        (FORE, (10, 45, 48), (-14, 77, 83), 5.1, "ForeStarboard"),
-        (FORE, (2, 0, -50), (-22, 18, -79), 6.0, "KeelFore"),
-        (AFT, (-4, 0, -52), (18, -12, -82), 6.4, "KeelAft"),
+        (AFT, (-13, -50, 42), (-4, -68, 58), 4.2, "AftPort"),
+        (AFT, (-12, 48, 24), (-2, 70, 40), 3.8, "AftStarboard"),
+        (FORE, (12, -46, -18), (22, -64, -36), 4.0, "ForePort"),
+        (FORE, (13, 48, 40), (24, 66, 58), 4.2, "ForeStarboard"),
+        (FORE, (12, 0, -48), (26, 8, -62), 5.0, "KeelFore"),
+        (AFT, (-13, 0, -50), (-26, -6, -64), 5.2, "KeelAft"),
     ]
     for matrix, start, end, width, label in shards[: (6 if lod == 0 else 4 if lod == 1 else 3)]:
-        make_beam(collection, materials, lod, f"BreakShard_{label}", start, end, width,
-                  "Material_Interior_ExposedAlloy", "catastrophic_break_exposed_structure", matrix,
-                  bevel=0.20)
+        make_i_beam(collection, materials, lod, f"BreakShard_{label}", start, end, width,
+                    "Material_Interior_ExposedAlloy", "catastrophic_break_exposed_structure", matrix,
+                    bevel=0.18, damage_history="member_torn_from_bulkhead_still_attached")
+        # Root plate at bulkhead end of each shard.
+        make_box(
+            collection, materials, lod, f"BreakRoot_{label}",
+            (5.5, width * 1.6, width * 1.4),
+            ((start[0] + end[0]) * 0.15 + start[0] * 0.7,
+             (start[1] + end[1]) * 0.15 + start[1] * 0.7,
+             (start[2] + end[2]) * 0.15 + start[2] * 0.7),
+            "Material_Armor_Scorched", "fracture_root_plate", matrix, bevel=0.16,
+            damage_history="weld_foot_sheared_at_bulkhead",
+        )
 
 
 def build_cathedral_arches_and_break(collection, materials, lod: int) -> None:
@@ -722,12 +868,19 @@ def build_cathedral_arches_and_break(collection, materials, lod: int) -> None:
     for index, x in enumerate(arch_x):
         matrix = AFT if x < 0 else FORE
         # These crown and sill frames remain outside the 72 x 58 m navigation envelope.
-        make_box(collection, materials, lod, f"HangarArchCrown_{index}", (7.5, 86, 5.5),
-                 (x, 0, 63), "Material_Interior_ExposedAlloy", "hangar_portal_crown",
-                 matrix, bevel=0.30)
-        make_box(collection, materials, lod, f"HangarArchSill_{index}", (8.0, 84, 5.5),
-                 (x, 0, -35), "Material_Mechanical_Exposed", "hangar_portal_sill",
-                 matrix, bevel=0.32)
+        # Portal frames: deep crown + sill with inner lip (section change, not flat bars).
+        make_box(collection, materials, lod, f"HangarArchCrown_{index}", (6.0, 86, 4.0),
+                 (x, 0, 64), "Material_Interior_ExposedAlloy", "hangar_portal_crown",
+                 matrix, bevel=0.26)
+        make_box(collection, materials, lod, f"HangarArchCrownLip_{index}", (3.2, 78, 2.2),
+                 (x, 0, 60.5), "Material_Mechanical_Exposed", "hangar_portal_crown_lip",
+                 matrix, bevel=0.14)
+        make_box(collection, materials, lod, f"HangarArchSill_{index}", (6.5, 84, 4.0),
+                 (x, 0, -36), "Material_Mechanical_Exposed", "hangar_portal_sill",
+                 matrix, bevel=0.26)
+        make_box(collection, materials, lod, f"HangarArchSillLip_{index}", (3.0, 76, 2.0),
+                 (x, 0, -32.5), "Material_Interior_ExposedAlloy", "hangar_portal_sill_lip",
+                 matrix, bevel=0.12)
         if lod < 2 and index % 2 == 0:
             # A construction brace turns each second portal into a cathedral-like truss.
             make_beam(collection, materials, lod, f"HangarArchBraceP_{index}",
@@ -780,10 +933,15 @@ def build_cathedral_arches_and_break(collection, materials, lod: int) -> None:
 def build_bridge_and_service_zones(collection, materials, lod: int) -> None:
     make_wedge(collection, materials, lod, "BridgeCitadel", 92, 60, 29, (152, 0, 75),
                "Material_Hull_ConcordGray", "recognizable_bridge_zone", FORE,
-               rotation=(0, math.radians(-3.5), 0), bevel=0.78)
-    make_box(collection, materials, lod, "BridgeArmorCap", (62, 48, 7), (145, 0, 93),
+               rotation=(0, math.radians(-3.5), 0), bevel=0.70)
+    # Bridge shoulder steps break the single wedge mass.
+    make_box(collection, materials, lod, "BridgeStepAft", (28, 52, 8), (128, 0, 68),
+             "Material_Hull_ConcordGray", "bridge_step_mass", FORE, bevel=0.36)
+    make_box(collection, materials, lod, "BridgeArmorCap", (62, 48, 4.5), (145, 0, 93),
              "Material_Armor_Scorched", "bridge_armor_cap", FORE,
-             rotation=(0, math.radians(-4), 0), bevel=0.46)
+             rotation=(0, math.radians(-4), 0), bevel=0.32)
+    make_box(collection, materials, lod, "BridgeArmorCapStringer", (50, 38, 3.0), (145, 0, 90),
+             "Material_Mechanical_Exposed", "bridge_cap_stringer", FORE, bevel=0.18)
     # Layered bridge cheeks and a smaller forward crown break up the monolithic citadel silhouette.
     for side in (-1, 1):
         make_wedge(collection, materials, lod, f"BridgeCheek_{side}", 57, 15, 19,
@@ -809,14 +967,22 @@ def build_bridge_and_service_zones(collection, materials, lod: int) -> None:
         x = (-150 + index * 24) if matrix == AFT else (25 + (index - machine_count // 2) * 29)
         y = side * (46 + (index % 2) * 7)
         z = -4 + (index % 4) * 12
+        # Service packs: housing plate + drum + base pad (not a single brick).
+        make_box(collection, materials, lod, f"ServiceMachineBase_{index}",
+                 (14 + (index % 3) * 2, 11, 2.4), (x, y, z - 4),
+                 "Material_Armor_Scorched", "service_machine_pad", matrix, bevel=0.20)
         make_box(collection, materials, lod, f"ServiceMachine_{index}",
-                 (13 + (index % 3) * 3, 10, 9 + (index % 2) * 4), (x, y, z),
+                 (11 + (index % 3) * 2, 8, 7 + (index % 2) * 3), (x, y, z + 1),
                  "Material_Mechanical_Exposed", "salvageable_service_machinery", matrix,
-                 rotation=(math.radians(index % 2 * 4), 0, math.radians(side * (index % 4))), bevel=0.32)
+                 rotation=(math.radians(index % 2 * 4), 0, math.radians(side * (index % 4))), bevel=0.28)
         if lod < 2:
             make_cylinder(collection, materials, lod, f"ServiceDrum_{index}", 3.2, 11,
                           (x + 3, y - side * 6, z + 4), "Material_Interior_ExposedAlloy",
                           "service_pressure_or_drive_unit", matrix, rotation=(0, math.pi / 2, 0), bevel=0.18)
+            make_torus(collection, materials, lod, f"ServiceFlange_{index}", 3.6, 0.45,
+                       (x + 3, y - side * 6, z + 4), "Material_Mechanical_Exposed",
+                       "service_drum_flange", matrix, rotation=(0, math.pi / 2, 0),
+                       segments=20 if lod == 0 else 12)
 
     # Exposed conduits are routed along frames/decks, never sprinkled as detached greebles.
     conduit_count = 14 if lod == 0 else 7 if lod == 1 else 3
@@ -837,23 +1003,33 @@ def build_bridge_and_service_zones(collection, materials, lod: int) -> None:
 
 
 def build_propulsion_zone(collection, materials, lod: int) -> None:
-    # The propulsion bulkhead is a structural ring, not a solid wall: it preserves the hangar route.
+    # Propulsion bulkhead: I-crossmembers + armor shells (not solid bricks).
     for z, label in ((43, "Dorsal"), (-43, "Ventral")):
-        make_box(collection, materials, lod, f"EngineCrossmember{label}", (42, 150, 10),
-                 (-189, 0, z), "Material_Mechanical_Exposed", "propulsion_crossmember", AFT,
-                 bevel=0.50)
+        make_i_beam(
+            collection, materials, lod, f"EngineCrossmember{label}",
+            (-210, -72, z), (-210, 72, z), 9.0, "Material_Mechanical_Exposed",
+            "propulsion_crossmember", AFT, bevel=0.32,
+        )
     for side, label in ((-1, "Port"), (1, "Starboard")):
-        make_box(collection, materials, lod, f"EngineArmorBack{label}", (25, 20, 68),
-                 (-206, side * 65, 0), "Material_Armor_Scorched", "propulsion_armor_bulkhead", AFT,
-                 bevel=0.58, damage_history="engine_fire_and_secondary_detonation")
-    # Surviving top/bottom cowl rails frame the bell cluster; starboard plates carry the worst tear.
-    make_box(collection, materials, lod, "EngineCowlDorsal", (48, 143, 7), (-209, 0, 39),
+        make_armor_shell(
+            collection, materials, lod, f"EngineArmorBack{label}",
+            (22, 18, 68), (-206, side * 65, 0),
+            "Material_Armor_Scorched", "propulsion_armor_bulkhead", AFT,
+            thickness=2.2, bevel=0.42,
+            damage_history="engine_fire_and_secondary_detonation",
+        )
+    # Wide thin cowl plates (X depth, Y span, Z thickness) — not solid slabs.
+    make_box(collection, materials, lod, "EngineCowlDorsal", (48, 143, 2.4), (-209, 0, 39),
              "Material_Armor_Scorched", "damaged_propulsion_cowl", AFT,
-             rotation=(0, math.radians(2.5), math.radians(-1.5)), bevel=0.42,
+             rotation=(0, math.radians(2.5), math.radians(-1.5)), bevel=0.28,
              damage_history="propulsion_cowl_opened_by_secondary_detonation")
-    make_box(collection, materials, lod, "EngineCowlVentral", (45, 136, 7), (-207, -2, -39),
+    make_box(collection, materials, lod, "EngineCowlDorsalStringer", (40, 120, 4.0), (-205, 0, 36),
+             "Material_Mechanical_Exposed", "propulsion_cowl_stringer", AFT, bevel=0.22)
+    make_box(collection, materials, lod, "EngineCowlVentral", (45, 136, 2.2), (-207, -2, -39),
              "Material_Mechanical_Exposed", "propulsion_cowl_frame", AFT,
-             rotation=(0, math.radians(-2), math.radians(2.2)), bevel=0.40)
+             rotation=(0, math.radians(-2), math.radians(2.2)), bevel=0.26)
+    make_box(collection, materials, lod, "EngineCowlVentralStringer", (38, 110, 3.5), (-203, -2, -36),
+             "Material_Mechanical_Exposed", "propulsion_cowl_stringer", AFT, bevel=0.20)
     if lod < 2:
         make_wedge(collection, materials, lod, "EngineCowlPortShoulder", 43, 26, 31,
                    (-213, -72, 2), "Material_Hull_ConcordGray", "propulsion_cowl_shoulder", AFT,

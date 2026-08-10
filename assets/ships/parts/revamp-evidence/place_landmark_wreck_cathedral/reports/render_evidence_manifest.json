@@ -94,122 +94,122 @@
       "kind": "neutral",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png",
       "camera": "close_3q",
-      "bytes": 1484307,
-      "sha256": "48125e6eb77cf3d309d934d8a2f66f3ed8c8f15e8a9368f75a0ad5c17ef27166"
+      "bytes": 1464844,
+      "sha256": "5e422ba122ebe5251c528bb207c5b7e141ac40e5e0584ecc4fb838645bf517e4"
     },
     {
       "kind": "neutral",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png",
       "camera": "gameplay_distance",
-      "bytes": 1109031,
-      "sha256": "fa520d4f22906c730085c4afdf1fd1d673d2be9aa281c4c4735fc90956970e7e"
+      "bytes": 1105918,
+      "sha256": "f819baf2803ba181b3e472e05a31b99fc13d1d68642b893e5e8faac91ec15872"
     },
     {
       "kind": "neutral",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png",
       "camera": "flythrough",
-      "bytes": 1963279,
-      "sha256": "7c56440e8b8e7a1a982c74d2aa2ecabcf4d824fd0bf62a27c826c888cef81e78"
+      "bytes": 2019067,
+      "sha256": "4151ad312fad233ea4040e1e5a1455fdd409538d56082dfd8c873359265f426f"
     },
     {
       "kind": "neutral",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png",
       "camera": "propulsion",
-      "bytes": 2123794,
-      "sha256": "0cc84d6380395440fe70a90235aea45b42e2b9992889c11475c2a8ce6e10a847"
+      "bytes": 2162181,
+      "sha256": "b7ff3b06dabd0b9813ff14ea41a08853a2df8279999231eaa568bdac4501c7a1"
     },
     {
       "kind": "wireframe",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_side.png",
       "camera": "side",
-      "bytes": 1561144,
-      "sha256": "308b6c50bd2c8121540765c855ce99121d4a6948d37bbe3f976a0ba2edc721b6"
+      "bytes": 1587211,
+      "sha256": "b7d7a8a15167f87cf7e4ec3a500076658eceb7c83ba15c00e81d4e44d553662d"
     },
     {
       "kind": "wireframe",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png",
       "camera": "close_3q",
-      "bytes": 1548564,
-      "sha256": "92634370f669cc6ca0bc8471dd7b1be4297c9ef86a975aade0414364ebc8b38d"
+      "bytes": 1569627,
+      "sha256": "7a0effa796ad5ee521d954ce9c571b36ec73896b2b63d613cdea4719a56d9a20"
     },
     {
       "kind": "wireframe",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png",
       "camera": "flythrough",
-      "bytes": 2497616,
-      "sha256": "12f1da231b551920fdaa9a34c82e613728e02ace92ff9c6fb6359da3a68140cd"
+      "bytes": 2623411,
+      "sha256": "e582188c0166a44e99d0d308ec4c89d8fc276f35559fdde6d3ef7fb7a0e7f60e"
     },
     {
       "kind": "pbr_basecolor",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_basecolor_no_bloom.png",
       "camera": "upper_side",
       "bloom": false,
-      "bytes": 1327429,
-      "sha256": "a2a490fc514bdedc77dc9017b367b8769979eadee32e0aaf5c052700c9429459"
+      "bytes": 1283414,
+      "sha256": "cfa8fcd91fb620a12226f891c192e6feeb66f1a8d2d21457c775742b86bf186a"
     },
     {
       "kind": "pbr_normal",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_normal_no_bloom.png",
       "camera": "close_3q",
       "bloom": false,
-      "bytes": 1207676,
-      "sha256": "b40c3e3ad9b15671a4494eafc9d296f35b6d6cceefaa71cb5959c46dce925246"
+      "bytes": 1189613,
+      "sha256": "8f044aae3eaf83e2dac38524d6c351a399c81e7395e6571792d1f2c7a1b571ff"
     },
     {
       "kind": "pbr_roughness",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_roughness_no_bloom.png",
       "camera": "upper_side",
       "bloom": false,
-      "bytes": 1013114,
-      "sha256": "145298acdf1483f1a71398b162b2b69e0cab30e75c4c20f377a901dffe460845"
+      "bytes": 1027684,
+      "sha256": "541e5c6c9e1b25099a4221a7b32cd4e89c5201ef0c15856a6c1a64a64c51b0de"
     },
     {
       "kind": "pbr_metallic",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_metallic_no_bloom.png",
       "camera": "upper_side",
       "bloom": false,
-      "bytes": 986796,
-      "sha256": "00784936c034bdffa0e7ada52188d27f6b2cf4ece4ea3ec45e35906ee52674e0"
+      "bytes": 1000768,
+      "sha256": "23fe99f8cf835670ea82d4f91d8f183e9c731f126886c37fbe2a3b67f4ee58d4"
     },
     {
       "kind": "pbr_ao",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_ao_no_bloom.png",
       "camera": "upper_side",
       "bloom": false,
-      "bytes": 996073,
-      "sha256": "8cfa88a7333401bcf8e6ef0afc1da840fb27cd3f152108d8e42e445215eca81a"
+      "bytes": 994151,
+      "sha256": "c6dae92d6f7ec5eac6c152c0adef8f9be3f9f85d6d5d8e084632e152143a35c6"
     },
     {
       "kind": "pbr_emissive",
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_emissive_no_bloom.png",
       "camera": "side",
       "bloom": false,
-      "bytes": 684889,
-      "sha256": "01a94fc356c75eb1a4cd4ea17e620f95e7a1d60f4fd12292cf6d47a49ff3707a"
+      "bytes": 687412,
+      "sha256": "cb83c60fd6ac0f9821529d00428a19986c022be80a49d2882b9309a4162d1910"
     },
     {
       "kind": "lod_silhouette",
       "lod": 0,
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png",
       "camera": "side",
-      "bytes": 1205346,
-      "sha256": "64767180bd92c4aa6015afe6afdde88f17fb693026cea916dcdeeaa79f575d6b"
+      "bytes": 1197976,
+      "sha256": "68e37665ca2ead42593777064a7858f63b767fa51007fb846c8a2dfadc61dd2d"
     },
     {
       "kind": "lod_silhouette",
       "lod": 1,
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png",
       "camera": "side",
-      "bytes": 1196446,
-      "sha256": "a6b4b171e81fa5a45da034c60f23cd6d1c4b98331edb2a75655a28410783f3eb"
+      "bytes": 1201575,
+      "sha256": "7aee3e06451abd9d33120ca6fb7b050117cc8bf4f24934a89f4b108dfe9e5331"
     },
     {
       "kind": "lod_silhouette",
       "lod": 2,
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png",
       "camera": "side",
-      "bytes": 1195516,
-      "sha256": "120e031c60da00b80188b4c81b61c9356c5bdeeb5a00f736069881b5d9e9356e"
+      "bytes": 1192815,
+      "sha256": "8b059ce6277444f5f1adc024d09cb9d5d69c82bd9edb84dce7fb9bccaec6297c"
     },
     {
       "kind": "turntable",
@@ -220,10 +220,10 @@
         1280,
         720
       ],
-      "bytes": 1343329,
-      "sha256": "1937900331abeef1c06c265ee5ecd42bbe4dc3d0376c1560c2561bfb73237c9a"
+      "bytes": 1568306,
+      "sha256": "0c2f155ab3d82b34c8c3dbe01e8963257f8400c21e6ba2d09524ba1ec03ff65f"
     }
   ],
-  "elapsedSeconds": 778.625,
-  "createdAt": "2026-07-20T10:27:52Z"
+  "elapsedSeconds": 1362.057,
+  "createdAt": "2026-08-10T20:28:06Z"
 }

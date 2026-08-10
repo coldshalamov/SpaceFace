@@ -2,11 +2,11 @@
   "schema": "spaceface.wreckCathedralGeometryMaterialTextureReport.v1",
   "assetId": "place_landmark_wreck_cathedral",
   "glb": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
-  "glbBytes": 11155156,
+  "glbBytes": 16993604,
   "trianglesByLod": {
-    "lod0": 91908,
-    "lod1": 34164,
-    "lod2": 8364,
+    "lod0": 141300,
+    "lod1": 56920,
+    "lod2": 15276,
     "untagged": 0
   },
   "primitivesByLod": {
@@ -47,9 +47,9 @@
         512,
         512
       ],
-      "fileBytes": 273616,
+      "fileBytes": 294287,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "3a7172675af2f3cf0aa7d00b85542ea2efa93eaea5d1301ba3218231c90c250a"
+      "sha256": "b1cb4602f73b6b7a75b41d1f8717cf22037d8d13cadc14d9febfd2062357e82e"
     },
     {
       "material": "Material_Hull_ConcordGray",
@@ -59,9 +59,9 @@
         512,
         512
       ],
-      "fileBytes": 194352,
+      "fileBytes": 194353,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "19a6283efa6e062606033afd5d47958fed388db651b1c1002b1435bee68a4620"
+      "sha256": "f194559a637b61ee15502ef39a268bfd0c781e90bed1c60cef066806732cbd0a"
     },
     {
       "material": "Material_Hull_ConcordGray",
@@ -71,9 +71,9 @@
         512,
         512
       ],
-      "fileBytes": 293637,
+      "fileBytes": 293398,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "af8fc3decdced8c67d955d635a92999218e94a1607d55bb3af5539e4a196b90b"
+      "sha256": "feb1e62b27cc75fe6ee7ff00a10ef3e1c9b10ee1f8627aba4ef7a35d586e509c"
     },
     {
       "material": "Material_Armor_Scorched",
@@ -83,9 +83,9 @@
         512,
         512
       ],
-      "fileBytes": 265470,
+      "fileBytes": 258305,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "a12601d3db57b7e69477270ea0ae6cdb9a20320ab434a7daf14eca590899bdec"
+      "sha256": "ffef1be659972a968eb1aaed2aaa842964ae4c8853df9af90bda4689bcef1168"
     },
     {
       "material": "Material_Armor_Scorched",
@@ -95,9 +95,9 @@
         512,
         512
       ],
-      "fileBytes": 194546,
+      "fileBytes": 194393,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "0c74eb265cdf3678f63c50dc501d88f01014a1a154334586d4a0918c66018098"
+      "sha256": "b8a0223c4a6801af02515ddb892abe240c9daa2657fa283b7cdd6b255efbe339"
     },
     {
       "material": "Material_Armor_Scorched",
@@ -107,9 +107,9 @@
         512,
         512
       ],
-      "fileBytes": 299811,
+      "fileBytes": 297836,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "4e280e8589455f16dc8efbe2c5394854f34ce041ec9ca5ce4b12685c18ee9679"
+      "sha256": "2df94b41e0c5221d72a1ecbfc08edf8712790ad8fe3696ccc1442480e0124742"
     },
     {
       "material": "Material_Accent_ConcordBlue_Burned",
@@ -119,9 +119,9 @@
         512,
         512
       ],
-      "fileBytes": 287864,
+      "fileBytes": 290646,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "639472ff157d813f6c9bd16de0a45cad5d76a80820a3eb20d25517fb9cda046d"
+      "sha256": "d33200b3a486938e5824aa1037123d531e3a9250769e4797d2d5624c609566b8"
     },
     {
       "material": "Material_Accent_ConcordBlue_Burned",
@@ -131,9 +131,9 @@
         512,
         512
       ],
-      "fileBytes": 194420,
+      "fileBytes": 194246,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "9f40de2e58258ba4c19127da5bab92361c890c0cae81eba3837ba815432d6b30"
+      "sha256": "aca13799318310b1521ff2cae6d3badc27261b87dfd04be79f7f26b6f68bb35f"
     },
     {
       "material": "Material_Accent_ConcordBlue_Burned",
@@ -143,9 +143,9 @@
         512,
         512
       ],
-      "fileBytes": 294070,
+      "fileBytes": 294286,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "275abccda8ca76904cb9a980312a0ff491fe3eeef3b1b4973a7172508de185d8"
+      "sha256": "4d9d45dfa4e31eea120ca94c9fa27533bc423835d2e12927050e6f4830a6c5dd"
     },
     {
       "material": "Material_Mechanical_Exposed",
@@ -155,9 +155,9 @@
         512,
         512
       ],
-      "fileBytes": 274713,
+      "fileBytes": 264046,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "cf2fdd8abb176fde488fba686619d4914c24fbd82859e7af8863061a8240b907"
+      "sha256": "e6e01af287e221fa267fbfa32aaa7c4b0101fe253d28e7fb48c5d8c334c48f79"
     },
     {
       "material": "Material_Mechanical_Exposed",
@@ -167,9 +167,9 @@
         512,
         512
       ],
-      "fileBytes": 194306,
+      "fileBytes": 194283,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "56ab44db619ff5f4fcc72483c2d2b46438a773fac8922adc443b80bc3014fab3"
+      "sha256": "90b27a28843b2efffffe0260a9d79944af0a8f61caed1ec3afbbcbb8a678c225"
     },
     {
       "material": "Material_Mechanical_Exposed",
@@ -179,9 +179,9 @@
         512,
         512
       ],
-      "fileBytes": 292869,
+      "fileBytes": 294133,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "b643eb85c89399e90f360cf939eaeecf5045ac454e678e925ff86d605eabf6ab"
+      "sha256": "e4aea9475402f014a5bffbb5b92f9dcf79d12607889664d047d0b4246430e980"
     },
     {
       "material": "Material_Interior_ExposedAlloy",
@@ -191,9 +191,9 @@
         512,
         512
       ],
-      "fileBytes": 293625,
+      "fileBytes": 274097,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "87349e123ae8d5e718f5b9773bcfb1f6585b4ea0b3915f3091752c745d964891"
+      "sha256": "746784bc5422db3814343b9fe1f9c596bf882eefc4678ede4df8ae5abdb5a49d"
     },
     {
       "material": "Material_Interior_ExposedAlloy",
@@ -203,9 +203,9 @@
         512,
         512
       ],
-      "fileBytes": 216911,
+      "fileBytes": 216558,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "b2932afc44ef17b5de9b3a666d36f3f842fd2109c537b5c057b609a4741dd682"
+      "sha256": "67aeda02367777988be10fa7e37c273a7a6981552f270938121afe6f7de85f7c"
     },
     {
       "material": "Material_Interior_ExposedAlloy",
@@ -215,9 +215,9 @@
         512,
         512
       ],
-      "fileBytes": 293387,
+      "fileBytes": 293121,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "de999d207d5b7dd6d7f1d13b7c684141b25dfd6e4c84ebf7bd7c871a36dfc191"
+      "sha256": "5c5429cd15cb8f77f2dd61f95c371fc847e4bc165892c71c5f0b6216cdd2b30d"
     },
     {
       "material": "Material_Conduit_Copper",
@@ -227,9 +227,9 @@
         512,
         512
       ],
-      "fileBytes": 218782,
+      "fileBytes": 245016,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "f659cd5f9209b82805c1566d4bc1bcb1b12db010685bcc80e580f647fe015e71"
+      "sha256": "1bda955ab4cf284da165f889cc41ec9ded8679215d35e702ca4cf424e60401a5"
     },
     {
       "material": "Material_Conduit_Copper",
@@ -239,9 +239,9 @@
         512,
         512
       ],
-      "fileBytes": 228797,
+      "fileBytes": 229105,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "654459fef94772a238e75536bc0beb31cc9ff0821b3fd0fbcb85363fe4ad0681"
+      "sha256": "0c63773fac0b8b1b4e69869ae6a864b3c55eddcd8d562c09643d635096d88f1f"
     },
     {
       "material": "Material_Conduit_Copper",
@@ -251,9 +251,9 @@
         512,
         512
       ],
-      "fileBytes": 294289,
+      "fileBytes": 292840,
       "estimatedGpuBytesRgba8WithMips": 1398102,
-      "sha256": "16f901d9e3fe981bc5e5dbde2d34d60778a300875714b2841bd68f342c69ff53"
+      "sha256": "ae64f5127d022951195f7cb04d4c6196223ba8a9aca96ae0ee6b2321233f2d87"
     },
     {
       "material": "Material_Emissive_ColdEmergency",
@@ -263,9 +263,9 @@
         256,
         256
       ],
-      "fileBytes": 73263,
+      "fileBytes": 73831,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "50942afb76afcd8534732bcda4dbf37701bce51bb0fc02b00ea4a153dc2cc5f9"
+      "sha256": "628bf27e2464e6baba2c31f3750cf9d7a5b91d92759a41a27960edd986924d04"
     },
     {
       "material": "Material_Emissive_ColdEmergency",
@@ -275,9 +275,9 @@
         256,
         256
       ],
-      "fileBytes": 49640,
+      "fileBytes": 49569,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "4c0f08b2a0aa6b8196b44c3cacb8006684ff82d9b6dcc8b60e6c6f861225768e"
+      "sha256": "597f22f60701ab105d58ed173e25bf8848a828cd003ff9f055e991240f2f6940"
     },
     {
       "material": "Material_Emissive_ColdEmergency",
@@ -287,9 +287,9 @@
         256,
         256
       ],
-      "fileBytes": 71934,
+      "fileBytes": 72270,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "a31b341e42559c5db43e5e84252e4b3cb2bdd2367f6f65e13755a93b9f153606"
+      "sha256": "8732d429545fc466df90b435b5c272819bedc1170584c882364007f22143541e"
     },
     {
       "material": "Material_Emissive_ColdEmergency",
@@ -311,9 +311,9 @@
         256,
         256
       ],
-      "fileBytes": 68232,
+      "fileBytes": 68134,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "6974408633525c998e536abb91b19f8f6e7e77a4dfcead633c94410ffc7f19ac"
+      "sha256": "efc822b383b3c189e09ed9cca6210ddc77db8cad419a1a0667b250f758aa415b"
     },
     {
       "material": "Material_Emissive_MarkerAmber",
@@ -323,9 +323,9 @@
         256,
         256
       ],
-      "fileBytes": 49595,
+      "fileBytes": 49571,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "8bdcea67e3bc74ead47bda5768b1e0ff797a544d604096664da7ccd2ecb9690c"
+      "sha256": "932bbcc876f854bb3fe8298cf49af3722a4936da730f8a4cf5bf42f33c2f039c"
     },
     {
       "material": "Material_Emissive_MarkerAmber",
@@ -335,9 +335,9 @@
         256,
         256
       ],
-      "fileBytes": 72476,
+      "fileBytes": 71903,
       "estimatedGpuBytesRgba8WithMips": 349526,
-      "sha256": "091a3bdcbf7aebfff0ee993cdc19e091d8b552f5d11ba1a4f49a428b929ccfb6"
+      "sha256": "d5cec06d055f2c5c6490e079b2d2d4118c35c168573dbbd2b2217d10a9a1119a"
     },
     {
       "material": "Material_Emissive_MarkerAmber",

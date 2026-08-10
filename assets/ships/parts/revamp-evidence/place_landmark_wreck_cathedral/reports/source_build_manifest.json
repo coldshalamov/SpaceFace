@@ -13,7 +13,7 @@
     "version": "5.1.2",
     "binary": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe"
   },
-  "deterministicBuildSeed": 18072026,
+  "deterministicBuildSeed": 18082026,
   "script": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py",
   "command": "\"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\" --background --python \"assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py\"",
   "outputs": {
@@ -21,12 +21,12 @@
     "glb": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb"
   },
   "sourceHashes": {
-    "blend": "1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13",
-    "glb": "f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704"
+    "blend": "c828446ff2d8a1d01fe18f121b710749a3a61e954bf7e77383324e02c2d52970",
+    "glb": "d77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd"
   },
   "lod": {
     "lod0": {
-      "triangles": 91908,
+      "triangles": 141300,
       "drawGroups": 8,
       "objects": [
         "LOD0_Hull",
@@ -40,24 +40,24 @@
       ],
       "bounds": {
         "min": [
-          -309.4813,
-          -171.3587,
-          -115.6626
+          -310.466,
+          -169.4696,
+          -112.0846
         ],
         "max": [
-          324.0211,
-          198.533,
-          166.9291
+          323.5246,
+          196.2589,
+          163.9569
         ],
         "size": [
-          633.5024,
-          369.8917,
-          282.5917
+          633.9906,
+          365.7286,
+          276.0416
         ]
       }
     },
     "lod1": {
-      "triangles": 34164,
+      "triangles": 56920,
       "drawGroups": 8,
       "objects": [
         "LOD1_Hull",
@@ -71,24 +71,24 @@
       ],
       "bounds": {
         "min": [
-          -309.4577,
-          -168.1374,
+          -310.4152,
+          -166.2249,
           -111.9628
         ],
         "max": [
-          324.0436,
+          323.5439,
           193.6835,
-          165.3456
+          162.3365
         ],
         "size": [
-          633.5012,
-          361.821,
-          277.3084
+          633.9591,
+          359.9084,
+          274.2993
         ]
       }
     },
     "lod2": {
-      "triangles": 8364,
+      "triangles": 15276,
       "drawGroups": 8,
       "objects": [
         "LOD2_Hull",
@@ -102,19 +102,19 @@
       ],
       "bounds": {
         "min": [
-          -309.4436,
-          -167.1235,
-          -111.4314
+          -310.3548,
+          -161.7313,
+          -111.4313
         ],
         "max": [
-          324.0654,
-          190.7414,
-          163.6681
+          323.5625,
+          190.994,
+          155.3712
         ],
         "size": [
-          633.509,
-          357.8649,
-          275.0994
+          633.9174,
+          352.7254,
+          266.8025
         ]
       }
     }
@@ -158,6 +158,6 @@
     "collision proxies and World Site component proxies are intentionally deferred to PQ-017/PQ-018 integration",
     "no browser/Electron normal-route or measured zone-performance acceptance is claimed"
   ],
-  "elapsedSeconds": 227.142,
-  "builtAt": "2026-07-20T09:50:45Z"
+  "elapsedSeconds": 392.619,
+  "builtAt": "2026-08-10T20:04:41Z"
 }

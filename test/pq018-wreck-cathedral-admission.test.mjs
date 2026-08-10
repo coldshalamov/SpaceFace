@@ -24,8 +24,9 @@ const RELEASE_PATH = `assets/ships/release/parts/${PART_FILE}`;
 
 // The reviewed source candidate is frozen at admission. Any change here invalidates the source
 // evidence set in assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/.
-const SOURCE_SHA256 = 'f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704';
-const SOURCE_BYTES = 11155156;
+// Re-author candidate (I-beams, casemate hull banks, material separation, rooted rupture).
+const SOURCE_SHA256 = 'd77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd';
+const SOURCE_BYTES = 16993604;
 
 // Every marker the later PQ-018 phases bind against. Release optimization must not rename, merge,
 // or drop any of them, and their local transforms must survive byte-for-byte.
