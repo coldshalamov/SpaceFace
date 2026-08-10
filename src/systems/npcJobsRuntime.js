@@ -54,6 +54,7 @@ import {
   NPC_JOB_PHASE,
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
+import { hash32 } from '../core/rng.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -77,6 +78,11 @@ const MAX_CATCHUP_S = 3600;
 // assisted speed command, with a short planned end-of-leg brake so a slow authored route does not
 // coast through its pocket while the kernel enters a stationary phase.
 const ROUTE_BRAKE_WINDOW_S = 0.75;
+export const NPC_MINER_SEAM_EXHAUSTED_DEPLETION = 0.12;
+const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
+const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
+const NPC_MINER_BASE_WORK_S = 30;
+const NPC_MINER_THIN_WORK_S = 54;
 
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
@@ -239,6 +245,11 @@ function clamp(value, low, high) {
   return Math.max(low, Math.min(high, value));
 }
 
+function cleanFieldId(value) {
+  if (value == null || value === '') return null;
+  return String(value);
+}
+
 function shortestAngleDelta(a, b) {
   const turn = Math.PI * 2;
   let delta = (a % turn) - (b % turn);
@@ -328,6 +339,8 @@ export const npcJobsRuntime = {
     this._ensureState();
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
+    this._pendingMinerFieldRetargets = new Map();
+    this._fieldRetargetScanAccum = 0;
     this._threatQueries = createNearestEntityQueryService(this.state, {
       entityType: 'ship',
       team: 1,
@@ -388,6 +401,7 @@ export const npcJobsRuntime = {
         this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
+      this.bus.on('fieldDepletion:changed', (p) => this._onFieldDepletionChanged(p || {}));
     }
 
     // Producer-facing API. Traffic (and any future civilian producer) calls assign() at spawn.
@@ -1222,6 +1236,8 @@ export const npcJobsRuntime = {
 
   newGame() {
     this.state.npcJobs = { byId: {} };
+    this._pendingMinerFieldRetargets = new Map();
+    this._fieldRetargetScanAccum = 0;
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
     this._threatQueries?.reset();
@@ -1487,6 +1503,227 @@ export const npcJobsRuntime = {
     return threatQueryDiagnosticsSnapshot(this._threatQueries);
   },
 
+  _onFieldDepletionChanged(payload) {
+    const fieldId = cleanFieldId(payload && payload.fieldId);
+    if (!fieldId) return;
+    const depletion = clamp(finite(payload && payload.depleted, 0), 0, 1);
+    this._applyMinerFieldCadence(fieldId, depletion);
+    if (depletion < NPC_MINER_SEAM_EXHAUSTED_DEPLETION) return;
+    if (!this._pendingMinerFieldRetargets) this._pendingMinerFieldRetargets = new Map();
+    this._pendingMinerFieldRetargets.set(fieldId, {
+      fieldId,
+      depletion,
+      sectorId: payload && payload.sectorId || null,
+      reason: payload && payload.reason || 'field_depleted',
+      simTime: finite(this.state && this.state.simTime, 0),
+    });
+  },
+
+  _processMinerFieldDepletionRetargets(step, simT) {
+    if (!this._pendingMinerFieldRetargets) this._pendingMinerFieldRetargets = new Map();
+    this._fieldRetargetScanAccum = finite(this._fieldRetargetScanAccum, 0) + Math.max(0, step);
+    if (this._fieldRetargetScanAccum >= NPC_MINER_FIELD_RETARGET_INTERVAL_S) {
+      this._fieldRetargetScanAccum = 0;
+      this._discoverExhaustedMinerFields();
+    }
+    if (this._pendingMinerFieldRetargets.size === 0) return 0;
+
+    let moved = 0;
+    for (const [fieldId, pending] of this._pendingMinerFieldRetargets) {
+      const result = this._retargetMinerJobsForField(fieldId, pending, simT);
+      moved += result.moved;
+      if (!result.keepPending) this._pendingMinerFieldRetargets.delete(fieldId);
+    }
+    return moved;
+  },
+
+  _discoverExhaustedMinerFields() {
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const asteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      const fieldId = cleanFieldId(asteroid && asteroid.data && asteroid.data.fieldId);
+      if (!fieldId) continue;
+      const depletion = this._fieldDepletionValue(fieldId);
+      if (depletion < NPC_MINER_SEAM_EXHAUSTED_DEPLETION) continue;
+      this._pendingMinerFieldRetargets.set(fieldId, {
+        fieldId,
+        depletion,
+        sectorId: entry.sectorId || null,
+        reason: 'field_reconcile',
+        simTime: finite(this.state && this.state.simTime, 0),
+      });
+    }
+  },
+
+  _retargetMinerJobsForField(fieldId, pending, simT) {
+    const byId = this._byId();
+    const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
+    let matched = 0;
+    let unsafe = 0;
+    let moved = 0;
+    let blocked = false;
+
+    for (const jobId of Object.keys(byId).sort()) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      if (entry.sectorId && currentSector && entry.sectorId !== currentSector) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const oldAsteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      const oldFieldId = cleanFieldId(oldAsteroid && oldAsteroid.data && oldAsteroid.data.fieldId);
+      if (oldFieldId !== fieldId) continue;
+      matched++;
+      this._applyMinerFieldCadence(fieldId, this._fieldDepletionValue(fieldId));
+      if (!this._minerFieldRetargetSafe(entry.job)) {
+        unsafe++;
+        continue;
+      }
+      const anchor = entry.job.route && entry.job.route[0] && entry.job.route[0].pos;
+      const target = this._selectFreshMinerFieldTarget({
+        oldFieldId: fieldId,
+        oldAsteroidId: oldAsteroid && oldAsteroid.id,
+        anchor,
+        jobId,
+      });
+      if (!target) {
+        blocked = true;
+        continue;
+      }
+      const waypoint = field.waypoint;
+      waypoint.id = `field:${target.id}`;
+      waypoint.label = 'Fresh Belt';
+      waypoint.pos = { x: target.pos.x, z: target.pos.z };
+      delete waypoint.targetRef;
+      entry.job.workS = NPC_MINER_BASE_WORK_S;
+      if (entry.job.phase === NPC_JOB_PHASE.TRANSIT && entry.job.routeIndex === 0) {
+        const home = entry.job.route && entry.job.route[0] && entry.job.route[0].pos;
+        if (home && target.pos) entry.job.heading = Math.atan2(target.pos.z - home.z, target.pos.x - home.x);
+      }
+      moved++;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('npcjobs:minerRelocated', {
+          jobId,
+          minerId: entry.entityId == null ? null : entry.entityId,
+          fromFieldId: fieldId,
+          toFieldId: cleanFieldId(target.data && target.data.fieldId),
+          fromAsteroidId: oldAsteroid && oldAsteroid.id,
+          toAsteroidId: target.id,
+          sectorId: currentSector,
+          depletion: pending && pending.depletion != null ? pending.depletion : this._fieldDepletionValue(fieldId),
+          simTime: simT,
+          reason: pending && pending.reason || 'field_depleted',
+        });
+      }
+    }
+
+    return {
+      moved,
+      keepPending: unsafe > 0 || (matched > 0 && moved === 0 && !blocked),
+    };
+  },
+
+  _applyMinerFieldCadence(fieldId, depletion) {
+    const d = clamp(finite(depletion, 0), 0, 1);
+    const cadenceT = d <= NPC_MINER_CADENCE_DEPLETION_START
+      ? 0
+      : (d - NPC_MINER_CADENCE_DEPLETION_START)
+        / (NPC_MINER_SEAM_EXHAUSTED_DEPLETION - NPC_MINER_CADENCE_DEPLETION_START);
+    const workS = cadenceT <= 0
+      ? NPC_MINER_BASE_WORK_S
+      : Math.round((NPC_MINER_BASE_WORK_S + (NPC_MINER_THIN_WORK_S - NPC_MINER_BASE_WORK_S)
+        * Math.min(1, cadenceT)) * 1000) / 1000;
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const asteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      if (cleanFieldId(asteroid && asteroid.data && asteroid.data.fieldId) !== fieldId) continue;
+      entry.job.workS = workS;
+    }
+  },
+
+  _fieldWaypointForMinerJob(job) {
+    if (!job || job.kind !== NPC_JOB_KIND.MINER || !Array.isArray(job.route)) return null;
+    for (let index = 0; index < job.route.length; index++) {
+      const waypoint = job.route[index];
+      if (!waypoint || typeof waypoint.id !== 'string' || !waypoint.id.startsWith('field:')) continue;
+      return { index, waypoint };
+    }
+    return null;
+  },
+
+  _asteroidForFieldWaypoint(waypoint) {
+    if (!waypoint || typeof waypoint.id !== 'string' || !waypoint.id.startsWith('field:')) return null;
+    const raw = waypoint.id.slice(6);
+    const numeric = Number(raw);
+    return this.state.entities && this.state.entities.get
+      ? (this.state.entities.get(raw)
+        || (Number.isFinite(numeric) ? this.state.entities.get(numeric) : null))
+      : null;
+  },
+
+  _minerFieldRetargetSafe(job) {
+    if (!job || job.kind !== NPC_JOB_KIND.MINER || job.corrupt) return false;
+    if (job.phase === NPC_JOB_PHASE.COMMISSION) return true;
+    if (job.routeIndex !== 0) return false;
+    return job.phase === NPC_JOB_PHASE.APPROACH
+      || job.phase === NPC_JOB_PHASE.UNLOAD
+      || job.phase === NPC_JOB_PHASE.TRANSIT;
+  },
+
+  _fieldDepletionValue(fieldId) {
+    const id = cleanFieldId(fieldId);
+    const rec = id && this.state.fieldDepletion && this.state.fieldDepletion.fields
+      ? this.state.fieldDepletion.fields[id]
+      : null;
+    return clamp(finite(rec && rec.depletion, 0), 0, 1);
+  },
+
+  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId }) {
+    const indexed = this.state.entityIndex && this.state.entityIndex.__spacefaceEntityIndexV1
+      ? this.state.entityIndex.asteroids
+      : null;
+    const source = indexed && indexed.length ? indexed : (this.state.entityList || []);
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
+    const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
+    const candidates = [];
+    for (const asteroid of source) {
+      if (!asteroid || asteroid.type !== 'asteroid' || asteroid.alive === false || !asteroid.pos) continue;
+      if (oldAsteroidId != null && asteroid.id === oldAsteroidId) continue;
+      const data = asteroid.data || {};
+      if (data.siteAnchored || data.respawnAt != null) continue;
+      const fieldId = cleanFieldId(data.fieldId);
+      if (!fieldId || fieldId === oldFieldId) continue;
+      const depletion = this._fieldDepletionValue(fieldId);
+      if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) continue;
+      const dx = asteroid.pos.x - ax;
+      const dz = asteroid.pos.z - az;
+      candidates.push({
+        asteroid,
+        depletion,
+        d2: dx * dx + dz * dz,
+        fieldId,
+        tie: hash32(seed, 'miner-field-retarget', oldFieldId, jobId, fieldId, asteroid.id),
+      });
+    }
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => (a.depletion - b.depletion)
+      || (a.d2 - b.d2)
+      || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0)
+      || (a.tie - b.tie)
+      || String(a.asteroid.id).localeCompare(String(b.asteroid.id)));
+    const spread = Math.min(4, candidates.length);
+    const index = hash32(seed, 'miner-field-retarget-spread', oldFieldId, jobId) % spread;
+    return candidates[index].asteroid;
+  },
+
   // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
   update(dt, state) {
     if (state) this.state = state;
@@ -1512,6 +1749,7 @@ export const npcJobsRuntime = {
     const step = Math.max(0, finite(dt, 0));
     const simT = finite(this.state.simTime, 0);
     const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
+    this._processMinerFieldDepletionRetargets(step, simT);
 
     // Build every eligible threat request before advancing any job, then execute one owner-facing
     // broadphase batch. Requests retain only stable ids and scalar origins; GameState remains authority.
