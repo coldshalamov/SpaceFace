@@ -1,4 +1,4 @@
-// Velocity-language consumption probe for src/render/camera.js (ADR D7, band 3).
+// Velocity-language consumption probe for src/render/camera.js (luminous-wake extreme band).
 //
 // THE DEFECT THIS PINS. velocityLanguage.js publishes camera and provenance-bound speed fields on
 // the shared record at

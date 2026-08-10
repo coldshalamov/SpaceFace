@@ -139,6 +139,7 @@ import {
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
+const EMPTY_VIDEO_SETTINGS = Object.freeze({});
 const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
   'kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other',
 ]);
@@ -419,6 +420,12 @@ const LOOT_MAGNET_DRAW_RANGE = 460;      // wu; slightly beyond MAGNET_RANGE so 
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
+const PLAYER_RIBBON_SEGMENTS = 72;
+const NPC_RIBBON_SEGMENTS = 48;
+const RIBBON_MIN_SAMPLE_SPACING_WU = 2.4;
+const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
+export const RIBBON_DISCONTINUITY_MAX_WU = 640;
+export const RIBBON_NPC_OWNER_CAP = 8;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
 // Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
@@ -692,7 +699,8 @@ export const vfx = {
     };
     this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 };
     this._entityLocalXZ = { x: 0, z: 0 };
-    // Renderer prepareFrame calls this on frameOriginSeq change (no effect erasure).
+    // Renderer prepareFrame calls this on frameOriginSeq change. Local one-shot effects reproject;
+    // camera-prominent ribbon history clears and reseeds to avoid bridging coordinate spaces.
     if (ctx.state && ctx.state.render) {
       ctx.state.render.vfxReprojectFrame = (dx, dz) => this.reprojectFrame(dx, dz);
     }
@@ -711,6 +719,7 @@ export const vfx = {
     this._tier1Spawn = null;
     this._cadenceSeam = 0;
     this._cadenceRibbon = 0;
+    this._ribbonTrailsEnabledLast = null;
     this._cadenceProjectileTrail = 0;
     this._cadenceLootMagnet = 0;
     this._cadenceMomentumSink = 0;
@@ -1363,12 +1372,15 @@ export const vfx = {
       this._onDestroyed(p);
     });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
-    add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
+    add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._resetRibbonTrails(p && p.id); this._markEntityCacheDirty(); });
     add(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresJobActionReceipt(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('sector:exit', () => { this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); });
-    add('game:newGame', () => { this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); });
+    add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:restoring', () => this._resetRibbonTrails());
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1450,8 +1462,9 @@ export const vfx = {
   },
 
   /**
-   * Shift all live local VFX anchors by origin rebase delta. Does not retire effects or lower quality.
-   * Aligns the internal membrane to the current world origin so a later sync is a no-op (no double shift).
+   * Shift live local VFX anchors by origin rebase delta. Long ribbon history is the exception: it is
+   * cleared so the next live nozzle pose reseeds without a screen-crossing bridge. Aligns the
+   * internal membrane to the current world origin so a later sync is a no-op (no double shift).
    */
   reprojectFrame(dx, dz) {
     const ox = Number.isFinite(dx) ? dx : 0;
@@ -1504,12 +1517,13 @@ export const vfx = {
         }
         releaseArc.mesh.geometry.attributes.position.needsUpdate = true;
       }
-      // Ribbon engine trails store history in frame-local sample buffers — shift, then rebuild.
+      // A frame-origin jump is a discontinuity for a camera-prominent wake. Clear/reseed at the
+      // current nozzle on the next update instead of risking one frame that joins two coordinate
+      // spaces with a screen-crossing strip.
       if (this._ribbonTrails && this._ribbonTrails.size) {
         for (const trail of this._ribbonTrails.values()) {
           if (!trail) continue;
-          if (typeof trail.reproject === 'function') trail.reproject(ox, oz);
-          if (typeof trail.rebuild === 'function') trail.rebuild(null, null, this._t);
+          if (typeof trail.clear === 'function') trail.clear();
         }
       }
     }
@@ -1962,7 +1976,9 @@ export const vfx = {
       const e = list[i];
       if (!e || (e.type !== 'ship' && e.type !== 'drone')) continue;
       this._trailCandidates.push(e);
-      if ((e.radius || 0) >= 22) this._ribbonCandidates.push(e);
+      // The player's velocity wake is part of ordinary-route feedback regardless of hull radius;
+      // large NPCs retain it as a fleet-scale motion cue.
+      if (e.id === this.state.playerId || (e.radius || 0) >= 22) this._ribbonCandidates.push(e);
     }
     this._trailListRef = list;
     this._trailListLength = list.length;
@@ -10433,29 +10449,93 @@ export const vfx = {
   _ribbonTrails: null,
   _initRibbonTrails() { this._ribbonTrails = new Map(); },
 
+  _retireRibbonTrail(entityId, dispose = false) {
+    if (!this._ribbonTrails) return;
+    const trail = this._ribbonTrails.get(entityId);
+    if (!trail) return;
+    if (dispose) {
+      trail.dispose();
+      this._ribbonTrails.delete(entityId);
+    } else {
+      trail.clear();
+    }
+  },
+
+  _resetRibbonTrails(entityId = null) {
+    if (!this._ribbonTrails || !this._ribbonTrails.size) return;
+    if (entityId != null) {
+      const trail = this._ribbonTrails.get(entityId);
+      if (trail && typeof trail.clear === 'function') trail.clear();
+      return;
+    }
+    for (const trail of this._ribbonTrails.values()) {
+      if (trail && typeof trail.clear === 'function') trail.clear();
+    }
+  },
+
   _updateRibbonTrails(dt) {
     if (!this._ribbonTrails || !this._scene) return false;
-    if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return false;
+    const settings = this.state && this.state.settings;
+    const video = settings && settings.video || EMPTY_VIDEO_SETTINGS;
+    const enabled = richEngineTrailsEnabled(video);
+    if (!enabled) {
+      if (this._ribbonTrailsEnabledLast !== false) this._resetRibbonTrails();
+      this._ribbonTrailsEnabledLast = false;
+      return false;
+    }
+    this._ribbonTrailsEnabledLast = true;
     this._refreshTrailCandidates();
-    if (!this._ribbonCandidates.length) return false;
-    const ribbonStep = this._consumeCadence('_cadenceRibbon', dt, VFX_RIBBON_TRAILS_HZ);
-    if (ribbonStep <= 0) return false;
     const state = this.state;
     const ctx = this._trailContext();
     const screenChecks = this._trailScreenChecks();
+    const accessibilityProfile = resolveVfxAccessibilityProfile(settings);
+    const flashReduce = accessibilityProfile.flashOpacityScale < 1;
     let active = false;
-    for (const e of this._ribbonCandidates) {
+    let npcOwners = 0;
+    let ordinaryNpcOwners = 0;
+    const targetEntity = ctx.targetId != null ? state.entities.get(ctx.targetId) : null;
+    const reserveTargetOwner = !!(targetEntity && targetEntity.alive
+      && (targetEntity.type === 'ship' || targetEntity.type === 'drone')
+      && (targetEntity.radius || 0) >= 22);
+    for (let i = 0; i < this._ribbonCandidates.length; i++) {
+      const e = this._ribbonCandidates[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
-      if (e.flags && e.flags.docked) { const rt = this._ribbonTrails.get(e.id); if (rt) rt.clear(); continue; }
+      const isPlayer = e.id === state.playerId;
+      if (e.flags && e.flags.docked) {
+        this._retireRibbonTrail(e.id, !isPlayer);
+        continue;
+      }
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
-      if (tier === TRAIL_TIER.SKIP || !this._trailCadenceAllows(e, tier)) continue;
+      if (tier === TRAIL_TIER.SKIP) {
+        this._retireRibbonTrail(e.id, !isPlayer);
+        continue;
+      }
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
-      if (speed < 4 && driveInfo.drive < 0.04) continue;
+      if (speed < 4 && driveInfo.drive < 0.04) {
+        this._retireRibbonTrail(e.id, !isPlayer);
+        continue;
+      }
+      if (!isPlayer) {
+        const isPriorityTarget = reserveTargetOwner && e.id === ctx.targetId;
+        const ordinaryCap = RIBBON_NPC_OWNER_CAP - (reserveTargetOwner ? 1 : 0);
+        if ((!isPriorityTarget && ordinaryNpcOwners >= ordinaryCap)
+          || (isPriorityTarget && npcOwners >= RIBBON_NPC_OWNER_CAP)) {
+          this._retireRibbonTrail(e.id, true);
+          continue;
+        }
+        if (!isPriorityTarget) ordinaryNpcOwners++;
+        npcOwners++;
+      }
       let trail = this._ribbonTrails.get(e.id);
       if (!trail) {
-        const w = Math.max(2.5, (e.radius || 14) * 0.16);
-        trail = createRibbonTrail(this._scene, this._engineColor(e), 30, w);
+        const w = Math.max(1.45, (e.radius || 14) * 0.095);
+        trail = createRibbonTrail(
+          this._scene,
+          this._engineColor(e),
+          isPlayer ? PLAYER_RIBBON_SEGMENTS : NPC_RIBBON_SEGMENTS,
+          w,
+        );
         this._ribbonTrails.set(e.id, trail);
       }
       // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local
@@ -10465,14 +10545,55 @@ export const vfx = {
       const txG = sock ? sock.x : e.pos.x - cf * back;
       const tzG = sock ? sock.z : e.pos.z - sf * back;
       const local = this._toLocalXZ(txG, tzG, this._spawnLocalXZ);
-      trail.push(local.x, local.z, sock ? sock.angle + Math.PI : e.rot);
-      trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12, (this._t * 0.35) % 1, this._t);
-      active = true;
+      const radius = Math.max(4, e.radius || 14);
+      const spacing = Math.max(RIBBON_MIN_SAMPLE_SPACING_WU, radius * 0.12);
+      const frameSeconds = Math.max(1 / 60, Math.min(0.1, Number.isFinite(dt) ? dt : 0));
+      const expectedTravel = speed * frameSeconds;
+      const discontinuity = Math.min(
+        RIBBON_DISCONTINUITY_MAX_WU,
+        Math.max(
+          RIBBON_DISCONTINUITY_FLOOR_WU,
+          radius * 12,
+          expectedTravel * 1.75 + radius * 2,
+        ),
+      );
+      trail.follow(
+        local.x,
+        local.z,
+        sock ? sock.angle + Math.PI : e.rot,
+        dt,
+        e,
+        spacing,
+        discontinuity,
+        1 / VFX_RIBBON_TRAILS_HZ,
+      );
+      const speedRatio = speed / Math.max(1, e.maxSpeed || (e.data && e.data.maxSpeed) || 1);
+      const opacity = Math.min(0.86,
+        0.28 + Math.min(1, driveInfo.drive) * 0.42 + driveInfo.boost * 0.12
+          + Math.min(1, speedRatio / 2) * 0.10) * (flashReduce ? 0.58 : 1);
+      const radiance = (1.5 + driveInfo.boost * 0.28 + Math.min(1, speedRatio / 2) * 0.22)
+        * (flashReduce ? 0.72 : 1);
+      const scroll = (this._t * (flashReduce ? 0.18 : 0.34)) % 1;
+      const cadenceAllows = tier === TRAIL_TIER.REDUCED && this._trailCadenceAllows(e, tier);
+      const cadenceFresh = !cadenceAllows || typeof trail.claimCadence !== 'function'
+        || trail.claimCadence(this._trailFrameIndex);
+      const fullGeometryUpdate = isPlayer || tier !== TRAIL_TIER.REDUCED
+        || (cadenceAllows && cadenceFresh);
+      if (fullGeometryUpdate || typeof trail.syncHead !== 'function') {
+        trail.rebuild(opacity, scroll, this._t, radiance);
+      } else {
+        trail.syncHead(opacity, scroll, this._t, radiance);
+      }
+      active = active || !!(trail.getMesh && trail.getMesh().visible);
     }
-    // dispose dead entities
+    // Dispose dead/non-candidate entities; a replacement object retaining the same id is reset by
+    // follow's owner-identity check before it can inherit the previous hull's wake.
     for (const [id, trail] of this._ribbonTrails) {
       const e = state.entities.get(id);
-      if (!e || !e.alive) { trail.dispose(); this._ribbonTrails.delete(id); }
+      const eligible = e && e.alive
+        && (e.type === 'ship' || e.type === 'drone')
+        && (e.id === state.playerId || (e.radius || 0) >= 22);
+      if (!eligible) { trail.dispose(); this._ribbonTrails.delete(id); }
     }
     return active;
   },

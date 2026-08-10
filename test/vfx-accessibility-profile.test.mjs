@@ -9,6 +9,8 @@ import {
 } from '../src/render/vfxAccessibility.js';
 import {
   EVENT_LIGHT_POOL_SIZE,
+  RIBBON_DISCONTINUITY_MAX_WU,
+  RIBBON_NPC_OWNER_CAP,
   eventLightPoolSizeFor,
   resolveMasslineAccessibilityPolicy,
   vfx,
@@ -51,8 +53,9 @@ test('the pooled VFX choke points apply reduced-flash policy to every effect fam
     },
     render: { scene },
   };
+  const bus = createBus();
   const system = Object.create(vfx);
-  system.init({ state, bus: createBus(), helpers: {} });
+  system.init({ state, bus, helpers: {} });
 
   const normal = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 90, 1, 0, '#ffffff', 0, 0);
   system._flashLight({ x: 0, z: 0 }, '#ffffff', 10, 8, 100);
@@ -71,6 +74,205 @@ test('the pooled VFX choke points apply reduced-flash policy to every effect fam
     'irregular combustion must use the same reduced-flash choke point as generic flash cards');
   assert.ok(reducedCombustion.size1 < 70);
   assert.ok(reducedPeak < normalPeak * 0.3);
+});
+
+test('luminous velocity ribbons honor flash, motion, quality, and engine-trail settings live', () => {
+  const scene = new THREE.Scene();
+  const player = {
+    id: 1, type: 'ship', alive: true, radius: 12, rot: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 120, z: 0 }, maxSpeed: 120,
+    flags: {}, data: {}, _flightFrame: { throttle: 1 },
+  };
+  const state = {
+    playerId: player.id,
+    player: { cruise: null },
+    entities: new Map([[player.id, player]]),
+    entityList: [player],
+    settings: {
+      video: { particleQuality: 'high', motionReduce: false, engineTrails: true },
+      accessibility: { flashReduce: false },
+    },
+    render: { scene },
+  };
+  const bus = createBus();
+  const system = Object.create(vfx);
+  system.init({ state, bus, helpers: {} });
+
+  system._updateRibbonTrails(1 / 60);
+  player.pos.x = 12;
+  system._updateRibbonTrails(1 / 30);
+  const trail = system._ribbonTrails.get(player.id);
+  assert.ok(trail && trail.getMesh().visible,
+    'the player receives a live ordinary-route ribbon even on a sub-22-WU hull');
+  const material = trail.getMaterial();
+  const fullOpacity = material.uniforms.uOpacity.value;
+  const fullRadiance = material.uniforms.uRadiance.value;
+  assert.ok(fullOpacity > 0.5 && fullRadiance > 1,
+    'default presentation keeps a bright HDR filament and colored sheath');
+
+  const rebuildWake = () => {
+    player.pos.x += 2;
+    system._updateRibbonTrails(1 / 60);
+    player.pos.x += 12;
+    system._updateRibbonTrails(1 / 30);
+    assert.equal(trail.getMesh().visible, true, 'boundary reset must reseed into a live wake');
+  };
+  for (const event of ['ship:appearanceChanged', 'world:playerRelocated', 'save:restoring',
+    'sector:exit', 'game:new']) {
+    bus.emit(event, event === 'ship:appearanceChanged' ? { id: player.id } : {});
+    assert.equal(trail.getMesh().visible, false, `${event} must clear stale ribbon geometry`);
+    assert.equal(trail.inspect().visiblePointCount, 0, `${event} must clear ribbon history`);
+    rebuildWake();
+  }
+  system.reprojectFrame(-4096, 2048);
+  assert.equal(trail.getMesh().visible, false, 'floating-origin shift must clear stale ribbon geometry');
+  assert.equal(trail.inspect().visiblePointCount, 0, 'floating-origin shift must clear ribbon history');
+  rebuildWake();
+
+  player.vel.x = 5000;
+  player.pos.x += RIBBON_DISCONTINUITY_MAX_WU * 4;
+  system._updateRibbonTrails(0.1);
+  assert.equal(trail.getMesh().visible, false,
+    'an extreme-speed un-signaled teleport must reseed instead of drawing a screen bridge');
+  assert.equal(trail.inspect().visiblePointCount, 1,
+    'the production discontinuity ceiling must retain only the current nozzle pose');
+  player.vel.x = 120;
+  rebuildWake();
+
+  const reducedFlashShapes = [
+    ['accessibility.flashReduce', () => { state.settings.accessibility.flashReduce = true; }],
+    ['video.flashReduce', () => { state.settings.video.flashReduce = true; }],
+    ['accessibility.reducedFlash', () => { state.settings.accessibility.reducedFlash = true; }],
+  ];
+  for (const [label, enableReducedFlash] of reducedFlashShapes) {
+    state.settings.accessibility.flashReduce = false;
+    state.settings.accessibility.reducedFlash = false;
+    state.settings.video.flashReduce = false;
+    enableReducedFlash();
+    player.pos.x += 4;
+    system._updateRibbonTrails(1 / 60);
+    assert.ok(material.uniforms.uOpacity.value < fullOpacity, `${label} must lower ribbon coverage`);
+    assert.ok(material.uniforms.uRadiance.value < fullRadiance,
+      `${label} must lower HDR energy without changing trail topology`);
+  }
+  state.settings.accessibility.reducedFlash = false;
+
+  state.settings.video.engineTrails = false;
+  system._updateRibbonTrails(1 / 60);
+  assert.equal(trail.getMesh().visible, false, 'engineTrails=false hides and clears the wake immediately');
+  assert.equal(trail.inspect().visiblePointCount, 0);
+
+  state.settings.video.engineTrails = true;
+  state.settings.video.motionReduce = true;
+  system._updateRibbonTrails(1 / 60);
+  assert.equal(trail.getMesh().visible, false, 'motionReduce retains compact propulsion without the long wake');
+
+  state.settings.video.motionReduce = false;
+  state.settings.video.particleQuality = 'low';
+  system._updateRibbonTrails(1 / 60);
+  assert.equal(trail.getMesh().visible, false, 'low quality does not leave stale high-quality ribbon geometry');
+});
+
+test('dense fleets keep ribbon owners and full NPC history rebuilds bounded', () => {
+  const scene = new THREE.Scene();
+  const player = {
+    id: 1, type: 'ship', alive: true, radius: 12, rot: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 120, z: 0 }, maxSpeed: 120,
+    flags: {}, data: {}, _flightFrame: { throttle: 1 },
+  };
+  const npcs = [];
+  for (let i = 0; i < RIBBON_NPC_OWNER_CAP * 3; i++) {
+    npcs.push({
+      id: 100 + i,
+      type: 'ship',
+      alive: true,
+      radius: 24,
+      rot: 0,
+      pos: { x: 2400 + i * 3, z: 40 },
+      vel: { x: 60, z: 0 },
+      maxSpeed: 120,
+      flags: {},
+      data: {},
+      _flightFrame: { throttle: 1 },
+    });
+  }
+  const entityList = [player, ...npcs];
+  const state = {
+    playerId: player.id,
+    player: { cruise: null, targetId: npcs[npcs.length - 1].id },
+    entities: new Map(entityList.map((e) => [e.id, e])),
+    entityList,
+    settings: {
+      video: { particleQuality: 'high', motionReduce: false, engineTrails: true },
+      accessibility: { flashReduce: false },
+    },
+    render: { scene },
+  };
+  const system = Object.create(vfx);
+  system.init({ state, bus: createBus(), helpers: {} });
+
+  const frames = 12;
+  for (let frame = 0; frame < frames; frame++) {
+    system._trailFrameIndex++;
+    for (let i = 0; i < entityList.length; i++) {
+      const e = entityList[i];
+      e.pos.x += e.vel.x / 60;
+    }
+    system._updateRibbonTrails(1 / 60);
+  }
+
+  let rebuildsBeforeRepeatedToken = 0;
+  for (const [id, trail] of system._ribbonTrails) {
+    if (id !== player.id && id !== state.player.targetId) {
+      rebuildsBeforeRepeatedToken += trail.inspect().fullRebuildCount;
+    }
+  }
+  for (let i = 0; i < entityList.length; i++) entityList[i].pos.x += entityList[i].vel.x / 120;
+  system._updateRibbonTrails(1 / 120);
+  let rebuildsAfterRepeatedToken = 0;
+  for (const [id, trail] of system._ribbonTrails) {
+    if (id !== player.id && id !== state.player.targetId) {
+      rebuildsAfterRepeatedToken += trail.inspect().fullRebuildCount;
+    }
+  }
+  assert.equal(rebuildsAfterRepeatedToken, rebuildsBeforeRepeatedToken,
+    'a high-refresh display frame sharing the same trail tick must not repeat full NPC uploads');
+
+  assert.ok(system._ribbonTrails.size <= RIBBON_NPC_OWNER_CAP + 1,
+    `dense fleet created ${system._ribbonTrails.size} ribbons above the player + NPC cap`);
+  let npcOwners = 0;
+  let headSyncs = 0;
+  for (const [id, trail] of system._ribbonTrails) {
+    if (id === player.id) continue;
+    npcOwners++;
+    const stats = trail.inspect();
+    assert.equal(stats.capacity, 48, 'NPC ribbon capacity must remain fixed');
+    if (id === state.player.targetId) {
+      assert.ok(stats.fullRebuildCount > Math.ceil(frames / 3),
+        'the selected target must retain full-rate presentation inside the fixed owner budget');
+    } else {
+      assert.ok(stats.fullRebuildCount <= Math.ceil(frames / 3),
+        `reduced NPC ${id} rebuilt full history ${stats.fullRebuildCount} times in ${frames} frames`);
+      const range = trail.getMesh().geometry.attributes.position.updateRanges[0];
+      assert.equal(range && range.count, 6,
+        `cadenced NPC ${id} must publish a two-vertex partial upload on repeated trail ticks`);
+      assert.equal(range.count * Float32Array.BYTES_PER_ELEMENT, 24,
+        `cadenced NPC ${id} head upload must remain 24 bytes`);
+    }
+    headSyncs += stats.headSyncCount;
+    const entity = state.entities.get(id);
+    const positions = trail.getMesh().geometry.attributes.position.array;
+    const headX = (positions[0] + positions[3]) * 0.5;
+    const expectedNozzleX = entity.pos.x - entity.radius * 0.88;
+    assert.ok(Math.abs(headX - expectedNozzleX) < 5e-4,
+      `cadenced NPC ${id} head ${headX} detached from live nozzle ${expectedNozzleX}`);
+  }
+  assert.equal(npcOwners, RIBBON_NPC_OWNER_CAP,
+    'dense fleet must retain exactly the bounded NPC presentation budget');
+  assert.ok(system._ribbonTrails.has(state.player.targetId),
+    'a late-list selected target must claim the reserved high-fidelity NPC slot');
+  assert.ok(headSyncs > 0,
+    'cadence-reduced NPC ribbons must use cheap live-head synchronization between rebuilds');
 });
 
 test('Massline accessibility freezes rapid motion/pulses while retaining a steady structural read', () => {

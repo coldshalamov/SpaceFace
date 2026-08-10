@@ -78,6 +78,82 @@ assert.deepEqual(Array.from(uploadRibbonMesh.geometry.attributes.aTrailUv.array)
   'skipping the redundant UV upload must preserve the exact ribbon coordinates');
 uploadRibbon.push(7, 1, Math.PI * 0.5);
 uploadRibbon.rebuild(0.6, 0.3, 3);
+assert.equal(uploadRibbonMesh.geometry.drawRange.count, 12,
+  'three live ribbon points must draw exactly two quads, not the uninitialized capacity tail');
+
+// The production continuity seam keeps the current nozzle outside the cadence-sampled history.
+// A long display-frame displacement is filled by bounded typed-array history, while replacement,
+// teleport, and explicit boundary resets reseed rather than drawing a screen-crossing bridge.
+const continuityScene = new THREE.Scene();
+const continuity = surfaces.createRibbonTrail(continuityScene, '#39d0ff', 10, 2);
+const continuityMesh = continuity.getMesh();
+const positionsIdentity = continuityMesh.geometry.attributes.position.array;
+const uvsIdentity = continuityMesh.geometry.attributes.aTrailUv.array;
+const ownerA = { id: 77 };
+const ownerB = { id: 77 };
+continuity.follow(0, 0, 0, 1 / 60, ownerA, 3, 160, 1 / 30);
+continuity.rebuild(0.8, 0.1, 1, 1.6);
+assert.equal(continuityMesh.visible, false, 'a seed pose must not draw a degenerate card');
+continuity.follow(20, 0, 0, 1 / 30, ownerA, 3, 160, 1 / 30);
+continuity.rebuild(0.8, 0.2, 2, 1.6);
+const filled = continuity.inspect();
+assert.ok(filled.visiblePointCount >= 6,
+  `a 20 WU gap should be filled by bounded history, got ${filled.visiblePointCount} points`);
+assert.ok(filled.visiblePointCount <= surfaces.RIBBON_TRAIL_INTERPOLATION_CAP + 1,
+  'one delayed frame must never exceed the interpolation cap plus its live head');
+assert.equal(continuityMesh.visible, true);
+assert.equal(continuityMesh.geometry.drawRange.count, (filled.visiblePointCount - 1) * 6);
+assert.equal(continuityMesh.geometry.attributes.position.updateRanges[0].count,
+  filled.visiblePointCount * 6,
+  'a full history rebuild must upload only its written position components');
+assert.equal(continuityMesh.geometry.attributes.aTrailUv.updateRanges[0].count,
+  filled.visiblePointCount * 4,
+  'a changed history count must upload only its written UV components');
+const continuityPos = continuityMesh.geometry.attributes.position.array;
+const headCenterX = (continuityPos[0] + continuityPos[3]) * 0.5;
+assert.ok(Math.abs(headCenterX - 20) < 1e-6,
+  `the rendered ribbon head must match the current nozzle, got ${headCenterX}`);
+assert.strictEqual(continuityMesh.geometry.attributes.position.array, positionsIdentity,
+  'continuity updates must retain the fixed position buffer');
+assert.strictEqual(continuityMesh.geometry.attributes.aTrailUv.array, uvsIdentity,
+  'continuity updates must retain the fixed UV buffer');
+
+const rebuildsBeforeHeadSync = continuity.inspect().fullRebuildCount;
+continuity.follow(24, 1, 0.05, 1 / 60, ownerA, 3, 160, 1 / 30);
+assert.equal(continuity.syncHead(0.7, 0.25, 2.5, 1.5), true,
+  'a cadence-reduced frame must update its live nozzle pair without rebuilding history');
+const headSynced = continuity.inspect();
+const syncedPositions = continuityMesh.geometry.attributes.position.array;
+const syncedHeadX = (syncedPositions[0] + syncedPositions[3]) * 0.5;
+const syncedHeadZ = (syncedPositions[2] + syncedPositions[5]) * 0.5;
+assert.ok(Math.abs(syncedHeadX - 24) < 1e-6 && Math.abs(syncedHeadZ - 1) < 1e-6,
+  `cadence-reduced head must stay socket-bound, got (${syncedHeadX}, ${syncedHeadZ})`);
+assert.equal(headSynced.fullRebuildCount, rebuildsBeforeHeadSync,
+  'head sync must not perform an O(history) geometry rebuild');
+assert.equal(headSynced.headSyncCount, 1);
+const headUpdateRange = continuityMesh.geometry.attributes.position.updateRanges[0];
+assert.equal(headUpdateRange.start, 0);
+assert.equal(headUpdateRange.count, 6,
+  'cadence-reduced nozzle sync must upload only its two XYZ head vertices');
+assert.equal(headUpdateRange.count * positionsIdentity.BYTES_PER_ELEMENT, 24,
+  'cadence-reduced nozzle upload must remain exactly 24 bytes');
+assert.ok(headUpdateRange.count * positionsIdentity.BYTES_PER_ELEMENT < positionsIdentity.byteLength,
+  'head sync must not upload the full pooled position buffer');
+assert.strictEqual(continuityMesh.geometry.attributes.position.array, positionsIdentity,
+  'head sync must retain the pooled position buffer');
+
+continuity.follow(21, 0, 0, 1 / 60, ownerB, 3, 160, 1 / 30);
+continuity.rebuild(0.8, 0.3, 3, 1.6);
+assert.equal(continuity.inspect().visiblePointCount, 1,
+  'an entity object replacement reusing the same id must not inherit the old wake');
+assert.equal(continuityMesh.visible, false);
+continuity.follow(500, 0, 0, 1 / 60, ownerB, 3, 160, 1 / 30);
+continuity.rebuild(0.8, 0.4, 4, 1.6);
+assert.equal(continuity.inspect().visiblePointCount, 1,
+  'a teleport/discontinuity must reseed instead of bridging the gap');
+continuity.clear();
+assert.equal(continuityMesh.visible, false, 'explicit sector/save/origin reset must hide history');
+assert.equal(continuityMesh.geometry.drawRange.count, 0);
 assert.equal(uploadRibbonMesh.geometry.attributes.aTrailUv.version, uvVersionAtTwoSamples + 1,
   'a changed ribbon sample count must republish its new taper coordinates');
 uploadRibbon.dispose();

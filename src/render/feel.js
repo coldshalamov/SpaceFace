@@ -101,7 +101,7 @@ const SL_CLEAR_FADE = 0.085;   // × min(w,h) — fade band outside that radius,
                                //     streaks parting around the ship rather than a stamped-out circle
 const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _newStreak can roll (0.40+0.55)
 
-// Band-3 grain field (D7). A small repeating tile is orders of magnitude cheaper than per-pixel
+// Extreme-speed grain field. A small repeating tile is orders of magnitude cheaper than per-pixel
 // noise and, being baked once from a fixed hash, is byte-identical on every boot.
 const SL_NO_STREAKS = Object.freeze([]);   // iterated when the streak pass is skipped entirely
 const GRAIN_TILE = 96;             // px — tile edge; also the modulo that bounds the scroll offset
@@ -121,8 +121,8 @@ const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x
 // the shipped math rather than a copy that can drift. Geometry and the centre guard stay in the
 // loop; this owns only the numbers that used to run away.
 //
-// ONE SEAM, TWO VOCABULARIES. Wave 3 replaces the language entirely (ADR D7 — see
-// ./velocityLanguage.js), but the redesign is flag-switched here rather than pasted over the legacy
+// ONE SEAM, TWO VOCABULARIES. The owner-directed luminous wake replaces ADR D7's restraint policy
+// (see ./velocityLanguage.js), but remains flag-switched rather than pasted over the legacy
 // body, for two reasons that are not ceremony:
 //
 //   1. The legacy branch stays REACHABLE AND PINNED. `scripts/check-speed-lines.mjs` asserts exact
@@ -371,9 +371,8 @@ export const feel = {
     // because damp() returns NaN for a NaN dt, and a NaN opacity here would poison every gradient.
     this._slOpacity = clampTo(damp(this._slOpacity, drive.targetOpacity, 8, frameDt), SL_OPACITY_MAX);
 
-    // Band 3's grain is a SEPARATE channel from the streaks and outlives them by design: the whole
-    // point of the inversion is that particles vanish while the field remains. Gating the canvas on
-    // streak opacity alone would therefore switch the field off at exactly the speed it takes over.
+    // Grain is a separate extreme-speed channel. It joins the luminous wake rather than replacing
+    // it, and remains independently damped so either channel can cross its visibility floor cleanly.
     const grain = clampTo(drive.grain || 0, 1);
     this._slGrain = clampTo(damp(this._slGrain || 0, grain, 4, frameDt), 1);
 
@@ -410,12 +409,11 @@ export const feel = {
 
     const flowSpeed = drive.flowSpeed;
     const lenScale = drive.lenScale;
-    // The band language supplies its own stroke weight (motes are THINNER than the legacy streaks,
-    // not merely dimmer — thickness is half of why the old look read as lasers). The legacy branch
-    // keeps its boost-only widening.
+    // The live language supplies its own filament/sheath stroke weight; the legacy branch keeps its
+    // boost-only widening.
     const widthMul = Number.isFinite(drive.widthScale) ? drive.widthScale : (boosting ? 1.4 : 1.0);
-    // 'lighter' is the additive composite that made per-streak alpha above 1 saturate to opaque
-    // white. The band language composites NORMALLY in every band; only the legacy branch is additive.
+    // The live language uses bounded screen compositing: luminous overlap without the legacy
+    // unbounded additive sum. Only the compatibility branch retains `lighter`.
     const composite = drive.composite === VL_COMPOSITE ? VL_COMPOSITE : 'lighter';
     const banded = composite === VL_COMPOSITE;
     // Centre-exclusion radii, hoisted out of the per-streak loop.
@@ -425,8 +423,7 @@ export const feel = {
 
     ctx.globalCompositeOperation = composite;
     ctx.lineCap = 'round';
-    // Band 3 fades the streaks out entirely while the grain field remains, so once the overlay is
-    // below the visibility floor the streak pass is skipped WHOLESALE rather than walking the array
+    // If the overlay is below the visibility floor, skip the streak pass wholesale rather than walking the array
     // to reject every stroke individually. Iterating a shared frozen empty array keeps the skip
     // allocation-free and, unlike an `if (...) for (...)` prefix, cannot be misread as guarding only
     // the first statement of a loop body this long.
@@ -446,7 +443,7 @@ export const feel = {
       // p  = signed distance along perpendicular axis from flow axis.
       const leadX = cx + s.uv * flowX + s.p * perpX;
       const leadY = cy + s.uv * flowY + s.p * perpY;
-      const tailLen = Math.min(0.55 * h, s.len * lenScale * h);   // FR-3: cap so cruise never smears full-screen
+      const tailLen = Math.min(0.82 * h, s.len * lenScale * h);   // long, but never a full-screen wipe
       const tailX = leadX - tailLen * flowX;
       const tailY = leadY - tailLen * flowY;
 
@@ -465,12 +462,12 @@ export const feel = {
 
       const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
       if (banded) {
-        // Desaturated warm-white head with the faintest teal through the body (D7). No pure white
-        // anywhere, and normal compositing, so two overlapping motes stay motes instead of summing
-        // into a hot spot the way the additive branch does.
+        // Saturated ion sheath into a white-hot filament head. Screen compositing preserves the
+        // colored body while allowing overlaps to read as emitted light.
         const B = VL_COLOR.body, H = VL_COLOR.head;
         grad.addColorStop(0, `rgba(${B.r},${B.g},${B.b},0)`);
-        grad.addColorStop(0.6, `rgba(${B.r},${B.g},${B.b},${(a * 0.5).toFixed(3)})`);
+        grad.addColorStop(0.42, `rgba(${B.r},${B.g},${B.b},${(a * 0.42).toFixed(3)})`);
+        grad.addColorStop(0.78, `rgba(${B.r},${B.g},${B.b},${(a * 0.82).toFixed(3)})`);
         grad.addColorStop(1, `rgba(${H.r},${H.g},${H.b},${a.toFixed(3)})`);
       } else {
         grad.addColorStop(0, 'rgba(160,205,255,0)');
@@ -483,12 +480,11 @@ export const feel = {
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    // ---- band 3: the field ----
+    // ---- extreme-speed field layer ----
     if (this._slGrain > 0.002) this._drawGrainField(ctx, w, h, flowX, flowY, frameDt);
   },
 
-  // Barely-there full-screen directional grain — what remains at extreme velocity once individual
-  // particles have become physically invisible (D7 band 3).
+  // Barely-there full-screen directional grain layered under the long wake at extreme velocity.
   //
   // THIS IS EXPLICITLY NOT A VIGNETTE. The user has rejected the visor/cockpit framing twice, and a
   // radial or peripheral falloff is that framing regardless of what it is called. The grain is

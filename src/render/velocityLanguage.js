@@ -1,42 +1,19 @@
-// Velocity language — ADR D7, "measurement, not anime."
+// Velocity language — owner-directed luminous wake (VISION.md "long velocity trails").
 //
-// WHAT THIS REPLACES, AND WHY IT IS A REWRITE RATHER THAN A RETUNE.
-// Slice 0 bounded the old speed-line drive: `intensity` was documented 0..1 and never clamped, so at
-// speedRatio 10 it reached 15.5, opacity 4.65, 231 streaks, and a per-streak alpha of ~4.4 that
-// saturated a `lighter` composite to opaque white. That clamp made the effect SAFE. It did not make
-// it GOOD, because the complaint it was answering ("cheap and cartoonish") is about VOCABULARY, not
-// magnitude. Additive white streaks are a cartoon idiom at any amplitude.
+// ADR D7's restraint policy was explicitly overturned in design/program/VISION_ALIGNMENT_PLAN.md.
+// The ordinary route now grows a continuous, colorful wake from fast local flight through cruise:
+// longer paths, brighter filament heads, and increasing field flow. This is still bounded — the
+// original unbounded drive could produce hundreds of opaque additive lines — but the bounds are
+// safety rails, not the aesthetic. `screen` compositing preserves luminous overlap without the old
+// runaway white sum, and the renderer layers a colored sheath around a narrow hot filament.
 //
-// The governing principle (D7): at low speed the WORLD conveys motion; at high speed the INSTRUMENTS
-// convey it; particles are only ever a whisper in between. Four bands express that:
+// Every ramp remains continuous across its band seams. No radial/peripheral vignette is introduced,
+// and `motionReduce` scales every moving channel in one final pass. The progression is now:
 //
-//   Band 0  <= 1x combat speed   NOTHING. Parallax stars and the velocity tape do the work. A streak
-//                                here is noise in the fight readout.
-//   Band 1  1-2x                 Sparse fine motes. Thin, short, count <= 24, alpha <= 0.20, NORMAL
-//                                compositing (never 'lighter'), desaturated warm-white with the
-//                                faintest teal. Dust shearing past a hull, not lasers.
-//   Band 2  2-5x                 CHANGE VOCABULARY, NOT INTENSITY. Streaks get FEWER and slightly
-//                                longer, then stop growing. The load-bearing cue migrates to the
-//                                WORLD: `parallaxGain` streams the deep-field tile layers, and
-//                                `smear` elongates bright background points along the flow.
-//   Band 3  > 5x                 Streaks fade OUT almost entirely. THE INVERSION IS THE POINT — at
-//                                extreme velocity individual particles are physically invisible.
-//                                What remains is FIELD behaviour: barely-there full-screen
-//                                directional grain (~4%), region-boundary blending, a few WU of
-//                                camera lead, REDUCED shake, and the instruments rolling.
-//
-// Smoothness and quiet must read as terrifying speed. Every ramp below is therefore continuous
-// across the band seams: there is no value in this file that steps, because a step at a band
-// boundary is exactly the "cheap" tell the redesign exists to remove.
-//
-// HARD PROHIBITIONS (D7), enforced structurally rather than by discipline:
-//   * No radial or peripheral vignette of any kind — that is the twice-rejected visor framing. This
-//     module emits `grain`, a UNIFORM full-screen field with no radial term anywhere in it, and the
-//     record carries no radius, falloff or edge parameter a caller could build one out of.
-//   * No additive white saturation — `composite` is 'source-over' in every band and the palette is
-//     desaturated warm-white, never #fff.
-//   * `motionReduce` respected in EVERY band, applied as one pass over the finished record so it is
-//     impossible for a future band to be added and quietly skip it.
+//   LOCAL     0.45-1x   first long wakes appear during ordinary fast flight;
+//   MODERATE  1-2x      wake density, length and color energy build together;
+//   HIGH      2-5x      long wakes combine with world parallax/smear;
+//   EXTREME   >5x       the wake remains present while field grain and camera lead join it.
 //
 // PURITY. No DOM, no THREE, no Math.random, no Date.now, nothing ticks, nothing is registered in
 // UPDATE_ORDER. This module derives; callers draw. That is what lets `scripts/check-speed-lines.mjs`
@@ -86,54 +63,51 @@ export function velocityLanguageFlag(name) {
 // band thresholds and ceilings
 // ---------------------------------------------------------------------------------------------
 
-/** Band edges as multiples of the hull's governed combat speed. Straight from the D7 table. */
-export const VL_BAND1_AT = 1.0;   // above this: sparse motes begin
-export const VL_BAND2_AT = 2.0;   // above this: streaks thin out, the world takes over
-export const VL_BAND3_AT = 5.0;   // above this: streaks fade out, the field takes over
+/** Retained continuous band edges as multiples of the hull's governed combat speed. */
+export const VL_BAND1_AT = 1.0;   // above this: moderate travel wake
+export const VL_BAND2_AT = 2.0;   // above this: parallax/smear join the wake
+export const VL_BAND3_AT = 5.0;   // above this: field behavior joins the fully-developed wake
+export const VL_WAKE_AT = 0.45;    // ordinary-route wake begins below governed top speed
 
 export const VELOCITY_BAND = Object.freeze({
-  LOCAL: 0,     // combat / local — silent
-  MODERATE: 1,  // moderate travel — motes
-  HIGH: 2,      // high travel / burn — world streaming
-  EXTREME: 3,   // extreme — field behaviour
+  LOCAL: 0,     // precision motion, then ordinary-route wake
+  MODERATE: 1,  // moderate travel — luminous wake
+  HIGH: 2,      // high travel / burn — wake + world streaming
+  EXTREME: 3,   // extreme — wake + field behaviour
 });
 
 /**
- * Where the band-3 taper finishes. Above this the record is constant: the language has said
- * everything it has to say and further speed is the INSTRUMENTS' story, not the particles'.
+ * Where the extreme-band ramp finishes. Above this the record stays at its bounded full-wake
+ * values while instruments continue to report further physical speed.
  */
 export const VL_TAPER_END = 10.0;
 
 // Ceilings, exported so the probe asserts against these names rather than its own copies of the
 // numbers — a loosened ceiling cannot pass by silently agreeing with a stale literal in the check.
-export const VL_COUNT_MAX = 24;          // streaks — the D7 band-1 cap, and the global maximum
-export const VL_ALPHA_MAX = 0.20;        // overlay opacity — the D7 band-1 cap, and the global maximum
-export const VL_LEN_SCALE_MAX = 1.15;    // × screen-height tail length; band 2 reaches it and STOPS
-export const VL_GRAIN_MAX = 0.04;        // full-screen directional grain opacity (D7's "~4%")
+export const VL_COUNT_MAX = 44;          // bounded luminous filaments, not legacy 200+ runaway lines
+export const VL_ALPHA_MAX = 0.36;        // screen-composited field opacity
+export const VL_LEN_SCALE_MAX = 4.6;     // long screen-space wakes; feel owns the viewport cap
+export const VL_GRAIN_MAX = 0.035;       // subtle full-screen directional grain
 export const VL_PARALLAX_GAIN_MAX = 1.0; // extra background streaming, as a multiple of natural rate
 export const VL_CAMERA_LEAD_WU_MAX = 6;  // "a few WU of camera lead along the velocity vector"
 export const VL_SMEAR_MAX = 1.0;         // along-flow smear on bright background points, normalized
-export const VL_FLOW_MAX = 1400;         // screen-px/s; well under the legacy 2600 — quiet is the point
+export const VL_FLOW_MAX = 1800;         // screen-px/s, saturated below one-recycle-per-frame strobe
 
-/** Band-3 streak floor. Not zero: two motes at 3% alpha read as "almost nothing", which is the
- *  physical truth being modelled, whereas exactly zero reads as a bug in the overlay. */
-export const VL_BAND3_COUNT_FLOOR = 2;
+/** Density reached at the extreme-band entry; it grows to VL_COUNT_MAX rather than fading out. */
+export const VL_BAND3_COUNT_FLOOR = 38;
 
 /**
  * BOOST DOES NOT BIAS THE BANDS. Recorded as a constant rather than deleted because the tempting
  * mistake is specific and worth naming.
  *
  * The legacy drive forced `intensity = 1` whenever boost was held, at any speed. An early draft of
- * this module replaced that with a "small" +0.6 bias on the effective ratio, reasoning that boost is
- * a player ACTION and deserves feedback. Measured, that bias put **14 motes at alpha 0.12 on screen
- * at exactly 1x combat speed** — inside the band D7 reserves for silence, and precisely during the
- * boost-repositioning that combat is made of. "A streak here is noise in the fight readout" is the
- * ADR's own wording, and a 0.6 bias is not a whisper, it is a two-thirds-of-a-band shove.
+ * this module replaced that with a "small" +0.6 bias on the effective ratio. That made the same
+ * physical speed render differently depending on an input bit and introduced a visible band jump.
  *
- * The bands are keyed on SPEED alone, as D7 specifies. Boost earns its language by accelerating you
+ * The bands are keyed on SPEED alone. Boost earns its language by accelerating you
  * across the band edges, which it does within a second. The moment of ignition is already carried by
  * `BOOST_FOV_PUNCH` and `BOOST_TRAUMA` in feel.js — camera response, not particles, which is the
- * whole thesis of the redesign. `boosting` is still accepted by the drive so the seam signature
+ * complementary ignition beat. `boosting` is still accepted by the drive so the seam signature
  * matches the legacy branch, and is deliberately unused.
  */
 export const VL_BOOST_BIAS = 0;
@@ -143,30 +117,29 @@ export const VL_EXCEPTIONAL_SPEED_RATIO_MAX = 3;
 
 // motionReduce factors, one per channel. Separate factors rather than one folded scale so a future
 // channel cannot inherit a wrong reduction by accident, and so the intent of each is readable.
-const MR_COUNT = 0.5;
-const MR_ALPHA = 0.45;
+const MR_COUNT = 0.35;
+const MR_ALPHA = 0.38;
+const MR_LENGTH = 0.52;
 const MR_GRAIN = 0.4;
 const MR_PARALLAX = 0.5;
 const MR_SMEAR = 0.5;
 const MR_FLOW = 0.6;
 
 /**
- * The band-1 palette: desaturated warm-white with the faintest teal, per D7. Deliberately NOT white
- * — the head stop is #e6ded0-ish, a paper warm, and the tail carries a cool teal cast so the mote
- * reads as lit dust rather than as an emitter. These are plain RGB triples; the caller composes
- * alpha, because alpha is the thing the bands modulate.
+ * Luminous wake palette. The colored sheath stays saturated while the narrow head approaches a
+ * warm white-hot value; these are plain RGB triples because the caller composes alpha.
  */
 export const VL_COLOR = Object.freeze({
-  /** Streak head — warm, slightly off-white. */
-  head: Object.freeze({ r: 230, g: 222, b: 206 }),
-  /** Streak body — the faintest teal, the Surveyor's Table restrained accent. */
-  body: Object.freeze({ r: 168, g: 196, b: 196 }),
-  /** Full-screen grain — warm grey, never a bright. */
-  grain: Object.freeze({ r: 214, g: 206, b: 192 }),
+  /** White-hot filament head, kept slightly warm so it retains color under bloom. */
+  head: Object.freeze({ r: 248, g: 251, b: 238 }),
+  /** Saturated ion-cyan sheath — arcade-industrial energy against black space. */
+  body: Object.freeze({ r: 58, g: 205, b: 255 }),
+  /** Full-screen grain stays cooler/dimmer than the authored wake. */
+  grain: Object.freeze({ r: 148, g: 205, b: 222 }),
 });
 
-/** Compositing is NORMAL in every band. Additive is the cartoon idiom this packet removes. */
-export const VL_COMPOSITE = 'source-over';
+/** Screen gives luminous overlap without unbounded additive accumulation. */
+export const VL_COMPOSITE = 'screen';
 
 // ---------------------------------------------------------------------------------------------
 // numeric helpers
@@ -278,9 +251,9 @@ export function velocityBandDrive(
   const r = speedRatio + (boosting ? VL_BOOST_BIAS : 0);
   if (!Number.isFinite(r)) return silentRecord(speedRatio, 0, out);
 
-  if (r <= VL_BAND1_AT) {
-    // Band 0. Nothing at all — and this is a hard return, not a ramp that happens to reach zero, so
-    // no future edit can leak a stray mote into the combat readout.
+  if (r <= VL_WAKE_AT) {
+    // Docking/slow maneuvering stays quiet. The ordinary-route wake begins only once the ship is
+    // visibly crossing the play space, below governed top speed but above precision combat motion.
     return silentRecord(speedRatio, r, out);
   }
 
@@ -288,37 +261,37 @@ export function velocityBandDrive(
   const rec = silentRecord(speedRatio, r, out);
   rec.band = band;
 
-  if (band === VELOCITY_BAND.MODERATE) {
-    // 1 -> 2x. Motes fade UP from nothing. Short, thin, sparse.
-    rec.count = Math.round(seg(r, VL_BAND1_AT, VL_BAND2_AT, 0, VL_COUNT_MAX));
-    rec.targetOpacity = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0, VL_ALPHA_MAX);
-    // Length ramps from ZERO, not from a comfortable minimum. Starting band 1 at a finite length
-    // makes the record STEP at the ratio-1 seam, and a stepping channel is the "cheap" tell the
-    // redesign exists to remove — motes must grow out of nothing as speed builds, the same way
-    // their alpha does. (The continuity pin in check-speed-lines.mjs caught this.)
-    rec.lenScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0, 0.60);
-    rec.widthScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.55, 0.75);
+  if (band === VELOCITY_BAND.LOCAL) {
+    const t = smooth((r - VL_WAKE_AT) / (VL_BAND1_AT - VL_WAKE_AT));
+    rec.count = Math.round(14 * t);
+    rec.targetOpacity = 0.12 * t;
+    rec.lenScale = 0.9 * t;
+    rec.widthScale = seg(t, 0, 1, 0.34, 0.70);
+    rec.parallaxGain = 0;
+    rec.smear = 0;
+  } else if (band === VELOCITY_BAND.MODERATE) {
+    // 1 -> 2x. The ordinary wake becomes a long, readable filament family.
+    rec.count = Math.round(seg(r, VL_BAND1_AT, VL_BAND2_AT, 14, 28));
+    rec.targetOpacity = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.12, 0.26);
+    rec.lenScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.9, 2.1);
+    rec.widthScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.70, 1.0);
     rec.parallaxGain = 0;
     rec.smear = 0;
   } else if (band === VELOCITY_BAND.HIGH) {
-    // 2 -> 5x. THE VOCABULARY CHANGES, THE INTENSITY DOES NOT. Streaks get FEWER (24 -> 8) and only
-    // slightly longer (0.60 -> 1.15, where they STOP), while the load-bearing cue migrates to the
-    // world: parallaxGain and smear ramp from nothing to full across this band.
-    rec.count = Math.round(seg(r, VL_BAND2_AT, VL_BAND3_AT, VL_COUNT_MAX, 8));
-    rec.targetOpacity = seg(r, VL_BAND2_AT, VL_BAND3_AT, VL_ALPHA_MAX, 0.16);
-    rec.lenScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 0.60, VL_LEN_SCALE_MAX);
-    rec.widthScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 0.75, 0.70);
+    // 2 -> 5x. Long wakes remain load-bearing while the world joins them through parallax/smear.
+    rec.count = Math.round(seg(r, VL_BAND2_AT, VL_BAND3_AT, 28, VL_BAND3_COUNT_FLOOR));
+    rec.targetOpacity = seg(r, VL_BAND2_AT, VL_BAND3_AT, 0.26, 0.32);
+    rec.lenScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 2.1, 3.7);
+    rec.widthScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 1.0, 1.15);
     rec.parallaxGain = VL_PARALLAX_GAIN_MAX * smooth((r - VL_BAND2_AT) / (VL_BAND3_AT - VL_BAND2_AT));
     rec.smear = VL_SMEAR_MAX * smooth((r - VL_BAND2_AT) / (VL_BAND3_AT - VL_BAND2_AT));
   } else {
-    // > 5x. The inversion. Streaks collapse toward the floor and their alpha all but vanishes; the
-    // world keeps streaming at full gain and the FIELD takes over — uniform directional grain, a few
-    // WU of camera lead, and REDUCED shake (shakeScale < 1: at extreme velocity the camera gets
-    // calmer, not busier, because smoothness is what reads as terrifying speed).
-    rec.count = Math.round(seg(r, VL_BAND3_AT, VL_TAPER_END, 8, VL_BAND3_COUNT_FLOOR));
-    rec.targetOpacity = seg(r, VL_BAND3_AT, VL_TAPER_END, 0.16, 0.03);
-    rec.lenScale = VL_LEN_SCALE_MAX;
-    rec.widthScale = 0.7;
+    // > 5x. The luminous wake reaches full extension rather than disappearing. Field grain, camera
+    // lead and calmer shake join it, so extreme speed has layers instead of one louder scalar.
+    rec.count = Math.round(seg(r, VL_BAND3_AT, VL_TAPER_END, VL_BAND3_COUNT_FLOOR, VL_COUNT_MAX));
+    rec.targetOpacity = seg(r, VL_BAND3_AT, VL_TAPER_END, 0.32, VL_ALPHA_MAX);
+    rec.lenScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 3.7, VL_LEN_SCALE_MAX);
+    rec.widthScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 1.15, 1.28);
     rec.parallaxGain = VL_PARALLAX_GAIN_MAX;
     rec.smear = VL_SMEAR_MAX;
     rec.grain = VL_GRAIN_MAX * smooth((r - VL_BAND3_AT) / (VL_TAPER_END - VL_BAND3_AT));
@@ -326,10 +299,8 @@ export function velocityBandDrive(
     rec.shakeScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 1, 0.55);
   }
 
-  // Flow is how fast a mote crosses the screen. It rises with speed but saturates well below the
-  // legacy ceiling: past saturation every streak recycles each frame and the field degenerates into
-  // a strobe, which is the loudest possible way to say "fast" and the least convincing.
-  rec.flowSpeed = seg(r, VL_BAND1_AT, VL_TAPER_END, 180, VL_FLOW_MAX);
+  // Flow rises from the first ordinary-route wake but saturates below the recycle-every-frame strobe.
+  rec.flowSpeed = seg(r, VL_WAKE_AT, VL_TAPER_END, 140, VL_FLOW_MAX);
 
   // motionReduce, applied ONCE over the finished record. Every channel that moves the vestibular
   // system is reduced; `shakeScale` is left alone because it is already a REDUCTION and pushing it
@@ -337,6 +308,7 @@ export function velocityBandDrive(
   if (motionReduce) {
     rec.count = Math.round(rec.count * MR_COUNT);
     rec.targetOpacity *= MR_ALPHA;
+    rec.lenScale *= MR_LENGTH;
     rec.grain *= MR_GRAIN;
     rec.parallaxGain *= MR_PARALLAX;
     rec.smear *= MR_SMEAR;
@@ -557,8 +529,7 @@ export const VL_SMEAR_MAX_STRETCH = 3.4;
  * materials both composite with `THREE.AdditiveBlending` — that is pre-existing shipped behaviour
  * this packet does not touch. Stretching an additive sprite without dimming it multiplies the light
  * the sky contributes by exactly `stretch`, so at band 2 the whole starfield would brighten 3.4x at
- * precisely the moment the player is going fastest. That is "additive white saturation at high
- * speed" — the D7 prohibition, arrived at from the opposite direction. Dimming by `1/stretch` holds
+ * precisely the moment the player is going fastest. Dimming by `1/stretch` holds
  * the integrated energy of each point constant: the star spreads, it does not glow.
  *
  * @param {number} smear 0..1, already motionReduce-scaled by `velocityBandDrive`

@@ -13,22 +13,15 @@
 //   2. ORDINARY GAMEPLAY IS UNCHANGED — the values at speedRatio 0.5 and 1.0 are pinned as literals
 //      against the pre-fix formulas, so the bounding work cannot quietly restyle normal flight.
 //
-// WAVE 3 ADDENDUM — the velocity-language redesign (ADR D7).
+// LUMINOUS-WAKE ADDENDUM — the owner-directed replacement for ADR D7's restraint policy.
 // Everything above pins the LEGACY branch, which is what `speedLineDrive` returns while the `bands`
 // flag is off (its node default). The redesign is a different vocabulary, not a retune, so it gets
 // its own section below rather than new literals in the old pins: those pins exist to prove the
 // Slice 0 BOUNDING work never restyled ordinary flight, and rewriting them to match a deliberate
 // restyle would destroy the evidence they carry.
 //
-// The band section asserts the things most likely to rot, in order of likelihood:
-//   * THE INVERSION — band 3 must produce FEWER streaks than band 2. This is the whole idea (at
-//     extreme velocity individual particles are physically invisible) and it is the one property
-//     that any future "make it more visible at speed" tweak will silently reverse.
-//   * Band 0 is SILENT. Not "dim" — zero streaks, so a streak can never appear in a fight readout.
-//   * Compositing is NORMAL in every band. 'lighter' is what made alpha above 1 saturate to white.
-//   * The new path fails DARK on non-finite input, exactly as the legacy path does. This one is not
-//     inherited: several band ramps DESCEND with speed, so a NaN clamped to 0 progress would fail
-//     BRIGHT on them, which is why the band drive screens at its entry point instead.
+// The live section pins ordinary-route onset, monotone length/light growth, screen compositing,
+// layered field behavior, accessibility reduction, continuous seams, and fail-dark bad input.
 import assert from 'node:assert/strict';
 import {
   speedLineDrive,
@@ -55,6 +48,7 @@ import {
   VL_LEN_SCALE_MAX,
   VL_PARALLAX_GAIN_MAX,
   VL_TAPER_END,
+  VL_WAKE_AT,
   REGION_CROSSFADE_WU,
   isPlausibleCameraStep,
   resolveRegionCrossfade,
@@ -230,7 +224,7 @@ check('centre exclusion: non-finite geometry fails dark, never bright', () => {
 });
 
 // ================================================================================================
-// WAVE 3 — the four-band velocity language (ADR D7)
+// OWNER-DIRECTED LUMINOUS WAKE — ADR D7 restraint is overturned
 // ================================================================================================
 
 // Everything above ran through `speedLineDrive` with the flag at its node default. If that default
@@ -265,7 +259,7 @@ check('exceptional speed is strict physics provenance, bounded, and boost-indepe
 
 // Representative speed ratios, one comfortably inside each band plus the seams themselves.
 const BAND_SAMPLES = {
-  band0: [0, 0.25, 0.5, 0.9, 1.0],
+  band0: [0, 0.25, 0.5, 0.7, 0.9, 1.0],
   band1: [1.05, 1.3, 1.6, 2.0],
   band2: [2.05, 2.6, 3.5, 4.4, 5.0],
   band3: [5.05, 6, 7.5, 9, 10, 14, 25, 100, 1000],
@@ -273,124 +267,101 @@ const BAND_SAMPLES = {
 const drive = (ratio, boosting = false, mr = false) =>
   velocityBandDrive(ratio * MAX_SPEED, MAX_SPEED, boosting, mr);
 
-// ---------------------------------------------------------------- band 0 is SILENT, not merely dim
-// BOOSTING IS ASSERTED HERE, NOT ONLY IN THE COMPOSITING TEST. An earlier draft biased the effective
-// ratio by +0.6 while boost was held, which put 14 motes at alpha 0.12 on screen at exactly 1x combat
-// speed — inside the band D7 reserves for silence, during the boost-repositioning that combat is made
-// of. Every band-0 assertion ran `boosting=false`, so nothing caught it: the one input combination
-// that broke the ADR was the one combination untested. Both values of `boosting` now run here.
-check('band 0 (<= 1x combat speed) emits nothing at all, BOOSTING OR NOT', () => {
-  for (const boosting of [false, true]) {
-    for (const ratio of BAND_SAMPLES.band0) {
-      const d = drive(ratio, boosting);
-      const where = `ratio=${ratio} boost=${boosting}`;
-      assert.equal(d.band, VELOCITY_BAND.LOCAL, `${where}: expected band 0, got ${d.band}`);
-      assert.equal(d.count, 0, `${where}: ${d.count} streaks in the combat readout`);
-      assert.equal(d.targetOpacity, 0, `${where}: opacity ${d.targetOpacity} != 0`);
-      assert.equal(d.grain, 0, `${where}: grain ${d.grain} != 0`);
-      assert.equal(d.parallaxGain, 0, `${where}: world streaming active in local space`);
-    }
+// ---------------------------------------------------------------- ordinary route grows a real wake
+check('ordinary fast flight grows a long wake below governed top speed', () => {
+  for (const ratio of [0, 0.2, VL_WAKE_AT]) {
+    const d = drive(ratio);
+    assert.equal(d.count, 0, `ratio=${ratio}: precision maneuvering must stay clear`);
+    assert.equal(d.targetOpacity, 0, `ratio=${ratio}: precision maneuvering opacity`);
   }
-  // The bands are keyed on SPEED ALONE (D7). Holding boost must not shift which band you are in —
-  // boost earns its language by accelerating you across the edges, not by pretending you already did.
-  for (const ratio of [0.3, 0.5, 0.9, 1.0, 1.5, 3, 7.5]) {
-    assert.equal(drive(ratio, true).band, drive(ratio, false).band,
-      `ratio=${ratio}: boost changed the BAND — the language must be speed-keyed`);
-    assert.equal(drive(ratio, true).count, drive(ratio, false).count,
-      `ratio=${ratio}: boost changed the streak count`);
+  const first = drive(0.6);
+  const fast = drive(1.0);
+  assert.equal(first.band, VELOCITY_BAND.LOCAL);
+  assert.ok(first.count > 0 && first.targetOpacity > 0 && first.lenScale > 0,
+    'the wake must appear during ordinary fast flight, not only after overspeed');
+  assert.ok(fast.count > first.count, `ordinary density should build (${first.count} -> ${fast.count})`);
+  assert.ok(fast.targetOpacity > first.targetOpacity,
+    `ordinary radiance should build (${first.targetOpacity} -> ${fast.targetOpacity})`);
+  assert.ok(fast.lenScale > first.lenScale && fast.lenScale >= 0.85,
+    `ordinary wake should become long (${first.lenScale} -> ${fast.lenScale})`);
+
+  // The wake is keyed on actual speed. Boost earns presentation by changing physics, not by
+  // manufacturing a different band record while the ship is stationary.
+  for (const boosting of [false, true]) {
+    for (const ratio of [0.3, 0.5, 0.9, 1.0, 1.5, 3, 7.5]) {
+      assert.equal(drive(ratio, boosting).band, drive(ratio, false).band,
+        `ratio=${ratio}: boost changed the band`);
+      assert.equal(drive(ratio, boosting).count, drive(ratio, false).count,
+        `ratio=${ratio}: boost changed wake density without changing speed`);
+    }
   }
 });
 
-// ---------------------------------------------------------------- band 1 is a whisper
-check('band 1 (1-2x) is sparse fine motes within the D7 caps', () => {
+check('moderate travel extends and brightens the ordinary wake continuously', () => {
+  let prior = drive(VL_BAND1_AT);
   for (const ratio of BAND_SAMPLES.band1) {
     const d = drive(ratio);
     assert.equal(d.band, VELOCITY_BAND.MODERATE, `ratio=${ratio}: expected band 1, got ${d.band}`);
-    assert.ok(d.count <= VL_COUNT_MAX, `ratio=${ratio}: count ${d.count} > ${VL_COUNT_MAX}`);
-    assert.ok(d.targetOpacity <= VL_ALPHA_MAX, `ratio=${ratio}: alpha ${d.targetOpacity} > ${VL_ALPHA_MAX}`);
-    assert.ok(d.lenScale <= 0.65, `ratio=${ratio}: band-1 motes must stay SHORT, got ${d.lenScale}`);
+    assert.ok(d.count >= prior.count, `ratio=${ratio}: density regressed`);
+    assert.ok(d.targetOpacity >= prior.targetOpacity, `ratio=${ratio}: radiance regressed`);
+    assert.ok(d.lenScale >= prior.lenScale, `ratio=${ratio}: length regressed`);
     assert.equal(d.parallaxGain, 0, `ratio=${ratio}: the world does not stream yet in band 1`);
     assert.equal(d.grain, 0, `ratio=${ratio}: no field behaviour below band 3`);
+    prior = d;
   }
-  // The band exists at all: at its top it must actually be showing motes, or "sparse" has quietly
-  // become "absent" and band 1 is a dead range.
-  assert.ok(drive(VL_BAND2_AT).count >= 20, 'top of band 1 should reach its designed density');
+  assert.ok(drive(VL_BAND2_AT).lenScale >= 2,
+    '2x travel should carry a materially long wake, not the overturned short-mote look');
 });
 
-// ---------------------------------------------------------------- band 2 changes VOCABULARY
-check('band 2 (2-5x) trades streaks for world streaming rather than raising intensity', () => {
+check('high travel keeps the luminous wake while parallax and smear join it', () => {
   const lo = drive(VL_BAND2_AT + 0.05);
   const hi = drive(VL_BAND3_AT);
   assert.equal(lo.band, VELOCITY_BAND.HIGH, 'low end of band 2 misclassified');
-  assert.ok(hi.count < lo.count,
-    `streaks must get FEWER across band 2, got ${lo.count} -> ${hi.count}`);
+  assert.ok(hi.count > lo.count,
+    `wake density must build across band 2, got ${lo.count} -> ${hi.count}`);
   assert.ok(hi.lenScale > lo.lenScale,
-    `streaks must get slightly LONGER across band 2, got ${lo.lenScale} -> ${hi.lenScale}`);
+    `wake must extend across band 2, got ${lo.lenScale} -> ${hi.lenScale}`);
   assert.ok(hi.lenScale <= VL_LEN_SCALE_MAX,
-    `length must STOP growing at ${VL_LEN_SCALE_MAX}, got ${hi.lenScale}`);
+    `length breached ${VL_LEN_SCALE_MAX}, got ${hi.lenScale}`);
   assert.ok(hi.parallaxGain > lo.parallaxGain,
-    'background parallax must become the load-bearing cue across band 2');
+    'background parallax must join the wake across band 2');
   assert.ok(Math.abs(hi.parallaxGain - VL_PARALLAX_GAIN_MAX) < 1e-6,
     `parallax gain should reach full by the top of band 2, got ${hi.parallaxGain}`);
-  assert.ok(hi.targetOpacity <= lo.targetOpacity,
-    'band 2 must not answer speed with brightness');
+  assert.ok(hi.targetOpacity > lo.targetOpacity,
+    'owner direction requires the high-speed wake to retain and build light energy');
 });
 
-// ---------------------------------------------------------------- THE INVERSION (the load-bearing pin)
-// D7's whole idea: at extreme velocity individual particles are physically invisible, so the streaks
-// must fade OUT. Any future "it should be more visible when I am going fast" tweak reverses exactly
-// this, which is why it is pinned three different ways rather than once.
-check('INVERSION: band 3 produces strictly FEWER streaks than band 2', () => {
-  let band2Min = Infinity;
-  let band3Max = -Infinity;
-  for (const ratio of BAND_SAMPLES.band2) band2Min = Math.min(band2Min, drive(ratio).count);
-  for (const ratio of BAND_SAMPLES.band3) band3Max = Math.max(band3Max, drive(ratio).count);
-  assert.ok(band3Max < band2Min || band3Max <= band2Min,
-    `band 3 max count ${band3Max} must not exceed band 2 min count ${band2Min}`);
-
-  // Representative mid-band comparison — strict, and immune to the shared value at the exact seam.
-  const mid2 = drive(3.5);
-  const mid3 = drive(7.5);
-  assert.ok(mid3.count < mid2.count,
-    `mid band 3 (${mid3.count} streaks) must be strictly fewer than mid band 2 (${mid2.count})`);
-  assert.ok(mid3.targetOpacity < mid2.targetOpacity,
-    `mid band 3 alpha ${mid3.targetOpacity} must be below mid band 2 ${mid2.targetOpacity}`);
-
-  // And the count must be NON-INCREASING all the way up from the band-2 peak — no local rebound.
-  let prev = Infinity;
-  for (let r = VL_BAND2_AT; r <= 30; r += 0.05) {
-    const c = drive(r).count;
-    assert.ok(c <= prev + 1e-9, `count rebounded at ratio ${r.toFixed(2)}: ${prev} -> ${c}`);
-    prev = c;
-  }
-});
-
-check('band 3 replaces particles with FIELD behaviour', () => {
+check('extreme speed retains the wake and layers field behavior without a visor', () => {
+  const edge = drive(VL_BAND3_AT);
   const top = drive(VL_TAPER_END);
   assert.equal(top.band, VELOCITY_BAND.EXTREME, 'taper end misclassified');
+  assert.ok(top.count >= edge.count, `extreme density faded (${edge.count} -> ${top.count})`);
+  assert.ok(top.targetOpacity >= edge.targetOpacity,
+    `extreme radiance faded (${edge.targetOpacity} -> ${top.targetOpacity})`);
+  assert.ok(top.lenScale > edge.lenScale && top.lenScale === VL_LEN_SCALE_MAX,
+    `extreme wake must reach the long-wake ceiling (${edge.lenScale} -> ${top.lenScale})`);
   assert.ok(Math.abs(top.grain - VL_GRAIN_MAX) < 1e-6,
-    `grain should reach ${VL_GRAIN_MAX} (D7's "~4%"), got ${top.grain}`);
+    `grain should reach ${VL_GRAIN_MAX}, got ${top.grain}`);
   assert.ok(top.grain <= VL_GRAIN_MAX, 'grain ceiling breached');
   assert.ok(top.cameraLeadWU > 0 && top.cameraLeadWU <= VL_CAMERA_LEAD_WU_MAX,
     `camera lead ${top.cameraLeadWU} outside (0, ${VL_CAMERA_LEAD_WU_MAX}]`);
   assert.ok(top.shakeScale < 1, `shake must be REDUCED at extreme speed, got ${top.shakeScale}`);
-  assert.ok(top.targetOpacity <= 0.05, `streaks must be all but gone, alpha ${top.targetOpacity}`);
-  // Grain is a UNIFORM field. A radial or peripheral falloff is the twice-rejected visor framing, so
-  // the record must not carry anything a caller could build one from.
   for (const banned of ['vignette', 'radius', 'falloff', 'edgeFade', 'innerRadius', 'outerRadius']) {
     assert.ok(!(banned in top), `record exposes '${banned}' — that is vignette/visor vocabulary`);
   }
 });
 
 // ---------------------------------------------------------------- compositing and saturation
-check('every band composites NORMALLY — additive white saturation is gone', () => {
+check('every band uses bounded luminous screen compositing', () => {
+  assert.equal(VL_COMPOSITE, 'screen', 'the owner-directed wake must use luminous screen compositing');
   for (const list of Object.values(BAND_SAMPLES)) {
     for (const ratio of list) {
       for (const boosting of [false, true]) {
         const d = drive(ratio, boosting);
         assert.equal(d.composite, VL_COMPOSITE,
           `ratio=${ratio} boost=${boosting}: composite '${d.composite}' is not '${VL_COMPOSITE}'`);
-        assert.notEqual(d.composite, 'lighter', 'additive compositing must never return');
+        assert.notEqual(d.composite, 'lighter', 'the unbounded legacy additive sum must not return');
+        assert.notEqual(d.composite, 'source-over', 'the overturned flat/restraint composite returned');
         assert.ok(d.maxAlpha <= VL_ALPHA_MAX,
           `ratio=${ratio}: alpha ${d.maxAlpha} above the band cap ${VL_ALPHA_MAX}`);
         assert.ok(d.maxAlpha < 1, 'no band may reach opaque');
@@ -400,12 +371,9 @@ check('every band composites NORMALLY — additive white saturation is gone', ()
 });
 
 // ---------------------------------------------------------------- continuity across the seams
-// Smoothness IS the effect (D7: "smoothness and quiet read as terrifying speed"). A step at a band
-// boundary is the exact "cheap" tell the redesign exists to remove, and it is invisible to any test
-// that samples band interiors only.
 check('no channel steps at a band seam', () => {
   const EPS = 1e-4;
-  for (const edge of [VL_BAND1_AT, VL_BAND2_AT, VL_BAND3_AT, VL_TAPER_END]) {
+  for (const edge of [VL_WAKE_AT, VL_BAND1_AT, VL_BAND2_AT, VL_BAND3_AT, VL_TAPER_END]) {
     const below = drive(edge - EPS);
     const above = drive(edge + EPS);
     for (const key of ['targetOpacity', 'lenScale', 'parallaxGain', 'grain', 'smear', 'cameraLeadWU']) {
@@ -418,9 +386,6 @@ check('no channel steps at a band seam', () => {
 });
 
 // ---------------------------------------------------------------- ceilings + fail-dark, band mode
-// Not inherited from the legacy section. Several band ramps DESCEND with speed, so a NaN clamped to
-// zero PROGRESS would evaluate them at their bright end — this asserts the entry-point screening
-// that prevents it.
 check('band mode holds every ceiling and fails DARK on non-finite input', () => {
   for (const boosting of [false, true]) {
     for (const mr of [false, true]) {
@@ -438,9 +403,10 @@ check('band mode holds every ceiling and fails DARK on non-finite input', () => 
         assert.ok(d.grain <= VL_GRAIN_MAX, `${where}: grain ceiling breached`);
         assert.ok(d.parallaxGain <= VL_PARALLAX_GAIN_MAX, `${where}: parallax ceiling breached`);
         assert.ok(d.cameraLeadWU <= VL_CAMERA_LEAD_WU_MAX, `${where}: camera lead ceiling breached`);
-        // The band record must also respect the legacy ceilings — it is drawn by the same canvas.
+        // Shared-canvas count, opacity, alpha, and flow limits remain safety rails. The luminous
+        // language owns a deliberately longer length scale, bounded by its own viewport cap.
         assert.ok(d.count <= SL_STREAK_MAX && d.targetOpacity <= SL_OPACITY_MAX
-          && d.maxAlpha <= SL_ALPHA_MAX && d.lenScale <= SL_LEN_SCALE_MAX && d.flowSpeed <= SL_FLOW_MAX,
+          && d.maxAlpha <= SL_ALPHA_MAX && d.flowSpeed <= SL_FLOW_MAX,
           `${where}: band record breaches a legacy canvas ceiling`);
       }
       // Explicit fail-dark: non-finite speed must be SILENT, not maximal.
@@ -468,7 +434,7 @@ check('motionReduce is strictly quieter in every band, including the field chann
         const full = drive(ratio, boosting, false);
         const red = drive(ratio, boosting, true);
         const where = `ratio=${ratio} boost=${boosting}`;
-        for (const key of ['count', 'targetOpacity', 'grain', 'parallaxGain', 'smear', 'flowSpeed',
+        for (const key of ['count', 'targetOpacity', 'lenScale', 'grain', 'parallaxGain', 'smear', 'flowSpeed',
                            'cameraLeadWU', 'maxAlpha']) {
           assert.ok(red[key] <= full[key] + 1e-12,
             `${where}: motionReduce RAISED ${key} (${full[key]} -> ${red[key]})`);
@@ -479,12 +445,13 @@ check('motionReduce is strictly quieter in every band, including the field chann
   // And the reduction is real, not nominal, wherever there is anything to reduce.
   const loud = drive(VL_TAPER_END, false, false);
   const quiet = drive(VL_TAPER_END, false, true);
-  assert.ok(quiet.grain < loud.grain, 'band-3 field must be reduced under motionReduce');
+  assert.ok(quiet.grain < loud.grain, 'extreme field must be reduced under motionReduce');
+  assert.ok(quiet.lenScale < loud.lenScale, 'long wakes must shorten under motionReduce');
   assert.equal(quiet.cameraLeadWU, 0, 'camera lead must be fully suppressed under motionReduce');
 });
 
 // ---------------------------------------------------------------- band classification
-check('band classification matches the D7 thresholds exactly', () => {
+check('band classification matches the retained continuous thresholds exactly', () => {
   assert.equal(resolveVelocityBand(VL_BAND1_AT), VELOCITY_BAND.LOCAL, 'band 0 is inclusive of 1x');
   assert.equal(resolveVelocityBand(VL_BAND1_AT + 1e-9), VELOCITY_BAND.MODERATE);
   assert.equal(resolveVelocityBand(VL_BAND2_AT), VELOCITY_BAND.MODERATE, 'band 1 is inclusive of 2x');
@@ -662,8 +629,7 @@ check('camera-step plausibility rejects a frame rebase but accepts real travel',
 // ADDITIVELY BLENDED sprites brightens the sky unless the alpha is compensated. The star and flare
 // materials both use THREE.AdditiveBlending, so stretching a point over `stretch` times the area
 // without dividing its alpha by `stretch` multiplies the light the starfield contributes by exactly
-// that factor, at precisely the speed the player is going fastest. That is the D7 "no additive white
-// saturation" prohibition, reached from the direction nobody is watching. `dim * stretch === 1` is
+// that factor, at precisely the speed the player is going fastest. `dim * stretch === 1` is
 // the invariant that forecloses it, and it is asserted below as an identity rather than a bound.
 check('along-flow smear conserves energy — a stretched star spreads, it never glows', () => {
   for (const s of [0, 0.05, 0.25, 0.5, 0.75, 1]) {
@@ -708,8 +674,7 @@ check('smear is a BAND 2 cue: silent below it, and motionReduce-respecting', () 
     assert.equal(smearStretch(d.smear).stretch, 1,
       `ratio ${ratio}: the sky must be untouched below band 2`);
   }
-  // It ramps up through band 2 and holds at full through band 3 — the world keeps streaming while
-  // the particles fade out, which is the inversion the whole redesign is built on.
+  // It ramps through band 2 and holds through band 3, layered with the retained luminous wake.
   assert.ok(drive(3).smear > 0 && drive(3).smear < VL_SMEAR_MAX, 'smear must ramp inside band 2');
   assert.ok(drive(4).smear > drive(3).smear, 'smear must rise across band 2');
   assert.equal(drive(10).smear, VL_SMEAR_MAX, 'smear must hold at full through band 3');
@@ -731,9 +696,10 @@ check('speedLineDrive routes to the band language when the flag is on', () => {
   const saved = VELOCITY_LANGUAGE_FLAGS.bands;
   try {
     VELOCITY_LANGUAGE_FLAGS.bands = true;
-    const viaSeam = speedLineDrive(0.5 * MAX_SPEED, MAX_SPEED, false, false);
-    assert.equal(viaSeam.count, 0, 'flag-on cruise at 0.5x must be SILENT (band 0), not 17 streaks');
-    assert.equal(viaSeam.composite, VL_COMPOSITE, 'flag-on seam must composite normally');
+    const viaSeam = speedLineDrive(0.7 * MAX_SPEED, MAX_SPEED, false, false);
+    assert.ok(viaSeam.count > 0 && viaSeam.lenScale > 0,
+      'flag-on ordinary fast flight must route to the luminous wake');
+    assert.equal(viaSeam.composite, VL_COMPOSITE, 'flag-on seam must use screen compositing');
     const fast = speedLineDrive(7.5 * MAX_SPEED, MAX_SPEED, false, false);
     assert.equal(fast.band, VELOCITY_BAND.EXTREME, 'flag-on 7.5x must reach band 3 through the seam');
   } finally {
@@ -744,7 +710,7 @@ check('speedLineDrive routes to the band language when the flag is on', () => {
 });
 
 // ---------------------------------------------------------------- band evidence table
-console.log('\nVELOCITY LANGUAGE (D7) — maxSpeed=150, motionReduce=off, boosting=false');
+console.log('\nVELOCITY LANGUAGE (LUMINOUS WAKE) — maxSpeed=150, motionReduce=off, boosting=false');
 console.log('  ratio | band | streaks | alpha  | length | parallax | smear→stretch | grain  | lead');
 console.log('  ------+------+---------+--------+--------+----------+---------------+--------+------');
 for (const ratio of [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7.5, 10, 25, 100]) {

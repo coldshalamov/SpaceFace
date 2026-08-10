@@ -1,36 +1,42 @@
-// Procedural engine-trail texture — Saeki Keiichi warp-line technique (photo 4 "トレイル" graph).
-// JS sampler is testable without THREE; GLSL twin drives live ribbon/particle shaders with uTrailTime.
+// Procedural luminous-fluid trail field. The JS sampler is testable without THREE; its GLSL twin
+// drives live ribbon/particle shaders with a moving filament, broken sheath, and tapered history.
 import * as THREE from 'three';
 
-const DEFAULT_SEED = 17;
 const TEX_W = 256;
 const TEX_H = 64;
 
-function mulberry32(seed) {
-  let a = (seed >>> 0) || 1;
-  return function next() {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// One numeric source for both CPU evidence and the emitted GLSL. The shader's hash is deliberately
+// seedless: live materials share one coherent fluid language and pay no uniform/per-fragment seed.
+export const TRAIL_NOISE_SPEC = Object.freeze({
+  hashScaleX: 123.34,
+  hashScaleY: 456.21,
+  hashBias: 45.32,
+});
+
+const fract = (value) => value - Math.floor(value);
+
+function hash21(x, y) {
+  let px = fract(x * TRAIL_NOISE_SPEC.hashScaleX);
+  let py = fract(y * TRAIL_NOISE_SPEC.hashScaleY);
+  const dot = px * (px + TRAIL_NOISE_SPEC.hashBias)
+    + py * (py + TRAIL_NOISE_SPEC.hashBias);
+  px += dot;
+  py += dot;
+  return fract(px * py);
 }
 
-function valueNoise2D(x, y, seed = DEFAULT_SEED) {
-  const rnd = mulberry32(seed);
-  const grid = new Float32Array(256);
-  for (let i = 0; i < grid.length; i++) grid[i] = rnd();
-  const at = (ix, iy) => grid[((iy & 15) << 4) | (ix & 15)];
+/** Exact scalar translation of trailValueNoise(vec2) in TRAIL_GLSL_LIB. */
+function valueNoise2D(x, y) {
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);
   let sx = x - x0;
   let sy = y - y0;
   sx = sx * sx * (3 - 2 * sx);
   sy = sy * sy * (3 - 2 * sy);
-  const n00 = at(x0, y0);
-  const n10 = at(x0 + 1, y0);
-  const n01 = at(x0, y0 + 1);
-  const n11 = at(x0 + 1, y0 + 1);
+  const n00 = hash21(x0, y0);
+  const n10 = hash21(x0 + 1, y0);
+  const n01 = hash21(x0, y0 + 1);
+  const n11 = hash21(x0 + 1, y0 + 1);
   const a = n00 + (n10 - n00) * sx;
   const b = n01 + (n11 - n01) * sx;
   return a + (b - a) * sy;
@@ -45,15 +51,15 @@ export function crossSectionProfile(absV) {
 }
 
 /** Lateral displacement from along-axis noise — Directional Warp + Bend (photo 4). */
-export function directionalWarp(u, v, time = 0, seed = DEFAULT_SEED) {
-  const warpA = valueNoise2D(u * 5.5 + time * 0.18, 0.37, seed) - 0.5;
-  const warpB = valueNoise2D(u * 11.0 - time * 0.09, v * 2.2 + 1.1, seed + 7) - 0.5;
+export function directionalWarp(u, v, time = 0) {
+  const warpA = valueNoise2D(u * 5.5 + time * 0.18, 0.37) - 0.5;
+  const warpB = valueNoise2D(u * 11.0 - time * 0.09, v * 2.2 + 1.1) - 0.5;
   const edgeFade = 1 - Math.min(1, Math.abs(v) * 0.72);
   return v + warpA * 0.30 * edgeFade + warpB * 0.14;
 }
 
 /** Axis-aligned average blur — Slope blur / Directional blur Trail mode = Average (photo 2/4). */
-export function directionalStreakBlur(u, v, time = 0, seed = DEFAULT_SEED, trailLength = 0.14) {
+export function directionalStreakBlur(u, v, time = 0, trailLength = 0.14) {
   const steps = 7;
   let sum = 0;
   let weight = 0;
@@ -61,12 +67,19 @@ export function directionalStreakBlur(u, v, time = 0, seed = DEFAULT_SEED, trail
     const t = i / Math.max(1, steps - 1);
     const su = u - trailLength * t;
     const bend = Math.sin(su * 14.0 + time * 1.6) * 0.11;
-    const sample = valueNoise2D(su * 9.0 + bend, v * 3.1 + time * 0.22, seed + 23);
+    const sample = valueNoise2D(su * 9.0 + bend, v * 3.1 + time * 0.22);
     const w = 1 - t * 0.38;
     sum += sample * w;
     weight += w;
   }
   return weight > 0 ? sum / weight : 0;
+}
+
+/** Longitudinal breakup prevents a broad ribbon from reading as one solid translucent polygon. */
+export function fluidBreakup(u, v, time = 0) {
+  const broad = valueNoise2D(u * 7.2 - time * 0.34, v * 1.8 + 4.7);
+  const thread = valueNoise2D(u * 17.0 + time * 0.16, v * 4.4 + 0.8);
+  return Math.max(0, Math.min(1, broad * 0.62 + thread * 0.38));
 }
 
 /**
@@ -75,23 +88,55 @@ export function directionalStreakBlur(u, v, time = 0, seed = DEFAULT_SEED, trail
  *   v — cross-section (-1 = edge, 0 = center)
  */
 export function sampleTrailTexture(u, v, time = 0, opts = {}) {
-  const seed = opts.seed ?? DEFAULT_SEED;
   const trailLength = opts.trailLength ?? 0.14;
-  const warpedV = directionalWarp(u, v, time, seed);
+  const warpedV = directionalWarp(u, v, time);
   const cross = crossSectionProfile(Math.abs(warpedV));
-  const streak = directionalStreakBlur(u, warpedV, time, seed, trailLength);
+  const streak = directionalStreakBlur(u, warpedV, time, trailLength);
+  const breakup = fluidBreakup(u, warpedV, time);
   const alongTaper = Math.pow(Math.max(0, 1 - u * 0.12), 0.55);
-  const intensity = cross * (0.32 + streak * 0.88) * alongTaper;
+  const intensity = cross * (0.30 + streak * 0.82) * (0.64 + breakup * 0.58) * alongTaper;
   return Math.max(0, Math.min(1, intensity));
 }
 
-export function buildTrailTexturePixels(width = TEX_W, height = TEX_H, time = 0, seed = DEFAULT_SEED) {
+/**
+ * CPU formula twin for the live ribbon's layered output. `u` is the shader's wrapped flow
+ * coordinate; `pathT` is zero at the nozzle and one at the oldest sample. The optional opacity and
+ * radiance inputs mirror the live uniforms. This is a tooling API; the render loop uses GLSL.
+ */
+export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
+  const liquid = sampleTrailTexture(u, v, time, opts);
+  const side = Math.max(-1, Math.min(1, Number.isFinite(v) ? v : 0));
+  const filament = Math.exp(-side * side * 24);
+  const sheathNoise = valueNoise2D(u * 8, time * 0.18);
+  const brokenSheath = liquid * (0.34 + 0.66 * sheathNoise);
+  const t = Math.max(0, Math.min(1, Number.isFinite(pathT) ? pathT : 1));
+  const edge = Math.max(0, Math.min(1, (t - 0.56) / 0.44));
+  const smoothEdge = edge * edge * (3 - 2 * edge);
+  const tailEnvelope = 1 - smoothEdge;
+  const opacity = Number.isFinite(opts.opacity) ? Math.max(0, Math.min(1, opts.opacity)) : 1;
+  const radianceScale = Number.isFinite(opts.radiance)
+    ? Math.max(0, Math.min(2.5, opts.radiance))
+    : 1;
+  return {
+    liquid,
+    filament,
+    sheathNoise,
+    brokenSheath,
+    tailEnvelope,
+    opacity,
+    radianceScale,
+    alpha: Math.min(1, opacity * tailEnvelope * (filament * 0.78 + brokenSheath * 0.44)),
+    radiance: radianceScale * (0.72 + liquid * 0.72 + filament * 0.38),
+  };
+}
+
+export function buildTrailTexturePixels(width = TEX_W, height = TEX_H, time = 0) {
   const pixels = new Float32Array(width * height);
   for (let y = 0; y < height; y++) {
     const v = height <= 1 ? 0 : (y / (height - 1)) * 2 - 1;
     for (let x = 0; x < width; x++) {
       const u = x / width;
-      pixels[y * width + x] = sampleTrailTexture(u, v, time, { seed });
+      pixels[y * width + x] = sampleTrailTexture(u, v, time);
     }
   }
   return pixels;
@@ -150,8 +195,8 @@ export function getSharedTrailTexture() {
 /** GLSL noise + trail sampler — mirrors the JS functions; animated via uTrailTime at runtime. */
 export const TRAIL_GLSL_LIB = /* glsl */`
   float trailHash21(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
+    p = fract(p * vec2(${TRAIL_NOISE_SPEC.hashScaleX}, ${TRAIL_NOISE_SPEC.hashScaleY}));
+    p += dot(p, p + ${TRAIL_NOISE_SPEC.hashBias});
     return fract(p.x * p.y);
   }
   float trailValueNoise(vec2 p) {
@@ -189,12 +234,18 @@ export const TRAIL_GLSL_LIB = /* glsl */`
     }
     return sum / max(wsum, 0.0001);
   }
+  float trailFluidBreakup(float u, float v, float time) {
+    float broad = trailValueNoise(vec2(u * 7.2 - time * 0.34, v * 1.8 + 4.7));
+    float thread = trailValueNoise(vec2(u * 17.0 + time * 0.16, v * 4.4 + 0.8));
+    return clamp(broad * 0.62 + thread * 0.38, 0.0, 1.0);
+  }
   float trailSampleProcedural(float u, float v, float time) {
     float warpedV = trailDirectionalWarp(u, v, time);
     float cross = trailCrossSection(abs(warpedV));
     float streak = trailStreakBlur(u, warpedV, time);
+    float breakup = trailFluidBreakup(u, warpedV, time);
     float taper = pow(max(0.0, 1.0 - u * 0.12), 0.55);
-    return clamp(cross * (0.32 + streak * 0.88) * taper, 0.0, 1.0);
+    return clamp(cross * (0.30 + streak * 0.82) * (0.64 + breakup * 0.58) * taper, 0.0, 1.0);
   }
 `;
 
@@ -248,16 +299,19 @@ export function compareFlatVsStreakSamples(time = 0.42) {
   for (let i = 0; i <= 10; i++) alongSamples.push(sampleTrailTexture(i / 10, 0, time));
   const center = sampleTrailTexture(0.5, 0, time);
   const edge = sampleTrailTexture(0.5, 0.82, time);
+  const alongMax = Math.max(...alongSamples);
   const flat = Math.exp(-0.25 * 14.0);
-  const streakAtCenter = flat * (0.40 + center * 1.05);
+  // The live field is intentionally broken along its axis. Compare its bright filament phase with
+  // the flat radial control instead of assuming u=0.5 happens to be a bright noise coordinate.
+  const streakAtPeak = flat * (0.40 + alongMax * 1.05);
   return {
     alongMin: Math.min(...alongSamples),
-    alongMax: Math.max(...alongSamples),
-    alongVariance: Math.max(...alongSamples) - Math.min(...alongSamples),
+    alongMax,
+    alongVariance: alongMax - Math.min(...alongSamples),
     centerIntensity: center,
     edgeIntensity: edge,
     flatParticleMod: flat,
-    streakParticleMod: streakAtCenter,
-    visualGain: streakAtCenter / Math.max(flat, 0.001),
+    streakParticleMod: streakAtPeak,
+    visualGain: streakAtPeak / Math.max(flat, 0.001),
   };
 }

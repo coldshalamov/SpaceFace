@@ -39,11 +39,36 @@ const state = {
   settings: { video: { particleQuality: 'high', engineTrails: true } },
   render: { scene },
 };
+const playerSocketPose = {
+  x: player.pos.x - 31.5,
+  y: 0,
+  z: player.pos.z + 4.25,
+  forwardX: -1,
+  forwardY: 0,
+  forwardZ: 0,
+};
 const system = Object.create(vfx);
-system.init({ state, bus: { on() { return () => {}; } }, helpers: {} });
+system.init({
+  state,
+  bus: { on() { return () => {}; } },
+  helpers: {
+    socketWorldPose(id, name) {
+      return id === player.id && name === 'SOCKET_Trail_Main' ? playerSocketPose : null;
+    },
+  },
+});
 player._flightFrame = { throttle: 1 };
 npcVector._flightFrame = { throttle: 1 };
-for (let f = 0; f < 8; f++) system.update(1 / 60);
+for (let f = 0; f < 8; f++) {
+  for (let i = 0; i < entityList.length; i++) {
+    const e = entityList[i];
+    e.pos.x += e.vel.x / 60;
+    e.pos.z += e.vel.z / 60;
+  }
+  playerSocketPose.x = player.pos.x - 31.5;
+  playerSocketPose.z = player.pos.z + 4.25;
+  system.update(1 / 60);
+}
 
 assert.equal(system._particleMat.type, 'ShaderMaterial');
 assert(system._particleMat.fragmentShader.includes('trailSampleProcedural'));
@@ -71,14 +96,31 @@ assert(streak.material.fragmentShader.includes('trailSampleProcedural'));
 assert(streak.material.uniforms.uTrailTime);
 
 let ribbonChecked = false;
-for (const [, trail] of system._ribbonTrails || []) {
+let playerRibbonPoints = 0;
+for (const [id, trail] of system._ribbonTrails || []) {
   const mat = trail.getMaterial();
   assert.equal(mat.type, 'ShaderMaterial');
   assert(mat.fragmentShader.includes('trailSampleProcedural'));
+  assert(mat.fragmentShader.includes('brokenSheath'));
+  assert(mat.fragmentShader.includes('tailEnvelope'));
+  assert(mat.uniforms.uRadiance.value > 1);
+  assert(trail.getMesh().geometry.drawRange.count > 0,
+    'moving ribbon must draw only its connected live history');
+  if (id === player.id) {
+    playerRibbonPoints = trail.inspect().visiblePointCount;
+    const p = trail.getMesh().geometry.attributes.position.array;
+    const headX = (p[0] + p[3]) * 0.5;
+    const headZ = (p[2] + p[5]) * 0.5;
+    assert(Math.abs(headX - playerSocketPose.x) < 1e-4,
+      `player ribbon head X ${headX} must remain attached to authored socket ${playerSocketPose.x}`);
+    assert(Math.abs(headZ - playerSocketPose.z) < 1e-4,
+      `player ribbon head Z ${headZ} must remain attached to authored socket ${playerSocketPose.z}`);
+  }
   ribbonChecked = true;
-  break;
 }
 assert(ribbonChecked, 'large ship should create ribbon trail with procedural shader');
+assert(playerRibbonPoints >= 4,
+  `ordinary player motion should retain a visibly long history, got ${playerRibbonPoints} points`);
 
 const inspect = system.inspect();
 console.log('VFX trail bind harness OK', JSON.stringify({
@@ -91,5 +133,6 @@ console.log('VFX trail bind harness OK', JSON.stringify({
   particleShader: system._particleMat.type,
   streakShader: streak.material.type,
   ribbonProcedural: ribbonChecked,
+  playerRibbonPoints,
   segmentedVerts: ion.getActiveGeometryStats().vertexCount,
 }));
