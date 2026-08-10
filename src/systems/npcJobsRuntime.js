@@ -514,6 +514,7 @@ export const npcJobsRuntime = {
           actorAmbiguous: false,
           actorAmbiguousRefs: null,
           targetAmbiguous: false,
+          targetAmbiguousRefs: null,
         };
       }),
     };
@@ -909,6 +910,10 @@ export const npcJobsRuntime = {
           binding.targetRef = candidate;
           binding.targetDataRef = candidate.data;
         } else {
+          if (!Array.isArray(binding.targetAmbiguousRefs)) {
+            binding.targetAmbiguousRefs = binding.targetRef ? [binding.targetRef] : [];
+          }
+          binding.targetAmbiguousRefs.push(candidate);
           binding.targetRef = null;
           binding.targetDataRef = null;
           binding.ambiguous = true;
@@ -980,6 +985,7 @@ export const npcJobsRuntime = {
     binding.actorAmbiguous = false;
     binding.actorAmbiguousRefs = null;
     binding.targetAmbiguous = false;
+    binding.targetAmbiguousRefs = null;
   },
 
   _clearCeresRealTargetsForJob(jobId, clearTerminalAuthority = false) {
@@ -1059,7 +1065,13 @@ export const npcJobsRuntime = {
           ));
         const removedTarget = binding.targetRef && binding.targetRef.id === id
           && mappedEntity !== binding.targetRef;
-        if ((!removedActorContender && !removedTarget) || binding.jobId === refreshedJobId) continue;
+        const removedTargetContender = binding.targetAmbiguous === true
+          && Array.isArray(binding.targetAmbiguousRefs)
+          && binding.targetAmbiguousRefs.some((candidate) => (
+            candidate && candidate.id === id && mappedEntity !== candidate
+          ));
+        if ((!removedActorContender && !removedTarget && !removedTargetContender)
+          || binding.jobId === refreshedJobId) continue;
         let entry = binding.entryRef;
         let actor = binding.actorRef;
         if (!entry || !actor) {
@@ -1107,7 +1119,9 @@ export const npcJobsRuntime = {
         const actorIdMatch = id != null && actor.id === id;
         const targetIdMatch = id != null && binding.targetRef && binding.targetRef.id === id;
         const targetAmbiguityMayResolve = binding.targetAmbiguous === true
-          && type === binding.spec.entityType;
+          && id != null && type === binding.spec.entityType
+          && Array.isArray(binding.targetAmbiguousRefs)
+          && binding.targetAmbiguousRefs.some((candidate) => candidate && candidate.id === id);
         if (!actorIdMatch && !targetIdMatch
           && !actorAmbiguityMayResolve && !targetAmbiguityMayResolve) continue;
         refreshedEntry = entry;
@@ -1141,6 +1155,7 @@ export const npcJobsRuntime = {
         binding.targetMatches = 0;
         binding.ambiguous = false;
         binding.targetAmbiguous = false;
+        binding.targetAmbiguousRefs = null;
       }
       if (entry && actor) this._refreshCeresRealTargetsForEntry(entry, actor);
       return;
@@ -1677,6 +1692,7 @@ export const npcJobsRuntime = {
         binding.targetMatches = 0;
         binding.ambiguous = false;
         binding.targetAmbiguous = false;
+        binding.targetAmbiguousRefs = null;
         continue;
       }
       return binding;
