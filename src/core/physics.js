@@ -7,6 +7,14 @@ import {
   directContactCausalActorId,
 } from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import {
+  clearPickupAcceptanceRetry,
+  finiteWholePickupAmount,
+  PICKUP_ACCEPTANCE_RETRY_S,
+  pickupAcceptanceRetryBlocks,
+  resolvePickupAcceptance,
+  setPickupAcceptanceRetry,
+} from './pickupAcceptance.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
   resolveBerthWorld,
@@ -266,10 +274,47 @@ export const physics = {
     const dz = col.pos.z - pk.pos.z;
     const rsum = (col.radius || 0) + (pk.radius || 0);
     if (dx * dx + dz * dz > rsum * rsum) return false;
-    emitPickupCollected(this.bus, pk, col);
-    pk.alive = false;
-    this._diag.pickupCollections++;
-    return true;
+    return this._applyPickupCollection(pk, col, this.bus, this.state);
+  },
+
+  _applyPickupCollection(pk, col, bus, state) {
+    if (pickupAcceptanceRetryBlocks(
+      pk && pk.data,
+      col && col.id,
+      state && state.playerId,
+      state && state.simTime,
+    )) return false;
+    const requested = finiteWholePickupAmount(pk && pk.data && pk.data.amount);
+    if (requested <= 0) {
+      // Invalid physical quantities are quarantined without publishing a collectible event. Leaving
+      // Infinity/NaN/missing amounts alive would create an inexhaustible overlap source.
+      clearPickupAcceptanceRetry(pk && pk.data);
+      pk.alive = false;
+      return false;
+    }
+    const payload = emitPickupCollected(bus, pk, col);
+    const acceptance = resolvePickupAcceptance(payload, requested);
+    if (acceptance.rejected <= 0) {
+      pk.alive = false;
+    } else if (acceptance.accepted > 0) {
+      pk.data = pk.data || {};
+      pk.data.amount = acceptance.rejected;
+    }
+    if (acceptance.rejected > 0) {
+      pk.data = pk.data || {};
+      const ownerRetryAt = Number(payload.acceptanceRetryAt);
+      setPickupAcceptanceRetry(
+        pk.data,
+        col && col.id,
+        Number.isFinite(ownerRetryAt)
+          ? ownerRetryAt
+          : (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+      );
+    } else if (pk.data) {
+      clearPickupAcceptanceRetry(pk.data);
+    }
+    if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupCollections++;
+    return acceptance.accepted > 0 || acceptance.legacyFullConsume;
   },
 
   _updateSg02DynamicAuthority(dt, state) {
@@ -604,8 +649,7 @@ export const physics = {
       const pk = ta === 'pickup' ? a : b;
       const col = ta === 'pickup' ? b : a;
       if (col.type !== 'ship' && col.type !== 'drone') return;
-      emitPickupCollected(bus, pk, col);
-      pk.alive = false;
+      this._applyPickupCollection(pk, col, bus, state);
       return;
     }
     // station hull contact — soft, no physical push. Dock-range enter/exit is tracked once per
@@ -992,14 +1036,16 @@ function cloneDamagePacketWithHit(packet, pos, approach, normal) {
 
 function emitPickupCollected(bus, pk, col) {
   const d = pk.data || {};
-  bus.emit('pickup:collected', {
+  const payload = {
     pickupId: pk.id,
     collectorId: col.id,
     kind: d.kind,
     amount: d.amount,
     commodityId: d.commodityId,
     pos: { x: pk.pos.x, z: pk.pos.z },
-  });
+  };
+  bus.emit('pickup:collected', payload);
+  return payload;
 }
 
 function invMass(e) { return (e.type === 'station' || e.type === 'asteroid') ? 0 : 1 / Math.max(0.1, e.mass); }

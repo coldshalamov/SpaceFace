@@ -17,6 +17,7 @@
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
@@ -675,7 +676,7 @@ export const audio = {
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_explosion_small', { position: p && p.pos, gain: 0.7 }));
-    bus.on('pickup:collected', (p) => this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 }));
+    bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
     // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
@@ -1562,6 +1563,11 @@ export const audio = {
     if (p.type === 'drone' || p.type === 'wreck' || p.type === 'station') {
       this.play(p.type === 'station' ? 'sfx_explosion_large' : 'sfx_explosion_small', { position: p.pos, gain: 0.8 });
     }
+  },
+
+  _onPickupCollected(p) {
+    if (successfulPickupAmount(p) <= 0) return;
+    this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
   },
 
   _onPlayerDeath(p) {

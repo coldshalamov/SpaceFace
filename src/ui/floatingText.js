@@ -5,6 +5,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
@@ -19,6 +20,19 @@ for (const sec of SECTORS) {
   if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
 }
 const STYLE_ID = 'sf-floattext-style';
+
+export function pickupFloatingTextSpec(payload) {
+  const qty = successfulPickupAmount(payload);
+  if (qty <= 0) return null;
+  const def = CMDTY_BY_ID[payload && payload.commodityId];
+  const name = def ? def.name : ((payload && payload.commodityId) || 'Item');
+  const cat = def ? def.category : '';
+  const cls = cat === 'raw ore' || cat === 'crystal' ? 'sf-ft--ore'
+    : cat === 'exotic' ? 'sf-ft--exotic'
+    : payload && payload.kind === 'module' ? 'sf-ft--module'
+    : 'sf-ft--pickup';
+  return { qty, text: '+' + qty + ' ' + name, cls };
+}
 
 export function factionRepToastText(state, payload = {}) {
   const fac = FACTION_BY_ID[payload.factionId];
@@ -135,18 +149,9 @@ export function createFloatingText(ctx) {
   // ---- pickup collected (ore / cargo / module) ----------------------------------------------
   bus.on('pickup:collected', (p) => {
     if (!p || p.collectorId !== state.playerId) return;
-    const qty = p.amount || 0;
-    if (qty <= 0 && p.kind !== 'module') return;
-    const def = CMDTY_BY_ID[p.commodityId];
-    const name = def ? def.name : (p.commodityId || 'Item');
-    const cat = def ? def.category : '';
-    // Pick a color class based on category
-    const cls = cat === 'raw ore' || cat === 'crystal' ? 'sf-ft--ore'
-      : cat === 'exotic' ? 'sf-ft--exotic'
-      : p.kind === 'module' ? 'sf-ft--module'
-      : 'sf-ft--pickup';
-    const text = p.kind === 'module' ? ('+1 ' + name) : ('+' + qty + ' ' + name);
-    spawn(text, cls, p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+    const spec = pickupFloatingTextSpec(p);
+    if (!spec || !p.pos) return;
+    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
   });
 
   // ---- faction rep changes ------------------------------------------------------------------

@@ -21,6 +21,7 @@
 // without opening a menu.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -706,7 +707,9 @@ export const onboarding = {
     // for the B1 salvage — that's fine, only the seam beat's DONE cares about the count.
     if (p.collectorId != null && p.collectorId !== this.state.playerId) return;
     if (!this._isOre(p.commodityId)) return;
-    ob.oreCollected = (ob.oreCollected || 0) + Math.max(1, p.qty || p.amount || 1);
+    const accepted = successfulPickupAmount(p);
+    if (accepted <= 0) return;
+    ob.oreCollected = (ob.oreCollected || 0) + accepted;
     if (beat && beat.done === 'oreCollected' && ob.oreCollected >= SEAM_ORE_TARGET) {
       this._beatDone(beat);
     }

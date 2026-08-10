@@ -1,4 +1,5 @@
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
 import { chargeCueLanes, isCriticalCue, laneBudgetReason } from '../presentation/cueArbitration.js';
 import { worldSiteConditionText } from '../presentation/worldSiteDamageStates.js';
@@ -1032,6 +1033,7 @@ export const presentationOrchestrator = {
   _onMiningPickupCollected(payload) {
     if (payload.collectorId !== this.state.playerId) return;
     if (payload.kind !== 'ore' && payload.kind !== 'cargo') return;
+    if (successfulPickupAmount(payload) <= 0) return;
     this._lastMiningCargoTick = currentTick(this.state);
   },
 

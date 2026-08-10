@@ -18,6 +18,14 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import {
+  clearPickupAcceptanceRetry,
+  finiteWholePickupAmount,
+  PICKUP_ACCEPTANCE_RETRY_S,
+  pickupAcceptanceRetryBlocks,
+  resolvePickupAcceptance,
+  setPickupAcceptanceRetry,
+} from '../core/pickupAcceptance.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
@@ -771,9 +779,16 @@ export const mining = {
         // physics-contact path during the same deterministic sim-time window.
         continue;
       }
+      if (pickupAcceptanceRetryBlocks(
+        pickupData,
+        player.id,
+        state.playerId,
+        state.simTime,
+      )) continue;
       if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
-      if (this._collectPickupOnBeamLine(e, player)) {
-        this._diag.pickupsCollected++;
+      const beamCollection = this._collectPickupOnBeamLine(e, player);
+      if (beamCollection) {
+        if (beamCollection.accepted > 0 || beamCollection.legacyFullConsume) this._diag.pickupsCollected++;
         continue;
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
@@ -806,13 +821,8 @@ export const mining = {
       }
       // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
       if (dist <= collectRadius) {
-        e.alive = false;
-        this._diag.pickupsCollected++;
-        this.bus.emit('pickup:collected', {
-          pickupId: e.id, collectorId: player.id, kind: (e.data && e.data.kind) || 'ore',
-          amount: (e.data && e.data.amount) || 1, commodityId: e.data && e.data.commodityId,
-          pos: { x: e.pos.x, z: e.pos.z },
-        });
+        const acceptance = this._collectPickupViaEvent(e, player);
+        if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
       }
     }
     state.miningRuntime = state.miningRuntime || {};
@@ -826,7 +836,19 @@ export const mining = {
     if (cargoSys && typeof cargoSys.addCargo === 'function') return; // cargo owns collected pickups
     const kind = p.kind || 'ore';
     if (kind === 'credits' || kind === 'module') return; // economy/ships own those
-    const accepted = this._giveCargo(p.commodityId, p.amount || 1, p.collectorId);
+    const requested = finiteWholePickupAmount(p.amount);
+    if (requested <= 0) {
+      p.acceptedAmount = 0;
+      p.rejectedAmount = 0;
+      p.invalidAmount = true;
+      return;
+    }
+    const accepted = this._giveCargo(p.commodityId, requested, p.collectorId);
+    p.acceptedAmount = accepted;
+    p.rejectedAmount = Math.max(0, requested - accepted);
+    if (p.rejectedAmount > 0) {
+      p.acceptanceRetryAt = (this.state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+    }
     if (accepted <= 0) this.bus.emit('cargo:full', { commodityId: p.commodityId });
   },
 
@@ -1133,36 +1155,73 @@ export const mining = {
     if (!line || !pickup || !pickup.data || !pickup.data.commodityId) return false;
     if (pointSegmentDistanceSq(pickup.pos.x, pickup.pos.z, line.ax, line.az, line.bx, line.bz) >
       BEAM_PICKUP_DIRECT_RADIUS * BEAM_PICKUP_DIRECT_RADIUS) return false;
-    const requested = Math.max(0, Math.floor(pickup.data.amount || 1));
-    if (requested <= 0) return false;
-    const accepted = this._giveCargo(pickup.data.commodityId, requested, player.id);
-    if (accepted >= requested) {
+    return this._collectPickupViaEvent(pickup, player);
+  },
+
+  _collectPickupViaEvent(pickup, player) {
+    if (pickupAcceptanceRetryBlocks(
+      pickup && pickup.data,
+      player && player.id,
+      this.state && this.state.playerId,
+      this.state && this.state.simTime,
+    )) {
+      return {
+        accepted: 0,
+        rejected: finiteWholePickupAmount(pickup.data.amount),
+        legacyFullConsume: false,
+        deferred: true,
+      };
+    }
+    const requested = finiteWholePickupAmount(pickup && pickup.data && pickup.data.amount);
+    if (requested <= 0) {
+      clearPickupAcceptanceRetry(pickup && pickup.data);
       pickup.alive = false;
-      return true;
+      return { accepted: 0, rejected: 0, legacyFullConsume: false, invalidAmount: true };
     }
-    if (accepted > 0) {
-      pickup.data.amount = requested - accepted;
-      return true;
+    const payload = {
+      pickupId: pickup.id,
+      collectorId: player.id,
+      kind: pickup.data.kind || 'ore',
+      amount: requested,
+      commodityId: pickup.data.commodityId,
+      pos: { x: pickup.pos.x, z: pickup.pos.z },
+    };
+    this.bus.emit('pickup:collected', payload);
+    const acceptance = resolvePickupAcceptance(payload, requested);
+    if (acceptance.rejected <= 0) {
+      pickup.alive = false;
+      clearPickupAcceptanceRetry(pickup.data);
+    } else {
+      if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
+      const ownerRetryAt = Number(payload.acceptanceRetryAt);
+      setPickupAcceptanceRetry(
+        pickup.data,
+        player && player.id,
+        Number.isFinite(ownerRetryAt)
+          ? ownerRetryAt
+          : (this.state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+      );
     }
-    this.bus.emit('cargo:full', { commodityId: pickup.data.commodityId });
-    return false;
+    return acceptance;
   },
 
   // ---- cargo bridge (single-writer aware) -----------------------------------
   // Prefer the cargo module's writer; fall back to a direct, conservative write while cargo is a
   // stub so the early loop (mine → fill hold) is demonstrable. When cargo becomes real it wins.
   _giveCargo(commodityId, qty, collectorId) {
+    qty = finiteWholePickupAmount(qty);
     if (qty <= 0) return 0;
     const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
     if (cargoSys && typeof cargoSys.addCargo === 'function') {
-      const got = cargoSys.addCargo(commodityId, qty);
-      if (got > 0) return got;
+      return cargoSys.addCargo(commodityId, qty);
     }
     if (collectorId != null && collectorId !== this.state.playerId) return 0;
     return this._directAddCargo(commodityId, qty);
   },
 
   _directAddCargo(commodityId, qty) {
+    qty = finiteWholePickupAmount(qty);
+    if (qty <= 0) return 0;
     const cargo = this.state.player.cargo;
     if (!cargo) return 0;
     if (!cargo.items) cargo.items = {};

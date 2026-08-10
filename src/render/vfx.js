@@ -39,6 +39,7 @@ import {
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -7509,17 +7510,18 @@ export const vfx = {
   // Collection. The moment a drop lands is the payoff for the whole mining/flyby loop and it used
   // to be a 12-particle puff. Now it reads as light ARRIVING: a stretched streak laid along the
   // last leg of the drop's path into the hull, a hot pop at the intake, and a short spray that
-  // implodes rather than scattering — so the eye is pulled to the ship, which is where the number
-  // the player actually cares about is counting up.
+  // implodes rather than scattering — so the eye is pulled to the exact collecting hull.
   _onPickup(p) {
-    if (!this._scene || !p.pos) return;
+    if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
     const col = p.kind === 'credits' ? '#ffcc44' : oreColor(p.commodityId);
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const collector = p.collectorId == null
+      ? (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId))
+      : this._ent(p.collectorId);
     this._spawnSprite(SPR_FLASH, p.pos.x, 1.2, p.pos.z, 0.22, 3.0, 5.6, 0.9, 0.0, col, 0, 0);
     this._c0.set('#ffffff'); this._c1.set(col);
 
-    if (player && player.pos) {
-      const dx = player.pos.x - p.pos.x, dz = player.pos.z - p.pos.z;
+    if (collector && collector.pos) {
+      const dx = collector.pos.x - p.pos.x, dz = collector.pos.z - p.pos.z;
       const dist = Math.hypot(dx, dz) || 1;
       const ux = dx / dist, uz = dz / dist;
       const roll = Math.atan2(uz, ux);
@@ -7530,7 +7532,7 @@ export const vfx = {
       for (let k = 0; k < 3; k++) {
         const f = (k + 1) / 4;
         this._spawnSprite(SPR_FLASH,
-          player.pos.x - ux * leg * f, 1.3, player.pos.z - uz * leg * f,
+          collector.pos.x - ux * leg * f, 1.3, collector.pos.z - uz * leg * f,
           0.16 + k * 0.04, leg * (0.34 + 0.12 * k), 0.4,
           0.75 - k * 0.16, 0.0, k === 0 ? '#ffffff' : col,
           ux * 90, uz * 90, 3.4, roll);
@@ -7539,16 +7541,16 @@ export const vfx = {
       for (let k = 0; k < 14; k++) {
         const a = Math.random() * Math.PI * 2;
         const r = 6 + Math.random() * 12;
-        const sx = player.pos.x + Math.cos(a) * r;
-        const sz = player.pos.z + Math.sin(a) * r;
+        const sx = collector.pos.x + Math.cos(a) * r;
+        const sz = collector.pos.z + Math.sin(a) * r;
         const pull = 42 + Math.random() * 46;
         this._spawnParticle(sx, sz, -Math.cos(a) * pull, -Math.sin(a) * pull,
           0.20 + Math.random() * 0.12, 1.5, 0.0, this._c0, this._c1, 1.2, 1.6, 0,
           a + Math.PI, 0.8);
       }
-      this._spawnSprite(SPR_FLASH, player.pos.x, 1.4, player.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_RING, player.pos.x, 1.0, player.pos.z, 0.26, 1.2, 6.5, 0.5, 0.0, col, 0, 0);
-      this._flashLight({ x: player.pos.x, z: player.pos.z }, col, 3.4, 7.0, 110);
+      this._spawnSprite(SPR_FLASH, collector.pos.x, 1.4, collector.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
+      this._spawnSprite(SPR_RING, collector.pos.x, 1.0, collector.pos.z, 0.26, 1.2, 6.5, 0.5, 0.0, col, 0, 0);
+      this._flashLight({ x: collector.pos.x, z: collector.pos.z }, col, 3.4, 7.0, 110);
     } else {
       for (let k = 0; k < 12; k++) {
         const a = Math.random() * Math.PI * 2;

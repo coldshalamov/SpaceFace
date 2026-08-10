@@ -4,6 +4,10 @@
 // All cargo mutation funnels through addCargo/removeCargo so the usedVolume/usedMass caches never desync.
 import { COMMODITIES } from '../data/commodities.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
+import {
+  finiteWholePickupAmount,
+  PICKUP_ACCEPTANCE_RETRY_S,
+} from '../core/pickupAcceptance.js';
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
@@ -78,11 +82,11 @@ function emitChanged(cargo) {
 export function addCargo(state, commodityId, qty) {
   const cargo = state.player.cargo;
   const def = defOf(state, commodityId);
-  if (!def || !(qty > 0)) return 0;
+  const requested = finiteWholePickupAmount(qty);
+  if (!def || requested <= 0) return 0;
   const volPerU = volumePerUnit(def);
   const free = cargo.capVolume - cargo.usedVolume;
   // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
-  const requested = Math.floor(qty);
   const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
   if (accepted > 0) {
     cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
@@ -90,7 +94,7 @@ export function addCargo(state, commodityId, qty) {
     cargo.usedMass += accepted * def.mass;
     emitChanged(cargo);
   }
-  if (accepted < Math.floor(qty) && busRef) busRef.emit('cargo:full', { commodityId });
+  if (accepted < requested && busRef) busRef.emit('cargo:full', { commodityId });
   return accepted;
 }
 
@@ -100,8 +104,9 @@ export function removeCargo(state, commodityId, qty) {
   const cargo = state.player.cargo;
   const have = cargo.items[commodityId] || 0;
   const def = defOf(state, commodityId);
-  if (!def || !(qty > 0) || have <= 0) return 0;
-  const removed = Math.min(Math.floor(qty), have);
+  const requested = finiteWholePickupAmount(qty);
+  if (!def || requested <= 0 || have <= 0) return 0;
+  const removed = Math.min(requested, have);
   if (removed <= 0) return 0;
   const left = have - removed;
   if (left > 0) cargo.items[commodityId] = left; else delete cargo.items[commodityId];
@@ -130,16 +135,32 @@ export const cargo = {
     bus.on('cargo:changed', () => { this._massDirty = true; });
 
     // Ejected ore / dropped cargo / loose modules collected by the player ship → hold or inventory.
-    bus.on('pickup:collected', ({ collectorId, kind, amount, commodityId }) => {
-      if (collectorId !== state.playerId) return; // NPC/drone collection is not the player hold
-      const qty = amount || 0;
+    bus.on('pickup:collected', (payload) => {
+      if (!payload || payload.collectorId !== state.playerId) return; // NPC/drone collection is not the player hold
+      const { kind, commodityId } = payload;
+      const qty = finiteWholePickupAmount(payload.amount);
       if (kind === 'ore' || kind === 'cargo') {
-        addCargo(state, commodityId, qty);
+        // Synchronous acceptance is the collection commit point. Physics/mining emit one mutable
+        // payload, cargo writes the exact accepted remainder, then the emitting owner decides
+        // whether the physical pickup survives. Downstream observers see stable final fields.
+        const accepted = addCargo(state, commodityId, qty);
+        payload.acceptedAmount = accepted;
+        payload.rejectedAmount = Math.max(0, qty - accepted);
+        if (qty <= 0) payload.invalidAmount = true;
+        if (payload.rejectedAmount > 0) {
+          payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
+        }
       } else if (kind === 'module') {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
-        const count = Math.max(1, Math.floor(qty || 1));
+        const count = typeof commodityId === 'string' && commodityId.length > 0 ? qty : 0;
         for (let i = 0; i < count; i++) {
           state.player.moduleInventory.push({ instanceId: `mi_${++_moduleSeq}`, defId: commodityId });
+        }
+        payload.acceptedAmount = count;
+        payload.rejectedAmount = Math.max(0, qty - count);
+        if (qty <= 0 || count <= 0) payload.invalidAmount = true;
+        if (payload.rejectedAmount > 0) {
+          payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
         }
       }
       // kind 'credits' is economy's concern (§4.4) — ignore here.
