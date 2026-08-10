@@ -102,31 +102,44 @@ export function sampleTrailTexture(u, v, time = 0, opts = {}) {
  * CPU formula twin for the live ribbon's layered output. `u` is the shader's wrapped flow
  * coordinate; `pathT` is zero at the nozzle and one at the oldest sample. The optional opacity and
  * radiance inputs mirror the live uniforms. This is a tooling API; the render loop uses GLSL.
+ *
+ * Mirrors RIBBON_TRAIL_FRAG in engineTrailSurfaces.js (long luminous liquid ribbon).
  */
 export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
   const liquid = sampleTrailTexture(u, v, time, opts);
   const side = Math.max(-1, Math.min(1, Number.isFinite(v) ? v : 0));
-  const filament = Math.exp(-side * side * 24);
-  const sheathNoise = valueNoise2D(u * 8, time * 0.18);
-  const brokenSheath = liquid * (0.34 + 0.66 * sheathNoise);
+  const filament = Math.exp(-side * side * 18);
+  const sheath = Math.exp(-side * side * 5.5);
+  const fluidNoise = valueNoise2D(u * 9, time * 0.22);
+  const threadNoise = valueNoise2D(u * 17 - time * 0.31, side * 2.4 + 1.7);
+  const brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
+    * (0.72 + 0.28 * threadNoise);
   const t = Math.max(0, Math.min(1, Number.isFinite(pathT) ? pathT : 1));
-  const edge = Math.max(0, Math.min(1, (t - 0.56) / 0.44));
-  const smoothEdge = edge * edge * (3 - 2 * edge);
-  const tailEnvelope = 1 - smoothEdge;
+  // smoothstep(0.62, 1.0, pathT) → long soft tail
+  const tailEdge = Math.max(0, Math.min(1, (t - 0.62) / 0.38));
+  const tailEnvelope = 1 - tailEdge * tailEdge * (3 - 2 * tailEdge);
+  // smoothstep(0.0, 0.14, pathT)
+  const headEdge = Math.max(0, Math.min(1, t / 0.14));
+  const headBoost = 1 - headEdge * headEdge * (3 - 2 * headEdge);
   const opacity = Number.isFinite(opts.opacity) ? Math.max(0, Math.min(1, opts.opacity)) : 1;
   const radianceScale = Number.isFinite(opts.radiance)
-    ? Math.max(0, Math.min(2.5, opts.radiance))
+    ? Math.max(0, Math.min(3.2, opts.radiance))
     : 1;
+  const sheathNoise = fluidNoise;
   return {
     liquid,
     filament,
+    sheath,
     sheathNoise,
     brokenSheath,
     tailEnvelope,
+    headBoost,
     opacity,
     radianceScale,
-    alpha: Math.min(1, opacity * tailEnvelope * (filament * 0.78 + brokenSheath * 0.44)),
-    radiance: radianceScale * (0.72 + liquid * 0.72 + filament * 0.38),
+    alpha: Math.min(1, opacity * tailEnvelope
+      * (filament * 0.92 + brokenSheath * 0.62 + sheath * 0.18)
+      * (0.88 + headBoost * 0.22)),
+    radiance: radianceScale * (0.78 + liquid * 0.85 + filament * 0.42 + headBoost * 0.18),
   };
 }
 
