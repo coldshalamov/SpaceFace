@@ -84,17 +84,19 @@ export const VL_TAPER_END = 10.0;
 
 // Ceilings, exported so the probe asserts against these names rather than its own copies of the
 // numbers — a loosened ceiling cannot pass by silently agreeing with a stale literal in the check.
-export const VL_COUNT_MAX = 44;          // bounded luminous filaments, not legacy 200+ runaway lines
-export const VL_ALPHA_MAX = 0.36;        // screen-composited field opacity
-export const VL_LEN_SCALE_MAX = 4.6;     // long screen-space wakes; feel owns the viewport cap
-export const VL_GRAIN_MAX = 0.035;       // subtle full-screen directional grain
+// Count stays at the shared-canvas streak ceiling (SL_STREAK_MAX = 46). Length and light energy
+// are the free variables of the D7 overturn — not an unbounded filament count.
+export const VL_COUNT_MAX = 46;          // bounded luminous filaments, not legacy 200+ runaway lines
+export const VL_ALPHA_MAX = 0.48;        // screen-composited field opacity (D7 0.20 cap overturned)
+export const VL_LEN_SCALE_MAX = 5.8;     // long liquid screen-space wakes; feel owns the viewport cap
+export const VL_GRAIN_MAX = 0.04;        // subtle full-screen directional grain
 export const VL_PARALLAX_GAIN_MAX = 1.0; // extra background streaming, as a multiple of natural rate
 export const VL_CAMERA_LEAD_WU_MAX = 6;  // "a few WU of camera lead along the velocity vector"
 export const VL_SMEAR_MAX = 1.0;         // along-flow smear on bright background points, normalized
-export const VL_FLOW_MAX = 1800;         // screen-px/s, saturated below one-recycle-per-frame strobe
+export const VL_FLOW_MAX = 2000;         // screen-px/s, saturated below one-recycle-per-frame strobe
 
 /** Density reached at the extreme-band entry; it grows to VL_COUNT_MAX rather than fading out. */
-export const VL_BAND3_COUNT_FLOOR = 38;
+export const VL_BAND3_COUNT_FLOOR = 40;
 
 /**
  * BOOST DOES NOT BIAS THE BANDS. Recorded as a constant rather than deleted because the tempting
@@ -263,35 +265,35 @@ export function velocityBandDrive(
 
   if (band === VELOCITY_BAND.LOCAL) {
     const t = smooth((r - VL_WAKE_AT) / (VL_BAND1_AT - VL_WAKE_AT));
-    rec.count = Math.round(14 * t);
-    rec.targetOpacity = 0.12 * t;
-    rec.lenScale = 0.9 * t;
-    rec.widthScale = seg(t, 0, 1, 0.34, 0.70);
+    rec.count = Math.round(16 * t);
+    rec.targetOpacity = 0.16 * t;
+    rec.lenScale = 1.15 * t;
+    rec.widthScale = seg(t, 0, 1, 0.38, 0.78);
     rec.parallaxGain = 0;
     rec.smear = 0;
   } else if (band === VELOCITY_BAND.MODERATE) {
-    // 1 -> 2x. The ordinary wake becomes a long, readable filament family.
-    rec.count = Math.round(seg(r, VL_BAND1_AT, VL_BAND2_AT, 14, 28));
-    rec.targetOpacity = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.12, 0.26);
-    rec.lenScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.9, 2.1);
-    rec.widthScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.70, 1.0);
+    // 1 -> 2x. The ordinary wake becomes a long, liquid filament family.
+    rec.count = Math.round(seg(r, VL_BAND1_AT, VL_BAND2_AT, 16, 30));
+    rec.targetOpacity = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.16, 0.32);
+    rec.lenScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 1.15, 2.6);
+    rec.widthScale = seg(r, VL_BAND1_AT, VL_BAND2_AT, 0.78, 1.08);
     rec.parallaxGain = 0;
     rec.smear = 0;
   } else if (band === VELOCITY_BAND.HIGH) {
-    // 2 -> 5x. Long wakes remain load-bearing while the world joins them through parallax/smear.
-    rec.count = Math.round(seg(r, VL_BAND2_AT, VL_BAND3_AT, 28, VL_BAND3_COUNT_FLOOR));
-    rec.targetOpacity = seg(r, VL_BAND2_AT, VL_BAND3_AT, 0.26, 0.32);
-    rec.lenScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 2.1, 3.7);
-    rec.widthScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 1.0, 1.15);
+    // 2 -> 5x. Long liquid wakes remain load-bearing while the world joins through parallax/smear.
+    rec.count = Math.round(seg(r, VL_BAND2_AT, VL_BAND3_AT, 30, VL_BAND3_COUNT_FLOOR));
+    rec.targetOpacity = seg(r, VL_BAND2_AT, VL_BAND3_AT, 0.32, 0.40);
+    rec.lenScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 2.6, 4.4);
+    rec.widthScale = seg(r, VL_BAND2_AT, VL_BAND3_AT, 1.08, 1.22);
     rec.parallaxGain = VL_PARALLAX_GAIN_MAX * smooth((r - VL_BAND2_AT) / (VL_BAND3_AT - VL_BAND2_AT));
     rec.smear = VL_SMEAR_MAX * smooth((r - VL_BAND2_AT) / (VL_BAND3_AT - VL_BAND2_AT));
   } else {
     // > 5x. The luminous wake reaches full extension rather than disappearing. Field grain, camera
     // lead and calmer shake join it, so extreme speed has layers instead of one louder scalar.
     rec.count = Math.round(seg(r, VL_BAND3_AT, VL_TAPER_END, VL_BAND3_COUNT_FLOOR, VL_COUNT_MAX));
-    rec.targetOpacity = seg(r, VL_BAND3_AT, VL_TAPER_END, 0.32, VL_ALPHA_MAX);
-    rec.lenScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 3.7, VL_LEN_SCALE_MAX);
-    rec.widthScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 1.15, 1.28);
+    rec.targetOpacity = seg(r, VL_BAND3_AT, VL_TAPER_END, 0.40, VL_ALPHA_MAX);
+    rec.lenScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 4.4, VL_LEN_SCALE_MAX);
+    rec.widthScale = seg(r, VL_BAND3_AT, VL_TAPER_END, 1.22, 1.34);
     rec.parallaxGain = VL_PARALLAX_GAIN_MAX;
     rec.smear = VL_SMEAR_MAX;
     rec.grain = VL_GRAIN_MAX * smooth((r - VL_BAND3_AT) / (VL_TAPER_END - VL_BAND3_AT));

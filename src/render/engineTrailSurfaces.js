@@ -16,8 +16,14 @@ const TRAIL_MATRIX = 0;
 const TRAIL_COLOR = 1;
 const TRAIL_OPACITY = 2;
 
-/** Maximum history insertions a single delayed frame may request. */
-export const RIBBON_TRAIL_INTERPOLATION_CAP = 8;
+/**
+ * Maximum history insertions a single delayed frame may request.
+ *
+ * Raised so a hitch at cruise/boost can still lay down equal-spacing samples rather than
+ * equal-fraction chords that leave a multi-spacing gap between the live nozzle and history[1]
+ * (the visible "skip behind the ship"). Still hard-capped; rebuild is already O(nSeg).
+ */
+export const RIBBON_TRAIL_INTERPOLATION_CAP = 32;
 
 const PARTICLE_VERT_BASE = `
   attribute float aSize;
@@ -86,21 +92,30 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
   uniform float uRadiance;
   varying vec2 vTrailUv;
   void main() {
-    // aTrailUv.x is the physical history coordinate: zero is the live nozzle, one is the oldest
-    // retained wake. Keep that envelope separate from the animated flow coordinate so scrolling
-    // can never wrap the tail back to full opacity or turn the ribbon into a solid painted strip.
+    // aTrailUv.x is physical history: 0 = live nozzle, 1 = oldest retained wake. Flow scroll is
+    // independent so animation never re-lights the tail as a solid painted strip.
     float pathT = clamp(vTrailUv.x, 0.0, 1.0);
-    float along = fract(pathT * 2.65 - uTrailScroll * 1.35);
+    float along = fract(pathT * 3.15 - uTrailScroll * 1.55);
     float side = vTrailUv.y * 2.0 - 1.0;
     float liquid = trailSampleProcedural(along, side, uTrailTime);
-    float filament = exp(-side * side * 24.0);
-    float tailEnvelope = 1.0 - smoothstep(0.56, 1.0, pathT);
-    float brokenSheath = liquid * (0.34 + 0.66 * trailValueNoise(vec2(along * 8.0, uTrailTime * 0.18)));
-    float alpha = min(1.0, uOpacity * tailEnvelope * (filament * 0.78 + brokenSheath * 0.44));
-    if (alpha < 0.008) discard;
-    vec3 whiteHot = vec3(1.0, 0.985, 0.94);
-    vec3 radiance = mix(uColor, whiteHot, filament * 0.74)
-      * uRadiance * (0.72 + liquid * 0.72 + filament * 0.38);
+    // Soft luminous core + wider fluid sheath (not a hard-edged solid card).
+    float filament = exp(-side * side * 18.0);
+    float sheath = exp(-side * side * 5.5);
+    // Long soft tail: hold energy through most of the ribbon, ease out only near the end.
+    float tailEnvelope = 1.0 - smoothstep(0.62, 1.0, pathT);
+    float headBoost = 1.0 - smoothstep(0.0, 0.14, pathT);
+    float fluidNoise = trailValueNoise(vec2(along * 9.0, uTrailTime * 0.22));
+    float threadNoise = trailValueNoise(vec2(along * 17.0 - uTrailTime * 0.31, side * 2.4 + 1.7));
+    float brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
+      * (0.72 + 0.28 * threadNoise);
+    float alpha = min(1.0, uOpacity * tailEnvelope
+      * (filament * 0.92 + brokenSheath * 0.62 + sheath * 0.18)
+      * (0.88 + headBoost * 0.22));
+    if (alpha < 0.006) discard;
+    vec3 whiteHot = vec3(1.0, 0.988, 0.94);
+    vec3 coolSheath = mix(uColor, vec3(0.55, 0.88, 1.0), 0.28);
+    vec3 radiance = mix(coolSheath, whiteHot, filament * 0.82 + headBoost * 0.18)
+      * uRadiance * (0.78 + liquid * 0.85 + filament * 0.42 + headBoost * 0.18);
     gl_FragColor = vec4(radiance, alpha);
   }
 `;
@@ -111,8 +126,8 @@ export function createRibbonTrailMaterial(color) {
       uTrailScroll: { value: 0 },
       uTrailTime: { value: 0 },
       uColor: { value: new THREE.Color(color || '#7fe0ff') },
-      uOpacity: { value: 0.5 },
-      uRadiance: { value: 1.45 },
+      uOpacity: { value: 0.62 },
+      uRadiance: { value: 1.85 },
     },
     vertexShader: RIBBON_TRAIL_VERT,
     fragmentShader: RIBBON_TRAIL_FRAG,
@@ -409,26 +424,72 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     if (time != null) mat.uniforms.uTrailTime.value = Number.isFinite(time) ? time : 0;
     if (radiance != null) {
       mat.uniforms.uRadiance.value = Number.isFinite(radiance)
-        ? Math.max(0, Math.min(2.5, radiance))
+        ? Math.max(0, Math.min(3.2, radiance))
         : 0;
     }
   };
 
+  /**
+   * Catmull-Rom sample of the ribbon centerline. Equal-spacing history alone still reads as
+   * segmented chords under hard turns; a one-sample cubic through neighbours softens the path
+   * without allocating, and falls back to the raw sample at the ends.
+   */
+  const sampleCenter = (i, count, out) => {
+    if (count < 3 || i <= 0 || i >= count - 1) {
+      out.x = centers[i * 3];
+      out.z = centers[i * 3 + 1];
+      out.rot = centers[i * 3 + 2];
+      return out;
+    }
+    const i0 = i - 1;
+    const i1 = i;
+    const i2 = i + 1;
+    const i3 = i + 2 < count ? i + 2 : i + 1;
+    // Evaluate at the node itself with a light neighbour blend (t=0 on p1→p2, nudged by p0/p3).
+    // Using the midpoint tangent estimate keeps the sample on the authored history while rounding
+    // the normal used for width.
+    const p0x = centers[i0 * 3]; const p0z = centers[i0 * 3 + 1];
+    const p1x = centers[i1 * 3]; const p1z = centers[i1 * 3 + 1];
+    const p2x = centers[i2 * 3]; const p2z = centers[i2 * 3 + 1];
+    const p3x = centers[i3 * 3]; const p3z = centers[i3 * 3 + 1];
+    // Catmull-Rom at t=0 is p1; use a tiny t toward p2 mixed back to keep the head exact and
+    // only round interior curvature for the normal. Position stays on history (no drift).
+    out.x = p1x;
+    out.z = p1z;
+    out.rot = centers[i1 * 3 + 2];
+    // Store a smoothed tangent basis on the scratch so writeCenterPair can prefer it.
+    out.tx = (p2x - p0x) * 0.5 + (p3x - p1x) * 0.15;
+    out.tz = (p2z - p0z) * 0.5 + (p3z - p1z) * 0.15;
+    return out;
+  };
+  const centerScratch = { x: 0, z: 0, rot: 0, tx: 0, tz: 0 };
+
   const writeCenterPair = (i, count) => {
     const t = i / Math.max(1, count - 1);
-    const px = centers[i * 3];
-    const pz = centers[i * 3 + 1];
-    const rot = centers[i * 3 + 2];
-    const near = i > 0 ? i - 1 : i;
-    const far = i + 1 < count ? i + 1 : i;
-    const tangentX = centers[near * 3] - centers[far * 3];
-    const tangentZ = centers[near * 3 + 1] - centers[far * 3 + 1];
+    sampleCenter(i, count, centerScratch);
+    const px = centerScratch.x;
+    const pz = centerScratch.z;
+    const rot = centerScratch.rot;
+    let tangentX;
+    let tangentZ;
+    if (count >= 3 && i > 0 && i < count - 1
+      && (Math.abs(centerScratch.tx) + Math.abs(centerScratch.tz)) > 1e-8) {
+      // Smoothed interior tangent (camera-parallel cross is not needed in XZ ribbon space).
+      tangentX = centerScratch.tx;
+      tangentZ = centerScratch.tz;
+    } else {
+      const near = i > 0 ? i - 1 : i;
+      const far = i + 1 < count ? i + 1 : i;
+      tangentX = centers[near * 3] - centers[far * 3];
+      tangentZ = centers[near * 3 + 1] - centers[far * 3 + 1];
+    }
     const tangentLength = Math.hypot(tangentX, tangentZ);
     const normalX = tangentLength > 1e-5 ? -tangentZ / tangentLength : Math.sin(rot);
     const normalZ = tangentLength > 1e-5 ? tangentX / tangentLength : -Math.cos(rot);
-    // Narrow at the socket, open into a sheath, then taper continuously into the oldest wake.
-    const nozzleOpen = 0.58 + 0.42 * Math.min(1, t / 0.075);
-    const w = baseWidth * nozzleOpen * Math.pow(Math.max(0, 1 - t), 0.68);
+    // Soft nozzle open into a liquid sheath, then a long continuous taper — no hard width steps.
+    const nozzleOpen = 0.52 + 0.48 * Math.min(1, t / 0.09);
+    const body = Math.pow(Math.max(0, 1 - t), 0.55);
+    const w = baseWidth * nozzleOpen * body;
     const ox = normalX * w;
     const oz = normalZ * w;
     const vi = i * 2;
@@ -497,11 +558,15 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       return true;
     },
     /**
-     * Follow a live nozzle with a display-frame head and bounded interpolated history.
+     * Follow a live nozzle with a display-frame head and bounded equal-spacing history.
      *
      * owner is compared by identity so a replacement entity reusing an id cannot inherit the old
-     * hull's wake. discontinuityWU rejects teleports/jumps; ordinary high-speed motion is filled by
-     * at most RIBBON_TRAIL_INTERPOLATION_CAP committed points per frame.
+     * hull's wake. discontinuityWU rejects teleports/jumps.
+     *
+     * LAG/SKIP CONTRACT: the live head is always the current nozzle, and the most recent committed
+     * history sample is always advanced so the first ribbon segment (live → history[1]) is at most
+     * one sampleSpacingWU long. Equal-fraction subdivision capped at a small insert budget left a
+     * multi-spacing first chord on delayed frames — that chord was the visible skip behind the ship.
      */
     follow(x, z, rot, dt, owner, sampleSpacingWU, discontinuityWU, samplePeriodS) {
       if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(rot)) {
@@ -537,27 +602,51 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       const distance = Math.hypot(dx, dz);
 
       if (distance > spacing) {
-        // Subdivide the actual socket path, excluding the live endpoint. The last committed point
-        // remains within one bounded step of the nozzle, even after a delayed display frame.
-        const steps = Math.min(
-          RIBBON_TRAIL_INTERPOLATION_CAP,
-          Math.max(2, Math.ceil(distance / spacing)),
-        );
+        // Equal-spacing walk along the socket path, excluding the live endpoint. Each insert
+        // advances exactly `spacing` toward the nozzle. If the per-frame budget runs out, a final
+        // snap still places committed within one spacing of live so the first ribbon chord cannot
+        // open into the visible skip/detach behind the ship.
+        const maxInserts = Math.min(RIBBON_TRAIL_INTERPOLATION_CAP, Math.max(1, nSeg - 1));
         const startX = committedX;
         const startZ = committedZ;
         const startRot = committedRot;
         let deltaRot = rot - startRot;
         if (deltaRot > Math.PI) deltaRot -= Math.PI * 2;
         else if (deltaRot < -Math.PI) deltaRot += Math.PI * 2;
-        for (let i = 1; i < steps; i++) {
-          const t = i / steps;
-          const ix = startX + dx * t;
-          const iz = startZ + dz * t;
-          const ir = startRot + deltaRot * t;
+        const totalDist = distance;
+        let inserts = 0;
+        while (inserts < maxInserts) {
+          const remX = x - committedX;
+          const remZ = z - committedZ;
+          const remaining = Math.hypot(remX, remZ);
+          if (!(remaining > spacing)) break;
+          const inv = spacing / remaining;
+          const ix = committedX + remX * inv;
+          const iz = committedZ + remZ * inv;
+          const traveled = Math.hypot(ix - startX, iz - startZ);
+          const pathT = totalDist > 0 ? Math.min(1, traveled / totalDist) : 1;
+          const ir = startRot + deltaRot * pathT;
           appendHistory(ix, iz, ir);
           committedX = ix;
           committedZ = iz;
           committedRot = ir;
+          inserts++;
+        }
+        // Budget-exhausted snap: keep live→history[1] ≤ spacing even when detail is lost.
+        const remX = x - committedX;
+        const remZ = z - committedZ;
+        const remaining = Math.hypot(remX, remZ);
+        if (remaining > spacing + 1e-6) {
+          const snapT = 1 - spacing / remaining;
+          const sx = committedX + remX * snapT;
+          const sz = committedZ + remZ * snapT;
+          const traveled = Math.hypot(sx - startX, sz - startZ);
+          const pathT = totalDist > 0 ? Math.min(1, traveled / totalDist) : 1;
+          const sr = startRot + deltaRot * pathT;
+          appendHistory(sx, sz, sr);
+          committedX = sx;
+          committedZ = sz;
+          committedRot = sr;
         }
         sampleElapsed = 0;
       } else if (sampleElapsed >= period) {
