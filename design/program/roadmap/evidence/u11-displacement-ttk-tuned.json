@@ -3,7 +3,7 @@
   "packet": "U11-TUNED",
   "title": "displacement-vs-TTK telemetry tuned",
   "environment": {
-    "sourceCommit": "91f53da4b8de4e0bb3ea8379b7766affae070be3",
+    "sourceCommit": "59f63c35e967c9a0c6af8687bf106b83c8f48429",
     "generatedBy": "scripts/bench-displacement-ttk.mjs",
     "node": "v24.15.0",
     "platform": "win32",
