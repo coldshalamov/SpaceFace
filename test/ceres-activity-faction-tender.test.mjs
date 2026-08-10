@@ -28,13 +28,23 @@ const TENDER_POS = Object.freeze(sectorLocalToGlobalForSector({
   x: REFINERY_POCKET.activityAnchor.localPos.x + TENDER_SLOT.spawnOffset.x,
   z: REFINERY_POCKET.activityAnchor.localPos.z + TENDER_SLOT.spawnOffset.z,
 }, CERES_ACTIVITY_SECTOR_ID));
+// The projected route must reproduce the authored mark exactly, `targetRef` included — that is what
+// lets npcJobsRuntime recognize the tender's service client as a real object rather than a bare
+// coordinate. `speed` is the same distance/durationS the runtime re-derives when it validates the
+// relationship, so it is part of the canonical spec rather than a planning hint.
 const TENDER_ROUTE = Object.freeze(TENDER_SLOT.route.marks.map((mark) => Object.freeze({
   id: mark.id,
+  label: mark.id,
+  targetRef: mark.targetRef,
   pos: Object.freeze(sectorLocalToGlobalForSector({
     x: REFINERY_POCKET.activityAnchor.localPos.x + mark.offset.x,
     z: REFINERY_POCKET.activityAnchor.localPos.z + mark.offset.z,
   }, CERES_ACTIVITY_SECTOR_ID)),
 })));
+const TENDER_ROUTE_SPEED = Math.hypot(
+  TENDER_ROUTE[1].pos.x - TENDER_ROUTE[0].pos.x,
+  TENDER_ROUTE[1].pos.z - TENDER_ROUTE[0].pos.z,
+) / TENDER_SLOT.route.durationS;
 
 function runtime(sectorId = CERES_ACTIVITY_SECTOR_ID, seed = SEED) {
   const state = createGameState(seed);
@@ -73,6 +83,10 @@ function addRematerializedTender(rt, pos = { x: TENDER_POS.x + 17, z: TENDER_POS
   genericShell = false,
   hull = 37,
   shield = 11,
+  // World rematerialization builds a bare shell and factionPresence stamps the authored identity onto
+  // it during adoption. A caller that needs the hull to already BE the canonical tender — because it
+  // is standing in for an already-adopted body from a previous session — opts in here.
+  canonicalIdentity = false,
 } = {}) {
   const spec = genericShell
     ? {
@@ -100,6 +114,12 @@ function addRematerializedTender(rt, pos = { x: TENDER_POS.x + 17, z: TENDER_POS
   );
   entity.data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
   entity.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+  if (canonicalIdentity) {
+    entity.data.identityKey = TENDER_SLOT.worldRecordSlotId;
+    entity.data.activityActorSlotId = TENDER_SLOT.id;
+    entity.data.durable = true;
+    entity.data.factionPresence = { source: 'depth-program-k1', yardTender: true };
+  }
   rt.state.entities.set(entity.id, entity);
   rt.state.entityList.push(entity);
   return entity;
@@ -129,8 +149,13 @@ test('Ceres reuses the Pitborn yard tender as the authored stable actor and exac
   assert.equal(entry.worldRecordId, TENDER_RECORD_ID);
   assert.equal(entry.entityId, tender.id);
   assert.equal(tender.data.jobId, TENDER_JOB_ID);
-  assert.deepEqual(entry.job.route.map(({ id, pos }) => ({ id, pos })), TENDER_ROUTE,
-    'the job consumes the released route marks in pocket-anchor world space');
+  assert.deepEqual(
+    entry.job.route.map(({ id, label, targetRef, pos }) => ({ id, label, targetRef, pos })),
+    TENDER_ROUTE,
+    'the job consumes the released route marks in pocket-anchor world space, targetRef intact',
+  );
+  assert.equal(entry.job.speed, TENDER_ROUTE_SPEED,
+    'the projected job carries the canonical route speed, not the generic tender default');
   assert.equal(rt.state.rng(), untouchedRng, 'the data-planned cast binding consumes no state RNG');
   assert.equal(JSON.stringify(rt.state.traffic), trafficBefore, 'faction presence does not claim traffic state');
 });
@@ -334,12 +359,13 @@ test('save:loaded restores or creates exactly one tender job after authoritative
 
 test('a destroyed authored tender tombstone suppresses respawn and releases a stale virtual job', () => {
   const rt = runtime();
-  const staleHull = addRematerializedTender(rt);
+  const staleHull = addRematerializedTender(rt, undefined, { canonicalIdentity: true });
   assert.equal(rt.helpers.npcJobs.assign(staleHull, {
     kind: TENDER_SLOT.jobKind,
     sectorId: CERES_ACTIVITY_SECTOR_ID,
     route: TENDER_ROUTE,
-  }), TENDER_JOB_ID);
+    speed: TENDER_ROUTE_SPEED,
+  }), TENDER_JOB_ID, 'the stale job this test releases is genuinely created first');
   rt.jobs._onSectorExit({ sectorId: CERES_ACTIVITY_SECTOR_ID });
   rt.state.entities.delete(staleHull.id);
   rt.state.entityList.splice(rt.state.entityList.indexOf(staleHull), 1);
@@ -376,4 +402,148 @@ test('non-Ceres Pitborn yard tenders retain their existing position and transien
   assert.equal(tender.data.jobId, undefined);
   assert.equal(tender.data.trafficRole, undefined);
   assert.deepEqual(rt.state.npcJobs.byId, {});
+});
+
+// ── PQ-045.tender-client-materialization ────────────────────────────────────────────────────────
+// The tender used to fly a service call-out to `activity:disabled-hull` — a route reference that
+// named a physical client no object in the world actually was. These cover the whole chain that
+// makes it real: authored slot -> world object -> job projection -> live binding -> steering, and
+// the same chain again after a save/Continue rather than only on a fresh entry.
+
+const DISABLED_HULL_SLOT_ID = 'ceres_refinery_disabled_hull';
+const CLIENT_MARK = TENDER_SLOT.route.marks.find((mark) => mark.id === 'refinery_tender_client');
+
+function liveDisabledHulls(state) {
+  return state.entityList.filter((entity) => (
+    entity?.alive !== false && entity.data?.activityObjectSlotId === DISABLED_HULL_SLOT_ID
+  ));
+}
+
+function tenderRuntime() {
+  const sim = createSimulation({ seed: SEED, systems: [factionPresence, world, npcJobsRuntime] });
+  sim.registry.get('world').enterSector(CERES_ACTIVITY_SECTOR_ID, { placePlayer: false });
+  return sim;
+}
+
+test('the tender services one live disabled-hull object bound to its exact authored targetRef', () => {
+  const sim = tenderRuntime();
+  try {
+    assert.equal(CLIENT_MARK.targetRef, 'object:ceres_refinery_disabled_hull',
+      'the client mark names a real object rather than an abstract activity choreography mark');
+
+    const clients = liveDisabledHulls(sim.state);
+    assert.equal(clients.length, 1, 'exactly one disabled-hull object materializes, from one writer');
+    const client = clients[0];
+    assert.equal(client.type, 'fx');
+    assert.equal(client.collides, false, 'the client adds no collider to the Ceres budget');
+    assert.equal(client.mass, 0);
+    assert.equal(client.data.worldDressing, true);
+    assert.equal(client.data.placeId, 'place_dead_hulk');
+
+    const slot = REFINERY_POCKET.objectSlots.find((row) => row.id === DISABLED_HULL_SLOT_ID);
+    const expected = sectorLocalToGlobalForSector({
+      x: REFINERY_POCKET.activityAnchor.localPos.x + slot.offset.x,
+      z: REFINERY_POCKET.activityAnchor.localPos.z + slot.offset.z,
+    }, CERES_ACTIVITY_SECTOR_ID);
+    assert.deepEqual(xz(client.pos), { x: expected.x, z: expected.z },
+      'the object sits at its authored pocket offset, not at an ambient dressing position');
+
+    const entry = sim.state.npcJobs.byId[TENDER_JOB_ID];
+    const clientWaypoint = entry.job.route.find((row) => row.id === 'refinery_tender_client');
+    assert.equal(clientWaypoint.targetRef, CLIENT_MARK.targetRef,
+      'the factionPresence job projection preserves the authored targetRef exactly');
+
+    // The string surviving projection is not the same claim as the runtime resolving it. Drive the
+    // job to the leg that heads for the client and assert the controller owns the LIVE object.
+    const runtime = sim.registry.get('npcJobsRuntime');
+    const tender = sim.state.entities.get(entry.entityId);
+    entry.job.phase = 'transit';
+    entry.job.routeIndex = 0;
+    const binding = runtime._currentCeresRealTargetBinding(entry, tender);
+    assert.ok(binding, 'the tender/client tuple is an admitted real-target relationship');
+    assert.equal(binding.targetRef, client, 'the binding names the one live disabled-hull entity');
+    assert.equal(binding.spec.waypointId, 'refinery_tender_client');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('the tender steers to a safe berth off its client through the existing job owner', () => {
+  const sim = tenderRuntime();
+  try {
+    const entry = sim.state.npcJobs.byId[TENDER_JOB_ID];
+    const runtime = sim.registry.get('npcJobsRuntime');
+    const tender = sim.state.entities.get(entry.entityId);
+    const client = liveDisabledHulls(sim.state)[0];
+    entry.job.phase = 'transit';
+    entry.job.routeIndex = 0;
+
+    const authoredWaypoint = entry.job.route[1].pos;
+    const authoredAim = Math.atan2(
+      authoredWaypoint.z - tender.pos.z,
+      authoredWaypoint.x - tender.pos.x,
+    );
+    const liveAim = Math.atan2(client.pos.z - tender.pos.z, client.pos.x - tender.pos.x);
+    const separation = Math.abs(Math.atan2(
+      Math.sin(liveAim - authoredAim),
+      Math.cos(liveAim - authoredAim),
+    ));
+    assert.ok(separation > 0.25,
+      'the fixture makes servicing the real client causally distinct from the authored waypoint');
+
+    tender.rot = liveAim;
+    runtime._drive(entry, tender);
+    assert.ok(Math.abs(tender.data.intent.aimAngle - liveAim) < 1e-9,
+      'the tender aims at its live client, not at the authored coordinate');
+    assert.ok(tender.data.intent.moveZ > 0, 'and closes on it rather than holding station');
+
+    // A safe berth means it stops CLEAR of the casualty instead of flying into it.
+    const standoff = 56;
+    assert.ok(standoff > client.radius,
+      'the authored work berth clears the client hull envelope');
+    tender.pos = { x: client.pos.x + standoff, z: client.pos.z };
+    tender.vel = { x: 0, z: 0 };
+    runtime._drive(entry, tender);
+    assert.equal(tender.data.intent.brake, true, 'at the berth the tender holds rather than closing');
+    assert.equal(tender.data.intent.moveZ, 0);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('Continue restores a tender still servicing the same client, not a bare coordinate', () => {
+  const sim = tenderRuntime();
+  try {
+    const before = sim.state.npcJobs.byId[TENDER_JOB_ID];
+    const savedJobs = sim.registry.get('npcJobsRuntime').serialize();
+    const savedWaypoint = savedJobs.byId[TENDER_JOB_ID].job.route
+      .find((row) => row.id === 'refinery_tender_client');
+    assert.equal(savedWaypoint.targetRef, CLIENT_MARK.targetRef,
+      'the save envelope itself carries the service relationship');
+    assert.equal(savedJobs.byId[TENDER_JOB_ID].job.speed, before.job.speed);
+
+    const runtime = sim.registry.get('npcJobsRuntime');
+    runtime.deserialize(savedJobs);
+    sim.state.simTime = 30;
+    sim.bus.emit('save:loaded', {});
+
+    const restored = sim.state.npcJobs.byId[TENDER_JOB_ID];
+    assert.ok(restored, 'Continue restores exactly one tender job');
+    assert.equal(Object.keys(sim.state.npcJobs.byId).length, 1);
+    const restoredWaypoint = restored.job.route.find((row) => row.id === 'refinery_tender_client');
+    assert.equal(restoredWaypoint.targetRef, CLIENT_MARK.targetRef,
+      'the restored ship is still servicing the same client');
+
+    const clients = liveDisabledHulls(sim.state);
+    assert.equal(clients.length, 1, 'Continue leaves exactly one client object, never a duplicate');
+    const restoredTender = sim.state.entities.get(restored.entityId);
+    restored.job.phase = 'transit';
+    restored.job.routeIndex = 0;
+    const binding = runtime._currentCeresRealTargetBinding(restored, restoredTender);
+    assert.ok(binding, 'the relationship rebinds after restore rather than silently degrading');
+    assert.equal(binding.targetRef, clients[0],
+      'and it rebinds to the live object, proving more than a preserved string');
+  } finally {
+    sim.dispose();
+  }
 });

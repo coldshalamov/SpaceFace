@@ -236,9 +236,35 @@ function tenderGlobalPoint(offset) {
   }, CERES_ACTIVITY_SECTOR_ID);
 }
 
+// The projected job route must reproduce the authored marks EXACTLY — id, label, position and
+// `targetRef` — because npcJobsRuntime re-derives each mark from this same authored slot and refuses
+// any relationship whose waypoint does not match it field for field. Dropping `targetRef` here (or
+// omitting the canonical `speed` below) is indistinguishable, downstream, from the tender having no
+// authored service client at all. Both are computed with the identical expressions traffic uses for
+// the other Ceres cast routes so the float comparison is exact rather than merely close.
+function ceresTenderRoute() {
+  return CERES_REFINERY_TENDER.route.marks.map((mark) => {
+    const pos = tenderGlobalPoint(mark.offset);
+    return { id: mark.id, label: mark.id, pos: { x: pos.x, z: pos.z }, targetRef: mark.targetRef };
+  });
+}
+
+function ceresTenderRouteSpeed(route) {
+  const durationS = CERES_REFINERY_TENDER.route.durationS;
+  if (!Number.isFinite(durationS) || durationS <= 0 || route.length !== 2) return null;
+  const distance = Math.hypot(
+    route[1].pos.x - route[0].pos.x,
+    route[1].pos.z - route[0].pos.z,
+  );
+  if (!Number.isFinite(distance) || distance <= 0) return null;
+  const speed = distance / durationS;
+  return Number.isFinite(speed) && speed > 0 ? speed : null;
+}
+
 function ceresTenderContext(plan, seed, createdTick = 0) {
   if (!matchesCeresRefineryTender(plan)) return null;
   const identityKey = CERES_REFINERY_TENDER.worldRecordSlotId;
+  const route = ceresTenderRoute();
   return {
     plan: { ...plan, pos: tenderGlobalPoint(CERES_REFINERY_TENDER.spawnOffset) },
     slot: CERES_REFINERY_TENDER,
@@ -246,12 +272,21 @@ function ceresTenderContext(plan, seed, createdTick = 0) {
     createdTick: createdTick | 0,
     recordId: stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.NPC, identityKey),
     activeKey: `ceres-activity:${CERES_REFINERY_TENDER.id}`,
-    route: CERES_REFINERY_TENDER.route.marks.map((mark) => ({
-      id: mark.id,
-      label: mark.id,
-      pos: tenderGlobalPoint(mark.offset),
-    })),
+    route,
+    routeSpeed: ceresTenderRouteSpeed(route),
   };
+}
+
+function ceresTenderJobSpec(context) {
+  const spec = {
+    kind: context.slot.jobKind,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    route: context.route,
+  };
+  // Omit rather than pass a null: the job kernel treats a non-finite speed as "use the kind default",
+  // which is the pre-existing authored-route behavior we fall back to if the geometry ever degrades.
+  if (Number.isFinite(context.routeSpeed)) spec.speed = context.routeSpeed;
+  return spec;
 }
 
 function recordIsTerminal(record) {
@@ -467,11 +502,7 @@ export const factionPresence = {
       // Repeated lifecycle notifications are strict no-ops for live gameplay state. The job seam
       // itself is idempotent and may need only to restore a missing transient hull marker.
       if (typeof assignJob === 'function') {
-        assignJob(live, {
-          kind: context.slot.jobKind,
-          sectorId: CERES_ACTIVITY_SECTOR_ID,
-          route: context.route,
-        });
+        assignJob(live, ceresTenderJobSpec(context));
       }
       return live;
     }
@@ -499,11 +530,7 @@ export const factionPresence = {
     releaseCeresTenderFromWorldExtras(state, entity);
 
     if (typeof assignJob === 'function') {
-      assignJob(entity, {
-        kind: context.slot.jobKind,
-        sectorId: CERES_ACTIVITY_SECTOR_ID,
-        route: context.route,
-      });
+      assignJob(entity, ceresTenderJobSpec(context));
     }
 
     own.active[context.activeKey] = {

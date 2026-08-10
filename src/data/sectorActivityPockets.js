@@ -191,6 +191,19 @@ const refineryObjects = Object.freeze([
     runtimeOwner: 'world',
     targetRef: 'object:ceres_refinery_cargo_pod',
   }),
+  // The Pitborn yard tender's service client. Every other pocket object is scenery the cast works
+  // beside; this one is the reason a tender exists at all, so it is a real logical slot rather than
+  // an abstract `activity:` choreography mark. It sits inside the immediate band on the opposite
+  // side of the anchor from the cargo pod, so the tender's berth->client leg reads as a call-out
+  // across the refinery rather than a second approach to the freight staging area.
+  objectSlot({
+    id: 'ceres_refinery_disabled_hull',
+    pocketId: refineryId,
+    kind: 'disabled_service_client',
+    offset: point(-58, -46),
+    runtimeOwner: 'world',
+    targetRef: 'object:ceres_refinery_disabled_hull',
+  }),
 ]);
 const seamObjects = Object.freeze([
   objectSlot({
@@ -285,7 +298,7 @@ const refineryActors = Object.freeze([
       durationS: 28,
       marks: [
         mark('refinery_tender_berth', 0, MARK_DISTANCE_WU[0], 'station:station_ceres:service-berth'),
-        mark('refinery_tender_client', 0, -MARK_DISTANCE_WU[1], 'activity:disabled-hull'),
+        mark('refinery_tender_client', 0, -MARK_DISTANCE_WU[1], 'object:ceres_refinery_disabled_hull'),
       ],
     }),
   }),

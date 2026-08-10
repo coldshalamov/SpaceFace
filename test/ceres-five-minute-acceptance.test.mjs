@@ -53,6 +53,7 @@ const ACTOR_SLOT_IDS = Object.freeze([
 
 const OBJECT_SLOT_IDS = Object.freeze([
   'ceres_refinery_cargo_pod',
+  'ceres_refinery_disabled_hull',
   'ceres_seam_ore_clast',
   'ceres_ambush_distress_beacon',
   'ceres_ambush_bait_wreck',
@@ -258,7 +259,7 @@ test('missing, nonfinite, and internally inconsistent visibility metrics fail cl
   }).pass, false, 'a digest cannot be reused for different metric bytes');
 });
 
-test('runtime evidence requires the exact five-minute horizon and the 9/5/2 Ceres census', () => {
+test('runtime evidence requires the exact five-minute horizon and the 9/6/2 Ceres census', () => {
   for (const runtimeKind of ['browser', 'electron']) {
     const document = runtimeFixture(runtimeKind);
     assert.equal(document.r7CrimeLoopClaim, false);
@@ -299,7 +300,7 @@ test('runtime evidence requires the exact five-minute horizon and the 9/5/2 Cere
     ['controller substitution', (doc) => { doc.route.inputMode = 'controller'; }],
     ['eight actors', (doc) => { doc.census.actorSlotIds.pop(); }],
     ['duplicate actor', (doc) => { doc.census.actorSlotIds[8] = doc.census.actorSlotIds[0]; }],
-    ['four logical objects', (doc) => { doc.census.objectSlotIds.pop(); }],
+    ['five logical objects', (doc) => { doc.census.objectSlotIds.pop(); }],
     ['one collision anchor', (doc) => { doc.census.collisionAnchorSlotIds.pop(); }],
     ['ambush counted as a lawful actor', (doc) => {
       doc.census.throughlineAmbush.countedInAuthoredActorCensus = true;
@@ -438,7 +439,7 @@ test('runtime evidence requires raw five-minute route observations, not summary 
       && frame.sectorId === 'sector_ceres_belt'
       && frame.timeScale === 1
       && frame.actorSlotIds.length === 9
-      && frame.objectSlotIds.length === 5
+      && frame.objectSlotIds.length === 6
       && frame.collisionAnchorSlotIds.length === 2
   )), true);
   assert.deepEqual(observations.movingJobBuckets.map((bucket) => ({

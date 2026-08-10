@@ -5101,7 +5101,7 @@
       "priority": 253,
       "title": "Materialize the disabled refinery client the Pitborn tender services",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-045.choreography-repair"
       ],
@@ -5122,7 +5122,9 @@
         "npm run check:pq020:ceres-topology",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-tender-client-materialization-REPORT.md"
+      ],
       "brief": "activity:disabled-hull is the one route ref that claims a physical service client with no live object. Add one stable disabled-hull object authority, preserve the tender's exact targetRef through its factionPresence job projection and Continue, materialize and bind it through world, steer the tender to a safe berth through the existing job owner, and update the fixed five-minute object census. Do not replace the seven other activity:* marks: they are abstract scan/throughline/perimeter choreography, not missing entities."
     },
     {

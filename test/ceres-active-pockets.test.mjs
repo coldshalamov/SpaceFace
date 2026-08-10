@@ -61,6 +61,7 @@ const EXPECTED_POCKETS = Object.freeze([
 
 const EXPECTED_OBJECT_SLOTS = Object.freeze([
   'ceres_refinery_cargo_pod',
+  'ceres_refinery_disabled_hull',
   'ceres_seam_ore_clast',
   'ceres_ambush_distress_beacon',
   'ceres_ambush_bait_wreck',
@@ -229,8 +230,8 @@ test('R5A companion objects are logical world slots, not a second place registry
 
 test('R5 collision anchors are a separate frozen two-rock physical-lane contract', () => {
   const collisionAnchors = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.collisionAnchorSlots);
-  assert.equal(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots).length, 5,
-    'collision anchors never expand the five logical-object census');
+  assert.equal(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.objectSlots).length, 6,
+    'collision anchors never expand the logical-object census');
   assert.deepEqual(collisionAnchors.map((slot) => ({
     id: slot.id,
     sourceFieldId: slot.sourceFieldId,
@@ -287,7 +288,7 @@ test('R5 collision anchors are a separate frozen two-rock physical-lane contract
   ) - Math.sqrt(12340)) < 1e-12);
 });
 
-test('R5B materializes five inert object slots and two existing-budget collision anchors', () => {
+test('R5B materializes six inert object slots and two existing-budget collision anchors', () => {
   const first = materializeCeresActivityObjects(47);
   const repeat = materializeCeresActivityObjects(47);
 
@@ -300,7 +301,7 @@ test('R5B materializes five inert object slots and two existing-budget collision
     byType: { asteroid: 90, fx: 13, ship: 2, station: 6, wreck: 18 },
     collidable: 107,
     colliders: 107,
-  }, 'R5B must add no entity, type, or collider cost to the current full Ceres world');
+  }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
   assert.equal(new Set(first.activity.map((row) => row.slotId)).size, EXPECTED_OBJECT_SLOTS.length);
@@ -341,6 +342,7 @@ test('R5B materializes five inert object slots and two existing-budget collision
 
   const expectedPlaceBySlot = new Map([
     ['ceres_refinery_cargo_pod', 'place_conveyor_barge'],
+    ['ceres_refinery_disabled_hull', 'place_dead_hulk'],
     ['ceres_ambush_distress_beacon', 'place_nav_buoy'],
     ['ceres_ambush_bait_wreck', 'place_dead_hulk'],
     ['ceres_cathedral_grave_shard', 'place_debris_chunk'],
@@ -388,21 +390,22 @@ test('R5B materializes five inert object slots and two existing-budget collision
   assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
 
   assert.deepEqual(first.dressing.map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  // The i=0 prospecting drone is the ambient prop the tender's disabled client re-points; no prop is
+  // added, so the dressing list keeps its length, ids and RNG cadence.
   assert.deepEqual(first.dressing.map((row) => row.placeId), [
     'place_nav_buoy',
-    'place_mining_drone',
+    'place_dead_hulk',
     'place_nav_buoy',
     'place_dead_hulk',
     'place_nav_buoy',
     'place_debris_chunk',
     'place_conveyor_barge',
   ]);
-  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 105, 107, 108]);
+  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 103, 105, 107, 108]);
   assert.equal(first.ceresRngDraws, 495,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
   assert.deepEqual(first.unaffectedRngSignature, [
-    [103, -11757.625074, 7279.286646],
     [104, -12930.087603, 8742.364164],
     [106, -11393.591553, 9264.164417],
   ], 'unaffected tail positions fingerprint the original asteroid/dressing RNG cadence');
@@ -653,7 +656,9 @@ function captureCeresActivityState(state, formationModel) {
     fields: active.fields.map((field) => ({ id: field.id, asteroidIds: [...field.asteroidIds] })),
     fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
     dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
-    unaffectedRngSignature: [103, 104, 106].map(pointSignature),
+    // 102/103/105/107/108 are the dressing props claimed by an activity slot; 104 and 106 are the
+    // ambient buoys nothing binds, so they are what still fingerprints the untouched RNG cadence.
+    unaffectedRngSignature: [104, 106].map(pointSignature),
     numericTail: [109, 110, 111].map((id) => {
       const entity = state.entities.get(id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];

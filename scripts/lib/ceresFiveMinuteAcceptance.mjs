@@ -95,8 +95,11 @@ export const CERES_FIVE_MINUTE_ACTOR_SLOT_IDS = Object.freeze([
   'ceres_cinder_service_hauler',
 ]);
 
+// Ordered by pocket, matching CERES_FIVE_MINUTE_POCKET_IDS. The census gate compares a human-review
+// document against this exact order, so a new slot belongs with its own pocket rather than appended.
 export const CERES_FIVE_MINUTE_OBJECT_SLOT_IDS = Object.freeze([
   'ceres_refinery_cargo_pod',
+  'ceres_refinery_disabled_hull',
   'ceres_seam_ore_clast',
   'ceres_ambush_distress_beacon',
   'ceres_ambush_bait_wreck',
@@ -1690,6 +1693,7 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
       ceres_refinery_hauler: 'ceres_refinery_pocket',
       ceres_refinery_tender: 'ceres_refinery_pocket',
       ceres_refinery_cargo_pod: 'ceres_refinery_pocket',
+      ceres_refinery_disabled_hull: 'ceres_refinery_pocket',
       ceres_seam_miner: 'ceres_working_seam',
       ceres_seam_surveyor: 'ceres_working_seam',
       ceres_seam_ore_clast: 'ceres_working_seam',

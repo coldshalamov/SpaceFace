@@ -183,6 +183,20 @@ const CERES_ACTIVITY_COLLISION_ANCHORS = new Map(CERES_ACTIVITY_POCKETS.flatMap(
   ])
 )));
 
+// How each activity slot that claims the belt-dressing drone prop presents itself. A slot absent from
+// this table keeps the ordinary ambient prospecting drone.
+const CERES_ACTIVITY_DRONE_SLOT_PRESENTATION = Object.freeze({
+  ceres_refinery_disabled_hull: Object.freeze({
+    placeId: 'place_dead_hulk', name: 'Disabled Refinery Client',
+  }),
+  ceres_ambush_bait_wreck: Object.freeze({
+    placeId: 'place_dead_hulk', name: 'Throughline Bait Wreck',
+  }),
+  ceres_cathedral_grave_shard: Object.freeze({
+    placeId: 'place_debris_chunk', name: 'Cathedral Grave Shard',
+  }),
+});
+
 function ceresActivityObjectBinding(id, toGlobal) {
   const binding = CERES_ACTIVITY_OBJECT_SLOTS.get(id);
   if (!binding) throw new Error(`Missing Ceres activity object slot: ${id}`);
@@ -1526,9 +1540,16 @@ export const world = {
       const dist = 210 + rng() * 170;
       const originalNavPos = polarOffset(field.center, ang, dist);
       const navBinding = i === 0 ? activityBinding('ceres_ambush_distress_beacon') : null;
-      const droneBinding = i === 1
-        ? activityBinding('ceres_ambush_bait_wreck')
-        : (i === 2 ? activityBinding('ceres_cathedral_grave_shard') : null);
+      // Each Ceres activity object RE-POINTS an ambient prop this loop was going to spawn anyway
+      // rather than adding one. That is what keeps the authored cast free of entity, collider and
+      // draw cost, and it is why the pinned PQ-020 structural-cost digest still holds with a sixth
+      // logical object. The RNG position is still computed either way, so the draw cadence is
+      // untouched whether or not a slot claims the prop.
+      const droneBinding = i === 0
+        ? activityBinding('ceres_refinery_disabled_hull')
+        : (i === 1
+          ? activityBinding('ceres_ambush_bait_wreck')
+          : (i === 2 ? activityBinding('ceres_cathedral_grave_shard') : null));
       this._spawnPlaceProp(
         active,
         sector,
@@ -1543,19 +1564,18 @@ export const world = {
         },
       );
       const originalDronePos = polarOffset(field.center, ang + 1.9, 120 + rng() * 130);
+      const dronePresentation = droneBinding
+        ? CERES_ACTIVITY_DRONE_SLOT_PRESENTATION[droneBinding.id]
+        : null;
       this._spawnPlaceProp(
         active,
         sector,
-        droneBinding && droneBinding.id === 'ceres_ambush_bait_wreck'
-          ? 'place_dead_hulk'
-          : (droneBinding ? 'place_debris_chunk' : 'place_mining_drone'),
+        dronePresentation ? dronePresentation.placeId : 'place_mining_drone',
         droneBinding ? droneBinding.pos : originalDronePos,
         {
           paletteClass,
           rot: ang,
-          name: droneBinding && droneBinding.id === 'ceres_ambush_bait_wreck'
-            ? 'Throughline Bait Wreck'
-            : (droneBinding ? 'Cathedral Grave Shard' : 'Prospecting Drone'),
+          name: dronePresentation ? dronePresentation.name : 'Prospecting Drone',
           placeScale: 1,
           activityObjectSlotId: droneBinding && droneBinding.id,
         },

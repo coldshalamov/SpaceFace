@@ -110,9 +110,21 @@ function ceresActivityActorDescriptor(slotId) {
   return null;
 }
 
-// PQ-045 first split: only these five already-materialized, traffic-owned relationships gain a
-// physical target. This is intentionally not a generic targetRef interpreter. `activity:*`,
-// `actor:*`, and the tender's not-yet-materialized service berth remain authored-route fallbacks.
+// PQ-045: only these six already-materialized relationships gain a physical target. This is still
+// deliberately not a generic targetRef interpreter — the seven remaining `activity:*` marks and every
+// `actor:*` mark stay abstract authored choreography and keep their authored-route fallback.
+//
+// Two ownership families are admitted, because the Ceres cast has two spawn owners. `traffic_cast`
+// hulls are stamped by traffic's activity cast and carry its `ceresActivityCast`/`ceresActivityJobOwned`
+// pair. The refinery tender is deliberately excluded from that cast (traffic.js filters its slot id
+// out) and is instead a durable factionPresence world record, so it proves ownership through its own
+// `durable` + `factionPresence.yardTender` marker pair. Neither family borrows the other's flags:
+// stamping traffic's cast markers onto a factionPresence hull would hand it to traffic's release,
+// capture and law-responder scans as well, which is a second owner, not a target relationship.
+const CERES_TARGET_OWNERSHIP = Object.freeze({
+  TRAFFIC_CAST: 'traffic_cast',
+  FACTION_PRESENCE: 'faction_presence',
+});
 const CERES_REAL_TARGET_SPECS = Object.freeze([
   Object.freeze({
     actorSlotId: 'ceres_refinery_hauler',
@@ -126,6 +138,8 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     identityValue: 'ceres_refinery_cargo_pod',
     standoffKind: 'fixed',
     standoffWU: 24,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
   }),
   Object.freeze({
     actorSlotId: 'ceres_refinery_hauler',
@@ -139,6 +153,8 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     identityValue: 'station_ceres',
     standoffKind: 'dock',
     standoffWU: 72,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
   }),
   Object.freeze({
     actorSlotId: 'ceres_seam_miner',
@@ -152,6 +168,8 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     identityValue: 'ceres_seam_ore_clast',
     standoffKind: 'collision',
     standoffWU: 30,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
   }),
   Object.freeze({
     actorSlotId: 'ceres_cathedral_salvor',
@@ -165,6 +183,8 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     identityValue: 'ceres_cathedral_grave_shard',
     standoffKind: 'fixed',
     standoffWU: 32,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
   }),
   Object.freeze({
     actorSlotId: 'ceres_cathedral_salvor',
@@ -178,6 +198,29 @@ const CERES_REAL_TARGET_SPECS = Object.freeze([
     identityValue: 'world_site_wreck_cathedral/root',
     standoffKind: 'fixed',
     standoffWU: 48,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  // The tender's second mark. Its first mark (`station:station_ceres:service-berth`) stays authored:
+  // the berth is a named face of a station this route never needs to physically resolve, whereas the
+  // client is the whole point of the call-out. The authored work berth is wider than the other fixed
+  // standoffs on purpose — it clears the 42 WU disabled-hull envelope plus the tender's own radius,
+  // so the tender holds station alongside the casualty instead of nosing inside it the way the
+  // freight hauler deliberately does with the cargo barge.
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_tender',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_tender',
+    routeId: 'ceres_refinery_tender_service',
+    jobKind: NPC_JOB_KIND.TENDER,
+    waypointId: 'refinery_tender_client',
+    targetRef: 'object:ceres_refinery_disabled_hull',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_refinery_disabled_hull',
+    standoffKind: 'fixed',
+    standoffWU: 56,
+    recordKind: RECORD_KIND.NPC,
+    ownership: CERES_TARGET_OWNERSHIP.FACTION_PRESENCE,
   }),
 ]);
 
@@ -439,7 +482,7 @@ export const npcJobsRuntime = {
           ? candidate
           : null;
         const worldRecordId = descriptor
-          ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY,
+          ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, spec.recordKind,
               descriptor.slot.worldRecordSlotId)
           : null;
         return {
@@ -553,12 +596,12 @@ export const npcJobsRuntime = {
     }
   },
 
-  _worldRecordAllowsCeresJobActor(worldRecordId) {
+  _worldRecordAllowsCeresJobActor(worldRecordId, recordKind = RECORD_KIND.CONVOY) {
     const records = this.state.world && this.state.world.records && this.state.world.records.byId;
     const record = records && records[worldRecordId];
     if (!record) return true;
     return record.recordId === worldRecordId
-      && record.kind === RECORD_KIND.CONVOY
+      && record.kind === recordKind
       && record.sectorId === CERES_ACTIVITY_SECTOR_ID
       && record.alive !== false
       && record.outcome !== 'destroyed'
@@ -577,11 +620,26 @@ export const npcJobsRuntime = {
       && slot.route && slot.route.id === binding.spec.routeId
       && data.identityKey === binding.spec.worldRecordSlotId
       && data.activityActorSlotId === slot.id
-      && data.ceresActivityCast === true
-      && data.ceresActivityJobOwned === true
+      && this._hasCeresRealTargetOwnershipProof(binding, data)
       && (!requireJobId || data.jobId === binding.jobId)
       && this._hasExactCeresSectorAuthority(entity)
-      && this._worldRecordAllowsCeresJobActor(binding.worldRecordId);
+      && this._worldRecordAllowsCeresJobActor(binding.worldRecordId, binding.spec.recordKind);
+  },
+
+  /** Each admitted relationship proves its spawn owner with that owner's own markers, never the
+   *  other's. An unknown ownership tag fails closed rather than defaulting to either family. */
+  _hasCeresRealTargetOwnershipProof(binding, data) {
+    const ownership = binding && binding.spec && binding.spec.ownership;
+    if (ownership === CERES_TARGET_OWNERSHIP.TRAFFIC_CAST) {
+      return data.ceresActivityCast === true && data.ceresActivityJobOwned === true;
+    }
+    if (ownership === CERES_TARGET_OWNERSHIP.FACTION_PRESENCE) {
+      return data.durable === true
+        && data.ceresActivityCast === undefined
+        && data.ceresActivityJobOwned === undefined
+        && !!data.factionPresence && data.factionPresence.yardTender === true;
+    }
+    return false;
   },
 
   _isCanonicalCeresRealTargetRoute(binding, route, speed) {
@@ -1539,7 +1597,10 @@ export const npcJobsRuntime = {
     if (!job || !Array.isArray(job.route) || !Number.isInteger(job.routeIndex)) return null;
     let index = job.routeIndex;
     if (job.phase === NPC_JOB_PHASE.TRANSIT || job.phase === NPC_JOB_PHASE.RETURN) {
-      if (job.kind === NPC_JOB_KIND.MINER || job.kind === NPC_JOB_KIND.SALVOR) {
+      // Mirrors the kernel's own targetIndex(): miner, salvor and tender are all two-point shuttles
+      // that toggle between their endpoints, so the leg in progress heads for the OTHER waypoint.
+      if (job.kind === NPC_JOB_KIND.MINER || job.kind === NPC_JOB_KIND.SALVOR
+        || job.kind === NPC_JOB_KIND.TENDER) {
         index = job.routeIndex === 0 ? 1 : 0;
       } else if (job.kind === NPC_JOB_KIND.HAULER) {
         index = job.routeIndex + 1;
