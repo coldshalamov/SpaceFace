@@ -69,6 +69,15 @@ export function scenarioDialogueCommsPayload(payload) {
 export function createComms(ctx) {
   const { bus, state } = ctx;
   let choiceModalOpen = false;
+  let destroyed = false;
+  const unsubscribers = [];
+  const ownedModals = new Set();
+  function listen(event, handler) {
+    const off = bus.on(event, handler);
+    if (typeof off === 'function') unsubscribers.push(off);
+    else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
+    return handler;
+  }
   injectCommsCss();
   // Actionable pirate hails live in their own compact, non-modal strip. Keeping the renderer in a
   // dedicated module prevents the general comms feed from becoming an interaction/state owner.
@@ -226,12 +235,12 @@ export function createComms(ctx) {
     }
   }
 
-  bus.on('comms:popup', pushComms);
-  bus.on('scenario:dialogueLine', (payload) => {
+  listen('comms:popup', pushComms);
+  listen('scenario:dialogueLine', (payload) => {
     const comms = scenarioDialogueCommsPayload(payload || {});
     if (comms) pushComms(comms, { bypassAttentionGate: true });
   });
-  bus.on('scenario:branchResolved', (payload) => {
+  listen('scenario:branchResolved', (payload) => {
     const comms = branchLifecycleCommsPayload(payload || {});
     if (comms) pushComms(comms);
   });
@@ -300,11 +309,12 @@ export function createComms(ctx) {
     backlogList.appendChild(frag);
   }
 
+  const backlogCloseBtn = backlogView.querySelector('.sf-comm-backlog__close');
   backlogBtn.addEventListener('click', toggleBacklog);
-  backlogView.querySelector('.sf-comm-backlog__close').addEventListener('click', closeBacklog);
+  backlogCloseBtn.addEventListener('click', closeBacklog);
   // Route L/ESC through the central UI input bus so overlays close before Pause can open.
-  bus.on('ui:toggleComms', toggleBacklog);
-  bus.on('ui:closeComms', closeBacklog);
+  listen('ui:toggleComms', toggleBacklog);
+  listen('ui:closeComms', closeBacklog);
 
   // ── 3. Bulkhead graffiti (player's own ship interior — shown on the HUD) ─────────────────
   // Appended to #ui-root (NOT #hud): createHud() does `root.innerHTML = ''` on #hud which would
@@ -319,7 +329,7 @@ export function createComms(ctx) {
   const bulkheadLine = bulkhead.querySelector('.sf-bulkhead__line');
   let bulkheadHideT = 0;
 
-  bus.on('graffiti:show', (p) => {
+  listen('graffiti:show', (p) => {
     if (!p || !p.line) return;
     if (p.where === 'bulkhead') {
       // bulkhead graffiti is persistent (it's on the player's ship); it stays until replaced.
@@ -360,6 +370,7 @@ export function createComms(ctx) {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');
     choiceModalOpen = true;
+    ownedModals.add(wrap);
     wrap.className = 'sf-endgame sf-endgame--c';
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-modal', 'true');
@@ -373,6 +384,7 @@ export function createComms(ctx) {
     requestAnimationFrame(() => wrap.classList.add('open'));
     const cleanup = () => {
       choiceModalOpen = false;
+      ownedModals.delete(wrap);
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -390,13 +402,13 @@ export function createComms(ctx) {
       cleanup();
     });
   }
-  bus.on('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
+  listen('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
     'C', promptText || 'JUMP WITHOUT DESTINATION?',
     'The wormhole files a return, not an escape.',
     () => bus.emit('world:abortJumpCharge', { reason: 'choice_c_declined' }),
     'ui:endgameUnfiledJumpConfirm',
   ));
-  bus.on('endgame:promptChoiceD', ({ promptText, targetSectorId, via }) => presentPhysicalChoice(
+  listen('endgame:promptChoiceD', ({ promptText, targetSectorId, via }) => presentPhysicalChoice(
     'D', promptText || 'DEPART ASHFALL REACH?', 'Leave, or stay and keep the record.',
     null,
     'ui:endgameChoose',
@@ -405,7 +417,7 @@ export function createComms(ctx) {
       onNo: () => bus.emit('ui:endgameStayAshfall', { targetSectorId, via }),
     },
   ));
-  bus.on('endgame:promptSandbox', ({ promptText, confirmHint }) => presentPhysicalChoice(
+  listen('endgame:promptSandbox', ({ promptText, confirmHint }) => presentPhysicalChoice(
     'SANDBOX',
     promptText || 'CONTINUE WITHOUT FINAL DISPOSITION?',
     confirmHint || 'Not an ending. The world remains open and no disposition rewards apply.',
@@ -413,7 +425,7 @@ export function createComms(ctx) {
     'ui:endgameSandbox',
   ));
   // Irreversible confirmation for staged A/B (board) and any pending disposition.
-  bus.on('endgame:confirmRequired', ({ choice, confirmPrompt, confirmHint, isSandbox }) => {
+  listen('endgame:confirmRequired', ({ choice, confirmPrompt, confirmHint, isSandbox }) => {
     if (!choice) return;
     presentPhysicalChoice(
       choice,
@@ -421,19 +433,20 @@ export function createComms(ctx) {
       confirmHint || 'Irreversible.',
     );
   });
-  bus.on('endgame:ineligible', ({ unmet }) => {
+  listen('endgame:ineligible', ({ unmet }) => {
     // Eligibility already voiced by story; stash for station/codex surfaces.
     if (!state.ui) state.ui = {};
     state.ui.endgameUnmet = Array.isArray(unmet) ? unmet.slice() : [];
   });
-  bus.on('endgame:eligibility', ({ rows }) => {
+  listen('endgame:eligibility', ({ rows }) => {
     if (!state.ui) state.ui = {};
     state.ui.endgameEligibility = Array.isArray(rows) ? rows.slice() : [];
   });
-  bus.on('scenario:safeOpeningDemand', () => {
+  listen('scenario:safeOpeningDemand', () => {
     if (choiceModalOpen) return;
     const wrap = document.createElement('div');
     choiceModalOpen = true;
+    ownedModals.add(wrap);
     wrap.className = 'sf-endgame sf-endgame--c';
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-modal', 'true');
@@ -447,6 +460,7 @@ export function createComms(ctx) {
     requestAnimationFrame(() => wrap.classList.add('open'));
     const cleanup = () => {
       choiceModalOpen = false;
+      ownedModals.delete(wrap);
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -477,12 +491,13 @@ export function createComms(ctx) {
     bulkhead.style.display = visible ? 'block' : 'none';
     if (!visible) closeBacklog();
   }
-  bus.on('mode:changed', () => {
+  listen('mode:changed', () => {
     const flight = state.mode === 'flight' && !(state.ui && state.ui.docked);
     setFlightVisibility(flight);
   });
   // initial
-  setTimeout(() => {
+  const initialVisibilityTimer = setTimeout(() => {
+    if (destroyed) return;
     const flight = state.mode === 'flight' && !(state.ui && state.ui.docked);
     setFlightVisibility(flight);
   }, 60);
@@ -491,7 +506,38 @@ export function createComms(ctx) {
     return choiceModalOpen || endingEpilogue.isOpen() || endingEpilogue.hasPending();
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    clearTimeout(initialVisibilityTimer);
+    for (const unsubscribe of unsubscribers.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    backlogBtn.removeEventListener('click', toggleBacklog);
+    backlogCloseBtn.removeEventListener('click', closeBacklog);
+    for (const child of [
+      endingEpilogue,
+      pirateParleyPrompt,
+      sectorLawPresenter,
+      signalInvestigationPrompt,
+      recoveryEncounterPrompt,
+      contactHailPrompt,
+    ]) {
+      try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}
+    }
+    for (const modal of ownedModals) modal.remove();
+    ownedModals.clear();
+    live.length = 0;
+    held.length = 0;
+    backlog.length = 0;
+    choiceModalOpen = false;
+    feed.remove();
+    backlogBtn.remove();
+    backlogView.remove();
+    bulkhead.remove();
+  }
+
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
 }
 
 function normalizeTtlMs(ttl) {

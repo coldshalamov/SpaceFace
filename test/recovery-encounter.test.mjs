@@ -7,7 +7,8 @@ import { hash32 } from '../src/core/rng.js';
 import { cargo } from '../src/systems/cargo.js';
 import { recoveryEncounter, recoveryPowerSurprise } from '../src/systems/recoveryEncounter.js';
 import { salvageActions } from '../src/systems/salvageActions.js';
-import { recoveryStabilizationText } from '../src/ui/recoveryEncounterPrompt.js';
+import { recoveryCustodyView, recoveryStabilizationText } from '../src/ui/recoveryEncounterPrompt.js';
+import { stationName } from '../src/ui/sectorLawPresenter.js';
 
 function boot({ seed = 4401, sourceKind = 'salvage', parentType = 'ship', cargoCap = 30, pointId = 'point-1' } = {}) {
   const sim = createSimulation({ seed, systems: [cargo, salvageActions, recoveryEncounter] });
@@ -57,6 +58,102 @@ function stabilize(t, record) {
 function events(t, name) {
   return t.events.filter((event) => event.name === name);
 }
+
+test('custody guidance view preserves authoritative timers, cargo, destination, and phase verbs', () => {
+  const state = { simTime: 100, entityList: [] };
+  assert.equal(stationName(state, 'station_tethys'), 'Tethys Trade Hub');
+
+  const civilian = recoveryCustodyView({
+    id: 'civilian-recovery:fm_test:10', entityId: 9, label: 'MTS Relief Mule',
+    recoveryKind: 'civilian_disabled', phase: 'awaiting_tether', deadlineAt: 175,
+    remainingQty: 8, destinationStationId: 'station_tethys', secureReel_wu: 60,
+  }, state, state.simTime);
+  assert.equal(civilian.status, 'WINDOW 75 S');
+  assert.match(civilian.meta, /8 CARGO.*TETHYS TRADE HUB/i);
+  assert.doesNotMatch(civilian.meta, /T\+|deadline/i);
+  assert.match(civilian.detail, /Massline latch.*reel inside 60 WU/i);
+  assert.match(civilian.ariaLabel, /75 seconds remaining/i);
+  assert.doesNotMatch(civilian.detail, /\b[A-Z]\b|keyboard|controller/i);
+
+  const surrendered = recoveryCustodyView({
+    id: 'surrender:10', entityId: 10, label: 'Yielded Cutter', recoveryKind: 'surrendered',
+    phase: 'tethered', escapeAt: 145, rewardCr: 180, destinationStationId: 'station_tethys', secureReel_wu: 60,
+  }, state, state.simTime);
+  assert.equal(surrendered.status, 'ESCAPE 45 S');
+  assert.match(surrendered.detail, /Line attached.*reel.*60 WU/i);
+
+  const disabled = recoveryCustodyView({
+    id: 'surrender:11', entityId: 11, label: 'Disabled Raider', recoveryKind: 'drive_disabled',
+    phase: 'awaiting_tether', escapeAt: null, deadlineAt: null, destinationStationId: 'station_tethys', secureReel_wu: 60,
+  }, state, state.simTime);
+  assert.equal(disabled.status, 'OPEN');
+  assert.doesNotMatch(`${disabled.status} ${disabled.detail}`, /escape|deadline|\d+ S/i);
+
+  const secured = recoveryCustodyView({
+    ...civilian.source, phase: 'secured', deadlineAt: 160,
+  }, state, state.simTime);
+  assert.match(secured.detail, /Custody locked.*Tethys Trade Hub/i);
+  assert.match(secured.detail, /tow/i);
+});
+
+test('custody guidance distinguishes relatch transitions from precise terminal receipts', () => {
+  const state = { simTime: 120, entityList: [] };
+  const relatch = recoveryCustodyView({
+    id: 'surrender:12', entityId: 12, label: 'Yielded Cutter', recoveryKind: 'surrendered',
+    phase: 'awaiting_tether', escapeAt: 160, destinationStationId: 'station_tethys', secureReel_wu: 60,
+    instruction: 'Custody lock lost. Relatch before this ship escapes.',
+  }, state, state.simTime);
+  assert.equal(relatch.terminal, false);
+  assert.match(relatch.detail, /Relatch/i);
+
+  const lost = recoveryCustodyView({
+    id: 'civilian-recovery:fm_test:10', entityId: 9, label: 'MTS Relief Mule',
+    recoveryKind: 'civilian_disabled', phase: 'lost', lostReason: 'drive_restored',
+    remainingQty: 8, destinationStationId: 'station_tethys', secureReel_wu: 60,
+  }, state, state.simTime);
+  assert.equal(lost.terminal, true);
+  assert.match(`${lost.headline} ${lost.detail}`, /drive restored/i);
+
+  const receipt = recoveryCustodyView({
+    id: 'civilian-recovery:fm_test:10:recovered', recoveryId: 'civilian-recovery:fm_test:10',
+    shape: 'civilian_freight_recovery', outcome: 'recovered', recoveryKind: 'civilian_disabled',
+    entityId: 9, stationId: 'station_tethys', remainingQty: 8, credits: 138,
+    text: 'FREIGHT RECOVERED - civilian hull and remaining manifest transferred alive.',
+  }, state, state.simTime);
+  assert.equal(receipt.terminal, true);
+  assert.match(receipt.headline, /FREIGHT RECOVERED/i);
+  assert.match(receipt.meta, /138 CREDITS.*8 CARGO.*TETHYS TRADE HUB/i);
+  assert.match(receipt.detail, /Receipt.*civilian-recovery:fm_test:10:recovered/i);
+});
+
+test('terminal and receipt custody views suppress every future deadline countdown', () => {
+  const state = { simTime: 100, entityList: [] };
+  for (const payload of [
+    {
+      id: 'civilian-recovery:released', recoveryKind: 'civilian_disabled', phase: 'lost',
+      lostReason: 'released', deadlineAt: 175, remainingQty: 4, destinationStationId: 'station_tethys',
+    },
+    {
+      id: 'civilian-recovery:broke', recoveryKind: 'civilian_disabled', phase: 'lost',
+      lostReason: 'tether_broke', deadlineAt: 175, remainingQty: 4, destinationStationId: 'station_tethys',
+    },
+    {
+      id: 'civilian-recovery:broke:tether_broke', recoveryId: 'civilian-recovery:broke',
+      shape: 'civilian_freight_recovery', outcome: 'tether_broke', recoveryKind: 'civilian_disabled',
+      deadlineAt: 175, remainingQty: 4, credits: 0,
+    },
+    {
+      id: 'civilian-recovery:success:recovered', recoveryId: 'civilian-recovery:success',
+      shape: 'civilian_freight_recovery', outcome: 'recovered', recoveryKind: 'civilian_disabled',
+      deadlineAt: 175, remainingQty: 4, credits: 114, stationId: 'station_tethys',
+    },
+  ]) {
+    const view = recoveryCustodyView(payload, state, state.simTime);
+    assert.equal(view.terminal, true);
+    assert.equal(view.remaining, null);
+    assert.doesNotMatch(`${view.status} ${view.meta} ${view.detail} ${view.ariaLabel}`, /75 seconds|WINDOW 75|remaining/i);
+  }
+});
 
 test('investigation binds one physical wreck, suppresses the dead mission offer, and requires a second close scan', () => {
   const t = boot();

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 import { physics } from '../src/core/physics.js';
 import { createSimulation } from '../src/core/sim.js';
+import { ensureCombatState } from '../src/combat/runtime.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { save } from '../src/save/saveSystem.js';
@@ -292,6 +293,60 @@ test('drive disable ejects one deterministic subset and death ejects the conserv
     assert.equal(snapshot.accountedQty, snapshot.initialQty, snapshot.reason);
     assert.ok(snapshot.podCount <= 3);
   }
+});
+
+test('ordinary combat-to-recovery order refreshes civilian guidance from 7 to the canonical 4-unit carrier remainder', () => {
+  const h = boot(47515);
+  const live = fire(h, ':spill');
+  const options = [];
+  const updates = [];
+  const tethered = [];
+  const secured = [];
+  h.bus.on('surrender:option', (payload) => options.push(structuredClone(payload)));
+  h.bus.on('surrender:updated', (payload) => updates.push(structuredClone(payload)));
+  h.bus.on('surrender:tethered', (payload) => tethered.push(structuredClone(payload)));
+  h.bus.on('surrender:secured', (payload) => secured.push(structuredClone(payload)));
+
+  const { carrier } = disable(h, live);
+  assert.equal(options.length, 1);
+  assert.equal(options[0].remainingQty, 7, 'C observes the authored manifest before Unit B spills cargo');
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].remainingQty, 4, 'the canonical manifestRemaining event refreshes guidance immediately');
+  assert.equal(updates[0].rewardCr, 114, 'the refreshed public record prices only the live carrier remainder');
+  assert.equal(carrier.data.cargoManifest.totalQty, 4);
+  assert.equal(carrier.data.surrenderRecovery.manifest.totalQty, 4);
+
+  const canonicalRemaining = h.events['freight:manifestRemaining'].at(-1);
+  const recoveryRecord = h.state.surrenderRecovery.records[`surrender:${carrier.id}`];
+  recoveryRecord.manifest.lines[0].qty = 7;
+  recoveryRecord.manifest.totalQty = 7;
+  for (const spoof of [
+    { carrierIdentityKey: `${canonicalRemaining.carrierIdentityKey}:spoof` },
+    { encounterId: `${canonicalRemaining.encounterId}:spoof` },
+    { custodyId: `${canonicalRemaining.custodyId}:spoof` },
+    { manifestId: `${canonicalRemaining.manifestId}:spoof` },
+  ]) {
+    h.bus.emit('freight:manifestRemaining', { ...canonicalRemaining, ...spoof });
+    assert.equal(recoveryRecord.manifest.totalQty, 7, 'loose identity fields cannot alter the active recovery snapshot');
+  }
+  h.bus.emit('freight:manifestRemaining', canonicalRemaining);
+  assert.equal(recoveryRecord.manifest.totalQty, 4, 'the exact canonical identity repairs the stale recovery snapshot');
+
+  const attachmentId = 'att_composed_recovery_guidance';
+  const attachments = ensureCombatState(h.state).attachments;
+  attachments.byId[attachmentId] = {
+    id: attachmentId, defId: 'tether_standard', ownerId: h.player.id, targetId: carrier.id,
+    state: 'active', restLength: 80, lastTension: 0, lastImpulse: 0, physicsHandle: null,
+  };
+  h.bus.emit('tether:latched', { actorId: h.player.id, targetId: carrier.id, attachmentId });
+  assert.equal(tethered.length, 1);
+  assert.equal(tethered[0].remainingQty, 4);
+  attachments.byId[attachmentId].restLength = 60;
+  h.bus.emit('tether:reel', {
+    actorId: h.player.id, targetId: carrier.id, attachmentId, before: 80, after: 60,
+  });
+  assert.equal(secured.length, 1);
+  assert.equal(secured[0].remainingQty, 4);
 });
 
 test('the real player pickup seam moves only that pod to player custody and wins the raider race', () => {

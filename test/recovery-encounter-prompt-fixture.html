@@ -18,16 +18,24 @@
   <div id="objective"><b>CURRENT OBJECTIVE</b>Stabilize the derelict recovery</div><div id="ui-root"></div>
   <script type="module">
     import { createRecoveryEncounterPrompt } from '../src/ui/recoveryEncounterPrompt.js';
+    import { createComms } from '../src/ui/comms.js';
     const handlers=new Map(),emitted=[];
-    const bus={on(name,fn){if(!handlers.has(name))handlers.set(name,[]);handlers.get(name).push(fn)},emit(name,payload){emitted.push({name,payload});for(const fn of handlers.get(name)||[])fn(payload)}};
-    const state={mode:'flight',simTime:100,ui:{docked:false}},gamepad={actions:{}};
-    const prompt=createRecoveryEncounterPrompt({state,bus,gamepad});
+    const bus={
+      on(name,fn){if(!handlers.has(name))handlers.set(name,[]);handlers.get(name).push(fn);return()=>bus.off(name,fn)},
+      off(name,fn){const list=handlers.get(name)||[],index=list.indexOf(fn);if(index>=0)list.splice(index,1)},
+      emit(name,payload){emitted.push({name,payload});for(const fn of [...(handlers.get(name)||[])])fn(payload)},
+    };
+    const state={mode:'flight',simTime:100,ui:{docked:false},settings:{video:{motionReduce:false}},entityList:[{id:31,type:'station',name:'Fixture Lawful Harbor',data:{stationId:'station_fixture_lawful',name:'Fixture Lawful Harbor'}}]},gamepad={actions:{}};
+    let prompt=createRecoveryEncounterPrompt({state,bus,gamepad}),comms=null;
     const base={recoveryId:'recovery:fixture',sectorId:'sector_ceres_belt',entityId:9,pos:{x:480,z:0},classification:'DERELICT SALVAGE',condition:'life_support',conditionLabel:'LIFE SIGNS · POD INTACT',ownership:'REGISTERED CLAIM',legalStatus:'claimed',hasSurvivor:true,hazard:null,stabilization:0,stabilizationMode:null,towClear_wu:260};
     const show=(phase,extra={})=>{const value={...base,phase,...extra};bus.emit(phase==='decision'?'recovery:decisionReady':'recovery:readout',value);prompt.tick();return value};
+    const custodyBase={id:'civilian-recovery:fixture-manifest:6000',entityId:9,label:'MTS RELIEF MULE',recoveryKind:'civilian_disabled',phase:'awaiting_tether',reason:'drive_disabled',rewardCr:138,escapeAt:null,deadlineAt:175,manifestId:'fixture-manifest',freighterKey:'fixture-freighter',remainingQty:8,destinationStationId:'station_fixture_lawful',secureReel_wu:60,instruction:'Civilian drive disabled. Latch with massline. Reel inside 60. Tow the manifest to lawful cover.',lostReason:null};
+    const custody=(phase,extra={})=>{const value={...custodyBase,phase,...extra};const event=phase==='awaiting_tether'?'surrender:option':phase==='tethered'?'surrender:tethered':phase==='secured'?'surrender:secured':phase==='escaped'?'surrender:escaped':'surrender:recoveryLost';bus.emit(event,value);prompt.tick();return value};
+    const custodyReceipt=(outcome='recovered',extra={})=>{const value={id:`${custodyBase.id}:${outcome}`,recoveryId:custodyBase.id,shape:'civilian_freight_recovery',outcome,recoveryKind:'civilian_disabled',entityId:9,stationId:outcome==='recovered'?'station_fixture_lawful':null,remainingQty:8,credits:outcome==='recovered'?138:0,deadlineAt:custodyBase.deadlineAt,text:outcome==='recovered'?'FREIGHT RECOVERED - civilian hull and remaining manifest transferred alive.':'FREIGHT RECOVERY LOST - disabled civilian was not secured in time.',...extra};bus.emit('encounter:receipt',value);prompt.tick();return value};
     bus.on('recovery:choose',(payload)=>bus.emit('recovery:completed',{recoveryId:payload.recoveryId,outcome:payload.choice,ownership:'REGISTERED CLAIM',legalStatus:'claimed',credits:payload.choice==='rescue'?620:360,repDelta:payload.choice==='rescue'?12:4,cargo:payload.choice==='blackbox'?{cmdty_salvage_electronics:1}:{},pos:{x:480,z:0}}));
     bus.on('recovery:vent',()=>show('stabilizing',{condition:'unstable',conditionLabel:'REACTOR VENTED · HULK DRIFTING',ownership:'OPEN SALVAGE',legalStatus:'open',hasSurvivor:false,stabilization:.2,stabilizationMode:'massline'}));
     show('awaiting_scan',{condition:null,conditionLabel:'UNIDENTIFIED DERELICT',ownership:null,legalStatus:null,hasSurvivor:null});
-    window.sfRecoveryFixture={state,bus,prompt,gamepad,emitted,show,base,advance(seconds){state.simTime+=seconds;prompt.tick()}};
+    window.sfRecoveryFixture={state,bus,get prompt(){return prompt},gamepad,emitted,show,base,custodyBase,custody,custodyReceipt,listenerCount(name){return(handlers.get(name)||[]).length},reinit(){prompt.destroy();prompt=createRecoveryEncounterPrompt({state,bus,gamepad});return prompt},mountComms(){if(prompt){prompt.destroy();prompt=null}if(comms)comms.destroy();comms=createComms({state,bus,gamepad,helpers:{}});return comms},destroyComms(){if(comms)comms.destroy();comms=null},advance(seconds){state.simTime+=seconds;if(prompt)prompt.tick();else if(comms)comms.tick()}};
   </script>
 </body>
 </html>

@@ -4,11 +4,13 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import {
   beginScreenRegistrationCycle,
+  destroyCommsOwner,
   destroyMarketNewsOwner,
   invalidateScreenRegistrationCycle,
   isScreenRegistrationCycleCurrent,
   isScreenRegistrationCycleSettled,
   replaceMarketNewsOwner,
+  replaceCommsOwner,
   ui,
 } from '../src/ui/uiRoot.js';
 
@@ -87,4 +89,35 @@ test('uiRoot replacement and destroy leave one then zero marketNews subscribers'
   bus.emit('freight:loss', { ...payload, intentId: 'fl_ui_lifecycle_after_destroy' });
   assert.equal(headlines.length, 1, 'destroyed owner cannot relay another headline');
   assert.equal(voices.length, 1, 'destroyed owner cannot speak another headline');
+});
+
+test('uiRoot replacement and destroy own exactly one then zero comms recovery subscribers', () => {
+  const bus = createBus();
+  const owner = {};
+  const ctx = { bus, state: { mode: 'flight', ui: {} }, helpers: {} };
+  let roots = 0;
+  const factory = () => {
+    roots++;
+    const off = bus.on('surrender:option', () => {});
+    let destroyed = false;
+    return {
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        roots--;
+        off();
+      },
+    };
+  };
+
+  replaceCommsOwner(owner, ctx, factory);
+  assert.equal(roots, 1);
+  assert.equal(bus._listeners.get('surrender:option')?.size, 1);
+  replaceCommsOwner(owner, ctx, factory);
+  assert.equal(roots, 1, 'replacement destroys the prior root before mounting its successor');
+  assert.equal(bus._listeners.get('surrender:option')?.size, 1, 'replacement retains one subscriber');
+  destroyCommsOwner(owner);
+  assert.equal(owner.comms, null);
+  assert.equal(roots, 0);
+  assert.equal(bus._listeners.get('surrender:option')?.size || 0, 0);
 });

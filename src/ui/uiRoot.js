@@ -127,6 +127,21 @@ export function replaceMarketNewsOwner(owner, ctx) {
   return next;
 }
 
+export function destroyCommsOwner(owner) {
+  if (!owner) return;
+  const current = owner.comms;
+  owner.comms = null;
+  if (current && typeof current.destroy === 'function') current.destroy();
+}
+
+export function replaceCommsOwner(owner, ctx, factory = createComms) {
+  if (!owner) return null;
+  destroyCommsOwner(owner);
+  const next = factory(ctx);
+  owner.comms = next;
+  return next;
+}
+
 export function createFadeLeaseController(dockFade, {
   requestFrame = (fn) => requestAnimationFrame(fn),
   setDelay = (fn, ms) => setTimeout(fn, ms),
@@ -307,6 +322,7 @@ export const ui = {
       this.encounterChoicePrompt.destroy();
     }
     this.encounterChoicePrompt = null;
+    destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
@@ -354,7 +370,7 @@ export const ui = {
     this.input = createUiInput(ctx, this.screenManager);
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
-    this.comms = createComms(ctx);
+    replaceCommsOwner(this, ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
@@ -1099,6 +1115,7 @@ export const ui = {
       this.encounterChoicePrompt.destroy();
     }
     this.encounterChoicePrompt = null;
+    destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;

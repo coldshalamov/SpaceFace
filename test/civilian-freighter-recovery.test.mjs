@@ -13,6 +13,7 @@ import {
 
 const OBSERVED_EVENTS = Object.freeze([
   'surrender:option',
+  'surrender:tethered',
   'surrender:secured',
   'surrender:recoveryLost',
   'economy:applyTradePressure',
@@ -335,6 +336,8 @@ test('a pre-existing canonical Massline is adopted at disable without requiring 
   });
   disable(long);
   assert.equal(long.freighter.data.surrenderRecovery.phase, 'tethered');
+  assert.equal(long.events['surrender:tethered'].length, 0,
+    'adopting already-tethered geometry does not replay the live transition event');
   attachment.restLength = SURRENDER_SECURE_REEL_WU;
   long.bus.emit('tether:reel', {
     actorId: long.player.id,
@@ -344,6 +347,46 @@ test('a pre-existing canonical Massline is adopted at disable without requiring 
   });
   assert.equal(long.freighter.data.surrenderRecovery.phase, 'secured');
   assert.equal(long.events['surrender:secured'].length, 1);
+});
+
+test('civilian latch publishes one tethered phase before secured and lawful terminal receipts', () => {
+  const t = boot({ seed: 47033 });
+  disable(t);
+  const attachment = installCanonicalAttachment(t, t.freighter, {
+    restLength: SURRENDER_SECURE_REEL_WU + 20,
+  });
+
+  t.bus.emit('tether:latched', {
+    actorId: t.player.id,
+    targetId: t.freighter.id,
+    attachmentId: attachment.id,
+  });
+  t.bus.emit('tether:latched', {
+    actorId: t.player.id,
+    targetId: t.freighter.id,
+    attachmentId: attachment.id,
+  });
+  assert.equal(t.events['surrender:tethered'].length, 1);
+  assert.equal(t.events['surrender:tethered'][0].phase, 'tethered');
+  assert.equal(t.events['surrender:tethered'][0].deadlineAt, t.events['surrender:option'][0].deadlineAt);
+  assert.equal(t.events['surrender:tethered'][0].destinationStationId, 'station_custody_test');
+
+  attachment.restLength = SURRENDER_SECURE_REEL_WU;
+  t.bus.emit('tether:reel', {
+    actorId: t.player.id,
+    targetId: t.freighter.id,
+    attachmentId: attachment.id,
+    before: SURRENDER_SECURE_REEL_WU + 20,
+    after: SURRENDER_SECURE_REEL_WU,
+  });
+  assert.equal(t.events['surrender:secured'].length, 1);
+  t.freighter.pos.x = 120;
+  t.freighter.pos.z = 0;
+  t.sim.step();
+  const receipt = oneCivilianReceipt(t, 'recovered')[0];
+  assert.equal(receipt.stationId, 'station_custody_test');
+  assert.equal(receipt.credits, 138);
+  assert.equal(receipt.remainingQty, 8);
 });
 
 test('civilian recovery excludes hostile, nonmanifest, non-hauler, active, boss, ace, and mission hulls', () => {
@@ -762,7 +805,18 @@ test('a pre-admitted stable receipt blocks every settlement side effect', () => 
   disable(t);
   const record = t.state.surrenderRecovery.records[`surrender:${t.freighter.id}`];
   const receiptId = `${record.id}:recovered`;
-  t.state.surrenderRecovery.receipts.push({ id: receiptId, shape: 'civilian_freight_recovery' });
+  t.state.surrenderRecovery.receipts.push({
+    id: receiptId,
+    recoveryId: record.id,
+    shape: 'civilian_freight_recovery',
+    outcome: 'recovered',
+    recoveryKind: 'civilian_disabled',
+    entityId: t.freighter.id,
+    manifestId: record.manifest.manifestId,
+    freighterKey: record.manifest.freighterKey,
+    remainingQty: record.manifest.totalQty,
+    credits: record.rewardCr,
+  });
 
   attachAndReel(t);
   t.freighter.pos.x = 100;
@@ -772,13 +826,20 @@ test('a pre-admitted stable receipt blocks every settlement side effect', () => 
   assert.equal(t.events['economy:grantCredits'].length, 0);
   assert.equal(t.events['faction:repDelta'].length, 0);
   assert.equal(t.events['economy:applyTradePressure'].length, 0);
+  assert.equal(t.events['cargo:changed'].length, 0);
   assert.equal(oneCivilianReceipt(t, 'recovered').length, 0);
+  assert.equal(t.events['encounter:receipt'].length, 0, 'rejected settlement publishes no second receipt');
+  assert.equal(t.events['surrender:recoveryLost'].length, 1, 'the prompt receives one terminal fail-closed transition');
+  assert.equal(t.events['surrender:recoveryLost'][0].phase, 'lost');
+  assert.equal(t.events['surrender:recoveryLost'][0].lostReason, 'duplicate_receipt');
   assert.equal(t.freighter.data.despawnAt, undefined);
   assert.notEqual(t.freighter.flags && t.freighter.flags.invuln, true);
   assert.equal(t.freighter.data.freightCustody.status, 'carrier');
   assert.equal(t.freighter.data.surrenderRecovery.phase, 'lost');
   assert.equal(t.freighter.data.surrenderRecovery.lostReason, 'duplicate_receipt');
   assert.equal(t.state.surrenderRecovery.receipts.filter((item) => item.id === receiptId).length, 1);
+  t.sim.runTicks(10);
+  assert.equal(t.events['surrender:recoveryLost'].length, 1, 'resolved duplicate rejection cannot replay terminal guidance');
 });
 
 test('one durable civilian recovery identity cannot settle under a conflicting terminal outcome', () => {

@@ -47,7 +47,7 @@ function boot({ seed = 4801, hostileData = {}, bountyCr = 300 } = {}) {
     factionId: 'faction_scn',
     pos: { x: 0, z: 0 },
     radius: 90,
-    data: { stationId: 'station_custody_test', factionId: 'faction_scn', size: 'M' },
+    data: { stationId: 'station_custody_test', factionId: 'faction_scn', sectorId: 'sector_tethys_junction', size: 'M' },
   });
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 1200, z: 0 }, hull: 200, hullMax: 200,
@@ -78,11 +78,13 @@ function boot({ seed = 4801, hostileData = {}, bountyCr = 300 } = {}) {
     },
   });
   const events = {
-    option: [], secured: [], custody: [], escaped: [], credits: [], rep: [], receipts: [], resolutions: [],
+    option: [], tethered: [], secured: [], recoveryLost: [], custody: [], escaped: [], credits: [], rep: [], receipts: [], resolutions: [],
   };
   for (const [event, key] of [
     ['surrender:option', 'option'],
+    ['surrender:tethered', 'tethered'],
     ['surrender:secured', 'secured'],
+    ['surrender:recoveryLost', 'recoveryLost'],
     ['law:custodyTransfer', 'custody'],
     ['surrender:escaped', 'escaped'],
     ['economy:grantCredits', 'credits'],
@@ -91,6 +93,30 @@ function boot({ seed = 4801, hostileData = {}, bountyCr = 300 } = {}) {
     ['combat:nonlethalResolution', 'resolutions'],
   ]) bus.on(event, (payload) => events[key].push(structuredClone(payload)));
   return { sim, state, bus, station, player, hostile, events, voices };
+}
+
+function latchAt(t, restLength, attachmentId = 'att_surrender_tethered') {
+  const combat = ensureCombatState(t.state);
+  combat.attachments.byId[attachmentId] = {
+    id: attachmentId,
+    defId: 'tether_standard',
+    ownerId: t.player.id,
+    targetId: t.hostile.id,
+    state: 'active',
+    restLength,
+    lastTension: 0,
+    lastImpulse: 0,
+    physicsHandle: null,
+  };
+  t.state.player.tether = {
+    active: true,
+    targetId: t.hostile.id,
+    attachmentId,
+    restLength,
+    strain: 0.1,
+    phase: 'loaded',
+  };
+  t.bus.emit('tether:latched', { actorId: t.player.id, targetId: t.hostile.id, attachmentId });
 }
 
 function surrender(t) {
@@ -178,6 +204,16 @@ test('surrender creates one readable massline custody option', { skip: !surrende
   assert.equal(t.hostile.data.ai.passive, true);
 });
 
+test('non-civilian guidance never selects a prefetched station from another sector', { skip: !surrenderRecovery }, () => {
+  const t = boot();
+  t.sim.spawn({
+    type: 'station', team: 2, factionId: 'faction_scn', pos: { ...t.hostile.pos }, radius: 90,
+    data: { stationId: 'station_prefetched_neighbor', factionId: 'faction_scn', sectorId: 'sector_ceres_belt', size: 'M' },
+  });
+  surrender(t);
+  assert.equal(t.events.option[0].destinationStationId, 'station_custody_test');
+});
+
 test('a player-disabled hostile drive opens custody without forcing surrender or controls', { skip: !surrenderRecovery }, () => {
   const t = boot({ hostileData: { ai: { fsm: 'attack', passive: false, roe: 'fire_at_will' } } });
   t.hostile.data.intent.fire = true;
@@ -235,6 +271,49 @@ test('only a real close player tether secures the surrendered ship', { skip: !su
   assert.equal(t.hostile.data.surrenderRecovery.phase, 'secured');
   assert.equal(t.events.credits.length, 0, 'field secure is not an instant remote payout');
   assert.equal(t.events.custody.length, 0, 'field secure still needs a lawful station');
+});
+
+test('canonical attachment publishes exactly one truthful tethered transition', { skip: !surrenderRecovery }, () => {
+  const t = boot();
+  surrender(t);
+
+  t.bus.emit('tether:latched', {
+    actorId: t.player.id,
+    targetId: t.hostile.id,
+    attachmentId: 'spoofed',
+  });
+  assert.equal(t.events.tethered.length, 0, 'an event without canonical attachment cannot spoof guidance');
+
+  latchAt(t, SECURE_REEL_WU + 20);
+  latchAt(t, SECURE_REEL_WU + 20);
+  assert.equal(t.events.tethered.length, 1, 'repeated latch notices cannot replay the phase transition');
+  assert.deepEqual(t.events.tethered[0], {
+    id: `surrender:${t.hostile.id}`,
+    entityId: t.hostile.id,
+    label: 'Reach Cutter',
+    recoveryKind: 'surrendered',
+    phase: 'tethered',
+    reason: 'damage-critical',
+    rewardCr: 180,
+    escapeAt: t.events.option[0].escapeAt,
+    deadlineAt: null,
+    manifestId: null,
+    freighterKey: null,
+    remainingQty: 0,
+    destinationStationId: t.events.option[0].destinationStationId,
+    secureReel_wu: SECURE_REEL_WU,
+    instruction: 'Hold massline reel until the custody lock engages.',
+    lostReason: null,
+  });
+
+  t.bus.emit('tether:reel', {
+    actorId: t.player.id,
+    targetId: t.hostile.id,
+    attachmentId: 'att_surrender_tethered',
+    before: SECURE_REEL_WU + 20,
+    after: SECURE_REEL_WU + 20,
+  });
+  assert.equal(t.events.tethered.length, 1, 'reel chatter inside the same phase stays silent');
 });
 
 test('towing a secured ship into lawful protection transfers custody exactly once', { skip: !surrenderRecovery }, () => {

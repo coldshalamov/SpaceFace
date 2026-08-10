@@ -2,6 +2,7 @@
 // Simulation owns range, condition, hazards, stabilization, settlement and persistence.
 
 import { isUiInteractionFenced } from './input.js';
+import { stationName } from './sectorLawPresenter.js';
 
 const STYLE_ID = 'sf-recovery-encounter-style';
 const RECEIPT_TTL_S = 6;
@@ -38,6 +39,124 @@ function receiptDetail(receipt) {
   return parts.length ? parts.join(' · ') : 'Outcome recorded. No duplicate settlement.';
 }
 
+function words(value) {
+  return String(value == null ? '' : value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function recoveryLossText(reason) {
+  switch (String(reason || 'lost')) {
+    case 'drive_restored': return 'Drive restored before custody transfer.';
+    case 'timed_out': return 'Civilian recovery deadline expired.';
+    case 'destroyed': return 'Disabled civilian freighter was destroyed.';
+    case 'sector_exit': return 'Recovery abandoned on sector departure.';
+    case 'tether_broke': return 'Massline connection broke before transfer.';
+    case 'released': return 'Massline connection was released before transfer.';
+    case 'identity_invalid': return 'Civilian manifest identity changed; recovery closed.';
+    case 'destination_unavailable': return 'The lawful recovery destination is no longer available.';
+    default: return `Recovery closed: ${words(reason || 'lost')}.`;
+  }
+}
+
+function remainingSeconds(payload, simTime) {
+  const rawDueAt = payload && (payload.recoveryKind === 'surrendered' ? payload.escapeAt : payload.deadlineAt);
+  if (rawDueAt == null) return null;
+  const dueAt = Number(rawDueAt);
+  return Number.isFinite(dueAt) ? Math.max(0, Math.ceil(dueAt - Number(simTime || 0))) : null;
+}
+
+function receiptRecoveryId(payload) {
+  return String(payload && (payload.recoveryId || payload.id) || 'recovery');
+}
+
+function isCustodyReceipt(payload) {
+  return !!(payload && (payload.shape === 'surrender_custody' || payload.shape === 'civilian_freight_recovery'));
+}
+
+export function recoveryCustodyView(payload, state, simTime = state && state.simTime || 0) {
+  if (!payload || (!payload.id && !payload.recoveryId)) return null;
+  const receipt = isCustodyReceipt(payload);
+  const recoveryKind = String(payload.recoveryKind || (payload.shape === 'civilian_freight_recovery' ? 'civilian_disabled' : 'surrendered'));
+  const phase = receipt
+    ? (payload.outcome === 'recovered' || payload.outcome === 'custody' ? 'success' : 'lost')
+    : String(payload.phase || 'awaiting_tether');
+  const terminal = receipt || ['lost', 'escaped', 'custody', 'recovered'].includes(phase);
+  const destinationId = payload.stationId || payload.destinationStationId || null;
+  const destination = stationName(state, destinationId);
+  const label = String(payload.label || (recoveryKind === 'civilian_disabled'
+    ? 'Disabled civilian freighter' : recoveryKind === 'drive_disabled' ? 'Disabled ship' : 'Surrendered ship'));
+  const threshold = Math.max(0, Number(payload.secureReel_wu) || 60);
+  const cargo = Math.max(0, Math.floor(Number(payload.remainingQty) || 0));
+  const credits = Math.max(0, Math.round(Number(payload.credits != null ? payload.credits : payload.rewardCr) || 0));
+  const remaining = remainingSeconds(payload, simTime);
+  const activeRemaining = terminal ? null : remaining;
+  const timerStatus = activeRemaining == null ? null : `${recoveryKind === 'surrendered' ? 'ESCAPE' : 'WINDOW'} ${activeRemaining} S`;
+  const cargoText = recoveryKind === 'civilian_disabled' || payload.shape === 'civilian_freight_recovery'
+    ? `${cargo} CARGO` : `${credits} CREDIT CUSTODY`;
+  const destinationText = destinationId ? destination.toUpperCase() : 'LAWFUL STATION';
+  let flag = recoveryKind === 'civilian_disabled' ? 'CIVILIAN RECOVERY' : 'NONLETHAL CUSTODY';
+  let status = timerStatus || 'OPEN';
+  let headline = label.toUpperCase();
+  let meta = [cargoText, destinationText].filter(Boolean).join(' · ');
+  let detail = '';
+
+  if (receipt) {
+    const success = payload.outcome === 'recovered' || payload.outcome === 'custody';
+    flag = success ? 'CUSTODY RECEIPT' : 'RECOVERY CLOSED';
+    status = success ? 'SUCCESS' : 'LOST';
+    headline = String(payload.text || (success ? 'RECOVERY TRANSFER COMPLETE' : `RECOVERY LOST - ${words(payload.outcome)}`)).toUpperCase();
+    meta = [
+      `${credits} CREDITS`,
+      payload.shape === 'civilian_freight_recovery' ? `${cargo} CARGO` : null,
+      destinationId ? destination.toUpperCase() : null,
+      success ? 'OUTCOME SUCCESS' : `REASON ${words(payload.outcome).toUpperCase()}`,
+    ].filter(Boolean).join(' · ');
+    detail = `Receipt ${String(payload.id)}.`;
+  } else if (phase === 'tethered') {
+    detail = `Line attached. Reel to ${threshold} WU for custody lock, then tow to ${destination}.`;
+  } else if (phase === 'secured') {
+    status = timerStatus || 'LOCKED';
+    detail = `Custody locked. Tow ${label} to ${destination}.`;
+  } else if (phase === 'escaped') {
+    flag = 'RECOVERY CLOSED';
+    status = 'ESCAPED';
+    headline = `${label.toUpperCase()} ESCAPED`;
+    meta = 'OUTCOME ESCAPED · REASON SURRENDER WINDOW EXPIRED · 0 CREDITS';
+    detail = 'Surrender window expired; contact escaped.';
+  } else if (phase === 'lost') {
+    const reason = String(payload.lostReason || payload.reason || 'lost');
+    flag = 'RECOVERY CLOSED';
+    status = 'LOST';
+    headline = `RECOVERY LOST · ${words(reason).toUpperCase()}`;
+    meta = ['0 CREDITS', recoveryKind === 'civilian_disabled' ? cargoText : null, destinationText, `REASON ${words(reason).toUpperCase()}`].filter(Boolean).join(' · ');
+    detail = recoveryLossText(reason);
+  } else if (payload.instruction && /relatch/i.test(payload.instruction)) {
+    detail = String(payload.instruction);
+  } else if (recoveryKind === 'drive_disabled') {
+    detail = `Drive disabled; Massline latch and reel inside ${threshold} WU, then tow to ${destination}.`;
+  } else {
+    const cargoClause = recoveryKind === 'civilian_disabled' ? ` ${cargo} cargo` : '';
+    detail = `Massline latch and reel inside ${threshold} WU${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
+  }
+
+  const timerAria = activeRemaining == null ? '' : ` ${activeRemaining} seconds remaining.`;
+  const announcementKey = `${receiptRecoveryId(payload)}:${terminal ? `terminal:${payload.outcome || payload.lostReason || phase}` : phase}`;
+  return Object.freeze({
+    source: payload,
+    recoveryId: receiptRecoveryId(payload),
+    recoveryKind,
+    phase,
+    terminal,
+    flag,
+    status,
+    headline,
+    meta,
+    detail,
+    remaining: activeRemaining,
+    announcementKey,
+    ariaLabel: `${flag}. ${headline}. ${meta}. ${detail}.${timerAria}`.replace(/\s+/g, ' ').trim(),
+  });
+}
+
 export function createRecoveryEncounterPrompt(ctx) {
   const { state, bus } = ctx;
   injectStyle();
@@ -59,6 +178,9 @@ export function createRecoveryEncounterPrompt(ctx) {
     .map((key) => [key, root.querySelector(`[data-k=${key}]`)]));
   let active = null;
   let destroyed = false;
+  let lastAnnouncementKey = '';
+  let lastCountdownSecond = null;
+  const unsubscribers = [];
 
   function text(node, value) {
     const next = String(value == null ? '' : value);
@@ -73,6 +195,14 @@ export function createRecoveryEncounterPrompt(ctx) {
     root.hidden = true;
     root.className = '';
     active = null;
+    lastAnnouncementKey = '';
+    lastCountdownSecond = null;
+  }
+
+  function syncMotionPreference() {
+    const next = state && state.settings && state.settings.video && state.settings.video.motionReduce
+      ? 'true' : 'false';
+    if (root.dataset.reducedMotion !== next) root.dataset.reducedMotion = next;
   }
 
   function actionButton(choice, key, label, disabled = false, title = '') {
@@ -114,6 +244,9 @@ export function createRecoveryEncounterPrompt(ctx) {
   function render(readout) {
     if (!canSurface() || !readout || !readout.recoveryId) return false;
     active = { ...readout, mode: 'encounter', hideAt: Infinity };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
     root.className = readout.phase === 'hazard' || readout.poweredSurprise === 'defense_drone'
       ? 'sf-recovery--hazard' : '';
     text(el.flag, 'DERELICT RECOVERY');
@@ -152,6 +285,9 @@ export function createRecoveryEncounterPrompt(ctx) {
   function renderUniqueWreck(readout) {
     if (!canSurface() || !readout || !readout.wreckId || !Array.isArray(readout.choices)) return false;
     active = { ...readout, mode: 'unique-wreck', hideAt: Infinity };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
     root.className = 'sf-recovery--unique';
     text(el.flag, 'NAMED WRECK CLAIM');
     text(el.status, 'RECOVERED · CHOOSE');
@@ -168,6 +304,9 @@ export function createRecoveryEncounterPrompt(ctx) {
   function showReceipt(receipt) {
     if (!canSurface() || !receipt) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
     root.className = receipt.failure ? 'sf-recovery--failed' : 'sf-recovery--receipt';
     text(el.flag, receipt.failure ? 'RECOVERY CLOSED' : 'RECOVERY RECEIPT');
     text(el.status, 'LOGGED');
@@ -185,6 +324,9 @@ export function createRecoveryEncounterPrompt(ctx) {
     const receipt = payload && payload.receipt;
     if (!canSurface() || !receipt) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
     root.className = Number(receipt.repDelta) < 0 ? 'sf-recovery--failed' : 'sf-recovery--receipt';
     text(el.flag, 'NAMED RECOVERY RECEIPT');
     text(el.status, 'SAVED');
@@ -194,6 +336,37 @@ export function createRecoveryEncounterPrompt(ctx) {
     el.meter.hidden = true;
     el.actions.hidden = true;
     root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
+    root.hidden = false;
+    return true;
+  }
+
+  function renderCustody(payload) {
+    const view = recoveryCustodyView(payload, state, state && state.simTime || 0);
+    if (destroyed || !canSurface() || !view) return false;
+    active = {
+      mode: 'custody',
+      payload: { ...payload },
+      view,
+      hideAt: view.terminal ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity,
+    };
+    syncMotionPreference();
+    root.className = view.terminal
+      ? (view.status === 'SUCCESS' ? 'sf-recovery--receipt sf-recovery--custody' : 'sf-recovery--failed sf-recovery--custody')
+      : 'sf-recovery--custody';
+    text(el.flag, view.flag);
+    text(el.status, view.status);
+    el.status.setAttribute('aria-hidden', 'true');
+    text(el.headline, view.headline);
+    text(el.meta, view.meta);
+    text(el.detail, view.detail);
+    el.meter.hidden = true;
+    el.actions.replaceChildren();
+    el.actions.hidden = true;
+    if (view.announcementKey !== lastAnnouncementKey) {
+      root.setAttribute('aria-label', view.ariaLabel);
+      lastAnnouncementKey = view.announcementKey;
+    }
+    lastCountdownSecond = Math.floor(Number(state.simTime || 0));
     root.hidden = false;
     return true;
   }
@@ -221,8 +394,22 @@ export function createRecoveryEncounterPrompt(ctx) {
   function tick() {
     if (destroyed || !active || isUiInteractionFenced(state)) return;
     if (!canSurface()) { hide(); return; }
+    syncMotionPreference();
     if (active.mode === 'receipt') {
       if (Number(state.simTime || 0) >= active.hideAt) hide();
+      return;
+    }
+    if (active.mode === 'custody') {
+      if (active.hideAt <= Number(state.simTime || 0)) { hide(); return; }
+      if (!active.view.terminal) {
+        const simSecond = Math.floor(Number(state.simTime || 0));
+        if (simSecond !== lastCountdownSecond) {
+          lastCountdownSecond = simSecond;
+          const view = recoveryCustodyView(active.payload, state, state.simTime);
+          active.view = view;
+          text(el.status, view.status);
+        }
+      }
       return;
     }
     const actions = ctx.gamepad && ctx.gamepad.actions || {};
@@ -241,24 +428,37 @@ export function createRecoveryEncounterPrompt(ctx) {
 
   function destroy() {
     destroyed = true;
+    for (const unsubscribe of unsubscribers.splice(0)) {
+      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
+    }
     root.removeEventListener('click', onClick);
     root.remove();
   }
 
+  function subscribe(event, handler) {
+    const unsubscribe = bus.on(event, handler);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
+  }
+
   root.addEventListener('click', onClick);
   for (const event of ['recovery:started', 'recovery:identified', 'recovery:defenseAwake', 'recovery:hazardCleared', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable']) {
-    bus.on(event, render);
+    subscribe(event, render);
   }
-  bus.on('recovery:completed', showReceipt);
-  bus.on('uniqueWreck:decisionReady', renderUniqueWreck);
-  bus.on('uniqueWreck:resolved', showUniqueReceipt);
-  bus.on('pirateParley:demand', hide);
-  bus.on('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
-  bus.on('law:distressRaised', hide);
-  bus.on('law:incidentResolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'law-alert-cleared' }));
-  bus.on('game:new', hide);
-  bus.on('game:load', hide);
-  return { el: root, tick, hide, destroy, render, renderUniqueWreck, showReceipt, showUniqueReceipt, choose };
+  subscribe('recovery:completed', showReceipt);
+  subscribe('uniqueWreck:decisionReady', renderUniqueWreck);
+  subscribe('uniqueWreck:resolved', showUniqueReceipt);
+  subscribe('pirateParley:demand', hide);
+  subscribe('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
+  subscribe('law:distressRaised', hide);
+  subscribe('law:incidentResolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'law-alert-cleared' }));
+  subscribe('game:new', hide);
+  subscribe('game:load', hide);
+  for (const event of ['surrender:option', 'surrender:updated', 'surrender:tethered', 'surrender:secured', 'surrender:recoveryLost', 'surrender:escaped']) {
+    subscribe(event, renderCustody);
+  }
+  subscribe('encounter:receipt', (payload) => { if (isCustodyReceipt(payload)) renderCustody(payload); });
+  return { el: root, tick, hide, destroy, render, renderCustody, renderUniqueWreck, showReceipt, showUniqueReceipt, choose };
 }
 
 function injectStyle() {
@@ -292,11 +492,14 @@ function injectStyle() {
   #sf-recovery-encounter.sf-recovery--unique .sf-recovery__head { color:#ffb35c; }
   #sf-recovery-encounter.sf-recovery--failed { border-color:rgba(255,92,92,.52); border-left-color:#ff5c5c; }
   #sf-recovery-encounter.sf-recovery--failed .sf-recovery__head { color:#ff5c5c; }
+  #sf-recovery-encounter.sf-recovery--custody { pointer-events:none; }
   @media (max-width:900px),(max-height:620px) {
     #sf-recovery-encounter { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
     .sf-recovery__headline { font-size:12px; } .sf-recovery__detail { font-size:9px; }
     .sf-recovery__actions { flex-wrap:wrap; }
   }
+  #sf-recovery-encounter[data-reduced-motion=true],
+  #sf-recovery-encounter[data-reduced-motion=true] .sf-recovery__meter i { transition:none; }
   @media (prefers-reduced-motion:reduce) { #sf-recovery-encounter,.sf-recovery__meter i { transition:none; } }`;
   document.head.appendChild(style);
 }

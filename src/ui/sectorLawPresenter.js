@@ -27,7 +27,7 @@ function factionName(id) {
   return String(faction && faction.name || id || 'Unknown authority').replace(/^faction_/, '');
 }
 
-function stationName(state, stationId) {
+export function stationName(state, stationId) {
   for (const sector of SECTORS) {
     const station = (sector.stations || []).find((row) => row.id === stationId);
     if (station) return station.name;
@@ -130,6 +130,8 @@ export function createSectorLawPresenter(ctx) {
   const els = Object.fromEntries(['flag', 'status', 'headline', 'meta', 'detail'].map((key) => [key, root.querySelector(`[data-k=${key}]`)]));
   let active = null;
   let lastEtaText = '';
+  let destroyed = false;
+  const unsubscribers = [];
 
   function text(el, value) {
     const next = String(value == null ? '' : value);
@@ -199,7 +201,7 @@ export function createSectorLawPresenter(ctx) {
   }
 
   function tick() {
-    if (!active) return;
+    if (destroyed || !active) return;
     if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen()) { hide(); return; }
     const now = Number(state.simTime || 0);
     if (active.hideAt <= now) { hide(); return; }
@@ -212,21 +214,36 @@ export function createSectorLawPresenter(ctx) {
     }
   }
 
-  bus.on('sector:enter', (payload = {}) => showSector(payload.sectorId));
-  bus.on('game:started', () => showSector(state.world && state.world.currentSectorId));
-  bus.on('law:distressRaised', renderIncident);
-  bus.on('law:dispatchStarted', renderIncident);
-  bus.on('law:incidentResolved', renderIncident);
-  bus.on('law:incidentReceipt', showDirectReceipt);
-  bus.on('drill:start', hide);
-  bus.on('drill:end', hide);
-  bus.on('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
-  bus.on('signal:scanResults', () => { if (active && active.mode === 'entry') hide(); });
-  bus.on('recovery:started', () => { if (active && active.mode === 'entry') hide(); });
-  bus.on('game:new', hide);
-  bus.on('game:load', hide);
+  function subscribe(event, handler) {
+    const unsubscribe = bus.on(event, handler);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
+  }
 
-  return { el: root, tick, hide, showSector, renderIncident, showDirectReceipt };
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    for (const unsubscribe of unsubscribers.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    root.remove();
+  }
+
+  subscribe('sector:enter', (payload = {}) => showSector(payload.sectorId));
+  subscribe('game:started', () => showSector(state.world && state.world.currentSectorId));
+  subscribe('law:distressRaised', renderIncident);
+  subscribe('law:dispatchStarted', renderIncident);
+  subscribe('law:incidentResolved', renderIncident);
+  subscribe('law:incidentReceipt', showDirectReceipt);
+  subscribe('drill:start', hide);
+  subscribe('drill:end', hide);
+  subscribe('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('signal:scanResults', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('recovery:started', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('game:new', hide);
+  subscribe('game:load', hide);
+
+  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt };
 }
 
 function injectStyle() {

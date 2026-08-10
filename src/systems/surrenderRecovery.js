@@ -45,6 +45,7 @@ export const surrenderRecovery = {
     this._onReleased = (payload) => this._release(payload || {});
     this._onBroke = (payload) => this._release({ ...(payload || {}), reason: 'broke' });
     this._onEntityKilled = (payload) => this._rememberCivilianKiller(payload || {});
+    this._onManifestRemaining = (payload) => this._manifestRemaining(payload || {});
     this._onSectorExit = () => this._resolveCivilianBoundary('sector_exit');
     this._onSaveRestoring = () => {
       // NPC entities rematerialize after load. Drop only this transient coordinator; a valid saved
@@ -63,6 +64,7 @@ export const surrenderRecovery = {
       this.bus.on('tether:released', this._onReleased);
       this.bus.on('tether:broke', this._onBroke);
       this.bus.on('entity:killed', this._onEntityKilled);
+      this.bus.on('freight:manifestRemaining', this._onManifestRemaining);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('save:restoring', this._onSaveRestoring);
       // The canonical New Game route emits game:new and later game:started. It does not emit the
@@ -203,7 +205,7 @@ export const surrenderRecovery = {
       : null;
     const destination = recoveryKind === RECOVERY_CIVILIAN_DISABLED
       ? reachableCivilianRecoveryDestination(state, entity, savedDestinationStationId)
-      : null;
+      : lawfulRecoveryDestination(state, entity, { currentSectorId });
     // A field-rescue offer is a physical contract, not flavor text. Pirate stations provide no
     // lawful handoff, and a lawful ring that cannot be reached even at the player's unloaded speed
     // ceiling cannot truthfully be offered inside the authored 75-second window.
@@ -292,6 +294,7 @@ export const surrenderRecovery = {
     }
     record.phase = 'tethered';
     if (entity) annotate(entity, record, 'Hold massline reel until the custody lock engages.');
+    this._emit('surrender:tethered', publicRecord(record, entity));
     return true;
   },
 
@@ -421,6 +424,7 @@ export const surrenderRecovery = {
       record.lostReason = 'duplicate_receipt';
       annotate(entity, record, 'Duplicate freight identity rejected; no settlement applied.');
       releaseOwnedPersistence(entity, record);
+      this._emit('surrender:recoveryLost', publicRecord(record, entity));
       return false;
     }
     Object.assign(record, settled);
@@ -539,6 +543,45 @@ export const surrenderRecovery = {
     return true;
   },
 
+  _manifestRemaining(payload) {
+    const carrierId = payload.carrierId;
+    const record = recordForEntity(ensureState(this.state), carrierId);
+    if (!record || record.resolved || record.recoveryKind !== RECOVERY_CIVILIAN_DISABLED) return false;
+    const entity = entityFor(this.state, carrierId);
+    if (!entity || entity.alive === false) return false;
+    const data = entity.data || {};
+    const custody = data.freightCustody;
+    const persistence = data.freightCustodyPersistence;
+    if (!custody || custody.status !== 'carrier'
+      || custody.carrierId !== entity.id
+      || custody.carrierIdentityKey !== data.predationIdentityKey
+      || custody.carrierIdentityKey !== data.freightCustodyCarrierIdentityKey
+      || custody.carrierIdentityKey !== payload.carrierIdentityKey
+      || custody.encounterId !== payload.encounterId
+      || custody.manifestId !== payload.manifestId
+      || !persistence || persistence.role !== 'carrier'
+      || persistence.custodyId !== payload.custodyId
+      || record.manifest.manifestId !== payload.manifestId
+      || record.manifest.freighterKey !== payload.freighterKey) return false;
+    const remainingQty = Number(payload.remainingQty);
+    const liveManifest = civilianManifestFor(entity);
+    const publishedManifest = civilianManifestFor({ data: { cargoManifest: payload.manifest } });
+    if (!Number.isInteger(remainingQty) || remainingQty < 0
+      || Number(payload.manifest && payload.manifest.totalQty) !== remainingQty
+      || !liveManifest || !publishedManifest
+      || liveManifest.totalQty !== remainingQty
+      || !sameManifestContents(liveManifest, publishedManifest)
+      || !sameManifestIdentity(liveManifest, record.manifest)) return false;
+    if (sameManifestContents(record.manifest, liveManifest)) return false;
+    record.manifest = cloneManifest(liveManifest);
+    record.rewardCr = civilianRecoveryReward(liveManifest);
+    const instruction = data.surrenderRecovery && data.surrenderRecovery.instruction
+      || initialInstruction(record);
+    annotate(entity, record, instruction);
+    this._emit('surrender:updated', publicRecord(record, entity));
+    return true;
+  },
+
   _loseCivilianRecovery(record, entity, now, outcome, extra = {}) {
     if (!record || record.resolved || record.recoveryKind !== RECOVERY_CIVILIAN_DISABLED) return false;
     const liveManifest = civilianManifestFor(entity);
@@ -643,6 +686,7 @@ export const surrenderRecovery = {
       if (this._onReleased) this.bus.off('tether:released', this._onReleased);
       if (this._onBroke) this.bus.off('tether:broke', this._onBroke);
       if (this._onEntityKilled) this.bus.off('entity:killed', this._onEntityKilled);
+      if (this._onManifestRemaining) this.bus.off('freight:manifestRemaining', this._onManifestRemaining);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
       if (this._onGameNew) this.bus.off('game:new', this._onGameNew);
@@ -650,7 +694,7 @@ export const surrenderRecovery = {
     }
     this._onSurrendered = this._onDriveDisabled = this._onDriveEnabled = null;
     this._onLatched = this._onReel = this._onReleased = this._onBroke = null;
-    this._onEntityKilled = this._onSectorExit = this._onSaveRestoring = null;
+    this._onEntityKilled = this._onManifestRemaining = this._onSectorExit = this._onSaveRestoring = null;
     this._onGameNew = this._onGameStarted = null;
   },
 };
@@ -896,6 +940,13 @@ function sameManifestIdentity(a, b) {
   return !!(a && b && a.manifestId === b.manifestId && a.freighterKey === b.freighterKey);
 }
 
+function sameManifestContents(a, b) {
+  if (!sameManifestIdentity(a, b) || a.role !== b.role || a.totalQty !== b.totalQty
+    || a.lines.length !== b.lines.length) return false;
+  return a.lines.every((line, index) => line.commodityId === b.lines[index].commodityId
+    && line.qty === b.lines[index].qty);
+}
+
 function validSavedCivilianAnnotation(annotation, manifest) {
   if (!annotation || annotation.recoveryKind !== RECOVERY_CIVILIAN_DISABLED || !manifest) return false;
   return boundedIdentity(annotation.manifestId) === manifest.manifestId
@@ -1064,12 +1115,29 @@ function reachableCivilianRecoveryDestination(state, entity, requiredStationId =
     ? authoredMaxSpeed
     : CIVILIAN_RECOVERY_FALLBACK_SPEED_WU_S;
   const maxTravelWU = maxSpeed * CIVILIAN_RECOVERY_WINDOW_S;
+  return lawfulRecoveryDestination(state, entity, {
+    currentSectorId,
+    requiredStationId,
+    maxTravelWU,
+  });
+}
+
+function lawfulRecoveryDestination(state, entity, {
+  currentSectorId = null,
+  requiredStationId = null,
+  maxTravelWU = Infinity,
+} = {}) {
+  if (!state || !entity || !entity.pos) return null;
+  const index = state.entityIndex;
+  const stations = index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)
+    ? index.stations
+    : (state.entityList || []).filter((candidate) => candidate && candidate.type === 'station');
   const seen = new Set();
   const candidates = [];
 
   for (const probe of stations) {
     if (!probe || probe.alive === false || !probe.pos) continue;
-    if (boundedIdentity(probe.data && probe.data.sectorId) !== currentSectorId) continue;
+    if (currentSectorId && boundedIdentity(probe.data && probe.data.sectorId) !== currentSectorId) continue;
     const jurisdiction = protectedStationAt(state, probe);
     if (!jurisdiction || !jurisdiction.stationId || seen.has(jurisdiction.stationId)) continue;
     if (requiredStationId && String(jurisdiction.stationId) !== requiredStationId) continue;
