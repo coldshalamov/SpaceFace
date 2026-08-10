@@ -316,15 +316,16 @@ test('miner_loaded seed opens the hauler-call link while rich seam may still be 
   assert.ok(snap.activeCount <= 2);
 });
 
-test('ore handoff moves a real manifest from miner to refinery hauler', () => {
+test('hauler-call seeds ledger flags without minting ore into cargo', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
   const miner = state.entities.get(minerRec.id);
   const hauler = state.entities.get(haulerRec.id);
+  const minerQtyBefore = miner.data.cargoManifest && miner.data.cargoManifest.totalQty || 0;
+  const haulerQtyBefore = hauler.data.cargoManifest && hauler.data.cargoManifest.totalQty || 0;
 
-  // Drive into the transfer phase of the hauler-call event.
-  // rich: 15+8+30+20 = 73; call opens after strike (~23); call 12 + answer 25 = 37 → transfer at ~60.
+  // Drive into the transfer seed of the hauler-call event.
   for (let t = 0; t <= 120; t += 2) {
     stepTo(traffic, state, t);
     const snap = traffic.getCeresCausalChainSnapshot();
@@ -332,29 +333,30 @@ test('ore handoff moves a real manifest from miner to refinery hauler', () => {
   }
   const snap = traffic.getCeresCausalChainSnapshot();
   assert.equal(snap.seeds.hauler_ore_manifest, true);
-  assert.ok(hauler.data.cargoManifest && hauler.data.cargoManifest.totalQty > 0,
-    'hauler should carry the handed-off ore');
-  assert.ok(
-    !miner.data.cargoManifest
-      || !miner.data.cargoManifest.totalQty
-      || miner.data.cargoManifest.totalQty === 0,
-    'miner should be empty after handoff',
-  );
-  assert.ok(
-    hauler.data.cargoManifest.lines.some((line) => line.commodityId && line.qty > 0),
-  );
+  assert.equal(snap.seeds.ore_handoff, true);
+  // MAJOR 4: chain must not mint or move ore through a second cargo writer.
+  const minerQtyAfter = miner.data.cargoManifest && miner.data.cargoManifest.totalQty || 0;
+  const haulerQtyAfter = hauler.data.cargoManifest && hauler.data.cargoManifest.totalQty || 0;
+  assert.equal(minerQtyAfter, minerQtyBefore, 'miner cargo untouched by chain handoff beat');
+  assert.equal(haulerQtyAfter, haulerQtyBefore, 'hauler cargo untouched by chain handoff beat');
 });
 
-test('rich-seam strike stamps a heavier miner load without rewriting field extraction quanta', () => {
+test('rich-seam strike plants seeds without fabricating miner cargo', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24); // strike seeded → haul-capable load stamp
+  stepTo(traffic, state, 24); // strike seeded
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   const snap = traffic.getCeresCausalChainSnapshot();
   assert.equal(snap.seeds.rich_seam, true);
-  assert.ok(miner.data.cargoManifest && miner.data.cargoManifest.totalQty >= 16,
-    'strike aftermath should leave a readable rich load on the miner');
+  assert.equal(snap.seeds.miner_loaded, true);
+  // No fabricated rich load — cargo only appears via the ordinary extraction owner path.
+  assert.ok(
+    !miner.data.cargoManifest
+      || !miner.data.cargoManifest.totalQty
+      || miner.data.cargoManifest.totalQty === 0,
+    'strike must not mint ore onto the miner',
+  );
   // Field owner quantum stays the ordinary 8u parcel so existing Ceres owner bridges stay green.
   const context = {
     jobId: miner.data.jobId,
@@ -369,16 +371,109 @@ test('rich-seam strike stamps a heavier miner load without rewriting field extra
   assert.equal(miner.data.cargoManifest.totalQty, 8);
 });
 
-test('actor death falls back without soft-locking the chain', () => {
+test('actor death falls back and the chain continues after revival', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   miner.alive = false;
   stepTo(traffic, state, 5);
-  const snap = traffic.getCeresCausalChainSnapshot();
+  let snap = traffic.getCeresCausalChainSnapshot();
   // Active rich-seam link should fall back; concurrency slot freed.
   assert.ok(!snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'));
+  // BLOCKER 1: fallback plants seeds so the chain does not soft-lock.
+  assert.equal(snap.seeds.miner_loaded, true);
+  assert.ok(snap.completed.includes('ev_rich_seam_strike'));
+
+  // Revive the miner so later links that need a live body can run.
+  miner.alive = true;
+  const continuedAt = runUntil(
+    traffic,
+    state,
+    (s) => s && (
+      s.activeCount >= 1
+      || s.seeds.hauler_ore_manifest === true
+      || (s.cycle | 0) >= 1
+    ),
+    { start: 5, maxS: 600, stepS: 3 },
+  );
+  assert.ok(continuedAt != null, 'chain must continue after a single-tick actor gap');
+  snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(
+    snap.activeCount >= 1
+      || snap.seeds.hauler_ore_manifest === true
+      || (snap.cycle | 0) >= 1,
+    'expected progress past the interrupted rich-seam link',
+  );
+});
+
+test('terminal cast destruction skips the dead link and still completes a cycle', () => {
+  const { traffic, state, receipts } = bootCausalHarness({ simTime: 0 });
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  const worldRecordId = miner.data.worldRecordId;
+  assert.ok(worldRecordId, 'miner has a durable world record id');
+
+  // Permanently destroy the seam miner cast hull (survives Continue via durable outcome).
+  state.world.records.byId[worldRecordId] = {
+    recordId: worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  miner.alive = false;
+
+  const doneAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && (snap.cycle | 0) >= 1,
+    { start: 0, maxS: 900, stepS: 3 },
+  );
+  assert.ok(doneAt != null, 'chain should complete a cycle despite a destroyed cast hull');
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok((snap.cycle | 0) >= 1);
+  // Miner-required links must have been seed-skipped rather than waited on forever.
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_rich_seam_strike'),
+    'rich-seam link should skip on terminal miner loss',
+  );
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_miner_calls_hauler'),
+    'hauler-call link should skip on terminal miner loss',
+  );
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+});
+
+test('save mid-recovery clears ceresCausal stamps from a persistent civilian', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  // Drive into the disabled-hauler recovery window (needs hauler_stressed seed first).
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
+    { start: 0, maxS: 600, stepS: 2 },
+  );
+  assert.ok(entered != null, 'recovery link should open under zero input');
+  const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
+  const hauler = state.entities.get(haulerRec.id);
+  assert.equal(hauler.data.ceresCausalDisabled, true);
+  assert.ok(hauler.data.ceresCausalEventId);
+
+  // Surrender/recovery path marks disabled civilians persistent — the leak surface.
+  hauler.flags = hauler.flags || {};
+  hauler.flags.persistent = true;
+
+  // Chain reset (save:loaded / sector leave) must wipe every ceresCausal* key.
+  traffic._resetCeresCausalChain('save_loaded');
+  const residual = Object.keys(hauler.data).filter((k) => k.startsWith('ceresCausal'));
+  assert.deepEqual(residual, [], `ceresCausal keys leaked into save surface: ${residual.join(',')}`);
+  assert.equal(Object.prototype.hasOwnProperty.call(haulerRec, 'ceresCausalDisabled'), false);
+
+  // Also assert a save-shaped clone of entity.data has no residual stamps.
+  const serializedData = JSON.parse(JSON.stringify(hauler.data));
+  const serializedResidual = Object.keys(serializedData).filter((k) => k.startsWith('ceresCausal'));
+  assert.deepEqual(serializedResidual, []);
 });
 
 test('chain ledger is transient and clears on save:loaded / newGame', () => {
