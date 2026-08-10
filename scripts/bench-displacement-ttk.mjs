@@ -28,6 +28,11 @@ export const BASELINE_PATH = path.join(
   'design/program/roadmap/evidence/u11-displacement-ttk-baseline.json',
 );
 
+export const TUNED_PATH = path.join(
+  ROOT,
+  'design/program/roadmap/evidence/u11-displacement-ttk-tuned.json',
+);
+
 export const DEFAULT_SEEDS = Object.freeze([
   11001, 11002, 11003, 11004, 11005,
   11006, 11007, 11008, 11009, 11010,
@@ -51,6 +56,14 @@ const DISPLACEMENT_WEAPON_ID = 'wpn_concussion_cannon_m';
 
 export function buildDisplacementTtkBaseline(options = {}) {
   const sourceCommit = options.sourceCommit || resolveGitCommit();
+  const packet = typeof options.packet === 'string' && options.packet
+    ? options.packet
+    : 'U11-BASELINE';
+  const title = typeof options.title === 'string' && options.title
+    ? options.title
+    : (packet === 'U11-TUNED'
+      ? 'displacement-vs-TTK telemetry tuned'
+      : 'displacement-vs-TTK telemetry baseline');
   const seeds = Array.isArray(options.seeds) && options.seeds.length
     ? options.seeds.map((seed) => seed >>> 0)
     : [...DEFAULT_SEEDS];
@@ -69,8 +82,8 @@ export function buildDisplacementTtkBaseline(options = {}) {
     const aggregates = aggregateRows(rows);
     return {
       schemaVersion: 1,
-      packet: 'U11-BASELINE',
-      title: 'displacement-vs-TTK telemetry baseline',
+      packet,
+      title,
       environment: {
         sourceCommit,
         generatedBy: 'scripts/bench-displacement-ttk.mjs',
@@ -121,9 +134,13 @@ export function stableStringify(value) {
 }
 
 export function writeBaselineFile(filePath = BASELINE_PATH, options = {}) {
-  const baseline = buildDisplacementTtkBaseline(options);
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, stableStringify(baseline));
+  const resolvedPath = path.resolve(filePath);
+  const tunedDefaults = path.resolve(TUNED_PATH) === resolvedPath
+    ? { packet: 'U11-TUNED', title: 'displacement-vs-TTK telemetry tuned' }
+    : {};
+  const baseline = buildDisplacementTtkBaseline({ ...tunedDefaults, ...options });
+  mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  writeFileSync(resolvedPath, stableStringify(baseline));
   return baseline;
 }
 

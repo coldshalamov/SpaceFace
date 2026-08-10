@@ -111,8 +111,18 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
   assert.ok(light.deltaV > heavy.deltaV, 'the same momentum staggers a light hull more');
   assert.ok(light.staggerTicks > heavy.staggerTicks);
   assert.ok(light.impactDamage > 0, 'an energetic structure hit has a damage consequence');
-  assert.ok(light.impactDamage <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
-  assert.ok(light.debrisCount > 0 && light.debrisCount <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDebris);
+  // U11: light hulls use a mass-relative ceiling above the medium-class maxDamage so committed
+  // slams can finish thin targets; medium/heavy stay at or below maxDamage.
+  const limits = kernel.COLLISION_CONSEQUENCE_LIMITS;
+  const massRelativeCap = (mass) => limits.maxDamage * Math.max(
+    limits.maxDamageMassFloor,
+    Math.min(limits.maxDamageMassBoost, limits.damageMassRef / mass),
+  );
+  assert.ok(light.impactDamage <= massRelativeCap(20),
+    'light impact stays within the mass-relative damage ceiling');
+  assert.ok(heavy.impactDamage <= limits.maxDamage,
+    'heavy impact stays within the medium-class universal damage ceiling');
+  assert.ok(light.debrisCount > 0 && light.debrisCount <= limits.maxDebris);
   assert.ok(['stagger', 'tumble'].includes(light.control));
   const ordinaryCraft = kernel.resolveCollisionConsequence({
     ...common,
@@ -129,8 +139,8 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
     'ordinary energetic craft contact applies the 0.6 baseline exactly');
   assert.ok(platedCraft.impactDamage > ordinaryCraft.impactDamage,
     'an explicit Ram Plate multiplier makes the same craft impact stronger');
-  assert.ok(platedCraft.impactDamage <= kernel.COLLISION_CONSEQUENCE_LIMITS.maxDamage,
-    'plated craft impact remains bounded by the universal damage ceiling');
+  assert.ok(platedCraft.impactDamage <= massRelativeCap(20),
+    'plated craft impact remains bounded by the mass-relative damage ceiling');
   assert.ok(Math.abs(platedCraft.impactDamage / ordinaryCraft.impactDamage - 1.8) < 1e-12,
     'Ram Plate scales the craft baseline exactly once');
   const masslineOwnedCraft = kernel.resolveCollisionConsequence({

@@ -176,17 +176,18 @@ export const WEAPONS = [
   // distinct impulseProvenance so its receipt and its VFX identity never collapse onto another family.
   {
     // CONCUSSION CANNON — a heavy, slow, low-damage slug whose payload is MOMENTUM, not damage. A hit
-    // shoves the target along the slug line (impulsePerHit ÷ target mass): 400 ÷ 16 ≈ 25 wu/s on a
+    // shoves the target along the slug line (impulsePerHit ÷ target mass): 420 ÷ 16 ≈ 26.25 wu/s on a
     // Wasp clears the kernel tumbleDeltaV (18), so the ship is thrown and TUMBLES the instant it meets
-    // terrain — the wall impact is its own receipted terrain-damage event. 400 ÷ 150 ≈ 2.7 wu/s on a
-    // gunship is below staggerDeltaV (3), so heavies are unmoved. The kill comes from the environment,
-    // not the gun; this is deliberately NOT a DPS weapon (STEP 9 forbidden shortcut #1). NPCs take
-    // one short authored recovery beat before counterthrust resumes; player control is never delayed.
+    // terrain — the wall impact is its own receipted terrain-damage event. 420 ÷ 150 = 2.8 wu/s on a
+    // gunship stays below staggerDeltaV (3), so heavies are unmoved. Caps at the siege-lance budget so
+    // a mid slot never out-shoves capital ordnance. The kill comes from the environment, not the gun
+    // (STEP 9 forbidden shortcut #1). U11 WF-15: 400→420 after 520 overshot medium TTK / heavy shrug.
+    // NPCs take one short authored recovery beat before counterthrust resumes; player control is never delayed.
     id: 'wpn_concussion_cannon_m', name: 'Concussion Cannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 26000, requiresTech: 'tech_kinetic_drivers',
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 560, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
-    impulsePerHit: 400, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    impulsePerHit: 420, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
     npcCounterthrustDelayS: 0.5,
   },
   {
