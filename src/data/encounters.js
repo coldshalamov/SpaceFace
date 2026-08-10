@@ -190,6 +190,7 @@ export const ENCOUNTER_BARKS = Object.freeze({
     '{faction} freighters rolling — {cargo} earmarked for {dest}.',
   ]),
   convoy_guard_ack:   'Escort logged. {faction} remembers this.',
+  curtain_convoy_alert: 'TRAFFIC ALERT: freighter under PD screen. Raiders want the hold; the escort wants the lane.',
   trader_pass: Object.freeze([
     'Hauler on approach. {cargo} for {dest}.',
     'Single freighter inbound — {cargo} for {dest}.',

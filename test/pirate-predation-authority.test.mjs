@@ -252,25 +252,28 @@ test('response expiry opens only the selected raider-to-manifest relation and re
 test('the shipped tactical route makes the offensive raider first-fire while the PD curtain holds', () => {
   const harness = bootTactical();
   const live = fire(harness, `${ENCOUNTER_ID}:tactical`);
-  harness.sim.runTicks(130);
   const { target, raider, raiders } = actors(harness, live);
-  assert.equal(live.data.predationStatus, 'active');
   assert.notEqual(raider.data.lootTableId, 'pd_screen_escort');
   assert.equal(raider.data.ai.combatDoctrineId, 'interceptor_flyby');
 
-  // The headless seam has no physics owner, so place the already-selected actors inside the
-  // doctrine's authored ingress threshold and let the real tactical stack advance its phases.
+  // The headless seam has no physics owner, so establish a clear authored ingress lane that does
+  // not put the PD wingmate between the selected raider and carrier, then observe warning to fire.
   raider.pos.x = target.pos.x + 300;
-  raider.pos.z = target.pos.z;
-  let firstFired = false;
-  for (let tick = 0; tick < 60; tick++) {
+  raider.pos.z = target.pos.z - 100;
+  const noFireUntil = live.data.predationNoFireUntil;
+  const maxTicks = Math.ceil(Math.max(3, noFireUntil - harness.state.simTime + 3) * 60);
+  let firstFireAt = null;
+  for (let tick = 0; tick < maxTicks && firstFireAt == null; tick++) {
     harness.sim.step();
-    if (raider.data.intent?.fire === true) firstFired = true;
+    if (raider.data.intent?.fire === true) firstFireAt = harness.state.simTime;
   }
 
   const decision = harness.tactical.stack.lastResult.decisions
     .find((candidate) => candidate.entityId === raider.id);
-  assert.equal(firstFired, true, 'the selected relation reaches the real SG-06 fire adapter');
+  assert.equal(live.data.predationStatus, 'active');
+  assert.ok(firstFireAt != null, 'the selected relation reaches the real SG-06 fire adapter');
+  assert.ok(firstFireAt >= noFireUntil,
+    `the authored warning remains non-firing until ${noFireUntil}, observed ${firstFireAt}`);
   assert.equal(decision.directive.focusTargetId, target.id);
   assert.notEqual(raiders.find((candidate) => candidate.data.lootTableId === 'pd_screen_escort')?.data?.intent?.fire, true,
     'the readable PD anchor remains the curtain and never attacks its protected carrier');

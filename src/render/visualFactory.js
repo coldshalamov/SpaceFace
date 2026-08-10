@@ -2443,6 +2443,12 @@ function commodityColor(e) {
 }
 
 function buildPickup(e) {
+  if (e.data && e.data.freightCustodyPod) {
+    const canister = buildPayload(e);
+    canister.userData.kind = 'pickup';
+    canister.userData.interactionKind = 'pickup';
+    return canister;
+  }
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
