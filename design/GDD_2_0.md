@@ -3,14 +3,18 @@
 **Status: PRODUCT AUTHORITY.** This document owns durable game pillars and experience goals.
 `ARCHITECTURE.md` owns technical contracts, `design/program/` owns current status/acceptance, and the
 activated plan/spec owns task detail. Historical or archived plans never override this hierarchy.
+The owner's statement of the fantasy and UVP is [`design/VISION.md`](./VISION.md); where emphasis
+differs, that document wins.
 
 ---
 
 ## 1. Pitch
 
-**Freelancer's living universe, played top-down, with physics you can feel.**
+**A fast, colorful, physics-driven space sandbox inside a living universe that remembers what you did.**
 Mine, trade, fight, and take contracts across a faction-contested frontier — in a ship that moves
-like a real mass, tethers onto anything, and slingshots around asteroids at full burn.
+like a real mass, tethers onto anything, and slingshots around asteroids at full burn. Endless Sky
+and Freelancer supply the depth of the universe, *not* the pace or the palette: moment-to-moment
+play is arcade-fast, physically slapstick, and delightfully abusive (see `design/VISION.md`).
 
 ## 2. The core product challenge
 

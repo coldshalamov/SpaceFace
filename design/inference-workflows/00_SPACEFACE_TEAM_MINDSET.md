@@ -4,7 +4,13 @@ This is the minimum creative context a fresh agent must internalize before produ
 
 ## The game in one sentence
 
-**Freelancer's living universe, played top-down, with physics you can feel—where momentum is a toy, ordinary commerce and crime operate around the player, and mining eventually lets the player manufacture the infrastructure that changes the galaxy.**
+**A fast, colorful, physics-driven space sandbox — played top-down — where you personally manipulate ships, momentum, tethers, gravity, cargo, and terrain inside a working universe that remembers what you did.**
+
+The full fantasy, in the owner's own words, is [`design/VISION.md`](../VISION.md) — *The Fun, the Fantasy, and the UVP*. Read it before producing anything creative; where any other document's emphasis differs, VISION.md wins.
+
+## Where the influences stop
+
+Endless Sky and Freelancer contribute **depth**: routes, factions, economy, progression, contracts, one persistent save, a universe that was busy before the player arrived. They contribute *nothing else*. Not their muted palettes. Not their stately trade-fire-until-an-HP-bar-empties combat. The moment-to-moment feel of SpaceFace is an arcade game's — fast, kinetic, physically slapstick, addictive in the moment — and misreading "Freelancer influence" as dreary graphics or dogfight pacing is the single most common way agents have gotten this game wrong.
 
 ## What is cool about the intended game
 
@@ -26,7 +32,7 @@ The player should be able to say:
 
 That anecdote is a better product target than a checklist containing “cargo,” “crime,” “gravity,” and “NPC jobs.”
 
-## The four experience pillars
+## The five experience pillars
 
 ### 1. Momentum is the toy
 
@@ -50,7 +56,13 @@ Do not hide the game in tiny text, radar-only actors, remote simulation, or iden
 
 Mining is not only a money faucet. Manual extraction should lead to machines, logistics, tools, stations, gravity infrastructure, defense, and new routes. The late game should visibly bear the player's history.
 
-The economy exists to buy agency, scale, information, access, and transformation—not merely a gun that reduces the number of identical shots needed.
+The economy exists to buy agency, scale, information, access, and transformation—not merely a gun that reduces the number of identical shots needed. Progression should make the player ask "what can I do now?", never "did my damage number grow?" — and the ship should accumulate scars, weird fittings, and recognition until it is *my fucking ship*, not an inventory item.
+
+### 5. Combat is delightfully abusive
+
+SpaceFace is not trying to produce symmetrical honorable dogfights. The player should become extremely physically dangerous in ways they earned. **Light enemies are almost ammunition** — shoved, spun, chained, clustered, slammed into terrain, thrown into each other, dragged into fields, scattered through cargo traffic. Medium enemies require commitment; heavies become moving terrain; specialists disrupt the player's plan. Challenge comes from positioning, numbers, collateral, geometry, law, commitment, and terrible trajectories — never from making every enemy absorb thirty seconds of damage.
+
+Kills and interference pay out **visibly and immediately in-world** — spilled cargo, salvage, and glowing reward pickups the player flies through (XP, currency, and sellable items are one reward fountain; they differ in what they buy, not how they feel to collect). And failure mutates the situation instead of ending it: salvage, restitution, escape, recovery, WANTED. The target feelings, per VISION.md: *"Holy shit, I did that"* — and occasionally *"Oh fuck, I did that."* Both are good.
 
 ## The visual personality
 
@@ -101,8 +113,10 @@ The relevant content becomes more readable, polished, responsive, beautiful, coh
 The result reinforces the game's actual identity:
 
 - physical improvisation;
+- delightfully abusive arcade combat with visible in-world payout;
 - living logistics;
 - opportunistic crime;
+- failure that mutates situations instead of ending them;
 - industrial escalation;
 - bright kinetic presentation;
 - one persistent open-world save.

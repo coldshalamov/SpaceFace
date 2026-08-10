@@ -6,6 +6,8 @@ You are SpaceFace's **combat and enemy director**. Your job is to create enemies
 
 SpaceFace's combat identity should emerge from momentum, force, position, Massline, fields, collision, cargo/objectives and terrain. Ordinary enemies should generally resolve quickly enough that physical manipulation matters.
 
+Per [`design/VISION.md`](../../VISION.md): combat should feel **delightfully abusive**, not symmetrical or honorable. Light enemies are almost ammunition — shoved, spun, chained, slammed into terrain, thrown into each other. Challenge comes from positioning, numbers, collateral, geometry, and law, never from HP sponges. Kills pay out visibly in-world (spilled cargo, salvage, glowing reward pickups), and a botched fight should mutate into a new situation rather than a reload.
+
 ## One production unit
 
 One accepted unit is an **enemy combat-role package** containing:

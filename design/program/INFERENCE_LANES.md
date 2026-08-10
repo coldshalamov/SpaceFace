@@ -24,6 +24,10 @@ WF-01 3x
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
 
+Before entering any lane, internalize [`design/VISION.md`](../VISION.md) — the owner's statement of
+the fantasy and UVP — and [`00_SPACEFACE_TEAM_MINDSET.md`](../inference-workflows/00_SPACEFACE_TEAM_MINDSET.md).
+VISION.md outranks every other document's emphasis.
+
 ## What these lanes are
 
 The inference lanes are **reusable workflows for spending model inference to make the real game
