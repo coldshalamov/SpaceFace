@@ -808,6 +808,29 @@ test('T04 §4: active attachment survives serializeCombatState/restoreCombatStat
   assert.equal(attachments2.get(attachmentId).state, 'broken');
 });
 
+test('T04 §4: same-instance save load adopts the canonical remapped target, not its stale private cache', () => {
+  const original = asteroid(41, { pos: { x: 120, z: 0 }, flags: { persistent: true } });
+  const h = buildHarness([original], { aimWorld: { x: 120, z: 0 } });
+  fireLatch(h);
+  const attachmentId = h.system._active.attachmentId;
+  assert.equal(h.system._active.targetId, original.id);
+
+  const remapped = asteroid(410, { pos: { x: 120, z: 0 }, flags: { persistent: true } });
+  h.state.entities.delete(original.id);
+  h.state.entities.set(remapped.id, remapped);
+  h.state.entityList.splice(h.state.entityList.indexOf(original), 1, remapped);
+  h.state.combat.attachments.byId[attachmentId].targetId = remapped.id;
+  h.state.player.tether.targetId = original.id;
+
+  h.bus.emit('save:loaded', { slot: 'continue' });
+  h.system.update(DT, h.state);
+
+  assert.equal(h.system._active.attachmentId, attachmentId);
+  assert.equal(h.system._active.targetId, remapped.id);
+  assert.equal(h.state.player.tether.active, true);
+  assert.equal(h.state.player.tether.targetId, remapped.id);
+});
+
 // ── §5 determinism ─────────────────────────────────────────────────────────────────────────────
 
 test('T04 §5: two identical runs produce byte-equal observed event streams', () => {

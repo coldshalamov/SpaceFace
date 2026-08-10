@@ -5,6 +5,7 @@ import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
+import { ensureCombatState } from '../src/combat/runtime.js';
 
 let recoveryModule = null;
 try {
@@ -135,6 +136,18 @@ function restoreDrive(t) {
 }
 
 function attachAndReel(t, after = SECURE_REEL_WU) {
+  const combat = ensureCombatState(t.state);
+  combat.attachments.byId.att_surrender_test = {
+    id: 'att_surrender_test',
+    defId: 'tether_standard',
+    ownerId: t.player.id,
+    targetId: t.hostile.id,
+    state: 'active',
+    restLength: after,
+    lastTension: 0,
+    lastImpulse: 0,
+    physicsHandle: null,
+  };
   t.state.player.tether = {
     active: true,
     targetId: t.hostile.id,

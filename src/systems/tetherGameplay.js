@@ -89,6 +89,13 @@ export const tetherGameplay = {
     this._resetAcquisitionRuntime(this.state);
     this._resetTwinBridleRuntime(this.state, null, true);
     const resetAfterLoad = () => {
+      // Combat persistence restores attachment ids but remaps their live endpoints. Drop the
+      // outgoing run's private endpoint cache so _adoptExisting reads the canonical restored line;
+      // otherwise an id-stable attachment can keep steering/mirroring the stale target id.
+      this._active = null;
+      this._pendingCut = null;
+      this._ignoreReleaseCutUntilReelIdle = false;
+      this._lastStrainT = -Infinity;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
     };
