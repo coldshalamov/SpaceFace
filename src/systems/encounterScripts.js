@@ -612,7 +612,19 @@ function convoyFire(d, live, state, isConvoy) {
   live.data.destName = dest ? (dest.name || 'the exchange') : 'the far lane';
   live.data.cargoId = cargo.commodityId;
   live.data.perHauler = perHauler;
+  live.data.initialHaulerCount = d.aliveCount(live, 'hauler');
+  live.data.initialCargoUnits = live.data.initialHaulerCount * perHauler;
+  live.data.freightManifest = {
+    manifestId: `fm_encounter_${live.id}`,
+    freighterKey: `encounter:${live.id}`,
+    role: 'hauler',
+    lines: live.data.initialCargoUnits > 0
+      ? [{ commodityId: cargo.commodityId, qty: live.data.initialCargoUnits }]
+      : [],
+    totalQty: live.data.initialCargoUnits,
+  };
   live.data.robbed = false;
+  live.data.lossKillerId = null;
   live.data.guardKills = 0;
   live.data.noticed = false;
   live.vars.cargo = cargo.label;
@@ -625,8 +637,14 @@ function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
   if (!haulers.length) {
-    // All cargo dead: robbed if the player did it, lost either way. No delivery, no pressure.
+    // All cargo dead: the initial manifest is retained even though its carriers are gone. Route
+    // scarcity through the economy owner exactly once, then resolve as robbed/lost.
     const outcome = live.data.robbed ? 'robbed' : 'lost';
+    d.freightLoss(live, {
+      manifest: live.data.freightManifest,
+      stationId: live.data.destId,
+      killerId: live.data.lossKillerId,
+    });
     d.despawnAll(live, 8);
     return d.resolve(live, outcome, { vars: live.vars, speak: live.data.noticed || live.data.robbed });
   }
@@ -664,9 +682,12 @@ const convoy = {
   event(d, live, state, name, p) {
     if (name === 'squadKill') {
       const role = p && p.role;
-      if (role !== 'escort' && p.byPlayer) {
-        live.data.robbed = true;
-        d.setPassive(live, false, 'escort');            // escorts go weapons-free (lawful gate applies)
+      if (role !== 'escort') {
+        if (p.byPlayer) {
+          live.data.robbed = true;
+          if (p.killerId != null) live.data.lossKillerId = p.killerId;
+          d.setPassive(live, false, 'escort');          // escorts go weapons-free (lawful gate applies)
+        } else if (!live.data.robbed && p && p.killerId != null) live.data.lossKillerId = p.killerId;
       }
     }
     if (name === 'guardKill') live.data.guardKills += 1; // player killed an attacker near the convoy

@@ -10,8 +10,8 @@
 //     fine/confiscation/heat through economy's own runScan; run/dump/bribe paths work.
 //   • distress is genuinely 60/40 across the seed corpus; rescue pays rep+credits through
 //     intents; bait springs; ignoring is unpunished and silent.
-//   • convoy arrival applies BOUNDED economy pressure (|vol| ≤ 12) via economy:applyTradePressure;
-//     robbing it kills the delivery and wakes the escorts.
+//   • convoy arrival applies BOUNDED positive economy pressure (|vol| ≤ 12); losing/robbing its
+//     retained manifest applies one BOUNDED negative pressure through the same economy owner seam.
 //   • salvage/black-box signal rides the real salvage system and emits mission + receipt hooks.
 //   • a killed named captain stays dead in persistent state; an engaged escape deepens the grudge.
 
@@ -45,12 +45,14 @@ function boot(seed, sectorId, pos, opts = {}) {
   state.playerId = player.id;
   if (opts.cargo) state.player.cargo.items = { ...opts.cargo };
   if (opts.credits != null) state.player.credits = opts.credits;
-  const log = { events: [], receipts: [], resolved: [], choices: [], voice: [], pressure: [], credits: [] };
+  const log = { events: [], receipts: [], resolved: [], choices: [], voice: [], pressure: [], losses: [], news: [], credits: [] };
   bus.on('encounter:receipt', (p) => log.receipts.push(p));
   bus.on('encounter:resolved', (p) => log.resolved.push(p));
   bus.on('encounter:choiceOffered', (p) => log.choices.push(p));
   bus.on('encounter:voice', (p) => log.voice.push(p));
   bus.on('economy:applyTradePressure', (p) => log.pressure.push(p));
+  bus.on('freight:loss', (p) => log.losses.push(p));
+  bus.on('news:headline', (p) => log.news.push(p));
   bus.on('credits:changed', (p) => log.credits.push(p));
   bus.on('faction:repDelta', (p) => log.events.push({ n: 'repDelta', ...p }));
   bus.on('contraband:scanned', (p) => log.events.push({ n: 'scanned', ...p }));
@@ -362,8 +364,27 @@ function craftDistress(sectorId, wantKind) {
   }
   assert(log.resolved.some((r) => r.encounterId === id && r.outcome === 'robbed'), 'dead convoy resolves as robbed');
   assert(log.receipts.some((r) => r.encounterId === id && /CONVOY RAIDED/.test(r.text)), 'raid receipt');
-  assert.equal(log.pressure.length, 0, 'no delivery — no market pressure');
-  ok('convoy ROBBERY: escorts wake, no delivery pressure, raid receipt');
+  assert.equal(log.pressure.length, 1, 'robbery applies one scarcity pressure');
+  assert(log.pressure[0].vol < 0 && log.pressure[0].vol >= -12, 'robbery pressure is negative and bounded');
+  assert.equal(log.pressure[0].cause, 'freight_loss', 'scarcity carries the named freight-loss cause');
+  assert.equal(log.losses.length, 1, 'robbery emits one reusable freight loss intent');
+  assert.equal(log.news.length, 1, 'robbery emits one market headline intent');
+  ok('convoy ROBBERY: escorts wake, one bounded scarcity intent, raid receipt');
+}
+{
+  const { sim, state, log } = boot(43, 'sector_tethys_junction', TETHYS_LANE, { credits: 100 });
+  state.world.activeSector = { stations: [{ id: 'st_tethys_hub', pos: { x: 1050, z: 380 }, name: 'Meridian Exchange' }] };
+  const { live, id } = forceFire(sim, 'convoy_departure', 'sector_tethys_junction');
+  const haulerIds = live.ids.filter((eid) => live.roles[eid] === 'hauler');
+  killAs(sim, haulerIds, 999001);                      // off-player loss
+  tickS(sim, 3);
+  assert(log.resolved.some((r) => r.encounterId === id && r.outcome === 'lost'), 'dead non-player convoy resolves as lost');
+  assert.equal(log.pressure.length, 1, 'loss applies one scarcity pressure');
+  assert(log.pressure[0].vol < 0 && log.pressure[0].vol >= -12, 'loss pressure is negative and bounded');
+  assert.equal(log.losses.length, 1, 'loss emits exactly one freight intent');
+  tickS(sim, 3);
+  assert.equal(log.pressure.length, 1, 'later terminal ticks cannot duplicate loss pressure');
+  ok('convoy LOSS: one bounded scarcity intent, loss receipt, duplicate-safe');
 }
 
 // ── K. salvage signal: black box through the REAL salvage system ────────────────────────────────

@@ -75,6 +75,10 @@ import {
   buildEncounterCausality,
   resolvedEncounterFingerprint,
 } from '../world/encounterCausality.js';
+import {
+  buildLossIntent,
+  filterNewFreightIntents,
+} from '../economy/freightCausality.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -1063,6 +1067,72 @@ export const encounterDirector = {
     const bounded = Math.max(-12, Math.min(12, Math.round(vol)));     // ambient life must never flatten gradients
     this.emit('economy:applyTradePressure', { stationId, good: commodityId, vol: bounded });
   },
+  freightLoss(live, options = {}) {
+    if (!live || !live.id || !live.data) return false;
+    const manifest = options.manifest || live.data.freightManifest;
+    if (!manifest || !Array.isArray(manifest.lines) || !manifest.lines.length) return false;
+
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const freighterKey = String(options.freighterKey || `encounter:${live.id}`);
+    const intent = buildLossIntent({
+      seed,
+      freighterKey,
+      stationId: options.stationId != null ? options.stationId : live.data.destId,
+      sectorId: options.sectorId != null ? options.sectorId : live.sectorId,
+      manifest,
+      killerId: options.killerId != null ? options.killerId : live.data.lossKillerId,
+      // Encounter identity is already unique and deterministic. Keeping the sequence fixed makes
+      // the same terminal consequence stable across repeated ticks and Continue/replay.
+      seq: 0,
+    });
+    const hasDestination = typeof intent.stationId === 'string' && intent.stationId.trim().length > 0;
+    const routablePressures = (intent.pressures || []).map((pressure) => ({
+      pressure,
+      boundedVol: pressure && Number.isFinite(pressure.vol)
+        ? Math.max(-12, Math.min(12, Math.round(pressure.vol)))
+        : 0,
+    })).filter(({ pressure, boundedVol }) => (
+      pressure
+      && typeof pressure.stationId === 'string'
+      && pressure.stationId.trim().length > 0
+      && typeof pressure.good === 'string'
+      && pressure.good.length > 0
+      && boundedVol < 0
+    ));
+    // Do not consume the stable identity until a real economy-owner route exists. A stationless
+    // transient may acquire its destination later and must remain retryable without false news.
+    if (!hasDestination || !routablePressures.length) return false;
+    const dir = ensureDirectorState(this.state);
+    // saveSystem already persists the director stats bag, so this bounded causal ledger survives
+    // Continue without making transient live encounter/entity references durable.
+    const applied = dir.stats.appliedFreightLossIds;
+    const fresh = filterNewFreightIntents([intent], applied);
+    if (!fresh.length) return false;
+
+    // Reserve before emitting because bus handlers are synchronous and may re-enter the facade.
+    dir.stats.appliedFreightLossIds = appendAppliedFreightLossIds(applied, intent.intentId, 64);
+    live.data.freightLossIntentId = intent.intentId;
+    for (const { pressure, boundedVol } of routablePressures) {
+      this.emit('economy:applyTradePressure', {
+        ...pressure,
+        stationId: pressure.stationId,
+        good: pressure.good,
+        commodityId: pressure.commodityId || pressure.good,
+        vol: boundedVol,
+        intentId: intent.intentId,
+        encounterId: live.id,
+      });
+    }
+    this.emit('freight:loss', { ...intent, encounterId: live.id });
+    if (intent.news) {
+      this.emit('news:headline', {
+        ...intent.news,
+        encounterId: live.id,
+        headline: null,
+      });
+    }
+    return true;
+  },
   dangerImpulse(live, kind, delta) {
     const bounded = Math.max(-0.05, Math.min(0.05, delta || 0));
     if (bounded) this.emit('sectorsim:impulse', { kind, sectorId: live.sectorId, danger: bounded });
@@ -1112,7 +1182,7 @@ export const encounterDirector = {
       const role = live.roles[p.id];
       if (role !== undefined && live.ids.includes(p.id)) {
         handled = live;
-        this._scriptEvent(live, 'squadKill', { id: p.id, role, byPlayer });
+        this._scriptEvent(live, 'squadKill', { id: p.id, role, byPlayer, killerId: p.killerId });
         break;
       }
     }
@@ -1895,7 +1965,7 @@ function freshState() {
     named: {},
     externalNamed: {},
     receipts: [],
-    stats: { fired: 0, resolved: 0, fizzled: 0 },
+    stats: { fired: 0, resolved: 0, fizzled: 0, appliedFreightLossIds: [] },
     lastMeaningfulAt: -1e9,
     lastAmbientAt: -1e9,
     lastMajorAt: -1e9,
@@ -1931,6 +2001,7 @@ function ensureDirectorState(state) {
   if (!d.externalNamed || typeof d.externalNamed !== 'object' || Array.isArray(d.externalNamed)) d.externalNamed = {};
   if (!Array.isArray(d.receipts)) d.receipts = [];
   if (!d.stats || typeof d.stats !== 'object') d.stats = { fired: 0, resolved: 0, fizzled: 0 };
+  d.stats.appliedFreightLossIds = normalizeAppliedFreightLossIds(d.stats.appliedFreightLossIds, 64);
   if (!Array.isArray(d.stats.recentFingerprints)) d.stats.recentFingerprints = [];
   if (!Array.isArray(d.stats.recentVarietyKeys)) d.stats.recentVarietyKeys = [];
   if (d.stats.recentFingerprints.length > 12) d.stats.recentFingerprints = d.stats.recentFingerprints.slice(-12);
@@ -1943,6 +2014,34 @@ function ensureDirectorState(state) {
   if (!Number.isFinite(d._accum)) d._accum = 0;
   ensureNamed(d);
   return d;
+}
+
+// The loss ledger is an eviction queue, not a set serialization: application order is authority.
+// Older builds may have saved either an array or an object-shaped membership map; normalize both
+// without sorting so a newly appended low-lexical ID cannot evict itself at the cap boundary.
+function normalizeAppliedFreightLossIds(value, cap = 64) {
+  const source = Array.isArray(value)
+    ? value
+    : (value && typeof value === 'object' ? Object.keys(value) : []);
+  const ordered = [];
+  const seen = new Set();
+  for (let i = source.length - 1; i >= 0; i--) {
+    const id = typeof source[i] === 'string' ? source[i] : String(source[i] == null ? '' : source[i]);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ordered.push(id);
+  }
+  ordered.reverse();
+  const limit = Math.max(1, Math.floor(Number(cap) || 64));
+  return ordered.length > limit ? ordered.slice(ordered.length - limit) : ordered;
+}
+
+function appendAppliedFreightLossIds(previous, intentId, cap = 64) {
+  const ids = normalizeAppliedFreightLossIds(previous, cap);
+  const id = typeof intentId === 'string' ? intentId : String(intentId == null ? '' : intentId);
+  if (!id || ids.includes(id)) return ids;
+  ids.push(id);
+  return ids.length > cap ? ids.slice(ids.length - cap) : ids;
 }
 
 function encounterScriptFor(liveOrShape) {
