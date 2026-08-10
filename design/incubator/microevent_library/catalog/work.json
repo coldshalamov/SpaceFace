@@ -60,7 +60,7 @@
       "fallback": "Either actor despawning reverts the other to its ordinary cycle at the next phase edge",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "Both cycles already exist; the new piece is one shared waypoint and a wait-with-timeout, which the kernel's timed phases already express. PQ-045.causal-chain: LIVE on Ceres as link 2; actors ceres_seam_miner + ceres_refinery_hauler; requires miner_loaded; answer/transfer redirect the hauler's job toward the miner for visible approach; seeds ore_handoff+hauler_ore_manifest as ledger flags only (no cargo mint / no second cargo writer).",
+      "notes": "PQ-045.causal-chain: LIVE on Ceres as link 2; actors ceres_seam_miner + ceres_refinery_hauler; requires miner_loaded; stamp-only because the hauler is a retained real-target actor and cannot take a non-canonical redirect; seeds ore_handoff+hauler_ore_manifest as ledger flags only (no cargo movement, no cargo mint, no second cargo writer).",
       "diagramMermaid": "sequenceDiagram\n  participant M as Miner\n  participant H as Hauler\n  M->>M: WORK completes loaded\n  M->>H: holds at field edge (heavy_burn strobe)\n  H->>M: straight leg to transfer point\n  M-->>H: spilling_the_count / mouth_open (20 s)\n  H->>H: departs heavy to station\n  M->>M: returns empty to seam"
     },
     {

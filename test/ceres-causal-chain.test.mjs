@@ -67,7 +67,7 @@ function pocketActorRows() {
     .map((slot) => ({ pocket, slot })));
 }
 
-function bootCausalHarness({ simTime = 10 } = {}) {
+function bootCausalHarness({ simTime = 10, npcJobs = null } = {}) {
   const station = makeEntity(10, 'station', { stationId: 'station_ceres' }, { x: 100, z: 100 });
   const asteroid = makeEntity(38, 'asteroid', {
     activityObjectSlotId: 'ceres_seam_ore_clast',
@@ -83,6 +83,7 @@ function bootCausalHarness({ simTime = 10 } = {}) {
     simTime,
     meta: { seed: SEED },
     world: { currentSectorId: CERES_ACTIVITY_SECTOR_ID, records: { byId: {} } },
+    npcJobs: { byId: {} },
     entities: new Map(baseEntities.map((entity) => [entity.id, entity])),
     entityList: baseEntities.slice(),
     entityIndex: {
@@ -201,7 +202,7 @@ function bootCausalHarness({ simTime = 10 } = {}) {
     bus,
     helpers: {
       spawnEntity() { return null; },
-      npcJobs: { assign() { return null; }, get() { return null; } },
+      npcJobs: npcJobs || { assign() { return null; }, get() { return null; } },
     },
     registry: null,
   });
@@ -210,6 +211,14 @@ function bootCausalHarness({ simTime = 10 } = {}) {
   traffic._ensureCeresCausalChain('test_boot');
 
   return { state, traffic, bus, receipts, tender, station, asteroid };
+}
+
+function actorBySlot(state, slotId) {
+  const rec = state.traffic.freighters.find((row) => row.activityActorSlotId === slotId);
+  assert.ok(rec, `missing traffic row for ${slotId}`);
+  const actor = state.entities.get(rec.id);
+  assert.ok(actor, `missing entity for ${slotId}`);
+  return { rec, actor };
 }
 
 function stepTo(traffic, state, simTime) {
@@ -318,10 +327,9 @@ test('miner_loaded seed opens the hauler-call link while rich seam may still be 
 
 test('hauler-call seeds ledger flags without minting ore into cargo', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
-  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
-  const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
-  const miner = state.entities.get(minerRec.id);
-  const hauler = state.entities.get(haulerRec.id);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+  const haulerManifestBefore = hauler.data.cargoManifest;
   const minerQtyBefore = miner.data.cargoManifest && miner.data.cargoManifest.totalQty || 0;
   const haulerQtyBefore = hauler.data.cargoManifest && hauler.data.cargoManifest.totalQty || 0;
 
@@ -339,6 +347,16 @@ test('hauler-call seeds ledger flags without minting ore into cargo', () => {
   const haulerQtyAfter = hauler.data.cargoManifest && hauler.data.cargoManifest.totalQty || 0;
   assert.equal(minerQtyAfter, minerQtyBefore, 'miner cargo untouched by chain handoff beat');
   assert.equal(haulerQtyAfter, haulerQtyBefore, 'hauler cargo untouched by chain handoff beat');
+
+  const completedAt = runUntil(
+    traffic,
+    state,
+    (s) => s && s.completed.includes('ev_miner_calls_hauler'),
+    { start: state.simTime, maxS: 120, stepS: 2 },
+  );
+  assert.ok(completedAt != null, 'hauler-call link should terminate');
+  assert.equal(hauler.data.cargoManifest, haulerManifestBefore,
+    'hauler cargo manifest must remain unchanged after hauler-call termination');
 });
 
 test('rich-seam strike plants seeds without fabricating miner cargo', () => {
@@ -474,6 +492,106 @@ test('save mid-recovery clears ceresCausal stamps from a persistent civilian', (
   const serializedData = JSON.parse(JSON.stringify(hauler.data));
   const serializedResidual = Object.keys(serializedData).filter((k) => k.startsWith('ceresCausal'));
   assert.deepEqual(serializedResidual, []);
+});
+
+test('traffic cleanup clears ceresCausal stamps from all entity-scoped actors', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
+    { start: 0, maxS: 600, stepS: 2 },
+  );
+  assert.ok(entered != null, 'recovery link should open under zero input');
+  const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+  assert.ok(Object.keys(hauler.data).some((k) => k.startsWith('ceresCausal')),
+    'test should enter with a stamped hauler');
+
+  traffic._cleanup();
+
+  const residual = [];
+  for (const entity of state.entityList) {
+    if (!entity || !entity.data) continue;
+    for (const key of Object.keys(entity.data)) {
+      if (key.startsWith('ceresCausal')) residual.push(`${entity.id}:${key}`);
+    }
+  }
+  assert.deepEqual(residual, [], `ceresCausal keys survived cleanup: ${residual.join(',')}`);
+});
+
+test('failed patrol redirect does not tear down the actor job at link termination', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  const { actor: patrol } = actorBySlot(state, 'ceres_cathedral_patrol');
+  const priorJobId = patrol.data.jobId;
+
+  const startedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    { start: 0, maxS: 240, stepS: 2 },
+  );
+  assert.ok(startedAt != null, 'patrol scan link should start');
+  assert.equal(patrol.data.jobId, priorJobId, 'failed redirect should restore the prior job immediately');
+
+  const completedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.completed.includes('ev_patrol_scans_suspect'),
+    { start: state.simTime, maxS: 120, stepS: 2 },
+  );
+  assert.ok(completedAt != null, 'patrol scan link should terminate');
+  assert.equal(patrol.data.jobId, priorJobId, 'failed redirect must not be restored as a fresh job');
+});
+
+test('patrol redirect restores the prior job id after a successful assign round trip', () => {
+  const releases = [];
+  const assignments = [];
+  let jobState = null;
+  const npcJobs = {
+    assign(entity, spec) {
+      const jobId = `job:${entity.data.worldRecordId}`;
+      assignments.push({ entityId: entity.id, jobId, spec });
+      entity.data.jobId = jobId;
+      jobState.npcJobs.byId[jobId] = {
+        entityId: entity.id,
+        job: { route: spec.route },
+        kind: spec.kind,
+      };
+      return jobId;
+    },
+    release(jobId) {
+      releases.push(jobId);
+      delete jobState.npcJobs.byId[jobId];
+    },
+    get(jobId) {
+      return jobState.npcJobs.byId[jobId] || null;
+    },
+  };
+  const { traffic, state } = bootCausalHarness({ simTime: 0, npcJobs });
+  jobState = state;
+  const { actor: patrol } = actorBySlot(state, 'ceres_cathedral_patrol');
+  const priorJobId = patrol.data.jobId;
+  const priorEntry = {
+    entityId: patrol.id,
+    job: { route: [{ id: 'patrol-a' }, { id: 'patrol-b' }] },
+    kind: 'patrol',
+  };
+  state.npcJobs.byId[priorJobId] = priorEntry;
+
+  const completedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.completed.includes('ev_patrol_scans_suspect'),
+    { start: 0, maxS: 360, stepS: 2 },
+  );
+
+  assert.ok(completedAt != null, 'patrol scan link should complete');
+  assert.equal(patrol.data.jobId, priorJobId, 'patrol redirect should restore the prior job id');
+  assert.equal(assignments.length, 1, 'patrol redirect should assign once for the scan window');
+  assert.equal(assignments[0].spec.kind, 'patrol');
+  assert.equal(assignments[0].spec.route[1].targetRef, 'actor:ceres_refinery_hauler');
+  assert.deepEqual(releases, [priorJobId, assignments[0].jobId]);
+  assert.equal(state.npcJobs.byId[priorJobId], priorEntry);
 });
 
 test('chain ledger is transient and clears on save:loaded / newGame', () => {

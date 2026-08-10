@@ -250,14 +250,8 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     requires: Object.freeze(['miner_loaded']),
     seedAtPhase: 'transfer',
     seeds: Object.freeze(['ore_handoff', 'hauler_ore_manifest']),
-    // Hauler approaches the loaded miner for the answer/transfer beat (choreography only; no cargo write).
-    jobHints: Object.freeze([
-      Object.freeze({
-        actorSlotId: CERES_REFINERY_HAULER_SLOT_ID,
-        subjectSlotId: CERES_SEAM_MINER_SLOT_ID,
-        phases: Object.freeze(['answer', 'transfer']),
-      }),
-    ]),
+    // Hauler is a retained real-target actor; this link is stamp-only and never writes cargo.
+    jobHints: Object.freeze([]),
     phases: Object.freeze([
       Object.freeze({ name: 'call', durationS: 12, cue: 'heavy_burn' }),
       Object.freeze({ name: 'answer', durationS: 25, cue: 'clean_burn' }),
@@ -1694,6 +1688,11 @@ export const traffic = {
 
   _cleanup() {
     this._invalidateCausalRunEpoch();
+    this._ensureState();
+    // Hard exit drops the view and every view-scoped causality ledger while the freighter ledger
+    // still names persistent bodies that need stamp cleanup.
+    this._resetTransientCausalLedgers(true);
+    this._resetCeresCausalChain('cleanup');
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -1703,12 +1702,7 @@ export const traffic = {
       for (const id of this._active) { try { helper(id); } catch (_) {} }
     }
     this._active = [];
-    this._ensureState();
     this.state.traffic.freighters = [];
-    // Hard exit drops the view and every view-scoped causality ledger. Continuous handoff uses
-    // _pruneDead only and keeps them (M2 durable identity).
-    this._resetTransientCausalLedgers(true);
-    this._resetCeresCausalChain('cleanup');
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
@@ -2839,27 +2833,24 @@ export const traffic = {
         if (entity && entity.data) this._wipeCeresCausalDataKeys(entity.data);
       }
     }
-    // Tender is outside the freighter ledger; wipe by world-record or activity slot stamp.
-    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
-    const tenderRecordId = stableRecordId(
-      seed,
-      CERES_ACTIVITY_SECTOR_ID,
-      RECORD_KIND.CONVOY,
-      `ceres:activity:${CERES_TENDER_SLOT_ID}`,
-    );
-    let tender = entityWithWorldRecord(this.state, tenderRecordId);
-    if (!tender && this.state && Array.isArray(this.state.entityList)) {
+    if (this.state && Array.isArray(this.state.entityList)) {
       for (let i = 0; i < this.state.entityList.length; i++) {
         const candidate = this.state.entityList[i];
-        if (candidate && candidate.data
-          && (candidate.data.activityActorSlotId === CERES_TENDER_SLOT_ID
-            || candidate.data.worldRecordId === tenderRecordId)) {
-          tender = candidate;
-          break;
+        const data = candidate && candidate.data;
+        if (!data) continue;
+        let stamped = data.activityActorSlotId != null;
+        if (!stamped) {
+          const keys = Object.keys(data);
+          for (let j = 0; j < keys.length; j++) {
+            if (keys[j].startsWith('ceresCausal')) {
+              stamped = true;
+              break;
+            }
+          }
         }
+        if (stamped) this._wipeCeresCausalDataKeys(data);
       }
     }
-    if (tender && tender.data) this._wipeCeresCausalDataKeys(tender.data);
   },
 
   _resetCeresCausalChain(reason = 'reset') {
@@ -3175,67 +3166,27 @@ export const traffic = {
     const subjectBound = this._ceresCausalActorBySlot(subjectSlotId);
     if (!subjectBound || !subjectBound.entity || !subjectBound.entity.pos) return false;
     const subjectEntity = subjectBound.entity;
-    // Prefer resolving the subject through the existing activity target predicate when the
-    // authored mark language can name it; fall back to the live cast body position.
-    let subjectPos = { x: subjectEntity.pos.x, z: subjectEntity.pos.z };
-    const subjectEntry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(subjectSlotId);
-    if (subjectEntry && subjectEntry.slot) {
-      const targetRef = `actor:${subjectSlotId}`;
-      // Synthetic waypoint/mark for _resolveCeresActivityTarget's actor: branch.
-      const waypoint = { id: `causal-subject:${subjectSlotId}`, pos: subjectPos, targetRef };
-      const mark = { id: waypoint.id, targetRef, offset: { x: 0, z: 0 } };
-      const resolved = this._resolveCeresActivityTarget(targetRef, waypoint, mark, subjectEntry);
-      if (resolved && resolved.entity && resolved.entity.pos) {
-        subjectPos = { x: resolved.entity.pos.x, z: resolved.entity.pos.z };
-      }
-    }
-
     const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
     const worldRecordId = actorEntity.data && actorEntity.data.worldRecordId;
     const jobId = (actorEntity.data && actorEntity.data.jobId)
       || (worldRecordId ? `job:${worldRecordId}` : null);
-
-    // Track so terminal cleanup can restore the authored cycle.
-    if (!live.redirectedSlots) live.redirectedSlots = [];
-    if (!live.redirectedSlots.includes(actorSlotId)) live.redirectedSlots.push(actorSlotId);
-
-    // Path A: mutate an existing job's route toward the subject (works even for real-target actors
-    // whose assign() rejects non-canonical routes — ordinary drive resumes once real-target
-    // authority drops on the non-canonical positions).
-    const existing = typeof getJob === 'function' && jobId ? getJob(jobId) : null;
-    if (existing && existing.job && Array.isArray(existing.job.route) && existing.job.route.length >= 2
-      && existing.job.corrupt !== true) {
-      const route = existing.job.route;
-      const origin = route[0];
-      const dest = route[route.length - 1];
-      if (origin && origin.pos && dest && dest.pos
-        && Number.isFinite(actorEntity.pos.x) && Number.isFinite(actorEntity.pos.z)
-        && Number.isFinite(subjectPos.x) && Number.isFinite(subjectPos.z)) {
-        origin.pos.x = actorEntity.pos.x;
-        origin.pos.z = actorEntity.pos.z;
-        dest.pos.x = subjectPos.x;
-        dest.pos.z = subjectPos.z;
-        existing.job.routeIndex = 0;
-        existing.job.progress = 0;
-        if (existing.job.phase !== NPC_JOB_PHASE.FLEE && existing.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-          // Prefer a transit-like phase the kind already owns so the hull starts moving.
-          if (entry.slot.jobKind === 'patrol') existing.job.phase = NPC_JOB_PHASE.TRANSIT;
-          else if (entry.slot.jobKind === 'hauler') existing.job.phase = NPC_JOB_PHASE.TRANSIT;
-          else if (entry.slot.jobKind === 'miner' || entry.slot.jobKind === 'salvor') {
-            existing.job.phase = NPC_JOB_PHASE.TRANSIT;
-          }
-        }
-        return true;
+    const redirected = Array.isArray(live.redirectedSlots) ? live.redirectedSlots : null;
+    if (redirected) {
+      for (let i = 0; i < redirected.length; i++) {
+        const record = redirected[i];
+        const slotId = typeof record === 'string' ? record : record && record.slotId;
+        if (slotId === actorSlotId) return true;
       }
     }
 
-    // Path B: release + assign a short two-point job (non-real-target actors such as the patrol).
     if (typeof assign !== 'function') return false;
     const priorJobId = actorEntity.data && actorEntity.data.jobId || jobId || null;
+    const priorJobEntry = typeof getJob === 'function' && priorJobId ? getJob(priorJobId) : null;
     if (typeof release === 'function' && jobId) release(jobId);
     if (actorEntity.data) actorEntity.data.jobId = null;
+    const subjectPos = { x: subjectEntity.pos.x, z: subjectEntity.pos.z };
     const dx = subjectPos.x - actorEntity.pos.x;
     const dz = subjectPos.z - actorEntity.pos.z;
     const distance = Math.hypot(dx, dz);
@@ -3266,8 +3217,17 @@ export const traffic = {
       // Real-target actors reject non-canonical routes; restore the prior job id without going
       // through _assignCeresActivityJob (that path mints a freight manifest for empty haulers).
       if (actorEntity.data && priorJobId) actorEntity.data.jobId = priorJobId;
+      const byId = this.state && this.state.npcJobs && this.state.npcJobs.byId;
+      if (priorJobId && priorJobEntry && byId && typeof byId === 'object') byId[priorJobId] = priorJobEntry;
       return false;
     }
+    if (!live.redirectedSlots) live.redirectedSlots = [];
+    live.redirectedSlots.push({
+      slotId: actorSlotId,
+      priorJobId,
+      priorJobEntry,
+      assignedJobId: actorEntity.data && actorEntity.data.jobId || assigned,
+    });
     return true;
   },
 
@@ -3275,18 +3235,24 @@ export const traffic = {
     if (!live || !Array.isArray(live.redirectedSlots) || !live.redirectedSlots.length) return;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
     for (let i = 0; i < live.redirectedSlots.length; i++) {
-      const slotId = live.redirectedSlots[i];
+      const redirected = live.redirectedSlots[i];
+      const slotId = typeof redirected === 'string' ? redirected : redirected && redirected.slotId;
       const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
       if (!entry || entry.service) continue;
       const bound = this._ceresCausalActorBySlot(slotId);
       if (!bound || !bound.entity) continue;
       const entity = bound.entity;
-      const worldRecordId = entity.data && entity.data.worldRecordId;
-      const jobId = (entity.data && entity.data.jobId)
-        || (worldRecordId ? `job:${worldRecordId}` : null);
-      if (typeof release === 'function' && jobId) release(jobId);
-      if (entity.data) entity.data.jobId = null;
-      this._assignCeresActivityJob(entity, entry);
+      const assignedJobId = redirected && typeof redirected === 'object' && redirected.assignedJobId
+        ? redirected.assignedJobId
+        : entity.data && entity.data.jobId;
+      if (typeof release === 'function' && assignedJobId) release(assignedJobId);
+      if (entity.data) {
+        const priorJobId = redirected && typeof redirected === 'object' ? redirected.priorJobId : null;
+        const priorJobEntry = redirected && typeof redirected === 'object' ? redirected.priorJobEntry : null;
+        const byId = this.state && this.state.npcJobs && this.state.npcJobs.byId;
+        if (priorJobId && priorJobEntry && byId && typeof byId === 'object') byId[priorJobId] = priorJobEntry;
+        entity.data.jobId = priorJobId || null;
+      }
     }
     live.redirectedSlots = null;
   },
