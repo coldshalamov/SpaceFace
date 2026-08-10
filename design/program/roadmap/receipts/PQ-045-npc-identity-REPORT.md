@@ -101,25 +101,26 @@ whole-ship and its own label on the default route:
 
 ## What I did NOT prove
 
-- **`npm run check:assets:live` did not run green in this session.** Two
-  independent blockers, both environmental and both reproduced with zero
-  PQ-045.npc-identity changes present:
-  1. The probe requires a globally clean tree and `HEAD == origin/master`;
-     this shared checkout continuously carries another lane's uncommitted work
-     (at receipt time: `src/systems/encounterScripts.js`, PQ-047 staging,
-     `--class/`).
-  2. More decisively, the browser boot currently stalls at "LOADING CRITICAL
-     FLIGHT ASSETS" in the authored-asset preload: `check:asset-startup-readiness`
-     fails identically (`game:startFailed`, `mode=menu`, 180 s timeout) at
-     committed HEAD `f6a0eff8` **and** at `86d3d5c6` (origin/master at session
-     start), each verified in isolated clean worktrees with my changes absent.
-     `probe-startup-transition` shows the same stall. The failure therefore
-     predates this unit and is invisible to it; machine contention (multiple
-     concurrent agent Blender/Chrome sessions) or a preload-path regression in
-     another lane's committed series are the candidate causes, owned outside
-     this unit.
-  The headless evidence chain stands in for the headed cell as far as headless
-  can reach: the resolution chain (identity test), the real spawn path (live
+- **`npm run check:assets:live` did not run green in this session.** The
+  candidate itself passes the probe's identity gate: after this unit's commit
+  was pushed (`HEAD == origin/master`), a clean isolated worktree at the
+  candidate commit passed the probe's clean-tree and HEAD asserts and began the
+  seeded boot — then the browser session stalled in the shared authored-asset
+  preload with **`failureCount: 0`, `wholeShipFailureCount: 0`, `failures: []`**
+  (nothing 404'd, nothing failed contract validation) and never reached
+  readiness: `game:startFailed — "Initial authored ship visuals did not become
+  ready"`. The stall is in the shared boot path, not in this unit's assets, and
+  it predates the unit: `check:asset-startup-readiness` fails with the same
+  fingerprint at committed HEAD `f6a0eff8` **and** at `86d3d5c6` (origin/master
+  at session start), each verified in isolated clean worktrees with my changes
+  absent, and `probe-startup-transition` shows the same "LOADING CRITICAL
+  FLIGHT ASSETS" stall. The machine was simultaneously hosting multiple other
+  agent Blender/Chrome sessions (9 `blender-mcp` processes, a dozen Chrome
+  instances, concurrent lane servers); an extended 300 s playable-timeout run
+  died under that contention without writing its report. Per the validation
+  rules I stopped re-running the unchanged harness after the third identical
+  fingerprint. The headless evidence chain stands in as far as headless can
+  reach: the resolution chain (identity test), the real spawn path (live
   traffic boot), release-pair validation (in the release build), package
   instance plans (85/85), and URL routability (`check:asset-reachability`)
   are all green. What remains unproven without the headed route: actual
