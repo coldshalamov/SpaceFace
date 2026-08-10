@@ -19,8 +19,10 @@ import {
   protectedStationAt,
 } from '../src/ai/engagementAuthority.js';
 import { RulesOfEngagement, ActivityKind } from '../src/ai/doctrine.js';
+import { reserveArrivalPoint } from '../src/law/authorityResponse.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { lawSecurity, AMBIENT_TOLL_VALUE_FLOOR, LAW_SECURITY_VERSION } from '../src/systems/lawSecurity.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { cargo } from '../src/systems/cargo.js';
 import { pirateParley } from '../src/systems/pirateParley.js';
 import { voiceArbiter } from '../src/ui/voiceArbiter.js';
@@ -55,7 +57,7 @@ function withForbiddenNondeterminism(fn) {
 function systemsForEscalation() {
   // Prefer the live packet systems; order matches registry intent but stays resilient
   // if a dependency's init is a no-op for these fixtures.
-  return [lawSecurity, cargo, pirateParley, voiceArbiter].filter(Boolean);
+  return [spawnBudget, lawSecurity, cargo, pirateParley, voiceArbiter].filter(Boolean);
 }
 
 /**
@@ -128,6 +130,7 @@ function boot(opts = {}) {
     incidentsResolved: [],
     distressRaised: [],
     dispatchStarted: [],
+    responseDeferred: [],
     parleyStarted: [],
     parleyDemand: [],
     parleyResolved: [],
@@ -140,6 +143,7 @@ function boot(opts = {}) {
   bus.on('law:incidentResolved', (p) => log.incidentsResolved.push(clone(p)));
   bus.on('law:distressRaised', (p) => log.distressRaised.push(clone(p)));
   bus.on('law:dispatchStarted', (p) => log.dispatchStarted.push(clone(p)));
+  bus.on('law:responseDeferred', (p) => log.responseDeferred.push(clone(p)));
   bus.on('pirateParley:started', (p) => log.parleyStarted.push(clone(p)));
   bus.on('pirateParley:demand', (p) => log.parleyDemand.push(clone(p)));
   bus.on('pirateParley:resolved', (p) => log.parleyResolved.push(clone(p)));
@@ -795,6 +799,71 @@ test('9. high-security reserve response arrives at range and scales to jurisdict
       assert.equal(isHostileToPlayer(responder, 0, t.state), false,
         'security response never becomes globally hostile to the neutral player');
     }
+    t.sim.dispose();
+  });
+});
+
+test('9b. saturated reserve response defers under the hard cap, retries, and releases exact hull slots', () => {
+  withForbiddenNondeterminism(() => {
+    const t = boot({
+      sectorId: HELIOS_SECTOR,
+      security: 0.95,
+      playerPos: { x: 100, z: 0 },
+      station: { stationId: 'station_helios', factionId: 'faction_scn' },
+    });
+    const budget = t.sim.helpers.spawnBudget;
+    assert.equal(budget.request(budget.max(), 'fixture:saturated'), budget.max());
+    const pirate = spawnPirate(t.sim, {
+      pos: { x: 260, z: 20 }, team: 1, spawnContext: 'encounter',
+      extras: { motive: 'scripted_ambush', engagementTrigger: 'encounter_phase' },
+    });
+    emitDamage(t.bus, { attackerId: pirate.id, targetId: t.player.id, applied: 20 });
+    const incident = Object.values(lawOwn(t.state).incidents)[0];
+    stepSeconds(t.sim, incident.dispatchDelayS + 0.5);
+
+    assert.equal(t.log.responseDeferred.length, 1, 'cap pressure is an explicit deferred response');
+    assert.equal(t.log.dispatchStarted.length, 0, 'critical response is not silently dropped or over-cap spawned');
+    assert.equal(incident.status, 'distress', 'incident remains retryable');
+    assert.equal(budget.current(), budget.max());
+
+    assert.equal(budget.releaseSome('fixture:saturated', 1), 1);
+    stepSeconds(t.sim, 0.75);
+    assert.equal(t.log.dispatchStarted.length, 1, 'the first released slot admits a partial critical response');
+    assert.equal(t.log.dispatchStarted[0].responderIds.length, 1);
+    assert.equal(incident.status, 'responding', 'partial response remains live while its authored strength is deferred');
+    assert.ok(incident.spawnBudgetDeferred, 'the missing critical responders remain explicitly queued');
+    assert.equal(budget.current(), budget.max(), 'the partial response consumes only the released slot');
+
+    assert.equal(budget.releaseSome('fixture:saturated', 2), 2);
+    stepSeconds(t.sim, 0.75);
+    assert.equal(t.log.dispatchStarted.length, 2, 'later capacity deterministically tops up the same response');
+    assert.equal(t.log.dispatchStarted[1].responderIds.length, 3, 'the incident reaches its authored response cap');
+    assert.equal(incident.spawnBudgetDeferred, undefined, 'full response clears its deferred marker');
+    assert.equal(budget.current(), budget.max(), 'top-up consumes only the two newly released slots');
+
+    assert.equal(incident.nextReserveOrdinal, 3, 'partial top-ups persist the next durable reserve ordinal');
+    const station = t.state.entities.get(incident.stationEntityId);
+    for (let ordinal = 0; ordinal < incident.responderIds.length; ordinal++) {
+      const responderAtOrdinal = t.state.entities.get(incident.responderIds[ordinal]);
+      const expected = reserveArrivalPoint({
+        anchor: station.pos,
+        aggressorPos: pirate.pos,
+        jurisdictionRadius: incident.radius,
+        seed: t.state.meta.seed,
+        incidentId: `${incident.id}:${ordinal}`,
+      });
+      assert.deepEqual({ x: responderAtOrdinal.pos.x, z: responderAtOrdinal.pos.z }, expected,
+        `reserve ordinal ${ordinal} owns its distinct seed-stable arrival point`);
+    }
+    assert.equal(new Set(incident.responderIds.map((id) => {
+      const responderAtOrdinal = t.state.entities.get(id);
+      return `${responderAtOrdinal.pos.x}:${responderAtOrdinal.pos.z}`;
+    })).size, 3, 'top-up responders cannot reuse the first arrival point');
+
+    const responder = t.state.entities.get(t.log.dispatchStarted[1].responderIds[0]);
+    responder.alive = false;
+    t.sim.step();
+    assert.equal(budget.current(), budget.max() - 1, 'destroying one response hull releases its bound slot');
     t.sim.dispose();
   });
 });

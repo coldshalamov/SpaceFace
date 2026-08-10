@@ -355,6 +355,10 @@ export const encounterDirector = {
     if (ceresActivityAmbush && !this._ceresActivityAmbushCohort().length) {
       return defer();
     }
+    // Capacity is a fire gate, not a post-telegraph failure. A saturated encounter remains queued
+    // without spending pressure/window/voice state; genuine distress needs both a victim and one
+    // threat before it can truthfully become live.
+    if (!this._spawnAdmissionAvailable(item, shape)) return defer();
     dir.pending.splice(dueIdx, 1);
     this._fire(dir, state, item, shape, now);
   },
@@ -408,6 +412,14 @@ export const encounterDirector = {
     const r = (item.zoneRadius || 400) + PROX_SLACK;
     const dx = p.pos.x - item.zoneCenter.x, dz = p.pos.z - item.zoneCenter.z;
     return dx * dx + dz * dz <= r * r;
+  },
+
+  _spawnAdmissionAvailable(item, shape) {
+    const minimum = encounterAdmissionMinimum(item, shape);
+    if (minimum <= 0) return true;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (!budget || typeof budget.available !== 'function') return true;
+    return budget.available() >= minimum;
   },
 
   /** Deterministic forcing seam for authored/self-registering encounters. Debug harnesses and
@@ -473,6 +485,7 @@ export const encounterDirector = {
     item.zoneCenter = { x: anchor.x, z: anchor.z };
     item.zoneRadius = zone.radius;
     item.data = payload.data && typeof payload.data === 'object' ? { ...payload.data } : {};
+    if (!this._spawnAdmissionAvailable(item, shape)) return { ok: false, reason: 'spawn_cap' };
     this._fire(dir, state, item, shape, state.simTime || 0);
     return dir.live[payload.encounterId]
       ? { ok: true, encounterId: payload.encounterId }
@@ -526,13 +539,18 @@ export const encounterDirector = {
     };
     const base = item.ships.slice();
     const count = item.data.requestedCount;
+    const anchorShip = base.find((ship) => ship.compositionRole === 'identity_anchor') || base[0];
+    const lightShips = base.filter((ship) => ship !== anchorShip
+      && ship.compositionRole !== 'identity_anchor');
+    const lightPool = lightShips.length ? lightShips : [anchorShip];
     item.ships = [];
     for (let i = 0; i < count; i++) {
-      const source = base[i % base.length];
+      const source = i === 0 ? anchorShip : lightPool[(i - 1) % lightPool.length];
       const angle = (Math.PI * 2 * i / count) + rng() * 0.24;
       const radius = 560 + rng() * 120;
       item.ships.push({
         ...source,
+        compositionRole: i === 0 ? 'identity_anchor' : 'light',
         passive: true,
         pos: {
           x: payload.anchor.x + Math.cos(angle) * radius,
@@ -540,6 +558,7 @@ export const encounterDirector = {
         },
       });
     }
+    if (!this._spawnAdmissionAvailable(item, shape)) return { ok: false, reason: 'spawn_cap' };
     this._fire(dir, state, item, shape, state.simTime || 0);
     return dir.live[payload.encounterId]
       ? { ok: true, encounterId: payload.encounterId }
@@ -681,73 +700,77 @@ export const encounterDirector = {
     const dir = ensureDirectorState(this.state);
     const rec = dir.active[live.squadId] || (dir.active[live.squadId] = { ids: [], sectorId: live.sectorId });
     const spawned = [];
-    for (let i = 0; i < ships.length && spawned.length < grant; i++) {
-      const sh = ships[i];
-      // Most encounters materialize an enemy archetype. A self-registered encounter may instead
-      // provide a complete ship spec when its identity is the mechanic (H8 mirrors the player's
-      // current hull). The spec still passes through the same budget, doctrine, causality, and
-      // live-id ownership below; it only avoids briefly spawning the wrong hull identity.
-      const spec = sh.entitySpec && sh.entitySpec.type === 'ship'
-        ? sh.entitySpec
-        : makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
-            factionId: sh.factionId,
-            startedTick: this.state.tick,
-          });
-      if (sh.team != null) spec.team = sh.team;
-      if (sh.hullFrac != null) spec.hull = Math.max(1, Math.round(spec.hullMax * sh.hullFrac));
-      spec.data = spec.data || {};
-      spec.data.ai = spec.data.ai || {};
-      const ai = spec.data.ai;
-      ai.squadId = live.squadId;
-      ai.doctrine = sh.doctrine || ai.doctrine;
-      if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
-      if (sh.formation) ai.formation = sh.formation;
-      if (sh.factionPresenceDoctrine) {
-        ai.factionPresenceDoctrine = {
-          ...sh.factionPresenceDoctrine,
-          firstFireAgainst: Array.isArray(sh.factionPresenceDoctrine.firstFireAgainst)
-            ? sh.factionPresenceDoctrine.firstFireAgainst.slice()
-            : [],
-        };
+    try {
+      for (let i = 0; i < ships.length && spawned.length < grant; i++) {
+        const sh = ships[i];
+        // Most encounters materialize an enemy archetype. A self-registered encounter may instead
+        // provide a complete ship spec when its identity is the mechanic (H8 mirrors the player's
+        // current hull). The spec still passes through the same budget, doctrine, causality, and
+        // live-id ownership below; it only avoids briefly spawning the wrong hull identity.
+        const spec = sh.entitySpec && sh.entitySpec.type === 'ship'
+          ? sh.entitySpec
+          : makeEnemySpawnSpec(sh.archetype, sh.level, sh.pos, {
+              factionId: sh.factionId,
+              startedTick: this.state.tick,
+            });
+        if (sh.team != null) spec.team = sh.team;
+        if (sh.hullFrac != null) spec.hull = Math.max(1, Math.round(spec.hullMax * sh.hullFrac));
+        spec.data = spec.data || {};
+        spec.data.ai = spec.data.ai || {};
+        const ai = spec.data.ai;
+        ai.squadId = live.squadId;
+        ai.doctrine = sh.doctrine || ai.doctrine;
+        if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
+        if (sh.formation) ai.formation = sh.formation;
+        if (sh.factionPresenceDoctrine) {
+          ai.factionPresenceDoctrine = {
+            ...sh.factionPresenceDoctrine,
+            firstFireAgainst: Array.isArray(sh.factionPresenceDoctrine.firstFireAgainst)
+              ? sh.factionPresenceDoctrine.firstFireAgainst.slice()
+              : [],
+          };
+        }
+        if (sh.cultureId) {
+          ai.cultureId = sh.cultureId;
+          spec.data.cultureId = sh.cultureId;
+        }
+        if (sh.namedAceId) {
+          ai.namedAceId = sh.namedAceId;
+          spec.data.namedAceId = sh.namedAceId;
+        }
+        ai.spawnContext = sh.context;
+        ai.sectorId = live.sectorId;
+        ai.zoneId = live.zoneId;
+        ai.zoneName = live.zoneName;
+        ai.encounterId = live.id;
+        ai.encounterKind = live.shapeId;
+        if (sh.compositionRole) ai.encounterCompositionRole = sh.compositionRole;
+        ai.motive = String(live.plan.motive || live.shape.motive || ai.motive || 'assigned_interdiction');
+        ai.engagementTrigger = String(live.plan.engagementTrigger || live.shape.engagementTrigger
+          || ai.engagementTrigger || 'authorized_hostile_spawn');
+        spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
+        spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
+        if (sh.role) ai.encounterRole = sh.role;
+        if (sh.passive != null) ai.passive = !!sh.passive;
+        ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
+        ai.roe = roeForActivity(ai.activity, sh.roe);
+        if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
+        if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
+        if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
+        const ent = spawnEntity(spec);
+        if (ent && ent.id != null) {
+          spawned.push(ent.id);
+          rec.ids.push(ent.id);
+          live.ids.push(ent.id);
+          live.roles[ent.id] = sh.role || 'squad';
+        }
       }
-      if (sh.cultureId) {
-        ai.cultureId = sh.cultureId;
-        spec.data.cultureId = sh.cultureId;
+    } finally {
+      if (budget && typeof budget.releaseSome === 'function' && spawned.length < grant) {
+        budget.releaseSome(live.squadId, grant - spawned.length);
       }
-      if (sh.namedAceId) {
-        ai.namedAceId = sh.namedAceId;
-        spec.data.namedAceId = sh.namedAceId;
-      }
-      ai.spawnContext = sh.context;
-      ai.sectorId = live.sectorId;
-      ai.zoneId = live.zoneId;
-      ai.zoneName = live.zoneName;
-      ai.encounterId = live.id;
-      ai.encounterKind = live.shapeId;
-      ai.motive = String(live.plan.motive || live.shape.motive || ai.motive || 'assigned_interdiction');
-      ai.engagementTrigger = String(live.plan.engagementTrigger || live.shape.engagementTrigger
-        || ai.engagementTrigger || 'authorized_hostile_spawn');
-      spec.data.encounterFingerprint = live.causality && live.causality.fingerprint || null;
-      spec.data.encounterCausality = live.causality ? { ...live.causality } : null;
-      if (sh.role) ai.encounterRole = sh.role;
-      if (sh.passive != null) ai.passive = !!sh.passive;
-      ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
-      ai.roe = roeForActivity(ai.activity, sh.roe);
-      if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
-      if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
-      if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
-      const ent = spawnEntity(spec);
-      if (ent && ent.id != null) {
-        spawned.push(ent.id);
-        rec.ids.push(ent.id);
-        live.ids.push(ent.id);
-        live.roles[ent.id] = sh.role || 'squad';
-      }
+      if (!rec.ids.length) delete dir.active[live.squadId];
     }
-    if (budget && typeof budget.releaseSome === 'function' && spawned.length < grant) {
-      budget.releaseSome(live.squadId, grant - spawned.length);
-    }
-    if (!rec.ids.length) delete dir.active[live.squadId];
     return spawned;
   },
 
@@ -1771,11 +1794,20 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
   if (!squad || !squad.archetypes || !squad.archetypes.length) return;
   const [lo, hi] = Array.isArray(squad.size) && squad.size.length === 2 ? squad.size : [1, 2];
   const n = Math.max(1, Math.round(lo + rng() * Math.max(0, hi - lo)));
+  const hasIdentityAnchor = typeof squad.anchorArchetype === 'string' && squad.anchorArchetype.length > 0;
   for (let i = 0; i < n; i++) {
-    const archetype = squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
+    // Authored swarm packets guarantee exactly one identity/controller anchor. It is first so a
+    // partial cap grant preserves faction readability; every remaining slot draws from the light
+    // pool deterministically. Choir may use the same native hull for both roles—the role marker,
+    // not a foreign silhouette, distinguishes its chorus lead.
+    const isAnchor = i === 0 && hasIdentityAnchor;
+    const archetype = isAnchor
+      ? squad.anchorArchetype
+      : squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
     const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
     ships.push({
       archetype,
+      ...(hasIdentityAnchor ? { compositionRole: isAnchor ? 'identity_anchor' : 'light' } : {}),
       combatDoctrineId: ENEMY_BY_ID.get(archetype)?.combatDoctrineId || null,
       level,
       pos: jitter(zone, rng, Math.min(zone.radius || 260, 260)),
@@ -1919,6 +1951,15 @@ function encounterScriptFor(liveOrShape) {
   return SELF_REGISTERED_RUNTIME_BY_ID.get(shapeId)
     || ENCOUNTER_SCRIPTS[liveOrShape.script]
     || null;
+}
+
+function encounterAdmissionMinimum(item, shape) {
+  if (item && item.data && item.data.ceresActivityAmbush === true) return 0;
+  if (item && item.variantKind === 'distress_genuine') return 2;
+  if (item && Array.isArray(item.ships) && item.ships.length > 0) return 1;
+  // Named hunters assemble their roster inside the script from durable captain state.
+  if (shape && shape.script === 'namedHunter') return 1;
+  return 0;
 }
 
 // ── small read-only helpers ───────────────────────────────────────────────────────────────────────

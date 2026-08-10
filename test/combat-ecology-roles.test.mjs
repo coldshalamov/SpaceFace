@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { ENCOUNTERS } from '../src/data/encounters/index.generated.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { planEncounterShape } from '../src/systems/encounterDirector.js';
 import { WEAPONS } from '../src/data/weapons.js';
 
 const ECOLOGY = [
@@ -41,6 +43,61 @@ const ECOLOGY = [
 const byId = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 const weapons = Array.isArray(WEAPONS) ? WEAPONS : Object.values(WEAPONS);
 const weaponById = new Map(weapons.map((w) => [w.id, w]));
+
+const SWARM_CASES = [
+  {
+    id: 'ambush_snare', encounter: ENCOUNTERS.ambush_snare,
+    squad: ENCOUNTERS.ambush_snare?.squad, role: 'squad', anchor: 'reaver_pirate', light: 'wasp_swarmer',
+  },
+  {
+    id: 'claim_threat', encounter: ENCOUNTERS.claim_threat,
+    squad: ENCOUNTERS.claim_threat?.squad, role: 'squad', anchor: 'reaver_pirate', light: 'wasp_swarmer',
+  },
+  {
+    id: 'distress_call.genuine.threat', encounter: ENCOUNTERS.distress_call,
+    squad: ENCOUNTERS.distress_call?.genuine?.threat, role: 'threat', branchRoll: 0,
+    anchor: 'reaver_pirate', light: 'wasp_swarmer',
+  },
+  {
+    id: 'distress_call.bait', encounter: ENCOUNTERS.distress_call,
+    squad: ENCOUNTERS.distress_call?.bait?.squad, role: 'bait', branchRoll: 0.99,
+    anchor: 'corsair_raider', light: 'wasp_swarmer',
+  },
+  {
+    id: 'pattern_refrain', encounter: ENCOUNTERS.pattern_refrain,
+    squad: ENCOUNTERS.pattern_refrain?.squad, role: 'squad', anchor: 'choir_zealot', light: 'choir_zealot',
+  },
+];
+const SWARM_SEEDS = [1, 7, 47, 91, 1234, 9001];
+const SWARM_ZONE = {
+  id: 'test_swarm_lane',
+  name: 'Test swarm lane',
+  type: 'ambush_lane',
+  center: { x: 0, z: 0 },
+  radius: 300,
+  threat: 0.5,
+};
+
+function realizedSwarm(row, seed) {
+  const seeded = mulberry32(hash32('swarm-density', row.id, seed));
+  let branchPending = Number.isFinite(row.branchRoll);
+  const rng = () => {
+    if (branchPending) {
+      branchPending = false;
+      return row.branchRoll;
+    }
+    return seeded();
+  };
+  const plan = planEncounterShape(
+    row.encounter,
+    SWARM_ZONE,
+    'sector_io_reach',
+    1,
+    seed,
+    rng,
+  );
+  return plan.ships.filter((ship) => ship.role === row.role);
+}
 
 test('three ecology roles exist with distinct preferred ranges, loadouts, telegraphs', () => {
   const ranges = [];
@@ -114,4 +171,28 @@ test('Helios starter density remains 0 after ecology content', () => {
   const helios = SECTORS.find((s) => s.id === 'sector_helios_prime');
   assert.ok(helios);
   assert.equal(helios.enemyDensity, 0);
+});
+
+test('light-ammunition encounters guarantee one identity anchor and deterministic native fills', () => {
+  for (const row of SWARM_CASES) {
+    assert.ok(row.squad, `${row.id} swarm composition exists`);
+    const tokens = row.squad.archetypes || [];
+    assert.equal(row.squad.anchorArchetype, row.anchor, `${row.id} declares its guaranteed identity anchor`);
+    assert.deepEqual(tokens, [row.light], `${row.id} uses only its faction-native light pool`);
+    assert.deepEqual(row.squad.size, [4, 6], `${row.id} fields a readable four-to-six ship pack`);
+
+    for (const seed of SWARM_SEEDS) {
+      const ships = realizedSwarm(row, seed);
+      assert.deepEqual(ships, realizedSwarm(row, seed), `${row.id} seed ${seed} is repeatable`);
+      assert.ok(ships.length >= 4 && ships.length <= 6,
+        `${row.id} seed ${seed} realizes four-to-six ships`);
+      const anchors = ships.filter((ship) => ship.compositionRole === 'identity_anchor');
+      const lights = ships.filter((ship) => ship.compositionRole === 'light');
+      assert.equal(anchors.length, 1, `${row.id} seed ${seed} realizes exactly one anchor`);
+      assert.equal(anchors[0].archetype, row.anchor, `${row.id} seed ${seed} preserves anchor identity`);
+      assert.equal(lights.length, ships.length - 1, `${row.id} seed ${seed} fills every other slot light`);
+      assert.ok(lights.every((ship) => ship.archetype === row.light),
+        `${row.id} seed ${seed} uses only its native light identity`);
+    }
+  }
 });

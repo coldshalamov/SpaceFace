@@ -27,13 +27,14 @@ export default defineEncounter(trigger, {
   "motive": "strip_player_claim_storage",
   "engagementTrigger": "claim_defense_arrival",
   "squad": {
+    // Exactly one storage-raider controller, then light-ammunition claim pressure.
+    "anchorArchetype": "reaver_pirate",
     "archetypes": [
-      "wasp_swarmer",
-      "reaver_pirate"
+      "wasp_swarmer"
     ],
     "size": [
-      2,
-      2
+      4,
+      6
     ],
     "doctrine": "scavenger",
     "formation": "wedge"

@@ -152,6 +152,7 @@ const AMBUSH_SPAWN_MIN_RADIUS = 1500;
 const AMBUSH_SPAWN_MAX_RADIUS = 2300;
 const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spawn this close to the player
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
+const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -257,6 +258,7 @@ export const world = {
     this._scanning = false;
     this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
     this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
+    this._nextCriticalSpawnTick = 0;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
     // Floating-origin scratch (allocation-free no-shift path).
@@ -578,6 +580,16 @@ export const world = {
       (id) => this._neighborLookup(id),
     );
 
+    // Retire only FULL combat/dressing from sectors that are losing FULL before the new FULL bag
+    // requests capacity. Structural residents stay materialized, so there is no empty-world frame,
+    // while the shared ship cap remains true even inside this synchronous handoff.
+    for (const [id, previousTier] of previousTiers) {
+      const nextTier = plan.tiers.get(id) || RESIDENCY_TIER.RECORD_ONLY;
+      if (previousTier === RESIDENCY_TIER.FULL && nextTier !== RESIDENCY_TIER.FULL) {
+        this._stripSectorFullExtras(id);
+      }
+    }
+
     // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
     for (const id of plan.materialize) {
       const tier = plan.tiers.get(id);
@@ -891,11 +903,11 @@ export const world = {
   _spawnFromDurableRecord(rec, sectorId) {
     if (!rec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     const state = this.state;
-    let ent = null;
+    let spec = null;
     if (rec.enemyTypeId && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss)) {
       const pos = { x: rec.pos.x, z: rec.pos.z };
       const level = Number.isFinite(rec.level) ? rec.level : 1;
-      const spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, {
+      spec = makeEnemySpawnSpec(rec.enemyTypeId, level, pos, {
         factionId: rec.factionId || undefined,
         startedTick: state.tick,
       });
@@ -913,17 +925,40 @@ export const world = {
         spec.data.missionPinned = true;
         spec.flags = Object.assign({}, spec.flags, { missionPinned: true });
       }
-      ent = this.helpers.spawnEntity(spec);
     } else {
-      const spec = spawnSpecFromRecord(rec);
+      spec = spawnSpecFromRecord(rec);
       if (!spec) return null;
       // Convoy / freighter shell via ship def when present.
       if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId) {
         // Keep spawnSpecFromRecord shell; shipDefId already stamped on data.defId.
       }
-      ent = this.helpers.spawnEntity(spec);
     }
-    if (!ent) return null;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `world:record:${rec.recordId || `${sectorId}:${rec.kind || 'ship'}`}`;
+    const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
+    if (budgeted && budget.request(1, requester) <= 0) {
+      if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
+        this.bus.emit('world:criticalSpawnDeferred', {
+          kind: rec.isBoss ? 'boss_record' : 'mission_record',
+          recordId: rec.recordId || null,
+          sectorId,
+          reason: 'spawn_cap',
+        });
+      }
+      return null;
+    }
+    let ent = null;
+    try {
+      ent = this.helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
     applyRecordVitals(ent, rec);
     bindEntityToRecord(ent, rec);
     this._stampHomeSector(ent, rec.homeSectorId || sectorId);
@@ -1723,11 +1758,13 @@ export const world = {
 
     // REVAMP 2.1 — ambient is a spawnBudget CLIENT with static headroom: reserve at most AMBIENT_HEADROOM
     // of the shared live-ship cap so the encounterDirector always retains slots (no eviction — we simply
-    // spawn fewer ambient when the world is tight). The reservation is a per-sector allotment freed on
-    // sector:exit (spawnBudget resets there); any unspent slots are released below. No budget → unchanged.
+    // spawn fewer ambient when the world is tight). Each live slot is bound to its entity and the
+    // reservation is sector-scoped, so continuous residency handoffs release only the ships actually
+    // demoted. Any unspent slots are released below. No budget → unchanged.
     const budget = this.helpers && this.helpers.spawnBudget;
+    const ambientRequester = `world:ambient:${sector.id}`;
     let grant = Math.min(count, AMBIENT_HEADROOM);
-    if (budget && typeof budget.request === 'function') grant = budget.request(grant, 'world_ambient');
+    if (budget && typeof budget.request === 'function') grant = budget.request(grant, ambientRequester);
     const enemiesBefore = active.enemies.length;
 
     // Purposeful presence (WORLD_OVERHAUL_2_1): place ambient hostiles/patrols onto NAMED zones —
@@ -1765,6 +1802,8 @@ export const world = {
         }
         tagAiSpawnContext(spec, sector, sec, intent.context);
         const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
         active.enemies.push(ent.id);
@@ -1779,6 +1818,8 @@ export const world = {
         const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'ambient');
         const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
         active.enemies.push(ent.id);
@@ -1788,7 +1829,7 @@ export const world = {
     // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
     if (budget && typeof budget.releaseSome === 'function') {
       const spawned = active.enemies.length - enemiesBefore;
-      if (spawned < grant) budget.releaseSome('world_ambient', grant - spawned);
+      if (spawned < grant) budget.releaseSome(ambientRequester, grant - spawned);
     }
     // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
     // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
@@ -1800,16 +1841,33 @@ export const world = {
       const player = this.state.entities.get(this.state.playerId);
       if (this._playerInNoHostileSpawnZone(sector, active, player)) return;
       const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
-      for (let i = 0; i < hunters; i++) {
+      const hunterRequester = `world:bounty:${sector.id}`;
+      const hunterGrant = budget && typeof budget.request === 'function'
+        ? budget.request(hunters, hunterRequester)
+        : hunters;
+      if (hunterGrant < hunters) {
+        this.bus.emit('world:spawnLimited', {
+          kind: 'bounty_hunter', sectorId: sector.id, requested: hunters, granted: hunterGrant,
+          reason: 'spawn_cap',
+        });
+      }
+      let huntersSpawned = 0;
+      for (let i = 0; i < hunterGrant; i++) {
         const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, HUNTER_SPAWN_MIN_RADIUS, HUNTER_SPAWN_MAX_RADIUS);
         if (!pos) continue;
         const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
         const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
         const ent = this.helpers.spawnEntity(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, hunterRequester);
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
         active.enemies.push(ent.id);
+        huntersSpawned++;
+      }
+      if (budget && typeof budget.releaseSome === 'function' && huntersSpawned < hunterGrant) {
+        budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
       }
     }
   },
@@ -1846,6 +1904,19 @@ export const world = {
     if (!disc.pois) disc.pois = {};
     const rec = disc.pois[bossPoi.id] || (disc.pois[bossPoi.id] = { discovered: false, identified: false });
     if (rec.bossDefeated) return; // already beaten this save — don't respawn
+    const liveBoss = active && active.boss && this.state.entities.get(active.boss.entityId);
+    if (liveBoss && liveBoss.alive !== false) return liveBoss;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `world:boss:${sector.id}:${bossPoi.id}`;
+    if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+      if (!rec.bossSpawnDeferred) {
+        this.bus.emit('world:criticalSpawnDeferred', {
+          kind: 'boss', sectorId: sector.id, poiId: bossPoi.id, reason: 'spawn_cap',
+        });
+      }
+      rec.bossSpawnDeferred = true;
+      return null;
+    }
     // Place the boss near the POI marker (or a deterministic ring position if the POI is unplaced).
     // Convert sector-local authorship once into galactic-global.
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
@@ -1860,11 +1931,24 @@ export const world = {
     spec.data.isBoss = true;          // flag so the kill handler can find this entity cheaply
     spec.data.bossPoiId = bossPoi.id; // links back to the discovery record to mark defeated
     spec.data.bossSectorId = sector.id;
-    const ent = this.helpers.spawnEntity(spec);
+    let ent = null;
+    try {
+      ent = this.helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+    delete rec.bossSpawnDeferred;
     this._stampHomeSector(ent, sector.id);
     this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, `boss:${bossPoi.id}`, active);
     active.enemies.push(ent.id);
     active.boss = { entityId: ent.id, poiId: bossPoi.id };
+    return ent;
   },
 
   _enemyPool(sector) {
@@ -2160,10 +2244,30 @@ export const world = {
 
     this._tickFrameOrigin(state);
     this._tickResidency(state);
+    this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
     this._tickZoneLabel(state);
     this._tickPOIScan(state);
+  },
+
+  _tickDeferredCriticalSpawns(state) {
+    if ((state.tick | 0) < (this._nextCriticalSpawnTick | 0)) return;
+    this._nextCriticalSpawnTick = (state.tick | 0) + CRITICAL_SPAWN_RETRY_TICKS;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    const sector = sectorId && (state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
+    if (!sector || !active) return;
+    const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
+    const discovery = bossPoi && this._discoveryFor(sectorId).pois;
+    if (!bossPoi || !discovery || !discovery[bossPoi.id]?.bossSpawnDeferred) return;
+    const resident = state.world.residentSectors && state.world.residentSectors[sectorId];
+    if (!resident || resident.tier !== RESIDENCY_TIER.FULL) return;
+    const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
+    const rng = this.helpers.mulberry32(this.helpers.hash32(
+      state.meta.seed, sectorId, epoch, 'deferred_boss',
+    ));
+    this._spawnBossIfDue(sector, active, rng);
   },
 
   // Floating origin owner: derive a snapped frame from the player global position.
@@ -2274,8 +2378,8 @@ export const world = {
 
     if (via === 'drive' && interdicted) {
       const tier = sector ? sector.tier : 0;
-      ambushCount = 1 + Math.floor(state.rng() * (1 + tier));
-      this._spawnAmbush(sector, ambushCount);
+      const requestedAmbushCount = 1 + Math.floor(state.rng() * (1 + tier));
+      ambushCount = this._spawnAmbush(sector, requestedAmbushCount).length;
     }
 
     const player = state.entities.get(state.playerId);
@@ -2295,31 +2399,50 @@ export const world = {
   },
 
   _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null) {
-    if (!sector || count <= 0) return;
+    if (!sector || count <= 0) return [];
     const player = this.state.entities.get(this.state.playerId);
     const active = this.state.world.activeSector || null;
-    if (this._playerDockedNoHostileSpawnZone(player)) return;
+    if (this._playerDockedNoHostileSpawnZone(player)) return [];
     const px = origin ? origin.x : (player ? player.pos.x : 0);
     const pz = origin ? origin.z : (player ? player.pos.z : 0);
     const pool = this._enemyPool(sector);
     const rng = this.state.world.rng || this.state.rng;
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const source = requestMeta ? 'spawn-request' : 'interdiction';
+    const requestIdentity = requestMeta && requestMeta.refId
+      ? requestMeta.refId
+      : `${sector.id}:${this.state.tick | 0}`;
+    const requester = `world:${source}:${requestIdentity}`;
+    const grant = budget && typeof budget.request === 'function'
+      ? budget.request(count, requester)
+      : count;
+    if (grant <= 0) return [];
     const placed = [];
-    for (let i = 0; i < count; i++) {
-      const typeId = enemyTypeId || pool[Math.floor(rng() * pool.length)];
-      const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
-      const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
-      if (!pos) continue;
-      const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
-      tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
-      if (requestMeta && requestMeta.refId) spec.data.spawnRefId = requestMeta.refId;
-      if (requestMeta && requestMeta.tags && requestMeta.tags.length) spec.data.spawnTags = [...requestMeta.tags];
-      const ent = this.helpers.spawnEntity(spec);
-      this._stampHomeSector(ent, sector.id);
-      placed.push(ent.id);
+    try {
+      for (let i = 0; i < grant; i++) {
+        const typeId = enemyTypeId || pool[Math.floor(rng() * pool.length)];
+        const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
+        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
+        if (!pos) continue;
+        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
+        tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
+        if (requestMeta && requestMeta.refId) spec.data.spawnRefId = requestMeta.refId;
+        if (requestMeta && requestMeta.tags && requestMeta.tags.length) spec.data.spawnTags = [...requestMeta.tags];
+        const ent = this.helpers.spawnEntity(spec);
+        if (!ent || ent.id == null) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        this._stampHomeSector(ent, sector.id);
+        placed.push(ent.id);
+        // Commit each successful entity immediately so a later spawn failure cannot orphan it.
+        if (active && Array.isArray(active.enemies)) active.enemies.push(ent.id);
+      }
+    } finally {
+      if (budget && typeof budget.releaseSome === 'function' && placed.length < grant) {
+        budget.releaseSome(requester, grant - placed.length);
+      }
     }
-    if (!placed.length) return;
-    if (this.state.world.activeSector) this.state.world.activeSector.enemies.push(...placed);
+    if (!placed.length) return [];
     this.bus.emit('interdiction:triggered', {
       sectorId: sector.id,
       ambushCount: placed.length,
@@ -2328,6 +2451,7 @@ export const world = {
       refId: requestMeta && requestMeta.refId || null,
       tags: requestMeta && requestMeta.tags ? [...requestMeta.tags] : [],
     });
+    return placed;
   },
 
   _onSpawnRequest(p) {
@@ -3076,6 +3200,7 @@ export const world = {
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
     state.world.currentSectorId = null;
+    this._nextCriticalSpawnTick = 0;
     // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
     state.world.coordinateSchema = 'global_v1';
     if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {

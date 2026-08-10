@@ -339,6 +339,7 @@ export const lawSecurity = {
       startedAt: state.simTime || 0,
       lastDamageAt: state.simTime || 0,
       responderIds: [],
+      nextReserveOrdinal: 0,
       status: 'distress',
     };
     const policy = authorityResponsePolicy(effectiveLawSecurity(state));
@@ -596,13 +597,35 @@ export const lawSecurity = {
     const reserveCount = incident.reserveAllowed
       ? Math.max(0, incident.responderCap - out.length)
       : 0;
-    for (let index = 0; index < reserveCount && typeof this.helpers.spawnEntity === 'function'; index++) {
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${incident.id}`;
+    const reserveGrant = reserveCount > 0 && budget && typeof budget.request === 'function'
+      ? budget.request(reserveCount, requester)
+      : reserveCount;
+    if (reserveGrant < reserveCount) {
+      const signature = `${reserveCount}:${reserveGrant}`;
+      if (incident.spawnBudgetDeferred !== signature) {
+        incident.spawnBudgetDeferred = signature;
+        this._emit('law:responseDeferred', {
+          incidentId: incident.id,
+          stationId: incident.stationId,
+          requested: reserveCount,
+          granted: reserveGrant,
+          reason: 'spawn_cap',
+        });
+      }
+    } else {
+      delete incident.spawnBudgetDeferred;
+    }
+    let spawnedCount = 0;
+    for (let index = 0; index < reserveGrant && typeof this.helpers.spawnEntity === 'function'; index++) {
+      const reserveOrdinal = Math.max(0, incident.nextReserveOrdinal | 0);
       const pos = reserveArrivalPoint({
         anchor,
         aggressorPos: entityById(state, incident.attackerId)?.pos,
         jurisdictionRadius: incident.radius,
         seed: state.meta && state.meta.seed || 1,
-        incidentId: `${incident.id}:${index}`,
+        incidentId: `${incident.id}:${reserveOrdinal}`,
       });
       const spec = makeEnemySpawnSpec('patrol_lawman', 3, pos, {
         factionId: incident.factionId || 'faction_scn',
@@ -613,12 +636,26 @@ export const lawSecurity = {
         noFireResponseWindowS: incident.challengeWindowS,
         startedTick: state.tick,
       });
-      const spawned = this.helpers.spawnEntity(spec);
+      let spawned;
+      try {
+        spawned = this.helpers.spawnEntity(spec);
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') {
+          budget.releaseSome(requester, reserveGrant - spawnedCount);
+        }
+        throw error;
+      }
       if (spawned) {
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
         const ai = spawned.data && spawned.data.ai;
         if (ai) ai.spawnContext = 'security_response';
         out.push(spawned);
+        spawnedCount++;
+        incident.nextReserveOrdinal = reserveOrdinal + 1;
       }
+    }
+    if (budget && typeof budget.releaseSome === 'function' && spawnedCount < reserveGrant) {
+      budget.releaseSome(requester, reserveGrant - spawnedCount);
     }
     return out;
   },
@@ -628,6 +665,7 @@ export const lawSecurity = {
     const dispatched = [];
     incident.dispatchedAt = this.state.simTime || 0;
     for (const responder of responders) {
+      if (incident.responderIds.includes(responder.id)) continue;
       if (!this._claimJobResponder(responder, incident)) continue;
       this._authorizeResponder(responder, attacker, incident, 'security_response');
       if (!this._sealJobResponder(responder, incident)) {
@@ -636,6 +674,23 @@ export const lawSecurity = {
       }
       incident.responderIds.push(responder.id);
       dispatched.push(responder);
+    }
+    const hasLiveResponse = incident.responderIds.some((id) => {
+      const responder = entityById(this.state, id);
+      return responder && responder.alive !== false;
+    });
+    if (incident.spawnBudgetDeferred) {
+      // Critical station response is deferred, never discarded or allowed through the cap. The
+      // incident remains retryable (distress or a partial response) on the bounded cadence.
+      incident.dispatchAt = (this.state.simTime || 0) + 0.25;
+      if (!dispatched.length) {
+        incident.dispatchedAt = hasLiveResponse ? incident.dispatchedAt : null;
+        incident.status = hasLiveResponse ? 'responding' : 'distress';
+        return;
+      }
+    } else if (!dispatched.length && hasLiveResponse) {
+      incident.status = 'responding';
+      return;
     }
     incident.status = dispatched.length ? 'responding' : 'monitoring';
     const payload = publicIncident(incident);
@@ -698,7 +753,9 @@ export const lawSecurity = {
     const now = state.simTime || 0;
     let outcome = null;
     if (!attacker || attacker.alive === false) outcome = 'threat_cleared';
-    else if (incident.status === 'distress' && now >= incident.dispatchAt) {
+    else if ((incident.status === 'distress'
+      || (incident.status === 'responding' && incident.spawnBudgetDeferred))
+      && now >= incident.dispatchAt) {
       this._dispatchIncident(incident, victim || station, attacker);
     }
     else if (station && distance2(attacker.pos, station.pos) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)

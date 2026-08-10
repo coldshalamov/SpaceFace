@@ -34,6 +34,22 @@ function migrationBaselineCatalog() {
   for (const id of ['pirate_toll', 'ambush_snare', 'named_hunter', 'distress_call']) {
     delete catalog[id].gates.minSectorTier;
   }
+  // The live swarm-density pass later raised these ranges and split guaranteed anchors from light
+  // pools. Remove the live anchor field when reconstructing the migration-era random pools.
+  // Reconstruct the exact migration-era compositions here; the fixture remains an immutable proof
+  // of the module split rather than becoming a golden for current gameplay tuning.
+  catalog.ambush_snare.squad.archetypes = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
+  delete catalog.ambush_snare.squad.anchorArchetype;
+  catalog.ambush_snare.squad.size = [2, 4];
+  catalog.claim_threat.squad.archetypes = ['wasp_swarmer', 'reaver_pirate'];
+  delete catalog.claim_threat.squad.anchorArchetype;
+  catalog.claim_threat.squad.size = [2, 2];
+  catalog.distress_call.genuine.threat.archetypes = ['reaver_pirate', 'wasp_swarmer'];
+  delete catalog.distress_call.genuine.threat.anchorArchetype;
+  catalog.distress_call.genuine.threat.size = [1, 2];
+  catalog.distress_call.bait.squad.archetypes = ['reaver_pirate', 'corsair_raider', 'wasp_swarmer'];
+  delete catalog.distress_call.bait.squad.anchorArchetype;
+  catalog.distress_call.bait.squad.size = [3, 4];
   // Claim defense deliberately became an externally requested set piece after the F2 migration.
   // Reconstruct that one pre-feature definition when proving the migration itself remained lossless.
   delete catalog.claim_threat.gates.externalOnly;

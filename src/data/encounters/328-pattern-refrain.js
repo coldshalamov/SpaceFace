@@ -26,8 +26,10 @@ export default defineEncounter(trigger, {
   title: 'PATTERN REFRAIN',
   primaryLine: 'CHOIR HAIL: the Pattern has counted your colors. Answer in formation.',
   squad: {
-    archetypes: ['choir_zealot', 'choir_zealot', 'wasp_swarmer'],
-    size: [3, 5],
+    // Choir fields one marked chorus lead, then native light refrains—never Reach-painted Wasps.
+    anchorArchetype: 'choir_zealot',
+    archetypes: ['choir_zealot'],
+    size: [4, 6],
     doctrine: 'scavenger',
     formation: 'ring',
   },

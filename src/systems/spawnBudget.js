@@ -13,14 +13,17 @@
 //
 // API (via ctx.helpers.spawnBudget):
 //   request(n, requesterId)  -> granted count (0..n), reserves that many slots under requesterId
-//   release(requesterIdOrIds) -> frees a requester's slots (string, or a specific reservation id, or
-//                                an array of either); returns the number of slots freed
+//   bindEntity(entityId, requesterId) -> binds one reserved slot to a live entity
+//   releaseEntity(entityId)  -> frees the exact entity-bound slot (idempotent)
+//   release(requesterIdOrIds) -> frees all slots for one or more requester ids
 //   current()                -> slots currently reserved
 //   available()              -> MAX - current()
 //   max()                    -> the cap
-//   reset()                  -> clear all reservations (used on sector change / new game / load)
+//   reset()                  -> clear all reservations (used on hard sector change / new game / restore)
 
-const DEFAULT_MAX = 12;   // target live NPC/hostile cap (~10-14); tunable via state.spawnBudget.max
+// Eight slots are reserved for ambient world ships, leaving sixteen for multiple light squads,
+// an escort/controller, and a heavy anchor without lifting the hard safety ceiling below.
+const DEFAULT_MAX = 24;
 const MIN_MAX = 1;
 const HARD_MAX = 40;      // absolute ceiling so a bad override can never explode the sim
 
@@ -35,18 +38,21 @@ export const spawnBudget = {
     const api = makeBudgetApi(this.state);
     this.api = api;
     this.helpers.spawnBudget = api;
+    this._unsubs = [];
 
     if (this.bus && typeof this.bus.on === 'function') {
       // Reset on hard sector:EXIT (intentional jump / load boundary) — NOT continuous free-flight
       // membership handoffs, and NOT sector:enter. world.js reserves ambient allotment DURING
       // enterSector before sector:enter; resetting on enter would wipe that reservation.
-      // Continuous exits keep live entities and their budget slots (M2-C1). save:loaded always
-      // resets (re-entry re-reserves). First-ever entry has no exit; ensureBudgetState starts empty.
-      this.bus.on('sector:exit', (p) => {
+      // Continuous exits keep live entities and their budget slots (M2-C1). Restore resets before
+      // world rematerializes; resetting at save:loaded would erase the incoming world's live slots.
+      // First-ever entry has no exit; ensureBudgetState starts empty.
+      this._unsubs.push(this.bus.on('sector:exit', (p) => {
         if (isContinuousHandoff(p)) return;
         api.reset();
-      });
-      this.bus.on('save:loaded', () => api.reset());
+      }));
+      this._unsubs.push(this.bus.on('save:restoring', () => api.reset()));
+      this._unsubs.push(this.bus.on('entity:destroyed', (p) => api.releaseEntity(p && p.id)));
     }
   },
 
@@ -58,6 +64,11 @@ export const spawnBudget = {
   // Pure ledger — no per-tick work. Present so the system slots cleanly into UPDATE_ORDER if desired,
   // but it does nothing each step (the accounting happens on request/release calls).
   update() { /* intentionally inert */ },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
 };
 
 /** Ensure state.spawnBudget exists with a sane shape. Returns the budget record. */
@@ -68,9 +79,13 @@ export function ensureBudgetState(state) {
   const b = state.spawnBudget;
   if (!Number.isFinite(b.max)) b.max = DEFAULT_MAX;
   b.max = clampInt(b.max, MIN_MAX, HARD_MAX);
-  // reservations: requesterId -> { count, ids:Set<reservationId> }. Kept as a plain object for
-  // serializability is unnecessary (transient), but a Map is fine because budget is never persisted.
+  // Both maps are transient. Entity binding lets lifecycle events release one exact slot without
+  // guessing which system-owned count it belonged to.
   if (!(b.reservations instanceof Map)) b.reservations = new Map();
+  for (const rec of b.reservations.values()) {
+    if (!(rec.ids instanceof Set)) rec.ids = new Set();
+  }
+  if (!(b.entityOwners instanceof Map)) b.entityOwners = new Map();
   if (!Number.isFinite(b.used) || b.used < 0) b.used = recomputeUsed(b);
   if (!Number.isInteger(b._seq) || b._seq < 1) b._seq = 1;
   return b;
@@ -97,6 +112,33 @@ export function makeBudgetApi(state) {
     return grant;
   }
 
+  function bindEntity(entityId, requesterId) {
+    if (entityId == null) return false;
+    const entityKey = String(entityId);
+    const key = requesterId == null ? '_anon' : String(requesterId);
+    const existingOwner = b.entityOwners.get(entityKey);
+    if (existingOwner != null) return existingOwner === key;
+    const rec = b.reservations.get(key);
+    if (!rec || rec.ids.size >= rec.count) return false;
+    rec.ids.add(entityKey);
+    b.entityOwners.set(entityKey, key);
+    return true;
+  }
+
+  function releaseEntity(entityId) {
+    if (entityId == null) return 0;
+    const entityKey = String(entityId);
+    const key = b.entityOwners.get(entityKey);
+    if (key == null) return 0;
+    b.entityOwners.delete(entityKey);
+    const rec = b.reservations.get(key);
+    if (!rec || !rec.ids.delete(entityKey)) return 0;
+    rec.count = Math.max(0, rec.count - 1);
+    b.used = Math.max(0, b.used - 1);
+    if (rec.count <= 0) b.reservations.delete(key);
+    return 1;
+  }
+
   // Free a requester's slots. Accepts a requesterId (frees ALL its slots), or an array of
   // requesterIds. Returns the number of slots actually freed. Idempotent / safe on unknown ids.
   function release(requesterIdOrIds) {
@@ -109,6 +151,7 @@ export function makeBudgetApi(state) {
     const rec = b.reservations.get(key);
     if (!rec) return 0;
     const freed = rec.count;
+    for (const entityKey of rec.ids) b.entityOwners.delete(entityKey);
     b.reservations.delete(key);
     b.used = Math.max(0, b.used - freed);
     return freed;
@@ -120,6 +163,17 @@ export function makeBudgetApi(state) {
     const rec = b.reservations.get(key);
     if (!rec) return 0;
     const freed = clampInt(n, 0, rec.count);
+    // Failure paths normally release unbound grants. If a caller explicitly releases more than
+    // that, detach a deterministic insertion-order prefix so stale entity events remain harmless.
+    const boundToDetach = Math.max(0, freed - Math.max(0, rec.count - rec.ids.size));
+    if (boundToDetach > 0) {
+      let detached = 0;
+      for (const entityKey of rec.ids) {
+        rec.ids.delete(entityKey);
+        b.entityOwners.delete(entityKey);
+        if (++detached >= boundToDetach) break;
+      }
+    }
     rec.count -= freed;
     b.used = Math.max(0, b.used - freed);
     if (rec.count <= 0) b.reservations.delete(key);
@@ -128,6 +182,7 @@ export function makeBudgetApi(state) {
 
   function reset() {
     b.reservations.clear();
+    b.entityOwners.clear();
     b.used = 0;
   }
 
@@ -136,7 +191,14 @@ export function makeBudgetApi(state) {
     return b.max;
   }
 
-  return { request, release, releaseSome, current, available, max, setMax, reset };
+  function ownerForEntity(entityId) {
+    return entityId == null ? null : (b.entityOwners.get(String(entityId)) || null);
+  }
+
+  return {
+    request, bindEntity, releaseEntity, release, releaseSome,
+    ownerForEntity, current, available, max, setMax, reset,
+  };
 }
 
 function recomputeUsed(b) {

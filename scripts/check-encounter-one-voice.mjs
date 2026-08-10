@@ -95,7 +95,12 @@ function assertNoModal(emitted, label) {
   // `proximity: true` shape at the pacing gate. Same law as the ambush section below.
   const havenZone = zonesForSector('sector_sker_haven').find((z) => z.id === 'zone_sker_haven');
   const havenPos = sectorLocalToGlobalForSector(havenZone.center, 'sector_sker_haven');
-  const { sim, state, bus, emitted, voice } = boot(31, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
+  // Coverage fixture, not a pinned content schedule: squad-density tuning intentionally consumes a
+  // different number of seeded composition draws. Seed 1 retains the live taste-law floor (at
+  // least three fired, exact voice parity, and at least one proximity-gated shape), while the
+  // forced ambush case below independently pins the global-coordinate proximity behavior.
+  const SOAK_SEED = 1;
+  const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];
   bus.on('encounter:telegraph', (p) => {

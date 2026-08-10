@@ -80,6 +80,7 @@ import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { hash32 } from '../core/rng.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
@@ -520,6 +521,8 @@ export const missions = {
 
     this._lastDockedStation = null;
     this._spawnSeq = 0; // disambiguates re-spawns of the same mission target across visits
+    this._missionBudgetDeferrals = new Map();
+    this._nextMissionSpawnRetryTick = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
 
@@ -530,6 +533,7 @@ export const missions = {
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
+    bus.on('save:restoring', () => this._missionBudgetDeferrals.clear());
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
@@ -672,6 +676,12 @@ export const missions = {
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
       }
+    }
+    // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
+    // This is also the Continue top-up path after world adopted only part of a target group.
+    if ((state.tick | 0) >= (this._nextMissionSpawnRetryTick | 0)) {
+      this._nextMissionSpawnRetryTick = (state.tick | 0) + 15;
+      for (const m of active) this._ensureMissionTargets(m);
     }
     // ── PER-TICK PREDICATE SLOT (grammar §9.9.1) ──────────────────────────────────────────────
     // Until this line existed, update() evaluated NOTHING per frame except the deadline, which is
@@ -2806,6 +2816,13 @@ export const missions = {
         this._resolveContract47aB2(m, i, 'force', p.id);
         continue;
       }
+      const defeated = this.state.entities && this.state.entities.get(p.id);
+      const defeatedSlot = missionTargetSlotOf(defeated, m.id);
+      if (defeatedSlot != null) {
+        const completed = completedMissionTargetSlots(m);
+        completed.add(defeatedSlot);
+        m.completedTargetSlots = [...completed].sort((a, b) => a - b);
+      }
       m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
@@ -3898,9 +3915,13 @@ export const missions = {
   _ensureMissionTargets(m) {
     if (!m.needsTargets) return;
     if (this.state.world.currentSectorId !== m.destSectorId) return; // defer until the player arrives
+    m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
+      const entity = this.state.entities.get(id);
+      return entity && entity.alive !== false;
+    });
     // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
     this._adoptLiveMissionTargets(m);
-    if (m.targetEntityIds.length > 0) return;                        // already present (spawned or adopted)
+    // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
   },
@@ -3941,23 +3962,38 @@ export const missions = {
       m.targetEntityIds.push(retained.id);
       return existing.has(retained.id) ? 0 : 1;
     }
-    let adopted = 0;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.alive || e.isPlayer) continue;
+    const candidates = list.filter((e) => {
+      if (!e || !e.alive || e.isPlayer) return false;
       const mid = missionIdentityOf(e);
-      if (mid == null || String(mid) !== String(m.id)) continue;
-      // Re-stamp durable mission identity if rematerialize omitted a field.
-      this._stampMissionTargetIdentity(e, m, adopted);
-      if (existing.has(e.id)) continue;
-      existing.add(e.id);
-      m.targetEntityIds.push(e.id);
+      return mid != null && String(mid) === String(m.id);
+    });
+    candidates.sort((a, b) => {
+      const aSlot = missionTargetSlotOf(a, m.id);
+      const bSlot = missionTargetSlotOf(b, m.id);
+      if (aSlot != null && bSlot != null && aSlot !== bSlot) return aSlot - bSlot;
+      if (aSlot != null) return -1;
+      if (bSlot != null) return 1;
+      return stableEntityId(a.id).localeCompare(stableEntityId(b.id));
+    });
+    let adopted = 0;
+    const usedSlots = new Set();
+    const ordered = [];
+    for (const e of candidates) {
+      let slot = missionTargetSlotOf(e, m.id);
+      if (slot == null || usedSlots.has(slot)) slot = lowestVacantSlot(usedSlots);
+      usedSlots.add(slot);
+      // Re-stamp durable mission identity if rematerialize omitted a field. Never compact a
+      // survivor merely because a lower slot is absent; its mission+slot identity is the save seam.
+      this._stampMissionTargetIdentity(e, m, slot);
+      ordered.push({ id: e.id, slot });
+      if (!existing.has(e.id)) adopted++;
       if (e.data && e.data.escortee) {
         m._escorteeId = e.id;
         m._escorteeArrived = !!m._escorteeArrived;
       }
-      adopted++;
     }
+    ordered.sort((a, b) => a.slot - b.slot || stableEntityId(a.id).localeCompare(stableEntityId(b.id)));
+    m.targetEntityIds = ordered.map((entry) => entry.id);
     return adopted;
   },
 
@@ -3992,6 +4028,13 @@ export const missions = {
     ent.data.missionTag = m.id;
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
+    const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
+    const durableSlot = combatTarget
+      ? Math.max(0, seq | 0)
+      : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
+    if (combatTarget) {
+      ent.data.missionTargetSlot = durableSlot;
+    }
     // Accepted combat contracts are the authored authority that makes their tagged quarry a
     // legal hostile. Stamp the existing scanner/engagement context here so fresh spawns and
     // Continue-adopted targets agree, without widening ambient team mismatch into hostility.
@@ -4019,7 +4062,7 @@ export const missions = {
     }
     if (ent.data.worldRecordId || !sectorId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
-    const key = `mission:${m.id}:${seq | 0}`;
+    const key = `mission:${m.id}:${durableSlot}`;
     ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
     ent.data.identityKey = key;
     ent.data.durable = true;
@@ -4061,14 +4104,20 @@ export const missions = {
     this._adoptLiveMissionTargets(m);
     const player = helpers.player ? helpers.player() : this.state.entities.get(this.state.playerId);
     const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
-    const seed = helpers.hash32 ? helpers.hash32(this.state.meta.seed, m.id, this._spawnSeq++) : (this._spawnSeq++ + 1);
-    const rng = helpers.mulberry32 ? helpers.mulberry32(seed) : mulberryLocal(seed);
+    const nextRng = (durableSlot = null) => {
+      const hash = typeof helpers.hash32 === 'function' ? helpers.hash32 : hash32;
+      const seed = durableSlot == null
+        ? hash(this.state.meta.seed, m.id, this._spawnSeq++)
+        : hash(this.state.meta.seed, m.id, 'mission-target-slot', durableSlot);
+      return helpers.mulberry32 ? helpers.mulberry32(seed) : mulberryLocal(seed);
+    };
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
 
     const follow = m.params && m.params.poiSignalFollowup;
     if (follow) {
       if (m.targetEntityIds.length > 0) return;
+      const rng = nextRng();
       const spec = {
         type: follow.targetType,
         factionId: null,
@@ -4114,7 +4163,25 @@ export const missions = {
       const adopted = (m.targetEntityIds || []).length;
       const want = m.type === 'patrol_clear' ? remaining : Math.min(1, remaining);
       const n = Math.max(0, want - adopted);
-      if (n <= 0) return;
+      if (n <= 0) {
+        if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+        return;
+      }
+      const budget = helpers.spawnBudget;
+      const requester = `mission:${m.id}`;
+      const grant = budget && typeof budget.request === 'function'
+        ? budget.request(n, requester)
+        : n;
+      if (grant < n) this._noteMissionSpawnDeferred(m, n, grant);
+      if (grant <= 0) return;
+      const occupiedSlots = new Set((m.targetEntityIds || []).map((id) => (
+        missionTargetSlotOf(this.state.entities.get(id), m.id)
+      )).filter((slot) => slot != null));
+      const completedSlots = completedMissionTargetSlots(m);
+      const vacantSlots = [];
+      for (let slot = 0; vacantSlots.length < n; slot++) {
+        if (!occupiedSlots.has(slot) && !completedSlots.has(slot)) vacantSlots.push(slot);
+      }
       // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
       // with the starter Pulse Laser S; higher risk opens tougher hulls.
       const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
@@ -4125,8 +4192,11 @@ export const missions = {
           : riskTier <= 3
             ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
             : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
-      for (let i = 0; i < n; i++) {
-        const storyTarget = i === 0 && m.storyTarget ? m.storyTarget : null;
+      let spawned = 0;
+      for (let i = 0; i < grant; i++) {
+        const durableSlot = vacantSlots[i];
+        const rng = nextRng(durableSlot);
+        const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
         const typeId = storyTarget && storyTarget.archetype || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
         const pos = storyTarget
@@ -4157,7 +4227,7 @@ export const missions = {
         }
         // B5 paperwork plant: first proving-chain hostile always carries Vale Holdings salvage,
         // including embodied patrol captains that ship a named storyTarget.
-        if (i === 0 && m.storyTag && String(m.storyTag).startsWith('campaign47a:b5:')) {
+        if (durableSlot === 0 && m.storyTag && String(m.storyTag).startsWith('campaign47a:b5:')) {
           if (!spec.data.lastRegisteredOwner) spec.data.lastRegisteredOwner = 'VALE HOLDINGS LLC';
           if (!spec.data.salvageCargo) {
             spec.data.salvageCargo = 'ADMINISTRATIVE RECORDS — 3 YEARS / SEALED';
@@ -4167,10 +4237,20 @@ export const missions = {
             if (!storyTarget) spec.data.registry = 'VALE HOLDINGS LLC';
           }
         }
-        const ent = helpers.spawnEntity(spec);
+        let ent;
+        try {
+          ent = helpers.spawnEntity(spec);
+        } catch (error) {
+          if (budget && typeof budget.releaseSome === 'function') {
+            budget.releaseSome(requester, grant - spawned);
+          }
+          throw error;
+        }
         if (ent) {
-          this._stampMissionTargetIdentity(ent, m, adopted + i);
+          if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+          this._stampMissionTargetIdentity(ent, m, durableSlot);
           m.targetEntityIds.push(ent.id);
+          spawned++;
           if (storyTarget && storyTarget.namedCaptainId) {
             this.bus.emit('encounter:namedCaptainBound', {
               captainId: storyTarget.namedCaptainId, entityId: ent.id,
@@ -4179,10 +4259,21 @@ export const missions = {
           }
         }
       }
+      if (budget && typeof budget.releaseSome === 'function' && spawned < grant) {
+        budget.releaseSome(requester, grant - spawned);
+      }
+      if (spawned === n && this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
     } else if (m.type === 'escort') {
       // Already adopted a live escortee from world.records — do not double-spawn.
       if (m._escorteeId != null && this.state.entities.get(m._escorteeId)) return;
       if ((m.targetEntityIds || []).length > 0) return;
+      const budget = helpers.spawnBudget;
+      const requester = `mission:${m.id}`;
+      if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+        return;
+      }
+      const rng = nextRng();
       // Real escortee: a friendly (team 0) ship that TRAVELS toward the destination. It needs to
       // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
       const ang = rng() * Math.PI * 2, r = 60 + rng() * 40;
@@ -4195,15 +4286,41 @@ export const missions = {
       // update() so it heads for the destination instead of dogfighting. Seed a neutral intent.
       delete spec.data.ai;
       spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
-      const ent = helpers.spawnEntity(spec);
+      let ent;
+      try {
+        ent = helpers.spawnEntity(spec);
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        throw error;
+      }
       if (ent) {
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
         this._stampMissionTargetIdentity(ent, m, 0);
         m._escorteeId = ent.id;
         m._escorteeArrived = false;
         m.targetEntityIds.push(ent.id);
+        if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+      } else if (budget && typeof budget.releaseSome === 'function') {
+        budget.releaseSome(requester, 1);
       }
     }
     if (m.targetEntityIds.length) this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  _noteMissionSpawnDeferred(m, requested, granted) {
+    const key = String(m && m.id);
+    const signature = `${requested | 0}:${granted | 0}`;
+    const deferrals = this._missionBudgetDeferrals || (this._missionBudgetDeferrals = new Map());
+    if (deferrals.get(key) === signature) return;
+    deferrals.set(key, signature);
+    this.bus.emit('mission:spawnDeferred', {
+      missionId: m && m.id,
+      type: m && m.type,
+      sectorId: m && m.destSectorId,
+      requested: requested | 0,
+      granted: granted | 0,
+      reason: 'spawn_cap',
+    });
   },
 
   /** Drive an escortee ship toward the destination station (or sector centre). Writes data.intent
@@ -4272,10 +4389,15 @@ export const missions = {
     }
     for (const id of targetIds) {
       const e = this.state.entities.get(id);
-      if (e && e.alive && e.id !== this.state.playerId) e.alive = false; // swept end-of-step
+      if (e && e.alive && e.id !== this.state.playerId) {
+        e.alive = false; // swept end-of-step
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
     }
     m.targetEntityIds = [];
     m._escorteeId = null;
+    if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
   },
 
   _onSectorEnter(p) {
@@ -4325,7 +4447,7 @@ export const missions = {
         const e = this.state.entities.get(id); return e && e.alive;
       });
       this._adoptLiveMissionTargets(m);
-      if (m.targetEntityIds.length === 0 && (m.objectiveProgress < m.objectiveTarget)) {
+      if (m.objectiveProgress < m.objectiveTarget) {
         this._spawnTargetsFor(m);
       }
     }
@@ -4352,9 +4474,20 @@ export const missions = {
         this._failMission(m, i, 'escort_abandoned');
       }
     }
-    // Targets in the exited sector are despawned by world on hard leave; clear ids for re-spawn.
+    // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
-      if (m.needsTargets && m.destSectorId === sectorId) { m.targetEntityIds = []; m._escorteeId = null; }
+      if (m.needsTargets && m.destSectorId === sectorId) {
+        for (const id of m.targetEntityIds || []) {
+          const entity = this.state.entities.get(id);
+          if (!entity || entity.id === this.state.playerId) continue;
+          entity.alive = false;
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(id);
+        }
+        m.targetEntityIds = [];
+        m._escorteeId = null;
+        if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+      }
     }
   },
 
@@ -4822,6 +4955,8 @@ export const missions = {
     this._installThreadBFragment();
     this._installContract47aColdStart();
     this._spawnSeq = 0;
+    if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.clear();
+    this._nextMissionSpawnRetryTick = 0;
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
@@ -5108,6 +5243,40 @@ function missionHostileSpawnPos(state, origin, rng) {
     if (outsideMissionPortSafety(state, pos)) return pos;
   }
   return null;
+}
+
+function missionTargetSlotOf(entity, missionId) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  const explicit = Number(data.missionTargetSlot);
+  if (Number.isInteger(explicit) && explicit >= 0) return explicit;
+  const identity = typeof data.identityKey === 'string' ? data.identityKey : '';
+  const prefix = `mission:${missionId}:`;
+  if (!identity.startsWith(prefix)) return null;
+  const tail = identity.slice(prefix.length);
+  if (!/^\d+$/.test(tail)) return null;
+  const parsed = Number(tail);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function completedMissionTargetSlots(mission) {
+  const slots = new Set();
+  for (const raw of Array.isArray(mission && mission.completedTargetSlots)
+    ? mission.completedTargetSlots : []) {
+    const slot = Number(raw);
+    if (Number.isInteger(slot) && slot >= 0) slots.add(slot);
+  }
+  return slots;
+}
+
+function lowestVacantSlot(occupied) {
+  let slot = 0;
+  while (occupied.has(slot)) slot++;
+  return slot;
+}
+
+function stableEntityId(id) {
+  return `${typeof id}:${String(id)}`;
 }
 
 /** Place an authored target inside its named sector zone so the ordinary entity:killed event can

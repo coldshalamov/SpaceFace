@@ -157,14 +157,27 @@ export const aiEncounter = {
   _spawnDue(owner, state) {
     const helper = this.helpers && this.helpers.spawnEntity;
     if (typeof helper !== 'function') return;
+    const budget = this.helpers && this.helpers.spawnBudget;
     const keep = [];
     for (const pending of owner.pendingReinforcements) {
       if (finiteInt(pending.dueTick) > finiteInt(state.tick)) {
         keep.push(pending);
         continue;
       }
-      const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, { startedTick: state.tick });
-      spec.factionId = pending.factionId || spec.factionId;
+      // Reinforcements are ordinary live combatants and therefore share the same hard cap as
+      // authored encounters. Keep a due ship pending when saturated; the first released slot lets
+      // it arrive on the next deterministic tick instead of silently overflowing the sector.
+      const budgeted = !!(budget && typeof budget.request === 'function');
+      if (budgeted && budget.request(1, pending.squadId) <= 0) {
+        keep.push(pending);
+        continue;
+      }
+      // Faction must enter the factory: its presence doctrine, contact behavior, and bark identity
+      // are derived there and cannot be repaired by patching only spec.factionId afterward.
+      const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, {
+        factionId: pending.factionId || undefined,
+        startedTick: state.tick,
+      });
       spec.data = spec.data || {};
       const baseAI = spec.data.ai || {};
       spec.data.ai = {
@@ -193,11 +206,24 @@ export const aiEncounter = {
         commandSeq: pending.commandSeq,
         packageId: pending.packageId,
       };
-      const entity = helper(spec);
+      let entity;
+      try {
+        entity = helper(spec);
+      } catch (error) {
+        if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(pending.squadId, 1);
+        throw error;
+      }
+      if (!entity || entity.id == null) {
+        if (budgeted && typeof budget.releaseSome === 'function') budget.releaseSome(pending.squadId, 1);
+        continue;
+      }
+      if (budgeted && typeof budget.bindEntity === 'function') {
+        budget.bindEntity(entity.id, pending.squadId);
+      }
       const record = {
         commandSeq: pending.commandSeq,
         packageId: pending.packageId,
-        entityId: entity && entity.id,
+        entityId: entity.id,
         typeId: pending.typeId,
         tick: finiteInt(state.tick),
         pos: { x: finite(pending.pos && pending.pos.x), z: finite(pending.pos && pending.pos.z) },
@@ -207,6 +233,7 @@ export const aiEncounter = {
     }
     owner.pendingReinforcements = keep;
   },
+
 };
 
 function ensureEncounterState(state) {

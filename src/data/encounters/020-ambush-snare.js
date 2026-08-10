@@ -25,14 +25,14 @@ export default defineEncounter(trigger, {
   "factionId": "faction_reach",
   "context": "encounter",
   "squad": {
+    // The controller is guaranteed once; remaining slots are disposable light ammunition.
+    "anchorArchetype": "reaver_pirate",
     "archetypes": [
-      "reaver_pirate",
-      "wasp_swarmer",
-      "corsair_raider"
+      "wasp_swarmer"
     ],
     "size": [
-      2,
-      4
+      4,
+      6
     ],
     "doctrine": "scavenger",
     "formation": "wedge"

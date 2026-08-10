@@ -72,6 +72,7 @@ export const RAID_SECURITY_FLOOR = 0.5;    // sectors at/above this security nev
 export const SPEC_RAID_LOSS_FRAC = 0.7;    // uncovered raid takes 70% of stored goods (legacy)
 export const SPEC_RAID_COOLDOWN_S = 300;   // raided site freeze (legacy raidCooldown)
 export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of halved pressure
+export const CLAIM_RAID_ATTACKER_RANGE = Object.freeze([4, 6]);
 export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
 export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
 export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
@@ -980,9 +981,12 @@ export const claims = {
         this.bus.emit('claim:raidRepelled', { bodyId: body.id, defense: rating });
         this.bus.emit('toast', { text: 'Raid repelled at ' + body.name, kind: 'good', ttl: 4 });
       } else {
+        const [minAttackers, maxAttackers] = CLAIM_RAID_ATTACKER_RANGE;
         this.beginRaidDefense(body.id, {
           bastionId: bastion && bastion.id,
-          attackerCount: 2 + Math.floor(this._rng() * 2),
+          // Consume the existing dedicated raid-size draw, but map it onto the authored 4–6
+          // swarm range rather than the legacy two-or-three abstraction.
+          attackerCount: minAttackers + Math.floor(this._rng() * (maxAttackers - minAttackers + 1)),
         });
       }
     }

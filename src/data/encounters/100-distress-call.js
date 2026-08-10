@@ -46,13 +46,14 @@ export default defineEncounter(trigger, {
       "formation": "loose"
     },
     "threat": {
+      // Exactly one visible pirate controller, then light-ammunition pressure.
+      "anchorArchetype": "reaver_pirate",
       "archetypes": [
-        "reaver_pirate",
         "wasp_swarmer"
       ],
       "size": [
-        1,
-        2
+        4,
+        6
       ],
       "doctrine": "scavenger",
       "formation": "loose",
@@ -64,14 +65,14 @@ export default defineEncounter(trigger, {
     "factionId": "faction_reach",
     "context": "encounter",
     "squad": {
+      // The bait springs as disposable Wasps around one guaranteed elite blade.
+      "anchorArchetype": "corsair_raider",
       "archetypes": [
-        "reaver_pirate",
-        "corsair_raider",
         "wasp_swarmer"
       ],
       "size": [
-        3,
-        4
+        4,
+        6
       ],
       "doctrine": "scavenger",
       "formation": "ring"

@@ -1,6 +1,8 @@
 // Canonical fresh-run system reset order. Keeping this outside main.js makes the real New Game
 // transition directly testable and prevents additive systems from depending on imaginary events.
 export const FRESH_RUN_SYSTEMS = Object.freeze([
+  // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
+  'spawnBudget',
   'world',
   'regionalEcology',
   'factions',

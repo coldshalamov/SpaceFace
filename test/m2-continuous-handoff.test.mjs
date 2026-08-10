@@ -14,6 +14,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
+import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { spawnBudget, makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { ambushSignatures } from '../src/systems/ambushSignatures.js';
@@ -188,6 +190,96 @@ test('continuous sector:exit preserves spawnBudget ledger', () => {
 
   bus.emit('sector:exit', { sectorId: HELIOS, continuous: false, noTeleport: false });
   assert.equal(api.current(), 0, 'hard exit must reset budget');
+});
+
+test('default spawn budget leaves room for ambient world ships plus two light squads', () => {
+  const state = makeState();
+  const api = makeBudgetApi(state);
+
+  assert.equal(api.max(), 24, 'default live-ship cap supports the swarm ecology');
+  assert.equal(api.request(8, 'world_ambient'), 8);
+  assert.equal(api.request(6, 'light_squad_a'), 6);
+  assert.equal(api.request(6, 'light_squad_b'), 6);
+  assert.equal(api.available(), 4, 'controller/heavy-anchor headroom remains after two full swarms');
+  assert.equal(api.request(8, 'anchor'), 4, 'the hard ledger still clamps excess demand');
+  assert.equal(api.current(), 24);
+});
+
+test('AI reinforcements wait for shared capacity and release their slots on destruction', () => {
+  const sim = createSimulation({ seed: 47, systems: [spawnBudget, aiEncounter] });
+  const budget = sim.helpers.spawnBudget;
+  const owner = () => sim.state.aiEncounter.owner;
+  const reinforcements = () => sim.state.entityList.filter((entity) => (
+    entity.alive && entity.data?.ai?.spawnContext === 'sg06_reinforcement'
+  ));
+
+  assert.equal(budget.request(budget.max(), 'test:saturation'), 24);
+  sim.state.aiEncounter.commands.push({
+    version: 1,
+    seq: 1,
+    tick: 0,
+    type: 'request_reinforcement',
+    packageId: 'fixture_wing_pair',
+    budgetRemaining: 0,
+  });
+  sim.runTicks(2);
+
+  assert.equal(reinforcements().length, 0, 'a saturated live cap blocks reinforcement materialization');
+  assert.equal(owner().pendingReinforcements.length, 2, 'blocked ships remain queued in stable order');
+  assert.equal(budget.current(), 24);
+
+  assert.equal(budget.releaseSome('test:saturation', 1), 1);
+  sim.step();
+  assert.equal(reinforcements().length, 1, 'one released slot admits exactly one queued ship');
+  assert.equal(owner().pendingReinforcements.length, 1);
+  assert.equal(budget.current(), 24, 'the reinforcement reserves the newly available slot');
+
+  const first = reinforcements()[0];
+  first.alive = false;
+  sim.step();
+  assert.equal(budget.current(), 23, 'entity destruction releases its exact reinforcement slot');
+  sim.step();
+  assert.equal(reinforcements().length, 1, 'the next deterministic tick admits the remaining ship');
+  assert.equal(owner().pendingReinforcements.length, 0);
+  assert.equal(budget.current(), 24);
+
+  const second = reinforcements()[0];
+  sim.bus.emit('sector:exit', { continuous: true, noTeleport: true });
+  assert.match(budget.ownerForEntity(second.id), /^sg06_fixture_wing_/,
+    'continuous handoff retains the live entity-to-budget relationship');
+
+  sim.bus.emit('sector:exit', { continuous: false, noTeleport: false });
+  assert.equal(budget.current(), 0, 'hard exit resets the shared ledger');
+  assert.equal(sim.state.spawnBudget.entityOwners.size, 0,
+    'hard exit also clears transient reinforcement ownership');
+  assert.equal(budget.request(1, 'test:reused-id-owner'), 1);
+  sim.bus.emit('entity:destroyed', { id: second.id });
+  assert.equal(budget.current(), 1, 'a stale entity id cannot release a post-reset reservation');
+
+  sim.state.aiEncounter.commands.push({
+    version: 1,
+    seq: 2,
+    tick: sim.state.tick,
+    type: 'request_reinforcement',
+    packageId: 'fixture_wing_pair',
+    budgetRemaining: budget.available(),
+  });
+  sim.runTicks(2);
+  const loadBoundaryEntityId = [...sim.state.spawnBudget.entityOwners.keys()][0];
+  assert.equal(sim.state.spawnBudget.entityOwners.size, 2,
+    'fresh reinforcements rebuild transient ownership after a hard boundary');
+  assert.equal(budget.current(), 3);
+
+  sim.bus.emit('save:restoring', {});
+  assert.equal(budget.current(), 0, 'save restore resets the outgoing shared ledger before rematerialization');
+  assert.equal(sim.state.spawnBudget.entityOwners.size, 0,
+    'save restore clears outgoing reinforcement ownership with it');
+  assert.equal(budget.request(1, 'test:post-load-owner'), 1);
+  sim.bus.emit('save:loaded', {});
+  assert.equal(budget.current(), 1, 'save:loaded must retain reservations created by incoming world re-entry');
+  sim.bus.emit('entity:destroyed', { id: loadBoundaryEntityId });
+  assert.equal(budget.current(), 1, 'a pre-load entity id cannot release a post-load reservation');
+  sim.dispose();
 });
 
 test('continuous sector:exit preserves encounterDirector live + active', () => {
