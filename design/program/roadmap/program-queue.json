@@ -5196,7 +5196,7 @@
       "priority": 255,
       "title": "Implement the first six ambient microevents as one causal chain",
       "kind": "implementation",
-      "state": "ready",
+      "state": "integrated",
       "dependsOn": [
         "PQ-045.route-topology"
       ],
