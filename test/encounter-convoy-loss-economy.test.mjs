@@ -11,16 +11,26 @@ import { stableLossIntentId } from '../src/economy/freightCausality.js';
 import { economy } from '../src/systems/economy.js';
 import { encounterDirector, planEncounterShape } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 
 const SECTOR_ID = 'sector_tethys_junction';
 const STATION_ID = 'st_tethys_hub';
 const LANE_POS = Object.freeze({ x: 500, z: 1500 });
 const STATION_POS = Object.freeze({ x: 1050, z: 380 });
 
-function boot(seed) {
+function boot(seed, { voiceAccepted = true } = {}) {
+  const voices = [];
+  const helpers = {
+    voice: {
+      say(payload) {
+        voices.push(structuredClone(payload));
+        return voiceAccepted;
+      },
+    },
+  };
   // Relevant systems are registered in their production relative order: economy owns stock,
   // spawnBudget owns admission, and the director emits the consequence intent.
-  const sim = createSimulation({ seed, systems: [economy, spawnBudget, encounterDirector] });
+  const sim = createSimulation({ seed, helpers, systems: [economy, spawnBudget, encounterDirector] });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = SECTOR_ID;
@@ -38,12 +48,16 @@ function boot(seed) {
   });
   state.playerId = player.id;
 
-  const log = { pressure: [], losses: [], news: [], resolved: [], receipts: [] };
+  const log = { pressure: [], losses: [], news: [], toasts: [], resolved: [], receipts: [] };
   bus.on('economy:applyTradePressure', (payload) => log.pressure.push(payload));
   bus.on('freight:loss', (payload) => log.losses.push(payload));
   bus.on('news:headline', (payload) => log.news.push(payload));
+  bus.on('toast', (payload) => log.toasts.push(payload));
   bus.on('encounter:resolved', (payload) => log.resolved.push(payload));
   bus.on('encounter:receipt', (payload) => log.receipts.push(payload));
+  // Production initializes the sim registry before uiRoot installs marketNews. Keep that listener
+  // order here so the regression exercises the real owner seam rather than a synthetic relay.
+  const marketNews = createMarketNews({ bus, state, helpers });
   bus.emit('sector:enter', { sectorId: SECTOR_ID });
   return {
     sim,
@@ -51,6 +65,8 @@ function boot(seed) {
     bus,
     player,
     log,
+    voices,
+    marketNews,
     economy: sim.registry.get('economy'),
     director: sim.registry.get('encounterDirector'),
   };
@@ -99,9 +115,9 @@ function tickDirector(harness, seconds = 2) {
 }
 
 function assertOneBoundedLoss(harness, live, outcome) {
-  const { log } = harness;
+  const { log, marketNews } = harness;
   assert.equal(log.losses.length, 1, `${outcome} emits one freight loss intent`);
-  assert.equal(log.news.length, 1, `${outcome} emits one market headline intent`);
+  assert.equal(log.news.length, 1, `${outcome} emits one surfaced market headline`);
   assert.equal(log.pressure.length, 1, `${outcome} applies destination pressure exactly once`);
 
   const [intent] = log.losses;
@@ -119,6 +135,14 @@ function assertOneBoundedLoss(harness, live, outcome) {
   assert.ok(pressure.vol < 0 && pressure.vol >= -12, `scarcity pressure is negative and bounded (got ${pressure.vol})`);
   assert.equal(log.news[0].intentId, intent.intentId);
   assert.equal(log.news[0].kind, 'freight_loss');
+  assert.equal(log.news[0].encounterId, live.id);
+  assert.equal(log.news[0].stationId, STATION_ID);
+  assert.equal(log.news[0].commodityId, live.data.cargoId);
+  assert.equal(typeof log.news[0].headline, 'string');
+  assert.ok(log.news[0].headline.length > 0, 'marketNews resolves the freight-loss template');
+  assert.equal(marketNews.getLog().length, 1, 'ordinary play commits the headline to the visible news model');
+  assert.equal(marketNews.getLog()[0].intentId, intent.intentId);
+  assert.equal(marketNews.getLog()[0].encounterId, live.id);
   assert.ok(log.resolved.some((entry) => entry.encounterId === live.id && entry.outcome === outcome));
 }
 
@@ -135,6 +159,13 @@ test('player robbery applies one bounded negative destination pressure from the 
     Math.max(1, stockBefore + harness.log.pressure[0].vol),
     'the registered economy owner consumes the negative intent and drains stock',
   );
+  const freightVoices = harness.voices.filter((entry) => entry.intentId === harness.log.losses[0].intentId);
+  const freightToasts = harness.log.toasts.filter((entry) => entry.intentId === harness.log.losses[0].intentId);
+  assert.equal(freightVoices.length, 1, 'accepted news voice surfaces the loss once');
+  assert.equal(freightVoices[0].encounterId, live.id);
+  assert.equal(freightVoices[0].stationId, STATION_ID);
+  assert.equal(freightVoices[0].commodityId, live.data.cargoId);
+  assert.deepEqual(freightToasts, [], 'accepted voice does not duplicate into a toast');
 
   const counts = {
     pressure: harness.log.pressure.length,
@@ -151,7 +182,7 @@ test('player robbery applies one bounded negative destination pressure from the 
 });
 
 test('non-player convoy loss produces the same scarcity bridge but resolves lost', () => {
-  const harness = boot(4202);
+  const harness = boot(4202, { voiceAccepted: false });
   const live = fireConvoy(harness);
   harness.state.encounterDirector.stats.appliedFreightLossIds = {
     fl_legacy_first: true,
@@ -161,6 +192,14 @@ test('non-player convoy loss produces the same scarcity bridge but resolves lost
   tickDirector(harness);
   assertOneBoundedLoss(harness, live, 'lost');
   assert.equal(harness.log.losses[0].killerId, 999_001);
+  const freightVoices = harness.voices.filter((entry) => entry.intentId === harness.log.losses[0].intentId);
+  const freightToasts = harness.log.toasts.filter((entry) => entry.intentId === harness.log.losses[0].intentId);
+  assert.equal(freightVoices.length, 1, 'declined voice is attempted once');
+  assert.equal(freightToasts.length, 1, 'declined voice falls back to one visible toast');
+  assert.equal(freightToasts[0].text, harness.log.news[0].headline);
+  assert.equal(freightToasts[0].encounterId, live.id);
+  assert.equal(freightToasts[0].stationId, STATION_ID);
+  assert.equal(freightToasts[0].commodityId, live.data.cargoId);
   assert.deepEqual(
     harness.state.encounterDirector.stats.appliedFreightLossIds.slice(0, 2),
     ['fl_legacy_first', 'fl_legacy_second'],

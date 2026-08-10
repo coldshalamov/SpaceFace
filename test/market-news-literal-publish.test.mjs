@@ -5,7 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { hash32 } from '../src/core/rng.js';
 import { createMarketNews, generateHeadline } from '../src/ui/marketNews.js';
 
-function boot() {
+function boot({ voiceAccepted = true } = {}) {
   const bus = createBus();
   const voices = [];
   const headlines = [];
@@ -24,13 +24,74 @@ function boot() {
       voice: {
         say(payload) {
           voices.push(payload);
-          return true;
+          return voiceAccepted;
         },
       },
     },
   });
   return { bus, state, news, voices, headlines, toasts };
 }
+
+test('stable encounter freight loss resolves once with provenance and toast fallback', () => {
+  const t = boot({ voiceAccepted: false });
+  try {
+    const payload = Object.freeze({
+      kind: 'loss',
+      cause: 'freight_loss',
+      intentId: 'fl_market_news_047',
+      encounterId: 'enc_convoy_047',
+      stationId: 'st_tethys_hub',
+      sectorId: 'sector_tethys_junction',
+      manifestId: 'manifest_convoy_047',
+      freighterKey: 'encounter:enc_convoy_047',
+      primaryCommodityId: 'cmdty_fuel_cells',
+      source: 'traffic_live',
+      news: {
+        kind: 'freight_loss',
+        commodityId: 'cmdty_fuel_cells',
+        source: 'freight_causality',
+      },
+    });
+
+    t.bus.emit('freight:loss', payload);
+    t.bus.emit('freight:loss', payload);
+
+    assert.equal(t.news.getLog().length, 1, 'stable intent is committed once');
+    assert.equal(t.voices.length, 1, 'voice arbiter is attempted once');
+    assert.equal(t.toasts.length, 1, 'declined voice falls back once');
+    assert.equal(t.headlines.length, 1, 'downstream headline relays once');
+    for (const record of [t.news.getLog()[0], t.voices[0], t.headlines[0]]) {
+      assert.equal(record.intentId, payload.intentId);
+      assert.equal(record.encounterId, payload.encounterId);
+      assert.equal(record.stationId, payload.stationId);
+      assert.equal(record.commodityId, payload.primaryCommodityId);
+      assert.equal(record.kind, 'freight_loss');
+    }
+    assert.equal(typeof t.headlines[0].headline, 'string');
+    assert.ok(t.headlines[0].headline.length > 0);
+    assert.equal(t.toasts[0].text, t.headlines[0].headline);
+    assert.equal(t.toasts[0].intentId, payload.intentId);
+    assert.equal(t.toasts[0].encounterId, payload.encounterId);
+    assert.equal(t.toasts[0].stationId, payload.stationId);
+    assert.equal(t.toasts[0].commodityId, payload.primaryCommodityId);
+    assert.equal(t.toasts[0].newsKind, 'freight_loss');
+
+    t.bus.emit('save:loaded', {});
+    assert.equal(t.news.getLog().length, 0, 'rewind clears the transient visible log');
+    t.bus.emit('freight:loss', payload);
+    assert.equal(t.news.getLog().length, 1, 'a re-settled loss after rewind is visible again');
+    assert.equal(t.voices.length, 2);
+    assert.equal(t.toasts.length, 2);
+    assert.equal(t.headlines.length, 2);
+    t.bus.emit('freight:loss', payload);
+    assert.equal(t.news.getLog().length, 1, 'the re-settled timeline still deduplicates live re-entry');
+    assert.equal(t.voices.length, 2);
+    assert.equal(t.toasts.length, 2);
+    assert.equal(t.headlines.length, 2);
+  } finally {
+    t.news.destroy();
+  }
+});
 
 test('news:publish surfaces authored text literally once and preserves its metadata', () => {
   const t = boot();

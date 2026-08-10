@@ -112,6 +112,21 @@ export function isScreenRegistrationCycleSettled(owner) {
     && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
 }
 
+export function destroyMarketNewsOwner(owner) {
+  if (!owner) return;
+  const current = owner.marketNews;
+  owner.marketNews = null;
+  if (current && typeof current.destroy === 'function') current.destroy();
+}
+
+export function replaceMarketNewsOwner(owner, ctx) {
+  if (!owner) return null;
+  destroyMarketNewsOwner(owner);
+  const next = createMarketNews(ctx);
+  owner.marketNews = next;
+  return next;
+}
+
 export function createFadeLeaseController(dockFade, {
   requestFrame = (fn) => requestAnimationFrame(fn),
   setDelay = (fn, ms) => setTimeout(fn, ms),
@@ -315,7 +330,7 @@ export const ui = {
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
-    this.marketNews = createMarketNews(ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
+    replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
 
@@ -1084,6 +1099,7 @@ export const ui = {
       this.encounterChoicePrompt.destroy();
     }
     this.encounterChoicePrompt = null;
+    destroyMarketNewsOwner(this);
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();

@@ -1326,13 +1326,6 @@ export const encounterDirector = {
       });
     }
     this.emit('freight:loss', { ...intent, encounterId: live.id });
-    if (intent.news) {
-      this.emit('news:headline', {
-        ...intent.news,
-        encounterId: live.id,
-        headline: null,
-      });
-    }
     return true;
   },
   dangerImpulse(live, kind, delta) {

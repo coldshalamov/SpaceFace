@@ -17,6 +17,7 @@ import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { surrenderRecovery } from '../src/systems/surrenderRecovery.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 
 const SECTOR_ID = 'sector_tethys_junction';
 const STATION_ID = 'st_tethys_hub';
@@ -34,7 +35,16 @@ function boot(seed = 47501, { withSave = false, withMotion = false, withLaw = fa
   const updateOrder = withMotion
     ? [tactical, actions, aiPorts, physics, combat, surrenderRecovery, cargo, encounterDirector]
     : undefined;
-  const sim = createSimulation({ seed, systems, ...(updateOrder ? { updateOrder } : {}) });
+  const voices = [];
+  const helpers = {
+    voice: {
+      say(payload) {
+        voices.push(structuredClone(payload));
+        return true;
+      },
+    },
+  };
+  const sim = createSimulation({ seed, helpers, systems, ...(updateOrder ? { updateOrder } : {}) });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = SECTOR_ID;
@@ -61,12 +71,23 @@ function boot(seed = 47501, { withSave = false, withMotion = false, withLaw = fa
     'freight:custodyReceipt', 'freight:raiderEscaped', 'freight:custodyRebound',
     'pickup:collected',
     'economy:applyTradePressure', 'economy:grantCredits', 'loot:drop',
-    'freight:loss', 'news:headline', 'encounter:resolved',
+    'freight:loss', 'news:headline', 'toast', 'encounter:resolved',
     'law:reportIncidentReceipt', 'law:incidentReceipt', 'heat:changed',
   ];
   const events = Object.fromEntries(names.map((name) => [name, []]));
   for (const name of names) bus.on(name, (payload) => events[name].push(structuredClone(payload)));
-  return { sim, state, bus, player, events, director: sim.registry.get('encounterDirector') };
+  // uiRoot installs marketNews after the sim registry; preserve that production listener order.
+  const marketNews = createMarketNews({ bus, state, helpers });
+  return {
+    sim,
+    state,
+    bus,
+    player,
+    events,
+    voices,
+    marketNews,
+    director: sim.registry.get('encounterDirector'),
+  };
 }
 
 async function bootMotion(seed = 47517) {
@@ -179,6 +200,29 @@ function assertConserved(record) {
       + record.stationRecoveredQty + record.deliveredQty + record.lostQty,
     record.initialQty,
   );
+}
+
+function assertLossPresented(h, expected = 1) {
+  const losses = h.events['freight:loss'];
+  assert.equal(losses.length, expected, 'freight owner emits the expected stable loss count');
+  for (const loss of losses) {
+    const headlines = h.events['news:headline'].filter((entry) => entry.intentId === loss.intentId);
+    const records = h.marketNews.getLog().filter((entry) => entry.intentId === loss.intentId);
+    const voices = h.voices.filter((entry) => entry.intentId === loss.intentId);
+    const toasts = h.events.toast.filter((entry) => entry.intentId === loss.intentId);
+    assert.equal(headlines.length, 1, 'marketNews relays one resolved freight headline');
+    assert.equal(records.length, 1, 'marketNews commits one visible freight headline');
+    assert.equal(voices.length + toasts.length, 1, 'one voice-or-toast surface owns the headline');
+    assert.equal(typeof headlines[0].headline, 'string');
+    assert.ok(headlines[0].headline.length > 0);
+    assert.equal(records[0].text, headlines[0].headline);
+    for (const entry of [headlines[0], records[0], voices[0] || toasts[0]]) {
+      assert.equal(entry.intentId, loss.intentId);
+      assert.equal(entry.encounterId, loss.encounterId);
+      assert.equal(entry.stationId, loss.stationId);
+      assert.equal(entry.commodityId, loss.primaryCommodityId);
+    }
+  }
 }
 
 test('authored carrier keeps its visual archetype, forms a close readable curtain, and combat.kill cannot mint generic loot', () => {
@@ -506,8 +550,7 @@ test('the selected raider receives doctrine only and escapes only after the same
     'terminal encounter cleanup keeps the escaped raider on a bounded despawn');
   assert.equal(h.events['freight:raiderEscaped'].length, 1);
   assert.equal(h.events['freight:custodyReceipt'].length, 1);
-  assert.equal(h.events['freight:loss'].length, 1);
-  assert.equal(h.events['news:headline'].length, 1);
+  assertLossPresented(h);
   assert.equal(h.events['economy:applyTradePressure'].filter((event) => event.cause === 'freight_loss').length, 1);
 });
 
@@ -662,8 +705,7 @@ test('player-diverted cargo is one partial loss while the carrier remainder late
     h.events['economy:applyTradePressure'].filter((event) => event.cause === 'freight_loss').map((event) => event.vol),
     [-record.playerCollectedQty],
   );
-  assert.equal(h.events['freight:loss'].length, 1);
-  assert.equal(h.events['news:headline'].length, 1);
+  assertLossPresented(h);
 });
 
 test('carrier arrival books only its remainder while an unescaped secured raider keeps the incident live', () => {
@@ -724,8 +766,7 @@ test('an unmoved disabled carrier cannot arrive by transit deadline and times ou
   assert.equal(record.terminal, true);
   assert.equal(record.lostQty, record.initialQty);
   assertConserved(record);
-  assert.equal(h.events['freight:loss'].length, 1);
-  assert.equal(h.events['news:headline'].length, 1);
+  assertLossPresented(h);
 });
 
 test('a drive-capable carrier still requires endpoint geometry after its transit deadline', () => {
@@ -931,8 +972,7 @@ test('process-restart Continue reconstructs live-pod custody without settling re
   assert.equal(resumedRecord.terminal, true);
   assertConserved(resumedRecord);
   assert.equal(after.events['freight:custodyReceipt'].length, 1);
-  assert.equal(after.events['freight:loss'].length, 1);
-  assert.equal(after.events['news:headline'].length, 1);
+  assertLossPresented(after);
   assert.deepEqual(after.state.encounterDirector.stats.openFreightCustodies, []);
 });
 
@@ -994,8 +1034,7 @@ test('process-restart Continue restores the exact secured raider, respills it, a
   assert.equal(resumedRecord.terminal, true);
   assertConserved(resumedRecord);
   assert.equal(after.events['freight:custodyReceipt'].length, 1);
-  assert.equal(after.events['freight:loss'].length, 1);
-  assert.equal(after.events['news:headline'].length, 1);
+  assertLossPresented(after);
   assert.deepEqual(after.state.encounterDirector.stats.openFreightCustodies, []);
 });
 

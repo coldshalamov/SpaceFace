@@ -1,8 +1,8 @@
 // marketNews.js — surface the already-deep-but-invisible economy as a 1-line NEWS TICKER plus
 // dock "event cards". READ-ONLY over the economy: this module NEVER mutates prices, stock, or any
-// economy state. It listens to economy events for generated headlines and to `news:publish` for
-// already-authored literal copy, then emits presentation signals (voice on the "news" channel, else
-// a "toast").
+// economy state. It listens to economy events and stable encounter freight-loss intents for
+// generated headlines, and to `news:publish` for already-authored literal copy, then emits
+// presentation signals (voice on the "news" channel, else a "toast").
 //
 // Split of concerns:
 //   • generateHeadline(...) / buildEventCard(...) — PURE, deterministic given (inputs + seed). No DOM,
@@ -159,14 +159,18 @@ export function createMarketNews(ctx) {
   }
   const model = state.ui.marketNews;
   if (!Array.isArray(model.log)) model.log = [];
+  // Presentation-only guard for synchronous replay/re-entry within the current loaded timeline.
+  // The encounter director's durable applied-intent ledger remains authoritative across process
+  // reloads; save:loaded clears this transient set so a rewind may legitimately settle again.
+  const surfacedFreightLossIds = new Set();
 
   function seedOf() {
     return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
   }
 
   // Commit a resolved headline to the rolling log, one-voice floor, ticker, and downstream event.
-  // `metadata` is only supplied by the authored `news:publish` path; economy emissions retain their
-  // original compact payload shapes.
+  // `metadata` is supplied by authored `news:publish` and causal freight-loss paths; generic
+  // economy emissions retain their original compact payload shapes.
   function commitHeadline(headline, ev, { quiet = false, metadata = null } = {}) {
     if (!headline) return null;
     const kind = ev.kind || normalizeKind(ev.type);
@@ -183,7 +187,13 @@ export function createMarketNews(ctx) {
       const said = helpers.voice && typeof helpers.voice.say === 'function'
         ? helpers.voice.say({ channel: 'news', ...(voiceMetadata || {}), text: headline, kind: rec.kind })
         : false;
-      if (!said) bus.emit('toast', { text: headline, kind: toastKind(rec.kind), ttl: 4 });
+      if (!said) bus.emit('toast', {
+        ...(voiceMetadata || {}),
+        text: headline,
+        kind: toastKind(rec.kind),
+        newsKind: rec.kind,
+        ttl: 4,
+      });
     }
     renderTicker();
     if (bus) bus.emit('news:headline', metadata
@@ -205,11 +215,60 @@ export function createMarketNews(ctx) {
     return commitHeadline(ev.text, ev, { metadata: ev });
   }
 
+  function surfaceFreightLoss(ev) {
+    // Traffic still owns a legacy direct news relay. Restrict this seam to stable encounter
+    // consequences until that producer migrates, otherwise ordinary traffic losses would produce
+    // two news:headline events. Encounter provenance is also required by this presentation contract.
+    if (!ev || !ev.encounterId || !ev.intentId) return null;
+    const intentId = String(ev.intentId);
+    if (surfacedFreightLossIds.has(intentId)) return null;
+
+    const nested = ev.news && typeof ev.news === 'object' ? ev.news : {};
+    const stationId = ev.stationId || nested.stationId || null;
+    const commodityId = ev.primaryCommodityId
+      || nested.commodityId
+      || (Array.isArray(ev.pressures) && ev.pressures[0]
+        && (ev.pressures[0].commodityId || ev.pressures[0].good))
+      || null;
+    if (!stationId || !commodityId) return null;
+    const stations = state.world && state.world.activeSector && state.world.activeSector.stations;
+    const station = Array.isArray(stations)
+      ? stations.find((candidate) => candidate && (candidate.id === stationId || candidate.stationId === stationId))
+      : null;
+    const newsEvent = {
+      type: 'freight_loss',
+      kind: 'freight_loss',
+      cause: ev.cause || nested.cause || 'freight_loss',
+      intentId,
+      eventId: intentId,
+      encounterId: String(ev.encounterId),
+      stationId: String(stationId),
+      stationName: station && station.name ? String(station.name) : undefined,
+      commodityId: String(commodityId),
+      sectorId: ev.sectorId || nested.sectorId || null,
+      manifestId: ev.manifestId || null,
+      freighterKey: ev.freighterKey || nested.freighterKey || null,
+      source: nested.source || ev.source || 'freight_causality',
+    };
+
+    // Reserve before voice/headline emissions because the bus is synchronous and downstream
+    // presentation listeners may re-enter with the same consequence.
+    surfacedFreightLossIds.add(intentId);
+    while (surfacedFreightLossIds.size > 64) {
+      surfacedFreightLossIds.delete(surfacedFreightLossIds.values().next().value);
+    }
+    const headline = generateHeadline(newsEvent, { seed: seedOf() });
+    const committed = commitHeadline(headline, newsEvent, { metadata: newsEvent });
+    if (!committed) surfacedFreightLossIds.delete(intentId);
+    return committed;
+  }
+
   // ---- economy subscriptions (READ-ONLY) ---------------------------------------------------
   const subs = [];
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
+  on('freight:loss', surfaceFreightLoss);
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });
@@ -222,8 +281,21 @@ export function createMarketNews(ctx) {
     if (bus) bus.emit('news:dockCards', { stationId: p.stationId, cards });
   });
   // Reset the log on a fresh game / load so stale headlines don't leak across sessions.
-  on('save:loaded', () => { model.log = []; model.lastCard = null; renderTicker(); });
-  on('game:newGame', () => { model.log = []; model.lastCard = null; renderTicker(); });
+  on('save:loaded', () => {
+    // A load can rewind to a point before this stable loss happened. The director's restored
+    // durable ledger decides whether the consequence may settle again; presentation must not carry
+    // a later timeline's transient suppression across that rewind.
+    surfacedFreightLossIds.clear();
+    model.log = [];
+    model.lastCard = null;
+    renderTicker();
+  });
+  on('game:newGame', () => {
+    surfacedFreightLossIds.clear();
+    model.log = [];
+    model.lastCard = null;
+    renderTicker();
+  });
 
   // ---- DOM ticker (cosmetic; fully guarded) -----------------------------------------------
   let tickerEl = null;
