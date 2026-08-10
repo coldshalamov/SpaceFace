@@ -5133,7 +5133,7 @@
       "priority": 254,
       "title": "Give each Ceres pocket its own route topology",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-045.tender-client-materialization"
       ],
@@ -5146,7 +5146,9 @@
         "npm run check:baseline",
         "npm run check:pq020:ceres-topology"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-route-topology-REPORT.md"
+      ],
       "brief": "All eight actors use the identical 102/116 WU cardinal marks; six of eight routes are 218.000 WU colinear shuttles and two are 154.467 WU right angles, so four pockets with four different fictions read as the same back-and-forth. Ceres must satisfy the no-two-places-share-a-topology rule against itself before it can serve as a propagation template."
     },
     {
