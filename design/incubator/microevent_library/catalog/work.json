@@ -30,7 +30,7 @@
       "fallback": "If the rock resolves invalid (restore id-shift), the existing type-guard already falls back to the short fixed cut-beam and the event quietly ends at haul_out",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "Pure re-parameterization of the existing miner cycle: cadence, hop waypoints, and a yield flag. No new choreography runner needed."
+      "notes": "Pure re-parameterization of the existing miner cycle: cadence, hop waypoints, and a yield flag. No new choreography runner needed. PQ-045.causal-chain: LIVE on Ceres as link 1 of the authored six-event chain in traffic.js (_stepCeresCausalChain); actor ceres_seam_miner; seeds rich_seam+miner_loaded at strike so the hauler-call link can overlap under the concurrency cap of two. The extraction quantum stays the ordinary 8u parcel (owner-test pinned) — the chain does not multiply mining:npcExtraction; rich yield is ledger/choreography only until a Phase 3 presentation leaf consumes the stamps."
     },
     {
       "id": "ev_miner_calls_hauler",
@@ -60,7 +60,7 @@
       "fallback": "Either actor despawning reverts the other to its ordinary cycle at the next phase edge",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "Both cycles already exist; the new piece is one shared waypoint and a wait-with-timeout, which the kernel's timed phases already express.",
+      "notes": "PQ-045.causal-chain: LIVE on Ceres as link 2; actors ceres_seam_miner + ceres_refinery_hauler; requires miner_loaded; stamp-only because the hauler is a retained real-target actor and cannot take a non-canonical redirect; seeds ore_handoff+hauler_ore_manifest as ledger flags only (no cargo movement, no cargo mint, no second cargo writer).",
       "diagramMermaid": "sequenceDiagram\n  participant M as Miner\n  participant H as Hauler\n  M->>M: WORK completes loaded\n  M->>H: holds at field edge (heavy_burn strobe)\n  H->>M: straight leg to transfer point\n  M-->>H: spilling_the_count / mouth_open (20 s)\n  H->>H: departs heavy to station\n  M->>M: returns empty to seam"
     },
     {
@@ -120,7 +120,7 @@
       "fallback": "Wreck despawns mid-cut: salvor plays one confused sweep (existing sweep lamp) and departs for the yard empty",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "The salvor kernel cycle IS this event; the addition is spawning the severed fragment as a pickup between WORK and LOAD so the wrangle has a visible object."
+      "notes": "The salvor kernel cycle IS this event; the addition is spawning the severed fragment as a pickup between WORK and LOAD so the wrangle has a visible object. PQ-045.causal-chain: LIVE on Ceres as link 6; actor ceres_cathedral_salvor; requires aftermath_open from the tender-service callout so the grave can busy concurrently with miner service; seeds wreck_stripped+chain_complete."
     },
     {
       "id": "ev_tug_repositions_cargo",
@@ -180,7 +180,7 @@
       "fallback": "Client miner despawns: tender flies the leg, sweeps once, returns (the existing no-client path)",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "The tender cycle exists end-to-end; the addition is pausing the CLIENT's cycle during service - one flag read by the miner's stepper."
+      "notes": "The tender cycle exists end-to-end; the addition is pausing the CLIENT's cycle during service. PQ-045.causal-chain: LIVE on Ceres as link 5; actors ceres_refinery_tender (factionPresence) + ceres_seam_miner; requires miner_wear; stamps ceresCausalServiceHold on the miner for the service window (presentation seam for the Phase 3 leaf — nothing currently reads it; job-owned hulls skip _stepMiner) and seeds aftermath_open early at callout so the cutter link can open under the concurrency cap."
     },
     {
       "id": "ev_surveyor_probe_line",
