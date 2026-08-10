@@ -311,6 +311,26 @@
       "texture_pipeline": "tools/art/build_geology_landmark_maps_v1.py",
       "family": "geology_landmark_family_v3",
       "packet": "GEOLOGY-LANDMARK-FAMILY-01"
+    },
+    "place_ceres_bait_wreck": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_ceres_bait_wreck_authored.blend",
+      "exporter_path": "tools/blender/author_ceres_wreck_dressing.py",
+      "texture_role_owner": "finalizer-v1",
+      "texture_pipeline": "tools/art/build_wreck_aftermath_maps.py",
+      "family": "pq045_ceres_wreck_dressing_v1",
+      "semantic_note": "Ceres Throughline bait wreck composed from four ledger-selected authored-down wreck_aftermath assets with real PBR roles and LOD0/1/2.",
+      "min_tris": 1200
+    },
+    "place_ceres_grave_shard": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_ceres_grave_shard_authored.blend",
+      "exporter_path": "tools/blender/author_ceres_wreck_dressing.py",
+      "texture_role_owner": "finalizer-v1",
+      "texture_pipeline": "tools/art/build_wreck_aftermath_maps.py",
+      "family": "pq045_ceres_wreck_dressing_v1",
+      "semantic_note": "Ceres Cathedral grave shard composed from three ledger-selected authored-down wreck_aftermath assets with instanced grating, real PBR roles and LOD0/1/2.",
+      "min_tris": 400
     }
   }
 }

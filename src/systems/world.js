@@ -162,6 +162,8 @@ const DRESSING_RADIUS = Object.freeze({
   place_conveyor_barge: 48,
   place_dead_hulk: 42,
   place_debris_chunk: 26,
+  place_ceres_bait_wreck: 48,
+  place_ceres_grave_shard: 28,
   place_asteroid_seamed: 18,
   place_asteroid_rock_a: 15,
   place_asteroid_rock_b: 18,
@@ -191,10 +193,10 @@ const CERES_ACTIVITY_DRONE_SLOT_PRESENTATION = Object.freeze({
     placeId: 'place_dead_hulk', name: 'Disabled Refinery Client',
   }),
   ceres_ambush_bait_wreck: Object.freeze({
-    placeId: 'place_dead_hulk', name: 'Throughline Bait Wreck',
+    placeId: 'place_ceres_bait_wreck', name: 'Throughline Bait Wreck',
   }),
   ceres_cathedral_grave_shard: Object.freeze({
-    placeId: 'place_debris_chunk', name: 'Cathedral Grave Shard',
+    placeId: 'place_ceres_grave_shard', name: 'Cathedral Grave Shard',
   }),
 });
 

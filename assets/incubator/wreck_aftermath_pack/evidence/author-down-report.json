@@ -1,0 +1,871 @@
+{
+  "schema": "spaceface.wreckAftermathAuthorDown.v1",
+  "packet": "PQ-045.wreck-dressing",
+  "generator": "tools/blender/author_ceres_wreck_dressing.py",
+  "blender": "5.1.2",
+  "selectedAssets": [
+    "wreck_ore_freighter_hopper",
+    "deb_ore_freighter_hopper_lid",
+    "wreck_liner_bow",
+    "wreck_liner_boatbay",
+    "deb_liner_hull_panel",
+    "aft_armor_slab",
+    "frag_grating_sheet"
+  ],
+  "mapsRoot": "assets/incubator/wreck_aftermath_pack/maps",
+  "textureMegabytesShared": 4.204,
+  "cubeUvMetres": 8.0,
+  "rawPack": {
+    "selectedMeshes": 185,
+    "selectedTris": 3092,
+    "textures": 0,
+    "lods": 0,
+    "note": "Untextured incubator sources; no LODs; one draw per authoring primitive"
+  },
+  "authoredDown": {
+    "selectedMeshesLod0": 28,
+    "meshReduction": 157,
+    "assets": [
+      {
+        "id": "wreck_ore_freighter_hopper",
+        "sourceMeshes": 56,
+        "sourceTris": 1012,
+        "mergedObjectsLod0": 5,
+        "lod": {
+          "lod0": {
+            "objects": 5,
+            "tris": 1012,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Service",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 5,
+            "tris": 482,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Service",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 4,
+            "tris": 186,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [
+          "SOCKET_Salvage_Ore"
+        ],
+        "bounds": {
+          "min": [
+            -14.9708,
+            -18.0725,
+            -24.6237
+          ],
+          "max": [
+            14.9708,
+            18.0725,
+            24.6237
+          ],
+          "size": [
+            29.9415,
+            36.1449,
+            49.2473
+          ]
+        },
+        "collisionProxy": {
+          "kind": "compound-box",
+          "aabbM": [
+            29.9415,
+            36.1449,
+            49.2473
+          ],
+          "min": [
+            -14.9708,
+            -18.0725,
+            -24.6237
+          ],
+          "max": [
+            14.9708,
+            18.0725,
+            24.6237
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "wreck_ore_freighter_hopper.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/wreck_ore_freighter_hopper.glb",
+        "authoredSha256": "DEBB28CC772C660124B07C68E90931771BC837696CBA63BF5A8A52ED6F2B0581",
+        "authoredBytes": 3245356
+      },
+      {
+        "id": "deb_ore_freighter_hopper_lid",
+        "sourceMeshes": 21,
+        "sourceTris": 260,
+        "mergedObjectsLod0": 4,
+        "lod": {
+          "lod0": {
+            "objects": 4,
+            "tris": 260,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 4,
+            "tris": 122,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 4,
+            "tris": 50,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [],
+        "bounds": {
+          "min": [
+            -15.7783,
+            -8.1875,
+            -11.0977
+          ],
+          "max": [
+            15.7783,
+            8.1875,
+            11.0977
+          ],
+          "size": [
+            31.5566,
+            16.375,
+            22.1953
+          ]
+        },
+        "collisionProxy": {
+          "kind": "box",
+          "aabbM": [
+            31.5566,
+            16.375,
+            22.1953
+          ],
+          "min": [
+            -15.7783,
+            -8.1875,
+            -11.0977
+          ],
+          "max": [
+            15.7783,
+            8.1875,
+            11.0977
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "deb_ore_freighter_hopper_lid.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/deb_ore_freighter_hopper_lid.glb",
+        "authoredSha256": "8CD900641D66797DD3D394164123BB12B23ABEBC9CA675E40A7DE3CFBD1F947E",
+        "authoredBytes": 2870784
+      },
+      {
+        "id": "wreck_liner_bow",
+        "sourceMeshes": 36,
+        "sourceTris": 724,
+        "mergedObjectsLod0": 4,
+        "lod": {
+          "lod0": {
+            "objects": 4,
+            "tris": 724,
+            "materials": [
+              "Material_Glass",
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation"
+            ]
+          },
+          "lod1": {
+            "objects": 4,
+            "tris": 346,
+            "materials": [
+              "Material_Glass",
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation"
+            ]
+          },
+          "lod2": {
+            "objects": 3,
+            "tris": 127,
+            "materials": [
+              "Material_Heat",
+              "Material_Hull",
+              "Material_Insulation"
+            ]
+          }
+        },
+        "sockets": [
+          "SOCKET_BlackBox",
+          "SOCKET_Salvage_Bridge"
+        ],
+        "bounds": {
+          "min": [
+            -34.3155,
+            -12.9943,
+            -12.2143
+          ],
+          "max": [
+            34.2711,
+            12.9943,
+            12.2143
+          ],
+          "size": [
+            68.5866,
+            25.9886,
+            24.4287
+          ]
+        },
+        "collisionProxy": {
+          "kind": "compound-box",
+          "aabbM": [
+            68.5866,
+            25.9886,
+            24.4287
+          ],
+          "min": [
+            -34.3155,
+            -12.9943,
+            -12.2143
+          ],
+          "max": [
+            34.2711,
+            12.9943,
+            12.2143
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "wreck_liner_bow.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/wreck_liner_bow.glb",
+        "authoredSha256": "18B1A989CE9B46E1EFCD30235156DA2D1DBD38F66B03D19197E6517565331D01",
+        "authoredBytes": 2015984
+      },
+      {
+        "id": "wreck_liner_boatbay",
+        "sourceMeshes": 28,
+        "sourceTris": 436,
+        "mergedObjectsLod0": 5,
+        "lod": {
+          "lod0": {
+            "objects": 5,
+            "tris": 436,
+            "materials": [
+              "Material_Glass",
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Service",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 5,
+            "tris": 208,
+            "materials": [
+              "Material_Glass",
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Service",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 3,
+            "tris": 77,
+            "materials": [
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [
+          "SOCKET_Evidence_Manifest",
+          "SOCKET_Salvage_Bay"
+        ],
+        "bounds": {
+          "min": [
+            -26.6046,
+            -11.492,
+            -7.7301
+          ],
+          "max": [
+            26.4418,
+            11.4394,
+            8.1404
+          ],
+          "size": [
+            53.0464,
+            22.9314,
+            15.8705
+          ]
+        },
+        "collisionProxy": {
+          "kind": "compound-box",
+          "aabbM": [
+            53.0464,
+            22.9314,
+            15.8705
+          ],
+          "min": [
+            -26.6046,
+            -11.492,
+            -7.7301
+          ],
+          "max": [
+            26.4418,
+            11.4394,
+            8.1404
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "wreck_liner_boatbay.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/wreck_liner_boatbay.glb",
+        "authoredSha256": "854B6E1FFDD0D3F64AE5428AAD4DDF2AE176BC5489C27930D1EB682AEA98CCD2",
+        "authoredBytes": 2311732
+      },
+      {
+        "id": "deb_liner_hull_panel",
+        "sourceMeshes": 19,
+        "sourceTris": 228,
+        "mergedObjectsLod0": 4,
+        "lod": {
+          "lod0": {
+            "objects": 4,
+            "tris": 228,
+            "materials": [
+              "Material_Glass",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 4,
+            "tris": 107,
+            "materials": [
+              "Material_Glass",
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 3,
+            "tris": 42,
+            "materials": [
+              "Material_Hull",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [],
+        "bounds": {
+          "min": [
+            -14.3498,
+            -4.699,
+            -6.7604
+          ],
+          "max": [
+            14.3498,
+            4.699,
+            6.7604
+          ],
+          "size": [
+            28.6995,
+            9.3981,
+            13.5207
+          ]
+        },
+        "collisionProxy": {
+          "kind": "box",
+          "aabbM": [
+            28.6995,
+            9.3981,
+            13.5207
+          ],
+          "min": [
+            -14.3498,
+            -4.699,
+            -6.7604
+          ],
+          "max": [
+            14.3498,
+            4.699,
+            6.7604
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "deb_liner_hull_panel.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/deb_liner_hull_panel.glb",
+        "authoredSha256": "9B83149133A1946293253DB41EBC24A7162C79D74ED9EFAA591016EE349A0C00",
+        "authoredBytes": 2767280
+      },
+      {
+        "id": "aft_armor_slab",
+        "sourceMeshes": 16,
+        "sourceTris": 324,
+        "mergedObjectsLod0": 4,
+        "lod": {
+          "lod0": {
+            "objects": 4,
+            "tris": 324,
+            "materials": [
+              "Material_Armor",
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 4,
+            "tris": 154,
+            "materials": [
+              "Material_Armor",
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 4,
+            "tris": 62,
+            "materials": [
+              "Material_Armor",
+              "Material_Heat",
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [],
+        "bounds": {
+          "min": [
+            -8.8894,
+            -3.8813,
+            -5.5623
+          ],
+          "max": [
+            8.8894,
+            3.8813,
+            5.5623
+          ],
+          "size": [
+            17.7788,
+            7.7627,
+            11.1247
+          ]
+        },
+        "collisionProxy": {
+          "kind": "box",
+          "aabbM": [
+            17.7788,
+            7.7627,
+            11.1247
+          ],
+          "min": [
+            -8.8894,
+            -3.8813,
+            -5.5623
+          ],
+          "max": [
+            8.8894,
+            3.8813,
+            5.5623
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "aft_armor_slab.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/aft_armor_slab.glb",
+        "authoredSha256": "73450F3FB21094D1FF51BF0CE46CB819FED0F009251A6B4B47B89C626D84AEAF",
+        "authoredBytes": 2893984
+      },
+      {
+        "id": "frag_grating_sheet",
+        "sourceMeshes": 9,
+        "sourceTris": 108,
+        "mergedObjectsLod0": 2,
+        "lod": {
+          "lod0": {
+            "objects": 2,
+            "tris": 108,
+            "materials": [
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod1": {
+            "objects": 2,
+            "tris": 51,
+            "materials": [
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          },
+          "lod2": {
+            "objects": 2,
+            "tris": 21,
+            "materials": [
+              "Material_Insulation",
+              "Material_Structural"
+            ]
+          }
+        },
+        "sockets": [],
+        "bounds": {
+          "min": [
+            -3.883,
+            -2.0854,
+            -2.8885
+          ],
+          "max": [
+            3.883,
+            2.0854,
+            2.8885
+          ],
+          "size": [
+            7.7659,
+            4.1709,
+            5.777
+          ]
+        },
+        "collisionProxy": {
+          "kind": "box",
+          "aabbM": [
+            7.7659,
+            4.1709,
+            5.777
+          ],
+          "min": [
+            -3.883,
+            -2.0854,
+            -2.8885
+          ],
+          "max": [
+            3.883,
+            2.0854,
+            2.8885
+          ]
+        },
+        "materials": [
+          "Material_Armor",
+          "Material_Glass",
+          "Material_Heat",
+          "Material_Hull",
+          "Material_Insulation",
+          "Material_Service",
+          "Material_Structural"
+        ],
+        "root": "frag_grating_sheet.001",
+        "authoredGlb": "assets/incubator/wreck_aftermath_pack/authored_down/frag_grating_sheet.glb",
+        "authoredSha256": "475EB551564F44EBD5DCD4D97429BAAF2135EFB4F977E23BF1D08C9BB489A805",
+        "authoredBytes": 1457008
+      }
+    ]
+  },
+  "places": {
+    "place_ceres_bait_wreck": {
+      "id": "place_ceres_bait_wreck",
+      "mergedObjectsLod0": 7,
+      "lod": {
+        "lod0": {
+          "objects": 7,
+          "tris": 2496,
+          "materials": [
+            "Material_Armor",
+            "Material_Glass",
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Service",
+            "Material_Structural"
+          ]
+        },
+        "lod1": {
+          "objects": 7,
+          "tris": 1190,
+          "materials": [
+            "Material_Armor",
+            "Material_Glass",
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Service",
+            "Material_Structural"
+          ]
+        },
+        "lod2": {
+          "objects": 5,
+          "tris": 452,
+          "materials": [
+            "Material_Armor",
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Structural"
+          ]
+        }
+      },
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core",
+        "SOCKET_BlackBox"
+      ],
+      "bounds": {
+        "min": [
+          -34.3155,
+          -18.0725,
+          -24.6237
+        ],
+        "max": [
+          34.2711,
+          18.0725,
+          24.6237
+        ],
+        "size": [
+          68.5866,
+          36.1449,
+          49.2473
+        ]
+      },
+      "collisionProxy": {
+        "kind": "compound-box",
+        "aabbM": [
+          68.5866,
+          36.1449,
+          49.2473
+        ],
+        "min": [
+          -34.3155,
+          -18.0725,
+          -24.6237
+        ],
+        "max": [
+          34.2711,
+          18.0725,
+          24.6237
+        ]
+      },
+      "materials": [
+        "Material_Armor",
+        "Material_Glass",
+        "Material_Heat",
+        "Material_Hull",
+        "Material_Insulation",
+        "Material_Service",
+        "Material_Structural"
+      ],
+      "root": "place_ceres_bait_wreck",
+      "drawCallsLod0": 7,
+      "glb": "assets/ships/parts/places/place_ceres_bait_wreck.glb",
+      "blend": "assets/ships/parts/blender/place_ceres_bait_wreck_authored.blend",
+      "sha256": "E75F5E07688D81A40DB6E5E71CD5EFCFE90842C0C9B0BD5BCA35AC1CA46A69E7",
+      "bytes": 4724436,
+      "pieces": [
+        "wreck_liner_bow",
+        "wreck_liner_boatbay",
+        "wreck_ore_freighter_hopper",
+        "aft_armor_slab"
+      ]
+    },
+    "place_ceres_grave_shard": {
+      "id": "place_ceres_grave_shard",
+      "mergedObjectsLod0": 5,
+      "lod": {
+        "lod0": {
+          "objects": 5,
+          "tris": 596,
+          "materials": [
+            "Material_Glass",
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Structural"
+          ]
+        },
+        "lod1": {
+          "objects": 5,
+          "tris": 280,
+          "materials": [
+            "Material_Glass",
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Structural"
+          ]
+        },
+        "lod2": {
+          "objects": 4,
+          "tris": 113,
+          "materials": [
+            "Material_Heat",
+            "Material_Hull",
+            "Material_Insulation",
+            "Material_Structural"
+          ]
+        }
+      },
+      "sockets": [
+        "SOCKET_Tether_Massline",
+        "SOCKET_Salvage_Core"
+      ],
+      "bounds": {
+        "min": [
+          -15.7783,
+          -8.1875,
+          -11.0977
+        ],
+        "max": [
+          15.7783,
+          8.1875,
+          11.0977
+        ],
+        "size": [
+          31.5566,
+          16.375,
+          22.1953
+        ]
+      },
+      "collisionProxy": {
+        "kind": "compound-box",
+        "aabbM": [
+          31.5566,
+          16.375,
+          22.1953
+        ],
+        "min": [
+          -15.7783,
+          -8.1875,
+          -11.0977
+        ],
+        "max": [
+          15.7783,
+          8.1875,
+          11.0977
+        ]
+      },
+      "materials": [
+        "Material_Armor",
+        "Material_Glass",
+        "Material_Heat",
+        "Material_Hull",
+        "Material_Insulation",
+        "Material_Service",
+        "Material_Structural"
+      ],
+      "root": "place_ceres_grave_shard",
+      "drawCallsLod0": 5,
+      "glb": "assets/ships/parts/places/place_ceres_grave_shard.glb",
+      "blend": "assets/ships/parts/blender/place_ceres_grave_shard_authored.blend",
+      "sha256": "F2008778ADF7634463898149F3F5D48298513426985DD99FE8B8C4BF9C7EEBFF",
+      "bytes": 3127632,
+      "pieces": [
+        "deb_ore_freighter_hopper_lid",
+        "deb_liner_hull_panel",
+        "frag_grating_sheet"
+      ]
+    }
+  },
+  "costModel": {
+    "place_ceres_bait_wreck": {
+      "drawCallsLod0": 7,
+      "materials": 7,
+      "textureMBSharedPool": 4.204,
+      "trisLod0": 2496,
+      "trisLod1": 1190,
+      "trisLod2": 452
+    },
+    "place_ceres_grave_shard": {
+      "drawCallsLod0": 5,
+      "materials": 7,
+      "textureMBSharedPool": 4.204,
+      "trisLod0": 596,
+      "trisLod1": 280,
+      "trisLod2": 113
+    },
+    "comparisonToRawSelected": {
+      "rawMeshes": 185,
+      "authoredMeshesLod0AcrossSeven": 28,
+      "composedDrawCallsLod0BothPlaces": 12,
+      "rawTexturesMB": 0,
+      "authoredTexturesMB": 4.204
+    }
+  }
+}

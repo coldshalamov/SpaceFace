@@ -560,8 +560,8 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     ['ceres_refinery_cargo_pod', 'place_conveyor_barge'],
     ['ceres_refinery_disabled_hull', 'place_dead_hulk'],
     ['ceres_ambush_distress_beacon', 'place_nav_buoy'],
-    ['ceres_ambush_bait_wreck', 'place_dead_hulk'],
-    ['ceres_cathedral_grave_shard', 'place_debris_chunk'],
+    ['ceres_ambush_bait_wreck', 'place_ceres_bait_wreck'],
+    ['ceres_cathedral_grave_shard', 'place_ceres_grave_shard'],
   ]);
   for (const row of first.activity) {
     const descriptor = objectSlot(row.slotId);
@@ -612,9 +612,9 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'place_nav_buoy',
     'place_dead_hulk',
     'place_nav_buoy',
-    'place_dead_hulk',
+    'place_ceres_bait_wreck',
     'place_nav_buoy',
-    'place_debris_chunk',
+    'place_ceres_grave_shard',
     'place_conveyor_barge',
   ]);
   assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 103, 105, 107, 108]);
