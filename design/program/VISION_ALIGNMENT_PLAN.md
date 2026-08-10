@@ -76,24 +76,29 @@ mostly `[1,2]`–`[2,4]`. "Light enemies are almost ammunition" needs volume. **
 and bias light-archetype squads to [4,6]+; terrain philosophy (few big anchors) already protects
 readability.**
 
-## Owner calls needed (design decisions — do not decide these in a packet)
+## Owner calls — DECIDED 2026-08-10 (do not re-litigate; change only on new owner direction)
 
-1. **ADR D7 velocity trails** — currently an explicit, reasoned anti-"cartoon" stance that directly
-   contradicts VISION.md. Overturn, soften, or keep?
-2. **Player collision immunity** — the player never takes hull damage from physical impacts
-   (intentional, documented in `MASSLINE_PHYSICS_HANDOFF.md` §3.5). Keep as-is, or make "getting
-   yourself into a terrible trajectory" cost hull, not just position?
-3. **Enemies wielding the Massline** — `tether_control_raider` doctrine already grapples the player,
-   contradicting the handoff doc's "no enemy powers" line. Recommend KEEP (it is exactly VISION's
-   "specialists disrupt your plan") and update the handoff doc; needs the owner's yes.
-4. **Fleet + insurance vs "my fucking ship"** — hulls today are fungible insured assets
-   (`ownedShips[]`, deductible replace on death). A persistent-hull identity (scars, paint history,
-   recognition) is a missing system; direction needed before building it.
+1. **ADR D7 velocity trails — OVERTURNED.** Owner's direction, verbatim intent: trails should be
+   "long, liquidy, advanced, high quality, bright" — not the current "stupid solid look," and not
+   "glitchy where it skips behind the ship all the time." Two consequences: (a) the D7
+   restraint policy in `src/render/velocityLanguage.js` no longer binds — rebuild toward long
+   luminous fluid trails; (b) there is a known **trail lag/skip defect** where the trail visibly
+   detaches from or jumps behind the ship — fixing that glitch is part of the same unit, not
+   optional polish.
+2. **Player collision immunity — KEEP.** The player never takes hull damage from physical impacts
+   (`MASSLINE_PHYSICS_HANDOFF.md` §3.5). Confirmed as permanent design, not an open question.
+3. **Enemies wielding the Massline — KEEP, specialists only.** `tether_control_raider` stays;
+   handoff doc §2 principle 2 updated to match. Rare, role-specific, never universal.
+4. **Persistent-hull scars / "my fucking ship" system — REJECTED.** Owner: current fleet +
+   insurance model stays; a scar/recognition system would not make the game better. Do not build
+   it; the corresponding paragraph of VISION.md is aspiration for tone, not a work order.
 
 ## Suggested phasing
 
-- **Phase 1 — pure tuning (constants/data only):** Big Five items 1, 2 (bloom+palette), 3 (hauler
-  WANTED bug), 4 (shard EV), 5. Each is packet-sized and independently provable on the ordinary route.
+- **Phase 1 — pure tuning (constants/data only), CLEARED TO EXECUTE:** Big Five items 1, 2
+  (bloom+palette), 3 (hauler WANTED bug), 4 (shard EV), 5. Each is packet-sized and independently
+  provable on the ordinary route. The owner decisions above resolve every open question these
+  items had; the trail rebuild (owner call 1) joins this phase as its own unit.
 - **Phase 2 — small systems:** pirate predation acquisition + engagement carve-out; convoy-loss
   economy wiring; instant wreck-burst salvage; `scanRpBonus`.
 - **Phase 3 — bigger systems:** port remaining `vfxnext` families; restitution/recovery story beats
