@@ -1,0 +1,224 @@
+{
+  "schema": "spaceface.pq019ReceiverFacilityBaseline.v1",
+  "capturedAt": "2026-08-08",
+  "sourceCommit": "8809e13b76296258a0130c8a3408a309485923df",
+  "status": "frozen_pre_authoring",
+  "targets": {
+    "place_claim_outpost_base": {
+      "blend": {
+        "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_base.blend",
+        "bytes": 4720839,
+        "sha256": "398f7422e67ebd8b9ff2a057886f7e33461a233eb9739f7c64caf9c6d4898ee3"
+      },
+      "packetSource": {
+        "path": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_base.glb",
+        "bytes": 6835992,
+        "sha256": "f3a2ac6441c9eddf75a7b6def338d7203394aaa178bac0de2385f7765e8f6f30"
+      },
+      "canonicalSource": {
+        "path": "assets/ships/parts/places/place_claim_outpost_base.glb",
+        "bytes": 6835992,
+        "sha256": "f3a2ac6441c9eddf75a7b6def338d7203394aaa178bac0de2385f7765e8f6f30"
+      },
+      "release": {
+        "path": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
+        "bytes": 7113496,
+        "sha256": "6dab7e40086ddd6c0041977fac879069875d99a1aed52f2cb37962352658b4f0"
+      },
+      "evidence": {
+        "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_base.json",
+        "bytes": 2362,
+        "sha256": "52c898bf98a63f3b0d1725bed3f7e6f5e42951fe00deb434bacf5d0a7f667e00"
+      },
+      "renderGlb": {
+        "path": "assets/ships/release/render-packages/claim-outpost-base/render.glb",
+        "bytes": 7623332,
+        "sha256": "086e310858763e60e01b2140ef8c41dc0e139c7d7ef887a4bdd4f7afdf5b7bda"
+      },
+      "renderPackage": {
+        "path": "assets/ships/release/render-packages/claim-outpost-base/render-package.json",
+        "bytes": 54296,
+        "sha256": "3024808647a9ba48e4bd0ceff7002dd2da2e8c328838d8b7c39d934023cbb02d"
+      },
+      "aabb": {
+        "min": [-47.0226, -17.6696, -47.0226],
+        "max": [55.5, 12.5, 47.0226],
+        "size": [102.5226, 30.1696, 94.0452]
+      },
+      "collisionDccSize": [92.27034, 27.15264, 84.64068],
+      "lodTriangles": [15384, 5832, 1724],
+      "visualCenterXZ": { "x": 4.2387, "z": 0 },
+      "emissiveSocket": [0, 0, -8.125]
+    },
+    "place_claim_outpost_refinery": {
+      "blend": {
+        "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_refinery.blend",
+        "bytes": 5439732,
+        "sha256": "e1f341cd885504575ad097c2ce307d846cf13df37b1a2246ea0228ed52f5dca0"
+      },
+      "packetSource": {
+        "path": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_refinery.glb",
+        "bytes": 12409820,
+        "sha256": "00ea8e50883d3121298f53f7fcab0092b4d170e8c6e1e19696aef1c32b7e12ef"
+      },
+      "canonicalSource": {
+        "path": "assets/ships/parts/places/place_claim_outpost_refinery.glb",
+        "bytes": 12409820,
+        "sha256": "00ea8e50883d3121298f53f7fcab0092b4d170e8c6e1e19696aef1c32b7e12ef"
+      },
+      "release": {
+        "path": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
+        "bytes": 8180092,
+        "sha256": "63802aa4f426a9031139e939e16f47d0e1e9fc37ea4c1f6c86bb914ec9cf82c7"
+      },
+      "evidence": {
+        "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_refinery.json",
+        "bytes": 2434,
+        "sha256": "f025ef10ef10cad962aa6b26828e631bad152cbfb7ff38d0c0f8b518ed1d1de0"
+      },
+      "renderGlb": {
+        "path": "assets/ships/release/render-packages/claim-outpost-refinery/render.glb",
+        "bytes": 9675288,
+        "sha256": "f32e696f12bad7871b9a46a6d9690408a132409ef2cfe26fe248dd0c7fd261b7"
+      },
+      "renderPackage": {
+        "path": "assets/ships/release/render-packages/claim-outpost-refinery/render-package.json",
+        "bytes": 54851,
+        "sha256": "8df5559431d239a2526a9c4f91a1ff51f313b81bf4a42dfb49ffed4db1949f43"
+      },
+      "aabb": {
+        "min": [-50.8652, -17.6696, -50.8652],
+        "max": [55.5, 30.93, 47.0226],
+        "size": [106.3652, 48.5996, 97.8878]
+      },
+      "collisionDccSize": [95.72868, 43.73964, 88.09902],
+      "lodTriangles": [56760, 17856, 4404],
+      "visualCenterXZ": { "x": 2.3174, "z": -1.9213 },
+      "emissiveSocket": [0, 0, -20.10449981689453]
+    }
+  },
+  "sharedFiles": {
+    "partsManifest": {
+      "path": "assets/ships/parts/parts_manifest.json",
+      "bytes": 119501,
+      "sha256": "b24397b5cb0e2647f2db99ecc9d4b8a66ef65fa8af4c19aeaef0d6fe378987ce"
+    },
+    "releaseManifest": {
+      "path": "assets/ships/release/release_manifest.json",
+      "bytes": 53937,
+      "sha256": "4850c2a731865bebe68062a342425e75e1f533546caf11f9dbae32194d77c0d3"
+    },
+    "worldSiteAssetBindings": {
+      "path": "src/data/worldSiteAssetBindings.js",
+      "bytes": 6338,
+      "sha256": "ce6a862e52e7b7ce8047020c5984ecb85e1c97eeefb3b682130ff25ffb40205a"
+    },
+    "pilots": {
+      "path": "assets/ships/render-packages/pilots.json",
+      "bytes": 54580,
+      "sha256": "4c96b27c9a354a4156ffcf90084b5167e0fa70fb3ab51fc30ca1e67fc9484519"
+    },
+    "renderPackageManifest": {
+      "path": "src/render/renderPackageManifest.js",
+      "bytes": 41151,
+      "sha256": "09f2899cc3c836165d8e2ab05fe1721fba27dd4b5a73e02118ca47f8734038b7"
+    },
+    "familySummary": {
+      "path": "assets/ships/m5_claim_outposts/evidence/family_summary.json",
+      "bytes": 2856,
+      "sha256": "866bbbdfb7258c1165900b4dc61d3b826daee9697b30f1218d676109da6f28b4"
+    }
+  },
+  "protectedSiblings": {
+    "place_claim_outpost_relay": {
+      "packetSource": { "path": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_relay.glb", "bytes": 13424076, "sha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9" },
+      "canonicalSource": { "path": "assets/ships/parts/places/place_claim_outpost_relay.glb", "bytes": 13424076, "sha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9" },
+      "release": { "path": "assets/ships/release/parts/places/place_claim_outpost_relay.glb", "bytes": 3338672, "sha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8" },
+      "acceptedBlend": { "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend", "bytes": 2434640, "sha256": "7b069f78a8ff289b32705fb0614e156e24e37ff4a0d432cc57cbc6d8040d810f" },
+      "renderGlb": { "path": "assets/ships/release/render-packages/claim-outpost-relay/render.glb", "bytes": 6140728, "sha256": "9f7c1f50fd42c1f5a982dcf9d5479623c545b7bbd2507fd65fbf44de8346d85e" },
+      "renderPackage": { "path": "assets/ships/release/render-packages/claim-outpost-relay/render-package.json", "bytes": 53977, "sha256": "c295635dd412feea3b8d5c5fe9b259b9bdd03338c5a6d3ce8c96bf63c61056d5" }
+    },
+    "place_claim_outpost_bastion": {
+      "packetSource": { "path": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_bastion.glb", "bytes": 9472792, "sha256": "3362d2e412c81e6798b03ee048536d8520e8acf0351821ca7e04c2463daa74f5" },
+      "canonicalSource": { "path": "assets/ships/parts/places/place_claim_outpost_bastion.glb", "bytes": 9472792, "sha256": "3362d2e412c81e6798b03ee048536d8520e8acf0351821ca7e04c2463daa74f5" },
+      "release": { "path": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb", "bytes": 7686812, "sha256": "bfb256d3eb1a78564011d60abd50480c1af97ab4d2358d5db5d89e08c3097eff" },
+      "blend": { "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_bastion.blend", "bytes": 5048449, "sha256": "058fe3b16464f8d6ffa4268eb3a9a1689915c3978bdb01cbd885f85f2d867900" },
+      "renderGlb": { "path": "assets/ships/release/render-packages/outpost-bastion/render.glb", "bytes": 8776664, "sha256": "a553ddc02f0b83486e54fdf5d58570db1d9e4380c66ec391e195bb05b7f7789c" },
+      "renderPackage": { "path": "assets/ships/release/render-packages/outpost-bastion/render-package.json", "bytes": 54056, "sha256": "a96d3dedb4147abe245440c6676968c89e37bdfea686cce62d8fba62d031ac36" }
+    }
+  },
+  "renderPackageClosure": {
+    "trackedPackageJsonCount": 81,
+    "trackedPackageJsonPathListSerialization": "git ls-files result normalized to forward-slash repo-relative paths, ordinal sorted, joined as UTF-8 LF with no trailing LF",
+    "trackedPackageJsonPathListSha256": "716b38d1a0d9877e74357a1987d585cd9548c4bde1f3782b8c14ae5b3529cb1d",
+    "rule": "pilots.json provenance changes require all 81 render-package.json files and generated runtime expectedContentHash records to be regenerated; only the two target render.glb files may change"
+  },
+  "frozenSockets": {
+    "SOCKET_Structure_Core": [0, 0, 0],
+    "SOCKET_Dock_Approach": [48, 0, -2],
+    "SOCKET_Module_Depot": [-20, -20, -1],
+    "SOCKET_Module_Refinery": [-20, 20, -1],
+    "SOCKET_Module_Defense": [20, -20, -1],
+    "SOCKET_Module_Teleporter": [20, 20, -1]
+  },
+  "genericFamilyTools": {
+    "mustRemainUnchanged": [
+      "tools/blender/build_claim_outpost_family.py",
+      "tools/art/finalize_claim_outpost_family.mjs"
+    ],
+    "identities": {
+      "builder": {
+        "path": "tools/blender/build_claim_outpost_family.py",
+        "bytes": 12587,
+        "sha256": "96a14dff03271a5b5110d866c475b6faf57c3c7211fa8b79d63894aa6a0b59ea"
+      },
+      "finalizer": {
+        "path": "tools/art/finalize_claim_outpost_family.mjs",
+        "bytes": 4393,
+        "sha256": "fc84cf2593b41e43daf0c29e2817de37bcb2012a19dee6ffaf2ece971d90eea6"
+      }
+    },
+    "mustNotRun": true
+  },
+  "candidateToolchain": {
+    "stationVisualFamily": {
+      "path": "tools/blender/build_station_visual_family.py",
+      "bytes": 31280,
+      "sha256": "381c6f03b7766e8b6baec08854a9cb99f0ff2619fa54b346ff3968a0d000dd6d"
+    }
+  },
+  "runtimeContract": {
+    "source": {
+      "path": "src/data/heistFacilities.js",
+      "bytes": 5382,
+      "sha256": "206554728a19fcb8873281b035b6dda7f9cfff536409ce19f32af6dac33f97ce"
+    },
+    "lawfulCatcher": {
+      "facilityId": "lawful_catcher",
+      "assetId": "place_claim_outpost_base",
+      "sectorLocalPos": { "x": -400, "z": -1270 },
+      "rotation": 5.913501018384284,
+      "visualScale": 0.16,
+      "placeRadius": 24,
+      "custodyHeadSectorLocal": { "x": -393.58684663122847, "z": -1272.82828201166 },
+      "custodyRadius": 12
+    },
+    "fenceReceiver": {
+      "facilityId": "fence_receiver",
+      "assetId": "place_claim_outpost_refinery",
+      "sectorLocalPos": { "x": -1320, "z": 420 },
+      "rotation": -1.0722791362393007,
+      "visualScale": 0.2,
+      "placeRadius": 24,
+      "custodyHeadSectorLocal": { "x": -1315.6454373542344, "z": 411.96793739926636 },
+      "custodyRadius": 12
+    },
+    "routeLegs": [2040.470388287225, 1920.606764974925],
+    "custodyHead": {
+      "noMesh": true,
+      "collides": true,
+      "collisionMaskOwner": "Masks.PAYLOAD",
+      "payloadCustodyOnly": true
+    }
+  }
+}

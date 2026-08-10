@@ -1,0 +1,29 @@
+{
+  "schema": "spaceface.claimOutpostReceiverFacilityValidationBinding.v1",
+  "dispatchUnit": "PQ-019.receiver-facility-reauthor",
+  "assetId": "place_claim_outpost_refinery",
+  "candidateId": "receiver_facility_material_truth_v1",
+  "status": "pass",
+  "buildReport": {
+    "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/build-report.json",
+    "sha256": "5515acb1dde9052cc71ecf64b4de551fb90238ba738dc8fbc0024df46e5830de",
+    "bytes": 54545
+  },
+  "candidate": {
+    "path": "assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_refinery.glb",
+    "sha256": "c36ea2f39e16313eb943cf06b41020011bbb0e573a0ca0060c478ee0df63cb82",
+    "bytes": 3088608
+  },
+  "validators": {
+    "foundry": {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_refinery/validation/foundry/place_claim_outpost_refinery.glb.report.json",
+      "sha256": "6cba0eb20e03fc1c689c85df5a8424fa4b7740f9a3a4837fcfbaebc8f859e8d1",
+      "bytes": 6477
+    },
+    "khronos": {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_refinery/validation/khronos/place_claim_outpost_refinery.glb.report.json",
+      "sha256": "94486d4ae2b7a172aca23cb61ae6f6e45d48914d5c53b4779ca6c3bae07d4afb",
+      "bytes": 5621
+    }
+  }
+}

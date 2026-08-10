@@ -1,0 +1,298 @@
+{
+  "bbox": {
+    "dims": [
+      106.3652,
+      97.8878,
+      52.7998
+    ],
+    "max": [
+      55.5,
+      47.0226,
+      21.8698
+    ],
+    "min": [
+      -50.8652,
+      -50.8652,
+      -30.93
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Cube",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.017",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.021",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.033",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.050",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.054",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.066",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.083",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.084",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.088",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_RefineryProcessShell_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_TransferRail_-1_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_RefineryProcessShell_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_TransferRail_-1_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_RefineryProcessShell_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_TransferRail_-1_Mesh",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 16
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat"
+  ],
+  "file": "place_claim_outpost_refinery.glb",
+  "geometry": {
+    "primitives": 16,
+    "tangentPrimitives": 16,
+    "tangentsPresent": true,
+    "uvSets": [
+      0
+    ]
+  },
+  "materials": {
+    "count": 5,
+    "usage": {
+      "Material_Accent": 3,
+      "Material_Glass": 3,
+      "Material_Hull": 3,
+      "Material_Mechanical": 4,
+      "Material_Warm": 3
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL",
+    "LOD0_Station_Material_Accent",
+    "LOD0_Station_Material_Glass",
+    "LOD0_Station_Material_Hull",
+    "LOD0_Station_Material_Mechanical",
+    "LOD0_Station_Material_Warm",
+    "LOD1_Station_Material_Accent",
+    "LOD1_Station_Material_Glass",
+    "LOD1_Station_Material_Hull",
+    "LOD1_Station_Material_Mechanical",
+    "LOD1_Station_Material_Warm",
+    "LOD2_Station_Material_Accent",
+    "LOD2_Station_Material_Glass",
+    "LOD2_Station_Material_Hull",
+    "LOD2_Station_Material_Mechanical",
+    "LOD2_Station_Material_Warm",
+    "SF_PLACE_CLAIM_OUTPOST_REFINERY_ROOT",
+    "SOCKET_Dock_Approach",
+    "SOCKET_Emissive",
+    "SOCKET_Module_Defense",
+    "SOCKET_Module_Depot",
+    "SOCKET_Module_Refinery",
+    "SOCKET_Module_Teleporter",
+    "SOCKET_Structure_Core"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Accent_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Accent_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Accent_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Glass_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Glass_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Glass_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Hull_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Hull_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Hull_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Mechanical_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Mechanical_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Mechanical_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Warm_BaseColor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Warm_Normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "PQ019_Refinery_Warm_ORM",
+      "resolution": "1024x1024",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 24,
+    "nonAppliedCount": 6,
+    "nonAppliedNodes": [
+      "SOCKET_Dock_Approach",
+      "SOCKET_Emissive",
+      "SOCKET_Module_Defense",
+      "SOCKET_Module_Depot",
+      "SOCKET_Module_Refinery",
+      "SOCKET_Module_Teleporter"
+    ]
+  },
+  "tris": 19328,
+  "verdict": {
+    "budget": null,
+    "class": "scenery",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}
