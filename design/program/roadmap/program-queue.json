@@ -3805,7 +3805,7 @@
       "priority": 233,
       "title": "Re-author the lawful catcher and covert fence identities",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-019.h2-verdict"
       ],
