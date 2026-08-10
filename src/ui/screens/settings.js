@@ -7,6 +7,7 @@
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
 import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
+import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-settings-menu-style';
@@ -314,7 +315,7 @@ export const settingsScreen = {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       rowSlider('Bloom strength', () => {
-        let v = vd.bloomStrength != null ? vd.bloomStrength : 0.35;
+        let v = vd.bloomStrength != null ? vd.bloomStrength : DEFAULT_BLOOM_STRENGTH;
         if (v > 1) v *= 0.5;
         return Math.max(0, Math.min(1, v));
       }, 0, 1, 0.02, pct, (v, persist) => this._set(ctx, 'video', 'bloomStrength', v, persist));

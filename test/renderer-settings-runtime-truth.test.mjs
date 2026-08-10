@@ -44,10 +44,12 @@ function finiteInRange(value, min, max, fallback) {
 function expectedPixelRatio(video, {
   devicePixelRatio = 1,
   dynResScale = 1,
+  renderGraphUnavailable = false,
 } = {}) {
   const vd = video || {};
   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
-  const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  const graphOwnsScale = vd.renderGraph === true && renderGraphUnavailable !== true;
+  const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
   const dyn = finiteInRange(dynResScale, 0.2, 1, 1);
   const base = Math.min(devicePixelRatio || 1, cap);
   return Math.max(0.2, base * scale * dyn);
@@ -58,8 +60,9 @@ function expectedDrawBuffer(video, {
   cssHeight = 1080,
   devicePixelRatio = 1,
   dynResScale = 1,
+  renderGraphUnavailable = false,
 } = {}) {
-  const pr = expectedPixelRatio(video, { devicePixelRatio, dynResScale });
+  const pr = expectedPixelRatio(video, { devicePixelRatio, dynResScale, renderGraphUnavailable });
   return {
     pixelRatio: pr,
     width: Math.floor(cssWidth * pr),
@@ -282,12 +285,29 @@ test('applyRendererSize formula: dynResScale multiplies without mutating setting
   assert.equal(video.pixelRatioCap, 2, 'dyn res must not rewrite pixelRatioCap');
 });
 
+test('render graph keeps a native presentation buffer and applies configured scale internally once', () => {
+  const video = { ...SCALED_VIDEO, renderGraph: true };
+  const output = expectedDrawBuffer(video, { devicePixelRatio: 2 });
+  assert.equal(output.pixelRatio, 2, 'graph output remains at capped native presentation resolution');
+  assert.equal(output.width, 3840);
+  assert.equal(Math.floor(output.width * video.renderScale), 3264,
+    'the graph scene target applies the configured 0.85 exactly once');
+  const degraded = expectedDrawBuffer(video, {
+    devicePixelRatio: 2,
+    renderGraphUnavailable: true,
+  });
+  assert.equal(degraded.pixelRatio, 1.7,
+    'the bloom-wrapper fallback resumes drawing-buffer scale instead of applying it zero times');
+});
+
 // ── 2. Static: draw-buffer / pixel-ratio reconcile path exists ──────────────
 
-test('static: applyRendererSize uses cap × scale × dyn and is used at boot + resize', () => {
+test('static: applyRendererSize uses one route-owned scale and is used at boot + resize', () => {
   const body = extractFunctionBody(rendererSource, 'applyRendererSize');
   assert.match(body, /pixelRatioCap/, 'applyRendererSize reads pixelRatioCap');
   assert.match(body, /renderScale/, 'applyRendererSize reads renderScale');
+  assert.match(body, /graphOwnsScale[\s\S]*?\?\s*1\s*:/,
+    'the graph route must not also apply renderScale at the drawing buffer');
   assert.match(body, /dynResScale/, 'applyRendererSize reads dynResScale');
   assert.match(body, /setPixelRatio/, 'applyRendererSize writes setPixelRatio');
   assert.match(body, /setSize/, 'applyRendererSize writes setSize');
@@ -315,8 +335,8 @@ test('static: settings:changed re-applies size for renderScale / pixelRatioCap /
   assert.match(handler, /section\s*!==\s*['"]video['"]/, 'handler scopes to video section');
   assert.match(
     handler,
-    /p\.key\s*===\s*['"]renderScale['"]\s*\|\|\s*p\.key\s*===\s*['"]pixelRatioCap['"]\s*\|\|\s*p\.key\s*==\s*null/,
-    'renderScale and pixelRatioCap (and key=null) must trigger resize',
+    /p\.key\s*===\s*['"]renderScale['"][\s\S]*?p\.key\s*===\s*['"]pixelRatioCap['"][\s\S]*?p\.key\s*===\s*['"]renderGraph['"][\s\S]*?p\.key\s*==\s*null/,
+    'renderScale, pixelRatioCap, renderGraph (and key=null) must trigger resize',
   );
   assert.match(handler, /this\.onResize\s*\(\s*\)/, 'size path must call onResize');
 });
@@ -533,7 +553,7 @@ test('static: section-wide video change (key==null) covers size and shadows flag
   );
   assert.match(
     handler,
-    /p\.key\s*===\s*['"]renderScale['"]\s*\|\|\s*p\.key\s*===\s*['"]pixelRatioCap['"]\s*\|\|\s*p\.key\s*==\s*null/,
+    /p\.key\s*===\s*['"]renderScale['"][\s\S]*?p\.key\s*===\s*['"]pixelRatioCap['"][\s\S]*?p\.key\s*===\s*['"]renderGraph['"][\s\S]*?p\.key\s*==\s*null/,
     'key==null must refresh draw buffer',
   );
   // Product truth: key==null must also hit the key-light ensure seam (same as shadows key).

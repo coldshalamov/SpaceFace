@@ -63,11 +63,10 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         ...DEFAULT_STRUCTURE,
         recipeId: 'helios_orbital_void',
         structureKind: 'void',
-        // starDensity 1.12 -> 1.85 and flareDensity 1.3 -> 1.65. Independent review asked for
-        // "denser star bands" as its cheapest background action, and the whole star field is a single
-        // Points draw call, so density is close to free — the resolver clamps starDensity at 2.5 and
-        // scripts/check-helios-sky-kit.mjs enforces only a FLOOR of 0.95, so this stays inside both.
-        starDensity: 1.85,
+        // Preserve the measured starter-sector vertex budget. A single Points draw still pays per-star
+        // vertex/fragment cost; 1.85 would raise every quality tier by 65% without matched target-GPU
+        // evidence. Clustering supplies the denser-band read within the prior 1.12 budget.
+        starDensity: 1.12,
         clusterCount: 8,
         clusterStrength: 1.4,
         voidFloor: 0.12,
@@ -100,7 +99,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.96, bloomStrengthScale: 0.55, bloomThresholdBias: 0.28 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   core: freezeProfile({
     id: 'core',
@@ -128,7 +127,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         cometInterval: [30, 72], signatureHero: null,
       },
     },
-    post: { exposure: 0.96, bloomStrengthScale: 0.6, bloomThresholdBias: 0.26 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.04, bloomThresholdBias: -0.02 },
   }),
   belt: freezeProfile({
     id: 'belt',
@@ -160,7 +159,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         cometInterval: [22, 58], signatureHero: null,
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 0.65, bloomThresholdBias: 0.22 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.10, bloomThresholdBias: -0.06 },
   }),
   fringe: freezeProfile({
     id: 'fringe',
@@ -204,7 +203,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.94, bloomStrengthScale: 0.55, bloomThresholdBias: 0.24 },
+    post: { exposure: 0.94, bloomStrengthScale: 1.08, bloomThresholdBias: -0.04 },
   }),
   anomaly: freezeProfile({
     id: 'anomaly',
@@ -241,7 +240,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 0.75, bloomThresholdBias: 0.16 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10 },
   }),
 });
 

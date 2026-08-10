@@ -15,6 +15,7 @@ import {
   waitForCurrentRenderPipelines,
 } from '../src/render/pipelineReadiness.js';
 import { SpaceRenderGraph } from '../src/render/post/spaceRenderGraph.js';
+import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
 
 test('pipeline warm-up compiles against the exact render target and restores renderer state', async () => {
   const previousTarget = { name: 'previous-target' };
@@ -175,12 +176,15 @@ test('loading warm-up renders the authored batch against the exact target and re
 
 test('bloom instance exposes the loading warm-up contract used by renderer admission', async () => {
   const targets = [];
+  const compileTargets = [];
+  let activeTarget = null;
   const renderer = {
     capabilities: { isWebGL2: false, maxSamples: 0 },
     autoClear: true,
-    getRenderTarget: () => null,
-    setRenderTarget: (target) => { targets.push(target); },
+    getRenderTarget: () => activeTarget,
+    setRenderTarget: (target) => { activeTarget = target; targets.push(target); },
     render() {},
+    async compileAsync() { compileTargets.push(activeTarget); },
     info: { programs: [] },
   };
   const bloom = createBloom(renderer, 64, 64);
@@ -193,6 +197,13 @@ test('bloom instance exposes the loading warm-up contract used by renderer admis
   assert.equal(result.mode, 'forced-render');
   assert.equal(subject.parent, null);
   assert.ok(targets.some(Boolean), 'warm-up selects the bloom HDR scene target');
+  const compileResult = await bloom.compileScenePipelines(
+    subject, new THREE.PerspectiveCamera(), scene,
+  );
+  assert.equal(compileResult.skipped, false);
+  assert.strictEqual(compileTargets[0], bloom.contextLossResources()[0],
+    'the wrapper compile seam selects its exact HDR scene target');
+  assert.strictEqual(activeTarget, null, 'the wrapper restores the prior screen target');
   assert.equal(bloom.contextLossResources().length, bloom.diagnostics().renderTargetCount,
     'context loss exposes every bloom render target before rebuild/resize can dispose it');
   bloom.dispose();
@@ -207,6 +218,162 @@ test('render graph exposes every off-scene target to context-loss cleanup', () =
 
   assert.equal(graph.contextLossResources().length, graph.diagnostics().renderTargetCount);
   assert.ok(graph.contextLossResources().every((target) => target?.isWebGLRenderTarget));
+  graph.dispose();
+});
+
+test('render graph owns one clamped scene scale and reallocates when only that scale changes', () => {
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+  };
+  const graph = new SpaceRenderGraph(renderer, {
+    enabled: true,
+    ao: false,
+    bloom: false,
+    renderScale: 0.75,
+  });
+  graph.setSize(800, 600);
+  const firstTarget = graph.sceneTarget;
+  assert.deepEqual(graph.diagnostics(), {
+    ...graph.diagnostics(),
+    drawingBufferWidth: 800,
+    drawingBufferHeight: 600,
+    sceneTargetWidth: 600,
+    sceneTargetHeight: 450,
+    effectiveSceneScale: 0.75,
+  });
+
+  graph.setOptions({ renderScale: 0.5 });
+  assert.notStrictEqual(graph.sceneTarget, firstTarget,
+    'a scale-only setting change reallocates even when external dimensions are unchanged');
+  assert.equal(graph.diagnostics().sceneTargetWidth, 400);
+  assert.equal(graph.diagnostics().sceneTargetHeight, 300);
+
+  graph.setOptions({ renderScale: 2 });
+  assert.equal(graph.diagnostics().renderScale, 1,
+    'the graph declines supersampling above its 1x contract');
+  assert.equal(graph.diagnostics().sceneTargetWidth, 800);
+  assert.equal(graph.diagnostics().sceneTargetHeight, 600);
+  graph.dispose();
+});
+
+test('one post-route dispatcher keeps warm-up and opening frames on canonical presentation', () => {
+  const cases = [];
+  for (const renderGraph of [false, true]) {
+    for (const bloom of [false, true]) {
+      for (const bloomStrength of [0, 0.52]) {
+        cases.push({ renderGraph, bloom, bloomStrength });
+      }
+    }
+  }
+
+  for (const options of cases) {
+    const harness = createPostRouteHarness(options);
+    const expectedRoute = options.renderGraph
+      ? POST_PROCESS_ROUTE.GRAPH
+      : POST_PROCESS_ROUTE.BLOOM;
+
+    harness.owner._warmPostProcess(harness.scene, harness.camera);
+    assert.deepEqual(harness.renderCalls.map((call) => call.route), [expectedRoute],
+      `warm route for ${JSON.stringify(options)}`);
+    assert.strictEqual(harness.renderCalls[0].scene, harness.scene);
+    assert.strictEqual(harness.renderCalls[0].camera, harness.camera);
+    if (expectedRoute === POST_PROCESS_ROUTE.GRAPH) {
+      assert.equal(harness.renderCalls[0].frame.time, 19);
+    }
+
+    harness.renderCalls.length = 0;
+    harness.owner._renderOpeningPostFrame(harness.scene, harness.camera);
+    assert.deepEqual(harness.renderCalls.map((call) => call.route), [expectedRoute],
+      `opening route for ${JSON.stringify(options)}`);
+  }
+
+  const graphFailure = createPostRouteHarness({
+    renderGraph: true,
+    graphAvailable: false,
+    bloom: false,
+    bloomStrength: 0,
+  });
+  graphFailure.owner._warmPostProcess(graphFailure.scene, graphFailure.camera);
+  assert.deepEqual(graphFailure.renderCalls.map((call) => call.route), [POST_PROCESS_ROUTE.BLOOM],
+    'a failed optional graph falls back to the HDR bloom wrapper, not the native screen target');
+
+  const noPostProcessor = createPostRouteHarness({ bloomAvailable: false });
+  assert.equal(noPostProcessor.owner._selectPostRoute(), POST_PROCESS_ROUTE.NATIVE);
+  noPostProcessor.owner._renderOpeningPostFrame(noPostProcessor.scene, noPostProcessor.camera);
+  assert.deepEqual(noPostProcessor.renderCalls.map((call) => call.route), [POST_PROCESS_ROUTE.NATIVE]);
+  assert.equal(noPostProcessor.owner._postNativeFallbackReason, 'post-processor-unavailable');
+
+  const lostContext = createPostRouteHarness({ renderGraph: true, contextLost: true });
+  assert.equal(lostContext.owner._selectPostRoute(), POST_PROCESS_ROUTE.NATIVE);
+  assert.equal(lostContext.owner._warmPostProcess(lostContext.scene, lostContext.camera), false);
+  assert.deepEqual(lostContext.renderCalls, [], 'context loss selects the fallback but submits no unsafe draw');
+});
+
+test('post-route compilation targets the graph scene target or the bloom HDR admission seam', async () => {
+  const graph = createPostRouteHarness({ renderGraph: true, bloom: false, bloomStrength: 0 });
+  await graph.owner._compilePostRoute(
+    graph.owner._selectPostRoute(), graph.subject, graph.camera, graph.scene,
+  );
+  assert.equal(graph.compileCalls.length, 1);
+  assert.strictEqual(graph.compileCalls[0].target, graph.graphTarget,
+    'graph admission compiles the exact graph scene target');
+  assert.strictEqual(graph.activeTarget(), graph.previousTarget,
+    'graph admission restores the renderer target');
+
+  const bloom = createPostRouteHarness({ renderGraph: false, bloom: false, bloomStrength: 0 });
+  const bloomResult = await bloom.owner._compilePostRoute(
+    bloom.owner._selectPostRoute(), bloom.subject, bloom.camera, bloom.scene,
+  );
+  assert.deepEqual(bloomResult, { skipped: false, route: 'bloom-hdr' });
+  assert.deepEqual(bloom.bloomCompileCalls, [{
+    subject: bloom.subject,
+    camera: bloom.camera,
+    lightingScene: bloom.scene,
+  }], 'bloom off/zero still uses the wrapper-owned HDR compile seam');
+  assert.deepEqual(bloom.compileCalls, [], 'the dispatcher never substitutes a screen-target compile');
+
+  const unavailable = createPostRouteHarness({ bloomAvailable: false });
+  await unavailable.owner._compilePostRoute(
+    unavailable.owner._selectPostRoute(), unavailable.subject, unavailable.camera, unavailable.scene,
+  );
+  assert.equal(unavailable.compileCalls.length, 1);
+  assert.strictEqual(unavailable.compileCalls[0].target, null,
+    'only the diagnosed unavailable-post fallback compiles for the native screen target');
+});
+
+test('AO and zero/off bloom skip their pass families without skipping presentation', () => {
+  let activeTarget = null;
+  const renders = [];
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+    autoClear: true,
+    getRenderTarget: () => activeTarget,
+    setRenderTarget(target) { activeTarget = target; },
+    clear() {},
+    render(scene) { renders.push(scene); },
+  };
+  const graph = new SpaceRenderGraph(renderer, {
+    ao: false,
+    bloom: false,
+    bloomStrength: 1,
+  });
+  graph.setSize(64, 64);
+  const scene = new THREE.Scene();
+  graph.render(scene, new THREE.PerspectiveCamera(), { time: 0 });
+
+  assert.equal(renders.filter((candidate) => candidate === scene).length, 1,
+    'AO off renders the world once and performs no normal override pass');
+  assert.equal(renders.length, 2, 'scene plus canonical composite remain');
+  assert.deepEqual(graph.diagnostics().passFamilies,
+    { scene: 1, normal: 0, ao: 0, bloom: 0, composite: 1 });
+
+  renders.length = 0;
+  graph.setOptions({ bloom: true, bloomStrength: 0 });
+  graph.render(scene, new THREE.PerspectiveCamera(), { time: 0 });
+  assert.equal(renders.length, 2, 'zero strength also skips every bloom pass');
+  assert.equal(graph.diagnostics().bloomPasses, 0);
   graph.dispose();
 });
 
@@ -363,6 +530,33 @@ test('renderer wires current-scene compilation to the installed scene, not a wai
     /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.waitForPending\(\)/);
 });
 
+test('renderer entry points delegate route selection instead of branching on bloom controls', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const warmStart = source.indexOf('state.render.warmPostProcess =');
+  const compileStart = source.indexOf('const compileForCurrentTarget =', warmStart);
+  const openingStart = source.indexOf('state.render.prepareOpeningGpuResources =', compileStart);
+  const openingEnd = source.indexOf('// Collision/socket/landing debug toggle', openingStart);
+  const drawStart = source.indexOf('drawPreparedFrame()');
+  const renderFrameStart = source.indexOf('renderFrame(', drawStart);
+  assert.ok(warmStart >= 0 && compileStart > warmStart && openingStart > compileStart
+    && openingEnd > openingStart);
+  assert.ok(drawStart >= 0 && renderFrameStart > drawStart);
+
+  const warmWire = source.slice(warmStart, compileStart);
+  const compileWire = source.slice(compileStart, openingStart);
+  const openingWire = source.slice(openingStart, openingEnd);
+  const drawWire = source.slice(drawStart, renderFrameStart);
+  assert.match(warmWire, /this\._warmPostProcess\(scene, cam\.obj\)/);
+  assert.match(compileWire,
+    /this\._compilePostRoute\(\s*this\._selectPostRoute\(\), subject, cam\.obj, scene/);
+  assert.match(openingWire, /this\._renderOpeningPostFrame\(scene, cam\.obj\)/);
+  assert.match(drawWire,
+    /const postRoute = this\._selectPostRoute\(\)[\s\S]*?this\._renderPostRoute\(postRoute,/);
+  assert.doesNotMatch(`${warmWire}\n${compileWire}\n${openingWire}\n${drawWire}`,
+    /video\.bloom|bloomStrength\s*[<=>]/,
+    'bloom controls stay inside the selected post processor and never choose the route');
+});
+
 test('pipeline admission tracker reports only synchronous compileBatch duration for queued and current paths', async () => {
   const slices = [];
   let clock = 1000;
@@ -491,4 +685,97 @@ function deferred() {
   let reject;
   const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
   return { promise, resolve, reject };
+}
+
+function createPostRouteHarness({
+  renderGraph = false,
+  graphAvailable = true,
+  bloomAvailable = true,
+  bloom = true,
+  bloomStrength = 0.52,
+  contextLost = false,
+} = {}) {
+  const previousTarget = { name: 'previous-target' };
+  const graphTarget = { name: 'graph-scene-target' };
+  const scene = { name: 'route-scene' };
+  const subject = { name: 'route-subject' };
+  const camera = { name: 'route-camera' };
+  const renderCalls = [];
+  const compileCalls = [];
+  const bloomCompileCalls = [];
+  let activeTarget = previousTarget;
+
+  const renderer = {
+    getRenderTarget: () => activeTarget,
+    setRenderTarget(target) { activeTarget = target; },
+    render(renderScene, renderCamera) {
+      renderCalls.push({
+        route: POST_PROCESS_ROUTE.NATIVE,
+        scene: renderScene,
+        camera: renderCamera,
+      });
+    },
+    async compileAsync(...args) {
+      compileCalls.push({ args, target: activeTarget });
+    },
+    getContext: () => ({ isContextLost: () => contextLost }),
+    info: { programs: [] },
+  };
+  const graph = {
+    sceneTarget: graphTarget,
+    render(renderScene, renderCamera, frame) {
+      renderCalls.push({
+        route: POST_PROCESS_ROUTE.GRAPH,
+        scene: renderScene,
+        camera: renderCamera,
+        frame,
+      });
+    },
+  };
+  const bloomWrapper = {
+    render(renderScene, renderCamera) {
+      renderCalls.push({
+        route: POST_PROCESS_ROUTE.BLOOM,
+        scene: renderScene,
+        camera: renderCamera,
+      });
+    },
+    async compileScenePipelines(compileSubject, compileCamera, lightingScene) {
+      bloomCompileCalls.push({ subject: compileSubject, camera: compileCamera, lightingScene });
+      return { skipped: false, route: 'bloom-hdr' };
+    },
+  };
+  const owner = Object.assign(Object.create(renderSystem), {
+    state: {
+      settings: { video: { renderGraph, bloom, bloomStrength } },
+      render: {},
+    },
+    renderer,
+    bloom: bloomAvailable ? bloomWrapper : null,
+    _renderGraph: renderGraph && graphAvailable ? graph : null,
+    _contextLost: contextLost,
+    _bgTime: 19,
+    _postFrameOptions: { time: 0 },
+    _ensureRenderGraph() {
+      if (!graphAvailable) {
+        this._renderGraph = null;
+        return false;
+      }
+      this._renderGraph = graph;
+      return true;
+    },
+  });
+
+  return {
+    owner,
+    previousTarget,
+    graphTarget,
+    scene,
+    subject,
+    camera,
+    renderCalls,
+    compileCalls,
+    bloomCompileCalls,
+    activeTarget: () => activeTarget,
+  };
 }

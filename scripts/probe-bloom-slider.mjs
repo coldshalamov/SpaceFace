@@ -117,7 +117,7 @@ try {
     console.error('FAIL:', JSON.stringify(verdict.failures, null, 2));
     process.exitCode = 1;
   } else {
-    console.log('PASS: bloom slider visibly attenuates both post paths, and zero/off match.');
+    console.log('PASS: bloom slider controls spill once, both post paths agree, and direct energy remains readable.');
   }
 } finally {
   try { if (browser) await browser.close(); } catch (_) {}
@@ -218,18 +218,24 @@ function evaluateVerdict(report) {
   if (graphOff && graphOff.post && graphOff.post.renderGraphDetails && graphOff.post.renderGraphDetails.effectiveBloomStrength !== 0) {
     failures.push({ check: 'render graph bloom off effective strength', value: graphOff.post.renderGraphDetails.effectiveBloomStrength });
   }
-  if (!(graphLow && graphLow.post && graphLow.post.renderGraphDetails && graphLow.post.renderGraphDetails.postStyleScale < 1)) {
+  if (!(graphLow && graphLow.post && graphLow.post.renderGraphDetails && graphLow.post.renderGraphDetails.postStyleScale === 1)) {
     failures.push({ check: 'render graph low post style scale', value: graphLow && graphLow.post && graphLow.post.renderGraphDetails });
   }
-  if (!(wrapperLow && wrapperLow.post && wrapperLow.post.bloom && wrapperLow.post.bloom.postStyleScale < 1)) {
+  if (!(wrapperLow && wrapperLow.post && wrapperLow.post.bloom && wrapperLow.post.bloom.postStyleScale > 0)) {
     failures.push({ check: 'wrapper low post style scale', value: wrapperLow && wrapperLow.post && wrapperLow.post.bloom });
   }
   const energy = report.energy || {};
   if (!(energy.default && energy.default.active)) failures.push({ check: 'energy plume active at default', value: energy.default });
-  if (!(energy.low && energy.default && energy.low.coreIntensity < energy.default.coreIntensity * 0.5)) {
-    failures.push({ check: 'energy plume low strength attenuates', value: energy });
+  if (!(energy.low && energy.low.active)) failures.push({ check: 'energy plume active at low bloom', value: energy.low });
+  if (!(energy.zero && energy.zero.active)) failures.push({ check: 'energy plume active at zero bloom', value: energy.zero });
+  if (!(energy.low && energy.default
+    && Math.abs(energy.low.coreIntensity - energy.default.coreIntensity) <= energy.default.coreIntensity * 0.05)) {
+    failures.push({ check: 'source energy stays stable while compositor controls spill', value: energy });
   }
-  if (!(energy.zero && energy.zero.active === false)) failures.push({ check: 'energy plume disabled at zero', value: energy.zero });
+  if (!(energy.zero && energy.default
+    && Math.abs(energy.zero.coreIntensity - energy.default.coreIntensity) <= energy.default.coreIntensity * 0.05)) {
+    failures.push({ check: 'zero bloom preserves direct energy', value: energy });
+  }
   const uiSlider = report.uiSlider || {};
   if (!(uiSlider.found === true)) failures.push({ check: 'settings bloom strength slider found', value: uiSlider });
   if (!(uiSlider.stateBloomStrength === 0.14)) failures.push({ check: 'settings slider writes bloomStrength', value: uiSlider });
@@ -336,7 +342,7 @@ async function probeEnergyRadiance(page) {
       };
     });
   };
-  const defaultSample = await sample(0.35);
+  const defaultSample = await sample(0.52);
   const lowSample = await sample(0.1);
   const zeroSample = await sample(0);
   await page.evaluate(() => {
@@ -344,7 +350,7 @@ async function probeEnergyRadiance(page) {
     window.__SF_BLOOM_PROBE_DRIVE__ = null;
     if (window.SF && window.SF.state && window.SF.state.input) window.SF.state.input.moveZ = 0;
   });
-  console.log(`energy: default=${defaultSample.coreIntensity.toFixed(3)} low=${lowSample.coreIntensity.toFixed(3)} zeroActive=${zeroSample.active}`);
+  console.log(`energy: default=${defaultSample.coreIntensity.toFixed(3)} low=${lowSample.coreIntensity.toFixed(3)} zero=${zeroSample.coreIntensity.toFixed(3)} zeroActive=${zeroSample.active}`);
   return { default: defaultSample, low: lowSample, zero: zeroSample };
 }
 

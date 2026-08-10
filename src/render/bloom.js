@@ -16,20 +16,16 @@
 // the wide halo via hardware bilinear on coarser pyramid levels and removes that RT + pass.
 //
 // COLOR-MANAGEMENT INVARIANT (the thing that makes this provably correct):
-//   At bloomStrength == 0 the composite output is pixel-identical to a plain
-//   renderer.render(scene, camera). We achieve that by:
+//   Bloom strength controls only selective spill. At bloomStrength == 0 (or when bloom is disabled)
+//   the HDR scene still passes through the same canonical presentation composite. We achieve that by:
 //     * leaving every RT texture in the default (linear) colorSpace — we never set sRGB on a RT,
 //     * sampling RTs raw in custom shaders (three does NOT auto-decode/auto-tonemap a ShaderMaterial
 //       texture in r160), and
 //     * doing the ONE sRGB encode manually in the composite shader (renderer would normally do this
 //       when drawing to screen, but a custom-shader full-screen pass bypasses it).
-//   We deliberately do NOT re-tonemap in the composite. This is CORRECT for the renderer as written
-//   (it uses the default NoToneMapping, so bloom-on and the bloom-off fast path match exactly).
-//   INTEGRATION CAVEAT for the render track: if you later set renderer.toneMapping = ACESFilmic…,
-//   three renders to render targets with NoToneMapping regardless, so rtScene would be un-tonemapped
-//   while the bloom-off path tonemaps — they'd diverge. At that point tone-mapping must move INTO this
-//   composite shader (sample scene+bloom, tonemap, THEN sRGB-encode). Until then, composite = add +
-//   encode, which is exactly what preserves the strength==0 == plain-render invariant.
+//   Tone mapping, exposure, grade, toe, vignette, grain, and the one sRGB encode all live in the
+//   shared composite block below. A native straight render is therefore a degraded-capability or
+//   context-loss fallback, never the ordinary bloom-off route.
 //
 // Cost: scene render + a handful of cheap fullscreen quads; the deepest pyramid levels are tiny (⅛-res
 // blits are ~16px taps), so the wide halo costs little over the old single-blur. createBloom() is a
@@ -39,9 +35,165 @@ import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
-const FILM_GRAIN_FPS = 12;
-const DEFAULT_BLOOM_STRENGTH = 0.35;
+export const POST_GRAIN_FPS = 12;
+export const DEFAULT_BLOOM_STRENGTH = 0.52;
 export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0, toe: 0 });
+// A linear-space toe of 0.020 encoded to an RGB floor around byte 35-42, not the documented
+// perceptual target around byte 12. This calibrated value lands at roughly 11/12/14 after sRGB and
+// retains the deliberately cool space-black bias without laying a grey-blue veil over the frame.
+export const DEFAULT_CINEMATIC_TOE = 0.0039;
+export const POST_TOE_TINT = Object.freeze([0.82, 0.92, 1.15]);
+
+function linearToSrgbChannel(value) {
+  const c = Math.max(0, Number(value) || 0);
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * (c ** (1 / 2.4)) - 0.055;
+}
+
+/** Pure calibration seam used by focused tests and capture tooling. */
+export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
+  const amount = Math.max(0, Math.min(0.06, Number(toe) || 0));
+  return POST_TOE_TINT.map((channel) => linearToSrgbChannel(channel * amount));
+}
+
+// Both post routes interpolate this exact block into their composite shader. Exposure, tone mapping,
+// grade, toe, vignette, grain, and encoding are deliberately one implementation so route parity can
+// be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
+// black until the one explicit, calibrated toe operation.
+export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
+  vec3 spaceAcesFilmic(vec3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+  }
+
+  vec3 spaceLinearToSrgb(vec3 c) {
+    vec3 safe = max(c, vec3(0.0));
+    return mix(1.055 * pow(safe, vec3(1.0 / 2.4)) - vec3(0.055),
+      safe * 12.92, step(safe, vec3(0.0031308)));
+  }
+
+  float spaceGrainNoise(vec2 p) {
+    return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
+  }
+
+  vec3 applySpacePostPresentation(
+    vec3 color,
+    vec2 uv,
+    float gradeAmount,
+    float toeAmount,
+    float vignetteAmount
+  ) {
+    vec3 c = max(color, vec3(0.0));
+    if (gradeAmount > 0.001) {
+      float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      vec3 shadowBalance = vec3(0.88, 0.98, 1.10);
+      vec3 highlightBalance = vec3(1.10, 1.00, 0.88);
+      vec3 graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
+      float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
+      graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
+      c = mix(c, graded, gradeAmount);
+    }
+    if (toeAmount > 0.0001) {
+      float toeLuma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float shadowMask = 1.0 - smoothstep(0.0, 0.22, toeLuma);
+      c += vec3(${POST_TOE_TINT.join(', ')}) * toeAmount * shadowMask;
+    }
+    if (vignetteAmount > 0.001) {
+      vec2 d = uv - vec2(0.5);
+      float dist = dot(d, d) * 2.2;
+      float vig = 1.0 - smoothstep(0.25, 0.85, dist);
+      c *= mix(1.0, vig, vignetteAmount);
+    }
+    return c;
+  }
+
+  vec3 composeSpacePostPresentation(
+    vec3 scene,
+    vec3 bloom,
+    vec2 uv,
+    vec2 fragCoord,
+    float exposure,
+    float acesAmount,
+    float gradeAmount,
+    float toeAmount,
+    float vignetteAmount,
+    float grainAmount,
+    float grainFrame
+  ) {
+    vec3 hdr = max(scene, vec3(0.0)) * exposure;
+    vec3 color = mix(clamp(hdr, 0.0, 1.0), spaceAcesFilmic(hdr), acesAmount);
+    color = applySpacePostPresentation(max(color + max(bloom, vec3(0.0)), vec3(0.0)),
+      uv, gradeAmount, toeAmount, vignetteAmount);
+    vec3 srgb = spaceLinearToSrgb(color);
+    if (grainAmount > 0.001) {
+      float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
+      vec2 grainCell = fragCoord * 0.5 + vec2(grainFrame * 17.0, grainFrame * 31.0);
+      float noise = spaceGrainNoise(grainCell) - 0.5;
+      srgb += noise * grainAmount * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
+    }
+    return clamp(srgb, 0.0, 1.0);
+  }
+`;
+
+/**
+ * Resolve the player's bloom controls and an authored sector post profile into the exact values
+ * consumed by both post-processors. Pure and allocation-only: callers may use it in tests and on
+ * settings/sector transitions without needing a renderer or mutating either input.
+ */
+export function resolveEffectiveSectorPost(video = {}, sectorPost = null, fallbacks = {}) {
+  const settings = video && typeof video === 'object' ? video : {};
+  const post = sectorPost && typeof sectorPost === 'object' ? sectorPost : {};
+  const defaults = fallbacks && typeof fallbacks === 'object' ? fallbacks : {};
+
+  const fallbackStrength = Number.isFinite(defaults.bloomStrength)
+    ? Math.max(0, Math.min(1, defaults.bloomStrength))
+    : DEFAULT_BLOOM_STRENGTH;
+  let bloomStrength = Number.isFinite(settings.bloomStrength)
+    ? settings.bloomStrength
+    : fallbackStrength;
+  // Legacy profiles used a 0..2 slider. Fold them onto the current 0..1 contract exactly once.
+  if (bloomStrength > 1) bloomStrength *= 0.5;
+  bloomStrength = Math.max(0, Math.min(1, bloomStrength));
+
+  const rawScale = Number(post.bloomStrengthScale);
+  const strengthScale = post.bloomStrengthScale != null && Number.isFinite(rawScale) && rawScale >= 0
+    ? rawScale
+    : 1;
+  const fallbackThreshold = Number.isFinite(defaults.bloomThreshold) ? defaults.bloomThreshold : 1;
+  const bloomThreshold = Number.isFinite(settings.bloomThreshold)
+    ? settings.bloomThreshold
+    : fallbackThreshold;
+  const rawBias = Number(post.bloomThresholdBias);
+  const thresholdBias = post.bloomThresholdBias != null && Number.isFinite(rawBias) ? rawBias : 0;
+
+  const playerExposure = Number.isFinite(settings.exposure) ? settings.exposure : undefined;
+  const sectorExposure = finiteNumber(post.exposure);
+  const fallbackExposure = finiteNumber(defaults.exposure);
+  const presentation = (key) => {
+    const authored = finiteNumber(post[key]);
+    if (authored !== undefined) return authored;
+    const player = finiteNumber(settings[key]);
+    if (player !== undefined) return player;
+    return finiteNumber(defaults[key]);
+  };
+
+  return {
+    bloom: typeof settings.bloom === 'boolean' ? settings.bloom : defaults.bloom,
+    bloomStrength: Math.max(0, Math.min(1, bloomStrength * strengthScale)),
+    bloomThreshold: Math.max(0, bloomThreshold + thresholdBias),
+    exposure: playerExposure !== undefined
+      ? playerExposure
+      : (sectorExposure !== undefined ? sectorExposure : fallbackExposure),
+    acesToneMapping: settings.acesToneMapping !== false,
+    grade: presentation('grade'),
+    vignette: presentation('vignette'),
+    toe: presentation('toe'),
+    grain: presentation('grain'),
+  };
+}
 
 export function resolvePostPresentation(options = {}) {
   return Object.freeze({
@@ -59,8 +211,14 @@ function clamp01(value, fallback) {
 function clampRange(value, fallback, lo, hi) {
   return Number.isFinite(value) ? Math.max(lo, Math.min(hi, value)) : fallback;
 }
+
+function finiteNumber(value) {
+  if (value == null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
-// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
+// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.52 ≈ default).
 const BLOOM_PYRAMID_NORM = 1.5;
 
 /**
@@ -376,96 +534,18 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
 
-  // Narkowicz 2015 ACES approximation (input in linear, output 0-1)
-  vec3 acesFilmic(vec3 x) {
-    const float a = 2.51;
-    const float b = 0.03;
-    const float c = 2.43;
-    const float d = 0.59;
-    const float e = 0.14;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-  }
-
-  // Interleaved gradient noise: one cheap ALU hash, no texture fetch. uGrainFrame advances at a
-  // film-like cadence instead of every display refresh, keeping the grain alive without forcing the
-  // full-screen composite shader through extra floor()/time-hash work on every pixel.
-  float grainNoise(vec2 p) {
-    return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
-  }
+  ${SPACE_POST_PRESENTATION_GLSL}
 
   void main() {
     vec3 scene = texture2D(tScene, vUv).rgb;
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
                + texture2D(tBloom1, vUv).rgb * uBloomW1;
-    vec3 hdr = max(scene, vec3(0.0)) * uExposure;
-    // Tone-map the base scene first. Bloom is added AFTER so uStrength stays perceptually linear —
-    // adding bloom before ACES saturated every highlight and hid slider movement.
-    vec3 cClamped = clamp(hdr, 0.0, 1.0);
-    vec3 cAces    = acesFilmic(hdr);
-    vec3 c = mix(cClamped, cAces, uAces);
-    c += bloom * uStrength * uBloomNorm;
-    c = max(c, vec3(0.0));
-
-    // Optional legacy color grade. Default uGrade is zero; sector identity belongs to world lighting
-    // and authored surfaces, not a tint over every pixel. The optional path remains multiplicative so
-    // true black stays black instead of becoming a full-screen cyan veil.
-    // Guarded like uGrain below. Both of these blocks used to run unconditionally for every pixel of
-    // every frame and then be multiplied away by a zero uniform — a full luminance-weighted channel
-    // balance plus a saturation lift, and a second dot product for the vignette, all discarded. They
-    // are NOT dead code and must not be deleted: src/render/post/spaceRenderGraph.js passes
-    // grade 0.62 / vignette 0.18 in the alternate render-graph pipeline (off by default), so removing
-    // them would silently strip authored look from that path. Guarding keeps both consumers correct
-    // and skips the work on the default route, where the uniforms are zero.
-    if (uGrade > 0.001) {
-      float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      vec3 shadowBalance = vec3(0.88, 0.98, 1.10);
-      vec3 highlightBalance = vec3(1.10, 1.00, 0.88);
-      vec3 graded = c * mix(shadowBalance, highlightBalance, smoothstep(0.10, 0.60, luma));
-      float gradedLuma = dot(graded, vec3(0.2126, 0.7152, 0.0722));
-      graded = max(mix(vec3(gradedLuma), graded, 1.15), vec3(0.0));
-      c = mix(c, graded, uGrade);
-    }
-
-    // Optional filmic TOE — a lifted black floor. Default uToe is zero, so the "true blacks" route is
-    // bit-identical unless a caller opts in.
-    //
-    // Every other look control here is multiplicative, which by construction cannot lift a black:
-    // 0 * anything is 0. Measured against 2020s reference frames, our median pixel is luma 0.004
-    // (byte ~1) while references bottom out around byte 12 — they sit on a filmic toe, not on zero.
-    // This is the one control that can close that specific difference.
-    //
-    // Shaped as a SHADOW-ONLY lift: full strength at black, fading out by mid-grey, so highlights and
-    // the tone curve above the toe are untouched and the image does not go milky. The lift is slightly
-    // cool because a neutral grey floor reads as a washed-out screen while a cool one reads as space.
-    if (uToe > 0.0001) {
-      float toeLuma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      float shadowMask = 1.0 - smoothstep(0.0, 0.22, toeLuma);
-      c += vec3(0.82, 0.92, 1.15) * uToe * shadowMask;
-    }
-
-    // Optional vignette. Default uVignette is zero.
-    if (uVignette > 0.001) {
-      vec2 d = vUv - vec2(0.5);
-      float dist = dot(d, d) * 2.2;            // 0 center → ~1.1 corners
-      float vig = smoothstep(0.85, 0.25, dist); // keep center bright, fall off at edges
-      c *= mix(1.0, vig, uVignette);
-    }
-
-    // linear -> sRGB
-    vec3 srgb = mix(1.055 * pow(c, vec3(1.0 / 2.4)) - vec3(0.055), c * 12.92, step(c, vec3(0.0031308)));
-
-    // ---- FILM GRAIN (applied in sRGB space so it reads as photochemical noise, not a render glitch).
-    //      Computed analytically to avoid a full-screen noise texture fetch; scaled by luminance so
-    //      it's stronger in darks (where film grain naturally lives) and invisible in brights.
-    if (uGrain > 0.001) {
-      float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
-      vec2 grainCell = gl_FragCoord.xy * 0.5 + vec2(uGrainFrame * 17.0, uGrainFrame * 31.0);
-      float n = grainNoise(grainCell) - 0.5;
-      srgb += n * uGrain * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
-    }
-
-    gl_FragColor = vec4(srgb, 1.0);
+    vec3 spill = bloom * uStrength * uBloomNorm;
+    gl_FragColor = vec4(composeSpacePostPresentation(
+      scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+      uGrade, uToe, uVignette, uGrain, uGrainFrame
+    ), 1.0);
   }
 `;
 
@@ -676,19 +756,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
   }
 
-  function renderCompositePass(tier1) {
-    const fine = down[0].texture;
-    const coarse = levels > 1 ? down[levels - 1].texture : fine;
+  function renderCompositePass(tier1, bloomActive) {
+    // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
+    // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
+    // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
+    const fine = bloomActive ? down[0].texture : rtScene.texture;
+    const coarse = bloomActive && levels > 1 ? down[levels - 1].texture : fine;
     compositeMat.uniforms.tScene.value = rtScene.texture;
     compositeMat.uniforms.tBloom0.value = fine;
     compositeMat.uniforms.tBloom1.value = coarse;
-    compositeMat.uniforms.uBloomW0.value = 1.0;
-    compositeMat.uniforms.uBloomW1.value = levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
-    compositeMat.uniforms.uStrength.value = strength;
+    compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
+    compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_COARSE_WEIGHT : 0.0;
+    compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
     const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
+    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
     blit(compositeMat, null);
     if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
   }
@@ -698,13 +781,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function render(scene, camera) {
-    // Fast path / fallback: bloom off OR strength ~0 — render straight to screen, no extra cost,
-    // and (importantly) no risk of the post pipeline altering the image.
-    if (!enabled || strength <= 0.0001) {
-      renderer.setRenderTarget(null);
-      renderer.render(scene, camera);
-      return;
-    }
+    const bloomActive = enabled && strength > 0.0001;
 
     const prevAutoClear = renderer.autoClear;
 
@@ -721,12 +798,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
     // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
-    timePassGroup('bloomDownsample', renderDownsamplePass, tier1);
+    if (bloomActive) timePassGroup('bloomDownsample', renderDownsamplePass, tier1);
 
     // Multi-scale composite — no upsample RT or pass. Fine + coarse pyramid levels are sampled
     // directly; coarser levels contribute the wide halo via hardware bilinear (weight matches the
     // retired upsample chain so perceptual strength stays in family).
-    timePassGroup('bloomComposite', renderCompositePass, tier1);
+    timePassGroup('bloomComposite', renderCompositePass, tier1, bloomActive);
 
     renderer.autoClear = prevAutoClear;
     renderer.setRenderTarget(null);
@@ -864,15 +941,29 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       grade: compositeMat.uniforms.uGrade.value,
       toe: compositeMat.uniforms.uToe.value,
       grainSource: 'quantized-interleaved-gradient',
-      grainFps: FILM_GRAIN_FPS,
+      grainFps: POST_GRAIN_FPS,
       multiScaleComposite: true,
+      presentationComposite: true,
+      presentationParity: 'canonical-base-ao-off-bloom-neutral',
       upsampleTargets: 0,
       sharedQuadGeometry: true,
       targets: 1 + down.length,
       renderTargetCount: 1 + down.length,
-      fullFramePasses: enabled && strength > 0.0001 ? 2 : 1,
+      drawingBufferWidth: W,
+      drawingBufferHeight: H,
+      sceneTargetWidth: rtScene.width,
+      sceneTargetHeight: rtScene.height,
+      effectiveSceneScale: 1,
+      fullFramePasses: 2,
       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
       bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
+      passFamilies: {
+        scene: 1,
+        normal: 0,
+        ao: 0,
+        bloom: enabled && strength > 0.0001 ? down.length : 0,
+        composite: 1,
+      },
     };
   }
 

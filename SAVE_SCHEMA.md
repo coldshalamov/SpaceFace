@@ -332,7 +332,7 @@ Current save version: `12`
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
 | `$.settings.video.bloom` | boolean | true |
-| `$.settings.video.bloomStrength` | number | 0.35 |
+| `$.settings.video.bloomStrength` | number | 0.52 |
 | `$.settings.video.bloomThreshold` | number | 1 |
 | `$.settings.video.chaseClose` | boolean | false |
 | `$.settings.video.dynamicResolution` | boolean | false |

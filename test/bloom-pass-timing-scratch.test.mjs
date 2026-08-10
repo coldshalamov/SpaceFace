@@ -127,15 +127,27 @@ test('bloom keeps exact pass order and instrumentation without per-frame timing 
     harness.events.length = 0;
     bloom.enabled = false;
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
-    assert.deepEqual(harness.events, ['target:screen', 'render:scene:screen'],
-      'the bloom-off fast path stays a single uninstrumented screen render');
+    assert.deepEqual(
+      harness.events.filter((event) => event.startsWith('render:')),
+      ['render:scene:640x360', 'render:quad:screen'],
+      'bloom-off retains the HDR scene and canonical presentation composite',
+    );
+    assert.deepEqual(timingEvents(harness.events), [
+      'gpu:begin:bloomScene', 'gpu:end:bloomScene', 'cpu:bloomScene',
+      'gpu:begin:bloomComposite', 'gpu:end:bloomComposite', 'cpu:bloomComposite',
+    ]);
+    assert.equal(bloom.diagnostics().bloomPasses, 0);
 
     harness.events.length = 0;
     bloom.enabled = true;
     bloom.strength = 0.0001;
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
-    assert.deepEqual(harness.events, ['target:screen', 'render:scene:screen'],
-      'the near-zero-strength fast path stays a single uninstrumented screen render');
+    assert.deepEqual(
+      harness.events.filter((event) => event.startsWith('render:')),
+      ['render:scene:640x360', 'render:quad:screen'],
+      'near-zero strength skips only bloom passes, never canonical presentation',
+    );
+    assert.equal(bloom.diagnostics().bloomPasses, 0);
   } finally {
     bloom.dispose();
   }
@@ -216,5 +228,5 @@ test('shipping render reuses createBloom-lifetime pass functions with fixed argu
     'the default bloom frame must not synthesize callback argument containers');
   assert.match(body, /timePassGroup\('bloomScene', renderScenePass, scene, camera, tier1\)/);
   assert.match(body, /timePassGroup\('bloomDownsample', renderDownsamplePass, tier1\)/);
-  assert.match(body, /timePassGroup\('bloomComposite', renderCompositePass, tier1\)/);
+  assert.match(body, /timePassGroup\('bloomComposite', renderCompositePass, tier1, bloomActive\)/);
 });

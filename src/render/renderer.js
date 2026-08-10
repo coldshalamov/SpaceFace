@@ -14,6 +14,9 @@ import { installVisualOverrides } from './visualOverrides.js';
 import {
   createBloom,
   compileScenePipelinesForRenderTarget,
+  DEFAULT_BLOOM_STRENGTH,
+  DEFAULT_CINEMATIC_TOE,
+  resolveEffectiveSectorPost,
 } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
@@ -185,7 +188,7 @@ const RUNTIME_MESH_BUILD_BUDGET = 2;
 // that post/spaceRenderGraph.js authors for the alternate pipeline: the goal is shadow/highlight
 // colour separation and a soft frame, not a look change the player did not ask for.
 const SECTOR_POST_GRADE = 0.45;
-const SECTOR_POST_TOE = 0.020;  // lifted black floor; 0 = the old true-black look, 0.038 washes out
+const SECTOR_POST_TOE = DEFAULT_CINEMATIC_TOE;
 const SECTOR_POST_VIGNETTE = 0.12;
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
@@ -1678,6 +1681,12 @@ const _pt = new THREE.Vector3();
 const _v2 = new THREE.Vector2();
 const _drawSize = new THREE.Vector2();
 
+export const POST_PROCESS_ROUTE = Object.freeze({
+  GRAPH: 'renderGraph',
+  BLOOM: 'bloom',
+  NATIVE: 'straight',
+});
+
 export const render = {
   name: 'render',
   init(ctx) {
@@ -2045,13 +2054,19 @@ export const render = {
       this._gpuTimers = null;
       state.render.gpuTimers = null;
     }
+    this._postNativeFallbackReason = null;
+    this._postFrameOptions = { time: 0 };
     try {
       this.bloom = createBloom(renderer, drawSize.x, drawSize.y, {
         getPerf: () => state.perfRuntime,
         getGpuTimers: () => this._gpuTimers,
         getGpuOrigin: () => this._gpuFrameOrigin || null,
       });
-    } catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
+    } catch (err) {
+      console.warn('[render] bloom unavailable, falling back:', err);
+      this.bloom = null;
+      this._postNativeFallbackReason = 'post-processor-unavailable';
+    }
     this._postOptionsSig = null;
     // Collision/socket/landing-contact debug visualization (spec §12.5). OFF by default; toggled via
     // the render system handle (state.render.debug.toggle) — wired to F7 in ui/input.js.
@@ -2376,9 +2391,7 @@ export const render = {
       let disposeRegistrationProbe = null;
       try {
         disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
-        return this.bloom && state.settings.video.bloom !== false
-          ? this.bloom.render(scene, cam.obj)
-          : renderer.render(scene, cam.obj);
+        return this._warmPostProcess(scene, cam.obj);
       } finally {
         endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
         dynamicBuffers.disarm(dynamicBufferEpoch);
@@ -2392,17 +2405,9 @@ export const render = {
         subject.name = 'SF_AuthoredPipelineAdmissionBatch';
         for (const root of batch) subject.add(root);
       }
-      const video = state.settings && state.settings.video || {};
-      let preparation;
-      if (video.renderGraph && this._ensureRenderGraph()) {
-        preparation = compileScenePipelinesForRenderTarget(
-          renderer, this._renderGraph.sceneTarget, subject, cam.obj, scene,
-        );
-      } else if (this.bloom && video.bloom !== false) {
-        preparation = this.bloom.compileScenePipelines(subject, cam.obj, scene);
-      } else {
-        preparation = compileScenePipelinesForRenderTarget(renderer, null, subject, cam.obj, scene);
-      }
+      const preparation = this._compilePostRoute(
+        this._selectPostRoute(), subject, cam.obj, scene,
+      );
       return Promise.resolve(preparation).finally(() => {
         if (batch.length > 1) subject.clear();
       });
@@ -2476,19 +2481,11 @@ export const render = {
         // handoff instead of presenting a black/frozen flight canvas after mode changes.
         await yieldToBrowser();
         const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        const video = state.settings && state.settings.video || {};
         const dynamicBufferEpoch = dynamicBuffers.arm();
         let disposeRegistrationProbe = null;
         try {
           disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
-          if (video.renderGraph && this._ensureRenderGraph()) {
-            this._renderGraph.render(scene, cam.obj, { time: this._bgTime || 0 });
-          } else if (this.bloom && video.bloom !== false) {
-            this.bloom.render(scene, cam.obj);
-          } else {
-            renderer.setRenderTarget(null);
-            renderer.render(scene, cam.obj);
-          }
+          this._renderOpeningPostFrame(scene, cam.obj);
         } finally {
           endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
           dynamicBuffers.disarm(dynamicBufferEpoch);
@@ -2607,7 +2604,8 @@ export const render = {
         this._ensureKeyLightShadows();
         this._syncShadowMapEnabled();
       }
-      if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
+      if (p.key === 'renderScale' || p.key === 'pixelRatioCap'
+        || p.key === 'renderGraph' || p.key == null) this.onResize();
       if ((p.key === 'dynamicResolution' || p.key == null) && this._adaptive) {
         this._adaptive.setEnabled(this._dynResAllowed === true && vd.dynamicResolution !== false);
       }
@@ -3240,21 +3238,10 @@ export const render = {
   },
 
   _normalizePostVideo(vd = {}) {
-    // Slider is 0..1 (percent). Legacy profiles may still carry the old 0..2 scale — halve once.
-    let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
-    if (bloomStrength > 1) bloomStrength *= 0.5;
-    bloomStrength = Math.max(0, Math.min(1, bloomStrength));
-    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 1.0;
-    return {
-      bloom: vd.bloom,
-      bloomStrength,
-      bloomThreshold,
-      exposure: vd.exposure,
-      acesToneMapping: vd.acesToneMapping !== false,
-    };
+    return resolveEffectiveSectorPost(vd);
   },
 
-  _postOptionsSignature(norm) {
+  _postOptionsSignature(norm, video = {}) {
     return [
       norm.bloom === false ? 0 : 1,
       norm.bloomStrength.toFixed(4),
@@ -3265,6 +3252,9 @@ export const render = {
       typeof norm.grade === 'number' ? norm.grade.toFixed(4) : '',
       typeof norm.vignette === 'number' ? norm.vignette.toFixed(4) : '',
       typeof norm.toe === 'number' ? norm.toe.toFixed(4) : '',
+      typeof norm.grain === 'number' ? norm.grain.toFixed(4) : '',
+      video.ao === false ? 0 : 1,
+      Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)).toFixed(4),
     ].join('|');
   },
 
@@ -3280,11 +3270,7 @@ export const render = {
     // The cinematic grade/vignette apply on every route, so an unprofiled sector still gets them;
     // a sector profile only overrides the amounts.
     const post = this._sectorPost || {};
-    const strengthScale = Number(post.bloomStrengthScale);
-    const thresholdBias = Number(post.bloomThresholdBias);
-    const exposure = Number(post.exposure);
-    return {
-      ...norm,
+    return resolveEffectiveSectorPost(norm, post, {
       // The composite's authored cinematic grade (teal-weighted shadows, amber-weighted highlights,
       // slight saturation lift) and vignette ship at 0 on the live route — bloom.js's
       // DEFAULT_POST_PRESENTATION is { grain: 0, vignette: 0, grade: 0 } — so the only pipeline that
@@ -3293,23 +3279,14 @@ export const render = {
       // against a frame whose grade was multiplied away. The grade is MULTIPLICATIVE, which is
       // precisely what fixed the earlier full-screen cyan veil: true black stays black.
       // Grain stays 0 — it is per-pixel noise for no measured review benefit.
-      grade: Number.isFinite(Number(post.grade)) ? Number(post.grade) : SECTOR_POST_GRADE,
+      grade: SECTOR_POST_GRADE,
       // Lifted black floor. Independent review's grade_post fix asks for "lifted near-blacks"; every
       // other control in the composite is multiplicative and so cannot raise a black off zero.
       // This is a POST-STACK TOE and is deliberately NOT `lighting.ambient` — ambient is authored at
       // 0.15 with a pinned "keep space truly black" comment and is not touched here.
-      toe: Number.isFinite(Number(post.toe)) ? Number(post.toe) : SECTOR_POST_TOE,
-      vignette: Number.isFinite(Number(post.vignette)) ? Number(post.vignette) : SECTOR_POST_VIGNETTE,
-      bloomStrength: Number.isFinite(strengthScale) && strengthScale >= 0
-        ? Math.max(0, Math.min(1, norm.bloomStrength * strengthScale))
-        : norm.bloomStrength,
-      bloomThreshold: Number.isFinite(thresholdBias)
-        ? Math.max(0, norm.bloomThreshold + thresholdBias)
-        : norm.bloomThreshold,
-      // A player-set exposure always wins; the sector value is the default when none is set.
-      exposure: typeof norm.exposure === 'number' ? norm.exposure
-        : (Number.isFinite(exposure) ? exposure : norm.exposure),
-    };
+      toe: SECTOR_POST_TOE,
+      vignette: SECTOR_POST_VIGNETTE,
+    });
   },
 
   setSectorPostProfile(post) {
@@ -3323,7 +3300,7 @@ export const render = {
   _syncPostOptions(force = false) {
     const vd = (this.state && this.state.settings && this.state.settings.video) || {};
     const norm = this._applySectorPost(this._normalizePostVideo(vd));
-    const sig = this._postOptionsSignature(norm);
+    const sig = this._postOptionsSignature(norm, vd);
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
     const postOpts = {
@@ -3337,14 +3314,36 @@ export const render = {
       grade: norm.grade,
       vignette: norm.vignette,
       toe: norm.toe,
+      grain: norm.grain ?? 0,
     };
     if (this.bloom) this.bloom.setOptions(postOpts);
+    // Native presentation is reserved for a degraded post-processor fallback. Keep Three's exposure
+    // and tone mapper aligned so that exceptional route still degrades predictably.
+    if (this.renderer) {
+      this.renderer.toneMappingExposure = Number.isFinite(norm.exposure) ? norm.exposure : 1;
+      this.renderer.toneMapping = norm.acesToneMapping === false
+        ? THREE.NoToneMapping
+        : THREE.ACESFilmicToneMapping;
+    }
     if (this._renderGraph) {
-      this._renderGraph.setOptions({
+      const graphOpts = {
         bloom: norm.bloom !== false,
         bloomStrength: norm.bloomStrength,
         bloomThreshold: norm.bloomThreshold,
-      });
+        exposure: norm.exposure,
+        acesToneMapping: norm.acesToneMapping,
+        grade: norm.grade,
+        vignette: norm.vignette,
+        toe: norm.toe,
+        grain: norm.grain ?? 0,
+      };
+      // An allocated-but-unselected graph is dormant. Defer its size-owning fields until selection
+      // so a slider/window change cannot churn an unused target set (the enable path calls onResize).
+      if (vd.renderGraph === true) {
+        graphOpts.ao = vd.ao !== false;
+        graphOpts.renderScale = Math.min(1, finiteInRange(vd.renderScale, 0.5, 2, 1));
+      }
+      this._renderGraph.setOptions(graphOpts);
     }
   },
 
@@ -4247,26 +4246,16 @@ export const render = {
         this.scene,
         this.renderer,
       );
-      if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
-        this._lastRenderPath = 'renderGraph';
-        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
-        try {
-          this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
-        } finally {
-          if (gpuQueryBegan) gpu.end();
-        }
-      } else if (this.bloom && this.state.settings.video.bloom !== false) {
-        this._lastRenderPath = 'bloom';
-        // bloom.render() records bloomScene/Downsample/Upsample/Composite CPU+GPU groups.
-        this.bloom.render(this.scene, this.cam.obj);
-      } else {
-        this._lastRenderPath = 'straight';
-        const gpuQueryBegan = !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
-        try {
-          this.renderer.render(this.scene, this.cam.obj);
-        } finally {
-          if (gpuQueryBegan) gpu.end();
-        }
+      const postRoute = this._selectPostRoute();
+      this._lastRenderPath = postRoute;
+      // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so
+      // retain the existing outer measurement only for those routes.
+      const gpuQueryBegan = postRoute !== POST_PROCESS_ROUTE.BLOOM
+        && !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
+      try {
+        this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
+      } finally {
+        if (gpuQueryBegan) gpu.end();
       }
     } finally {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
@@ -4556,8 +4545,30 @@ export const render = {
       renderGraph: !!this._renderGraph,
       bufferWidth: drawSize.x | 0,
       bufferHeight: drawSize.y | 0,
+      drawingBufferWidth: drawSize.x | 0,
+      drawingBufferHeight: drawSize.y | 0,
+      sceneTargetWidth: pathDetails && Number.isFinite(pathDetails.sceneTargetWidth)
+        ? pathDetails.sceneTargetWidth
+        : (drawSize.x | 0),
+      sceneTargetHeight: pathDetails && Number.isFinite(pathDetails.sceneTargetHeight)
+        ? pathDetails.sceneTargetHeight
+        : (drawSize.y | 0),
+      configuredRenderScale: finiteInRange(this.state?.settings?.video?.renderScale, 0.5, 2, 1),
+      effectiveSceneScale: pathDetails && Number.isFinite(pathDetails.effectiveSceneScale)
+        ? pathDetails.effectiveSceneScale
+        : 1,
+      nativeFallbackReason: activePath === 'straight'
+        ? (this._postNativeFallbackReason || 'post-processor-unavailable')
+        : null,
+      renderGraphFallbackReason: this.state?.settings?.video?.renderGraph === true
+        && activePath !== 'renderGraph'
+        ? (this._renderGraphFallbackReason || 'render-graph-unavailable')
+        : null,
       fullFramePasses: pathDetails && Number.isFinite(pathDetails.fullFramePasses) ? pathDetails.fullFramePasses : 1,
       bloomPasses: pathDetails && Number.isFinite(pathDetails.bloomPasses) ? pathDetails.bloomPasses : 0,
+      passFamilies: pathDetails && pathDetails.passFamilies
+        ? { ...pathDetails.passFamilies }
+        : { scene: 1, normal: 0, ao: 0, bloom: 0, composite: 0 },
       renderTargetCount: pathDetails && Number.isFinite(pathDetails.renderTargetCount)
         ? pathDetails.renderTargetCount
         : (pathDetails && Number.isFinite(pathDetails.targets) ? pathDetails.targets : 0),
@@ -4573,13 +4584,76 @@ export const render = {
     };
   },
 
+  // One route authority for ordinary draw, hidden warm-up, opening-frame submission, and exact-target
+  // compilation. Selective bloom controls never select a presentation route: off/zero only suppress
+  // bloom pyramid passes inside the wrapper/graph composite.
+  _selectPostRoute() {
+    if (this._contextLost === true) return POST_PROCESS_ROUTE.NATIVE;
+    const video = this.state?.settings?.video || {};
+    if (video.renderGraph === true && this._ensureRenderGraph() && this._renderGraph) {
+      return POST_PROCESS_ROUTE.GRAPH;
+    }
+    if (this.bloom) return POST_PROCESS_ROUTE.BLOOM;
+    return POST_PROCESS_ROUTE.NATIVE;
+  },
+
+  _renderPostRoute(route, scene, camera, time = 0) {
+    if (route === POST_PROCESS_ROUTE.GRAPH) {
+      const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
+      frame.time = Number.isFinite(time) ? time : 0;
+      return this._renderGraph.render(scene, camera, frame);
+    }
+    if (route === POST_PROCESS_ROUTE.BLOOM) {
+      return this.bloom.render(scene, camera);
+    }
+    this._postNativeFallbackReason = this._contextLost === true
+      ? 'context-loss'
+      : (this._postNativeFallbackReason || 'post-processor-unavailable');
+    if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
+    this.renderer.setRenderTarget(null);
+    return this.renderer.render(scene, camera);
+  },
+
+  _compilePostRoute(route, subject, camera, lightingScene) {
+    if (route === POST_PROCESS_ROUTE.GRAPH) {
+      return compileScenePipelinesForRenderTarget(
+        this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene,
+      );
+    }
+    if (route === POST_PROCESS_ROUTE.BLOOM) {
+      return this.bloom.compileScenePipelines(subject, camera, lightingScene);
+    }
+    return compileScenePipelinesForRenderTarget(
+      this.renderer, null, subject, camera, lightingScene,
+    );
+  },
+
+  _warmPostProcess(scene, camera) {
+    return this._renderPostRoute(
+      this._selectPostRoute(), scene, camera, this._bgTime || 0,
+    );
+  },
+
+  _renderOpeningPostFrame(scene, camera) {
+    return this._renderPostRoute(
+      this._selectPostRoute(), scene, camera, this._bgTime || 0,
+    );
+  },
+
   // Re-apply the drawing-buffer size (renderer + bloom + render-graph + LOD viewport) from the current
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
     if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
-    if (this._renderGraph) this._renderGraph.setSize(drawSize.x, drawSize.y);
+    if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
+      const video = this.state?.settings?.video || {};
+      this._renderGraph.setOptions({
+        ao: video.ao !== false,
+        renderScale: Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)),
+      });
+      this._renderGraph.setSize(drawSize.x, drawSize.y);
+    }
     // Cache the CSS-pixel viewport for the LOD projector (projectedWidthPx expects CSS px, matching
     // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.
     const dpr = this.renderer.getPixelRatio() || 1;
@@ -4611,11 +4685,12 @@ export const render = {
     if (this._renderGraphUnavailable) return false;
     try {
       const v = this.state.settings.video || {};
+      const post = this._applySectorPost(this._normalizePostVideo(v));
       const drawSize = this.viewport ? { x: this.viewport.width * (this.renderer.getPixelRatio() || 1), y: this.viewport.height * (this.renderer.getPixelRatio() || 1) } : { x: 1280, y: 720 };
       this._renderGraph = new SpaceRenderGraph(this.renderer, {
         enabled: true,
         ao: v.ao !== false,
-        bloom: true,
+        bloom: post.bloom !== false,
         // Same normalization as applyRendererSize (one field, one contract). This used to read
         // `Math.min(1, Math.max(0.5, v.renderScale || 0.7))`, which disagreed with the main path in
         // two ways: `|| 0.7` made an ABSENT value 0.7 here while the main path defaults to 1 — a
@@ -4624,17 +4699,34 @@ export const render = {
         // multi-render-target graph above 1 is a different cost class from supersampling the direct
         // path, so the graph declines it rather than inheriting the slider's 2x ceiling.
         renderScale: Math.min(1, finiteInRange(v.renderScale, 0.5, 2, 1)),
-        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.35,
-        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 1.0,
+        bloomStrength: post.bloomStrength,
+        bloomThreshold: post.bloomThreshold,
+        exposure: post.exposure,
+        acesToneMapping: post.acesToneMapping,
+        grade: post.grade,
+        vignette: post.vignette,
+        toe: post.toe,
+        grain: post.grain ?? 0,
       });
       this._renderGraph.setSize(drawSize.x, drawSize.y);
       // Expose for diagnostics + the energy-materials depth binding path.
       this.state.render.renderGraph = this._renderGraph;
+      this.state.render.renderGraphUnavailable = false;
+      this._renderGraphFallbackReason = null;
       this._syncPostOptions(true);
       return true;
     } catch (err) {
       console.warn('[render] SpaceRenderGraph unavailable, falling back to bloom:', err);
+      const failedGraph = this._renderGraph;
+      this._renderGraph = null;
+      if (this.state.render) this.state.render.renderGraph = null;
+      try { failedGraph?.dispose?.(); } catch (_) { /* best-effort partial-construction cleanup */ }
       this._renderGraphUnavailable = true;
+      this.state.render.renderGraphUnavailable = true;
+      this._renderGraphFallbackReason = 'render-graph-unavailable';
+      // The graph would have owned internal scale. Its bloom-wrapper fallback owns scale at the
+      // drawing buffer instead, so reconcile immediately rather than silently applying it zero times.
+      this._applySize();
       return false;
     }
   },
@@ -4653,7 +4745,12 @@ function afterBrowserPaint(callback) {
 function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
-  const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  // The default bloom route applies renderScale at the drawing buffer. The optional graph needs a
+  // native presentation buffer and owns its clamped internal scene scale, so applying the same
+  // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.
+  const graphOwnsScale = vd.renderGraph === true
+    && state.render?.renderGraphUnavailable !== true;
+  const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
   // Live dynamic-resolution multiplier (adaptiveQuality.js). Defaults to 1 (no effect) until the
   // controller lowers it under GPU load; kept separate from the persisted renderScale so it recovers.
   const dyn = finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);

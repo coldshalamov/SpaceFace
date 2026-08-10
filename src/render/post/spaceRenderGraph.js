@@ -10,9 +10,22 @@
 // particles and camera publish correct motion vectors. Ghosting is not modernity.
 
 import * as THREE from 'three';
+import {
+  DEFAULT_BLOOM_STRENGTH,
+  DEFAULT_POST_PRESENTATION,
+  POST_GRAIN_FPS,
+  resolveEffectiveSectorPost,
+  SPACE_POST_PRESENTATION_GLSL,
+} from '../bloom.js';
 import { recordPostRenderTargetAllocation } from '../postTelemetry.js';
 
-const DEFAULT_BLOOM_STRENGTH = 0.35;
+const POST_DEFAULTS = Object.freeze({
+  bloom: true,
+  bloomThreshold: 1.0,
+  exposure: 1.0,
+  acesToneMapping: true,
+  ...DEFAULT_POST_PRESENTATION,
+});
 
 const FULLSCREEN_VERT = /* glsl */`
   varying vec2 vUv;
@@ -155,23 +168,14 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uBloomNorm;
   uniform float uAoStrength;
   uniform float uExposure;
+  uniform float uAces;
   uniform float uGrade;
+  uniform float uToe;
   uniform float uVignette;
   uniform float uGrain;
-  uniform float uTime;
+  uniform float uGrainFrame;
 
-  vec3 aces(vec3 x) {
-    const float a=2.51, b=0.03, c=2.43, d=0.59, e=0.14;
-    return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
-  }
-  float hash21(vec2 p) {
-    p = fract(p * vec2(123.34,456.21));
-    p += dot(p,p+45.32);
-    return fract(p.x*p.y);
-  }
-  vec3 linearToSrgb(vec3 c) {
-    return mix(1.055*pow(max(c,vec3(0.0)),vec3(1.0/2.4))-0.055, c*12.92, step(c,vec3(0.0031308)));
-  }
+  ${SPACE_POST_PRESENTATION_GLSL}
   void main() {
     vec3 scene = texture2D(tScene, vUv).rgb;
     float ao = texture2D(tAo, vUv).r;
@@ -179,23 +183,12 @@ const COMPOSITE_FRAG = /* glsl */`
                  texture2D(tBloom1,vUv).rgb * 0.28 +
                  texture2D(tBloom2,vUv).rgb * 0.15 +
                  texture2D(tBloom3,vUv).rgb * 0.07;
-    vec3 hdr = max(scene * mix(1.0, ao, uAoStrength), vec3(0.0)) * uExposure;
-    vec3 c = aces(hdr);
-    c += bloom * uBloomStrength * uBloomNorm;
-
-    float l = dot(c, vec3(0.2126,0.7152,0.0722));
-    vec3 graded = c;
-    graded += vec3(0.025,0.060,0.075) * (1.0 - smoothstep(0.02,0.42,l));
-    graded += vec3(0.075,0.040,0.012) * smoothstep(0.58,1.0,l);
-    graded = mix(vec3(dot(graded,vec3(0.2126,0.7152,0.0722))), graded, 1.06);
-    c = mix(c, graded, uGrade);
-
-    vec2 d = vUv - 0.5;
-    float vig = 1.0 - smoothstep(0.24,0.72,dot(d,d)*2.0) * uVignette;
-    c *= vig;
-    vec3 srgb = linearToSrgb(c);
-    float grain = (hash21(vUv*vec2(1920.0,1080.0)+uTime*61.7)-0.5) * uGrain * (1.0-l);
-    gl_FragColor = vec4(clamp(srgb + grain,0.0,1.0),1.0);
+    vec3 aoScene = scene * mix(1.0, ao, uAoStrength);
+    vec3 spill = bloom * uBloomStrength * uBloomNorm;
+    gl_FragColor = vec4(composeSpacePostPresentation(
+      aoScene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+      uGrade, uToe, uVignette, uGrain, uGrainFrame
+    ), 1.0);
   }
 `;
 
@@ -203,20 +196,23 @@ export class SpaceRenderGraph {
   constructor(renderer, options = {}) {
     if (!renderer || !renderer.isWebGLRenderer) throw new TypeError('SpaceRenderGraph requires THREE.WebGLRenderer');
     this.renderer = renderer;
+    const post = resolveEffectiveSectorPost(options, null, POST_DEFAULTS);
     this.options = {
       enabled: options.enabled !== false,
       ao: options.ao !== false,
-      bloom: options.bloom !== false,
+      bloom: post.bloom !== false,
       renderScale: clamp(finite(options.renderScale, 1), 0.5, 1),
       aoScale: clamp(finite(options.aoScale, 0.5), 0.25, 1),
-      bloomStrength: finite(options.bloomStrength, 0.35),
-      bloomThreshold: finite(options.bloomThreshold, 0.72),
+      bloomStrength: post.bloomStrength,
+      bloomThreshold: post.bloomThreshold,
       bloomKnee: finite(options.bloomKnee, 0.18),
       aoStrength: finite(options.aoStrength, 0.72),
-      exposure: finite(options.exposure, 1.0),
-      grade: finite(options.grade, 0.62),
-      vignette: finite(options.vignette, 0.18),
-      grain: finite(options.grain, 0.025),
+      exposure: post.exposure,
+      acesToneMapping: post.acesToneMapping,
+      grade: post.grade,
+      toe: post.toe,
+      vignette: post.vignette,
+      grain: post.grain,
     };
     this.width = 1;
     this.height = 1;
@@ -227,6 +223,9 @@ export class SpaceRenderGraph {
       temporal: false,
       reasonTemporalDisabled: 'motion-vector pass not connected',
     });
+
+    this.neutralAoTexture = solidTexture(255, 255, 255, 255);
+    this.blackBloomTexture = solidTexture(0, 0, 0, 255);
 
     this.normalMaterial = new THREE.MeshNormalMaterial({ blending: THREE.NoBlending });
     this.normalMaterial.name = 'SpaceRenderGraph:normal-prepass';
@@ -247,8 +246,9 @@ export class SpaceRenderGraph {
     this.compositeMaterial = shaderMaterial(COMPOSITE_FRAG, {
       tScene:null, tAo:null, tBloom0:null, tBloom1:null, tBloom2:null, tBloom3:null,
       uBloomStrength:this.options.bloomStrength, uBloomNorm:1.5, uAoStrength:this.options.aoStrength,
-      uExposure:this.options.exposure, uGrade:this.options.grade,
-      uVignette:this.options.vignette, uGrain:this.options.grain, uTime:0,
+      uExposure:this.options.exposure, uAces:this.options.acesToneMapping === false ? 0 : 1,
+      uGrade:this.options.grade, uToe:this.options.toe,
+      uVignette:this.options.vignette, uGrain:this.options.grain, uGrainFrame:0,
     });
     this.setOptions({});
     this._allocate();
@@ -264,29 +264,43 @@ export class SpaceRenderGraph {
   }
 
   setOptions(patch = {}) {
+    const previousRenderScale = this.options.renderScale;
+    const previousAoScale = this.options.aoScale;
+    const previousAo = this.options.ao;
     Object.assign(this.options, patch);
+    this.options.ao = this.options.ao !== false;
     this.options.renderScale = clamp(finite(this.options.renderScale, 1), 0.5, 1);
     this.options.aoScale = clamp(finite(this.options.aoScale, 0.5), 0.25, 1);
+    const post = resolveEffectiveSectorPost(this.options, null, POST_DEFAULTS);
+    this.options.bloom = post.bloom !== false;
+    this.options.bloomStrength = post.bloomStrength;
+    this.options.bloomThreshold = post.bloomThreshold;
+    this.options.exposure = post.exposure;
+    this.options.acesToneMapping = post.acesToneMapping;
+    this.options.grade = post.grade;
+    this.options.toe = post.toe;
+    this.options.vignette = post.vignette;
+    this.options.grain = post.grain;
     const u = this.compositeMaterial.uniforms;
     u.uBloomStrength.value = this._effectiveBloomStrength();
-    u.uAoStrength.value = finite(this.options.aoStrength, 0.72);
+    u.uAoStrength.value = this.options.ao ? finite(this.options.aoStrength, 0.72) : 0;
     u.uExposure.value = finite(this.options.exposure, 1);
-    u.uGrade.value = finite(this.options.grade, 0.62) * this._postStyleScale();
-    u.uVignette.value = finite(this.options.vignette, 0.18) * this._postStyleScale();
-    u.uGrain.value = finite(this.options.grain, 0.025) * this._postStyleScale();
-    this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, 0.72);
+    u.uAces.value = this.options.acesToneMapping === false ? 0 : 1;
+    u.uGrade.value = finite(this.options.grade, 0);
+    u.uToe.value = finite(this.options.toe, 0);
+    u.uVignette.value = finite(this.options.vignette, 0);
+    u.uGrain.value = finite(this.options.grain, 0);
+    this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, POST_DEFAULTS.bloomThreshold);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
+    if (this.sceneTarget && (previousRenderScale !== this.options.renderScale
+      || previousAoScale !== this.options.aoScale || previousAo !== this.options.ao)) {
+      this._allocate();
+    }
   }
 
   render(scene, camera, frame = {}) {
     const renderer = this.renderer;
     this.time = finite(frame.time, this.time + finite(frame.dt, 1/60));
-    if (!this.options.enabled) {
-      renderer.setRenderTarget(frame.outputTarget || null);
-      renderer.render(scene, camera);
-      return;
-    }
-
     const previousTarget = renderer.getRenderTarget();
     const previousAutoClear = renderer.autoClear;
     const previousOverride = scene.overrideMaterial;
@@ -297,13 +311,14 @@ export class SpaceRenderGraph {
       renderer.clear(true, true, true);
       renderer.render(scene, camera);
 
-      scene.overrideMaterial = this.normalMaterial;
-      renderer.setRenderTarget(this.normalTarget);
-      renderer.clear(true, true, true);
-      renderer.render(scene, camera);
-      scene.overrideMaterial = previousOverride;
-
-      this._renderAo(camera);
+      if (this.options.ao) {
+        scene.overrideMaterial = this.normalMaterial;
+        renderer.setRenderTarget(this.normalTarget);
+        renderer.clear(true, true, true);
+        renderer.render(scene, camera);
+        scene.overrideMaterial = previousOverride;
+        this._renderAo(camera);
+      }
       if (this._bloomActive()) this._renderBloom();
       this._renderComposite(frame.outputTarget || null);
     } finally {
@@ -315,23 +330,47 @@ export class SpaceRenderGraph {
 
   get sceneColorTexture() { return this.sceneTarget.texture; }
   get depthTexture() { return this.sceneTarget.depthTexture; }
-  get normalTexture() { return this.normalTarget.texture; }
+  get normalTexture() { return this.normalTarget ? this.normalTarget.texture : null; }
 
   diagnostics() {
     return {
       width: this.width,
       height: this.height,
+      drawingBufferWidth: this.width,
+      drawingBufferHeight: this.height,
+      sceneTargetWidth: this.sceneTarget.width,
+      sceneTargetHeight: this.sceneTarget.height,
       renderScale: this.options.renderScale,
+      effectiveSceneScale: this.sceneTarget.width / this.width,
       aoScale: this.options.aoScale,
       ao: !!this.options.ao,
       bloom: !!this.options.bloom,
-      bloomStrength: finite(this.options.bloomStrength, 0.35),
+      bloomStrength: finite(this.options.bloomStrength, DEFAULT_BLOOM_STRENGTH),
+      bloomThreshold: finite(this.options.bloomThreshold, POST_DEFAULTS.bloomThreshold),
       effectiveBloomStrength: this._effectiveBloomStrength(),
-      postStyleScale: this._postStyleScale(),
+      postStyleScale: 1,
+      exposure: finite(this.options.exposure, 1),
+      acesToneMapping: this.options.acesToneMapping !== false,
+      grade: finite(this.options.grade, 0),
+      toe: finite(this.options.toe, 0),
+      vignette: finite(this.options.vignette, 0),
+      grain: finite(this.options.grain, 0),
+      grainSource: 'quantized-interleaved-gradient',
+      grainFps: POST_GRAIN_FPS,
       bloomLevels: this.bloomTargets.length,
-      fullFramePasses: 2,
+      fullFramePasses: 2 + (this.options.ao ? 1 : 0),
       bloomPasses: this._bloomActive() ? this.bloomTargets.length : 0,
-      renderTargetCount: 4 + this.bloomTargets.length,
+      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length,
+      presentationComposite: true,
+      presentationParity: 'canonical-base-ao-off-bloom-neutral',
+      bloomKernelParity: false,
+      passFamilies: {
+        scene: 1,
+        normal: this.options.ao ? 1 : 0,
+        ao: this.options.ao ? 3 : 0,
+        bloom: this._bloomActive() ? this.bloomTargets.length : 0,
+        composite: 1,
+      },
       temporal: false,
       capabilities: this.capabilities,
     };
@@ -354,17 +393,13 @@ export class SpaceRenderGraph {
     this.blurMaterial.dispose();
     this.bloomMaterial.dispose();
     this.compositeMaterial.dispose();
+    this.neutralAoTexture.dispose();
+    this.blackBloomTexture.dispose();
     this.quad.dispose();
   }
 
   _renderAo(camera) {
     const renderer = this.renderer;
-    if (!this.options.ao) {
-      renderer.setRenderTarget(this.aoTarget);
-      renderer.setClearColor(0xffffff, 1);
-      renderer.clear(true, false, false);
-      return;
-    }
     const aoU = this.aoMaterial.uniforms;
     aoU.tDepth.value = this.sceneTarget.depthTexture;
     aoU.tNormal.value = this.normalTarget.texture;
@@ -395,9 +430,8 @@ export class SpaceRenderGraph {
       const target = this.bloomTargets[i];
       u.tSource.value = source;
       u.uInvSource.value.set(1/sourceW, 1/sourceH);
-      u.uFirst.value = this.options.bloom && i === 0 ? 1 : 0;
-      if (!this.options.bloom) u.uThreshold.value = 1e9;
-      else u.uThreshold.value = this.options.bloomThreshold;
+      u.uFirst.value = i === 0 ? 1 : 0;
+      u.uThreshold.value = this.options.bloomThreshold;
       this.quad.render(renderer, this.bloomMaterial, target);
       source = target.texture;
       sourceW = target.width;
@@ -408,26 +442,25 @@ export class SpaceRenderGraph {
   _renderComposite(outputTarget) {
     const u = this.compositeMaterial.uniforms;
     u.tScene.value = this.sceneTarget.texture;
-    u.tAo.value = this.aoTarget.texture;
-    u.tBloom0.value = this.bloomTargets[0].texture;
-    u.tBloom1.value = this.bloomTargets[1].texture;
-    u.tBloom2.value = this.bloomTargets[2].texture;
-    u.tBloom3.value = this.bloomTargets[3].texture;
+    u.tAo.value = this.options.ao ? this.aoTarget.texture : this.neutralAoTexture;
+    const bloomActive = this._bloomActive();
+    u.tBloom0.value = bloomActive ? this.bloomTargets[0].texture : this.blackBloomTexture;
+    u.tBloom1.value = bloomActive ? this.bloomTargets[1].texture : this.blackBloomTexture;
+    u.tBloom2.value = bloomActive ? this.bloomTargets[2].texture : this.blackBloomTexture;
+    u.tBloom3.value = bloomActive ? this.bloomTargets[3].texture : this.blackBloomTexture;
     u.uBloomStrength.value = this._effectiveBloomStrength();
-    u.uTime.value = this.time;
+    u.uGrainFrame.value = Math.floor(this.time * POST_GRAIN_FPS);
     this.quad.render(this.renderer, this.compositeMaterial, outputTarget);
   }
 
   _effectiveBloomStrength() {
-    return this.options.bloom === false ? 0 : Math.max(0, finite(this.options.bloomStrength, 0.35));
+    return this.options.bloom === false
+      ? 0
+      : Math.max(0, finite(this.options.bloomStrength, DEFAULT_BLOOM_STRENGTH));
   }
 
   _bloomActive() {
     return this._effectiveBloomStrength() > 0.0001;
-  }
-
-  _postStyleScale() {
-    return Math.max(0, Math.min(1, this._effectiveBloomStrength() / DEFAULT_BLOOM_STRENGTH));
   }
 
   _allocate() {
@@ -435,11 +468,16 @@ export class SpaceRenderGraph {
     const rw = Math.max(1, Math.floor(this.width * this.options.renderScale));
     const rh = Math.max(1, Math.floor(this.height * this.options.renderScale));
     this.sceneTarget = hdrTarget(rw, rh, true, this.capabilities.webgl2 ? 4 : 0);
-    this.normalTarget = ldrTarget(rw, rh, true);
-    const aw = Math.max(1, Math.floor(rw * this.options.aoScale));
-    const ah = Math.max(1, Math.floor(rh * this.options.aoScale));
-    this.aoTarget = ldrTarget(aw, ah, false);
-    this.aoBlurTarget = ldrTarget(aw, ah, false);
+    this.normalTarget = null;
+    this.aoTarget = null;
+    this.aoBlurTarget = null;
+    if (this.options.ao) {
+      this.normalTarget = ldrTarget(rw, rh, true);
+      const aw = Math.max(1, Math.floor(rw * this.options.aoScale));
+      const ah = Math.max(1, Math.floor(rh * this.options.aoScale));
+      this.aoTarget = ldrTarget(aw, ah, false);
+      this.aoBlurTarget = ldrTarget(aw, ah, false);
+    }
     this.bloomTargets = [];
     let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
     for (let i=0; i<4; i++) {
@@ -481,6 +519,17 @@ function shaderMaterial(fragmentShader, values) {
     uniforms, vertexShader: FULLSCREEN_VERT, fragmentShader,
     depthTest:false, depthWrite:false, blending:THREE.NoBlending, toneMapped:false,
   });
+}
+
+function solidTexture(r, g, b, a) {
+  const texture = new THREE.DataTexture(
+    new Uint8Array([r, g, b, a]), 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType,
+  );
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function hdrTarget(width,height,depth,samples) {

@@ -8,9 +8,9 @@ import { attachLodState } from '../lod.js';
 const TAU = Math.PI * 2;
 const DESIGN_RADIUS = 14;
 
-const COLOR = Object.freeze({
-  shell: '#817b70',          // old warm-gray ceramic alloy; visual rest
-  shellDark: '#4e5050',      // replacement armor / shadow planes
+export const KESTREL_HERO_COLORS = Object.freeze({
+  shell: '#315f83',          // weathered cobalt ceramic alloy; dominant Free Frontier hull paint
+  shellDark: '#1d334f',      // replacement armor / shadow planes
   graphite: '#10161b',       // thermal, mechanical, and load-bearing structure
   gunmetal: '#252b30',
   frontier: '#4ecbe0',       // canonical Free Frontier cyan
@@ -316,16 +316,16 @@ function mergeStaticByMaterial(parent, keepSeparate) {
 
 function buildMaterials() {
   const materials = {
-    shell: standardMaterial(COLOR.shell, 0.58, 0.18),
-    shellDark: standardMaterial(COLOR.shellDark, 0.62, 0.28),
-    graphite: standardMaterial(COLOR.graphite, 0.42, 0.78),
-    gunmetal: standardMaterial(COLOR.gunmetal, 0.29, 0.88),
-    frontier: standardMaterial(COLOR.frontier, 0.52, 0.08),
-    warning: standardMaterial(COLOR.warning, 0.66, 0.06),
-    repair: standardMaterial(COLOR.repair, 0.72, 0.22),
-    rust: standardMaterial(COLOR.rust, 0.86, 0.02),
+    shell: standardMaterial(KESTREL_HERO_COLORS.shell, 0.58, 0.18),
+    shellDark: standardMaterial(KESTREL_HERO_COLORS.shellDark, 0.62, 0.28),
+    graphite: standardMaterial(KESTREL_HERO_COLORS.graphite, 0.42, 0.78),
+    gunmetal: standardMaterial(KESTREL_HERO_COLORS.gunmetal, 0.29, 0.88),
+    frontier: standardMaterial(KESTREL_HERO_COLORS.frontier, 0.52, 0.08),
+    warning: standardMaterial(KESTREL_HERO_COLORS.warning, 0.66, 0.06),
+    repair: standardMaterial(KESTREL_HERO_COLORS.repair, 0.72, 0.22),
+    rust: standardMaterial(KESTREL_HERO_COLORS.rust, 0.86, 0.02),
     canopy: new THREE.MeshStandardMaterial({
-      color: COLOR.canopy,
+      color: KESTREL_HERO_COLORS.canopy,
       emissive: new THREE.Color('#0a3040'),
       emissiveIntensity: 0.35,
       roughness: 0.14,
@@ -335,11 +335,11 @@ function buildMaterials() {
     }),
     // Overnight B1: high-intensity pale emissive on box prims read as "floating white cubes".
     // Sensors stay readable cyan but stay subordinate to the hull silhouette.
-    sensor: emissiveMaterial(COLOR.frontier, 0.95),
-    practical: emissiveMaterial(COLOR.practical, 1.15),
-    drive: emissiveMaterial(COLOR.frontier, 2.4),
-    driveCore: emissiveMaterial(COLOR.driveCore, 3.2),
-    driveGlow: glowMaterial(COLOR.frontier, 0.62),
+    sensor: emissiveMaterial(KESTREL_HERO_COLORS.frontier, 0.95),
+    practical: emissiveMaterial(KESTREL_HERO_COLORS.practical, 1.15),
+    drive: emissiveMaterial(KESTREL_HERO_COLORS.frontier, 2.4),
+    driveCore: emissiveMaterial(KESTREL_HERO_COLORS.driveCore, 3.2),
+    driveGlow: glowMaterial(KESTREL_HERO_COLORS.frontier, 0.62),
   };
   for (const [name, material] of Object.entries(materials)) material.name = `Kestrel_${name}`;
   return materials;
@@ -448,7 +448,7 @@ export function buildKestrelHero(entity) {
       coolingRing = addTorusX(hull, mat.graphite, 'Kestrel_Drive_Cooling_Ring', 2.12, 0.10, [-12.6, -0.05, 0]);
     }
     if (tier >= 3) {
-      plume.material = glowMaterial(COLOR.frontier, 0.74);          // tier 3: hotter plume
+      plume.material = glowMaterial(KESTREL_HERO_COLORS.frontier, 0.74);          // tier 3: hotter plume
     }
   }
   root.userData.visualTier = tier;          // exposed for inspection / §9.10 smoke test

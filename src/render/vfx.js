@@ -309,17 +309,52 @@ const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
 const TETHER_MARKER_SURFACE_EPS = 0.12;
 
 // ---- HDR energy radiance vs. the bloom setting (see _bloomRadianceScale) ----
-// Bloom is a SPILL control, not an on/off switch for the energy layer. These four constants define
-// how far a bloom setting moves emitted radiance:
-//   OFF     — bloom disabled: energy volumes still radiate, they just stop bleeding into neighbours.
-//   FLOOR   — the value at bloomStrength 0 with bloom enabled.
-//   SPAN    — how much radiance one full reference-strength step buys.
-//   CEILING — the top of the ramp, so a maxed slider is loud but still bounded.
-const BLOOM_REFERENCE_STRENGTH = 0.35;  // bloom.js DEFAULT_BLOOM_STRENGTH
-const BLOOM_OFF_RADIANCE = 0.9;
-const BLOOM_RADIANCE_FLOOR = 0.62;
-const BLOOM_RADIANCE_SPAN = 0.78;
-const BLOOM_RADIANCE_CEILING = 2.4;
+// Bloom strength is a compositor SPILL control. Source radiance stays at one named authored baseline
+// across off, zero, epsilon, and non-zero settings; scaling both stages made the control superlinear
+// and made toggling spill also rewrite the source material itself.
+const BLOOM_SOURCE_RADIANCE = 1.4;
+
+/** Pure counterpart to the live VFX method. The compositor owns the strength ramp exactly once. */
+export function resolveBloomRadianceScale(video = null) {
+  return BLOOM_SOURCE_RADIANCE;
+}
+
+const MASSLINE_A11Y_FULL = Object.freeze({
+  animateMotion: true,
+  animatePulse: true,
+  motionAmplitudeScale: 1,
+  pulseScale: 1,
+  radianceScale: 1,
+  opacityScale: 1,
+});
+const MASSLINE_A11Y_MOTION = Object.freeze({
+  ...MASSLINE_A11Y_FULL,
+  animateMotion: false,
+  animatePulse: false,
+  motionAmplitudeScale: 0,
+  pulseScale: 0,
+});
+const MASSLINE_A11Y_FLASH = Object.freeze({
+  ...MASSLINE_A11Y_FULL,
+  animatePulse: false,
+  pulseScale: 0,
+  radianceScale: 0.62,
+  opacityScale: 0.72,
+});
+const MASSLINE_A11Y_BOTH = Object.freeze({
+  ...MASSLINE_A11Y_FLASH,
+  animateMotion: false,
+  motionAmplitudeScale: 0,
+});
+
+/** Shared, allocation-free policy for both Massline render paths. */
+export function resolveMasslineAccessibilityPolicy(settings) {
+  const profile = resolveVfxAccessibilityProfile(settings);
+  if (profile.id === 'reduced-motion-and-flash') return MASSLINE_A11Y_BOTH;
+  if (profile.id === 'reduced-motion') return MASSLINE_A11Y_MOTION;
+  if (profile.id === 'reduced-flash') return MASSLINE_A11Y_FLASH;
+  return MASSLINE_A11Y_FULL;
+}
 
 // ---- Massline presentation (grammar §9.2 / §9.2.1) ----
 // The rope is the signature verb and is meant to be the brightest object on screen.
@@ -5936,6 +5971,9 @@ export const vfx = {
     const visualTime = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime
       : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
+    const masslineA11y = resolveMasslineAccessibilityPolicy(this.state && this.state.settings);
+    const motionTime = masslineA11y.animateMotion ? visualTime : 0;
+    const pulseTime = masslineA11y.animatePulse ? visualTime : 0;
     const px = -dz / chord, pz = dx / chord;   // chord perpendicular
 
     // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
@@ -5984,9 +6022,15 @@ export const vfx = {
     const snapping = snapEnv > 0;
     const whipT = snapping ? cable.snapAge : cable.latchAge;
     const whipEnv = snapping ? snapEnv * snapEnv : latchEnv * latchEnv;
+    // All event transients share one accessibility choke point. The steady load-colored cable,
+    // banding, and anchor remain; reduced motion/flash removes the whip/snap modulation itself.
+    const transientScale = masslineA11y.pulseScale;
+    const visualWhip = whipEnv * transientScale;
+    const visualSnap = snapEnv * transientScale;
     const whipFreq = snapping ? 46 : 26;
     const whipHarmonic = snapping ? 5 : 3;
-    const whipAmp = whipEnv * Math.min(chord * (snapping ? 0.52 : 0.28), snapping ? 52 : 26);
+    const whipAmp = whipEnv * Math.min(chord * (snapping ? 0.52 : 0.28), snapping ? 52 : 26)
+      * masslineA11y.motionAmplitudeScale;
 
     // Load color: cool cyan → amber → hot red with presentation load (rung 04) — a loaded line
     // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read.
@@ -6002,7 +6046,7 @@ export const vfx = {
     if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.20);
     // A parting line is white-hot regardless of what load it was carrying a frame ago: the physical
     // load telemetry is already gone by the time the break event lands.
-    if (snapEnv > 0) this._ctmp.lerp(this._tetherColorWhite, Math.min(1, snapEnv * 0.95));
+    if (visualSnap > 0) this._ctmp.lerp(this._tetherColorWhite, Math.min(1, visualSnap * 0.95));
     // Taut / overload, re-keyed. `phase === 'loaded'` is the sim's own statement that the line is
     // past capture and pulling, so it engages the instant the state does; the smoothed load gate is
     // the continuous fallback (and the only path when a save predates tether.phase). Overload keeps
@@ -6016,8 +6060,8 @@ export const vfx = {
     // "hot-looking vs genuinely strained" split survives instead of collapsing onto one number.
     // (The geometry shiver keys off `l` directly — it needs the larger amplitude to read at all.)
     const s = Math.max(0, Math.min(1, (l - TETHER_CAPTURE_FLOOR) / (1 - TETHER_CAPTURE_FLOOR)));
-    // Bloom is a spill control, not a switch: the cable still radiates with bloom disabled, and a
-    // player who raises the slider gets a genuinely hotter rope (see _bloomRadianceScale).
+    // Bloom is a spill control, not a switch: the cable still radiates with bloom disabled, while
+    // the compositor applies the player's strength exactly once (see _bloomRadianceScale).
     const radiance = this._bloomRadianceScale();
     // The core carries HEAT and the halo carries COLOUR. The core intensity is deliberately high
     // enough that the filament clips through ACES — that white centre against the coloured falloff
@@ -6026,22 +6070,25 @@ export const vfx = {
     const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
     const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
     const ribbonFrame = {
-      time: visualTime,
+      time: pulseTime,
       color: this._ctmp,
       tension: l,
       // uStrain in the ribbon shader. Fed the past-capture working read, not tether.strain: the
       // physical ratio is ~1e-4 against a 10.5M breakTension, so uStrain*uStrain was always 0 and
       // the shader's brightness chatter never ran. (energyMaterials.js still documents this uniform
       // as "physical strain" — that comment needs the same correction; it is not this file.)
-      strain: s,
-      whip: whipEnv,
-      overload,
-      reel: cable.reelGlow,
-      pulseSpeed: 2.8 + l * 1.4 + cable.reelGlow * 4.8 + neon.coreWhite * 1.2,
+      strain: s * masslineA11y.pulseScale,
+      whip: visualWhip,
+      overload: overload && masslineA11y.pulseScale > 0,
+      reel: cable.reelGlow * masslineA11y.pulseScale,
+      pulseSpeed: masslineA11y.animatePulse
+        ? 2.8 + l * 1.4 + cable.reelGlow * 4.8 + neon.coreWhite * 1.2
+        : 0,
       // Core: the filament cross-section (pow 9-18) concentrates almost all of this into the middle
       // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
-      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + whipEnv * 2.1) * radiance * neonMul,
-      opacity: (taut ? 0.74 : 0.62) * cable.fade,
+      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + visualWhip * 2.1)
+        * radiance * neonMul * masslineA11y.radianceScale,
+      opacity: (taut ? 0.74 : 0.62) * cable.fade * masslineA11y.opacityScale,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
     updateEnergyMaterial(cable.glow.material, {
@@ -6049,13 +6096,16 @@ export const vfx = {
       // Halo: wide and coloured. Its centre needs to clear the bright-pass threshold so the rope
       // gets a real bloom skirt, but only its centre — push this higher and the sheath saturates
       // across its whole width and the cable stops being a cable and becomes a plume.
-      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + whipEnv * 1.7) * radiance * neonMul,
-      opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + whipEnv * 0.16) * cable.fade,
+      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + visualWhip * 1.7)
+        * radiance * neonMul * masslineA11y.radianceScale,
+      opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16)
+        * cable.fade * masslineA11y.opacityScale,
     });
     cable.band.material.color.copy(this._ctmp);
     cable.band.material.opacity = Math.min(0.9,
-      (0.20 + 0.42 * l + cable.reelGlow * 0.22 + whipEnv * 0.2
-        + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade);
+      (0.20 + 0.42 * l + cable.reelGlow * 0.22 + visualWhip * 0.2
+        + (tether && tether.phase === 'capture' ? 0.08 : 0))
+        * cable.fade * masslineA11y.opacityScale);
 
     // Widths, in world units, at roughly 18.7 screen px per wu at the default game camera (fov 50,
     // zoom 72, 60-degree elevation). Read these as pixels:
@@ -6063,8 +6113,8 @@ export const vfx = {
     //   halo  ~0.62-1.20 wu half-width  ->  23-45 px of coloured sheath
     // The taut line still reads thinner than the slack one — that intent is good and kept — and
     // load swells both slightly so a heavy pull is legible in silhouette alone.
-    const w = (taut ? 0.26 : 0.34) + l * 0.08 + whipEnv * 0.08;
-    const gw = 0.62 + 0.55 * l + whipEnv * 0.45 + cable.reelGlow * 0.30;
+    const w = (taut ? 0.26 : 0.34) + l * 0.08 + visualWhip * 0.08;
+    const gw = 0.62 + 0.55 * l + visualWhip * 0.45 + cable.reelGlow * 0.30;
     const SEG = cable.SEG;
     const corePos = cable.mesh.geometry.attributes.position.array;
     const glowPos = cable.glow.geometry.attributes.position.array;
@@ -6076,9 +6126,10 @@ export const vfx = {
     // from the determinism rule and this never touches sim state.
     // Two components at different spatial frequencies. A single per-segment term aliased into a
     // sawtooth at 40 segments and read as jagged lightning rather than a cable under load.
-    const shiverAmp = l * l * TETHER_LOAD_SHIVER_WU * Math.min(1, chord / 40);
-    const shiverPhase = visualTime * 41;
-    const shiverPhaseFast = visualTime * 97;
+    const shiverAmp = l * l * TETHER_LOAD_SHIVER_WU * Math.min(1, chord / 40)
+      * masslineA11y.motionAmplitudeScale;
+    const shiverPhase = motionTime * 41;
+    const shiverPhaseFast = motionTime * 97;
     for (let i = 0; i <= SEG; i++) {
       const t = i / SEG;
       const arc = Math.sin(Math.PI * t);
@@ -6128,20 +6179,24 @@ export const vfx = {
     // The hitch breathes with load and shivers with strain, so the point where the force is actually
     // applied is the second-loudest thing after the rope itself. The ring used to sit at a fixed
     // radius on a fixed opacity, which read as a flat HUD donut pasted onto the world.
-    const hitchBreath = 1 + l * 0.16 + Math.sin(visualTime * (6 + l * 9)) * (0.03 + s * 0.09);
+    const hitchBreath = 1 + l * 0.16
+      + Math.sin(motionTime * (6 + l * 9)) * (0.03 + s * 0.09) * masslineA11y.motionAmplitudeScale;
     cable.anchor.scale.setScalar(anchorScale * hitchBreath);
-    cable.anchor.rotation.y = visualTime * (1.8 + l * 2.6 + cable.reelGlow * 4.0);
+    cable.anchor.rotation.y = motionTime * (1.8 + l * 2.6 + cable.reelGlow * 4.0);
     cable.anchor.material.color.copy(this._ctmp);
     cable.anchor.material.opacity = Math.min(1,
-      (0.52 + 0.40 * l + whipEnv * 0.32 + cable.reelGlow * 0.34) * cable.fade);
+      (0.52 + 0.40 * l + visualWhip * 0.32 + cable.reelGlow * 0.34)
+      * cable.fade * masslineA11y.opacityScale);
     cable.anchorCore.position.set(mx, 1.64, mz);
     // The hitch core is the white-hot point of contact — it stays near-white while the ring keeps
     // the tension colour, mirroring the core/halo split on the rope itself.
     cable.anchorCore.scale.setScalar(Math.max(1.4, anchorScale * (0.44 + l * 0.16)) * hitchBreath);
-    cable.anchorCore.rotation.y = -visualTime * (2.4 + l * 3.2);
-    cable.anchorCore.material.color.copy(this._ctmp).lerp(this._tetherColorWhite, 0.45 + l * 0.35 + whipEnv * 0.2);
+    cable.anchorCore.rotation.y = -motionTime * (2.4 + l * 3.2);
+    cable.anchorCore.material.color.copy(this._ctmp).lerp(this._tetherColorWhite,
+      0.45 + l * 0.35 + visualWhip * 0.2);
     cable.anchorCore.material.opacity = Math.min(1,
-      (0.72 + 0.28 * l + whipEnv * 0.28 + cable.reelGlow * 0.42) * cable.fade);
+      (0.72 + 0.28 * l + visualWhip * 0.28 + cable.reelGlow * 0.42)
+      * cable.fade * masslineA11y.opacityScale);
     // Body outline for large anchors only — "this whole thing is what you have hold of". A small
     // rock does not need it: the hitch ring plus its gradient core already reads, and drawing a
     // second big ring around an ordinary asteroid put a flat disc over the play area for no
@@ -6151,10 +6206,10 @@ export const vfx = {
       const haloLocal = this._toLocalXZ(anchorEnt.pos.x, anchorEnt.pos.z, this._entityLocalXZ);
       cable.targetHalo.position.set(haloLocal.x, 1.58, haloLocal.z);
       cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
-      cable.targetHalo.rotation.y = visualTime * 0.65;
+      cable.targetHalo.rotation.y = motionTime * 0.65;
       cable.targetHalo.material.color.copy(this._ctmp);
       cable.targetHalo.material.opacity = isLargeAnchor
-        ? (0.20 + 0.20 * l + whipEnv * 0.12) * cable.fade
+        ? (0.20 + 0.20 * l + visualWhip * 0.12) * cable.fade * masslineA11y.opacityScale
         : 0;
     }
     setTetherCableVisible(cable, true);
@@ -6174,7 +6229,7 @@ export const vfx = {
     // MID-SPAN rather than the endpoints, and ejected along the contact plane with speed scaled by
     // load. Matter leaving the line is the most legible "this is at its limit" signal there is.
     // Spawn expects galactic-global XZ.
-    if (l > TETHER_SPARK_LOAD) {
+    if (l > TETHER_SPARK_LOAD && transientScale > 0) {
       const heat = (l - TETHER_SPARK_LOAD) / (1 - TETHER_SPARK_LOAD);
       cable.sparkAcc = Math.min(8, cable.sparkAcc + heat * 90 * (this._burst || 1) * dt);
       const shedCount = Math.floor(cable.sparkAcc);
@@ -6193,7 +6248,7 @@ export const vfx = {
     }
     // massline_tension port: endpoint stress flashes live only in the top decile of load and on a
     // throttled cadence, alternating ends — reserved so they still mean something when they fire.
-    if (overload) {
+    if (overload && transientScale > 0) {
       if (visualTime - cable.stressFlashAt > 0.09) {
         cable.stressFlashAt = visualTime;
         cable.stressFlashEnd = !cable.stressFlashEnd;
@@ -8779,30 +8834,19 @@ export const vfx = {
 
   // Radiance multiplier for HDR energy volumes (grammar §9.2, build plan §2.5 item 3).
   //
-  // This scales EMITTED RADIANCE, not visibility. Two defects were fixed here on 2026-07-27:
+  // This scales EMITTED RADIANCE, not visibility. Bloom-off remains a distinct bounded fallback:
   //
   //  * It returned 0 when bloom was off, which killed ALL energy radiance. That is wrong by
   //    construction: an energy volume is additive with toneMapped:false, so it is a light source in
   //    its own right. Turning bloom off should stop it SPILLING into its surroundings, not delete
   //    it. Bloom-off is selected automatically on software GL, so the weakest hardware was the
   //    hardware that lost the energy layer entirely.
-  //  * It clamped to `strength / 0.35` in [0,1], so every bloom setting at or above the 0.35
-  //    default produced an identical result and the slider bought nothing above default. The
-  //    massline is supposed to be the brightest object on screen; a ceiling at the default value is
-  //    exactly the mildness this pass exists to remove.
-  //
-  // The reference point stays 0.35 (bloom.js DEFAULT_BLOOM_STRENGTH) so the default look is a
-  // deliberate, named value rather than an emergent one.
+  // Direct radiance remains a named authored value while the post-process alone controls spill. Do
+  // not reintroduce strength here: source * compositor strength is the superlinear double response
+  // that turned the wide Massline halo into a white blob at the top of the slider.
   _bloomRadianceScale() {
     const video = this.state.settings && this.state.settings.video;
-    let strength = video && Number.isFinite(video.bloomStrength)
-      ? video.bloomStrength
-      : BLOOM_REFERENCE_STRENGTH;
-    if (strength > 1) strength *= 0.5;   // legacy 0..2 sliders fold onto 0..1
-    strength = Math.max(0, Math.min(1, strength));
-    if (video && video.bloom === false) return BLOOM_OFF_RADIANCE;
-    const scaled = BLOOM_RADIANCE_FLOOR + (strength / BLOOM_REFERENCE_STRENGTH) * BLOOM_RADIANCE_SPAN;
-    return Math.max(BLOOM_OFF_RADIANCE, Math.min(BLOOM_RADIANCE_CEILING, scaled));
+    return resolveBloomRadianceScale(video);
   },
 
   _energyPlumeRelevant() {
@@ -9477,12 +9521,24 @@ export const vfx = {
     const halo = ribbon.userData.energyHalo;
     const intensity = 2.2 + tension * 2.4 + (overload ? 1.8 : 0);
     const radianceScale = this._bloomRadianceScale();
+    const masslineA11y = resolveMasslineAccessibilityPolicy(this.state && this.state.settings);
     // Radiance is free to run above 1 (that is what makes a core clip to white); COVERAGE is not —
     // an alpha above ~0.8 on an additive volume stops reading as a volume and starts reading as a
     // painted decal. Clamp the two independently.
     const opacityScale = Math.min(1.35, Math.sqrt(radianceScale));
-    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity: intensity * radianceScale, opacity: 0.42 * opacityScale, pulse: 1.0 + tension * 0.9 });
-    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: intensity * 0.35 * radianceScale, opacity: 0.11 * opacityScale, pulse: 1.0 + tension * 0.6 });
+    const pulseTime = masslineA11y.animatePulse ? this._t : 0;
+    if (core) updateEnergyMaterial(core.material, {
+      time: pulseTime,
+      intensity: intensity * radianceScale * masslineA11y.radianceScale,
+      opacity: 0.42 * opacityScale * masslineA11y.opacityScale,
+      pulse: (1.0 + tension * 0.9) * masslineA11y.pulseScale,
+    });
+    if (halo) updateEnergyMaterial(halo.material, {
+      time: pulseTime,
+      intensity: intensity * 0.35 * radianceScale * masslineA11y.radianceScale,
+      opacity: 0.11 * opacityScale * masslineA11y.opacityScale,
+      pulse: (1.0 + tension * 0.6) * masslineA11y.pulseScale,
+    });
   },
 
   _disposeEnergy() {

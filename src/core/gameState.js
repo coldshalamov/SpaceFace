@@ -24,7 +24,7 @@ function defaultSettings() {
     // p95 16.80ms max 17.20ms vs full-res+shadows p95 16.80ms max 17.00ms. Identical — the frame is
     // vsync-locked with headroom at 44-108 draw calls, so 85% resolution was quality given away for
     // perf that was never needed. Evidence: .devshots/gfx/ab2-a-base.json vs ab2-b-quality.json.
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.35, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: true, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: true, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
