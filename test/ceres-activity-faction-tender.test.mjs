@@ -591,9 +591,12 @@ test('a hard sector round trip rebuilds both bodies and rebinds the same service
     // bearing for clearance and not only for presentation: a rematerialized shell that kept a
     // generic radius would compute a berth small enough to seat the tender inside the wreck.
     assert.equal(tender.radius, 24, 'adoption restores the canonical hull the berth is derived from');
+    // Geometry pin only: collision standoff formula used by the controller. Steering-at-berth is
+    // covered on fresh spawn by the dedicated safe-berth test; here we only prove the rematerialized
+    // radius would yield the same clearance input.
     assert.equal(
       Math.max(56, tender.radius + clients[0].radius + 12), 78,
-      'so the rebuilt tender parks at the same clearance a freshly spawned one does',
+      'rebuilt tender+client radii recompute the same collision standoff input as a fresh spawn',
     );
 
     entry.job.phase = 'transit';
@@ -603,6 +606,49 @@ test('a hard sector round trip rebuilds both bodies and rebinds the same service
     assert.equal(binding.targetRef, clients[0],
       'and it is servicing the same client, now bound to the rebuilt object');
     assert.equal(binding.ambiguous, false);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('remaining activity: choreography marks stay abstract and do not spawn object-slot entities', () => {
+  // Seven abstract activity: marks are intentional scan/throughline/perimeter choreography.
+  // Only the deliberate disabled-hull object: slot may materialize as an activityObjectSlotId body.
+  const abstractRefs = [];
+  for (const pocket of Object.values(CERES_ACTIVITY_POCKETS_BY_ID)) {
+    for (const slot of pocket.actorSlots || []) {
+      for (const mark of slot.route?.marks || []) {
+        if (typeof mark.targetRef === 'string' && mark.targetRef.startsWith('activity:')) {
+          abstractRefs.push(mark.targetRef);
+        }
+      }
+    }
+  }
+  assert.equal(abstractRefs.length, 7, 'exactly seven abstract activity: marks remain authored');
+  assert.ok(abstractRefs.every((ref) => !ref.includes('disabled')),
+    'the old activity:disabled-hull ghost is not among abstract marks');
+
+  const sim = tenderRuntime();
+  try {
+    const activityBodies = sim.state.entityList.filter((entity) => (
+      entity?.alive !== false && entity.data?.activityObjectSlotId
+    ));
+    const slotIds = activityBodies.map((entity) => entity.data.activityObjectSlotId).sort();
+    // Object slots that re-point ambient dressing may include disabled hull + other real object:* slots.
+    // None of them may be named after an activity: choreography string.
+    for (const id of slotIds) {
+      assert.equal(String(id).startsWith('activity:'), false,
+        `no live body may bind an activity: choreography id (got ${id})`);
+    }
+    assert.ok(slotIds.includes(DISABLED_HULL_SLOT_ID),
+      'the one deliberate disabled-hull object slot is present');
+    // Abstract marks never become object slots in data.
+    for (const pocket of Object.values(CERES_ACTIVITY_POCKETS_BY_ID)) {
+      for (const slot of pocket.objectSlots || []) {
+        assert.equal(String(slot.id).startsWith('activity:'), false);
+        assert.notEqual(slot.targetRef?.startsWith?.('activity:'), true);
+      }
+    }
   } finally {
     sim.dispose();
   }
