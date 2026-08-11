@@ -62,7 +62,7 @@ export const NAMED_CAPTAINS = Object.freeze([
   Object.freeze({
     id: 'cap_vane_ash', name: 'Vane the Ash', gimmick: 'screen',
     combatDoctrineId: 'tether_control_raider',
-    archetype: 'corsair_raider', levelBonus: 3, bountyCr: 550,
+    archetype: 'tether_control_raider', levelBonus: 3, bountyCr: 650,
     escort: Object.freeze({ archetypes: Object.freeze(['wasp_swarmer']), size: Object.freeze([2, 2]), doctrine: 'scavenger', formation: 'ring' }),
     bark: 'hunter_vane',
   }),
@@ -277,6 +277,12 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'claim_threat.destroyed':  'CLAIM DEFENSE LOST — rescue and repairs dispatched.',
   'claim_threat.ignored':    'CLAIM UNANSWERED — crews resolved the raid off-screen.',
   'claim_threat.picked':     'CLAIM PICKED — scavengers stripped the seam edge.',
+  'tether_control_raider_ambush.cleared': 'TETHER RAIDER DOWN — Massline contest broken.',
+  'tether_control_raider_ambush.escaped': 'TETHER RAIDER EVADED — the specialist drops the line.',
+  'tether_control_raider_wake.cleared':   'WAKE RAIDER DOWN — contested line cleared.',
+  'tether_control_raider_wake.escaped':   'WAKE RAIDER EVADED — anchor contact fades.',
+  'tether_control_raider_hunter.cleared': 'CONTROL HUNTER DOWN — enemy Massline silenced.',
+  'tether_control_raider_hunter.escaped': 'CONTROL HUNTER EVADED — the hunter loses anchor.',
 });
 
 /** Short spoken labels for faction ids (comms barks / receipts — callsign register). */

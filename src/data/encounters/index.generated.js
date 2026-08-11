@@ -46,6 +46,9 @@ import * as encounter042 from './330-unique-wreck-nestbreaker-admirers.js';
 import * as encounter043 from './331-pd-screen-wall.js';
 import * as encounter044 from './332-resonance-obelisk-patrol.js';
 import * as encounter045 from './333-field-anchor-controller.js';
+import * as encounter046 from './334-tether-control-raider-ambush.js';
+import * as encounter047 from './335-tether-control-raider-wake.js';
+import * as encounter048 from './336-tether-control-raider-hunter.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -93,5 +96,8 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter043,
   encounter044,
   encounter045,
+  encounter046,
+  encounter047,
+  encounter048,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

@@ -27,6 +27,13 @@ const SNARE_ANCHOR_HULL = 28;
 const SNARE_ANCHOR_BODY_MASS = 40;
 const SNARE_MAX_TENSION = 5400;
 const ANCHOR_PROFILE_ID = 'combat_profile_tether_anchor';
+export const TETHER_CONTROL_RAIDER_TELEGRAPH = Object.freeze({
+  kind: 'tether_control_raider',
+  cue: 'attach_spool',
+  shape: 'split-anchor-line',
+  caption: 'Enemy Massline spool',
+  durationTicks: 30,
+});
 
 export function resolveTransverseSnarePreview(player, aimWorld, out = null) {
   if (!player || !player.pos) return null;
@@ -67,6 +74,19 @@ export function resolveTransverseSnarePreview(player, aimWorld, out = null) {
   preview.direction.z = dz;
   preview.valid = true;
   return preview;
+}
+
+export function resolveTetherControlRaiderTelegraph(options = {}) {
+  const motionReduce = !!(options.motionReduce || options.reducedMotion);
+  const flashReduce = !!(options.flashReduce || options.reducedFlash);
+  return Object.freeze({
+    ...TETHER_CONTROL_RAIDER_TELEGRAPH,
+    pulseHz: motionReduce ? 0 : 4,
+    motionMode: motionReduce ? 'steady' : 'pulsed',
+    flashMode: flashReduce ? 'low-intensity' : 'standard',
+    opacity: flashReduce ? 0.36 : 0.72,
+    structuralRead: true,
+  });
 }
 
 export const masslineSnares = {

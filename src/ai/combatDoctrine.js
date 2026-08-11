@@ -446,6 +446,9 @@ function snapshot(record, target, directive, factionBehavior = null) {
     preferredRange,
     allowedActionId,
     outcome: record.outcome,
+    contestKind: doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER && phase === 'control'
+      ? 'tether-control-contest'
+      : null,
     directiveTargetId: directive && directive.objective && directive.objective.targetId,
   });
 }
