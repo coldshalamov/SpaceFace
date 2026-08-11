@@ -3170,15 +3170,27 @@ export function authoredCriticalVisualReadiness(state) {
   const openingPipelinePending = openingAssets.filter((entry) => !authoredPipelineStaged(entry.status));
   const playerPipelineStaged = authoredPipelineStaged(playerStatus);
   const hubPipelineStaged = !needsStartingHub || authoredPipelineStaged(hubStatus);
+  // Software renderers (SwiftShader/llvmpipe) push the full opening composition through a serial
+  // admission queue with no KHR_parallel_shader_compile, so nearby traffic and station FX can stay
+  // in compiling-pipelines past the startup deadline and trip the fail-closed readiness gate. The
+  // player and the critical starting hub are admitted first and compose quickly; per this gate's own
+  // contract (above), other traffic and hostile ships are quality-preserving on-demand upgrades that
+  // must not hold the player behind a global queue drain. Narrow the gate to the player + hub only
+  // on a positively-detected software renderer. Unknown or missing tier keeps the strict
+  // full-opening-set contract so fail-closed still holds on real hardware. Default visual quality is
+  // unchanged: the relaxed actors still upgrade to authored, just after the first flight frame.
+  const softwareRenderer = !!(state && state.render && state.render.gpu
+    && state.render.gpu.tier === 'software');
+  const openingGateApplies = !softwareRenderer;
   return {
     // CPU composition reaches `compiling-pipelines` before the one combined exact-target GPU gate.
     // Keep committed readiness separate so callers can prove the first displayed frame is authored.
     pipelineReady: playerPipelineStaged
       && hubPipelineStaged
-      && openingPipelinePending.length === 0,
+      && (!openingGateApplies || openingPipelinePending.length === 0),
     ready: playerStatus === 'authored'
       && (!needsStartingHub || hubStatus === 'authored')
-      && openingPending.length === 0,
+      && (!openingGateApplies || openingPending.length === 0),
     playerId: player && player.id,
     playerStatus,
     startingHubId: hub && hub.id,
@@ -3187,6 +3199,7 @@ export function authoredCriticalVisualReadiness(state) {
     openingAssets,
     openingPending,
     openingPipelinePending,
+    softwareRenderer,
   };
 }
 
