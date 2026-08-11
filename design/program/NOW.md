@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: 2eed2da86df4d7545f7cf845d4f4db045995f4c6
+baseCommit: 91a3bcd8c1fa6803a01d24246a6e5f1d819c8f69
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 condition-driven pocket settle | `/root` | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`; `test/ceres-five-minute-acceptance.test.mjs`; `design/program/NOW.md` | Commit and push the approved condition-driven settle, then release this row before one new broker run. |
 
 ## Uncommitted work without a confirmed live thread
 
