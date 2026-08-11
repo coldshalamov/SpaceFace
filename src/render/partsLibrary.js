@@ -6672,6 +6672,9 @@ function sharedMaterialFor(base, tags, palette) {
   const explicitTint = appearanceOverrideForRole(palette, role);
   const finish = palette.finish || 'authored';
   const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
+  // Instance key still includes tint so faction colors remain distinct material.color uniforms.
+  // Program-family identity (name + spacefaceProgramFamily) deliberately omits tint: color is a
+  // per-instance uniform, not a distinct compiled program.
   const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
@@ -6681,16 +6684,25 @@ function sharedMaterialFor(base, tags, palette) {
       ), palette, role,
     );
     material.name = authoredMaterialName(base, tags, role, tint, false);
-    const canonical = resolveCanonicalHullMaterial(material);
+    const programFamily = authoredMaterialProgramFamily(base, tags, role, false);
+    const tintToken = hullMaterialSuffix(tint);
+    const canonical = resolveCanonicalHullMaterial(material, tintToken);
     if (canonical !== material) {
       sharedMaterialVariants.set(key, canonical);
       return canonical;
     }
-    material.userData = { ...(material.userData || {}), spacefaceSharedAsset: true, spacefaceBatchKey: key };
+    material.userData = {
+      ...(material.userData || {}),
+      spacefaceSharedAsset: true,
+      spacefaceBatchKey: key,
+      spacefaceProgramFamily: programFamily,
+      spacefacePaletteTint: tintToken,
+      spacefaceHullTint: role === 'hull' ? tintToken : undefined,
+    };
     material.dispose = () => {};
     sharedMaterialVariants.set(key, material);
   }
-  return resolveCanonicalHullMaterial(material);
+  return resolveCanonicalHullMaterial(material, hullMaterialSuffix(tint));
 }
 
 function dedicatedMaterialFor(base, tags, palette, cache, instanceKey) {
@@ -6717,6 +6729,11 @@ function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
       ), palette, role,
     );
     material.name = authoredMaterialName(base, tags, role, tint, true);
+    material.userData = {
+      ...(material.userData || {}),
+      spacefaceProgramFamily: authoredMaterialProgramFamily(base, tags, role, true),
+      spacefacePaletteTint: hullMaterialSuffix(tint),
+    };
     cache.set(key, material);
   }
   return material;
@@ -6727,16 +6744,38 @@ function materialMutationScope(tags = {}, instanceKey) {
   return instanceKey || 'ship-local';
 }
 
-function authoredMaterialName(base, tags, role, tint, mutable) {
+/**
+ * Visible material-key identity for perf budgets. Palette tint is a per-instance uniform
+ * (material.color / emissive), not a distinct compiled program, so shared materials omit the
+ * hex suffix. Mutable ship-local materials keep the tint token for mutation diagnostics.
+ */
+function authoredMaterialProgramFamily(base, tags, role, mutable) {
   const family = authoredMaterialFamily(base, tags, role);
+  const prefix = mutable ? 'SF_Mutable' : 'SF_Shared';
+  if (role === 'none') return `${prefix}_${family}_none_native`;
+  return `${prefix}_${family}_${role}`;
+}
+
+function authoredMaterialName(base, tags, role, tint, mutable) {
+  const programFamily = authoredMaterialProgramFamily(base, tags, role, mutable);
+  // Shared materials: program-family name only. Color variants keep separate material instances
+  // (different uniforms) but share one key so crowded-flight budgets measure real programs.
+  if (!mutable) return programFamily;
   const tintSuffix = role === 'none' ? 'native' : String(tint || '').replace('#', '') || 'native';
-  return `SF_${mutable ? 'Mutable' : 'Shared'}_${family}_${role}_${tintSuffix}`;
+  return `${programFamily}_${tintSuffix}`;
 }
 
 function authoredMaterialFamily(base, tags = {}, role = 'hull') {
   if (tags.drive) return `drive_${tags.drive}`;
   if (tags.canopy) return 'canopy';
   if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return 'signal';
+  const semanticRole = String(base?.userData?.spacefaceMaterialRole || '')
+    .trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (semanticRole === 'mechanical' || semanticRole === 'recessed_mechanical' || semanticRole === 'dark_composite') {
+    return 'mechanical';
+  }
+  if (semanticRole === 'accent' || semanticRole === 'livery' || semanticRole === 'painted_accent') return 'accent';
+  if (semanticRole === 'glass' || semanticRole === 'canopy_glass' || semanticRole === 'sensor_lens') return 'canopy';
   const source = String(base && base.name || '').toLowerCase();
   if (source.includes('glass') || source.includes('canopy')) return 'canopy';
   if (source.includes('mechanical') || source.includes('mech') || source.includes('rib') || source.includes('clamp')) return 'mechanical';
@@ -6906,26 +6945,45 @@ function hasAuthoredMaps(material) {
 
 function hullMaterialSuffix(materialOrTint) {
   if (materialOrTint && typeof materialOrTint === 'object') {
+    const fromUserData = materialOrTint.userData
+      && (materialOrTint.userData.spacefaceHullTint || materialOrTint.userData.spacefacePaletteTint);
+    if (fromUserData) return String(fromUserData).replace('#', '').toLowerCase() || 'native';
     const name = String(materialOrTint.name || '');
+    // Legacy tinted names (pre program-family consolidation) plus bare family names.
     const match = name.match(/^SF_Shared_hull_(?:textured_)?hull_([0-9a-f]+)/i);
     if (match) return match[1].toLowerCase();
   }
   return String(materialOrTint || '').replace('#', '').toLowerCase() || 'native';
 }
 
+function isMaplessSharedHullName(name) {
+  const n = String(name || '');
+  // Mapless family is SF_Shared_hull_hull; textured is SF_Shared_hull_textured_hull.
+  // Accept legacy tinted suffixes (SF_Shared_hull_hull_c8d8f0).
+  return n === 'SF_Shared_hull_hull' || /^SF_Shared_hull_hull_[0-9a-f]+$/i.test(n);
+}
+
+function isTexturedSharedHullName(name) {
+  const n = String(name || '');
+  return n === 'SF_Shared_hull_textured_hull' || /^SF_Shared_hull_textured_hull_[0-9a-f]+$/i.test(n);
+}
+
 function findCanonicalTexturedHullMaterial(tint) {
-  const targetName = `SF_Shared_hull_textured_hull_${hullMaterialSuffix(tint)}`;
+  const targetTint = hullMaterialSuffix(tint);
   for (const material of sharedMaterialVariants.values()) {
-    if (material.name === targetName) return material;
+    if (!isTexturedSharedHullName(material.name)) continue;
+    const materialTint = hullMaterialSuffix(material);
+    if (materialTint === targetTint) return material;
   }
   return null;
 }
 
-function resolveCanonicalHullMaterial(material) {
+function resolveCanonicalHullMaterial(material, tintToken) {
   if (!material) return material;
   const name = String(material.name || '');
-  if (!name.startsWith('SF_Shared_hull_hull_')) return material;
-  return findCanonicalTexturedHullMaterial(hullMaterialSuffix(material)) || material;
+  if (!isMaplessSharedHullName(name)) return material;
+  const tint = tintToken || hullMaterialSuffix(material);
+  return findCanonicalTexturedHullMaterial(tint) || material;
 }
 
 function reconcileMaplessHullMaterialAliases(palette) {
@@ -6935,7 +6993,7 @@ function reconcileMaplessHullMaterialAliases(palette) {
   for (const [key, material] of sharedMaterialVariants.entries()) {
     if (material === canonical) continue;
     const name = String(material.name || '');
-    if (!name.startsWith('SF_Shared_hull_hull_')) continue;
+    if (!isMaplessSharedHullName(name)) continue;
     sharedMaterialVariants.set(key, canonical);
   }
 }
@@ -6955,7 +7013,7 @@ function canonicalizeMaplessHullMaterials(root, palette) {
       const material = materials[i];
       if (!material || material === canonical) continue;
       const name = String(material.name || '');
-      if (!name.startsWith('SF_Shared_hull_hull_')) continue;
+      if (!isMaplessSharedHullName(name)) continue;
       materials[i] = canonical;
       changed = true;
     }
@@ -7076,7 +7134,13 @@ function readabilityShellMaterial(base, palette = {}) {
     material.opacity = 1;
     material.depthWrite = true;
     material.needsUpdate = true;
-    material.userData = { ...(material.userData || {}), spacefaceSharedAsset: true, spacefaceBatchKey: key };
+    // Palette tints stay on the instance; one program family for the readability shell role.
+    material.userData = {
+      ...(material.userData || {}),
+      spacefaceSharedAsset: true,
+      spacefaceBatchKey: key,
+      spacefaceProgramFamily: 'SF_Readability_PressureShell',
+    };
     material.dispose = () => {};
     sharedReadabilityShellVariants.set(key, material);
   }
@@ -7356,6 +7420,18 @@ export function runMaterialSharingContractProbe(THREE_NS = THREE) {
   const geology = sharedMaterialFor(semanticMaterial('geology', 'probe-geology'), { tint: 'hull' }, palette);
   const warning = sharedMaterialFor(semanticMaterial('warning', 'probe-warning'), { tint: 'accent' }, palette);
   const mechanical = sharedMaterialFor(semanticMaterial('mechanical', 'probe-mechanical'), { tint: 'hull' }, palette);
+  const altPalette = { hull: '#808090', accent: '#A0EEF8', thruster: '#66DDEE', dark: '#206070' };
+  const texturedHullAlt = sharedMaterialFor(
+    new THREE_NS.MeshStandardMaterial({
+      color: 0xffffff,
+      map: { uuid: 'probe-hull-albedo', image: { width: 512, height: 512 } },
+      roughness: 0.58,
+      metalness: 0.18,
+    }),
+    {},
+    altPalette,
+  );
+  const mechanicalAlt = sharedMaterialFor(semanticMaterial('mechanical', 'probe-mechanical'), { tint: 'hull' }, altPalette);
   return {
     hullShareMerged: sharedA === sharedB,
     maplessHullCanonicalized: maplessHull === texturedHull,
@@ -7367,5 +7443,13 @@ export function runMaterialSharingContractProbe(THREE_NS = THREE) {
     mechanicalUsesDarkPalette: mechanical.color.b > mechanical.color.r
       && mechanical.color.b > mechanical.color.g
       && mechanical.color.r > 0.85,
+    // Color variants remain distinct instances (visual parity) but share program-family names.
+    hullProgramFamilyShared: texturedHull.name === texturedHullAlt.name
+      && texturedHull.name === 'SF_Shared_hull_textured_hull'
+      && texturedHull !== texturedHullAlt
+      && texturedHull.color.getHex() !== texturedHullAlt.color.getHex(),
+    mechanicalProgramFamilyShared: mechanical.name === mechanicalAlt.name
+      && mechanical.name === 'SF_Shared_mechanical_dark'
+      && mechanical !== mechanicalAlt,
   };
 }

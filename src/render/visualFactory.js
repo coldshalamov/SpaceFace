@@ -2744,6 +2744,8 @@ function wreckRoleMaterial(key, role, options = {}) {
       emissiveIntensity: options.emissiveIntensity || 0,
     });
     material.name = key;
+    // Structure / plate / cut-edge keep distinct families: different maps and shading roles.
+    material.userData.spacefaceProgramFamily = `SF_Wreck_${role}`;
     material.userData.spacefaceMaterialRole = options.materialRole || `wreck-${role}`;
     material.userData.spacefaceSurfaceSource = 'deterministic-role-texture-v2';
     material.userData.spacefaceSharedMaterial = true;

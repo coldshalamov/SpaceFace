@@ -28,8 +28,15 @@ assert.equal(probe.readabilityShellMerged, true, 'readability shells with same p
 assert.equal(probe.geologyPreservesAuthoredColor, true, 'authored geology should not inherit hull tint or fake emissive');
 assert.equal(probe.warningPreservesAuthoredColor, true, 'authored warning/paint colors should not inherit faction accent');
 assert.equal(probe.mechanicalUsesDarkPalette, true, 'authored machinery should retain the structural dark palette role');
-assert.ok(probe.sharedVariantCount <= 6, `expected <=6 shared variants in probe, got ${probe.sharedVariantCount}`);
+assert.equal(probe.hullProgramFamilyShared, true, 'hull color variants should share one program-family name with distinct color uniforms');
+assert.equal(probe.mechanicalProgramFamilyShared, true, 'mechanical color variants should share one program-family name');
+// Probe uses two palettes now (family-name proof), so instance count is higher than the single-palette era.
+assert.ok(probe.sharedVariantCount <= 10, `expected <=10 shared variants in probe, got ${probe.sharedVariantCount}`);
 
+// Ceiling counts program-family keys (spacefaceProgramFamily / SF_Shared_* without per-tint hex),
+// not every palette color instance. Per-color hull/mechanical/accent variants share one compiled
+// program with different material.color uniforms; scenario glow/standard props share SF_Scenario_*
+// families. Raise only with a written justification naming newly authored distinct shading roles.
 const MATERIAL_KEY_CEILING = 49;
 if (existsSync(PERF_PROFILE)) {
   const report = JSON.parse(readFileSync(PERF_PROFILE, 'utf8'));
@@ -42,9 +49,14 @@ if (existsSync(PERF_PROFILE)) {
     );
     console.log(`ok    crowded-flight material keys ${materialKeys} <= ceiling ${MATERIAL_KEY_CEILING}`);
     const offenders = scenario.sceneStats.visibleMaterialKeys || [];
-    const maplessHull = offenders.find((entry) => String(entry.key || '').includes('SF_Shared_hull_hull_'));
+    // Mapless family is SF_Shared_hull_hull (optionally with legacy _<hex> suffix). Textured is
+    // SF_Shared_hull_textured_hull — do not treat the textured family as mapless.
+    const maplessHull = offenders.find((entry) => {
+      const key = String(entry.key || '');
+      return key.includes('SF_Shared_hull_hull') && !key.includes('SF_Shared_hull_textured_hull');
+    });
     assert.equal(maplessHull, undefined, 'mapless hull material keys should canonicalize into textured hull variants');
-    console.log('ok    no mapless SF_Shared_hull_hull_* keys in crowded-flight profile');
+    console.log('ok    no mapless SF_Shared_hull_hull keys in crowded-flight profile');
   } else {
     console.log('warn  performance profile present but crowded-flight material key count missing');
   }

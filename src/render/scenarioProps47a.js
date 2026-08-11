@@ -40,9 +40,24 @@ function rootFor(entity, name, assetId, kind, contract) {
   return root;
 }
 
+// Scenario props keep semantic material names for batching tests and debug, but share a small set
+// of program families. Color / emissive intensity / opacity remain per-instance uniforms — they do
+// not need distinct compiled programs. Pulsing callers that mutate emissiveIntensity still clone.
+const SCENARIO_PROGRAM = Object.freeze({
+  standard: 'SF_Scenario_standard',
+  glow: 'SF_Scenario_glow',
+  glowTransparent: 'SF_Scenario_glow_transparent',
+  zone: 'SF_Scenario_zone',
+});
+
 function standard(name, color, roughness = 0.65, metalness = 0.3, options = {}) {
   const mat = new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options });
   mat.name = name;
+  mat.userData = {
+    ...(mat.userData || {}),
+    spacefaceProgramFamily: SCENARIO_PROGRAM.standard,
+    spacefaceScenarioRole: name,
+  };
   return mat;
 }
 
@@ -58,6 +73,11 @@ function glow(name, color, intensity = 1.8, opacity = 1) {
     depthWrite: opacity >= 1,
   });
   mat.name = name;
+  mat.userData = {
+    ...(mat.userData || {}),
+    spacefaceProgramFamily: opacity < 1 ? SCENARIO_PROGRAM.glowTransparent : SCENARIO_PROGRAM.glow,
+    spacefaceScenarioRole: name,
+  };
   return mat;
 }
 
@@ -260,9 +280,16 @@ function buildKesslerHandoffBeacon(entity) {
   const mast = standard('HandoffBeacon_Dark_Mast', '#171a24', 0.7, 0.55);
   const quiet = glow('HandoffBeacon_Quiet_Violet', '#8d66ff', 1.7, 0.85);
   const cyan = glow('HandoffBeacon_Encrypted_Cyan', '#63e6ff', 1.1, 0.72);
+  const zoneMat = new THREE.MeshBasicMaterial({ color: 0x8d66ff, transparent: true, opacity: 0.08, depthWrite: false });
+  zoneMat.name = 'HandoffBeacon_Zone_Disc';
+  zoneMat.userData = {
+    ...(zoneMat.userData || {}),
+    spacefaceProgramFamily: SCENARIO_PROGRAM.zone,
+    spacefaceScenarioRole: 'HandoffBeacon_Zone_Disc',
+  };
   const zone = new THREE.Mesh(
     new THREE.CircleGeometry(zoneR, 48).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0x8d66ff, transparent: true, opacity: 0.08, depthWrite: false }),
+    zoneMat,
   );
   zone.name = 'HandoffBeacon_Zone_Disc';
   zone.renderOrder = -1;

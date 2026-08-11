@@ -463,7 +463,10 @@ function materialList(object) {
 
 function materialKey(material) {
   if (!material) return 'none';
-  const name = material.name || material.type || 'material';
+  // Prefer program-family identity when present. Palette tints and one-off semantic labels are
+  // per-instance uniforms / debug tags; counting them as distinct keys overstates shader churn.
+  const family = material.userData && material.userData.spacefaceProgramFamily;
+  const name = family || material.name || material.type || 'material';
   const transparent = material.transparent ? ':transparent' : ':opaque';
   const blending = material.blending != null ? `:blend${material.blending}` : '';
   return `${name}${transparent}${blending}`;
