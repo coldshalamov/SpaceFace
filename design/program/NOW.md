@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: ee3da582
+baseCommit: 55650166e5cc3d84c693b5c5dce66eaf7de72f0b
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Implementation base `ee3da582`; run exactly one broker Browser acceptance for this changed candidate |
+| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/NOW.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Run exactly one broker Browser acceptance for candidate `55650166`; on PASS publish the bound leaf receipt |
 
 ## Uncommitted work without a confirmed live thread
 
