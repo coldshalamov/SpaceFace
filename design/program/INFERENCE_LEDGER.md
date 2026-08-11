@@ -1,39 +1,41 @@
 <!-- LIFETIME: VOLATILE -->
 # Inference ledger
 
-**Job of INFERENCE (default):** the owner should not have to re-say “enemies/stations/NPCs are samey,”
-“graphics are still blocky,” or “NPCs don’t do enough real work.” Find systems that **already exist**,
-have a working recipe, and are still **thin** — then add more of that kind of work. Unambiguous more
-value. Not a new strategy. Not a new architecture.
+**Default INFERENCE job:** make the game obviously better in line with VISION.md — usually by
+**finishing or strengthening weak implementations**, or adding **new** content that fits the same
+fantasy (living physical world, readable roles, real work/crime, arcade-industrial craft). The owner
+should not have to re-say “samey enemies/stations/NPCs,” “blocky graphics,” or “NPCs don’t do real
+jobs.”
 
-**Not the job:** re-derive “highest ROI theory” each time and pile into one fashionable bucket.
+**Allowed:** new roles, places, tools, variants, activities — if they belong in SpaceFace and clearly
+help. **Not the job:** re-derive a new product strategy each time, or pile only into whatever was
+last called “highest ROI.”
 
 ## How to pick work
 
-1. Pick a **surface** below that is still thin (or underfed vs others).
-2. Produce **more / better of the same class** through live owners (variants, occupations, roles,
-   materials, activities, destinations — not a parallel system).
-3. Prove with focused tests on shipped code. No play-theater as done.
-4. **+1** the surface; bump `refreshed`. One line max in Notes. No essays.
+1. Prefer **weak but real** seams (half-wired, one exemplar, thin roster, cheap look, empty behavior).
+2. Else add **new** in-character content of a kind the game already needs more of.
+3. Ship through live owners + focused tests. No play-theater as done.
+4. **+1** the surface; bump `refreshed`. Notes ≤6 words.
 
 ```yaml
 refreshed: 2026-08-10
 ```
 
-| Surface (already in game; more helps) | Recent | Thin? | Notes |
+| Surface | Recent | Weak/thin? | Notes |
 |---|---:|---|---|
-| NPC jobs / occupations / work cycles | 3 | yes | Ceres cast started |
-| Enemy combat roles (not reskins) | 0 | **yes** | still samey |
+| NPC jobs / living activity | 3 | yes | Ceres cast started |
+| Enemy combat roles | 0 | **yes** | samey |
 | Stations / places / destinations | 1 | **yes** | cathedral mid |
-| Planets / world sites embodiment | 0 | **yes** | mostly fixtures |
-| Sector pockets / activity density | 2 | yes | Ceres only focus |
-| Economy / logistics visibility | 0 | **yes** | thin |
-| Ship / part / material quality | 2 | **yes** | hulls, cathedral |
-| Weapons / physics tools variety | 0 | **yes** | thin roster |
-| Content variants / states / aftermath | 1 | yes | partial |
-| Presentation juice (VFX/trails/bloom) | 4 | no | recent heavy |
-| Feel/combat constants | 5 | no | recent heavy |
+| Planets / world sites | 0 | **yes** | fixture-ish |
+| Sector / pocket activity | 2 | yes | Ceres-heavy |
+| Economy / logistics | 0 | **yes** | weak |
+| Ship / part / material craft | 2 | **yes** | hulls, cathedral |
+| Weapons / physics tools | 0 | **yes** | thin |
+| Variants / states / aftermath | 1 | yes | partial |
+| Presentation juice | 4 | less | recent heavy |
+| Feel/combat constants | 5 | less | recent heavy |
 | Story / characters | 0 | yes | thin |
-| Audio identity | 0 | yes | thin |
+| Audio | 0 | yes | thin |
 
-**Anti-pile-on:** if a surface already has high Recent and is marked “no”, pick a **yes**-thin surface instead unless the user names the heavy one.
+**Anti-pile-on:** if Recent is already high and Weak/thin is “less”, pick another weak surface unless the user names the heavy one.

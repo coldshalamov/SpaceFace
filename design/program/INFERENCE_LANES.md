@@ -21,14 +21,13 @@ INFERENCE 5x POLISH
 WF-01 3x
 ```
 
-**Default INFERENCE job:** thicken what already exists and is still thin — more enemy roles, NPC
-work, station/place identity, material quality, logistics, variants. The owner should not have to
-restate “it’s samey / blocky / empty of real work.” Build on working recipes; do not invent a new
-product strategy each time.
+**Default INFERENCE job:** make the game obviously better in line with VISION.md. Usually that means
+**strengthening weak implementations** or adding **new** fitting content where more would clearly
+help (roles, places, jobs, craft, tools). The owner should not have to restate samey/blocky/empty.
+Do not invent a new product strategy each time.
 
-**Ledger (mandatory, keep it short):** [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — which
-surfaces are thin and what got +1 recently. Prefer thin surfaces; avoid piling into recently heavy
-ones. Tick +1 when a unit finishes.
+**Ledger (mandatory, keep it short):** [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — weak surfaces
+and recent +1s. Prefer weak/underfed; avoid pile-on. Tick +1 when a unit finishes.
 
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
