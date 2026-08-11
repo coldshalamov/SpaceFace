@@ -21,6 +21,10 @@ INFERENCE 5x POLISH
 WF-01 3x
 ```
 
+**Balance board (mandatory before INFERENCE):**
+[`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — one short table of recent work by bucket.
+Do not pile into a high-count bucket; prefer underfed ones. Tick +1 after you finish a unit.
+
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
 
