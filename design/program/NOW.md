@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: 269922d2c9d3cb8afb3cca1a1279d331179ba5ac
+baseCommit: 5d53ad9e
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Implementation base `831bf775`; run exactly one broker Browser acceptance for this changed candidate |
+| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Implementation base `5d53ad9e`; run exactly one broker Browser acceptance for this changed candidate |
 
 ## Uncommitted work without a confirmed live thread
 
