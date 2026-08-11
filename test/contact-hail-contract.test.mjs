@@ -154,8 +154,8 @@ test('clean lawful patrol reports hold-fire without writing gameplay authority',
   bus.emit('contactHail:request', { targetId: 'patrol-1', source: 'test' });
   const [offer] = emitted(bus, 'contactHail:offer');
   assert.equal(offer.kind, 'patrol');
-  assert.deepEqual(offer.actions.map((row) => row.id), ['status', 'identify']);
-  assert.ok(offer.lines.length <= 2 && offer.actions.length <= 2);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['status', 'identify', 'heave_to']);
+  assert.ok(offer.lines.length <= 2 && offer.actions.length <= 3);
   bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: offer.targetId, choice: 'status' });
   const [response] = emitted(bus, 'contactHail:response');
   assert.match(response.lines.join(' '), /HOLD FIRE/i);
@@ -222,7 +222,7 @@ test('a passive neutral trader answers from its real route and durable manifest'
   const { bus } = mount(state);
   bus.emit('contactHail:request', { targetId: target.id });
   const offer = emitted(bus, 'contactHail:offer').at(-1);
-  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'manifest']);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'manifest', 'heave_to']);
 
   bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: target.id, choice: 'route' });
   assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '), /CERES EXCHANGE/i);
@@ -326,7 +326,7 @@ test('prompt is a compact native-button surface wired beside the comms log', () 
   assert.match(prompt, /contactHail:request/);
   assert.match(prompt, /contactHail:choice/);
   assert.match(prompt, /aria-live/);
-  assert.match(prompt, /actions\.slice\(0,\s*2\)/);
+  assert.match(prompt, /actions\.slice\(0,\s*3\)/);
   assert.match(prompt, /lines\.slice\(0,\s*2\)/);
   assert.match(comms, /createContactHailPrompt/);
   assert.match(comms, /contactHailPrompt\.tick/);

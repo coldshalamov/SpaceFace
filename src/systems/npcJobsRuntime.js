@@ -57,6 +57,7 @@ import {
 import { hash32 } from '../core/rng.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
+import { isPlayerWanted } from './heat.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import {
   CERES_ACTIVITY_POCKETS,
@@ -69,6 +70,8 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
 const FLEE_RADIUS = 520;
 const RESUME_RADIUS = 760; // hysteresis so a job does not chatter flee/resume on the boundary
+export const NPC_JOB_HEAVE_TO_DURATION_S = 5;
+export const NPC_JOB_HEAVE_TO_COOLDOWN_S = 12;
 // On re-entry a virtual job advances by the elapsed away-time, clamped to a bounded recent window.
 // Live exit→reentry within a session is always well under this; the clamp only bounds a pathological
 // gap (e.g. a job left virtual for a very long absence) so the catch-up cost stays finite. Advancing
@@ -340,6 +343,7 @@ export const npcJobsRuntime = {
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
     this._pendingMinerFieldRetargets = new Map();
+    this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
     this._threatQueries = createNearestEntityQueryService(this.state, {
       entityType: 'ship',
@@ -419,6 +423,7 @@ export const npcJobsRuntime = {
         releaseControl: (jobId, claimId) => this.releaseControl(jobId, claimId),
         controlClaim: (jobId) => this.controlClaim(jobId),
         activeControlClaimCount: () => this.activeControlClaimCount(),
+        heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
         // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
         // callers cannot mutate the retained hot-path counters or request scratch.
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
@@ -1237,6 +1242,7 @@ export const npcJobsRuntime = {
   newGame() {
     this.state.npcJobs = { byId: {} };
     this._pendingMinerFieldRetargets = new Map();
+    this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
@@ -1498,6 +1504,56 @@ export const npcJobsRuntime = {
     return count;
   },
 
+  heaveToEntity(entityId, {
+    claimId = null,
+    holder = 'contactHail',
+    durationS = NPC_JOB_HEAVE_TO_DURATION_S,
+    cooldownS = NPC_JOB_HEAVE_TO_COOLDOWN_S,
+  } = {}) {
+    if (entityId == null) return { granted: false, reason: 'no_target', kind: 'job_control' };
+    const simT = finite(this.state && this.state.simTime, 0);
+    this._expireHeaveToLease(simT);
+    const active = this._heaveToLease;
+    if (active && active.untilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'another_target_active', kind: 'job_control', untilSimT: active.untilSimT };
+    }
+    if (active && active.cooldownUntilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'cooldown', kind: 'job_control', cooldownUntilSimT: active.cooldownUntilSimT };
+    }
+
+    const entry = this._entryForEntity(entityId);
+    const jobId = entry && entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (!entry || !jobId) return { granted: false, reason: 'no_job', kind: 'job_control' };
+    const cleanClaim = cleanClaimId(claimId) || `contact-hail:heave-to:${String(entityId)}`;
+    const out = this.claimControl(jobId, { claimId: cleanClaim, holder });
+    if (!out || out.granted !== true) {
+      return { granted: false, reason: out && out.reason || 'claim_refused', kind: 'job_control' };
+    }
+
+    const untilSimT = simT + Math.max(0.1, finite(durationS, NPC_JOB_HEAVE_TO_DURATION_S));
+    this._heaveToLease = {
+      entityId,
+      jobId,
+      claimId: cleanClaim,
+      untilSimT,
+      cooldownUntilSimT: untilSimT + Math.max(0, finite(cooldownS, NPC_JOB_HEAVE_TO_COOLDOWN_S)),
+    };
+    return { granted: true, reason: null, kind: 'job_control', jobId, untilSimT };
+  },
+
+  _expireHeaveToLease(simT = finite(this.state && this.state.simTime, 0)) {
+    const lease = this._heaveToLease;
+    if (!lease) return false;
+    if (lease.untilSimT > simT) return false;
+    this.releaseControl(lease.jobId, lease.claimId);
+    if (lease.cooldownUntilSimT > simT) {
+      this._heaveToLease = { ...lease, untilSimT: simT };
+    } else {
+      this._heaveToLease = null;
+    }
+    return true;
+  },
+
   /** Owner-facing scalar evidence for PERF-05; generic owner timing remains in perfRuntime. */
   threatQueryDiagnostics() {
     return threatQueryDiagnosticsSnapshot(this._threatQueries);
@@ -1741,13 +1797,14 @@ export const npcJobsRuntime = {
     }
     const byId = this._byId();
     const ids = Object.keys(byId);
+    const step = Math.max(0, finite(dt, 0));
+    const simT = finite(this.state.simTime, 0);
+    this._expireHeaveToLease(simT);
     if (ids.length === 0) {
       threatQueries.execute();
       return; // strict no-op when no jobs exist
     }
 
-    const step = Math.max(0, finite(dt, 0));
-    const simT = finite(this.state.simTime, 0);
     const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
     this._processMinerFieldDepletionRetargets(step, simT);
 
@@ -1806,7 +1863,7 @@ export const npcJobsRuntime = {
       // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull). The
       // civilian flee reflex writes job phase, so it must not fight the controller either.
       if (!claimedBeforeAdvance && threatRequest && threatRequest.sourceEntityId === entity.id) {
-        this._reconcileThreatResult(entry, threatRequest.resultId);
+        this._reconcileThreatResult(entry, this._threatResultWithWantedPlayer(threatRequest));
       }
 
       // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
@@ -2284,7 +2341,7 @@ export const npcJobsRuntime = {
     const nearest = resultId != null && this.state.entities
       ? this.state.entities.get(resultId)
       : null;
-    const liveHostile = nearest && nearest.alive && nearest.type === 'ship' && nearest.team === 1
+    const liveHostile = this._isJobThreat(nearest)
       ? nearest
       : null;
     if (job.phase === NPC_JOB_PHASE.FLEE) {
@@ -2296,6 +2353,27 @@ export const npcJobsRuntime = {
       interrupt(job, { entityId: liveHostile.id });
       entry.threatId = liveHostile.id;
     }
+  },
+
+  _isJobThreat(entity) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+    if (entity.team === 1) return eligibleActiveHostile(entity);
+    return entity.id === this.state?.playerId && isPlayerWanted(this.state);
+  },
+
+  _threatResultWithWantedPlayer(request) {
+    if (!request || !isPlayerWanted(this.state)) return request ? request.resultId : null;
+    const player = this.state.entities && this.state.playerId != null
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player || player.alive === false || player.type !== 'ship' || !player.pos) return request.resultId;
+    const dx = player.pos.x - request.x;
+    const dz = player.pos.z - request.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > request.radiusSq) return request.resultId;
+    if (request.resultId == null || d2 < request.bestDistanceSq) return player.id;
+    if (d2 === request.bestDistanceSq && String(player.id) < String(request.resultId)) return player.id;
+    return request.resultId;
   },
 
   // ── sector transitions: virtualize on exit, re-link + advance on enter ───────────────────────

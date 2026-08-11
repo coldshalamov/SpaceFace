@@ -7,8 +7,23 @@ import { COMMODITIES } from './commodities.js';
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
 export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
+export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
+const HEAVE_TO_ROLES = new Set([
+  'hauler',
+  'courier',
+  'miner',
+  'smuggler',
+  'express',
+  'trader',
+  'surveyor',
+  'salvor',
+  'tender',
+  'ore_carrier',
+  'patrol',
+  'escort',
+]);
 const COMMODITY_LABEL = new Map(COMMODITIES.map((row) => [row.id, row.name]));
 
 function entityById(state, id) {
@@ -67,6 +82,16 @@ function contactKind(state, entity) {
   return { kind: null, parley: null };
 }
 
+function contactHeaveToAvailable(state, entity, kind) {
+  const data = entity && entity.data || {};
+  const role = String(data.trafficRole || data.role || entity && entity.role || '').toLowerCase();
+  if (!HEAVE_TO_ROLES.has(role)) return false;
+  if (kind === 'patrol') return true;
+  if (data.jobId) return true;
+  const rec = traderRecord(state, entity && entity.id);
+  return !!rec && rec.heaveTo !== false;
+}
+
 function callsign(entity) {
   const data = entity && entity.data || {};
   return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED VESSEL')
@@ -97,6 +122,7 @@ export function contactHailAvailability(state) {
     distance,
     entity: target,
     parley: classification.parley,
+    heaveToAvailable: contactHeaveToAvailable(state, target, classification.kind),
   };
 }
 
@@ -104,16 +130,20 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
   if (availability.kind === 'patrol') {
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
+    if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     return {
       requestId, targetId: availability.targetId, kind: 'patrol', expiresAt,
       lines: [`${name} · LAWFUL PATROL`, 'CHANNEL OPEN.'],
-      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+      actions,
     };
   }
+  const actions = [{ id: 'route', label: 'ROUTE' }, { id: 'manifest', label: 'MANIFEST' }];
+  if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
     lines: [`${name} · CIVILIAN FREIGHT`, 'CHANNEL OPEN.'],
-    actions: [{ id: 'route', label: 'ROUTE' }, { id: 'manifest', label: 'MANIFEST' }],
+    actions,
   };
 }
 
@@ -166,6 +196,13 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     line = routeText(state, target);
   } else if (offer.kind === 'trader' && id === 'manifest') {
     line = manifestText(state, target);
+  } else if (id === CONTACT_HAIL_ACTION_HEAVE_TO) {
+    const result = authority.heaveTo || {};
+    if (result.granted === true) line = 'HEAVE TO · COMPLYING.';
+    else if (result.reason === 'ignored') line = 'HEAVE TO · NO COMPLIANCE.';
+    else if (result.reason === 'cooldown') line = 'HEAVE TO · CHANNEL COOLING.';
+    else if (result.reason === 'another_target_active') line = 'HEAVE TO · HOLD ALREADY ACTIVE.';
+    else line = 'HEAVE TO · UNABLE.';
   }
   if (!line) return null;
   return {

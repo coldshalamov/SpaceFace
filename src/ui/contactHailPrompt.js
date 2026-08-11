@@ -1,5 +1,5 @@
 // Compact target hail beside the comms log. Simulation validation lives in scanner.js; this module
-// only consumes scanner receipts, emits intents, and renders at most two lines/two ordinary actions.
+// only consumes scanner receipts, emits intents, and renders compact scanner-owned actions.
 
 import { isUiInteractionFenced } from './input.js';
 
@@ -47,7 +47,7 @@ export function createContactHailPrompt(ctx) {
       row.textContent = line;
       return row;
     }));
-    actionsEl.replaceChildren(...actions.slice(0, 2).map((action, index) => {
+    actionsEl.replaceChildren(...actions.slice(0, 3).map((action, index) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.choice = action.id;
@@ -98,7 +98,8 @@ export function createContactHailPrompt(ctx) {
   function onKeyDown(event) {
     if (isUiInteractionFenced(state) || !active || event.altKey || event.ctrlKey || event.metaKey) return;
     const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
-      : event.code === 'Digit2' || event.code === 'Numpad2' ? 1 : -1;
+      : event.code === 'Digit2' || event.code === 'Numpad2' ? 1
+        : event.code === 'Digit3' || event.code === 'Numpad3' ? 2 : -1;
     if (index < 0) return;
     const action = active.actions && active.actions[index];
     if (!action) return;

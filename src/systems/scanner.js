@@ -18,6 +18,7 @@ import {
 import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
+  CONTACT_HAIL_ACTION_HEAVE_TO,
   contactHailAvailability,
   createContactHailOffer,
   createContactHailResponse,
@@ -713,6 +714,8 @@ export const scanner = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers || null;
+    this.registry = ctx.registry || null;
     this._scratch = [];
     this._cooldownUntil = 0;
     ensureSignalState(this.state);
@@ -721,6 +724,7 @@ export const scanner = {
     this._contactHailAvailabilitySignature = '';
     this._contactHailNextPollTick = 0;
     this._contactHailLastTargetId = undefined;
+    this._contactHailHeaveTo = null;
     this._onSignalTrack = (payload) => this._trackSignal(payload || {});
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
@@ -1101,15 +1105,63 @@ export const scanner = {
     const target = availability.entity;
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
+    const choice = String(payload.choice || '').toLowerCase();
+    const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
+      ? this._requestContactHeaveTo(target, availability, { wanted, ai })
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
+      heaveTo,
     });
     if (!response) return false;
     this._contactHail = null;
     this.bus.emit('contactHail:response', cloneContactHailPayload(response));
     return true;
+  },
+
+  _requestContactHeaveTo(target, availability, { wanted = false, ai = null } = {}) {
+    const now = Number(this.state && this.state.simTime) || 0;
+    const active = this._contactHailHeaveTo;
+    if (active && active.activeUntil > now && active.targetId !== target.id) {
+      return { granted: false, reason: 'another_target_active' };
+    }
+    if (active && active.cooldownUntil > now && active.targetId !== target.id) {
+      return { granted: false, reason: 'cooldown' };
+    }
+    if (!availability || availability.heaveToAvailable !== true) {
+      return { granted: false, reason: 'unavailable' };
+    }
+    if (availability.kind === 'patrol' && (wanted || ai && ai.securityTargetId === this.state.playerId)) {
+      return { granted: false, reason: 'ignored' };
+    }
+
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    const trafficApi = this.helpers && this.helpers.traffic
+      ? this.helpers.traffic
+      : this.registry && this.registry.get && this.registry.get('traffic');
+    const claimId = `contact-hail:heave-to:${String(target.id)}`;
+    let result = null;
+    if (target.data && target.data.jobId && jobApi && typeof jobApi.heaveToEntity === 'function') {
+      result = jobApi.heaveToEntity(target.id, { claimId, holder: 'contactHail' });
+    }
+    if ((!result || result.granted !== true) && trafficApi && typeof trafficApi.heaveToEntity === 'function') {
+      result = trafficApi.heaveToEntity(target.id, {});
+    }
+    if (!result) result = { granted: false, reason: 'no_owner' };
+    if (result.granted === true) {
+      const until = Number(result.untilSimT);
+      const activeUntil = Number.isFinite(until) ? until : now + 5;
+      this._contactHailHeaveTo = {
+        targetId: target.id,
+        activeUntil,
+        cooldownUntil: activeUntil + 12,
+      };
+    }
+    return result;
   },
 
   _updateContactHail(state) {
@@ -1143,8 +1195,9 @@ export const scanner = {
       targetId: availability && availability.targetId != null ? availability.targetId : null,
       kind: availability && availability.kind || null,
       label: availability && availability.label || 'HAIL',
+      heaveToAvailable: availability && availability.heaveToAvailable === true,
     };
-    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}`;
+    const signature = `${publicView.enabled}:${String(publicView.targetId)}:${publicView.kind}:${publicView.reason}:${publicView.label}:${publicView.heaveToAvailable}`;
     this._contactHailAvailability = publicView;
     if (signature === this._contactHailAvailabilitySignature) return false;
     this._contactHailAvailabilitySignature = signature;
@@ -1252,7 +1305,7 @@ function cloneContactHailPayload(payload) {
     ...payload,
     lines: Array.isArray(payload.lines) ? payload.lines.slice(0, 2) : [],
     actions: Array.isArray(payload.actions)
-      ? payload.actions.slice(0, 2).map((row) => ({ ...row }))
+      ? payload.actions.slice(0, 3).map((row) => ({ ...row }))
       : [],
   };
 }

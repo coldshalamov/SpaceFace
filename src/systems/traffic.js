@@ -92,6 +92,9 @@ const NPC_MINER_WORK_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_RECEIPT_SCHEMA = 'spaceface.trafficJobActionReceipt.v1';
 const CERES_JOB_ACTION_RECEIPT_EVENT = 'traffic:jobActionReceipt';
+export const TRAFFIC_HEAVE_TO_DURATION_S = 5;
+export const TRAFFIC_HEAVE_TO_COOLDOWN_S = 12;
+export const TRAFFIC_LAW_LOSS_CAUSE = 'lawful_patrol_loss';
 const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
   'ceres_ambush_escort',
   'ceres_cathedral_patrol',
@@ -185,6 +188,27 @@ const TRAFFIC_ROLES = {
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
 // not a new write seam — runtime ownership of role resolution is unchanged.
 export { TRAFFIC_ROLES };
+
+const HEAVE_TO_COMPLIANT_ROLES = new Set([
+  'hauler',
+  'courier',
+  'miner',
+  'smuggler',
+  'express',
+  'rescue',
+  'surveyor',
+  'salvor',
+  'tender',
+  'ore_carrier',
+  'patrol',
+  'escort',
+]);
+
+function trafficHeaveToComplies(role, entity) {
+  if (!HEAVE_TO_COMPLIANT_ROLES.has(String(role || '').toLowerCase())) return false;
+  const ai = entity && entity.data && entity.data.ai;
+  return !(ai && ai.pirate === true);
+}
 
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
@@ -622,8 +646,16 @@ export const traffic = {
     this._committedCeresArrivalIds = new Set();
     this._causalRunEpoch = 0;
     this._restoreEpochPending = false;
+    this._heaveToHold = null;
     // PQ-045.causal-chain: instance-only ledger (never written into state.traffic / save).
     this._ceresCausal = null;
+
+    if (this.helpers) {
+      this.helpers.traffic = {
+        ...(this.helpers.traffic || {}),
+        heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+      };
+    }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
@@ -653,6 +685,7 @@ export const traffic = {
       // The incoming envelope is authoritative: a Continue to an earlier completion boundary must
       // be able to surface that legitimate action again.
       this._resetTransientCausalLedgers(false);
+      this._heaveToHold = null;
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
       const sectorId = this.state.world && this.state.world.currentSectorId;
@@ -672,6 +705,45 @@ export const traffic = {
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
     });
+  },
+
+  heaveToEntity(entityId, {
+    durationS = TRAFFIC_HEAVE_TO_DURATION_S,
+    cooldownS = TRAFFIC_HEAVE_TO_COOLDOWN_S,
+  } = {}) {
+    if (entityId == null) return { granted: false, reason: 'no_target', kind: 'traffic_wait' };
+    this._ensureState();
+    const simT = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const active = this._heaveToHold;
+    if (active && active.untilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'another_target_active', kind: 'traffic_wait', untilSimT: active.untilSimT };
+    }
+    if (active && active.cooldownUntilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'cooldown', kind: 'traffic_wait', cooldownUntilSimT: active.cooldownUntilSimT };
+    }
+
+    const rec = (this.state.traffic.freighters || []).find((row) => row && row.id === entityId);
+    const entity = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(entityId)
+      : null;
+    const role = String((rec && rec.role)
+      || (entity && entity.data && (entity.data.trafficRole || entity.data.role))
+      || '').toLowerCase();
+    if (!rec || !entity || entity.alive === false) return { granted: false, reason: 'not_traffic', kind: 'traffic_wait' };
+    if (!trafficHeaveToComplies(role, entity)) {
+      return { granted: false, reason: 'ignored', kind: 'traffic_wait', role };
+    }
+
+    const duration = Math.max(0.1, Number.isFinite(Number(durationS)) ? Number(durationS) : TRAFFIC_HEAVE_TO_DURATION_S);
+    const untilSimT = simT + duration;
+    rec.waitT = Math.max(0, Number.isFinite(Number(rec.waitT)) ? Number(rec.waitT) : 0, duration);
+    if (entity.data && !entity.data.jobId) setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+    this._heaveToHold = {
+      entityId,
+      untilSimT,
+      cooldownUntilSimT: untilSimT + Math.max(0, Number.isFinite(Number(cooldownS)) ? Number(cooldownS) : TRAFFIC_HEAVE_TO_COOLDOWN_S),
+    };
+    return { granted: true, reason: null, kind: 'traffic_wait', untilSimT, waitT: rec.waitT };
   },
 
   _onSectorExit(p) {
@@ -4127,8 +4199,9 @@ export const traffic = {
       }
       return;
     }
-    if (role && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
-      // Non-trading traffic (patrol/escort) — drop tracking only.
+    const lawLoss = role === 'patrol' || role === 'escort';
+    if (role && !lawLoss && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
+      // Non-trading traffic without a law record — drop tracking only.
       if (idx >= 0) list.splice(idx, 1);
       if (lostWorldSiteRoute) {
         this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
@@ -4161,6 +4234,15 @@ export const traffic = {
       killerId: p.killerId,
       seq: this.state.tick | 0,
     });
+    if (lawLoss) {
+      intent.cause = TRAFFIC_LAW_LOSS_CAUSE;
+      intent.lawRole = role;
+      intent.source = 'traffic_law';
+      if (intent.news) {
+        intent.news.cause = TRAFFIC_LAW_LOSS_CAUSE;
+        intent.news.lawRole = role;
+      }
+    }
 
     const t = this.state.traffic;
     const fresh = filterNewFreightIntents([intent], t.appliedLossIds);
