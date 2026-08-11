@@ -2242,15 +2242,21 @@ export function evaluateCeresPersistedOreCycleSaveReceipt(
   return { pass: failures.length === 0, failures };
 }
 
-async function waitForCeresOreCycleSaveGate(page, {
+const CERES_ORE_CYCLE_SAVE_GATE_RECEIPT_KEY = '__SF_CERES_ORE_CYCLE_SAVE_GATE_RECEIPT__';
+
+export async function waitForCeresOreCycleSaveGate(page, {
   endTick,
   minPostContinueTicks,
   timeoutMs,
 }) {
   const deadlineTick = endTick - minPostContinueTicks;
-  let handle;
+  const receiptKey = CERES_ORE_CYCLE_SAVE_GATE_RECEIPT_KEY;
   try {
-    handle = await page.waitForFunction(({ deadline }) => {
+    await page.evaluate(({ key }) => {
+      delete window[key];
+      return true;
+    }, { key: receiptKey });
+    await page.waitForFunction(({ deadline, key }) => {
       const trace = window.__SF_CERES_FIVE_MINUTE_TRACE__;
       if (trace?.sample) trace.sample(true);
       const latest = trace?.samples?.at?.(-1) || null;
@@ -2280,7 +2286,7 @@ async function waitForCeresOreCycleSaveGate(page, {
         && manifest?.custody?.acquiredBy === 'mining:npcExtraction';
       const tick = Number(latest?.observedTick);
       if (loaded) {
-        return {
+        window[key] = {
           status: 'loaded',
           tick,
           deadlineTick: deadline,
@@ -2294,15 +2300,32 @@ async function waitForCeresOreCycleSaveGate(page, {
             worldRecordId: actor.worldRecordId,
             jobId: actor.jobId,
           },
-          manifest,
+          manifest: {
+            manifestId: manifest.manifestId ?? null,
+            lotId: manifest.lotId ?? null,
+            lotSource: manifest.lotSource && typeof manifest.lotSource === 'object'
+              ? { ...manifest.lotSource }
+              : null,
+            role: manifest.role ?? null,
+            lines: manifest.lines.map((entry) => ({
+              commodityId: entry?.commodityId ?? null,
+              qty: Number.isFinite(entry?.qty) ? Number(entry.qty) : null,
+            })),
+            totalQty: Number(manifest.totalQty),
+            custody: manifest.custody && typeof manifest.custody === 'object'
+              ? { ...manifest.custody }
+              : null,
+          },
         };
+        return true;
       }
       if (Number.isSafeInteger(tick) && tick >= deadline) {
-        return { status: 'deadline', tick, deadlineTick: deadline };
+        window[key] = { status: 'deadline', tick, deadlineTick: deadline };
+        return true;
       }
       return false;
-    }, { deadline: deadlineTick }, { timeout: timeoutMs });
-    const receipt = await handle.jsonValue();
+    }, { deadline: deadlineTick, key: receiptKey }, { timeout: timeoutMs });
+    const receipt = await page.evaluate(({ key }) => window[key] ?? null, { key: receiptKey });
     const evaluated = evaluateCeresOreCycleSaveGateReceipt(receipt, {
       endTick,
       minPostContinueTicks,
@@ -2315,7 +2338,10 @@ async function waitForCeresOreCycleSaveGate(page, {
     if (String(error?.message || error).startsWith('CERES_ORE_CYCLE_SAVE_GATE_FAILED')) throw error;
     throw new Error(`CERES_ORE_CYCLE_SAVE_GATE_TIMEOUT: ${error?.message || error}`);
   } finally {
-    await handle?.dispose?.().catch(() => {});
+    await page.evaluate(({ key }) => {
+      delete window[key];
+      return true;
+    }, { key: receiptKey }).catch(() => {});
   }
 }
 

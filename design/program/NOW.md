@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: eaf89f7e70a2548b9f22358660e9e568948697d6
+baseCommit: 5f5bd51c05ee931f84c095a1fbda6a42050f1ee6
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-048.01 raw-CDP save-gate receipt repair | `/root` | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`; `test/pq048-ore-cycle-acceptance.test.mjs` | Publish the focused repair, then remove this row |
 
 ## Uncommitted work without a confirmed live thread
 

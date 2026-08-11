@@ -21,6 +21,7 @@ import {
   normalizeCeresOreCycleEvents,
   normalizeCeresTrace,
   projectCeresActivityFrame,
+  waitForCeresOreCycleSaveGate,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
 
 const ENTITY_ID = 481;
@@ -185,6 +186,35 @@ test('PQ route gates F5 on a loaded lot and reserves the existing post-Continue 
   ), 'utf8');
   assert.match(checker, /routeOptions: \{ oreCycleGate: PQ048_ORE_CYCLE_ROUTE_GATE \}/);
   assert.match(checker, /minPostContinueTicks: PQ048_ORE_CYCLE_MIN_POST_CONTINUE_TICKS/);
+});
+
+test('ore-cycle save gate reads its receipt by value after a raw-CDP boolean wait', async () => {
+  const expected = saveGateReceipt({ tick: 18, endTick: 60, minPostContinueTicks: 10 });
+  let evaluateCalls = 0;
+  let waitCalls = 0;
+  const rawCdpCompatiblePage = {
+    async evaluate() {
+      evaluateCalls += 1;
+      return evaluateCalls === 2 ? structuredClone(expected) : true;
+    },
+    async waitForFunction(_predicate, argument, options) {
+      waitCalls += 1;
+      assert.equal(argument.deadline, 50);
+      assert.equal(typeof argument.key, 'string');
+      assert.deepEqual(options, { timeout: 900 });
+      return true;
+    },
+  };
+
+  const receipt = await waitForCeresOreCycleSaveGate(rawCdpCompatiblePage, {
+    endTick: 60,
+    minPostContinueTicks: 10,
+    timeoutMs: 900,
+  });
+
+  assert.deepEqual(receipt, expected);
+  assert.equal(waitCalls, 1);
+  assert.equal(evaluateCalls, 3, 'clear, by-value read, and cleanup must use page.evaluate');
 });
 
 test('durable identity joins extraction before Continue to arrival after rematerialization', () => {
