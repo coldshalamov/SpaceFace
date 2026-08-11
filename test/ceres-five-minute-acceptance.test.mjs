@@ -15,6 +15,7 @@ import {
   countsTowardCeresPocketVisibility,
   createAccessibilityMatchedCheckpoint,
   deriveZeroVisibleActivityIntervals,
+  disableCeresTutorialThroughPublicSettings,
   drivePublicToCeresPoint,
   drivePublicToPocketAnchor,
   evaluateCeresFiveMinutePair,
@@ -31,6 +32,7 @@ import {
   settleCeresPocketApproach,
   validateCeresPilotSources,
   validatePublicInputReceipt,
+  waitForCeresToolkitConflictAuthority,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
 import { ZONE_CERES_THROUGHLINE } from '../src/data/authoredPlaces.js';
 import {
@@ -209,6 +211,174 @@ test('raw lawful/service and hostile-opportunity classifiers fail closed on live
 
   assert.equal(countsTowardCeresPocketVisibility('ceres_cinder_service_hauler'), false);
   assert.equal(countsTowardCeresPocketVisibility('ceres_throughline_collision_anchor'), true);
+});
+
+test('toolkit conflict authority spans the ordinary pacing defer chain plus authored spring', async () => {
+  const prebound = {
+    playerEntityId: PLAYER_ENTITY_ID,
+    boundHostiles: TOOLKIT_HOSTILES.map((row) => ({
+      entityId: row.entityId,
+      worldRecordId: row.worldRecordId,
+    })),
+  };
+  let tick = 1_000;
+  let waits = 0;
+  let conflictAtTick = 2_500;
+  const page = {
+    async evaluate(_callback, authority) {
+      assert.deepEqual(authority, prebound);
+      const phase = tick >= conflictAtTick ? 'conflict' : tick >= 3_520 ? 'offer' : null;
+      const initialHostiles = TOOLKIT_HOSTILES.map((row) => ({
+        ...row,
+        ceresActivityAmbushPhase: phase,
+        passive: phase !== 'conflict',
+        roe: phase === 'conflict' ? 'weapons_free' : 'hold_fire',
+      }));
+      return {
+        startTick: tick,
+        playerEntityId: PLAYER_ENTITY_ID,
+        combatTraceStartSeq: 1_200,
+        initialHostiles,
+        director: {
+          simTime: tick / TICK_RATE_HZ,
+          durablePhase: phase ? 'revealed' : 'queued',
+          pressureCombat: 44,
+          lastMeaningfulAt: 0,
+          ambushCooldownAt: null,
+          pending: phase ? [] : [{
+            encounterId: 'ceres:activity:throughline-ambush',
+            shapeId: 'ambush_snare',
+            zoneId: 'zone_ceres_ambush',
+            dueAt: (tick < 2_260 ? 2_260 : 3_520) / TICK_RATE_HZ,
+            defers: 0,
+          }],
+          live: phase ? {
+            id: 'ceres:activity:throughline-ambush',
+            phase,
+            startedAt: 3_520 / TICK_RATE_HZ,
+            springAt: 3_760 / TICK_RATE_HZ,
+            deadlineAt: 20_000 / TICK_RATE_HZ,
+            entityIds: TOOLKIT_HOSTILES.map((row) => row.entityId),
+          } : null,
+        },
+      };
+    },
+    async waitForTimeout(durationMs) {
+      assert.equal(durationMs, 150);
+      waits += 1;
+      tick += 9;
+    },
+  };
+
+  conflictAtTick = 3_760;
+  const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, 5_000, {
+    maxWaitTicks: 3_000,
+    pollMs: 150,
+    maxPolls: 600,
+  });
+  assert.ok(baseline.startTick >= 3_760 && baseline.startTick < 4_000);
+  assert.equal(ceresToolkitConflictAuthorityPass(baseline, prebound), true);
+  assert.ok(waits > 240,
+    'the regression must outlive both the removed six-second loop and a 36-second wall watchdog');
+  assert.ok(waits < 600);
+  assert.deepEqual(baseline.conflictAuthorityWait, {
+    waitStartTick: 1_000,
+    deadlineTick: 4_000,
+    polls: waits + 1,
+  });
+
+  tick = 3_000;
+  waits = 0;
+  conflictAtTick = Number.POSITIVE_INFINITY;
+  let failure = null;
+  try {
+    await waitForCeresToolkitConflictAuthority(page, prebound, 4_000, {
+      maxWaitTicks: 18,
+      pollMs: 150,
+      maxPolls: 10,
+    });
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure instanceof Error);
+  assert.match(failure.message, /exhausted its bounded simulation window/);
+  assert.equal(waits, 2, 'the exact deadline rejects before another wall wait');
+  assert.deepEqual(failure.ceresToolkitConflictDiagnostic, {
+    schema: 'spaceface.ceresToolkitConflictDiagnostic.v1',
+    waitStartTick: 3_000,
+    deadlineTick: 3_018,
+    polls: 3,
+    final: failure.ceresToolkitConflictDiagnostic.final,
+  });
+  assert.equal(failure.ceresToolkitConflictDiagnostic.final.startTick, 3_018);
+  assert.ok(failure.ceresToolkitConflictDiagnostic.final.director);
+});
+
+test('Ceres reference launch disables onboarding through public Settings before Sandbox', async () => {
+  let screen = 'mainMenu';
+  let activeTab = null;
+  let tutorialHints = true;
+  const actions = [];
+  const page = {
+    getByRole(role, options) {
+      assert.equal(role, options?.name === 'Gameplay' ? 'tab' : 'button');
+      return {
+        async click() {
+          const name = options?.name;
+          actions.push(`click:${name}`);
+          if (name === 'Settings') screen = 'settings';
+          else if (name === 'Gameplay') activeTab = 'Gameplay';
+          else if (name === 'Back') screen = 'mainMenu';
+          else assert.fail(`unexpected public setup control ${name}`);
+        },
+      };
+    },
+    getByLabel(label, options) {
+      assert.equal(label, 'Tutorial hints');
+      assert.equal(options?.exact, true);
+      return {
+        async getAttribute(name) {
+          assert.equal(name, 'aria-pressed');
+          return String(tutorialHints);
+        },
+        async click() {
+          assert.equal(screen, 'settings');
+          assert.equal(activeTab, 'Gameplay');
+          actions.push('click:Tutorial hints');
+          tutorialHints = false;
+        },
+      };
+    },
+    async waitForFunction(_callback, argument) {
+      if (typeof argument === 'string') assert.equal(screen, argument);
+      else assert.equal(tutorialHints, false);
+    },
+    async evaluate() {
+      return { tutorialHints };
+    },
+  };
+
+  const receipt = await disableCeresTutorialThroughPublicSettings(page);
+  assert.deepEqual(receipt, {
+    pass: true,
+    source: 'public-settings-ui',
+    changed: true,
+    tutorialHints: false,
+    publicPath: ['Main Menu', 'Settings', 'Gameplay', 'Tutorial hints: Off', 'Back'],
+  });
+  assert.deepEqual(actions, [
+    'click:Settings',
+    'click:Gameplay',
+    'click:Tutorial hints',
+    'click:Back',
+  ]);
+
+  actions.length = 0;
+  activeTab = null;
+  const unchanged = await disableCeresTutorialThroughPublicSettings(page);
+  assert.equal(unchanged.changed, false);
+  assert.deepEqual(actions, ['click:Settings', 'click:Gameplay', 'click:Back'],
+    'an already-disabled public setting remains idempotent');
 });
 
 test('zero-visible intervals are re-derived and deliberately carry no numeric pass threshold', () => {
@@ -1514,7 +1684,7 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
     'const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {',
   );
   const conflictIndex = librarySource.indexOf(
-    'ceresToolkitConflictAuthorityPass(baseline, prebound)', repositionIndex,
+    'waitForCeresToolkitConflictAuthority(page, prebound, endTick)', repositionIndex,
   );
   const pointIndex = librarySource.indexOf(
     'let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick)',
@@ -1854,6 +2024,21 @@ test('Working Seam evidence publicly restages to the fixed Belt Outpost departur
 test('public pilot source uses menu/card and Playwright input while private shortcuts fail closed', () => {
   const validSources = actualPilotSources();
   assert.equal(validateCeresPilotSources(validSources).pass, true);
+  const routeStart = validSources.routeSource.indexOf(
+    'export async function runCeresFiveMinutePublicRoute',
+  );
+  const tutorialSetupIndex = validSources.routeSource.indexOf(
+    'disableCeresTutorialThroughPublicSettings(page)', routeStart,
+  );
+  const sandboxIndex = validSources.routeSource.indexOf(
+    "getByRole('button', { name: 'Sandbox', exact: true })", routeStart,
+  );
+  const setupAssertionIndex = validSources.routeSource.indexOf(
+    'assertCeresSetup(setup, fixedSeed)', sandboxIndex,
+  );
+  assert.ok(routeStart >= 0 && tutorialSetupIndex > routeStart
+    && sandboxIndex > tutorialSetupIndex && setupAssertionIndex > sandboxIndex,
+  'public Settings must disable onboarding before Sandbox and live setup must verify the result');
 
   const forbidden = [
     "SF.bus.emit('game:new', { seed: 47 })",
@@ -1873,7 +2058,16 @@ test('public pilot source uses menu/card and Playwright input while private shor
     assert.ok(result.failures.length > 0, `${shortcut} must explain the source-policy failure`);
   }
 
-  for (const missing of ['Main Menu', 'Sandbox', 'ceres_reference_pocket', 'page.keyboard', 'page.mouse']) {
+  for (const missing of [
+    'Main Menu',
+    'Settings',
+    'Gameplay',
+    'Tutorial hints',
+    'Sandbox',
+    'ceres_reference_pocket',
+    'page.keyboard',
+    'page.mouse',
+  ]) {
     const sources = actualPilotSources();
     sources.routeSource = sources.routeSource.replaceAll(missing, 'omitted');
     assert.equal(validateCeresPilotSources(sources).pass, false, `missing ${missing}`);

@@ -162,6 +162,11 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
 ));
 const CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU = 8;
 const CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU = 20;
+const CERES_TOOLKIT_CONFLICT_WAIT_TICKS = 50 * CERES_FIVE_MINUTE_TICK_RATE_HZ;
+const CERES_TOOLKIT_CONFLICT_POLL_MS = 150;
+// This is an infrastructure watchdog, not the simulation deadline. Software/browser execution can
+// advance well under one simulation second per wall second, so retain ample headroom for 50 sim-s.
+const CERES_TOOLKIT_CONFLICT_MAX_POLLS = 1_200;
 // The fixed chase camera never follows hull yaw. After the collision receipt, first back out to the
 // authored Throughline beacon, then move along the seed-47 corridor to a point 65 WU south of the
 // authored hostile-presence center. The two collision-anchor centerlines retain >44 WU of physical
@@ -274,6 +279,147 @@ export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
   const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   return stableJson(initialPairs) === stableJson(boundPairs);
+}
+
+async function readCeresToolkitConflictBaseline(page, prebound) {
+  return page.evaluate((authority) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    const director = state?.encounterDirector || {};
+    const encounterId = 'ceres:activity:throughline-ambush';
+    const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
+    const initialHostiles = (state?.entityList || []).filter((entity) => (
+      entity?.alive !== false && entity?.type === 'ship'
+      && bound.get(entity.id) === entity.data?.worldRecordId
+      && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
+      && entity.data?.ai?.squadId === 'zone_ceres_ambush'
+    )).map((entity) => ({
+      entityId: entity.id,
+      worldRecordId: entity.data.worldRecordId,
+      ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
+      team: entity.team ?? entity.data?.team ?? null,
+      factionId: entity.factionId || entity.data?.factionId || null,
+      lawful: entity.data?.ai?.lawful === true,
+      passive: entity.data?.ai?.passive === true,
+      roe: entity.data?.ai?.roe || null,
+      spawnContext: entity.data?.ai?.spawnContext || null,
+      zoneId: entity.data?.ai?.zoneId || null,
+      squadId: entity.data?.ai?.squadId || null,
+    })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
+    const live = director.live?.[encounterId] || null;
+    const pending = (Array.isArray(director.pending) ? director.pending : [])
+      .filter((item) => item?.encounterId === encounterId || item?.data?.ceresActivityAmbush === true)
+      .slice(0, 4)
+      .map((item) => ({
+        encounterId: String(item.encounterId || ''),
+        shapeId: String(item.shapeId || ''),
+        zoneId: String(item.zoneId || ''),
+        dueAt: Number.isFinite(Number(item.dueAt)) ? Number(item.dueAt) : null,
+        defers: Number.isSafeInteger(Number(item.defers)) ? Number(item.defers) : null,
+      }));
+    return {
+      startTick: Number(state?.tick),
+      playerEntityId: player?.id ?? null,
+      combatTraceStartSeq: Number(state?.combat?.trace?.nextSeq) || 1,
+      initialHostiles,
+      director: {
+        tutorialHints: state?.settings?.gameplay?.tutorialHints ?? null,
+        onboardingActive: state?.onboarding?.active === true,
+        onboardingFinished: state?.onboarding?.finished === true,
+        simTime: Number.isFinite(Number(state?.simTime)) ? Number(state.simTime) : null,
+        durablePhase: String(director.stats?.ceresActivityAmbush?.phase || ''),
+        pressureCombat: Number.isFinite(Number(director.pressure?.combat))
+          ? Number(director.pressure.combat)
+          : null,
+        lastMeaningfulAt: Number.isFinite(Number(director.lastMeaningfulAt))
+          ? Number(director.lastMeaningfulAt)
+          : null,
+        ambushCooldownAt: Number.isFinite(Number(director.cooldowns?.ambush_snare))
+          ? Number(director.cooldowns.ambush_snare)
+          : null,
+        pending,
+        live: live ? {
+          id: String(live.id || ''),
+          phase: String(live.phase || ''),
+          startedAt: Number.isFinite(Number(live.startedAt)) ? Number(live.startedAt) : null,
+          springAt: Number.isFinite(Number(live.data?.springAt)) ? Number(live.data.springAt) : null,
+          deadlineAt: Number.isFinite(Number(live.deadlineAt)) ? Number(live.deadlineAt) : null,
+          entityIds: (Array.isArray(live.ids) ? live.ids : []).slice(0, 8),
+        } : null,
+      },
+    };
+  }, prebound);
+}
+
+export async function waitForCeresToolkitConflictAuthority(page, prebound, endTick, options = {}) {
+  if (!page || typeof page.evaluate !== 'function' || typeof page.waitForTimeout !== 'function') {
+    throw new TypeError('toolkit conflict wait requires a live page');
+  }
+  if (!prebound || prebound.playerEntityId == null || !Array.isArray(prebound.boundHostiles)
+      || prebound.boundHostiles.length < 1) {
+    throw new TypeError('toolkit conflict wait requires exact prebound hostile authority');
+  }
+  if (!Number.isSafeInteger(endTick)) {
+    throw new TypeError('toolkit conflict wait requires an integer route end tick');
+  }
+  const maxWaitTicks = options.maxWaitTicks ?? CERES_TOOLKIT_CONFLICT_WAIT_TICKS;
+  const pollMs = options.pollMs ?? CERES_TOOLKIT_CONFLICT_POLL_MS;
+  const maxPolls = options.maxPolls ?? CERES_TOOLKIT_CONFLICT_MAX_POLLS;
+  if (!Number.isSafeInteger(maxWaitTicks) || maxWaitTicks <= 0
+      || !Number.isFinite(pollMs) || pollMs <= 0
+      || !Number.isSafeInteger(maxPolls) || maxPolls <= 0) {
+    throw new TypeError('toolkit conflict wait options must be positive bounded values');
+  }
+
+  let waitStartTick = null;
+  let deadlineTick = null;
+  let baseline = null;
+  let polls = 0;
+  const fail = (message) => {
+    const error = new Error(message);
+    error.ceresToolkitConflictDiagnostic = {
+      schema: 'spaceface.ceresToolkitConflictDiagnostic.v1',
+      waitStartTick,
+      deadlineTick,
+      polls,
+      final: baseline,
+    };
+    throw error;
+  };
+
+  while (polls < maxPolls) {
+    baseline = await readCeresToolkitConflictBaseline(page, prebound);
+    polls += 1;
+    const tick = Number(baseline?.startTick);
+    if (!Number.isSafeInteger(tick)) {
+      fail('toolkit conflict authority returned an invalid simulation tick');
+    }
+    if (waitStartTick == null) {
+      waitStartTick = tick;
+      deadlineTick = Math.min(endTick - 120, waitStartTick + maxWaitTicks);
+      if (deadlineTick <= waitStartTick) {
+        fail('toolkit hostile classification exhausted the exact route horizon');
+      }
+    }
+    if (tick < waitStartTick) {
+      fail('toolkit conflict authority simulation tick moved backwards');
+    }
+    if (tick >= deadlineTick) {
+      fail('toolkit hostile classification exhausted its bounded simulation window');
+    }
+    if (ceresToolkitConflictAuthorityPass(baseline, prebound)) {
+      return {
+        ...baseline,
+        conflictAuthorityWait: {
+          waitStartTick,
+          deadlineTick,
+          polls,
+        },
+      };
+    }
+    if (polls < maxPolls) await page.waitForTimeout(pollMs);
+  }
+  fail('toolkit exercise did not reach exact live Throughline conflict authority');
 }
 
 /**
@@ -517,7 +663,16 @@ export function validateCeresPilotSources(sources = {}) {
   const checkerSource = String(sources.checkerSource || '');
   const joined = `${routeSource}\n${checkerSource}`;
   const executable = executableSourceForPolicy(joined);
-  for (const required of ['Main Menu', 'Sandbox', 'ceres_reference_pocket', 'page.keyboard', 'page.mouse']) {
+  for (const required of [
+    'Main Menu',
+    'Settings',
+    'Gameplay',
+    'Tutorial hints',
+    'Sandbox',
+    'ceres_reference_pocket',
+    'page.keyboard',
+    'page.mouse',
+  ]) {
     if (!routeSource.includes(required)) failures.push(`public pilot source is missing ${required}`);
   }
   const forbidden = [
@@ -535,6 +690,39 @@ export function validateCeresPilotSources(sources = {}) {
   }
   if (/["'`]game:new["'`]/.test(joined)) failures.push('public pilot source contains direct game:new invocation');
   return { pass: failures.length === 0, failures };
+}
+
+export async function disableCeresTutorialThroughPublicSettings(page) {
+  if (!page || typeof page.getByRole !== 'function' || typeof page.getByLabel !== 'function') {
+    throw new TypeError('Ceres tutorial setup requires a live public page');
+  }
+  await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 20_000 });
+  await waitForVisibleScreen(page, 'settings', 20_000);
+  await page.getByRole('tab', { name: 'Gameplay', exact: true }).click({ timeout: 20_000 });
+  const toggle = page.getByLabel('Tutorial hints', { exact: true });
+  const before = await toggle.getAttribute('aria-pressed');
+  if (before !== 'true' && before !== 'false') {
+    throw new Error('public Tutorial hints control lacks exact pressed state');
+  }
+  if (before !== 'false') await toggle.click({ timeout: 20_000 });
+  await page.waitForFunction(() => (
+    window.SF?.state?.settings?.gameplay?.tutorialHints === false
+  ), null, { timeout: 20_000 });
+  const observed = await page.evaluate(() => ({
+    tutorialHints: window.SF?.state?.settings?.gameplay?.tutorialHints ?? null,
+  }));
+  await page.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 20_000 });
+  await waitForVisibleScreen(page, 'mainMenu', 20_000);
+  if (observed.tutorialHints !== false) {
+    throw new Error('public Settings did not disable onboarding before Ceres launch');
+  }
+  return {
+    pass: true,
+    source: 'public-settings-ui',
+    changed: before !== 'false',
+    tutorialHints: false,
+    publicPath: ['Main Menu', 'Settings', 'Gameplay', 'Tutorial hints: Off', 'Back'],
+  };
 }
 
 export function projectCeresActivityFrame(row = {}) {
@@ -1055,12 +1243,16 @@ export async function runCeresFiveMinutePublicRoute({
     const splash = page.locator('#cinematic-splash');
     if (await splash.isVisible().catch(() => false)) await page.keyboard.press('Space');
     await waitForVisibleScreen(page, 'mainMenu', 30_000);
+    const tutorialSetup = await disableCeresTutorialThroughPublicSettings(page);
     await page.getByRole('button', { name: 'Sandbox', exact: true }).click({ timeout: 20_000 });
     await waitForVisibleScreen(page, 'sandbox', 20_000);
     await page.getByRole('button', { name: /^Ceres Reference Pocket\b/ }).click({ timeout: 20_000 });
     await waitForCeresFlight(page, fixedSeed, 180_000);
 
-    const setup = await readCeresRouteSnapshot(page);
+    const setup = {
+      ...await readCeresRouteSnapshot(page),
+      publicTutorialSettings: tutorialSetup,
+    };
     assertCeresSetup(setup, fixedSeed);
     const gpu = await pq020FunctionalRouteDrivers.readGpu(page);
     assert.equal(gpu.available, true, 'Ceres acceptance requires WebGL');
@@ -1286,6 +1478,7 @@ export async function runCeresFiveMinutePublicRoute({
         fixedSeed,
         phase,
         snapshot: error.ceresRouteFailureSnapshot,
+        toolkitConflict: error?.ceresToolkitConflictDiagnostic || null,
       };
       await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
       await page.screenshot({ path: screenshotPath }).catch(() => {});
@@ -3166,46 +3359,7 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     anchorEntityId: collisionProof.anchorEntityId,
     anchorImpactTick: collisionProof.impact.tick,
   });
-  let baseline = null;
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    baseline = await page.evaluate((authority) => {
-      const state = window.SF?.state;
-      const player = state?.entities?.get(state.playerId);
-      const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
-      const initialHostiles = (state?.entityList || []).filter((entity) => (
-        entity?.alive !== false && entity?.type === 'ship'
-        && bound.get(entity.id) === entity.data?.worldRecordId
-        && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
-        && entity.data?.ai?.squadId === 'zone_ceres_ambush'
-      )).map((entity) => ({
-        entityId: entity.id,
-        worldRecordId: entity.data.worldRecordId,
-        ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
-        team: entity.team ?? entity.data?.team ?? null,
-        factionId: entity.factionId || entity.data?.factionId || null,
-        lawful: entity.data?.ai?.lawful === true,
-        passive: entity.data?.ai?.passive === true,
-        roe: entity.data?.ai?.roe || null,
-        spawnContext: entity.data?.ai?.spawnContext || null,
-        zoneId: entity.data?.ai?.zoneId || null,
-        squadId: entity.data?.ai?.squadId || null,
-      })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
-      return {
-        startTick: Number(state?.tick),
-        playerEntityId: player?.id ?? null,
-        combatTraceStartSeq: Number(state?.combat?.trace?.nextSeq) || 1,
-        initialHostiles,
-      };
-    }, prebound);
-    if (ceresToolkitConflictAuthorityPass(baseline, prebound)) break;
-    if (!Number.isSafeInteger(baseline.startTick) || baseline.startTick >= endTick - 120) {
-      throw new Error('toolkit hostile classification exhausted the exact route horizon');
-    }
-    await page.waitForTimeout(150);
-  }
-  if (!ceresToolkitConflictAuthorityPass(baseline, prebound)) {
-    throw new Error('toolkit exercise did not reach exact live Throughline conflict authority');
-  }
+  const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick);
   baseline.cameraReposition = cameraReposition;
   let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick);
   if (!target || !baseline.initialHostiles.some((row) => row.entityId === target.id
@@ -3828,6 +3982,14 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
       simTime: Number(state?.simTime),
       timeScale: Number(state?.timeScale),
       seed: state?.meta?.seed ?? null,
+      tutorialHints: state?.settings?.gameplay?.tutorialHints ?? null,
+      onboarding: state?.onboarding ? {
+        active: state.onboarding.active === true,
+        finished: state.onboarding.finished === true,
+        currentBeat: Number.isSafeInteger(Number(state.onboarding.currentBeat))
+          ? Number(state.onboarding.currentBeat)
+          : null,
+      } : null,
       sectorId: state?.world?.currentSectorId || null,
       currentZone: state?.world?.currentZone ? {
         id: state.world.currentZone.id || null,
@@ -3863,6 +4025,16 @@ function assertCeresSetup(snapshot, fixedSeed) {
   ]) assert.ok(snapshot.fittedItemIds.includes(itemId), `Hornet is missing ${itemId}`);
   assert.equal(snapshot.cameraZoomWU, 144);
   assert.equal(snapshot.timeScale, 1);
+  assert.equal(snapshot.tutorialHints, false,
+    'Ceres acceptance must disable the first-session tutorial through public Settings');
+  assert.equal(snapshot.onboarding?.active === true && snapshot.onboarding?.finished !== true, false,
+    'Ceres acceptance cannot start while onboarding blocks the encounter director');
+  assert.equal(snapshot.publicTutorialSettings?.pass, true);
+  assert.equal(snapshot.publicTutorialSettings?.source, 'public-settings-ui');
+  assert.equal(typeof snapshot.publicTutorialSettings?.changed, 'boolean');
+  assert.equal(snapshot.publicTutorialSettings?.tutorialHints, false);
+  assert.deepEqual(snapshot.publicTutorialSettings?.publicPath,
+    ['Main Menu', 'Settings', 'Gameplay', 'Tutorial hints: Off', 'Back']);
   assert.deepEqual(snapshot.census.actors.map((row) => row.slotId).sort(),
     [...CERES_FIVE_MINUTE_ACTOR_SLOT_IDS].sort());
   assert.equal(ceresLawfulServiceClassificationPass(snapshot.census.actors), true,
