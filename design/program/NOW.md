@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-048.01 condition-driven pocket settle | `/root` | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`; `test/ceres-five-minute-acceptance.test.mjs`; `design/program/NOW.md` | Commit and push the approved condition-driven settle, then release this row before one new broker run. |
 
 ## Uncommitted work without a confirmed live thread
 

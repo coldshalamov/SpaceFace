@@ -11,6 +11,7 @@ import {
   countsTowardCeresPocketVisibility,
   createAccessibilityMatchedCheckpoint,
   deriveZeroVisibleActivityIntervals,
+  drivePublicToPocketAnchor,
   evaluateCeresFiveMinutePair,
   evaluateCeresFiveMinuteRuntime,
   evaluateCeresHumanReview,
@@ -18,6 +19,7 @@ import {
   gapMetricDigest,
   normalizeCeresTrace,
   projectCeresActivityFrame,
+  settleCeresPocketApproach,
   validateCeresPilotSources,
   validatePublicInputReceipt,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
@@ -1244,6 +1246,83 @@ test('public pocket approach completes only after the hull is settled inside the
   }).kind, 'invalid');
 });
 
+test('public pocket settle holds the brake to the speed condition outside the steering budget', async () => {
+  const settled = pocketSettlePage({
+    tick: 1_000,
+    endTick: 2_000,
+    distanceWU: 80,
+    pollSpeeds: [78, 35, 0.8],
+  });
+  const receipt = await settleCeresPocketApproach(settled.page, {
+    point: { x: 0, z: 0 },
+    endTick: 2_000,
+    targetName: 'Working Seam',
+  });
+  assert.equal(receipt.speed, 0.8);
+  assert.equal(receipt.distanceWU, 80);
+  assert.deepEqual(settled.events, [
+    'down:Digit0',
+    'wait:speed-or-horizon:10000',
+    'poll:78:false',
+    'poll:35:false',
+    'poll:0.8:true',
+    'read:settled-status',
+    'up:Digit0',
+  ]);
+
+  const horizon = pocketSettlePage({
+    tick: 1_880,
+    endTick: 2_000,
+    distanceWU: 80,
+    pollSpeeds: [78],
+  });
+  await assert.rejects(
+    settleCeresPocketApproach(horizon.page, {
+      point: { x: 0, z: 0 },
+      endTick: 2_000,
+      targetName: 'Working Seam',
+    }),
+    /Working Seam settle exhausted the exact route horizon/,
+  );
+  assert.equal(horizon.events.at(-1), 'up:Digit0', 'failure must release the public brake');
+});
+
+test('public pocket braking preserves the remaining steering-attempt budget after drift', async () => {
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam;
+  const targetPoint = sectorLocalToGlobalForSector(
+    pocket.activityAnchor.localPos,
+    CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  );
+  const harness = pocketApproachBudgetPage({ targetPoint, endTick: 5_000 });
+  const receipt = await drivePublicToPocketAnchor(
+    harness.page,
+    'ceres_working_seam',
+    5_000,
+  );
+  assert.equal(receipt.distanceWU, 80);
+  assert.equal(receipt.speed, 0.8);
+  assert.equal(harness.brakeWaits, 1, 'one held-brake settle replaces pulse-budget braking');
+  assert.equal(harness.steeringPulsesAtBrake, 218,
+    'the brake occurs with only two steering attempts left');
+  assert.equal(harness.steeringPulses, 219,
+    'the post-drift thrust remains available because braking spent no steering attempt');
+
+  const expired = pocketApproachBudgetPage({
+    targetPoint,
+    endTick: 5_000,
+    tick: 4_880,
+    initialDistanceWU: 80,
+    initialSpeed: 0.8,
+    initialRot: 0,
+  });
+  await assert.rejects(
+    drivePublicToPocketAnchor(expired.page, 'ceres_working_seam', 5_000),
+    /Working Seam approach exhausted the exact route horizon/,
+  );
+  assert.equal(expired.steeringPulses, 0, 'an expired settled sample cannot issue a control pulse');
+  assert.equal(expired.brakeWaits, 0, 'an expired settled sample cannot enter the brake helper');
+});
+
 test('public pilot source uses menu/card and Playwright input while private shortcuts fail closed', () => {
   const validSources = actualPilotSources();
   assert.equal(validateCeresPilotSources(validSources).pass, true);
@@ -2191,6 +2270,151 @@ function publicInputReceipt() {
     neutralState: { active: false },
     motionObserved: true,
   };
+}
+
+function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds }) {
+  const events = [];
+  const heldKeys = new Set();
+  const speeds = [...pollSpeeds];
+  const state = {
+    tick,
+    playerId: 1,
+    entities: new Map([[1, {
+      id: 1,
+      pos: { x: distanceWU, z: 0 },
+      vel: { x: speeds[0], z: 0 },
+      rot: Math.PI,
+    }]]),
+  };
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = { SF: { state } };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  return {
+    events,
+    page: {
+      keyboard: {
+        async down(key) {
+          heldKeys.add(key);
+          events.push(`down:${key}`);
+        },
+        async up(key) {
+          heldKeys.delete(key);
+          events.push(`up:${key}`);
+        },
+      },
+      async waitForFunction(callback, argument, options) {
+        events.push(`wait:speed-or-horizon:${options.timeout}`);
+        assert.equal(argument.terminalTick, endTick);
+        assert.equal(heldKeys.has('Digit0'), true, 'the public brake stays held while polling');
+        let terminal = false;
+        for (const speed of speeds) {
+          state.entities.get(state.playerId).vel.x = speed;
+          terminal = runInPage(callback, argument);
+          events.push(`poll:${speed}:${terminal}`);
+          if (terminal) break;
+        }
+        assert.equal(terminal, true,
+          'the fake frames must satisfy the exact speed-or-horizon terminal predicate');
+      },
+      async evaluate(callback, argument) {
+        assert.equal(heldKeys.has('Digit0'), true, 'the final status is read while braking remains held');
+        events.push('read:settled-status');
+        return runInPage(callback, argument);
+      },
+    },
+  };
+}
+
+function pocketApproachBudgetPage({
+  targetPoint,
+  endTick,
+  tick = 1_000,
+  initialDistanceWU = 200,
+  initialSpeed = 0,
+  initialRot = 1,
+}) {
+  const heldKeys = new Set();
+  const counters = {
+    brakeWaits: 0,
+    steeringPulses: 0,
+    steeringPulsesAtBrake: null,
+  };
+  const player = {
+    id: 1,
+    pos: { x: targetPoint.x - initialDistanceWU, z: targetPoint.z },
+    vel: { x: initialSpeed, z: 0 },
+    rot: initialRot,
+  };
+  const state = {
+    tick,
+    playerId: player.id,
+    entities: new Map([[player.id, player]]),
+  };
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = { SF: { state } };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  const harness = {
+    get brakeWaits() { return counters.brakeWaits; },
+    get steeringPulses() { return counters.steeringPulses; },
+    get steeringPulsesAtBrake() { return counters.steeringPulsesAtBrake; },
+    page: {
+      isClosed() { return false; },
+      locator() {
+        return {
+          async waitFor() {},
+          async focus() {},
+        };
+      },
+      mouse: { async up() {} },
+      keyboard: {
+        async down(key) { heldKeys.add(key); },
+        async up(key) { heldKeys.delete(key); },
+      },
+      async evaluate(callback, argument) {
+        return runInPage(callback, argument);
+      },
+      async waitForFunction(callback, argument, options) {
+        assert.equal(options.timeout, 10_000);
+        assert.equal(argument.terminalTick, endTick);
+        assert.equal(heldKeys.has('Digit0'), true);
+        counters.brakeWaits += 1;
+        counters.steeringPulsesAtBrake = counters.steeringPulses;
+        player.pos.x = targetPoint.x - 100;
+        player.vel.x = 0.8;
+        assert.equal(runInPage(callback, argument), true);
+      },
+      async waitForTimeout() {
+        assert.equal(heldKeys.has('KeyA') || heldKeys.has('KeyD') || heldKeys.has('KeyW'), true);
+        counters.steeringPulses += 1;
+        if (counters.steeringPulses === 218) {
+          player.pos.x = targetPoint.x - 80;
+          player.vel.x = 78;
+          player.rot = 0;
+        } else if (counters.steeringPulses === 219) {
+          player.pos.x = targetPoint.x - 80;
+          player.vel.x = 0.8;
+          player.rot = 0;
+        }
+      },
+    },
+  };
+  return harness;
 }
 
 function actualPilotSources() {

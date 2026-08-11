@@ -2502,41 +2502,84 @@ export function chooseCeresPocketApproachAction(status) {
   });
 }
 
-async function drivePublicToPocketAnchor(page, pocketId, endTick) {
+async function readCeresPocketApproachStatus(page, point, terminalTick) {
+  return page.evaluate(({ targetPoint, routeEndTick }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    if (!player?.pos) return { missing: true, tick: Number(state?.tick) };
+    const dx = Number(targetPoint.x) - Number(player.pos.x);
+    const dz = Number(targetPoint.z) - Number(player.pos.z);
+    const desired = Math.atan2(dz, dx);
+    let headingError = desired - Number(player.rot || 0);
+    while (headingError > Math.PI) headingError -= Math.PI * 2;
+    while (headingError < -Math.PI) headingError += Math.PI * 2;
+    return {
+      tick: Number(state.tick),
+      terminalTick: routeEndTick,
+      distanceWU: Math.hypot(dx, dz),
+      headingError,
+      speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
+    };
+  }, { targetPoint: point, routeEndTick: terminalTick });
+}
+
+export async function settleCeresPocketApproach(page, {
+  point,
+  endTick,
+  targetName = 'Ceres pocket',
+} = {}) {
+  await page.keyboard.down('Digit0');
+  try {
+    await page.waitForFunction(({ terminalTick }) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get(state.playerId);
+      if (!player?.pos) return true;
+      const tick = Number(state.tick);
+      const speed = Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0);
+      return speed <= 1 || !Number.isSafeInteger(tick) || tick >= terminalTick - 120;
+    }, { terminalTick: endTick }, { timeout: 10_000 });
+    const status = await readCeresPocketApproachStatus(page, point, endTick);
+    if (status.missing) throw new Error(`${targetName} settle lost the player`);
+    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+      throw new Error(`${targetName} settle exhausted the exact route horizon`);
+    }
+    if (!Number.isFinite(status.speed) || status.speed > 1) {
+      throw new Error(`${targetName} public brake did not settle the player`);
+    }
+    return status;
+  } finally {
+    await page.keyboard.up('Digit0').catch(() => {});
+  }
+}
+
+export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
   const target = CERES_POCKET_TARGETS[pocketId];
   if (!target) throw new Error(`unknown Ceres pocket ${pocketId}`);
   const canvas = page.locator('#gl-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30_000 });
   await canvas.focus();
   try {
-    for (let attempt = 0; attempt < 220; attempt += 1) {
-      const status = await page.evaluate(({ point, terminalTick }) => {
-        const state = window.SF?.state;
-        const player = state?.entities?.get(state.playerId);
-        if (!player?.pos) return { missing: true, tick: Number(state?.tick) };
-        const dx = Number(point.x) - Number(player.pos.x);
-        const dz = Number(point.z) - Number(player.pos.z);
-        const desired = Math.atan2(dz, dx);
-        let headingError = desired - Number(player.rot || 0);
-        while (headingError > Math.PI) headingError -= Math.PI * 2;
-        while (headingError < -Math.PI) headingError += Math.PI * 2;
-        return {
-          tick: Number(state.tick),
-          terminalTick,
-          distanceWU: Math.hypot(dx, dz),
-          headingError,
-          speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
-        };
-      }, { point: target.targetPos, terminalTick: endTick });
+    for (let steeringAttempts = 0; steeringAttempts < 220;) {
+      const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
       const action = chooseCeresPocketApproachAction(status);
       if (action.kind === 'invalid') {
         throw new Error(`${target.targetName} approach produced invalid navigation telemetry`);
       }
-      if (action.kind === 'complete') return status;
       if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
         throw new Error(`${target.targetName} approach exhausted the exact route horizon`);
       }
+      if (action.kind === 'complete') return status;
+      if (action.kind === 'brake') {
+        const settled = await settleCeresPocketApproach(page, {
+          point: target.targetPos,
+          endTick,
+          targetName: target.targetName,
+        });
+        if (settled.distanceWU <= 90) return settled;
+        continue;
+      }
+      steeringAttempts += 1;
       if (action.kind === 'turn') {
         await page.keyboard.down(action.key);
         await page.waitForTimeout(action.durationMs);
