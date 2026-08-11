@@ -3,7 +3,7 @@ packetId: PQ-018
 leafId: PQ-018.cathedral-reauthor
 acceptance: focused_green
 disposition: PASS
-candidateCommit: PENDING_COMMIT
+candidateCommit: 05323755
 -->
 
 # PQ-018 leaf — Wreck Cathedral hull/rupture re-author
@@ -11,6 +11,7 @@ candidateCommit: PENDING_COMMIT
 ```yaml
 packet: PQ-018
 dispatchUnit: PQ-018.cathedral-reauthor
+candidateCommit: 05323755
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
 disposition: PASS
@@ -23,11 +24,12 @@ wholeAssetG1G2G4Claimed: false
 
 ## Verdict
 
-PASS for the offline implementation unit. The live Wreck Cathedral source/release candidate was
-re-authored away from the art-verdict REVISE baseline (`f335935f…` / `dc5510f…` / blend `1bc08169…`)
-toward capital-scale manufactured hull shells, rooted rupture, and multi-zone material allocation,
-while preserving place identity, two-half envelope, 72×58 m fly-through clearance, LOD order,
-sockets/markers, coordinate reservation, and collision/component proxies.
+PASS for the offline implementation unit at artifact commit `05323755`. The live Wreck Cathedral
+source/release candidate was re-authored away from the art-verdict REVISE baseline
+(`f335935f…` / `dc5510f…` / blend `1bc08169…`) toward capital-scale manufactured hull shells, rooted
+rupture, and multi-zone material allocation, while preserving place identity, two-half envelope,
+72×58 m fly-through clearance, LOD order, sockets/markers, coordinate reservation, and
+collision/component proxies.
 
 This unit does **not** claim whole-asset G1/G2/G4 KEEP or Browser/Electron route acceptance. Those
 belong to `PQ-018.cathedral-reauthor-h1` and `PQ-018.cathedral-reauthor-review`.

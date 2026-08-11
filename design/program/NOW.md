@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-018.cathedral-reauthor | grok-goal-cathedral | PUBLISHING | assets/ships/parts/blender/place_landmark_wreck_cathedral.blend; assets/ships/parts/places/place_landmark_wreck_cathedral.glb; assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb; assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/; assets/ships/parts/parts_manifest.json; assets/ships/release/release_manifest.json; test/pq018-wreck-cathedral*.test.mjs; design/program/roadmap/receipts/PQ-018-cathedral-reauthor-REPORT.md; design/program/roadmap/program-queue.json; design/program/roadmap/active/PQ-018.md | Stage/commit/push owned paths only |
 
 ## Uncommitted work without a confirmed live thread
 
