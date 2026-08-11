@@ -6,6 +6,89 @@ import * as partsLibrary from '../src/render/partsLibrary.js';
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 import { waitForAuthoredAssetDeadline } from '../scripts/lib/authoredAssetDeadline.mjs';
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function makeStubCanvas() {
+  const context = {
+    canvas: null,
+    fillRect() {}, strokeRect() {}, clearRect() {}, fillText() {}, strokeText() {},
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {},
+    bezierCurveTo() {}, quadraticCurveTo() {}, fill() {}, stroke() {}, drawImage() {},
+    createLinearGradient() { return { addColorStop() {} }; },
+    createRadialGradient() { return { addColorStop() {} }; },
+    createImageData(width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    getImageData(_x, _y, width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    putImageData() {}, measureText() { return { width: 10 }; },
+    fillStyle: '', strokeStyle: '', font: '', lineWidth: 1, globalAlpha: 1,
+  };
+  const canvas = {
+    width: 256,
+    height: 256,
+    getContext: () => context,
+    style: {},
+    addEventListener() {},
+  };
+  context.canvas = canvas;
+  return canvas;
+}
+
+function authoredFixtureRecord(url, slot) {
+  const geometry = new THREE.BoxGeometry(1, 0.5, 0.5);
+  const material = new THREE.MeshStandardMaterial({ color: 0x8090a0 });
+  return {
+    url,
+    slot,
+    assetId: url.endsWith('wholeships/kestrel.glb')
+      ? 'SF_K0_KESTREL_BORROWED_TIME_V4'
+      : 'place_station_trade_hub',
+    bounds: {
+      min: [-0.5, -0.25, -0.25],
+      max: [0.5, 0.25, 0.25],
+      size: [1, 0.5, 0.5],
+      center: [0, 0, 0],
+    },
+    primitives: [{
+      key: `${url}#fixture`,
+      name: 'LOD0_Body_Material_Hull',
+      geometry,
+      material,
+      matrix: new THREE.Matrix4(),
+      tags: Object.freeze({ lod: 'lod0', tint: 'hull' }),
+    }],
+    markers: [],
+  };
+}
+
+function fallbackShip() {
+  const root = new THREE.Group();
+  const hull = new THREE.Group();
+  hull.add(new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.5), new THREE.MeshBasicMaterial()));
+  root.add(hull);
+  root.userData.hull = hull;
+  return root;
+}
+
+async function flushMicrotasksUntil(predicate, message) {
+  for (let turn = 0; turn < 100; turn++) {
+    if (predicate()) return;
+    await Promise.resolve();
+  }
+  assert.fail(message);
+}
+
 test('authored boundary admission exposes the runtime queue seam', () => {
   assert.equal(typeof partsLibrary.enqueueBoundaryUpgrade, 'function');
 });
@@ -101,6 +184,135 @@ test('player and Helios hub outrank NPCs without waiting for queue idle', async 
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
+  }
+});
+
+test('loading admission releases the CPU slot after staging while exact GPU commits remain pending', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  globalThis.document = {
+    createElement: (tag) => tag === 'canvas'
+      ? makeStubCanvas()
+      : { style: {}, appendChild() {}, addEventListener() {} },
+  };
+
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const pipelineGates = [deferred(), deferred()];
+  const compiledRoots = [];
+  const records = new Map();
+  const loadAuthoredPart = async (url, options = {}) => {
+    if (!records.has(url)) records.set(url, authoredFixtureRecord(url, options.slot));
+    return records.get(url);
+  };
+  const player = {
+    id: 'player-loading',
+    type: 'ship',
+    isPlayer: true,
+    alive: true,
+    radius: 12,
+    data: { defId: 'ship_kestrel', sectorId: 'sector_helios_prime' },
+  };
+  const hub = {
+    id: 'station_helios',
+    type: 'station',
+    alive: true,
+    radius: 72,
+    data: {
+      stationId: 'station_helios',
+      archetypeGlb: 'place_station_trade_hub',
+      sectorId: 'sector_helios_prime',
+    },
+  };
+  const runtimeState = {
+    mode: 'loading',
+    playerId: player.id,
+    player,
+    entities: new Map([[player.id, player], [hub.id, hub]]),
+    entityList: [player, hub],
+    world: { currentSectorId: 'sector_helios_prime' },
+    render: {
+      scene,
+      compileObjectPipelines(root) {
+        const gate = pipelineGates[compiledRoots.length];
+        assert.ok(gate, 'each critical admission must receive one deferred pipeline gate');
+        compiledRoots.push(root);
+        return gate.promise;
+      },
+    },
+  };
+  globalThis.window = { SF: { state: runtimeState } };
+
+  try {
+    const playerBoundary = partsLibrary.wrapShipWithAuthoredParts(player, fallbackShip(), {
+      releaseMode: true,
+      loadAuthoredPart,
+    });
+    const hubBoundary = partsLibrary.buildAuthoredStationArchetype(hub, {
+      releaseMode: true,
+      loadAuthoredPart,
+    });
+    player.mesh = playerBoundary;
+    hub.mesh = hubBoundary;
+    scene.add(playerBoundary, hubBoundary);
+
+    const hubCompletion = hubBoundary.userData.requestAuthoredUpgrade(renderer, scene);
+    const playerCompletion = playerBoundary.userData.requestAuthoredUpgrade(renderer, scene);
+    let playerCompletionSettled = false;
+    playerCompletion.then(() => { playerCompletionSettled = true; });
+
+    assert.equal(scheduledFrames.length, 1);
+    scheduledFrames.shift()(0);
+    await flushMicrotasksUntil(
+      () => playerBoundary.userData.authoredAssetState === 'compiling-pipelines',
+      'the player must finish CPU composition and stage its exact pipeline promise',
+    );
+    assert.equal(compiledRoots.length, 1);
+    assert.equal(playerCompletionSettled, false,
+      'queue completion must remain pending until the exact authored commit');
+    assert.ok(playerBoundary.userData.authoredPipelineReady instanceof Promise);
+    assert.equal(scheduledFrames.length, 1,
+      'staging the player must release the serialized CPU slot for the critical hub');
+
+    scheduledFrames.shift()(0);
+    await flushMicrotasksUntil(
+      () => hubBoundary.userData.authoredAssetState === 'compiling-pipelines',
+      'the hub must reach pipeline staging before the player pipeline resolves',
+    );
+    assert.equal(compiledRoots.length, 2);
+    assert.equal(playerBoundary.userData.authoredAssetState, 'compiling-pipelines');
+    const stagedReadiness = partsLibrary.authoredCriticalVisualReadiness(runtimeState);
+    assert.equal(stagedReadiness.pipelineReady, true);
+    assert.equal(stagedReadiness.ready, false,
+      'pipeline staging must not satisfy the final committed-authored flight gate');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: true });
+    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 2,
+      'both exact commits remain live diagnostics while the serialized CPU slot is free');
+
+    pipelineGates[0].resolve({ skipped: false });
+    pipelineGates[1].resolve({ skipped: false });
+    const [playerReceipt, hubReceipt] = await Promise.all([playerCompletion, hubCompletion]);
+
+    assert.equal(playerReceipt.status, 'authored');
+    assert.equal(hubReceipt.status, 'authored');
+    assert.equal(playerBoundary.userData.authoredAssetState, 'authored');
+    assert.equal(hubBoundary.userData.authoredAssetState, 'authored');
+    assert.equal(partsLibrary.authoredCriticalVisualReadiness(runtimeState).ready, true);
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
   }
 });
 

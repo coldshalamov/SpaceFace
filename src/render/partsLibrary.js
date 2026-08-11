@@ -1902,6 +1902,11 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   if (options.overlapAuthoredPipelineCompile === true) {
     const pending = completeAdmission();
     boundary.userData.authoredPipelineReady = pending;
+    const onAuthoredPipelineStaged = options.onAuthoredPipelineStaged;
+    if (typeof onAuthoredPipelineStaged === 'function') {
+      delete options.onAuthoredPipelineStaged;
+      onAuthoredPipelineStaged();
+    }
     return pending;
   }
   return completeAdmission();
@@ -2964,7 +2969,7 @@ function processUpgradeQueue(state) {
 function scheduleNextUpgradeFrame(state) {
   if (!state || state.frameScheduled) return;
   if (state.jobs.length === 0) {
-    state.running = state.inFlight > 0;
+    state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
     return;
   }
@@ -2982,7 +2987,7 @@ function admitNextUpgradeJob(state) {
   primeNextAuthoredAssetPlan(state);
   const job = state.jobs.shift();
   if (!job) {
-    state.running = state.inFlight > 0;
+    state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
     return;
   }
@@ -2995,9 +3000,23 @@ function admitNextUpgradeJob(state) {
   job.lifecycle = 'in-flight';
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
-  // One entity admission per frame. Composition commits remain serial in every mode because they
-  // mutate shared library/batch state; flight throughput comes from the separate serial prefetch
-  // lane below, which overlaps the next decode only with the current composition commit.
+  let serialSlotReleased = false;
+  const releaseSerialSlotAfterPipelineStaging = () => {
+    if (serialSlotReleased || job.lifecycle !== 'in-flight') return false;
+    serialSlotReleased = true;
+    state.inFlight = Math.max(0, state.inFlight - 1);
+    scheduleNextUpgradeFrame(state);
+    return true;
+  };
+  if (job.options && job.options.overlapAuthoredPipelineCompile === true
+      && Object.isExtensible(job.options)) {
+    // Loading composes one boundary at a time, then lets its exact GPU gate overlap the next CPU
+    // admission. The authored overlap branches invoke this only after publishing pipelineReady.
+    job.options.onAuthoredPipelineStaged = releaseSerialSlotAfterPipelineStaging;
+  }
+  // One entity begins CPU admission per frame. Non-overlap jobs and custom runs that do not enter
+  // an authored overlap branch keep the original single-flight semantics; loading authored jobs
+  // release only this internal slot once their detached root reaches the exact pipeline/GPU gate.
   const run = typeof job.run === 'function'
     ? job.run
     : () => upgradeBoundary(
@@ -3026,7 +3045,7 @@ function admitNextUpgradeJob(state) {
     console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
   })
     .finally(() => {
-      state.inFlight--;
+      if (!serialSlotReleased) state.inFlight = Math.max(0, state.inFlight - 1);
       job.lifecycle = 'settled';
       finishUpgradeDiagnostic(state, job, diagnostic);
       cleanupQueuedJob(state, job);
@@ -3466,6 +3485,11 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
+      const onAuthoredPipelineStaged = options.onAuthoredPipelineStaged;
+      if (typeof onAuthoredPipelineStaged === 'function') {
+        delete options.onAuthoredPipelineStaged;
+        onAuthoredPipelineStaged();
+      }
       return pending;
     }
     return await completeAdmission();
