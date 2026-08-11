@@ -48,21 +48,18 @@
 //    d. The 200ms hold + 80ms refresh throttle = up to 280ms lag between intent and visible receipt.
 //
 // 5. CURSOR / AIM SCORING  (tetherGameplay.js:1566 preciseCursorScore)
-//    a. preciseCursorScore: miss = max(0, hypot(aim - center) - radius); score = 1 - miss/28.
-//       Uses PRECISE_CURSOR_RADIUS = 28 — a TIGHT, FIXED radius with NO grace and NO scale factor.
+//    a. preciseCursorScore: miss = max(0, hypot(aim - center) - radius);
+//       score = 1 - miss/CURSOR_LATCH_GRACE.
 //    b. acquisitionCursorActive: FALSE if weapon aim is synthesised (autoAim marker); otherwise
 //       checks input.aimIntentActive (or legacy pointerScreen.active fallback).
-//    c. CURSOR_LATCH_GRACE (36/96) and AIM_RAY_GRACE (22/64) exist as exported constants and are
-//       used by cursorAimScore(), but cursorAimScore() is NOT called in the live acquisition path.
-//       It is used only by test/check scripts. The live path uses preciseCursorScore exclusively.
-//       *** GRACE CONSTANTS ARE DECORATIVE IN THE ACQUISITION PATH ***
+//    c. CURSOR_LATCH_GRACE (36/96) is the live precise cursor radius. AIM_RAY_GRACE remains
+//       presentation/check-script scale through cursorAimScore().
 //
 // 6. PRESS CONSUMPTION  (tetherGameplay.js:754 _consumeAcquisitionReceipt)
-//    a. The press consumes the STANDING receipt — what the HUD rendered last frame.
-//    b. It does NOT rebuild on the press tick (unless the receipt is stale/missing).
+//    a. Passive drift consumes the STANDING receipt — what the HUD rendered last frame.
+//    b. An explicit press rebuilds on the press tick and bypasses hysteresis.
 //    c. standingWasRendered: receipt exists, _lastPreviewTick === tickNow-1, validUntil >= now.
-//    d. If the receipt is stale, a rebuild is forced and the press consumes THAT (the player got
-//       something they were not shown — previewMatched reports false).
+//    d. If passive receipt state is stale, a rebuild is forced and previewMatched reports false.
 //
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 // FRAME-ORDER / ITERATION-ORDER DEPENDENCIES
@@ -80,14 +77,13 @@
 //     resolve to the lexicographically smaller string id, which is NOT numeric order for multi-digit
 //     ids. Id 10 beats id 2 in a tie.
 //
-// D4. The 200ms hysteresis hold means the visible receipt lags intent. A press during this lag
-//     window latches the OLD candidate, not the one the player is currently aiming at.
+// D4. FIXED: the 200ms hysteresis hold still applies to passive aim drift, but a press during this
+//     lag window re-evaluates the current aim.
 //
 // D5. The 80ms refresh throttle (ACQUISITION_REFRESH_S) means the receipt only re-resolves every
 //     ~5 frames. Between refreshes, the receipt reflects stale geometry.
 //
-// D6. The press consumes the STANDING receipt, not the current frame's truth. If geometry changed
-//     between the last publish and the press, the latch can target a body that has since moved.
+// D6. The press revalidates current target eligibility before latching.
 //
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 // RANKED DEFECT HYPOTHESES (max 5, by player impact)
@@ -105,48 +101,16 @@
 //              tetherGameplay.js:1838 which already does numeric-first.
 //   Risk:      LOW — deterministic tie-break improvement; no grace widening; no adjacent steals.
 //
-// H2 (HIGH): classifyMasslineIntent hostile/tow fallback is first-match-by-id-order, not geometric
-//   Mechanism: masslineTargetScoring.js:431  const hostile = list.find((candidate) => isHostile(candidate))
-//              masslineTargetScoring.js:434  const tow = list.find(isTowCandidate)
-//              The list was pre-sorted by compareEntityIds (numeric id), so the first hostile/tow
-//              candidate is the one with the smallest id, not the one the player is aiming at.
-//   Evidence:  In a pocket with 3 hostiles, the context is always 'hostile-flyby' regardless of
-//              which hostile the player is aiming at. The context profile's forceId is null (only
-//              set for exact matches), so this only changes the profile WEIGHTS, not a forced pick.
-//              But the wrong profile weights can flip the ranking in a close cluster.
-//   Fix:       When multiple hostiles/towables exist, pick the one with the highest cursor precision
-//              or closest to aim, not the first by id. Or: don't set the context from list.find at
-//              all when no exact lease exists — let the scorer's per-candidate axes discriminate.
-//   Risk:      MEDIUM — changing context classification affects all candidates' weight profiles;
-//              could shift selection in non-obvious ways. Needs the full clutter matrix to validate.
+// H2 (FIXED FOR POINTER-HOSTILE OVERLAY): active cursor picks keep cursor ownership, and hostile
+//   cursor picks carry hostileContext metadata for downstream assist weighting.
 //
-// H3 (MEDIUM): 200ms hysteresis hold causes "roulette" feel in oscillating aim
+// H3 (FIXED): press beats the 200ms hysteresis hold in oscillating aim
 //   Mechanism: masslineTargetScoring.js:471-489  stabilizeMasslineSelection — challenger must beat
 //              current by 0.08 margin for 200ms. Only a strong turn reversal (>= 0.42) bypasses.
-//   Evidence:  In a dense pocket where the player's aim oscillates between two close candidates
-//              (within 0.08 score margin), the visible receipt lags intent by up to 200ms. A press
-//              during this lag latches the OLD candidate. The player sees the highlight on the new
-//              candidate but the press consumes the standing receipt which still holds the old one
-//              — IF the refresh throttle hasn't fired yet. This is the "roulette" the packet names.
-//   Fix:       Lower the hysteresis margin in dense clusters (where the top-2 gap < margin), or
-//              make the press consume a FRESH receipt when the standing receipt's selected candidate
-//              differs from what a fresh rebuild would produce (detect the mismatch and rebuild).
-//   Risk:      HIGH — lowering hysteresis causes flicker (the original problem it solves). The
-//              press-time fresh-rebuild approach risks re-introducing the press-tick rebuild bug
-//              (FINDING 2 in massline-acquisition-preview.test.mjs). Must preserve the
-//              "press consumes what was rendered" contract.
+//   Contract:  Passive drift keeps the stable visible receipt. A cursor-aim press consumes a fresh
+//              receipt from current aim and bypasses the hold.
 //
-// H4 (MEDIUM): Grace constants (CURSOR_LATCH_GRACE etc.) are decorative in the acquisition path
-//   Mechanism: tetherGameplay.js:32-35 exports CURSOR_LATCH_GRACE=36, AIM_RAY_GRACE=22, etc.
-//              tetherGameplay.js:1566 preciseCursorScore uses PRECISE_CURSOR_RADIUS=28 (fixed, no grace).
-//              cursorAimScore (line 1862) uses the grace constants but is NOT called by
-//              buildAcquisitionSnapshot or the live acquisition path — only by test/check scripts.
-//   Evidence:  A player reading the source or docs sees "CURSOR_LATCH_GRACE = 36" and expects a
-//              36-unit grace window. The actual cursor scoring is a hard 28-unit radius with no
-//              grace, no Flyby Focus scaling. The grace constants are dead code in acquisition.
-//   Fix:       Either wire the grace constants into preciseCursorScore (so the documented grace
-//              actually applies), or remove the misleading constants/exports. The former is the
-//              product-correct fix; the latter is the honesty-correct fix.
+// H4 (FIXED): preciseCursorScore uses CURSOR_LATCH_GRACE as the real cursor precision radius.
 //   Risk:      MEDIUM — wiring grace into preciseCursorScore widens the cursor axis contribution.
 //              In a dense pocket this could cause adjacent-target steals (a large-radius entity's
 //              grace swallows the aim point meant for a small neighbor). Must be validated against
@@ -172,10 +136,9 @@
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 //
 // Does any fix require src/systems/input.js?
-//   NO for H1, H2, H5 — these are pure scoring/classification fixes in masslineTargetScoring.js
-//   and tetherGameplay.js.
-//   NO for H3 — the hysteresis/press-consumption fix lives in tetherGameplay.js and
-//   masslineTargetScoring.js.
+//   NO for H1, H5 — these are pure scoring/classification fixes in masslineTargetScoring.js and
+//   tetherGameplay.js.
+//   NO for H2/H3 — these receipt/press-consumption repairs live in tetherGameplay.js.
 //   NO for H4 — wiring grace into preciseCursorScore is a tetherGameplay.js change.
 //   input.js owns raw axis normalization and aimWorld/aimIntentActive provenance. None of the
 //   ranked fixes need to touch those. The input contract (state.input.actions, aimWorld,
@@ -195,8 +158,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
-import { tetherGameplay, isAttachable } from '../src/systems/tetherGameplay.js';
-import * as scoring from '../src/combat/masslineTargetScoring.js';
+import { CURSOR_LATCH_GRACE, tetherGameplay, isAttachable } from '../src/systems/tetherGameplay.js';
 
 const DT = 1 / 60;
 const MAX_LENGTH = 390;
@@ -604,13 +566,12 @@ test('H1: string-id tie-break is consistent across permutation (deterministic bu
     + 'correct: numeric id 2 < id 10');
 });
 
-// ── H2: classifyMasslineIntent hostile/tow first-match ────────────────────────────────────────
+// ── H2: cursor-owned hostile overlay ──────────────────────────────────────────────────────────
 //
-// In a pocket with multiple hostiles, classifyMasslineIntent uses list.find(isHostile) — the FIRST
-// hostile in id-sorted array order. This sets the context profile to 'hostile-flyby' regardless of
-// which hostile the player is aiming at. The profile weights affect all candidates.
+// Active pointer aim owns source/context. When that cursor-owned pick is hostile, the receipt carries
+// hostileContext metadata without changing the selected target.
 
-test('H2: multiple hostiles — context is hostile-flyby regardless of which hostile is aimed at', () => {
+test('H2: active pointer hostile pick keeps cursor ownership and carries hostile overlay', () => {
   const p = player({ vel: { x: 60, z: 0 } });
   const foeLeft = smallEnemy(20, 140, -50, { mass: 500, vx: 0, vz: 40 });
   const foeRight = smallEnemy(21, 140, 50, { mass: 500, vx: 0, vz: -40 });
@@ -630,23 +591,22 @@ test('H2: multiple hostiles — context is hostile-flyby regardless of which hos
   // whether hostile-context WEIGHTING should still apply while the cursor owns the source.
   assert.equal(receipt.intent?.source, 'cursor-paint',
     'active pointer aim on a hostile: cursor path owns the intent source');
-  // WRONG: the context is set from the first hostile by id, not from the one the player is aiming
-  // at. If the player is aiming at foeLeft (id 20), the context forceId should be foeLeft, but
-  // classifyMasslineIntent sets forceId=null for the closing-hostile fallback — it only changes
-  // the profile weights, not a forced pick. The player's aim IS reflected in the cursor axis, but
-  // only if aimIntentActive is true AND the cursor precision is high enough.
-  // AUDIT-PIN: precision-pick follows cursor ownership (internally consistent). Fix-pass question:
-  // should hostile weighting overlay precision-pick when the aimed target IS hostile?
   assert.equal(receipt.selected?.context, 'precision-pick',
     'context profile follows the cursor-owned precision pick');
+  assert.equal(receipt.selected?.targetId, foeLeft.id,
+    'the cursor-owned hostile pick remains the selected target');
+  assert.equal(receipt.selected?.hostileContext, true,
+    'cursor-owned hostile pick carries hostile context overlay for downstream assist weighting');
+  assert.equal(receipt.intent?.hostileContext, true,
+    'receipt intent records that the cursor-owned pick is hostile');
 });
 
 // ── H3: 200ms hysteresis lag in oscillating aim ───────────────────────────────────────────────
 //
-// Two candidates close together. The player's aim oscillates between them. The hysteresis holds
-// the current selection for 200ms. A press during the hold window latches the OLD candidate.
+// Two candidates close together. The player's aim oscillates between them. Passive aim drift keeps
+// the 200ms hysteresis hold, but a press re-evaluates current aim.
 
-test('H3: press during hysteresis hold latches the standing candidate, not the current aim', () => {
+test('H3: press during hysteresis hold latches the current aim, not the standing candidate', () => {
   const p = player({ vel: { x: 0, z: 0 } });
   // Two asteroids close together, same mass/radius, slightly different positions.
   const rockLeft = asteroid(30, 150, -10, { mass: 640, radius: 14 });
@@ -666,38 +626,27 @@ test('H3: press during hysteresis hold latches the standing candidate, not the c
   // Advance only 2 frames (~33ms) — well within the 200ms hysteresis hold.
   stepTick(h);
   stepTick(h);
-  // Press now: the standing receipt may still hold the left rock.
+  // Press now: the standing passive receipt may still hold the left rock, but the press must
+  // re-evaluate current aim.
   fireLatch(h);
 
-  // The latch should consume the standing receipt. If the receipt still holds the left rock
-  // (because the hysteresis hasn't switched yet), the player gets the WRONG target.
-  //
-  // WRONG: the correct expectation is that a press after the aim moved to the right rock should
-  // latch the right rock. But the 200ms hysteresis hold means the receipt may not have switched
-  // yet. The test asserts the CURRENT behavior (which may be either rock depending on whether
-  // the score margin exceeded 0.08 in 2 frames).
   const latchedId = h.events.latched[0]?.targetId;
-  assert.ok(latchedId === rockLeft.id || latchedId === rockRight.id,
-    'the latch consumes the standing receipt, which may still hold the old candidate');
-  // Document the defect: if the latch got rockLeft, the player aimed at rockRight but got rockLeft.
-  if (latchedId === rockLeft.id) {
-    // WRONG: player aimed at right rock but latched left rock due to 200ms hysteresis hold.
-    // correct expectation: press should latch the candidate the player is currently aiming at.
-  }
+  assert.equal(latchedId, rockRight.id,
+    'explicit press must beat hysteresis and latch the candidate under current aim');
 });
 
-// ── H4: Grace constants are decorative in acquisition ─────────────────────────────────────────
+// ── H4: Grace constants drive acquisition ─────────────────────────────────────────────────────
 //
-// CURSOR_LATCH_GRACE = 36 is exported and documented, but preciseCursorScore uses
-// PRECISE_CURSOR_RADIUS = 28 (a fixed, smaller radius with no grace scaling). The grace
-// constants are not wired into the live acquisition path.
+// CURSOR_LATCH_GRACE is exported and documented. The live precise cursor axis must use that
+// constant as its single source of truth.
 
-test('H4: preciseCursorScore uses a fixed 28-unit radius, not the documented CURSOR_LATCH_GRACE=36', () => {
+test('H4: preciseCursorScore honors the documented CURSOR_LATCH_GRACE constant', () => {
   const p = player();
   const rock = asteroid(40, 150, 0, { radius: 14 });
+  const miss = 29;
   const h = buildClutterHarness([rock], {
     player: p,
-    aimWorld: { x: 150, z: 0 },
+    aimWorld: { x: 150 + rock.radius + miss, z: 0 },
     aimIntentActive: true,
     pointerActive: true,
   });
@@ -705,22 +654,13 @@ test('H4: preciseCursorScore uses a fixed 28-unit radius, not the documented CUR
   const receipt = h.state.masslineAcquisition;
   assert.ok(receipt, 'receipt must exist');
 
-  // The cursor axis score for a direct hit should be 1.0 (miss=0, score = 1 - 0/28).
-  // At 28wu miss, score = 0. At 29wu miss, score = 0 (clamped).
-  // The documented CURSOR_LATCH_GRACE of 36 would allow a non-zero score at 29wu, but the
-  // actual PRECISE_CURSOR_RADIUS of 28 does not.
-  //
-  // We can verify this by checking the scoring directly:
-  const { scoreMasslineTarget } = scoring;
-  const directHit = scoreMasslineTarget(p, rock, {
-    maxRange: MAX_LENGTH,
-    cursorPrecision: 1.0,
-    context: { id: 'precision-pick' },
-    reachAllowance: rock.radius,
-  });
-  assert.ok(directHit.score > 0, 'a direct cursor hit must score above zero');
+  const cursorAxis = receipt.selected?.reasons?.context?.axes?.cursor;
+  assert.ok(cursorAxis > 0,
+    '29wu outside the surface must still produce cursor precision under CURSOR_LATCH_GRACE');
+  assert.equal(cursorAxis, 1 - miss / CURSOR_LATCH_GRACE,
+    'cursor precision must derive from CURSOR_LATCH_GRACE, not a copied fixed radius');
   // The cursor axis contribution in the precision-pick profile is 0.34 * cursorPrecision.
-  const cursorContribution = directHit.reasons?.context?.contributions?.cursor;
+  const cursorContribution = receipt.selected?.reasons?.context?.contributions?.cursor;
   assert.ok(cursorContribution !== undefined, 'cursor contribution must be recorded');
   assert.ok(cursorContribution <= 0.34, 'cursor contribution is capped at weight 0.34');
 });
@@ -775,7 +715,7 @@ test('clutter matrix: each scripted aim case latches the geometrically correct t
       aimIntentActive: c.cursor,
       pointerActive: c.cursor,
     });
-    // Settle the receipt (the press consumes the standing receipt, so we need it published first).
+    // Settle the receipt before the press so passive preview/hysteresis has the same runway.
     const published = settleReceipt(h, 10);
     // Then press.
     fireLatch(h);
@@ -841,13 +781,10 @@ test('determinism: two identical clutter runs produce byte-equal latch events', 
 
 // ── Adjacent-target steal: large entity grace vs. small neighbor ───────────────────────────────
 //
-// In the live path, preciseCursorScore uses PRECISE_CURSOR_RADIUS=28 (no grace). A large entity
-// (radius=30) has no advantage over a small neighbor in cursor scoring — the miss is calculated
-// from the entity CENTER, not its surface. Wait — let me re-check.
-//
-// preciseCursorScore (tetherGameplay.js:1566):
+// In the live path, preciseCursorScore subtracts the target radius before applying
+// CURSOR_LATCH_GRACE:
 //   miss = max(0, hypot(aim - center) - radius)
-//   score = 1 - miss / 28
+//   score = 1 - miss / CURSOR_LATCH_GRACE
 // So the RADIUS IS subtracted from the center distance. A large entity (radius=30) has a 30wu
 // "free zone" around its center where miss=0 and score=1. This means a large entity's cursor
 // score is 1.0 for a 30wu radius around its center, while a small entity (radius=6) only gets
@@ -877,7 +814,7 @@ test('large-radius entities have a wider cursor score=1 zone than small neighbor
 
   // Now aim between them — at (150, 20), 20 from big center, 15 from pod center.
   // Big miss = max(0, 20 - 30) = 0, score = 1.0.
-  // Pod miss = max(0, 15 - 6) = 9, score = 1 - 9/28 = 0.68.
+  // Pod miss = max(0, 15 - 6) = 9, score = 1 - 9/CURSOR_LATCH_GRACE = 0.75.
   // The big asteroid has a HIGHER cursor score despite being farther from the aim point!
   const h2 = buildClutterHarness([big, pod], {
     player: p,
@@ -889,7 +826,7 @@ test('large-radius entities have a wider cursor score=1 zone than small neighbor
   const receipt2 = h2.state.masslineAcquisition;
   // WRONG: the aim is closer to the pod (15wu from pod center, 20wu from big center) but the
   // big asteroid's radius subtracts 30 from its 20wu distance, giving miss=0 score=1.0, while the
-  // pod's radius subtracts only 6 from its 15wu distance, giving miss=9 score=0.68.
+  // pod's radius subtracts only 6 from its 15wu distance, giving miss=9 score=0.75.
   // correct expectation: the pod should win because the aim point is closer to the pod's surface
   // (9wu from pod surface, 0wu from big surface — actually the aim is INSIDE the big asteroid's
   // radius, so miss=0 for both if the aim is inside the big). This is geometrically correct
@@ -905,10 +842,9 @@ test('large-radius entities have a wider cursor score=1 zone than small neighbor
 });
 
 function preciseCursorScoreFor(entity, aim) {
-  const PRECISE_CURSOR_RADIUS = 28;
   const miss = Math.max(0,
     Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, entity.radius || 0));
-  return Math.max(0, Math.min(1, 1 - miss / PRECISE_CURSOR_RADIUS));
+  return Math.max(0, Math.min(1, 1 - miss / CURSOR_LATCH_GRACE));
 }
 
 // ── Refresh throttle: receipt lags geometry by up to 80ms ──────────────────────────────────────
