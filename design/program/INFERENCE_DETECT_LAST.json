@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceDetect.v2",
-  "generatedAt": "2026-08-11T04:15:25.647Z",
+  "generatedAt": "2026-08-11T04:53:39.820Z",
   "purpose": "Autonomous INFERENCE director board (not PQ dispatch). Structural metrics detect; the board chooses.",
   "scope": null,
   "scopeWfs": null,
@@ -57,7 +57,17 @@
     "hullsLive": 10,
     "hullsSourceOnly": 0,
     "incubatorGlbs": 121,
-    "microeventCatalog": 58,
+    "microeventsWired": 6,
+    "microeventsUnwired": 52,
+    "microeventWiredIds": [
+      "ev_cutter_strips_wreck",
+      "ev_disabled_hauler_recovery",
+      "ev_miner_calls_hauler",
+      "ev_patrol_scans_suspect",
+      "ev_rich_seam_strike",
+      "ev_tender_services_miner"
+    ],
+    "microeventRuntimeRegistry": "traffic.CERES_CAUSAL_CHAIN",
     "fabricatedDoctrines": [],
     "fabricatedSilhouettes": [],
     "fabricatedArchetypes": [],
@@ -309,7 +319,7 @@
   ],
   "board": {
     "suggestedMode": "integration",
-    "modeReason": "179 authored-but-unwired items and no integration run in the last 5 — wire before authoring more",
+    "modeReason": "173 authored-but-unwired items and no integration run in the last 5 — wire before authoring more",
     "repair": [
       {
         "id": "enemy_doctrines",
@@ -449,12 +459,21 @@
       {
         "id": "incubator_glbs",
         "count": 121,
+        "wfs": [
+          "WF-11",
+          "WF-17"
+        ],
         "note": "assets/incubator/** source GLBs with no runtime consumer. Select + re-author + prove families one at a time; never bulk-promote."
       },
       {
         "id": "microevent_catalog",
-        "count": 58,
-        "note": "design/incubator/microevent_library events with no runtime consumer. Prove one causal chain before any framework."
+        "count": 52,
+        "wfs": [
+          "WF-01",
+          "WF-08",
+          "WF-17"
+        ],
+        "note": "design/incubator/microevent_library events not registered by a runtime owner yet (6/58 registered in traffic.CERES_CAUSAL_CHAIN; ordinary-route proof remains required). Extend the proven chain seam; no universal framework."
       }
     ],
     "recovery": [
@@ -481,7 +500,7 @@
   },
   "agentInstructions": [
     "You are NOT waiting for a human-named unit. PQ owns that door.",
-    "Suggested mode this run: INTEGRATION — 179 authored-but-unwired items and no integration run in the last 5 — wire before authoring more. Override only with stated evidence.",
+    "Suggested mode this run: INTEGRATION — 173 authored-but-unwired items and no integration run in the last 5 — wire before authoring more. Override only with stated evidence.",
     "Pick ONE board cell, then invent the unit yourself inside it. A count is a symptom, not a task: verify the experiential reality on the ordinary route before building.",
     "Printed examples in the workflow docs are SPENT ideas — never submit one as a candidate (design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md).",
     "Candidates matching a BLOCKED fingerprint need new recorded evidence, not silence.",

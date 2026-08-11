@@ -83,6 +83,13 @@ const TODAY = '2026-08-11';
     'verb=read,subject=target-info,layer=foreground,tempo=instant,domain=wf-14,sector=any',
   ]);
   check('spread-satisfies-polish', checkSlate(spread, { scopeWfs: scope, nx: 5 }).ok);
+
+  // Nx is an effort target: a single strong survivor is honest underdelivery,
+  // while two survivors must still cover two scoped domains.
+  const oneStrongAudio = ['verb=hear,subject=berth-departure,layer=foreground,tempo=transition,domain=wf-13,sector=helios'];
+  check('one-strong-polish-unit-is-legal', checkSlate(oneStrongAudio, { scopeWfs: scope, nx: 5 }).ok);
+  const twoVfx = fiveVfx.slice(0, 2);
+  check('two-polish-units-still-need-domain-spread', !checkSlate(twoVfx, { scopeWfs: scope, nx: 5 }).ok);
 }
 
 // --- 6. Broken base mechanic routes to recovery before content ------------
@@ -180,6 +187,19 @@ const TODAY = '2026-08-11';
     integrationDebt: [{ id: 'incubator', count: 121 }],
   });
   check('scoped-run-not-hijacked-by-debt', s3.mode !== 'integration', `got ${s3.mode}`);
+
+  // A debt row with an in-scope workflow may surface, while unrelated
+  // integration debt stays off a scoped director board.
+  const graphicsScope = resolveScope('GRAPHICS');
+  const graphicsBoard = buildDirectorBoard({
+    structural: [], memory: emptyMemory(TODAY), today: TODAY, scopeWfs: graphicsScope,
+    integrationDebt: [
+      { id: 'graphics-assets', count: 121, wfs: ['WF-11', 'WF-17'] },
+      { id: 'npc-events', count: 58, wfs: ['WF-01', 'WF-08', 'WF-17'] },
+    ],
+  });
+  check('scoped-integration-suggests-relevant-debt', graphicsBoard.suggestedMode === 'integration', `got ${graphicsBoard.suggestedMode}`);
+  check('scoped-integration-filters-foreign-debt', graphicsBoard.integration.length === 1 && graphicsBoard.integration[0].id === 'graphics-assets');
 }
 
 // --- 11b. A scope with no structural metric must route to starved, not fake repair

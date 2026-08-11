@@ -2,9 +2,10 @@
 // produces a well-formed v2 director board, and its liveness distinctions hold.
 // Pins relationships, not exact counts (registries move under concurrent work).
 import { execFileSync } from 'node:child_process';
-import { readFileSync, unlinkSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, readdirSync, unlinkSync, existsSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CERES_CAUSAL_CHAIN } from '../src/systems/traffic.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'test', '.inference-detect-live.tmp.json');
@@ -55,6 +56,45 @@ check('fabricated-doctrines-clean', Array.isArray(s.fabricatedDoctrines) && s.fa
 check('ghost-job-kinds-clean', Array.isArray(s.ghostJobKinds) && s.ghostJobKinds.length === 0,
   `enum-only job kinds with no phase graph: ${(s.ghostJobKinds || []).join(', ')}`);
 check('integration-debt-visible', Array.isArray(report.board.integration));
+for (const debt of report.board.integration) {
+  check('integration-debt-has-wfs', Array.isArray(debt.wfs) && debt.wfs.length > 0, debt.id);
+}
+
+// The microevent catalog is a promotion queue, not a permanent score. Once an
+// event id is actually consumed by src, it must leave unwired debt while the
+// report continues to account for the entire catalog.
+const microeventDir = resolve(ROOT, 'design', 'incubator', 'microevent_library', 'catalog');
+let catalogMicroevents = 0;
+const catalogMicroeventIds = new Set();
+for (const file of readdirSync(microeventDir)) {
+  if (!file.endsWith('.json')) continue;
+  const parsed = JSON.parse(readFileSync(join(microeventDir, file), 'utf8'));
+  const entries = Array.isArray(parsed) ? parsed : (parsed.events || parsed.entries || []);
+  catalogMicroevents += entries.length;
+  for (const entry of entries) {
+    const id = entry && (entry.id || entry.eventId || entry.name);
+    if (id) catalogMicroeventIds.add(id);
+  }
+}
+const { microeventsWired, microeventsUnwired, microeventWiredIds } = s;
+const expectedWiredIds = [...new Set(CERES_CAUSAL_CHAIN.map((entry) => entry.id))]
+  .filter((id) => catalogMicroeventIds.has(id))
+  .sort();
+check('microevent-snapshot-complete', Number.isInteger(microeventsWired) && Number.isInteger(microeventsUnwired));
+check('microevent-snapshot-partitions-catalog', microeventsWired + microeventsUnwired === catalogMicroevents,
+  `${microeventsWired} wired + ${microeventsUnwired} unwired vs ${catalogMicroevents} catalog`);
+check('microevent-runtime-registry-identified', s.microeventRuntimeRegistry === 'traffic.CERES_CAUSAL_CHAIN');
+check('microevent-wiring-matches-runtime-registry', JSON.stringify(microeventWiredIds) === JSON.stringify(expectedWiredIds),
+  `reported=${JSON.stringify(microeventWiredIds)} expected=${JSON.stringify(expectedWiredIds)}`);
+check('microevent-unwired-is-runtime-complement', microeventsUnwired === catalogMicroevents - expectedWiredIds.length,
+  `${microeventsUnwired} unwired vs ${catalogMicroevents - expectedWiredIds.length} expected`);
+const microeventDebt = report.board.integration.find((d) => d.id === 'microevent_catalog');
+if (microeventsUnwired > 0) {
+  check('microevent-debt-uses-unwired-count', microeventDebt && microeventDebt.count === microeventsUnwired,
+    JSON.stringify(microeventDebt));
+  check('microevent-debt-routes-workflows', microeventDebt && microeventDebt.wfs.includes('WF-08') && microeventDebt.wfs.includes('WF-17'),
+    JSON.stringify(microeventDebt));
+}
 
 // The starved cell must include structurally unmeasured domains whenever no
 // memory records work for them — this is the anti-starvation guarantee.

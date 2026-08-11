@@ -1,9 +1,13 @@
 <!-- LIFETIME: DURABLE -->
-# Microevent library — integration notes (DATA ONLY, imported by nothing)
+# Microevent library — integration and expansion notes
 
 Additive design data for the low-interference world-depth brief: **58 ambient events**
 (10 s – 2 min) that make the existing role/job/world systems produce visible situations.
-Nothing in `src/**` references this tree; wiring belongs to a later integration task.
+
+The catalog is still data-only (no runtime module imports this tree), but **six catalog ids are
+already registered in `traffic.CERES_CAUSAL_CHAIN`** and run as one Ceres-local causal story. That
+is runtime wiring, not ordinary-route acceptance. The other 52 catalog entries remain unwired and
+need a named live owner plus route proof before they leave integration debt.
 
 ## The tree
 

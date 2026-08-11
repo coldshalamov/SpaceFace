@@ -385,11 +385,14 @@ export function suggestMode({ memory, today, scopeWfs = null, knownDefects = [],
   // 2. Large authored-but-unwired debt and no recent integration run:
   //    the recorded promotion-boundary failure (98 unwired GLBs, 58 unwired
   //    events) is exactly what this branch exists to prevent recurring.
-  //    A scoped run keeps its scope — debt only overrides unscoped runs or
-  //    scopes that include the integration workflow.
-  const debtCount = integrationDebt.reduce((s, d) => s + (d.count || 1), 0);
-  const debtInScope = !scopeWfs || scopeWfs.includes('WF-17');
-  if (debtCount >= 20 && debtInScope && !recentModes.slice(-5).includes('integration')) {
+  //    A scoped run keeps its scope: only debt whose declared workflow map
+  //    intersects the scope may override it. This lets GRAPHICS surface
+  //    graphics integration debt without hijacking POLISH with it.
+  const scopedDebt = !scopeWfs
+    ? integrationDebt
+    : integrationDebt.filter((d) => (d.wfs || []).some((wf) => scopeWfs.includes(wf)));
+  const debtCount = scopedDebt.reduce((s, d) => s + (d.count || 1), 0);
+  if (debtCount >= 20 && !recentModes.slice(-5).includes('integration')) {
     return { mode: 'integration', reason: `${debtCount} authored-but-unwired items and no integration run in the last 5 — wire before authoring more` };
   }
 
@@ -426,6 +429,9 @@ export function suggestMode({ memory, today, scopeWfs = null, knownDefects = [],
  */
 export function buildDirectorBoard({ structural, memory, today, integrationDebt = [], scopeWfs = null, saturationThreshold = 2.0 }) {
   const knownDefects = (memory.knownDefects || []).filter((d) => d.status !== 'resolved');
+  const integration = !scopeWfs
+    ? integrationDebt
+    : integrationDebt.filter((d) => (d.wfs || []).some((wf) => scopeWfs.includes(wf)));
 
   // Repair cell: structural gaps minus saturated domains (decayed pile-on).
   const repair = structural
@@ -455,7 +461,7 @@ export function buildDirectorBoard({ structural, memory, today, integrationDebt 
   const failedTwice = failedTwicePatterns(memory);
   const overused = overusedReferences(memory, today);
 
-  const suggestion = suggestMode({ memory, today, scopeWfs, knownDefects, integrationDebt, starved, repair });
+  const suggestion = suggestMode({ memory, today, scopeWfs, knownDefects, integrationDebt: integration, starved, repair });
 
   return {
     modes: MODES,
@@ -463,7 +469,7 @@ export function buildDirectorBoard({ structural, memory, today, integrationDebt 
     modeReason: suggestion.reason,
     repair,
     starved,
-    integration: integrationDebt,
+    integration,
     recovery: knownDefects,
     blocked,
     failedTwice,
@@ -500,7 +506,10 @@ export function slateRequirements(nx, scopeWfs = null) {
 
 /**
  * Check a slate of candidate fingerprints for pairwise distinctness and
- * (when scoped multi-domain) domain coverage. Returns violations, not a score.
+ * (when scoped multi-domain) domain coverage. The coverage requirement applies
+ * only across units that survive selection: an honestly underdelivered one-unit
+ * slate cannot span two domains, while two or more units still must. Returns
+ * violations, not a score.
  */
 export function checkSlate(fingerprints, { scopeWfs = null, nx = 1 } = {}) {
   const req = slateRequirements(nx, scopeWfs);
@@ -515,8 +524,15 @@ export function checkSlate(fingerprints, { scopeWfs = null, nx = 1 } = {}) {
     }
   }
   const domainsSpanned = uniq(parsed.map((f) => f.domain));
-  const domainViolation = domainsSpanned.length < req.minDomainsSpanned
-    ? `slate spans ${domainsSpanned.length} domain(s); scope requires >= ${req.minDomainsSpanned}`
+  const minDomainsForAccepted = parsed.length === 0 ? 0 : Math.min(req.minDomainsSpanned, parsed.length);
+  const domainViolation = domainsSpanned.length < minDomainsForAccepted
+    ? `slate spans ${domainsSpanned.length} domain(s); ${parsed.length} accepted unit(s) require >= ${minDomainsForAccepted}`
     : null;
-  return { ok: collisions.length === 0 && !domainViolation, collisions, domainsSpanned, domainViolation, requirements: req };
+  return {
+    ok: collisions.length === 0 && !domainViolation,
+    collisions,
+    domainsSpanned,
+    domainViolation,
+    requirements: { ...req, minDomainsForAccepted },
+  };
 }

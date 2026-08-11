@@ -29,6 +29,7 @@ import { MODULES } from '../src/data/modules.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { NPC_JOB_KIND } from '../src/systems/npcJobs.js';
+import { CERES_CAUSAL_CHAIN } from '../src/systems/traffic.js';
 import { CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 
@@ -209,7 +210,15 @@ function countGlbs(dir) {
   return n;
 }
 const incubatorGlbs = countGlbs(resolve(ROOT, 'assets/incubator'));
-let microeventCount = 0;
+
+// Microevents: count only catalog ids registered by a known runtime owner —
+// not quoted text anywhere under src. The Ceres chain is exercised by its own
+// focused causal-chain test; registry presence is wiring evidence, not
+// ordinary-route acceptance.
+const microeventRuntimeRegistry = new Set(CERES_CAUSAL_CHAIN.map((event) => event.id));
+let microeventTotal = 0;
+let microeventWired = 0;
+const microeventWiredIds = [];
 const microeventDir = resolve(ROOT, 'design/incubator/microevent_library/catalog');
 if (existsSync(microeventDir)) {
   for (const f of readdirSync(microeventDir)) {
@@ -217,15 +226,26 @@ if (existsSync(microeventDir)) {
     try {
       const j = JSON.parse(readFileSync(join(microeventDir, f), 'utf8'));
       const arr = Array.isArray(j) ? j : (j.events || j.entries || []);
-      if (Array.isArray(arr)) microeventCount += arr.length;
+      if (!Array.isArray(arr)) continue;
+      for (const ev of arr) {
+        const id = ev && (ev.id || ev.eventId || ev.name);
+        microeventTotal += 1;
+        if (id && microeventRuntimeRegistry.has(id)) {
+          microeventWired += 1;
+          microeventWiredIds.push(id);
+        }
+      }
     } catch { /* malformed catalog file ignored */ }
   }
 }
+const microeventUnwired = microeventTotal - microeventWired;
 
+// Integration debt rows carry `wfs` so the cell has a governing workflow and
+// unit definition, like repair rows do.
 const integrationDebt = [
-  ...(incubatorGlbs > 0 ? [{ id: 'incubator_glbs', count: incubatorGlbs, note: 'assets/incubator/** source GLBs with no runtime consumer. Select + re-author + prove families one at a time; never bulk-promote.' }] : []),
-  ...(microeventCount > 0 ? [{ id: 'microevent_catalog', count: microeventCount, note: 'design/incubator/microevent_library events with no runtime consumer. Prove one causal chain before any framework.' }] : []),
-  ...(hulls.sourceOnlyCount > 0 ? [{ id: 'source_only_hulls', count: hulls.sourceOnlyCount, note: `hull GLBs on disk but absent from release_manifest: ${hulls.sourceOnly.join(', ')}` }] : []),
+  ...(incubatorGlbs > 0 ? [{ id: 'incubator_glbs', count: incubatorGlbs, wfs: ['WF-11', 'WF-17'], note: 'assets/incubator/** source GLBs with no runtime consumer. Select + re-author + prove families one at a time; never bulk-promote.' }] : []),
+  ...(microeventUnwired > 0 ? [{ id: 'microevent_catalog', count: microeventUnwired, wfs: ['WF-01', 'WF-08', 'WF-17'], note: `design/incubator/microevent_library events not registered by a runtime owner yet (${microeventWired}/${microeventTotal} registered in traffic.CERES_CAUSAL_CHAIN; ordinary-route proof remains required). Extend the proven chain seam; no universal framework.` }] : []),
+  ...(hulls.sourceOnlyCount > 0 ? [{ id: 'source_only_hulls', count: hulls.sourceOnlyCount, wfs: ['WF-11'], note: `hull GLBs on disk but absent from release_manifest: ${hulls.sourceOnly.join(', ')}` }] : []),
 ];
 
 // ---------------------------------------------------------------------------
@@ -415,6 +435,9 @@ if (scopeArg && !scopeWfs) {
 }
 const board = buildDirectorBoard({ structural: gaps, memory, today, integrationDebt, scopeWfs });
 const slate = slateRequirements(nxArg || 1, scopeWfs);
+const slateDomainRule = slate.minDomainsSpanned > 1
+  ? `span >=${slate.minDomainsSpanned} domain(s) when accepting 2+ units`
+  : `span >=${slate.minDomainsSpanned} domain(s)`;
 
 // ---------------------------------------------------------------------------
 // Report
@@ -448,7 +471,10 @@ const report = {
     hullsLive: hulls.liveCount,
     hullsSourceOnly: hulls.sourceOnlyCount,
     incubatorGlbs,
-    microeventCatalog: microeventCount,
+    microeventsWired: microeventWired,
+    microeventsUnwired: microeventUnwired,
+    microeventWiredIds: microeventWiredIds.sort(),
+    microeventRuntimeRegistry: 'traffic.CERES_CAUSAL_CHAIN',
     fabricatedDoctrines,
     fabricatedSilhouettes,
     fabricatedArchetypes,
@@ -476,7 +502,7 @@ const report = {
     'Pick ONE board cell, then invent the unit yourself inside it. A count is a symptom, not a task: verify the experiential reality on the ordinary route before building.',
     'Printed examples in the workflow docs are SPENT ideas — never submit one as a candidate (design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md).',
     'Candidates matching a BLOCKED fingerprint need new recorded evidence, not silence.',
-    `Slate: up to ${slate.acceptedMax} accepted unit(s), >=${slate.minCandidates} candidates, pairwise-distinct fingerprints (>=${slate.minDistinctAxesPerPair} axes), span >=${slate.minDomainsSpanned} domain(s). Fewer accepted units than requested is an HONEST outcome.`,
+    `Slate: up to ${slate.acceptedMax} accepted unit(s), >=${slate.minCandidates} candidates, pairwise-distinct fingerprints (>=${slate.minDistinctAxesPerPair} axes), ${slateDomainRule}. Fewer accepted units than requested is an HONEST outcome.`,
     'Implement through live owners; prove on the ordinary route; then record the unit: node scripts/inference-record.mjs --help',
   ],
 };
@@ -495,7 +521,7 @@ const lines = [
   `enemies=${ENEMY_TYPES.length} behaviorCombos=${enemyBehaviorCombos.unique} doctrines=${enemyDoctrines.unique} silhouettes=${enemySilhouettes.unique} telegraphs=${telegraphed}/${ENEMY_TYPES.length}`,
   `jobs kinds=${jobKinds.length} pocketJobKinds=${pocketJobKinds.length} pocketSectors=${pocketSectorIds.length}/${SECTORS.length}`,
   `weapons=${weaponIds.unique}(hooks ${(weaponHookShare * 100).toFixed(0)}%) ships=${shipIds.unique} modules=${moduleIds.unique}(hooks ${(moduleHookShare * 100).toFixed(0)}%) stations=${stationIds.length} encounters=${encounterIds.unique}`,
-  `hulls live=${hulls.liveCount} sourceOnly=${hulls.sourceOnlyCount} | incubator GLBs=${incubatorGlbs} microevents=${microeventCount} (unwired)`,
+  `hulls live=${hulls.liveCount} sourceOnly=${hulls.sourceOnlyCount} | incubator GLBs=${incubatorGlbs} (unwired) microevents=${microeventUnwired} unwired / ${microeventWired} wired`,
   ...(dataDefects.length ? ['', 'DATA DEFECTS (fabricated strings and padding never count as breadth — fix or remove):', ...dataDefects.map((d) => `  ${d}`)] : []),
   ...(advisories.length ? ['', 'ADVISORIES:', ...advisories.map((d) => `  ${d}`)] : []),
   ...(memoryWarnings.length ? ['', ...memoryWarnings.map((w) => `MEMORY WARNING: ${w}`)] : []),
@@ -509,7 +535,7 @@ const lines = [
   ...board.starved.slice(0, 6).map((d) => `  ${d.wf} ${d.name}${d.measured ? '' : ' [unmeasured]'} — last touched: ${d.staleness === Infinity ? 'never recorded' : Math.round(d.staleness) + 'd ago'}`),
   '',
   'INTEGRATION DEBT (authored but unwired — wire before authoring more of the same):',
-  ...(board.integration.length ? board.integration.map((d) => `  ${d.id}: ${d.count} — ${d.note}`) : ['  (none detected)']),
+  ...(board.integration.length ? board.integration.map((d) => `  ${d.id}: ${d.count}  wf=${(d.wfs || []).join('/')} — ${d.note}`) : ['  (none detected)']),
   '',
   'RECOVERY (known defects; VERIFY liveness against current code before acting):',
   ...(board.recovery.length ? board.recovery.map((d) => `  [${d.severity}] ${d.id} (${d.wf}) — ${d.note}`) : ['  (none recorded)']),
@@ -523,7 +549,7 @@ const lines = [
   ...(board.failedTwice.length ? ['', 'FAILED TWICE (do not attempt a third time on the same premise):', ...board.failedTwice.map((p) => `  ${p.reason} (x${p.count})`)] : []),
   ...(board.overusedReferences.length ? ['', 'OVERUSED REFERENCES (rotate or go repo-native):', ...board.overusedReferences.map((r) => `  ${r.ref} used ${r.uses}x in 30d`)] : []),
   '',
-  `SLATE for ${nxArg || 1}x${scopeArg ? ` ${scopeArg}` : ''}: up to ${slate.acceptedMax} accepted, >=${slate.minCandidates} candidates, span >=${slate.minDomainsSpanned} domain(s). Fewer accepted than requested is HONEST when the rest are filler.`,
+  `SLATE for ${nxArg || 1}x${scopeArg ? ` ${scopeArg}` : ''}: up to ${slate.acceptedMax} accepted, >=${slate.minCandidates} candidates, ${slateDomainRule}. Fewer accepted than requested is HONEST when the rest are filler.`,
   '',
   'Agent: pick ONE cell, verify its reality on the ordinary route, invent the unit, ship it through live owners, then: node scripts/inference-record.mjs',
 ];

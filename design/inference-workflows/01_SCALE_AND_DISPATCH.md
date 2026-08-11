@@ -143,8 +143,10 @@ Each workflow defines subtype axes. At 5x, at least three axes must vary.
 Mechanically: give every candidate a fingerprint over the axes
 `verb, subject, sector, layer, tempo, domain` and check the slate with
 `checkSlate` (scripts/lib/inferenceCore.mjs) — pairs must differ on at least two
-axes, and a multi-domain scope at 3x+ must span at least two of its domains
-(`5x POLISH` returning five VFX tweaks is a scope violation, enforced).
+axes, and a multi-domain scope at 3x+ must span at least two of its domains when
+two or more units survive selection (`5x POLISH` returning five VFX tweaks is a
+scope violation, enforced). One genuinely strong survivor remains a valid honest
+underdelivery; the candidate pool still has to meet the requested Nx effort bar.
 
 **Distinctness is judged against everything already shipped, not only this
 tranche.** The board prints blocked fingerprints and the memory holds accepted
