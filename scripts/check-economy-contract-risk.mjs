@@ -52,7 +52,8 @@ import { SECTORS } from '../src/data/sectors.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 
-const HOME = SECTORS.find((s) => (s.stations || []).length > 0);
+const HOME = SECTORS.find((s) => s.id !== 'sector_helios_prime' && (s.stations || []).length > 0)
+  || SECTORS.find((s) => (s.stations || []).length > 0);
 assert.ok(HOME, 'catalog has a sector with stations');
 const STATION = HOME.stations[0];
 

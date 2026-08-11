@@ -146,6 +146,10 @@ function sectorDistanceWu(aSectorId, bSectorId) {
 
 function cmdtyName(id) { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; }
 
+function offerClassFor(offer) {
+  return offer && offer.type ? String(offer.type) : null;
+}
+
 export const economyContracts = {
   name: 'economyContracts',
 
@@ -212,12 +216,16 @@ export const economyContracts = {
       const info = STATION_INFO.get(stationId);
       if (!info) return; // gates / unknown stations post no contracts
       const own = this._ensureState();
+      const epoch = this._epoch();
+      const emittedClasses = new Set();
 
       // G06: one authored first-trade teaching contract at Helios on/after first dock.
       // Emit-only — missions boards the offer via mission:offered. Once per run.
       if (stationId === FIRST_TRADE_CONTRACT_STATION_ID && !own.firstTradeOffered) {
         const firstTrade = planFirstTradeOffer(this.state);
         own.firstTradeOffered = true;
+        const firstTradeClass = offerClassFor(firstTrade);
+        if (firstTradeClass) emittedClasses.add(firstTradeClass);
         this.bus.emit('mission:offered', firstTrade);
         if (!isOnboardingActive(this.state)) {
           const line = `Contract posted at ${info.name}: ${firstTrade.title}`;
@@ -228,13 +236,14 @@ export const economyContracts = {
         }
       }
 
-      const epoch = this._epoch();
       // Dedupe per station-epoch: one field evaluation, offer or not.
       if (isStationEpochEvaluated(own, stationId, epoch)) return;
       markStationEpochEvaluated(own, stationId, epoch);
 
       const offer = this.planOffer(info, epoch);
       if (!offer) return; // calm field → strict no-op
+      const fieldClass = offerClassFor(offer);
+      if (fieldClass && emittedClasses.has(fieldClass)) return;
 
       // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
       // Durable offer + station-epoch state always land; only the nonessential news voice
