@@ -2,13 +2,14 @@
   "schema": "spaceface.everydaySpaceKit.v1",
   "provenance": {
     "builderPath": "tools/blender/build_everyday_space_kit.py",
-    "builderSha256AtAssetGeneration": "116a1f23e75d1edf8f883ddb2af8dcb54694c3da2a7e3c0ad8aff2771553180b",
+    "builderSha256AtAssetGeneration": "48abd26a0374c9a231b8f765a3c1604029849e07234b20866c97cb95ec9de46f",
     "blenderVersionAtAssetGeneration": "5.1.2",
     "gltfGeneratorRecords": [
       "Khronos glTF Blender I/O v5.1.20"
     ],
     "canonicalFullBuildCommandForRevalidation": "blender --background --factory-startup --python tools/blender/build_everyday_space_kit.py -- --render --distances --sheets --compositions",
-    "byteReproducibilityStatus": "unverified_until_two_full_builds_match_under_the_same_pinned_toolchain"
+    "byteReproducibilityStatus": "stabilized_triangle_stream_fixed_triangulate_name_sorted_export; prove with two clean factory-startup builds and compare sha256",
+    "byteReproducibilityMechanism": "Blender 5.1.2 glTF exporter previously reordered triangle indices across runs while keeping vertices and JSON equal; pre-export FIXED triangulation + face rebuild by (material, sorted verts, winding) and name-sorted selection closes that path."
   },
   "assets": [
     {
@@ -38,19 +39,13 @@
           1.615
         ]
       },
-      "bytes": 17624,
-      "sha256": "881fd6e5d74e1eccfe4271942198c6c5b78cdd8899ce92ef8f29e7dd71095ce7",
+      "bytes": 13932,
+      "sha256": "44089d5f2aed6141233bf124e7d145817f1e99effbf2a8cf7623a7da121744a2",
       "family": "cargo",
       "role": "Berth-standard 6x3x3 freight pod \u2014 the unit of this economy",
       "states": "active=racked/clamped; abandoned=drifting loose; see _breached variant",
       "placement": "racks, hauler spines, platform decks, customs cradles \u2014 everywhere",
-      "lodPlan": "LOD1: body+end frames; LOD2: single box",
-      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_standard.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: body+end frames; LOD2: single box"
     },
     {
       "id": "cargo_pod_hazmat",
@@ -78,19 +73,13 @@
           1.775
         ]
       },
-      "bytes": 39500,
-      "sha256": "3e7b2cf7f7a28ca523c7cb2da5e5024c88aa7683f7ff002c1be54b1707c069c0",
+      "bytes": 30256,
+      "sha256": "ec236cd614cb04e1fe3d113bce18ba3c0668edce5a1ed6c887229004e5df2951",
       "family": "cargo",
       "role": "volatile-cargo pod: white shell, red banding, relief domes",
       "states": "as cargo_pod_standard; hazard read must survive LOD1",
       "placement": "tanker couplings, refinery aprons, NEVER inside habitat clusters",
-      "lodPlan": "LOD1: body+bands; LOD2: single box (bands baked to texture)",
-      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_hazmat.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: body+bands; LOD2: single box (bands baked to texture)"
     },
     {
       "id": "cargo_pod_standard_breached",
@@ -116,19 +105,13 @@
           1.704
         ]
       },
-      "bytes": 30812,
-      "sha256": "f8ed41dc99f3c9253a13f2bde3a77e6e5ddac8b7e6d5419986ac2c427219ea0b",
+      "bytes": 24428,
+      "sha256": "992af8fc56dba3d3900817312d655b72f5a366854f37fbfdd54444fe4d388c10",
       "family": "cargo",
       "role": "breached pod: torn flank, spilled crates, no lights",
       "states": "this IS the damaged state of cargo_pod_standard",
       "placement": "wreck fields, salvage yards, pirate ambush sites",
-      "lodPlan": "LOD1: drop spill crates; LOD2: single box",
-      "render": "assets/incubator/everyday_space_kit/evidence/cargo_pod_standard_breached.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: drop spill crates; LOD2: single box"
     },
     {
       "id": "ore_bulk_container",
@@ -156,19 +139,13 @@
           2.38
         ]
       },
-      "bytes": 65944,
-      "sha256": "3f3206c9dc4c95d1ab6565993924bfb96001af1378ace2446fff2fce03215f38",
+      "bytes": 49696,
+      "sha256": "258c3d1139887c480b4008aa878b6a928d210c33452142c211f8752b0e8c0130",
       "family": "cargo",
       "role": "open-top bulk ore box, load proud of the rim (show your mass)",
       "states": "active=ore mound present; abandoned=empty box (subtraction)",
       "placement": "mining worksites, conveyor discharge, barge loading aprons",
-      "lodPlan": "LOD1: box+ore as one; LOD2: single box",
-      "render": "assets/incubator/everyday_space_kit/evidence/ore_bulk_container.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: box+ore as one; LOD2: single box"
     },
     {
       "id": "container_rack",
@@ -197,19 +174,13 @@
           5.85
         ]
       },
-      "bytes": 433856,
-      "sha256": "25d0d93e59fbc41d0f466baa03d2f55c9cfd7b2c6030f74b04b70cb46c931f28",
+      "bytes": 329220,
+      "sha256": "07433358ac38ffd77d424e6a1bfa9a68092483ffa21e1030e2c0616fe11e4339",
       "family": "cargo",
       "role": "six-bay pod rack; the lit green bay says \"space available\"",
       "states": "active=pods+bay lamps; see _abandoned variant",
       "placement": "station aprons, freight platforms, trade corridors",
-      "lodPlan": "LOD1: rails as boxes, pods keep; LOD2: filled box block",
-      "render": "assets/incubator/everyday_space_kit/evidence/container_rack.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: rails as boxes, pods keep; LOD2: filled box block"
     },
     {
       "id": "container_rack_abandoned",
@@ -235,19 +206,13 @@
           5.741
         ]
       },
-      "bytes": 320448,
-      "sha256": "e305605d33a614f9382d1639df3b61832d5f2cf60ab7ef8729f29dfc38ce4f6c",
+      "bytes": 244912,
+      "sha256": "3868d64ecf83f8bb5d77884b3788035d00130ebba420a19c1286300f66de5f73",
       "family": "cargo",
       "role": "stripped dead rack: cargo gone, lamps gone, one leg buckled",
       "states": "this IS the abandoned state of container_rack",
       "placement": "derelict claims, pirate fringes, decayed trade corridors",
-      "lodPlan": "LOD1: keep silhouette incl. fallen rail; LOD2: open frame box",
-      "render": "assets/incubator/everyday_space_kit/evidence/container_rack_abandoned.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: keep silhouette incl. fallen rail; LOD2: open frame box"
     },
     {
       "id": "transfer_arm",
@@ -276,19 +241,13 @@
           5.225
         ]
       },
-      "bytes": 89332,
-      "sha256": "e582ca18ad3d63498dcdf5e212d4e2bf853496752a1e94e7e26d9a9a6370dd76",
+      "bytes": 70728,
+      "sha256": "5d1e207f42ffa9890edcbd84b11d334f88fc3762dcdc84ea2ef51a8c15436442",
       "family": "cargo",
       "role": "slew-ring cargo crane, two-segment boom, four-finger grapple",
       "states": "active=boom out+flood on; cold=boom parked over counterweight (pose at instancing)",
       "placement": "freight platforms, refinery aprons, dock edges \u2014 reach must overlap a rack",
-      "lodPlan": "LOD1: booms as boxes; LOD2: post+single bent box",
-      "render": "assets/incubator/everyday_space_kit/evidence/transfer_arm.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: booms as boxes; LOD2: post+single bent box"
     },
     {
       "id": "tanker_coupling",
@@ -317,19 +276,13 @@
           3.808
         ]
       },
-      "bytes": 61020,
-      "sha256": "63c66dbbe9fef007031b8528318ac3b0ffc4c8bd46df07219d12febfbcbdf5f3",
+      "bytes": 47752,
+      "sha256": "4a757f274d98748389aee75b2e9b27a3e4345a338674a17f1c239c41d31bc321",
       "family": "cargo",
       "role": "volatile transfer manifold: risers, insulated hose boom, drip shield",
       "states": "active=flood lit, hose down to coupler; cold=hose racked vertical (re-pose)",
       "placement": "refinery flanks, fuel depots; berth socket marks where the tanker holds",
-      "lodPlan": "LOD1: merge risers; LOD2: base+tower box",
-      "render": "assets/incubator/everyday_space_kit/evidence/tanker_coupling.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: merge risers; LOD2: base+tower box"
     },
     {
       "id": "freight_platform",
@@ -358,19 +311,13 @@
           4.992
         ]
       },
-      "bytes": 293024,
-      "sha256": "407aad21bd1f49c3e5507fe68d55dbe5eae4f6c1a1f5e67aeb5eb85839e86b29",
+      "bytes": 224744,
+      "sha256": "044ee39801e304af5993a4efce1392da48cbe766019ad3dd9b16d5ee35291c28",
       "family": "cargo",
       "role": "open freight deck: rack rows, crew cab, flood masts, handed approach",
       "states": "active=pods+lights; abandoned=strip pods, kill lights, keep hazard edge",
       "placement": "trade corridors, station aprons; the small-depot answer (hero hubs stay stations)",
-      "lodPlan": "LOD1: deck+cab+pods; LOD2: slab",
-      "render": "assets/incubator/everyday_space_kit/evidence/freight_platform.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: deck+cab+pods; LOD2: slab"
     },
     {
       "id": "drill_platform",
@@ -399,19 +346,13 @@
           5.87
         ]
       },
-      "bytes": 148092,
-      "sha256": "35daeb6228157b3562c59bc05e5569d42c0a9fb61b76b54fb27ad2883d3af0b6",
+      "bytes": 114044,
+      "sha256": "afdc5297fddd7fa283a70d5dfd6f9d99f00983441835b3d2a87559e995eb0c3e",
       "family": "mining",
       "role": "anchored seam drill: four outrigger anchors, ring deck, lit bit",
       "states": "active=amber floods on bit; see _cold variant (stowed+dark)",
       "placement": "ON an asteroid seam \u2014 feet must contact rock; pairs with power_skid via trunk",
-      "lodPlan": "LOD1: legs as boxes; LOD2: house+column silhouette",
-      "render": "assets/incubator/everyday_space_kit/evidence/drill_platform.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: legs as boxes; LOD2: house+column silhouette"
     },
     {
       "id": "drill_platform_cold",
@@ -437,19 +378,13 @@
           5.073
         ]
       },
-      "bytes": 114996,
-      "sha256": "b22b370806d20e887cb8d64e874998b61c3082db786962bc749a2f71fb20755f",
+      "bytes": 88028,
+      "sha256": "0adbd335c5077b73c9daf1ea241b93491515bad3a6aa689770ef813d19288424",
       "family": "mining",
       "role": "cold drill: bit stowed and clamped on deck, hatch dogged, no light",
       "states": "this IS the cold/inactive state of drill_platform",
       "placement": "played-out seams, disputed claims awaiting arbitration",
-      "lodPlan": "as drill_platform",
-      "render": "assets/incubator/everyday_space_kit/evidence/drill_platform_cold.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "as drill_platform"
     },
     {
       "id": "crusher_module",
@@ -478,19 +413,13 @@
           4.625
         ]
       },
-      "bytes": 62248,
-      "sha256": "4be10ef86163df97088a3231d092a3e573ab7dcf5fe3734dbbd455c608936896",
+      "bytes": 47568,
+      "sha256": "6f2a31ac721155c675ee5cffd897ff2a3cf38de3b4fa8ca9388aa04d6d494544",
       "family": "mining",
       "role": "jaw crusher: funnel hopper, armored cheeks, scorched discharge chute",
       "states": "active=feed lumps+amber light; cold=empty hopper, no light",
       "placement": "between drill and conveyor/containers; discharge points at the take-away",
-      "lodPlan": "LOD1: hopper as one box; LOD2: two stacked boxes",
-      "render": "assets/incubator/everyday_space_kit/evidence/crusher_module.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: hopper as one box; LOD2: two stacked boxes"
     },
     {
       "id": "ore_sorter",
@@ -519,19 +448,13 @@
           3.699
         ]
       },
-      "bytes": 109844,
-      "sha256": "1a815506d6519d0566b28308ce5925c371d53a292b8f9ad3026b2b47fd7a7007",
+      "bytes": 85032,
+      "sha256": "478a4a066d241f73180a2cb60d59dff6f005b12a14f2919b50188475d9332e17",
       "family": "mining",
       "role": "inclined grizzly screen over three grade hoppers with tell-tale lamps",
       "states": "active=feed on screen, lamps lit; cold=bare screen, dark",
       "placement": "crusher discharge side; hoppers feed containers or barge baskets",
-      "lodPlan": "LOD1: hoppers as cylinders; LOD2: wedge box",
-      "render": "assets/incubator/everyday_space_kit/evidence/ore_sorter.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: hoppers as cylinders; LOD2: wedge box"
     },
     {
       "id": "slurry_tank",
@@ -559,19 +482,13 @@
           2.88
         ]
       },
-      "bytes": 171540,
-      "sha256": "6e516d26c17b68f5e56303988e2aac4b3b26d7053f1155768b767d3aec778f50",
+      "bytes": 130088,
+      "sha256": "d4a11c9e473fba823f6dfb4e8bcd483d267b2b3809d5fb6bd87d2e39c6e7afd8",
       "family": "mining",
       "role": "three formed spheres in a hazard-ended cradle + insulated downpipe",
       "states": "active=level lamp; abandoned=lamp gone, one dome scorched",
       "placement": "refinery process side; pipe-out aims at the next vessel",
-      "lodPlan": "LOD1: keep spheres, drop pipes; LOD2: three-lobe blob",
-      "render": "assets/incubator/everyday_space_kit/evidence/slurry_tank.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: keep spheres, drop pipes; LOD2: three-lobe blob"
     },
     {
       "id": "radiator_bank",
@@ -599,19 +516,13 @@
           3.525
         ]
       },
-      "bytes": 73640,
-      "sha256": "5ce61f4d0932b88132954b956fc51dcbfbf286d222b2354f51670b4cdc5c8bb0",
+      "bytes": 57356,
+      "sha256": "b98f6450a24a211d704ee928346d29502ef37953938a32e754cbe1d3da043106",
       "family": "mining",
       "role": "six-fin heat rejection bank, cores glowing furnace-amber",
       "states": "active=hot cores; cold=swap cores to esk_bare_steel at instancing (dark fins)",
       "placement": "shadow side of any process plant; NEVER between a habitat and its view",
-      "lodPlan": "LOD1: fins keep (they ARE the read); LOD2: single glowing slab",
-      "render": "assets/incubator/everyday_space_kit/evidence/radiator_bank.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: fins keep (they ARE the read); LOD2: single glowing slab"
     },
     {
       "id": "conveyor_truss",
@@ -640,19 +551,13 @@
           3.415
         ]
       },
-      "bytes": 216756,
-      "sha256": "00e35363973a7a22dbc398ed44536bec159eb7f74acaa3eb2edce8bb5a805d1d",
+      "bytes": 162508,
+      "sha256": "e02f6c1365ac300bb7a0edd90c558b25697345343c3b7e02d2410eee07916106",
       "family": "mining",
       "role": "24 m span-gauge bucket conveyor with drive house, part-loaded",
       "states": "active=loaded buckets+lamps; abandoned=empty buckets, belt gap, dark",
       "placement": "crusher/sorter to containers; chains end-to-end (integer bays)",
-      "lodPlan": "LOD1: buckets merged strip; LOD2: box girder",
-      "render": "assets/incubator/everyday_space_kit/evidence/conveyor_truss.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: buckets merged strip; LOD2: box girder"
     },
     {
       "id": "extraction_mast",
@@ -680,19 +585,13 @@
           6.545
         ]
       },
-      "bytes": 59436,
-      "sha256": "217307c074be716b1a728ce79ef4980db981c3d406ef02645af449330162a054",
+      "bytes": 46748,
+      "sha256": "42e3b1de45126dfffe4a2b99468de6016fd5e75de027b0743e52701668888852",
       "family": "mining",
       "role": "yard mast in extraction fit: three amber floods + claim strobe",
       "states": "active=lit; cold=dark (the unlit yard is a dead yard)",
       "placement": "worksite perimeter, one per ~40 m of active face",
-      "lodPlan": "LOD1: column as box; LOD2: single post",
-      "render": "assets/incubator/everyday_space_kit/evidence/extraction_mast.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: column as box; LOD2: single post"
     },
     {
       "id": "maintenance_gantry",
@@ -721,19 +620,13 @@
           5.356
         ]
       },
-      "bytes": 122464,
-      "sha256": "9556abd595965ea4dc999e9693ab4afc441c18c09dc51dd1d19ee7a9752e39f2",
+      "bytes": 98404,
+      "sha256": "f4c48993ba7119b6a5a08c9a7462aaba2ae9164a6a45834276ab05979eb7fdbb",
       "family": "service",
       "role": "portal gantry a small hull parks under: trolley hoist + tool booms",
       "states": "active=blue-white floods down; cold=trolley parked at leg, dark",
       "placement": "repair yards, construction sites; berth socket is the client position",
-      "lodPlan": "LOD1: trusses as box girders; LOD2: portal outline",
-      "render": "assets/incubator/everyday_space_kit/evidence/maintenance_gantry.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: trusses as box girders; LOD2: portal outline"
     },
     {
       "id": "repair_scaffold",
@@ -761,19 +654,13 @@
           4.576
         ]
       },
-      "bytes": 44752,
-      "sha256": "6eb251352834191d2cc0be4932087944611ff22b47f4b811c9110af5a3e32c99",
+      "bytes": 35212,
+      "sha256": "7e42f9e79e1f2aa0619aa141d28f0fe2c68efe3e8bbc1992d8fc355f159acaf1",
       "family": "service",
       "role": "clamp-on hull scaffold: two work decks, parts basket, rail lamps",
       "states": "active=lamps lit; see _bent variant",
       "placement": "clamped to a hull or frame under repair \u2014 clamp jaws must touch the client",
-      "lodPlan": "LOD1: rails merged; LOD2: open box",
-      "render": "assets/incubator/everyday_space_kit/evidence/repair_scaffold.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: rails merged; LOD2: open box"
     },
     {
       "id": "repair_scaffold_bent",
@@ -799,19 +686,13 @@
           4.576
         ]
       },
-      "bytes": 30416,
-      "sha256": "9a9b4d8fbef32d33d9525ce1240b7801bbd4450b4bc2833cd0f1172ed751dcd5",
+      "bytes": 24192,
+      "sha256": "b96ee8dd4678cc5120efb192b72ea919c7178ff3ab47e5ff4a75185ac7ba3fca",
       "family": "service",
       "role": "impact-bent scaffold: kinked posts, sprung deck, one clamp gone",
       "states": "this IS the damaged state of repair_scaffold",
       "placement": "accident sites, hard-luck yards, salvage auctions",
-      "lodPlan": "as repair_scaffold \u2014 the kink must survive LOD1",
-      "render": "assets/incubator/everyday_space_kit/evidence/repair_scaffold_bent.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "as repair_scaffold \u2014 the kink must survive LOD1"
     },
     {
       "id": "construction_frame",
@@ -840,19 +721,13 @@
           4.063
         ]
       },
-      "bytes": 154392,
-      "sha256": "d3f5ccc606ee115705839b85f70c1e3d3fa30d09f96a9f801976c5568a1593dc",
+      "bytes": 119188,
+      "sha256": "fb5c5719f4776f43c61948412e17f494dc5db085939f5c15bf4972f747fe639a",
       "family": "service",
       "role": "26 m keel section mid-build: skinned aft, bare ribs forward, panels staged",
       "states": "this asset IS the under-construction state; completed = a future hull",
       "placement": "station growth edges, shipyard anchorages; keel axis on the build line",
-      "lodPlan": "LOD1: ribs merged, skins keep; LOD2: half-skinned box",
-      "render": "assets/incubator/everyday_space_kit/evidence/construction_frame.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: ribs merged, skins keep; LOD2: half-skinned box"
     },
     {
       "id": "welding_drone",
@@ -880,19 +755,13 @@
           0.415
         ]
       },
-      "bytes": 33872,
-      "sha256": "cde533f4ade58bd4ea0f870ea6e10565df9c1fbe3350fcfdedab116f21a7f995",
+      "bytes": 26892,
+      "sha256": "9003f3c5cfc050160ca2b2e2d5aa11aad486e7ee0512b1fb7064c502dc64fa25",
       "family": "service",
       "role": "1.9 m free-flying welder: twin manipulators, torch, quad thrusters",
       "states": "active=torch lens lit (VFX arc at SOCKET_Torch); stowed=racked on parts_rack",
       "placement": "swarming any service scene; scale-checks large plant in every board",
-      "lodPlan": "LOD1: body+arms; LOD2: sprite/impostor recommended",
-      "render": "assets/incubator/everyday_space_kit/evidence/welding_drone.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: body+arms; LOD2: sprite/impostor recommended"
     },
     {
       "id": "parts_rack",
@@ -918,19 +787,13 @@
           2.514
         ]
       },
-      "bytes": 44680,
-      "sha256": "d24c0aa068a5b1f81734224e679538b4152bf3b1b9e38b782e3cb3d6e521fe54",
+      "bytes": 35324,
+      "sha256": "bf0d678b375b6cf4cbcfef3207c03b9e46e519ce505c69d2d0030bc01bd43a51",
       "family": "service",
       "role": "A-frame stock rack: leaning mixed hull plates + spar tubes in cradles",
       "states": "full=as built; depleted=fewer plates (subtraction at instancing)",
       "placement": "beside every gantry/scaffold; the \"work is ongoing\" consumable read",
-      "lodPlan": "LOD1: plates merged wedge; LOD2: wedge box",
-      "render": "assets/incubator/everyday_space_kit/evidence/parts_rack.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: plates merged wedge; LOD2: wedge box"
     },
     {
       "id": "power_skid",
@@ -959,19 +822,13 @@
           2.5
         ]
       },
-      "bytes": 59000,
-      "sha256": "892ae5a40f31f972da0aed6cdd1a26179a878500131d44f8b8292f84ef5ff247",
+      "bytes": 45412,
+      "sha256": "0663c07313a147caf1a80f69ff5949f94abaea834e26ce5844ccdf44170f59d0",
       "family": "service",
       "role": "portable reactor skid: formed core, hot fin, cabinet, visible cable run",
       "states": "active=amber status+hot fin; cold=dark; see _patched (salvage) variant",
       "placement": "wherever plant runs \u2014 the trunk should visibly reach what it powers",
-      "lodPlan": "LOD1: core+cabinet; LOD2: single box",
-      "render": "assets/incubator/everyday_space_kit/evidence/power_skid.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: core+cabinet; LOD2: single box"
     },
     {
       "id": "worklight_tower",
@@ -999,19 +856,13 @@
           7.91
         ]
       },
-      "bytes": 60712,
-      "sha256": "5795cea61800626bc2ffa4ee23b5c63a2d4dfcad9921e50d6695ec055db78dda",
+      "bytes": 47588,
+      "sha256": "d2d39dcadf1b7572fb98be41783bc758a2f1264cb48b3004ae16c3080dce1195",
       "family": "service",
       "role": "yard mast in flood fit: three big white-warm heads (work happens here)",
       "states": "active=lit; cold=dark",
       "placement": "every active worksite; aim heads AT the work, not at the camera",
-      "lodPlan": "LOD1: column as box; LOD2: post + one lens",
-      "render": "assets/incubator/everyday_space_kit/evidence/worklight_tower.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: column as box; LOD2: post + one lens"
     },
     {
       "id": "customs_pylon",
@@ -1039,19 +890,13 @@
           7.08
         ]
       },
-      "bytes": 23152,
-      "sha256": "effe00aad391279c18b16ee6d700d9e2b872396b0873e63438b458c127755ddb",
+      "bytes": 18240,
+      "sha256": "cfa6c47ed5839d283f206d0d8ad41e4e2be3c548aa16bd600eb6b33554d99c6a",
       "family": "law",
       "role": "customs scan pylon: navy monolith, lit aperture slot, white crest",
       "states": "active=slot+aperture lit; the state machine (sweep/lock) is VFX at the socket",
       "placement": "paired astride lanes, ahead of transponder gates, at station approaches",
-      "lodPlan": "LOD1: column+head; LOD2: single pillar (slot baked)",
-      "render": "assets/incubator/everyday_space_kit/evidence/customs_pylon.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: column+head; LOD2: single pillar (slot baked)"
     },
     {
       "id": "inspection_platform",
@@ -1080,19 +925,13 @@
           2.844
         ]
       },
-      "bytes": 45396,
-      "sha256": "6c3f57f9aa234a18b2b38ea73a852ef0fe670747030744d3600b6c2337204b59",
+      "bytes": 35820,
+      "sha256": "ef84164bca205637ddebb3d1f1899d9b4c21515fe8ece2c5e20a5e8d228d2d21",
       "family": "law",
       "role": "floodlit holding dock: clamp cradle, perimeter arc-blue, watch cab",
       "states": "active=strips+floods; occupied=held craft at SOCKET_Berth (instancing)",
       "placement": "off-lane behind customs pylons \u2014 where the pulled-over go",
-      "lodPlan": "LOD1: deck+jaws+cab; LOD2: slab with lit edges",
-      "render": "assets/incubator/everyday_space_kit/evidence/inspection_platform.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: deck+jaws+cab; LOD2: slab with lit edges"
     },
     {
       "id": "interdiction_buoy",
@@ -1120,19 +959,13 @@
           2.47
         ]
       },
-      "bytes": 53880,
-      "sha256": "4576a891af023ddd1cd7b47a141762a50ec976952c1ec78b17fd0f8a5c365797",
+      "bytes": 41444,
+      "sha256": "49951374dfe9b7186c7347eec69440da2cc8d00be201c97918c88dd5ecbabd87",
       "family": "law",
       "role": "interdiction buoy: spiked bicone that reads THREAT, not guidance",
       "states": "armed=strobes lit; the deterrent silhouette works even dark",
       "placement": "closed lanes, exclusion rings, impound perimeters \u2014 in the flight path",
-      "lodPlan": "LOD1: bicone+4 spikes; LOD2: octahedron",
-      "render": "assets/incubator/everyday_space_kit/evidence/interdiction_buoy.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: bicone+4 spikes; LOD2: octahedron"
     },
     {
       "id": "transponder_gate",
@@ -1160,19 +993,13 @@
           6.621
         ]
       },
-      "bytes": 132384,
-      "sha256": "26f708759ce63fd5591e664a832dba90cffc8a73fb0c9d15483e6f298dc3ecb6",
+      "bytes": 102208,
+      "sha256": "f24187ffd8b7f83cf4760d27ee1ee14c6f141729302e1d2db1b82f41176937ab",
       "family": "law",
       "role": "lane gate: green pass pods on the crossbeam, red hold edges, white crest",
       "states": "open=green lenses; closed=swap to red at instancing (paired lens boxes)",
       "placement": "across a lane; approach face is +X (lenses face the incoming pilot)",
-      "lodPlan": "LOD1: portal as box girders; LOD2: goalpost outline",
-      "render": "assets/incubator/everyday_space_kit/evidence/transponder_gate.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: portal as box girders; LOD2: goalpost outline"
     },
     {
       "id": "sensor_mast",
@@ -1200,19 +1027,13 @@
           6.665
         ]
       },
-      "bytes": 96832,
-      "sha256": "d519a18451c68c71e1d54a82e9f17f3f51b40020733988b96a8300be9aae4d89",
+      "bytes": 74652,
+      "sha256": "01be0cd5ffd65ea00858b1a39c1944a0e4b219c746118080ff5a26bc85a227aa",
       "family": "law",
       "role": "listening mast: one big + two small dishes and a signals drum",
       "states": "active=authority strobe; passive plant otherwise (it just watches)",
       "placement": "checkpoint flanks, border sectors; big dish aims along the watched lane",
-      "lodPlan": "LOD1: dishes as cones; LOD2: post+cone",
-      "render": "assets/incubator/everyday_space_kit/evidence/sensor_mast.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: dishes as cones; LOD2: post+cone"
     },
     {
       "id": "traffic_signal",
@@ -1240,19 +1061,13 @@
           4.08
         ]
       },
-      "bytes": 27400,
-      "sha256": "01f84251bf6d8cf17d88ec6092b6c25f566a60562e60800778f0866cd1a5b9cf",
+      "bytes": 21916,
+      "sha256": "920341746ef8e7da7cd70ef20ba257af6390e9731b6f67443e417619513bf629",
       "family": "law",
       "role": "counterweighted lane signal: stacked go/hold/stop faces one approach",
       "states": "live=all three lenses authored; a wiring lane picks the active one",
       "placement": "dock throats, one-at-a-time passages, loading apron entries",
-      "lodPlan": "LOD1: mast+board; LOD2: lollipop",
-      "render": "assets/incubator/everyday_space_kit/evidence/traffic_signal.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: mast+board; LOD2: lollipop"
     },
     {
       "id": "habitat_pod",
@@ -1280,19 +1095,13 @@
           3.595
         ]
       },
-      "bytes": 73252,
-      "sha256": "e05f259a023267de36b085c1270f6218b49b75c4b6e21cac1016b82a924d8986",
+      "bytes": 56364,
+      "sha256": "5244997837de7a23c2f8471d13f316a249f9704269723a2674ca80e934b851b8",
       "family": "civic",
       "role": "crew habitat capsule: lit window row, airlock collar, solar cross",
       "states": "occupied=windows warm; see _derelict variant",
       "placement": "clustered near worksites and platforms \u2014 proof somebody sleeps here",
-      "lodPlan": "LOD1: capsule+wings; LOD2: capsule (windows baked)",
-      "render": "assets/incubator/everyday_space_kit/evidence/habitat_pod.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: capsule+wings; LOD2: capsule (windows baked)"
     },
     {
       "id": "habitat_pod_derelict",
@@ -1318,19 +1127,13 @@
           3.19
         ]
       },
-      "bytes": 62708,
-      "sha256": "41fddd04433f0601f40241f2196d34ecf68502590bfbce7102869d092232b363",
+      "bytes": 48164,
+      "sha256": "317df505df4a8a2b44c2bfc396652a4fab7c353d210e87ff01e6c8cd78ca4f1c",
       "family": "civic",
       "role": "dead habitat: dark windows, snapped wing, hatch swung open",
       "states": "this IS the derelict state of habitat_pod",
       "placement": "failed claims, quarantine buffers, pirate territory edges",
-      "lodPlan": "as habitat_pod; the snapped wing must survive LOD1",
-      "render": "assets/incubator/everyday_space_kit/evidence/habitat_pod_derelict.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "as habitat_pod; the snapped wing must survive LOD1"
     },
     {
       "id": "shuttle_dock",
@@ -1359,19 +1162,13 @@
           4.329
         ]
       },
-      "bytes": 154012,
-      "sha256": "53eca811b72daf39994c891ea0d4b2765739cb464c1f646e7b2dab9c895b3104",
+      "bytes": 115924,
+      "sha256": "07ebbb0d957d07d1e6c01bdfedbb62f5686e88434fb995b10e6303c48ca0cbd3",
       "family": "civic",
       "role": "shuttle cradle dock: twin hoops, handed approach light lane, glazed walkway",
       "states": "active=approach lights+cabin glow; cold=dark lane (closed to traffic)",
       "placement": "habitat clusters, passenger platforms; approach lane must stay clear",
-      "lodPlan": "LOD1: hoops+walkway; LOD2: slab+arch",
-      "render": "assets/incubator/everyday_space_kit/evidence/shuttle_dock.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: hoops+walkway; LOD2: slab+arch"
     },
     {
       "id": "observation_blister",
@@ -1399,19 +1196,13 @@
           3.87
         ]
       },
-      "bytes": 87144,
-      "sha256": "3a15b3347ff27e879a19561a2a580ba4787877664eff51a25eefcaa005605e98",
+      "bytes": 68136,
+      "sha256": "39e05c1c85e969359bffba3e79a7f12e608719040d3b5df340ad9d5a23616a17",
       "family": "civic",
       "role": "glazed observation dome on a stalk, warm-lit floor, ring balcony",
       "states": "occupied=floor glow; vacant=dark dome",
       "placement": "platform corners, habitat clusters \u2014 pointed at the best view",
-      "lodPlan": "LOD1: dome+stalk; LOD2: ball on post",
-      "render": "assets/incubator/everyday_space_kit/evidence/observation_blister.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: dome+stalk; LOD2: ball on post"
     },
     {
       "id": "comms_array",
@@ -1439,19 +1230,13 @@
           3.885
         ]
       },
-      "bytes": 77532,
-      "sha256": "ec85b8139248330928d6ce69fd17f866462296618b68112dda351b29cf733e41",
+      "bytes": 59524,
+      "sha256": "0534838b1de57facf97312dbf6d07a8623d2a2a58fa4516d1ded2a7523dbd3f3",
       "family": "civic",
       "role": "relay farm: one big steerable dish, two subs, manned kiosk",
       "states": "live=kiosk glow+rim strobes; dead=dark (a cut-off outpost)",
       "placement": "habitat clusters, platform edges, claim sites \u2014 aimed at the sky, not the ground",
-      "lodPlan": "LOD1: dishes as cones; LOD2: pedestal+one cone",
-      "render": "assets/incubator/everyday_space_kit/evidence/comms_array.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: dishes as cones; LOD2: pedestal+one cone"
     },
     {
       "id": "solar_array",
@@ -1480,19 +1265,13 @@
           1.85
         ]
       },
-      "bytes": 88020,
-      "sha256": "aebb28d911761f925f056500615da59d0b97a0f3f806d3b3a188ff5e34e9ee32",
+      "bytes": 69996,
+      "sha256": "d84adbcea79f0a307e0b77c593c34ec94d33fbde858e8c48895b3d6bcabade71",
       "family": "civic",
       "role": "sun-tracking twin-wing array on span-gauge spines, handed tip lights",
       "states": "live=amber status; wings feather edge-on when cold (re-pose at instancing)",
       "placement": "sunward side of anything inhabited; never shadowed by radiators",
-      "lodPlan": "LOD1: wings as two boxes; LOD2: cross silhouette",
-      "render": "assets/incubator/everyday_space_kit/evidence/solar_array.png",
-      "distanceViews": [
-        95,
-        125,
-        165
-      ]
+      "lodPlan": "LOD1: wings as two boxes; LOD2: cross silhouette"
     },
     {
       "id": "utility_module",
@@ -1520,19 +1299,13 @@
           2.425
         ]
       },
-      "bytes": 30636,
-      "sha256": "b33bda82f78a118ac1903392983d37df7e30aecd2c4cb759ea768d4a599f4311",
+      "bytes": 24408,
+      "sha256": "59fcb21378283b0f608937196f5226651b9b4c926cd70df422e86d83e9fb3ccd",
       "family": "civic",
       "role": "life-support box: external pipe runs, vent, hatches, lift lugs",
       "states": "running=amber status; failed=dark + one hatch open (instancing)",
       "placement": "bolted near habitats and cabs \u2014 one per three crewed modules",
-      "lodPlan": "LOD1: body+fins; LOD2: single box",
-      "render": "assets/incubator/everyday_space_kit/evidence/utility_module.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: body+fins; LOD2: single box"
     },
     {
       "id": "passenger_platform",
@@ -1561,19 +1334,13 @@
           2.885
         ]
       },
-      "bytes": 59732,
-      "sha256": "780a689e2d5ba8c61b99282f33a0f5aa7de23366e50b48342423370730370bcf",
+      "bytes": 46688,
+      "sha256": "9ddb5f911b3f7d13a032bd2d1b271c6481ff3c3a64a6c2d7676ceec5bafe5628",
       "family": "civic",
       "role": "covered boarding walkway: glow canopy, guide lights, green gate arch",
       "states": "boarding=green gate+guides; closed=gate dark",
       "placement": "between habitat clusters and shuttle docks; gate faces the dock",
-      "lodPlan": "LOD1: deck+canopy; LOD2: lit bar",
-      "render": "assets/incubator/everyday_space_kit/evidence/passenger_platform.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: deck+canopy; LOD2: lit bar"
     },
     {
       "id": "salvage_clamp",
@@ -1601,19 +1368,13 @@
           3.738
         ]
       },
-      "bytes": 35784,
-      "sha256": "b183cf90990118e39438eecd398688a16133fce5e05e9ef69875fa6fb73deaea",
+      "bytes": 28392,
+      "sha256": "d5293628a48badbeccdc58aa2bbb4dc42c9453d1e49e691b4e8ecdc432154c10",
       "family": "salvage",
       "role": "free-standing grab: winch, A-frame, scorched jaws, hooded red lamp",
       "states": "working=jaws at a carcass; idle=jaws hang empty",
       "placement": "shipbreaking yards, wreck fields \u2014 jaws toward the meat",
-      "lodPlan": "LOD1: frame+jaws; LOD2: tripod blob",
-      "render": "assets/incubator/everyday_space_kit/evidence/salvage_clamp.png",
-      "distanceViews": [
-        30,
-        60,
-        110
-      ]
+      "lodPlan": "LOD1: frame+jaws; LOD2: tripod blob"
     },
     {
       "id": "scrap_cage",
@@ -1641,19 +1402,13 @@
           2.852
         ]
       },
-      "bytes": 48544,
-      "sha256": "88d317853f6e05eaf999175fc1314a7a0fe8b91080fb656338d5f3425db461c8",
+      "bytes": 38372,
+      "sha256": "28483b8c2ff2e6e1b581836a3f8820089ebf76061113139d79639a4832bf59b5",
       "family": "salvage",
       "role": "scrap holding cage, crushed hull chunks inside, gate swung open",
       "states": "full=junk load; empty=bare cage (subtraction)",
       "placement": "shipbreaking yards, black-market aprons; gate faces the work",
-      "lodPlan": "LOD1: cage as lattice box+junk lump; LOD2: solid box",
-      "render": "assets/incubator/everyday_space_kit/evidence/scrap_cage.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: cage as lattice box+junk lump; LOD2: solid box"
     },
     {
       "id": "hull_rack",
@@ -1681,19 +1436,13 @@
           3.743
         ]
       },
-      "bytes": 240368,
-      "sha256": "e24802458d6c8c81ac0f86743561f5218921372cc38f6646e094168491aed08a",
+      "bytes": 190156,
+      "sha256": "26bdf32c925d5ba978a8ea9a89b96027f63b58f3142a3721ef76c6435ba34b75",
       "family": "salvage",
       "role": "shipbreaking rack: three stripped rib sections, torch scars, part skins",
       "states": "working=sections racked; picked-clean=empty frame",
       "placement": "the centerpiece of any breaking yard; sections read as somebody's ex-ship",
-      "lodPlan": "LOD1: sections as open boxes; LOD2: goalpost pair",
-      "render": "assets/incubator/everyday_space_kit/evidence/hull_rack.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: sections as open boxes; LOD2: goalpost pair"
     },
     {
       "id": "illicit_transfer_frame",
@@ -1722,19 +1471,13 @@
           2.237
         ]
       },
-      "bytes": 55504,
-      "sha256": "6d02ba5c06e9931d3b6e17ee048893f9f5d004d000a84010e7737c0c91e56ef5",
+      "bytes": 43644,
+      "sha256": "26e9eb4fc77d6022e9fd8dbb4e1062482f0ea00164df264505810a5f57e0942e",
       "family": "salvage",
       "role": "smuggler transfer frame: two stolen-parts berths, hooded light only",
       "states": "live=pod in berth A; the missing nav/strobe lights ARE the tell",
       "placement": "shadow sides of rocks, off-lane voids, blackmarket approaches",
-      "lodPlan": "LOD1: spine+berth frames; LOD2: H-frame",
-      "render": "assets/incubator/everyday_space_kit/evidence/illicit_transfer_frame.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: spine+berth frames; LOD2: H-frame"
     },
     {
       "id": "improvised_dock",
@@ -1762,19 +1505,13 @@
           2.229
         ]
       },
-      "bytes": 75456,
-      "sha256": "8194ce3aa5061346f88068d0b71b649b57d816c79152bcdbb145ba064e54961b",
+      "bytes": 59224,
+      "sha256": "f39694ce75d7d9483eac1c3ea2912d35238fadd823c1142e89df10ce293e3973",
       "family": "salvage",
       "role": "cobbled dock: pod-turned-shack, two-gauge scavenged arm, dim red window",
       "states": "occupied=window glow; the mismatched gauges never change",
       "placement": "pirate coves, unlicensed claims, anywhere authority is not",
-      "lodPlan": "LOD1: pod+arm; LOD2: L-shape",
-      "render": "assets/incubator/everyday_space_kit/evidence/improvised_dock.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: pod+arm; LOD2: L-shape"
     },
     {
       "id": "pirate_sensor_mast",
@@ -1802,19 +1539,13 @@
           5.805
         ]
       },
-      "bytes": 87284,
-      "sha256": "0c148e3dcfb9cfd85e7d472479437b37ec5ab2de043df5587c34be16b56ffdfb",
+      "bytes": 67964,
+      "sha256": "cab5dfb6fc1fb2d71ccd909c5d975197bcdf983d9437b6d490d902bfc32ea9b6",
       "family": "salvage",
       "role": "pirate ear: leaning spliced mast, stolen navy dish aimed at the lane",
       "states": "watching=hooded tell-tale only; never a strobe",
       "placement": "rock shadows overlooking trade lanes; dish axis = the watched lane",
-      "lodPlan": "LOD1: mast+big dish; LOD2: leaning post",
-      "render": "assets/incubator/everyday_space_kit/evidence/pirate_sensor_mast.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "LOD1: mast+big dish; LOD2: leaning post"
     },
     {
       "id": "power_skid_patched",
@@ -1842,19 +1573,13 @@
           2.825
         ]
       },
-      "bytes": 60992,
-      "sha256": "2a6fe8fa38f44bb42547b4e69f5f73981561dff5c78ffca34aac148022c0f57b",
+      "bytes": 47068,
+      "sha256": "aeed5ec6fca4262582d28f3298e8cb9a0bd689f378c9e0a129a82e2425e3f9b2",
       "family": "salvage",
       "role": "stolen reactor skid: patched core, wrong fin, hooded status lamp",
       "states": "this IS the faction-modified state of power_skid",
       "placement": "powering illicit frames and improvised docks (trunk must reach)",
-      "lodPlan": "as power_skid",
-      "render": "assets/incubator/everyday_space_kit/evidence/power_skid_patched.png",
-      "distanceViews": [
-        60,
-        95,
-        145
-      ]
+      "lodPlan": "as power_skid"
     }
   ]
 }

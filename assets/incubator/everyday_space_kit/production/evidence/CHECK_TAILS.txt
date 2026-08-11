@@ -1,0 +1,16 @@
+check:graphics:asset-receipts
+  Graphics asset receipt closure: PASS
+
+check:asset-reachability
+  asset reachability OK — 222 referenced runtime assets exist and are retail-routable (137 physically bundled, 85 render-package-routed); 10 authoring-only reference sheets held out of the runtime.
+
+check:baseline
+  11/11 green in 49069ms wall (parallel:3+1x4), budget 90000ms, headroom 40931ms
+
+node --test test/pq045-everyday-space-props-promotion.test.mjs
+  4/4 pass
+
+promoted-output reproducibility
+  production dual-build: 16/16 byte-identical (Blender 5.1.2 factory-startup)
+  publish finalize dual-run: 16/16
+  place-release dual-run: 16/16 (KTX2+meshopt)

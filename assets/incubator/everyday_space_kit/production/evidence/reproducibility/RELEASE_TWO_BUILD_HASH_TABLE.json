@@ -1,0 +1,120 @@
+{
+  "schema": "spaceface.everydaySpaceProps.release.reproducibility.v1",
+  "stage": "place_release_ktx2_meshopt",
+  "assets": 16,
+  "matches": 16,
+  "rows": [
+    {
+      "id": "place_cargo_pod_standard.glb",
+      "bytes": 260352,
+      "sha256A": "269c7b162bb0049afd29a31a63d825f73fbdab368fa116cac2635b8a43107c1e",
+      "sha256B": "269c7b162bb0049afd29a31a63d825f73fbdab368fa116cac2635b8a43107c1e",
+      "match": true
+    },
+    {
+      "id": "place_container_rack.glb",
+      "bytes": 647552,
+      "sha256A": "32c81eb3146d363bc524f3c33b29d38ba30d96977487f81f74c9700695bad0e8",
+      "sha256B": "32c81eb3146d363bc524f3c33b29d38ba30d96977487f81f74c9700695bad0e8",
+      "match": true
+    },
+    {
+      "id": "place_conveyor_truss.glb",
+      "bytes": 553360,
+      "sha256A": "fa9af985739cee3677b8658dec36298828b8f91d0c1544e71f9d1d1b08e8caa2",
+      "sha256B": "fa9af985739cee3677b8658dec36298828b8f91d0c1544e71f9d1d1b08e8caa2",
+      "match": true
+    },
+    {
+      "id": "place_drill_platform.glb",
+      "bytes": 625672,
+      "sha256A": "f8a6b97280e22320d70b12b232df2ff69238a4911b6454290217ff12d2ba8005",
+      "sha256B": "f8a6b97280e22320d70b12b232df2ff69238a4911b6454290217ff12d2ba8005",
+      "match": true
+    },
+    {
+      "id": "place_extraction_mast.glb",
+      "bytes": 475196,
+      "sha256A": "a3395afa0c21b7f34d2f2331cfd6b9bc5f86c98009c6ea1655a349b92fe2112c",
+      "sha256B": "a3395afa0c21b7f34d2f2331cfd6b9bc5f86c98009c6ea1655a349b92fe2112c",
+      "match": true
+    },
+    {
+      "id": "place_freight_platform.glb",
+      "bytes": 802136,
+      "sha256A": "bdce8211f03428f3a8ec427b3fae908e28a67097470159a57c632729de05cfa5",
+      "sha256B": "bdce8211f03428f3a8ec427b3fae908e28a67097470159a57c632729de05cfa5",
+      "match": true
+    },
+    {
+      "id": "place_improvised_dock.glb",
+      "bytes": 482768,
+      "sha256A": "1af62c2398004def62408fe7ec9c514f93a6606715f900923dfcdc8ccc7ef434",
+      "sha256B": "1af62c2398004def62408fe7ec9c514f93a6606715f900923dfcdc8ccc7ef434",
+      "match": true
+    },
+    {
+      "id": "place_interdiction_buoy.glb",
+      "bytes": 393364,
+      "sha256A": "c3bacf85983f5425f8f3532589de384d62035cb701a21d5e2bf95336dd30e7dc",
+      "sha256B": "c3bacf85983f5425f8f3532589de384d62035cb701a21d5e2bf95336dd30e7dc",
+      "match": true
+    },
+    {
+      "id": "place_maintenance_gantry.glb",
+      "bytes": 555332,
+      "sha256A": "b95b6d5315a124b7d978ea5d7eaef03787799e138c103e08bda7aff5edddfad7",
+      "sha256B": "b95b6d5315a124b7d978ea5d7eaef03787799e138c103e08bda7aff5edddfad7",
+      "match": true
+    },
+    {
+      "id": "place_radiator_bank.glb",
+      "bytes": 440400,
+      "sha256A": "4acd8eedf8ff6a1f2197f40fd408c89c389f5e51ca8e9ce03bcb18fb98f55600",
+      "sha256B": "4acd8eedf8ff6a1f2197f40fd408c89c389f5e51ca8e9ce03bcb18fb98f55600",
+      "match": true
+    },
+    {
+      "id": "place_scrap_cage.glb",
+      "bytes": 444772,
+      "sha256A": "2e6f93f213d46b8525806b63efb09973d6970e934911004e6ba80b72acb13810",
+      "sha256B": "2e6f93f213d46b8525806b63efb09973d6970e934911004e6ba80b72acb13810",
+      "match": true
+    },
+    {
+      "id": "place_sensor_mast.glb",
+      "bytes": 530764,
+      "sha256A": "fd64505fd9d7639cfe38400e61dec6c38edc956327bb040e65d367c4487957f3",
+      "sha256B": "fd64505fd9d7639cfe38400e61dec6c38edc956327bb040e65d367c4487957f3",
+      "match": true
+    },
+    {
+      "id": "place_slurry_tank.glb",
+      "bytes": 693204,
+      "sha256A": "296cd8077b3cb94b368677d2de64dbec04f192c840a394c2c0aff6c29c8af9f6",
+      "sha256B": "296cd8077b3cb94b368677d2de64dbec04f192c840a394c2c0aff6c29c8af9f6",
+      "match": true
+    },
+    {
+      "id": "place_transfer_arm.glb",
+      "bytes": 529876,
+      "sha256A": "4310595868bda37853362703e37138f85cf3462b176e79334741ae3b571d2a3b",
+      "sha256B": "4310595868bda37853362703e37138f85cf3462b176e79334741ae3b571d2a3b",
+      "match": true
+    },
+    {
+      "id": "place_transponder_gate.glb",
+      "bytes": 451868,
+      "sha256A": "525b2bca5b70774cfb624cf4ea8010e58dfecd57460dfc3f32c03f0fff6d18b3",
+      "sha256B": "525b2bca5b70774cfb624cf4ea8010e58dfecd57460dfc3f32c03f0fff6d18b3",
+      "match": true
+    },
+    {
+      "id": "place_worklight_tower.glb",
+      "bytes": 354132,
+      "sha256A": "8cd1f8e6db859fb296d45c971bcd6d66f686c71a439da0bd98510083087bce9b",
+      "sha256B": "8cd1f8e6db859fb296d45c971bcd6d66f686c71a439da0bd98510083087bce9b",
+      "match": true
+    }
+  ]
+}

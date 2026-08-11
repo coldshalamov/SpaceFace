@@ -1,0 +1,73 @@
+{
+  "family": "everyday_space_props",
+  "packet": "PQ-045-PROP-PROMOTION-001",
+  "tier": "C/D",
+  "componentReferenceDecision": "not_needed",
+  "supportedViews": [
+    "front_three_quarter",
+    "side_work_face",
+    "gameplay_110wu",
+    "gameplay_140wu"
+  ],
+  "allSupportedViewZonesClassified": true,
+  "zones": [
+    {
+      "zone": "structural_frames_trusses_posts",
+      "classification": "billed",
+      "fiction": "Span-gauge galvanized lattice and structural alloy posts bought from the common yard (THE_COMMON_YARD \u00a71). Load-bearing chords, not decoration.",
+      "manufacture": "rolled steel chords + welded lattice; galvanized truss family; bare steel patches where re-welded",
+      "substrate": "structural steel / galvanized tube",
+      "coating": "hot-dip galv or mid-value industrial paint",
+      "wear": "seam dirt at bays, scuff at clamp rails, localized reweld scorch",
+      "material": "Material_Truss / Material_Struct / Material_BareSteel",
+      "forbidden": "plastic tubes, clay-smooth cylinders, default Principled plastic"
+    },
+    {
+      "zone": "family_paint_shells",
+      "classification": "billed",
+      "fiction": "Who owns the yard: ochre extraction, teal logistics, navy authority, service blue, rust salvage (THE_COMMON_YARD \u00a73).",
+      "manufacture": "shop-sprayed dielectric coat over alloy; patch plates never colour-matched",
+      "substrate": "coated structural alloy",
+      "coating": "matte mid-value working paint",
+      "wear": "contact dirt at seams/fasteners only \u2014 not whole-surface clay mottling",
+      "material": "Material_Paint*",
+      "forbidden": "charcoal mud, glossy car paint, uniform noise dirt"
+    },
+    {
+      "zone": "formed_vessels_and_insulation",
+      "classification": "billed",
+      "fiction": "Pressure loads live in cylinders/spheres with end-domes and cradle saddles; insulated runs wear amber wrap.",
+      "manufacture": "formed pressure shell + saddle cradle; wrap is fibreglass/amber insulation",
+      "substrate": "pressure vessel alloy / insulation blanket",
+      "coating": "pale shell enamel / amber wrap",
+      "wear": "saddle contact, wrap fray at clamps",
+      "material": "Material_Tank / Material_Insulation",
+      "forbidden": "boxes pretending to hold volatiles"
+    },
+    {
+      "zone": "practical_lights_and_trade_signals",
+      "classification": "billed",
+      "fiction": "Light colour is the trade code (THE_COMMON_YARD \u00a72 / THE_WORKING_LIGHT). Floods, amber extraction, blue service, arc-blue authority, green/red lane.",
+      "manufacture": "hooded fixture with recessed emitter; never a bare glowing disk",
+      "substrate": "fixture housing + lens",
+      "coating": "emissive lens inside housing",
+      "wear": "lens grime; hood scorch on salvage reds",
+      "material": "Material_Light*",
+      "forbidden": "unhoused emissive planes, white-out strengths >~3"
+    },
+    {
+      "zone": "hazard_ore_scorch_consumables",
+      "classification": "billed",
+      "fiction": "Hazard bands mark risk; ore is rough non-metal stock; scorch is thermal damage on salvage/process faces.",
+      "manufacture": "painted hazard tape / dumped ore / heat damage",
+      "substrate": "paint / raw rock-ore / charred metal",
+      "coating": "none for ore; carbon for scorch",
+      "wear": "intrinsic",
+      "material": "Material_Hazard / Material_Ore / Material_Scorch",
+      "forbidden": "smooth metallic ore, decorative hazard without meaning"
+    }
+  ],
+  "shapeGrammarNote": "Donor pack was blockout cubes/cylinders/trusses. Production pass keeps the kit silhouettes (already selected as stronger donors) but replaces flat factor-only materials with role-classified PBR, authors real LOD0/1/2, and recomputes tight vertex collision. Form revisions stay proportional: gameplay-distance read at 90\u2013140 WU is the acceptance camera, not close-up jewellery.",
+  "retainedZones": "none \u2014 geometry is rebuilt from the deterministic kit builder each run; no donor GLB mesh is retained",
+  "g1g2g4": "OPEN \u2014 evidence_ready only; whole-asset visual gates require independent hash-bound review"
+}

@@ -1,0 +1,219 @@
+{
+  "schema": "spaceface.everydaySpaceProps.publish.v1",
+  "packet": "PQ-045-PROP-PROMOTION-001",
+  "promoted": [
+    {
+      "id": "place_cargo_pod_standard",
+      "propId": "cargo_pod_standard",
+      "tris": 168,
+      "lod": {
+        "lod0": 168,
+        "lod1": 156,
+        "lod2": 36
+      },
+      "bytes": 695336,
+      "sha256": "22387a5122defa854158cfc1351cc087cdf744a200a73d4b4e5e1f8de6eef634",
+      "reducing": true
+    },
+    {
+      "id": "place_container_rack",
+      "propId": "container_rack",
+      "tris": 6600,
+      "lod": {
+        "lod0": 6600,
+        "lod1": 6528,
+        "lod2": 928
+      },
+      "bytes": 1976624,
+      "sha256": "549c84672581097048994be6c1c4a65adc25c5bd530c206e5027df16a42ec912",
+      "reducing": true
+    },
+    {
+      "id": "place_freight_platform",
+      "propId": "freight_platform",
+      "tris": 4152,
+      "lod": {
+        "lod0": 4152,
+        "lod1": 4116,
+        "lod2": 836
+      },
+      "bytes": 2101688,
+      "sha256": "72ef8f4f02d2406d39d6f523dc397db98a166392c241c2f0674b04f7ea5d528f",
+      "reducing": true
+    },
+    {
+      "id": "place_transfer_arm",
+      "propId": "transfer_arm",
+      "tris": 1128,
+      "lod": {
+        "lod0": 1128,
+        "lod1": 1028,
+        "lod2": 308
+      },
+      "bytes": 1240484,
+      "sha256": "8dab3eb3ae34c7dd057add5ad8a46f413845477e8cd4e4a50e7e2614d62e9f42",
+      "reducing": true
+    },
+    {
+      "id": "place_radiator_bank",
+      "propId": "radiator_bank",
+      "tris": 880,
+      "lod": {
+        "lod0": 880,
+        "lod1": 280,
+        "lod2": 184
+      },
+      "bytes": 1060524,
+      "sha256": "e44f4147c36dff097f8e7ab31ae7fd0bf3359e4871b9427d64a89c5f5e154714",
+      "reducing": true
+    },
+    {
+      "id": "place_slurry_tank",
+      "propId": "slurry_tank",
+      "tris": 2368,
+      "lod": {
+        "lod0": 2368,
+        "lod1": 1180,
+        "lod2": 460
+      },
+      "bytes": 1824800,
+      "sha256": "2a2049b0d81af1facdc9876ecd50c8a73d9b6166abcc3d47d841829702028185",
+      "reducing": true
+    },
+    {
+      "id": "place_drill_platform",
+      "propId": "drill_platform",
+      "tris": 2008,
+      "lod": {
+        "lod0": 2008,
+        "lod1": 1896,
+        "lod2": 456
+      },
+      "bytes": 1500344,
+      "sha256": "4d5f93db1414e13e13ab8e54fe56d61d1d9bc5c7e80a12510f9a5eccac62e401",
+      "reducing": true
+    },
+    {
+      "id": "place_conveyor_truss",
+      "propId": "conveyor_truss",
+      "tris": 2824,
+      "lod": {
+        "lod0": 2824,
+        "lod1": 2724,
+        "lod2": 1444
+      },
+      "bytes": 1617316,
+      "sha256": "64b0c6050f257e25360f302895fb417b0bf8af4d2b80ae5c3fd7f785d3c667e6",
+      "reducing": true
+    },
+    {
+      "id": "place_extraction_mast",
+      "propId": "extraction_mast",
+      "tris": 728,
+      "lod": {
+        "lod0": 728,
+        "lod1": 248,
+        "lod2": 148
+      },
+      "bytes": 1077640,
+      "sha256": "07116c678b895edfc52a2d98d9cf85639ebf32a9c35ec1e42cbb249e03f87f79",
+      "reducing": true
+    },
+    {
+      "id": "place_worklight_tower",
+      "propId": "worklight_tower",
+      "tris": 768,
+      "lod": {
+        "lod0": 768,
+        "lod1": 208,
+        "lod2": 108
+      },
+      "bytes": 635028,
+      "sha256": "7ae35faf9a5459b6cb8207acfc03dcf8ed1ba12246038f153c0aa643513f9961",
+      "reducing": true
+    },
+    {
+      "id": "place_transponder_gate",
+      "propId": "transponder_gate",
+      "tris": 1916,
+      "lod": {
+        "lod0": 1916,
+        "lod1": 156,
+        "lod2": 96
+      },
+      "bytes": 1054344,
+      "sha256": "e01e355ceeb072e061c3015bd179dfe0c8d90e6df0b472018d880412f1e2dbd7",
+      "reducing": true
+    },
+    {
+      "id": "place_interdiction_buoy",
+      "propId": "interdiction_buoy",
+      "tris": 646,
+      "lod": {
+        "lod0": 646,
+        "lod1": 430,
+        "lod2": 230
+      },
+      "bytes": 955308,
+      "sha256": "11b8a9a838fc0467ef5dcf20dca3bf5f548fe7764bab27234debfb7d40111153",
+      "reducing": true
+    },
+    {
+      "id": "place_sensor_mast",
+      "propId": "sensor_mast",
+      "tris": 1248,
+      "lod": {
+        "lod0": 1248,
+        "lod1": 768,
+        "lod2": 468
+      },
+      "bytes": 1238272,
+      "sha256": "42fc1350ca68f7a7d9a6a315d23e315f93b7d1d685307071ccb336b69c592d04",
+      "reducing": true
+    },
+    {
+      "id": "place_scrap_cage",
+      "propId": "scrap_cage",
+      "tris": 588,
+      "lod": {
+        "lod0": 588,
+        "lod1": 96,
+        "lod2": 72
+      },
+      "bytes": 1033956,
+      "sha256": "64196553d82979b7fdd247008a0e361de9c901718fd99f4540504023d0b02017",
+      "reducing": true
+    },
+    {
+      "id": "place_improvised_dock",
+      "propId": "improvised_dock",
+      "tris": 876,
+      "lod": {
+        "lod0": 876,
+        "lod1": 852,
+        "lod2": 572
+      },
+      "bytes": 1369808,
+      "sha256": "2266e6b455361c6d66cf885c959c5b3958634041189f51bab57204326d6c8430",
+      "reducing": true
+    },
+    {
+      "id": "place_maintenance_gantry",
+      "propId": "maintenance_gantry",
+      "tris": 1716,
+      "lod": {
+        "lod0": 1716,
+        "lod1": 1692,
+        "lod2": 172
+      },
+      "bytes": 1295856,
+      "sha256": "62e3e9152346ceb9e40eb7def717b46a0ae21077d96e9023481cea9e7b7651ce",
+      "reducing": true
+    }
+  ],
+  "manifestPath": "assets/ships/parts/parts_manifest.json",
+  "nextSteps": [
+    "node tools/art/build_release_parts.mjs <place_ids...>",
+    "runtime scatter wiring is a separate PQ-045 leaf"
+  ]
+}

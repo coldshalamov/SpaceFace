@@ -15,8 +15,13 @@ row, no runtime wiring; promotion belongs to whoever holds those exact paths lat
 GEOMETRY DETERMINISM. Every dimension, lean, patch plate and missing panel is AUTHORED;
 there is no RNG anywhere in this file. Variation between "identical" products comes from
 authored per-variant specs. The report records builder hash, Blender version, exporter
-generator and the canonical full-build command; byte-reproducibility still requires two
-full builds under one pinned toolchain.
+generator and the canonical full-build command.
+
+BYTE REPRODUCIBILITY. Blender 5.1.2's glTF exporter can emit identical vertices/JSON
+but a different triangle index *order* across two clean runs (loop-triangle / primitive
+serialization). Before every export we triangulate with FIXED/EAR_CLIP and rebuild each
+mesh's faces in a pure function of (material_index, sorted vertex indices, winding).
+Export selection is name-sorted. Two factory-startup builds must hash byte-identical.
 
 MANUFACTURING STANDARDS (THE_COMMON_YARD.md §1) are implemented as shared assemblies:
 the 6x3x3 Berth-standard pod (same footprint as the working fleet's container), the
@@ -42,6 +47,7 @@ import math
 import sys
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Euler, Vector
 
@@ -2024,13 +2030,105 @@ COMPOSITIONS = {
 # Export / measure / render machinery (shape shared with build_npc_activity_pack.py
 # so review tooling and habits transfer).
 
+def stabilize_mesh_for_export(obj):
+    """Force a deterministic triangle stream for the glTF exporter.
+
+    Diagnosis (Blender 5.1.2, factory-startup, no RNG authoring): two consecutive
+    exports of the same hierarchy produced identical glTF JSON, identical vertex
+    buffers, and identical triangle *sets*, but a different triangle *index order*
+    on ~half the pack. That alone flips the GLB SHA-256. Cause is exporter-side
+    loop-triangle / primitive serialization order on multi-face meshes (esp. joined
+    trusses and cylinders), not authored geometry or wall-clock input.
+
+    Cure: triangulate with FIXED/EAR_CLIP, then rebuild the mesh so face order is a
+    pure function of (material_index, sorted vertex indices, winding). Vertex order
+    is left alone — it is already stable across runs.
+    """
+    if obj is None or obj.type != 'MESH' or obj.data is None:
+        return
+    mesh = obj.data
+    if len(mesh.polygons) == 0:
+        return
+
+    materials = list(mesh.materials)
+    use_auto_smooth = bool(getattr(mesh, 'use_auto_smooth', False))
+    auto_smooth_angle = float(getattr(mesh, 'auto_smooth_angle', 0.523599))
+
+    bm = bmesh.new()
+    try:
+        bm.from_mesh(mesh)
+        bmesh.ops.triangulate(
+            bm,
+            faces=list(bm.faces),
+            quad_method='FIXED',
+            ngon_method='EAR_CLIP',
+        )
+        bm.faces.ensure_lookup_table()
+        bm.verts.ensure_lookup_table()
+        bm.normal_update()
+
+        # Preserve vertex order; only faces are reordered.
+        verts = [tuple(v.co) for v in bm.verts]
+        face_rows = []
+        for face in bm.faces:
+            idxs = [v.index for v in face.verts]
+            if len(idxs) != 3:
+                raise RuntimeError(
+                    f'stabilize_mesh_for_export({obj.name}): non-triangle face {idxs}'
+                )
+            face_rows.append((
+                int(face.material_index),
+                tuple(sorted(idxs)),
+                tuple(idxs),
+            ))
+        face_rows.sort()
+        faces = [row[2] for row in face_rows]
+        mat_indices = [row[0] for row in face_rows]
+    finally:
+        bm.free()
+
+    new_mesh = bpy.data.meshes.new(mesh.name)
+    new_mesh.from_pydata(verts, [], faces)
+    new_mesh.update(calc_edges=True)
+    for poly, mat_index in zip(new_mesh.polygons, mat_indices):
+        poly.material_index = mat_index
+    for mat in materials:
+        new_mesh.materials.append(mat)
+    if hasattr(new_mesh, 'use_auto_smooth'):
+        new_mesh.use_auto_smooth = use_auto_smooth
+        new_mesh.auto_smooth_angle = auto_smooth_angle
+    # Keep a consistent smooth flag across rebuilds.
+    for poly in new_mesh.polygons:
+        poly.use_smooth = False
+    new_mesh.validate(clean_customdata=True)
+    new_mesh.update()
+
+    old_mesh = obj.data
+    obj.data = new_mesh
+    if old_mesh.users == 0:
+        bpy.data.meshes.remove(old_mesh)
+
+
+def iter_export_objects(root):
+    """Name-sorted hierarchy walk so selection/export order never depends on
+    Blender's internal object list cursor."""
+    objs = [root] + list(root.children_recursive)
+    objs.sort(key=lambda o: o.name)
+    return objs
+
+
 def export_glb(root, path):
+    bpy.context.view_layer.update()
+    # Stabilize every mesh *before* selection so the exporter sees a fixed
+    # triangle stream even if it walks objects in an internal order.
+    for obj in iter_export_objects(root):
+        stabilize_mesh_for_export(obj)
     bpy.context.view_layer.update()
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action='DESELECT')
-    root.select_set(True)
-    for child in root.children_recursive:
-        child.select_set(True)
+    export_objs = iter_export_objects(root)
+    for obj in export_objs:
+        obj.select_set(True)
     bpy.context.view_layer.objects.active = root
     bpy.ops.export_scene.gltf(
         filepath=str(path), export_format='GLB', use_selection=True,
@@ -2304,7 +2402,14 @@ def main():
                 '--render --distances --sheets --compositions'
             ),
             'byteReproducibilityStatus': (
-                'unverified_until_two_full_builds_match_under_the_same_pinned_toolchain'
+                'stabilized_triangle_stream_fixed_triangulate_name_sorted_export; '
+                'prove with two clean factory-startup builds and compare sha256'
+            ),
+            'byteReproducibilityMechanism': (
+                'Blender 5.1.2 glTF exporter previously reordered triangle indices '
+                'across runs while keeping vertices and JSON equal; pre-export '
+                'FIXED triangulation + face rebuild by (material, sorted verts, '
+                'winding) and name-sorted selection closes that path.'
             ),
         },
         'assets': [],

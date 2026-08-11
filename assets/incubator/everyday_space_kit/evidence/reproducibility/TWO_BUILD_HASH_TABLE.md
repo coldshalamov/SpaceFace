@@ -1,0 +1,68 @@
+# Everyday Space Kit — two-build reproducibility evidence
+
+- Blender: `5.1.2`
+- Builder SHA-256: `48abd26a0374c9a231b8f765a3c1604029849e07234b20866c97cb95ec9de46f`
+- Assets: 46
+- Matches: **46/46**
+- Tree digest A: `100eb9cae4ffa087fd23501abd453350cc95a33a22c90e493042abeb1065df28`
+- Tree digest B: `100eb9cae4ffa087fd23501abd453350cc95a33a22c90e493042abeb1065df28`
+- Tree digests match: **True**
+
+## Causes fixed
+
+1. **Triangle index serialization order** — Blender 5.1.2 glTF exporter emitted identical
+   vertices and JSON but reordered triangle indices across clean runs (29/46 historical).
+2. **Cure** — `stabilize_mesh_for_export()` triangulates FIXED/EAR_CLIP and rebuilds faces
+   sorted by `(material_index, sorted vertex indices, winding)`; export selection is name-sorted.
+
+## Hash table (all 46)
+
+| id | bytes | sha256 (build A = build B) | match |
+|---|---:|---|:---:|
+| `cargo_pod_standard` | 13932 | `44089d5f2aed6141233bf124e7d145817f1e99effbf2a8cf7623a7da121744a2` | yes |
+| `cargo_pod_hazmat` | 30256 | `ec236cd614cb04e1fe3d113bce18ba3c0668edce5a1ed6c887229004e5df2951` | yes |
+| `cargo_pod_standard_breached` | 24428 | `992af8fc56dba3d3900817312d655b72f5a366854f37fbfdd54444fe4d388c10` | yes |
+| `ore_bulk_container` | 49696 | `258c3d1139887c480b4008aa878b6a928d210c33452142c211f8752b0e8c0130` | yes |
+| `container_rack` | 329220 | `07433358ac38ffd77d424e6a1bfa9a68092483ffa21e1030e2c0616fe11e4339` | yes |
+| `container_rack_abandoned` | 244912 | `3868d64ecf83f8bb5d77884b3788035d00130ebba420a19c1286300f66de5f73` | yes |
+| `transfer_arm` | 70728 | `5d1e207f42ffa9890edcbd84b11d334f88fc3762dcdc84ea2ef51a8c15436442` | yes |
+| `tanker_coupling` | 47752 | `4a757f274d98748389aee75b2e9b27a3e4345a338674a17f1c239c41d31bc321` | yes |
+| `freight_platform` | 224744 | `044ee39801e304af5993a4efce1392da48cbe766019ad3dd9b16d5ee35291c28` | yes |
+| `drill_platform` | 114044 | `afdc5297fddd7fa283a70d5dfd6f9d99f00983441835b3d2a87559e995eb0c3e` | yes |
+| `drill_platform_cold` | 88028 | `0adbd335c5077b73c9daf1ea241b93491515bad3a6aa689770ef813d19288424` | yes |
+| `crusher_module` | 47568 | `6f2a31ac721155c675ee5cffd897ff2a3cf38de3b4fa8ca9388aa04d6d494544` | yes |
+| `ore_sorter` | 85032 | `478a4a066d241f73180a2cb60d59dff6f005b12a14f2919b50188475d9332e17` | yes |
+| `slurry_tank` | 130088 | `d4a11c9e473fba823f6dfb4e8bcd483d267b2b3809d5fb6bd87d2e39c6e7afd8` | yes |
+| `radiator_bank` | 57356 | `b98f6450a24a211d704ee928346d29502ef37953938a32e754cbe1d3da043106` | yes |
+| `conveyor_truss` | 162508 | `e02f6c1365ac300bb7a0edd90c558b25697345343c3b7e02d2410eee07916106` | yes |
+| `extraction_mast` | 46748 | `42e3b1de45126dfffe4a2b99468de6016fd5e75de027b0743e52701668888852` | yes |
+| `maintenance_gantry` | 98404 | `f4c48993ba7119b6a5a08c9a7462aaba2ae9164a6a45834276ab05979eb7fdbb` | yes |
+| `repair_scaffold` | 35212 | `7e42f9e79e1f2aa0619aa141d28f0fe2c68efe3e8bbc1992d8fc355f159acaf1` | yes |
+| `repair_scaffold_bent` | 24192 | `b96ee8dd4678cc5120efb192b72ea919c7178ff3ab47e5ff4a75185ac7ba3fca` | yes |
+| `construction_frame` | 119188 | `fb5c5719f4776f43c61948412e17f494dc5db085939f5c15bf4972f747fe639a` | yes |
+| `welding_drone` | 26892 | `9003f3c5cfc050160ca2b2e2d5aa11aad486e7ee0512b1fb7064c502dc64fa25` | yes |
+| `parts_rack` | 35324 | `bf0d678b375b6cf4cbcfef3207c03b9e46e519ce505c69d2d0030bc01bd43a51` | yes |
+| `power_skid` | 45412 | `0663c07313a147caf1a80f69ff5949f94abaea834e26ce5844ccdf44170f59d0` | yes |
+| `worklight_tower` | 47588 | `d2d39dcadf1b7572fb98be41783bc758a2f1264cb48b3004ae16c3080dce1195` | yes |
+| `customs_pylon` | 18240 | `cfa6c47ed5839d283f206d0d8ad41e4e2be3c548aa16bd600eb6b33554d99c6a` | yes |
+| `inspection_platform` | 35820 | `ef84164bca205637ddebb3d1f1899d9b4c21515fe8ece2c5e20a5e8d228d2d21` | yes |
+| `interdiction_buoy` | 41444 | `49951374dfe9b7186c7347eec69440da2cc8d00be201c97918c88dd5ecbabd87` | yes |
+| `transponder_gate` | 102208 | `f24187ffd8b7f83cf4760d27ee1ee14c6f141729302e1d2db1b82f41176937ab` | yes |
+| `sensor_mast` | 74652 | `01be0cd5ffd65ea00858b1a39c1944a0e4b219c746118080ff5a26bc85a227aa` | yes |
+| `traffic_signal` | 21916 | `920341746ef8e7da7cd70ef20ba257af6390e9731b6f67443e417619513bf629` | yes |
+| `habitat_pod` | 56364 | `5244997837de7a23c2f8471d13f316a249f9704269723a2674ca80e934b851b8` | yes |
+| `habitat_pod_derelict` | 48164 | `317df505df4a8a2b44c2bfc396652a4fab7c353d210e87ff01e6c8cd78ca4f1c` | yes |
+| `shuttle_dock` | 115924 | `07ebbb0d957d07d1e6c01bdfedbb62f5686e88434fb995b10e6303c48ca0cbd3` | yes |
+| `observation_blister` | 68136 | `39e05c1c85e969359bffba3e79a7f12e608719040d3b5df340ad9d5a23616a17` | yes |
+| `comms_array` | 59524 | `0534838b1de57facf97312dbf6d07a8623d2a2a58fa4516d1ded2a7523dbd3f3` | yes |
+| `solar_array` | 69996 | `d84adbcea79f0a307e0b77c593c34ec94d33fbde858e8c48895b3d6bcabade71` | yes |
+| `utility_module` | 24408 | `59fcb21378283b0f608937196f5226651b9b4c926cd70df422e86d83e9fb3ccd` | yes |
+| `passenger_platform` | 46688 | `9ddb5f911b3f7d13a032bd2d1b271c6481ff3c3a64a6c2d7676ceec5bafe5628` | yes |
+| `salvage_clamp` | 28392 | `d5293628a48badbeccdc58aa2bbb4dc42c9453d1e49e691b4e8ecdc432154c10` | yes |
+| `scrap_cage` | 38372 | `28483b8c2ff2e6e1b581836a3f8820089ebf76061113139d79639a4832bf59b5` | yes |
+| `hull_rack` | 190156 | `26bdf32c925d5ba978a8ea9a89b96027f63b58f3142a3721ef76c6435ba34b75` | yes |
+| `illicit_transfer_frame` | 43644 | `26e9eb4fc77d6022e9fd8dbb4e1062482f0ea00164df264505810a5f57e0942e` | yes |
+| `improvised_dock` | 59224 | `f39694ce75d7d9483eac1c3ea2912d35238fadd823c1142e89df10ce293e3973` | yes |
+| `pirate_sensor_mast` | 67964 | `cab5dfb6fc1fb2d71ccd909c5d975197bcdf983d9437b6d490d902bfc32ea9b6` | yes |
+| `power_skid_patched` | 47068 | `aeed5ec6fca4262582d28f3298e8cb9a0bd689f378c9e0a129a82e2425e3f9b2` | yes |
+

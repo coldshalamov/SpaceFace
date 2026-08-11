@@ -14,14 +14,20 @@ technical and original-resolution review recorded at the end of
 does not accept these assets for runtime use or close any visual, performance,
 accessibility, headed, or G0-G7 gate.
 
-The preserved source identity is 46 GLBs / 4,474,412 bytes with sorted
-`path + bytes + sha256` digest
-`871009f53b42693241f3a680675f1552491db280992a1494162893ddb8c1cb3a`.
-The builder contains no RNG or wall-time geometry input, and two isolated Blender
-5.1.2 builds reproduced the same semantic geometry for 46/46 assets. They did
-**not** reproduce the same bytes: 29/46 fresh GLBs differed because triangle or
-accessor serialization order changed. Do not describe this snapshot as a byte-
-deterministic rebuild.
+**Byte reproducibility (PQ-045.prop-promotion gate, 2026-08-10):** closed.
+Two isolated Blender 5.1.2 factory-startup builds match 46/46 bytewise. Tree
+digest `100eb9cae4ffa087fd23501abd453350cc95a33a22c90e493042abeb1065df28`.
+Evidence: `evidence/reproducibility/TWO_BUILD_HASH_TABLE.md`.
+
+**Mechanism fixed:** Blender's glTF exporter emitted identical vertices and JSON
+but reordered triangle indices across clean runs. The builder now triangulates
+FIXED/EAR_CLIP and rebuilds faces sorted by `(material_index, sorted verts,
+winding)` before export, with name-sorted selection. See
+`tools/blender/build_everyday_space_kit.py` (`stabilize_mesh_for_export`).
+
+Historical preservation snapshot (pre-fix): 46 GLBs / 4,474,412 bytes, digest
+`871009f53b42693241f3a680675f1552491db280992a1494162893ddb8c1cb3a` — semantic
+parity only, not byte-deterministic.
 
 Promotion must begin by selecting and re-authoring an exact family or asset, not
 by copying this pack wholesale. At minimum it must close the capped
@@ -30,6 +36,15 @@ vertices, replace flat/double-sided placeholder surfacing where appropriate,
 author real LODs, and regenerate a clean atomic evidence epoch from the finalized
 GLBs. The current family sheets and composition boards are useful donor/reference
 views only; they are not runtime, release, or exact-source visual acceptance.
+
+### PQ-045.prop-promotion production slice (sixteen selected)
+
+The ledger §4.2 sixteen (outside the 19 REVISE-first) are production-packaged under
+`production/` by `tools/blender/build_everyday_space_props_production.py` and
+published via `tools/art/publish_everyday_space_props.mjs` +
+`scripts/build-place-release-assets.mjs` to `place_<id>` rows. Evidence:
+`production/evidence/`. Runtime scatter/wiring remains other PQ-045 leaves.
+G1/G2/G4 whole-asset visual gates stay open pending independent review.
 
 ## What exists
 

@@ -1,0 +1,21 @@
+
+> spaceface@0.1.0 check:baseline
+> node scripts/check-baseline.mjs
+
+
+check:baseline
+  PASS    1342ms  ui-screen-imports
+  PASS    1504ms  pq020-ceres-topology
+  PASS     495ms  save-schema
+  PASS     743ms  flight-v3
+  PASS     908ms  m1-tether-mass
+  PASS    4160ms  sim-v3-compare
+  PASS    2919ms  render-package-plan
+  PASS    3986ms  sim-compare
+  PASS   19530ms  sim-v3
+  PASS   19401ms  sim
+  PASS   49069ms  massline
+
+  11/11 green in 49069ms wall (parallel:3+1x4), budget 90000ms, headroom 40931ms
+  concurrency allowance 7 from availableParallelism ΓÇö split, not multiplied (see the header)
+
