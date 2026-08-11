@@ -2736,6 +2736,9 @@ function tier1CausalCounters() {
  * precompiled while a run is still loading. Main-scene auto-demand is therefore limited to startup
  * invariants while loading, and to genuinely focused/onscreen entities in flight. Renderer-owned
  * spatial prefetch can still call requestAuthoredUpgrade directly before an entity becomes visible.
+ *
+ * Hostile team membership alone must NOT auto-compose in flight — that was the non-preemptible
+ * buildComposedShip combat stall. Sector prewarm / deferred publication own authored combat craft.
  */
 export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = authoredRuntimeState()) {
   if (!liveState || !liveState.render || liveState.render.scene !== scene) return true;
@@ -2744,8 +2747,47 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
   if (entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
   if (liveState.mode !== 'flight') return false;
   if (liveState.player && liveState.player.targetId === entity.id) return true;
-  if (entity.team === 1) return true;
   return entityIsOnscreen(entity, liveState);
+}
+
+/**
+ * Live flight must never run sync buildComposedShip on the playable thread. Sector prewarm and
+ * deferred publication prepare behind a gate; mid-fight demand settles to the procedural substrate.
+ */
+export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRuntimeState()) {
+  if (options && options.deferBoundaryPublication === true) return true;
+  const role = String((options && options.residencyRole) || '');
+  if (
+    role === 'sector-prewarm'
+    || role === 'sector-prepared-boundary'
+    || role === 'sector-prepared-live-boundary'
+  ) {
+    return true;
+  }
+  if (!liveState || liveState.mode !== 'flight') return true;
+  return false;
+}
+
+/** Unhide the procedural substrate so a gated flight upgrade never leaves an invisible ship. */
+export function settleAuthoredShipToProceduralFallback(
+  boundary,
+  fallbackRoot,
+  entity,
+  setActive,
+  reason = 'flight-compose-gated',
+) {
+  if (!boundary || !fallbackRoot) return false;
+  fallbackRoot.visible = true;
+  if (typeof setActive === 'function') setActive(fallbackRoot);
+  boundary.userData.authoredAssetState = 'procedural-settled';
+  boundary.userData.authoredVisualRoot = 'procedural-fallback';
+  boundary.userData.authoredReadableFallbackRetained = true;
+  boundary.userData.authoredComposeDeferredReason = reason;
+  if (boundary.userData.renderContract) {
+    boundary.userData.renderContract.gracefulFallback = true;
+  }
+  if (entity) setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+  return true;
 }
 
 function residencyOptionsForBoundary(entity, boundary, renderer) {
@@ -3314,6 +3356,19 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   let authored = null;
   try {
+    if (!mayComposeAuthoredShipLive(options)) {
+      settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot,
+        entity,
+        setActive,
+        'flight-compose-gated',
+      );
+      releaseBoundaryResidency(renderer, boundary, 'flight-compose-gated');
+      const tier1 = tier1CausalCounters();
+      if (tier1) tier1.countAuthoredAdmissionJob('flight-compose-gated');
+      return false;
+    }
     const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -3507,8 +3562,22 @@ async function commitAuthoredBoundary(
     return false; // destroyed while assets or GPU programs were in flight
   }
 
-  const authored = preparedAuthored || buildComposedShip(entity, library, scene, boundary, options);
+  const authored = preparedAuthored || (
+    mayComposeAuthoredShipLive(options)
+      ? buildComposedShip(entity, library, scene, boundary, options)
+      : null
+  );
   if (!authored) {
+    if (!preparedAuthored && !mayComposeAuthoredShipLive(options)) {
+      settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot,
+        entity,
+        setActive,
+        'flight-compose-gated-commit',
+      );
+      return false;
+    }
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
