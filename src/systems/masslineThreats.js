@@ -28,6 +28,9 @@ const THREAT_COLLISION_HORIZON_S = 1.5;  // s — predicted-impact look-ahead wi
 const THREAT_SCAN_RADIUS = 400;          // wu — collision candidates beyond this can't matter in 1.5 s
 const THREAT_SEVERITY_FLOOR = 0.25;      // any confirmed hostile/collision threat reads at least this
 const THREAT_LOG_CAP = 12;               // per-latch record cap (oldest dropped)
+export const TETHER_CONTROL_CONTEST_TICKS = 90;
+export const TETHER_CONTROL_DISPLACE_WU = 180;
+export const TETHER_CONTROL_OUTMASS_RATIO = 1.25;
 
 // Solid bodies the player can actually hit. Pickups/pings/etc. are not collision threats.
 const COLLIDABLE_TYPES = new Set(['asteroid', 'ship', 'station', 'drone']);
@@ -230,6 +233,60 @@ function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+export function resolveTetherControlContest(input = {}) {
+  const tick = Math.max(0, Math.trunc(finite(input.tick, 0)));
+  const contest = input.contest && typeof input.contest === 'object' ? input.contest : {};
+  const raider = input.raider && typeof input.raider === 'object' ? input.raider : null;
+  const target = input.target && typeof input.target === 'object' ? input.target : null;
+  const attachment = input.attachment && typeof input.attachment === 'object' ? input.attachment : null;
+  const startedTick = Math.max(0, Math.trunc(finite(contest.startedTick, tick)));
+  const anchor = contest.anchor && typeof contest.anchor === 'object'
+    ? { x: finite(contest.anchor.x, finite(raider?.pos?.x, 0)), z: finite(contest.anchor.z, finite(raider?.pos?.z, 0)) }
+    : { x: finite(raider?.pos?.x, 0), z: finite(raider?.pos?.z, 0) };
+  const ageTicks = Math.max(0, tick - startedTick);
+  const raiderMass = Math.max(1, finite(raider?.mass, finite(contest.raiderMass, 1)));
+  const targetMass = Math.max(1, finite(target?.mass, finite(contest.targetMass, 1)));
+  const displacement = distance2d(anchor, raider && raider.pos);
+  const base = {
+    kind: 'tether-control-contest',
+    active: true,
+    startedTick,
+    tick,
+    ageTicks,
+    actorId: raider?.id ?? contest.actorId ?? null,
+    targetId: target?.id ?? contest.targetId ?? null,
+    attachmentId: attachment?.id ?? contest.attachmentId ?? null,
+    anchor,
+    displacement,
+    massRatio: targetMass / raiderMass,
+    durationTicks: TETHER_CONTROL_CONTEST_TICKS,
+    counter: null,
+    outcome: null,
+    severity: clamp01(ageTicks / TETHER_CONTROL_CONTEST_TICKS),
+  };
+  if (!attachment || attachment.state !== 'active') {
+    return Object.freeze({ ...base, active: false, counter: 'anchor-break', outcome: 'anchor_break', severity: 1 });
+  }
+  if (!raider || raider.alive === false) {
+    return Object.freeze({ ...base, active: false, counter: 'anchor-break', outcome: 'raider_destroyed', severity: 1 });
+  }
+  if (displacement >= TETHER_CONTROL_DISPLACE_WU) {
+    return Object.freeze({ ...base, active: false, counter: 'displacement', outcome: 'displaced', severity: 1 });
+  }
+  if (targetMass >= raiderMass * TETHER_CONTROL_OUTMASS_RATIO) {
+    return Object.freeze({ ...base, active: false, counter: 'outmass', outcome: 'outmassed', severity: 1 });
+  }
+  if (ageTicks >= TETHER_CONTROL_CONTEST_TICKS) {
+    return Object.freeze({ ...base, active: false, counter: null, outcome: 'raider_control', severity: 1 });
+  }
+  return Object.freeze(base);
+}
+
+function distance2d(a, b) {
+  if (!a || !b) return 0;
+  return Math.hypot(finite(b.x, 0) - finite(a.x, 0), finite(b.z, 0) - finite(a.z, 0));
 }
 
 export { FALLBACK };

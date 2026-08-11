@@ -110,8 +110,8 @@ test('ordinary combat spawns carry their owning faction doctrine without replaci
     'the faction selected at the natural spawn boundary must reach the tactical profile');
   assert.deepEqual(squadMate.data.ai.factionPresenceDoctrine, expected,
     'same-tick members of one faction must receive one coherent doctrine sample');
-  assert.equal(first.data.ai.combatDoctrineId, 'tether_control_raider',
-    'the Reaver archetype must keep its direct tactical verb');
+  assert.equal(first.data.ai.combatDoctrineId, 'interceptor_flyby',
+    'the Reaver archetype must keep its non-specialist direct tactical verb');
   assert.equal(first.data.ai.motive, 'assigned_interdiction');
   assert.equal(first.data.ai.engagementTrigger, 'authorized_hostile_spawn');
 });
