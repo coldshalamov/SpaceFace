@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: 91a3bcd8c1fa6803a01d24246a6e5f1d819c8f69
+baseCommit: 92bdd1fa31bffb6dae0d76da92c3a632d047bc52
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 two-phase pocket approach | `/root` | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`; `test/ceres-five-minute-acceptance.test.mjs`; `design/program/NOW.md` | Commit and push the approved two-phase controller and bounded failure artifact, then release this row before one changed-candidate broker run. |
 
 ## Uncommitted work without a confirmed live thread
 
