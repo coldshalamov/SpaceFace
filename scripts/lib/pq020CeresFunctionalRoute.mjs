@@ -395,6 +395,27 @@ export async function readPq020FailureSnapshot(page) {
       const root = [...(state.entities?.values?.() || [])].find((entity) => (
         entity?.alive !== false && entity.data?.worldRecordId === `${siteId}/root`
       ));
+      const autopilot = state.nav?.autopilot || null;
+      const targetEntity = resolveEntityById(state.entities, autopilot?.targetEntityId);
+      const flightAutopilot = player?._flightFrame?.autopilot || null;
+      const resolvedTarget = firstFinitePoint(
+        flightAutopilot?.target,
+        state.input?.autopilot?.target,
+        targetEntity?.pos,
+        autopilot?.target,
+      );
+      const resolvedArrivalRadius = firstFiniteNumber(
+        flightAutopilot?.arrivalRadius,
+        state.input?.autopilot?.arrivalRadius,
+        autopilot?.arrivalRadius,
+      ) ?? 0;
+      const obstacleDiagnostics = readObstacleDiagnostics(
+        state,
+        player,
+        targetEntity,
+        resolvedTarget,
+        resolvedArrivalRadius,
+      );
       return {
         pageAvailable: true,
         stateAvailable: true,
@@ -413,14 +434,17 @@ export async function readPq020FailureSnapshot(page) {
           chargeT: state.jump.chargeT,
           chargeNeeded: state.jump.chargeNeeded,
         } : null,
-        autopilot: state.nav?.autopilot ? {
-          active: state.nav.autopilot.active === true,
-          label: state.nav.autopilot.label || '',
-          status: state.nav.autopilot.status || '',
-          distance: finiteOrNull(state.nav.autopilot.distance),
-          arrivalRadius: finiteOrNull(state.nav.autopilot.arrivalRadius),
-          target: copyPoint(state.nav.autopilot.target),
-          targetEntityId: state.nav.autopilot.targetEntityId ?? null,
+        autopilot: autopilot ? {
+          active: autopilot.active === true,
+          label: autopilot.label || '',
+          status: autopilot.status || '',
+          distance: finiteOrNull(autopilot.distance),
+          initialDistance: finiteOrNull(autopilot.initialDistance),
+          arrivalRadius: finiteOrNull(autopilot.arrivalRadius),
+          target: copyPoint(autopilot.target),
+          targetEntityId: autopilot.targetEntityId ?? null,
+          targetEntity: copyEntity(targetEntity),
+          avoidanceSide: finiteOrNull(autopilot._avoidanceSide),
         } : null,
         player: player ? {
           alive: player.alive !== false && Number(player.hull) > 0,
@@ -428,7 +452,16 @@ export async function readPq020FailureSnapshot(page) {
           pos: copyPoint(player.pos),
           vel: copyPoint(player.vel),
           speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
+          rot: finiteOrNull(player.rot),
+          angVel: finiteOrNull(player.angVel),
+          radius: finiteOrNull(player.radius),
         } : null,
+        input: copyInput(state.input),
+        flightTelemetry: player ? {
+          autopilot: copyAutopilotTelemetry(flightAutopilot),
+        } : null,
+        nearbyObstacles: obstacleDiagnostics.nearbyObstacles,
+        avoidanceCandidates: obstacleDiagnostics.avoidanceCandidates,
         beaconEntities: [...(state.entities?.values?.() || [])].filter((entity) => (
           entity?.alive !== false && entity.data?.poiId === beaconId
         )).length,
@@ -453,6 +486,196 @@ export async function readPq020FailureSnapshot(page) {
       function copyPoint(value) {
         if (!value) return null;
         return { x: finiteOrNull(value.x), z: finiteOrNull(value.z) };
+      }
+      function firstFinitePoint(...values) {
+        return values.find((value) => value && Number.isFinite(value.x) && Number.isFinite(value.z))
+          || null;
+      }
+      function firstFiniteNumber(...values) {
+        const value = values.find((candidate) => Number.isFinite(candidate));
+        return value ?? null;
+      }
+      function resolveEntityById(entities, id) {
+        if (id == null || !entities || typeof entities.get !== 'function') return null;
+        let entity = entities.get(id) || null;
+        if (!entity && typeof id === 'string') {
+          const numericId = Number(id);
+          if (Number.isFinite(numericId)) entity = entities.get(numericId) || null;
+        }
+        return entity;
+      }
+      function copyEntity(entity) {
+        if (!entity) return null;
+        const data = entity.data || {};
+        const identity = data.stationId || data.poiId || data.worldSiteId || data.worldObjectId
+          || data.worldRecordId || null;
+        return {
+          id: entity.id ?? null,
+          type: compactString(entity.type, 48),
+          name: compactString(entity.name || data.name, 160),
+          identity: compactString(identity, 160),
+          alive: entity.alive !== false,
+          collides: entity.collides !== false,
+          radius: finiteOrNull(entity.radius),
+          pos: copyPoint(entity.pos),
+        };
+      }
+      function copyAutopilotTelemetry(value) {
+        if (!value || typeof value !== 'object') return null;
+        return {
+          distance: finiteOrNull(value.dist ?? value.distance),
+          arrivalRadius: finiteOrNull(value.arrivalRadius),
+          status: compactString(value.status, 48) || '',
+          braking: value.braking === true,
+          captureBraking: value.captureBraking === true,
+          avoiding: value.avoiding === true,
+          turnError: finiteOrNull(value.turnError),
+          target: copyPoint(value.target),
+          targetEntityId: value.target?.entity?.id ?? null,
+        };
+      }
+      function copyInput(input) {
+        if (!input) return null;
+        return {
+          moveX: finiteOrNull(input.moveX),
+          moveZ: finiteOrNull(input.moveZ),
+          turnIntent: finiteOrNull(input.turnIntent),
+          boost: input.boost === true,
+          brake: input.brake === true,
+          actionBrake: input.actions?.brake === true,
+          autopilot: copyAutopilotTelemetry(input.autopilot),
+        };
+      }
+      function readObstacleDiagnostics(
+        currentState,
+        currentPlayer,
+        currentTarget,
+        courseTarget,
+        arrivalRadius,
+      ) {
+        const cap = 16;
+        if (!currentPlayer?.pos) {
+          return {
+            nearbyObstacles: { cap, eligibleCount: 0, truncated: false, nearest: [] },
+            avoidanceCandidates: {
+              cap,
+              count: 0,
+              truncated: false,
+              targetDistanceWU: null,
+              arrivalRadiusWU: finiteOrNull(arrivalRadius),
+              lookAheadWU: null,
+              maxProjectionWU: null,
+              candidates: [],
+            },
+          };
+        }
+        const px = finiteOrZero(currentPlayer.pos.x);
+        const pz = finiteOrZero(currentPlayer.pos.z);
+        const targetDx = courseTarget ? finiteOrZero(courseTarget.x) - px : 0;
+        const targetDz = courseTarget ? finiteOrZero(courseTarget.z) - pz : 0;
+        const targetDistance = Math.hypot(targetDx, targetDz);
+        const baseX = targetDistance > 0.0001
+          ? targetDx / targetDistance : Math.cos(finiteOrZero(currentPlayer.rot));
+        const baseZ = targetDistance > 0.0001
+          ? targetDz / targetDistance : Math.sin(finiteOrZero(currentPlayer.rot));
+        const perpX = -baseZ;
+        const perpZ = baseX;
+        const speed = Math.hypot(
+          finiteOrZero(currentPlayer.vel?.x),
+          finiteOrZero(currentPlayer.vel?.z),
+        );
+        const resolvedArrivalRadius = finiteOrZero(arrivalRadius);
+        const lookAheadWU = Math.max(180, Math.min(760, speed * 3.2 + targetDistance * 0.24));
+        const maxProjectionWU = Math.max(
+          0,
+          Math.min(targetDistance - resolvedArrivalRadius, lookAheadWU),
+        );
+        const playerRadius = Math.max(0, finiteOrZero(currentPlayer.radius));
+        const rows = [];
+        const list = currentState?.entityList || [];
+        let sortIndex = 0;
+        for (const entity of list) {
+          const index = sortIndex;
+          sortIndex += 1;
+          if (!entity || entity === currentPlayer || entity === currentTarget
+              || entity.alive === false || entity.collides === false || !entity.pos) continue;
+          if (entity.type === 'projectile' || entity.type === 'fx' || entity.type === 'pickup') continue;
+          const radius = Number.isFinite(entity.radius) ? entity.radius : 0;
+          if (radius <= 0 && entity.type !== 'station' && entity.type !== 'asteroid'
+              && entity.type !== 'wreck' && entity.type !== 'ship') continue;
+          const projected = copyEntity(entity);
+          const ox = finiteOrZero(entity.pos.x) - px;
+          const oz = finiteOrZero(entity.pos.z) - pz;
+          const projectionWU = ox * baseX + oz * baseZ;
+          const lateralWU = ox * perpX + oz * perpZ;
+          const clearanceWU = playerRadius + Math.max(0, radius) + 58 + Math.min(70, speed * 0.22);
+          rows.push({
+            ...projected,
+            distanceWU: Math.hypot(ox, oz),
+            projectionWU,
+            lateralWU,
+            clearanceWU,
+            overlappingClearance: Math.abs(lateralWU) < clearanceWU,
+            sortIndex: index,
+          });
+        }
+        const nearestRows = [...rows].sort((a, b) => {
+          const distanceOrder = a.distanceWU - b.distanceWU;
+          if (distanceOrder !== 0) return distanceOrder;
+          const aId = String(a.id ?? '');
+          const bId = String(b.id ?? '');
+          if (aId < bId) return -1;
+          if (aId > bId) return 1;
+          return a.sortIndex - b.sortIndex;
+        });
+        const candidateRows = maxProjectionWU > 0
+          ? rows.filter((row) => row.projectionWU > 0
+              && row.projectionWU <= maxProjectionWU
+              && Math.abs(row.lateralWU) < row.clearanceWU)
+            .map((row) => {
+              const depth = 1 - row.projectionWU / Math.max(1, maxProjectionWU);
+              const strength = (1 - Math.abs(row.lateralWU) / Math.max(1, row.clearanceWU))
+                * (0.7 + depth * 0.8);
+              return { ...row, strength };
+            })
+            .sort((a, b) => {
+              const strengthOrder = b.strength - a.strength;
+              if (strengthOrder !== 0) return strengthOrder;
+              const distanceOrder = a.distanceWU - b.distanceWU;
+              if (distanceOrder !== 0) return distanceOrder;
+              const aId = String(a.id ?? '');
+              const bId = String(b.id ?? '');
+              if (aId < bId) return -1;
+              if (aId > bId) return 1;
+              return a.sortIndex - b.sortIndex;
+            })
+          : [];
+        return {
+          nearbyObstacles: {
+            cap,
+            eligibleCount: rows.length,
+            truncated: rows.length > cap,
+            nearest: nearestRows.slice(0, cap).map(({ sortIndex: _, ...row }) => row),
+          },
+          avoidanceCandidates: {
+            cap,
+            count: candidateRows.length,
+            truncated: candidateRows.length > cap,
+            targetDistanceWU: targetDistance,
+            arrivalRadiusWU: resolvedArrivalRadius,
+            lookAheadWU,
+            maxProjectionWU,
+            candidates: candidateRows.slice(0, cap).map(({ sortIndex: _, ...row }) => row),
+          },
+        };
+      }
+      function finiteOrZero(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? number : 0;
+      }
+      function compactString(value, maxLength) {
+        if (value == null || value === '') return null;
+        return String(value).slice(0, maxLength);
       }
       function projectEntity(entity, camera) {
         const mesh = entity?.mesh || entity?.view?.root || null;

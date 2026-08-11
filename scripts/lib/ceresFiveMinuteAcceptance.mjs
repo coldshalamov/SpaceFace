@@ -24,7 +24,9 @@ import {
   CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../../src/data/sectorActivityPockets.js';
+import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
+import { SECTORS } from '../../src/data/sectors.js';
 
 import {
   closeOwnedResources,
@@ -49,6 +51,7 @@ import { installCspSafePlaywrightPolling } from './playwrightCspPolling.mjs';
 import {
   PQ020_ROUTE_TARGETS,
   pq020FunctionalRouteDrivers,
+  readPq020FailureSnapshot,
 } from './pq020CeresFunctionalRoute.mjs';
 import {
   strictWorktreeFingerprint,
@@ -149,6 +152,27 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
     })];
   }),
 ));
+const CERES_WORKING_SEAM_FIELD = SECTOR_ANCHORS.sector_ceres_belt.fields.find(
+  (field) => field.id === 'f_ceres_1',
+);
+assert(CERES_WORKING_SEAM_FIELD, 'Ceres Working Seam field anchor must exist');
+const CERES_WORKING_SEAM_FIELD_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
+  CERES_WORKING_SEAM_FIELD.center,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+));
+const CERES_WORKING_SEAM_HAZARD = SECTORS.find(
+  (sector) => sector.id === CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+)?.hazards?.find((hazard) => hazard.type === 'dense_asteroid');
+assert(CERES_WORKING_SEAM_HAZARD, 'Ceres dense asteroid hazard must exist');
+const CERES_WORKING_SEAM_HAZARD_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
+  CERES_WORKING_SEAM_HAZARD.center,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+));
+const CERES_WORKING_SEAM_EGRESS_MIN_EXTENSION_WU = 180;
+const CERES_WORKING_SEAM_EGRESS_EXTENSION_STEP_WU = 10;
+const CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU = 600;
+const CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU = 24;
+const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
 const CERES_POCKET_NAVIGATION = Object.freeze({
   ceres_refinery_pocket: Object.freeze({ label: null, identity: 'station_ceres' }),
   ceres_working_seam: Object.freeze({ label: 'Belt Outpost', identity: 'station_beltout' }),
@@ -1089,6 +1113,23 @@ export async function runCeresFiveMinutePublicRoute({
       await screenshot(`${String(routeCycle).padStart(2, '0')}-${leg.slug}-flight.png`);
       routeLog.push({ phase: 'arrival', pocketId: leg.pocketId, target: leg.target.name, arrival });
 
+      if (leg.pocketId === 'ceres_working_seam') {
+        const egressTarget = planCeresWorkingSeamEgress(arrival);
+        await mark('egress-working-seam', {
+          pocketId: leg.pocketId,
+          targetId: egressTarget.targetId,
+          minimumFieldClearanceWU: egressTarget.minimumFieldClearanceWU,
+        });
+        const egress = await drivePublicToCeresPoint(page, egressTarget, observerBounds.endTick);
+        routeLog.push({
+          phase: 'egress',
+          pocketId: leg.pocketId,
+          source: 'public-flight-controls',
+          target: egressTarget,
+          receipt: egress,
+        });
+      }
+
       if (leg.pocketId === 'ceres_ambush_run' && !toolkit) {
         collisionProof = await drivePublicAnchorCollision(page, observerBounds.endTick);
         toolkit = await exercisePublicPhysicsToolkit(page, observerBounds.endTick);
@@ -1200,6 +1241,25 @@ export async function runCeresFiveMinutePublicRoute({
       toolkit,
     };
   } catch (error) {
+    error.ceresRouteFailureSnapshot ||= await readPq020FailureSnapshot(page).catch(() => ({
+      pageAvailable: false,
+      snapshotError: 'failure snapshot unavailable',
+    }));
+    if (error.ceresRouteFailureSnapshot) {
+      const diagnosticPath = path.join(outputDir, 'route-failure.json');
+      const screenshotPath = path.join(outputDir, 'route-failure.png');
+      const diagnostic = {
+        schema: 'spaceface.ceresRouteFailure.v1',
+        recordedAt: new Date().toISOString(),
+        runtimeKind,
+        fixedSeed,
+        phase,
+        snapshot: error.ceresRouteFailureSnapshot,
+      };
+      await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
+      await page.screenshot({ path: screenshotPath }).catch(() => {});
+      error.message = `${error.message}; diagnostic=${path.basename(diagnosticPath)}`;
+    }
     if (error?.ceresFlightEntryDiagnostic) {
       const diagnosticPath = path.join(outputDir, 'public-entry-failure.json');
       const screenshotPath = path.join(outputDir, 'public-entry-failure.png');
@@ -1525,6 +1585,7 @@ export async function runCeresFiveMinuteAcceptance({
       sourceCandidateDigest: digests.sourceCandidateDigest,
       phase: runError?.routePhase || 'runtime-or-cleanup',
       failures: lifecycleFailures,
+      failureSnapshot: runError?.ceresRouteFailureSnapshot || null,
       cleanup,
     };
     await writeJsonAtomically(path.join(resolvedOutputRoot, 'latest-failure.json'), failure);
@@ -2484,6 +2545,74 @@ async function provePublicFlightInput(page) {
   return receipt;
 }
 
+export function planCeresWorkingSeamEgress(beltOutpostArrival) {
+  const source = beltOutpostArrival?.player?.pos;
+  const sourceX = Number(source?.x);
+  const sourceZ = Number(source?.z);
+  if (beltOutpostArrival?.sectorId !== CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId
+      || beltOutpostArrival?.player?.alive !== true
+      || !Number.isFinite(sourceX) || !Number.isFinite(sourceZ)) {
+    throw new Error('Working Seam egress requires the live accepted Belt Outpost arrival');
+  }
+  const awayX = sourceX - CERES_WORKING_SEAM_FIELD_GLOBAL.x;
+  const awayZ = sourceZ - CERES_WORKING_SEAM_FIELD_GLOBAL.z;
+  const sourceFieldDistanceWU = Math.hypot(awayX, awayZ);
+  if (!(sourceFieldDistanceWU > 0)) {
+    throw new Error('Belt Outpost arrival cannot coincide with the Working Seam field center');
+  }
+  let extensionWU = CERES_WORKING_SEAM_EGRESS_MIN_EXTENSION_WU;
+  let targetPos = null;
+  let targetFieldDistanceWU = null;
+  let targetHazardDistanceWU = null;
+  let minimumFieldClearanceWU = null;
+  let minimumHazardClearanceWU = null;
+  for (; extensionWU <= CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU;
+    extensionWU += CERES_WORKING_SEAM_EGRESS_EXTENSION_STEP_WU) {
+    const scale = extensionWU / sourceFieldDistanceWU;
+    targetPos = {
+      x: sourceX + awayX * scale,
+      z: sourceZ + awayZ * scale,
+    };
+    targetFieldDistanceWU = Math.hypot(
+      targetPos.x - CERES_WORKING_SEAM_FIELD_GLOBAL.x,
+      targetPos.z - CERES_WORKING_SEAM_FIELD_GLOBAL.z,
+    );
+    targetHazardDistanceWU = Math.hypot(
+      targetPos.x - CERES_WORKING_SEAM_HAZARD_GLOBAL.x,
+      targetPos.z - CERES_WORKING_SEAM_HAZARD_GLOBAL.z,
+    );
+    minimumFieldClearanceWU = targetFieldDistanceWU
+      - CERES_WORKING_SEAM_FIELD.clusterRadius
+      - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
+    minimumHazardClearanceWU = targetHazardDistanceWU
+      - CERES_WORKING_SEAM_HAZARD.radius
+      - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
+    if (minimumFieldClearanceWU >= CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU
+        && minimumHazardClearanceWU >= CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU) break;
+  }
+  if (extensionWU > CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU || !targetPos) {
+    throw new Error('Belt Outpost departure corridor does not clear the Working Seam field and hazard');
+  }
+  return Object.freeze({
+    pocketId: 'ceres_working_seam',
+    targetId: 'station_beltout-departure-corridor',
+    targetName: 'Belt Outpost departure corridor',
+    targetPos: Object.freeze(targetPos),
+    sourceArrivalPos: Object.freeze({ x: sourceX, z: sourceZ }),
+    fieldCenter: CERES_WORKING_SEAM_FIELD_GLOBAL,
+    fieldRadiusWU: CERES_WORKING_SEAM_FIELD.clusterRadius,
+    hazardCenter: CERES_WORKING_SEAM_HAZARD_GLOBAL,
+    hazardRadiusWU: CERES_WORKING_SEAM_HAZARD.radius,
+    arrivalRadiusWU: CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU,
+    extensionWU,
+    sourceFieldDistanceWU,
+    targetFieldDistanceWU,
+    targetHazardDistanceWU,
+    minimumFieldClearanceWU,
+    minimumHazardClearanceWU,
+  });
+}
+
 export function chooseCeresPocketApproachAction(status) {
   const distanceWU = Number(status?.distanceWU);
   const headingError = Number(status?.headingError);
@@ -2595,9 +2724,11 @@ export async function settleCeresPocketApproach(page, {
   }
 }
 
-export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
-  const target = CERES_POCKET_TARGETS[pocketId];
-  if (!target) throw new Error(`unknown Ceres pocket ${pocketId}`);
+export async function drivePublicToCeresPoint(page, target, endTick) {
+  if (!target?.targetPos || !Number.isFinite(Number(target.targetPos.x))
+      || !Number.isFinite(Number(target.targetPos.z)) || !target.targetName) {
+    throw new Error('Ceres public point approach requires a finite named target');
+  }
   const canvas = page.locator('#gl-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30_000 });
   await canvas.focus();
@@ -2659,6 +2790,12 @@ export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
   } finally {
     await releasePublicInput(page).catch(() => {});
   }
+}
+
+export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
+  const target = CERES_POCKET_TARGETS[pocketId];
+  if (!target) throw new Error(`unknown Ceres pocket ${pocketId}`);
+  return drivePublicToCeresPoint(page, target, endTick);
 }
 
 function createCeresPocketApproachDiagnostic(target, endTick) {

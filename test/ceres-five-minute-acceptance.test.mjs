@@ -11,6 +11,7 @@ import {
   countsTowardCeresPocketVisibility,
   createAccessibilityMatchedCheckpoint,
   deriveZeroVisibleActivityIntervals,
+  drivePublicToCeresPoint,
   drivePublicToPocketAnchor,
   evaluateCeresFiveMinutePair,
   evaluateCeresFiveMinuteRuntime,
@@ -18,6 +19,7 @@ import {
   evaluateZeroVisibilityMetric,
   gapMetricDigest,
   normalizeCeresTrace,
+  planCeresWorkingSeamEgress,
   projectCeresActivityFrame,
   settleCeresPocketApproach,
   validateCeresPilotSources,
@@ -1353,6 +1355,86 @@ test('public pocket driver trims outside the circle and holds full brake only af
   );
 });
 
+test('Working Seam evidence publicly restages to the accepted Belt Outpost departure corridor', async () => {
+  const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
+  const acceptedDeparture = sectorLocalToGlobalForSector(
+    { x: 860.703, z: -979.556 },
+    sectorId,
+  );
+  const throughline = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_ambush_run.activityAnchor.localPos,
+    sectorId,
+  );
+  const target = planCeresWorkingSeamEgress({
+    sectorId,
+    player: { alive: true, pos: acceptedDeparture },
+  });
+  const sourceToThroughline = Math.hypot(
+    throughline.x - acceptedDeparture.x,
+    throughline.z - acceptedDeparture.z,
+  );
+  const targetToThroughline = Math.hypot(
+    throughline.x - target.targetPos.x,
+    throughline.z - target.targetPos.z,
+  );
+  assert.ok(target.minimumFieldClearanceWU > 120,
+    `the full 90-WU completion envelope must clear f_ceres_1, got ${target.minimumFieldClearanceWU}`);
+  assert.ok(target.minimumHazardClearanceWU >= 24,
+    `the full completion envelope must clear the dense hazard, got ${target.minimumHazardClearanceWU}`);
+  assert.equal(target.targetFieldDistanceWU > target.sourceFieldDistanceWU, true);
+  assert.equal(targetToThroughline < sourceToThroughline, true,
+    'the restage leaves the mining field on the accepted Throughline side');
+
+  const seamAnchor = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam.activityAnchor.localPos,
+    sectorId,
+  );
+  const harness = pocketApproachTwoPhasePage({
+    targetPoint: target.targetPos,
+    endTick: 2_000,
+    tick: 1_000,
+    initialPos: seamAnchor,
+    initialSpeed: 0,
+    initialRot: 0,
+    simulateTrajectory: true,
+  });
+  const receipt = await drivePublicToCeresPoint(harness.page, target, 2_000);
+  assert.deepEqual(harness.startPos, seamAnchor, 'the fake begins at the proven Working Seam anchor');
+  assert.ok(receipt.distanceWU <= 90);
+  assert.equal(receipt.speed, 0.8);
+  assert.equal(harness.sequence[0], 'turn');
+  assert.equal(harness.sequence.includes('decelerate'), true);
+  assert.equal(harness.sequence.at(-1), 'settle');
+  assert.ok(harness.sequence.filter((action) => action !== 'settle').length < 220,
+    'the full diagonal egress remains inside the unchanged steering budget');
+  assert.ok(receipt.tick < 2_000 - 120,
+    'the full egress completes before the exact fixed-tick reserve');
+  assert.equal(harness.heldKeys.size, 0, 'the public restage releases every flight key before map selection');
+
+  assert.throws(() => planCeresWorkingSeamEgress({
+    sectorId: 'sector_helios_prime',
+    player: { alive: true, pos: acceptedDeparture },
+  }), /live accepted Belt Outpost arrival/);
+
+  const routeSource = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const routeStart = routeSource.indexOf('export async function runCeresFiveMinutePublicRoute');
+  const routeEnd = routeSource.indexOf('/**\n * Perform every known no-launch prerequisite', routeStart);
+  const route = routeSource.slice(routeStart, routeEnd);
+  assert.match(route,
+    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival\)[\s\S]*drivePublicToCeresPoint\(page, egressTarget, observerBounds\.endTick\)/,
+    'seam arrival evidence must be recorded before the public departure restage');
+  assert.doesNotMatch(route, /player\.pos\s*=|state\.nav\.autopilot\s*=/,
+    'the route may observe live state but cannot teleport or privately arm navigation');
+  assert.match(route,
+    /ceresRouteFailureSnapshot \|\|= await readPq020FailureSnapshot\(page\)[\s\S]*route-failure\.json/,
+    'a failed route must preserve one bounded live snapshot before page cleanup');
+  assert.match(routeSource, /failureSnapshot: runError\?\.ceresRouteFailureSnapshot \|\| null/,
+    'the durable latest failure must carry the bounded route snapshot');
+});
+
 test('public pilot source uses menu/card and Playwright input while private shortcuts fail closed', () => {
   const validSources = actualPilotSources();
   assert.equal(validateCeresPilotSources(validSources).pass, true);
@@ -2368,16 +2450,22 @@ function pocketApproachTwoPhasePage({
   endTick,
   tick = 1_000,
   initialDistanceWU = 140,
+  initialPos = null,
   initialSpeed = 78,
   initialRot = -0.7,
   turnConverges = true,
+  simulateTrajectory = false,
+  thrustStepWU = 60,
+  tickPerPulse = 10,
 }) {
   const heldKeys = new Set();
   const sequence = [];
   const settleStartDistances = [];
   const player = {
     id: 1,
-    pos: { x: targetPoint.x - initialDistanceWU, z: targetPoint.z },
+    pos: initialPos
+      ? { x: initialPos.x, z: initialPos.z }
+      : { x: targetPoint.x - initialDistanceWU, z: targetPoint.z },
     vel: { x: initialSpeed, z: 0 },
     rot: initialRot,
   };
@@ -2400,6 +2488,8 @@ function pocketApproachTwoPhasePage({
   const harness = {
     sequence,
     settleStartDistances,
+    heldKeys,
+    startPos: { ...player.pos },
     page: {
       isClosed() { return false; },
       locator() {
@@ -2426,24 +2516,43 @@ function pocketApproachTwoPhasePage({
           targetPoint.z - player.pos.z,
         ));
         player.vel.x = 0.8;
+        player.vel.z = 0;
         assert.equal(runInPage(callback, argument), true);
       },
       async waitForTimeout(durationMs) {
+        state.tick += tickPerPulse;
         if (heldKeys.has('KeyA') || heldKeys.has('KeyD')) {
           assert.equal(durationMs, 80);
           sequence.push('turn');
-          if (turnConverges) player.rot = 0;
+          if (turnConverges) {
+            player.rot = simulateTrajectory
+              ? Math.atan2(targetPoint.z - player.pos.z, targetPoint.x - player.pos.x)
+              : 0;
+          }
         } else if (heldKeys.has('KeyS')) {
           assert.equal(durationMs, 100);
           sequence.push('decelerate');
-          player.pos.x = targetPoint.x - 132;
+          if (!simulateTrajectory) player.pos.x = targetPoint.x - 132;
           player.vel.x = 40;
+          player.vel.z = 0;
         } else if (heldKeys.has('KeyW')) {
           assert.equal(durationMs, 160);
           sequence.push('thrust');
-          player.pos.x = targetPoint.x - 80;
-          player.vel.x = 78;
-          player.rot = 0;
+          if (simulateTrajectory) {
+            const dx = targetPoint.x - player.pos.x;
+            const dz = targetPoint.z - player.pos.z;
+            const distance = Math.hypot(dx, dz);
+            const step = Math.min(thrustStepWU, Math.max(0, distance));
+            player.pos.x += distance > 0 ? (dx / distance) * step : 0;
+            player.pos.z += distance > 0 ? (dz / distance) * step : 0;
+            player.vel.x = distance > 0 ? (dx / distance) * 78 : 0;
+            player.vel.z = distance > 0 ? (dz / distance) * 78 : 0;
+            player.rot = Math.atan2(dz, dx);
+          } else {
+            player.pos.x = targetPoint.x - 80;
+            player.vel.x = 78;
+            player.rot = 0;
+          }
         } else assert.fail('two-phase approach emitted an unexpected control pulse');
       },
     },
