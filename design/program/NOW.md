@@ -21,6 +21,14 @@ working. Product status and remaining tasks live in
    subsystem, lane, tool, GPU, or future phase.
 3. A row protects the exact dirty hunk from being overwritten. It does not block the task, packet, or
    other files. Work on disjoint hunks or another returned task while arranging an explicit handoff.
+3a. **A row is a claim, not evidence — check liveness before yielding to it.** Run
+   `node scripts/check-now-liveness.mjs`. A row whose claimed files are untouched for 90 minutes is
+   **stale by definition**: the writer is dead or done. Adopt the work (evaluate the dirty diff,
+   finish or land it, receipt it) and delete the row — do not route around it, do not wait, do not
+   ask. Dirty files alone are never proof of a live writer in this chronically dirty tree, and
+   "row exists + files dirty" is the claim verifying itself. Collisions here are cheap and
+   recoverable; work stalled behind a ghost is invisible and permanent — yielding to a stale row
+   is the failure mode, not the safe choice.
 4. Reread a shared file before every patch. Release the row as soon as mutation stops.
 5. Use `PUBLISHING` only for the brief stage/commit/push window. Stage only the task's exact files,
    verify the staged names, publish, then remove the row.
