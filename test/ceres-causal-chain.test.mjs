@@ -389,7 +389,7 @@ test('rich-seam strike plants seeds without fabricating miner cargo', () => {
   assert.equal(miner.data.cargoManifest.totalQty, 8);
 });
 
-test('actor death falls back and the chain continues after revival', () => {
+test('actor death falls back and plants interrupt seeds (divergent from complete)', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
@@ -399,30 +399,91 @@ test('actor death falls back and the chain continues after revival', () => {
   let snap = traffic.getCeresCausalChainSnapshot();
   // Active rich-seam link should fall back; concurrency slot freed.
   assert.ok(!snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'));
-  // BLOCKER 1: fallback plants seeds so the chain does not soft-lock.
-  assert.equal(snap.seeds.miner_loaded, true);
+  // D1: interrupt plants aftermath_open, NOT miner_loaded (complete path).
+  assert.equal(snap.seeds.rich_seam, true);
+  assert.equal(snap.seeds.aftermath_open, true);
+  assert.notEqual(snap.seeds.miner_loaded, true);
   assert.ok(snap.completed.includes('ev_rich_seam_strike'));
 
-  // Revive the miner so later links that need a live body can run.
-  miner.alive = true;
+  // Terminal-destroy the miner so superseded mid-chain links skip and the cycle can close.
+  state.world.records.byId[miner.data.worldRecordId] = {
+    recordId: miner.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
   const continuedAt = runUntil(
     traffic,
     state,
     (s) => s && (
       s.activeCount >= 1
-      || s.seeds.hauler_ore_manifest === true
+      || s.seeds.chain_complete === true
       || (s.cycle | 0) >= 1
     ),
     { start: 5, maxS: 600, stepS: 3 },
   );
-  assert.ok(continuedAt != null, 'chain must continue after a single-tick actor gap');
+  assert.ok(continuedAt != null, 'chain must continue after an interrupted rich-seam link');
   snap = traffic.getCeresCausalChainSnapshot();
   assert.ok(
     snap.activeCount >= 1
-      || snap.seeds.hauler_ore_manifest === true
+      || snap.seeds.chain_complete === true
       || (snap.cycle | 0) >= 1,
     'expected progress past the interrupted rich-seam link',
   );
+});
+
+test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () => {
+  const { traffic, state, receipts } = bootCausalHarness({ simTime: 0 });
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    { start: 0, maxS: 400, stepS: 2 },
+  );
+  assert.ok(entered != null, 'patrol scan link should open under zero input');
+  const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
+  const hauler = state.entities.get(haulerRec.id);
+  assert.ok(hauler, 'hauler cast present');
+  // Kill the hauler mid-scan and stamp durable destruction (player-kill world path).
+  hauler.alive = false;
+  state.world.records.byId[hauler.data.worldRecordId] = {
+    recordId: hauler.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  stepTo(traffic, state, state.simTime + 2);
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(!snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    'patrol link should fall back on hauler death');
+  assert.equal(snap.seeds.aftermath_open, true, 'interrupt seeds aftermath for salvor');
+  assert.notEqual(snap.seeds.hauler_stressed, true, 'must NOT plant complete-path hauler_stressed');
+  assert.ok(
+    receipts.some((r) => r.kind === 'event_interrupt' && r.eventId === 'ev_patrol_scans_suspect'),
+    'interrupt receipt for patrol scan',
+  );
+  // Full cycle still closes with the divergent branch (no softlock).
+  const doneAt = runUntil(
+    traffic,
+    state,
+    (s) => s && (s.cycle | 0) >= 1,
+    { start: state.simTime, maxS: 900, stepS: 3 },
+  );
+  assert.ok(doneAt != null, 'cycle must complete after mid-scan interrupt');
+});
+
+test('D1: every chain entry authors interruptSeeds distinct from complete seeds where story diverges', () => {
+  for (const entry of CERES_CAUSAL_CHAIN) {
+    assert.ok(Array.isArray(entry.seeds) && entry.seeds.length > 0, `${entry.id} seeds`);
+    assert.ok(Array.isArray(entry.interruptSeeds) && entry.interruptSeeds.length > 0,
+      `${entry.id} interruptSeeds`);
+  }
+  const patrol = CERES_CAUSAL_CHAIN.find((e) => e.id === 'ev_patrol_scans_suspect');
+  assert.ok(patrol.seeds.includes('hauler_stressed'));
+  assert.ok(!patrol.interruptSeeds.includes('hauler_stressed'));
+  assert.ok(patrol.interruptSeeds.includes('aftermath_open'));
 });
 
 test('terminal cast destruction skips the dead link and still completes a cycle', () => {

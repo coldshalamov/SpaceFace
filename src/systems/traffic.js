@@ -229,6 +229,9 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     // Seeds after the strike phase so the hauler call can overlap the greed/haul window (cap=2).
     seedAtPhase: 'strike',
     seeds: Object.freeze(['rich_seam', 'miner_loaded']),
+    // Miner dies mid-strike: seam is known but the load never leaves the face — open the grave for
+    // the salvor instead of staging a clean hauler call.
+    interruptSeeds: Object.freeze(['rich_seam', 'aftermath_open']),
     // Miner already works the seam via its authored extraction job — reaffirm only.
     jobHints: Object.freeze([
       Object.freeze({
@@ -250,6 +253,9 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     requires: Object.freeze(['miner_loaded']),
     seedAtPhase: 'transfer',
     seeds: Object.freeze(['ore_handoff', 'hauler_ore_manifest']),
+    // Transfer interrupted: something left a hold, but no clean hauler manifest for the patrol —
+    // spilled mass / fresh wreck opens the salvor path.
+    interruptSeeds: Object.freeze(['ore_handoff', 'aftermath_open']),
     // Hauler is a retained real-target actor; this link is stamp-only and never writes cargo.
     jobHints: Object.freeze([]),
     phases: Object.freeze([
@@ -265,6 +271,8 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     requires: Object.freeze(['hauler_ore_manifest']),
     seedAtPhase: 'release',
     seeds: Object.freeze(['scan_complete', 'hauler_stressed']),
+    // Hauler killed mid-scan: no stressed-tender recovery — salvor strips a fresh wreck instead.
+    interruptSeeds: Object.freeze(['scan_complete', 'aftermath_open']),
     // Patrol closes on the hauler for the scan window.
     jobHints: Object.freeze([
       Object.freeze({
@@ -288,6 +296,8 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     // under the concurrency cap while resolve finishes.
     seedAtPhase: 'work',
     seeds: Object.freeze(['miner_wear', 'hauler_recovered']),
+    // Recovery fails or cast dies mid-tow: miner still wears, hull becomes wreckage for the salvor.
+    interruptSeeds: Object.freeze(['miner_wear', 'aftermath_open']),
     // Tender is factionPresence-owned (not traffic job cast) — stamp-only; no traffic job redirect.
     jobHints: Object.freeze([]),
     phases: Object.freeze([
@@ -305,6 +315,8 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     // Early aftermath seed lets the grave salvor open while the miner is still dark for service.
     seedAtPhase: 'callout',
     seeds: Object.freeze(['aftermath_open', 'miner_serviced']),
+    // Service interrupted: miner is not returned to duty; aftermath stays open for the salvor.
+    interruptSeeds: Object.freeze(['aftermath_open']),
     // Tender job ownership is factionPresence — stamp-only from traffic.
     jobHints: Object.freeze([
       Object.freeze({
@@ -327,6 +339,8 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     requires: Object.freeze(['aftermath_open']),
     seedAtPhase: 'stack',
     seeds: Object.freeze(['wreck_stripped', 'chain_complete']),
+    // Strip interrupted: ledger still closes so the cycle can re-arm (no soft-lock).
+    interruptSeeds: Object.freeze(['chain_complete']),
     // Salvor's authored job already works the cathedral wreck — reaffirm.
     jobHints: Object.freeze([
       Object.freeze({
@@ -3033,6 +3047,17 @@ export const traffic = {
     return true;
   },
 
+  /**
+   * Seeds planted for a terminal outcome. Complete uses `def.seeds`; any interrupt/fallback/skip
+   * prefers `def.interruptSeeds` when authored, otherwise falls back to `def.seeds` so the
+   * plant-on-every-outcome anti-softlock guarantee stays intact for links without a branch.
+   */
+  _ceresCausalSeedsForOutcome(def, outcome = 'complete') {
+    if (!def) return null;
+    if (outcome !== 'complete' && Array.isArray(def.interruptSeeds)) return def.interruptSeeds;
+    return Array.isArray(def.seeds) ? def.seeds : null;
+  },
+
   _plantCeresCausalSeeds(def, seedsOverride = null) {
     if (!def || !this._ceresCausal) return;
     const list = Array.isArray(seedsOverride) ? seedsOverride : def.seeds;
@@ -3040,6 +3065,13 @@ export const traffic = {
     for (let i = 0; i < list.length; i++) {
       this._ceresCausal.seeds[list[i]] = true;
     }
+  },
+
+  /** Plant interrupt or complete seeds for a terminal cast skip / forced seed. */
+  _plantCeresCausalOutcomeSeeds(def, outcome = 'complete') {
+    const list = this._ceresCausalSeedsForOutcome(def, outcome);
+    this._plantCeresCausalSeeds(def, list);
+    return list;
   },
 
   _emitCeresCausalReceipt(live, kind, extra = null) {
@@ -3286,12 +3318,13 @@ export const traffic = {
     const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
     // Plant seeds and count toward re-arm on EVERY terminal outcome so an interrupted link degrades
     // the chain rather than killing it (fallback/abort must not soft-lock later requires).
+    // Interrupt outcomes prefer interruptSeeds (alternate aftermath story) when authored.
     if (def && !live.seeded) {
       live.seeded = true;
       live.phase = def.seedAtPhase;
-      this._plantCeresCausalSeeds(def);
+      const seeded = this._plantCeresCausalOutcomeSeeds(def, outcome);
       this._emitCeresCausalReceipt(live, 'seed', {
-        seeded: def.seeds.slice(),
+        seeded: Array.isArray(seeded) ? seeded.slice() : [],
         forced: outcome !== 'complete',
       });
     }
@@ -3371,7 +3404,32 @@ export const traffic = {
     while (chain.active.length < CERES_CAUSAL_CHAIN_MAX_CONCURRENT
       && chain.nextIndex < CERES_CAUSAL_CHAIN.length) {
       const def = CERES_CAUSAL_CHAIN[chain.nextIndex];
-      if (!this._ceresCausalSeedsReady(def.requires)) break;
+      if (!this._ceresCausalSeedsReady(def.requires)) {
+        // Anti-softlock with divergent interrupt seeds: an earlier interrupt may have withheld
+        // this link's seed while killing the cast that would have produced it. Terminal cast
+        // loss still advances (same plant policy as the live-check skip below).
+        //
+        // When the salvor branch is already open (aftermath_open) a sequential mid-chain seed
+        // will never arrive — skip the superseded link with its interrupt seeds so the cycle
+        // still completes. The cutter itself is the aftermath consumer and is not skipped here.
+        const supersededByAftermath = chain.seeds
+          && chain.seeds.aftermath_open === true
+          && def.id !== 'ev_cutter_strips_wreck';
+        if (this._ceresCausalRequiredActorsTerminallyGone(def) || supersededByAftermath) {
+          const seeded = this._plantCeresCausalOutcomeSeeds(def, 'skip_terminal_cast');
+          if (!chain.completed.includes(def.id)) chain.completed.push(def.id);
+          this._emitCeresCausalReceipt(null, 'event_interrupt', {
+            outcome: supersededByAftermath && !this._ceresCausalRequiredActorsTerminallyGone(def)
+              ? 'skip_superseded'
+              : 'skip_terminal_cast',
+            eventId: def.id,
+            seeded: Array.isArray(seeded) ? seeded.slice() : [],
+          });
+          chain.nextIndex += 1;
+          continue;
+        }
+        break;
+      }
       // Do not start a second copy of a still-active or already-completed event in this cycle.
       if (chain.completed.includes(def.id)
         || chain.active.some((live) => live && live.eventId === def.id)) {
@@ -3382,12 +3440,12 @@ export const traffic = {
         // Terminal cast loss: plant seeds and advance so the chain never waits forever on a
         // destroyed hull. Transient single-tick absence keeps waiting (break).
         if (this._ceresCausalRequiredActorsTerminallyGone(def)) {
-          this._plantCeresCausalSeeds(def);
+          const seeded = this._plantCeresCausalOutcomeSeeds(def, 'skip_terminal_cast');
           if (!chain.completed.includes(def.id)) chain.completed.push(def.id);
           this._emitCeresCausalReceipt(null, 'event_interrupt', {
             outcome: 'skip_terminal_cast',
             eventId: def.id,
-            seeded: def.seeds.slice(),
+            seeded: Array.isArray(seeded) ? seeded.slice() : [],
           });
           chain.nextIndex += 1;
           continue;

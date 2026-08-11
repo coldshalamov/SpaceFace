@@ -13,6 +13,7 @@ import {
   NPC_JOB_SIGNATURE_CAPACITY,
   NPC_JOB_SIGNATURE_DRAW_RANGE,
   resolveNpcJobSignature,
+  resolveNpcJobSignaturePreferCue,
   createNpcJobSignatureFrameScratch,
   writeNpcJobSignatureFrame,
 } from '../src/render/npcJobSignatureVfx.js';
@@ -174,6 +175,43 @@ test('seed de-phases hulls showing the same signal', () => {
     bearings.add(s.sweepAngle.toFixed(6));
   }
   assert.ok(bearings.size >= 5, `expected distinct sweep bearings per hull, saw ${bearings.size}`);
+});
+
+// ─── D3: Ceres causal cue preference ──────────────────────────────────────────────────────────────
+
+test('D3: ceresCausalCue preferred over job phase; fallback works', () => {
+  // Hauler in transit loaded would normally show heavy_burn; a chain stamp of on_the_pin wins.
+  const fromPhase = resolveNpcJobSignature('hauler', NPC_JOB_PHASE.TRANSIT, true);
+  assert.equal(fromPhase.id, 'heavy_burn');
+  const preferred = resolveNpcJobSignaturePreferCue(
+    'hauler', NPC_JOB_PHASE.TRANSIT, true, 'on_the_pin',
+  );
+  assert.equal(preferred.id, 'on_the_pin');
+  assert.equal(preferred, NPC_JOB_SIGNATURE_PROFILES.on_the_pin);
+
+  // Missing / unknown cue falls back to job-phase resolution.
+  assert.equal(
+    resolveNpcJobSignaturePreferCue('hauler', NPC_JOB_PHASE.TRANSIT, true, null).id,
+    'heavy_burn',
+  );
+  assert.equal(
+    resolveNpcJobSignaturePreferCue('hauler', NPC_JOB_PHASE.TRANSIT, true, undefined).id,
+    'heavy_burn',
+  );
+  assert.equal(
+    resolveNpcJobSignaturePreferCue('hauler', NPC_JOB_PHASE.TRANSIT, true, 'not_a_real_cue').id,
+    'heavy_burn',
+  );
+
+  // All eleven chain cue ids resolve as known profiles (no new profiles required).
+  for (const cue of [
+    'blind_cone', 'home_under_rock', 'heavy_burn', 'clean_burn', 'mouth_open',
+    'on_the_pin', 'breaking_the_pattern', 'spine_wake', 'hull_open',
+    'picking_the_bones', 'spilling_the_count',
+  ]) {
+    const p = resolveNpcJobSignaturePreferCue('miner', NPC_JOB_PHASE.WORK, false, cue);
+    assert.equal(p.id, cue, `cue ${cue} must map to its profile`);
+  }
 });
 
 test('facing falls back to hull heading when the ship is station-keeping', () => {
