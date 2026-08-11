@@ -24,6 +24,7 @@ import {
   CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../../src/data/sectorActivityPockets.js';
+import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
 
 import {
@@ -153,6 +154,21 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
 const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
 const CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU = CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
 const CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS = 2_400;
+// A station arrival is any point on Belt Outpost's public completion ring, so its bearing changes
+// with lawful Flight V3 guidance and obstacle traffic. Use the authored station center as the fixed
+// public-control corridor: its 90-WU completion shell remains outside the station collider and is
+// regression-proven clear of the rocks that trapped the earlier extrapolated route. The variable
+// live arrival remains evidence, not route geometry.
+const CERES_BELT_OUTPOST_ANCHOR = SECTOR_ANCHORS[
+  CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId
+]?.stations?.find((station) => station.id === 'station_beltout');
+assert.ok(CERES_BELT_OUTPOST_ANCHOR?.pos, 'authored Belt Outpost anchor is required');
+const CERES_WORKING_SEAM_DEPARTURE_CORRIDOR_GLOBAL = Object.freeze(
+  sectorLocalToGlobalForSector(
+    CERES_BELT_OUTPOST_ANCHOR.pos,
+    CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  ),
+);
 const CERES_POCKET_NAVIGATION = Object.freeze({
   ceres_refinery_pocket: Object.freeze({ label: null, identity: 'station_ceres' }),
   ceres_working_seam: Object.freeze({ label: 'Belt Outpost', identity: 'station_beltout' }),
@@ -2546,32 +2562,32 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   }
   const seamAnchor = CERES_POCKET_TARGETS.ceres_working_seam.targetPos;
   const throughlineAnchor = CERES_POCKET_TARGETS.ceres_ambush_run.targetPos;
-  const pathDistanceWU = Math.hypot(sourceX - seamAnchor.x, sourceZ - seamAnchor.z);
+  const targetPos = CERES_WORKING_SEAM_DEPARTURE_CORRIDOR_GLOBAL;
+  const pathDistanceWU = Math.hypot(targetPos.x - seamAnchor.x, targetPos.z - seamAnchor.z);
   const guaranteedPublicEgressWU = pathDistanceWU
     - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU * 2;
   if (guaranteedPublicEgressWU < CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU) {
-    throw new Error('Belt Outpost arrival cannot guarantee one public completion radius of escape');
+    throw new Error('Belt Outpost departure corridor cannot guarantee one public completion radius of escape');
   }
   const seamToThroughlineWU = Math.hypot(
     throughlineAnchor.x - seamAnchor.x,
     throughlineAnchor.z - seamAnchor.z,
   );
   const arrivalToThroughlineWU = Math.hypot(
-    throughlineAnchor.x - sourceX,
-    throughlineAnchor.z - sourceZ,
+    throughlineAnchor.x - targetPos.x,
+    throughlineAnchor.z - targetPos.z,
   );
   const guaranteedThroughlineProgressWU = seamToThroughlineWU - arrivalToThroughlineWU
     - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU * 2;
   if (guaranteedThroughlineProgressWU < CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU) {
-    throw new Error('Belt Outpost arrival cannot guarantee one public completion radius toward Throughline');
+    throw new Error('Belt Outpost departure corridor cannot guarantee one public completion radius toward Throughline');
   }
-  const targetPos = Object.freeze({ x: sourceX, z: sourceZ });
   return Object.freeze({
     pocketId: 'ceres_working_seam',
     targetId: 'station_beltout-departure-corridor',
     targetName: 'Belt Outpost departure corridor',
     targetPos,
-    sourceArrivalPos: targetPos,
+    sourceArrivalPos: Object.freeze({ x: sourceX, z: sourceZ }),
     arrivalRadiusWU: CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU,
     minRemainingTicks,
     pathDistanceWU,

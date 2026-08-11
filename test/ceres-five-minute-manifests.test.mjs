@@ -152,6 +152,7 @@ test('paired runtimes share exact route, source, scenario, regression, productio
     'src/main.js',
     'src/core/spatialQuery.js',
     'src/data/sectorActivityPockets.js',
+    'src/data/sectorAnchors.js',
     'src/data/sectorCoordinates.js',
     'src/data/ships.js',
     'src/data/weapons.js',

@@ -84,6 +84,7 @@ const PRODUCTION_PATHS = Object.freeze([
   'src/data/modules.js',
   'src/data/newGameDefaults.js',
   'src/data/sectorActivityPockets.js',
+  'src/data/sectorAnchors.js',
   'src/data/sectorCoordinates.js',
   'src/data/sectorZones.js',
   'src/data/ships.js',

@@ -30,6 +30,7 @@ import {
   CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../src/data/sectorActivityPockets.js';
+import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
 const RUNTIME_SCHEMA = 'spaceface.ceresFiveMinuteRuntimeEvidence.v1';
@@ -1379,61 +1380,67 @@ test('public pocket driver trims outside the circle and holds full brake only af
   );
 });
 
-test('Working Seam evidence publicly restages to the accepted Belt Outpost departure corridor', async () => {
+test('Working Seam evidence publicly restages to the fixed Belt Outpost departure corridor', async () => {
   const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
-  const acceptedDeparture = Object.freeze({
+  const liveAcceptedArrival = Object.freeze({
     x: -11_495.697937011719,
     z: 7_342.5372314453125,
   });
+  const authoredBeltOutpost = SECTOR_ANCHORS[sectorId].stations
+    .find((station) => station.id === 'station_beltout');
+  const fixedDeparture = Object.freeze(sectorLocalToGlobalForSector(
+    authoredBeltOutpost.pos,
+    sectorId,
+  ));
   const throughline = sectorLocalToGlobalForSector(
     CERES_ACTIVITY_POCKETS_BY_ID.ceres_ambush_run.activityAnchor.localPos,
     sectorId,
   );
   const target = planCeresWorkingSeamEgress({
     sectorId,
-    player: { alive: true, pos: acceptedDeparture },
+    player: { alive: true, pos: liveAcceptedArrival },
   }, { minRemainingTicks: 2_400 });
-  const sourceToThroughline = Math.hypot(
-    throughline.x - acceptedDeparture.x,
-    throughline.z - acceptedDeparture.z,
-  );
   const targetToThroughline = Math.hypot(
     throughline.x - target.targetPos.x,
     throughline.z - target.targetPos.z,
   );
-  assert.deepEqual(target.targetPos, acceptedDeparture,
-    'the public return stops at the live accepted arrival instead of extrapolating through it');
-  assert.equal(target.sourceArrivalPos, target.targetPos,
-    'the planned point must retain the exact accepted-arrival identity');
-  assert.ok(Math.abs(target.guaranteedPublicEgressWU - 148.29805849446814) < 1e-6,
+  assert.deepEqual(target.targetPos, fixedDeparture,
+    'the public return targets the authored station center instead of a variable station ring point');
+  assert.deepEqual(target.sourceArrivalPos, liveAcceptedArrival,
+    'the plan must retain the live accepted-arrival evidence separately from its fixed target');
+  assert.notEqual(target.sourceArrivalPos, target.targetPos,
+    'live evidence and the fixed corridor must not share mutable identity');
+  assert.ok(Math.abs(target.guaranteedPublicEgressWU - 188.78177829171545) < 1e-6,
     `both 90-WU completion circles must be deducted, got ${target.guaranteedPublicEgressWU}`);
   assert.equal(target.minRemainingTicks, 2_400,
     'the seam return must preserve the next public navigation leg');
-  assert.ok(Math.abs(target.guaranteedThroughlineProgressWU - 120.7052928496696) < 1e-6,
+  assert.ok(Math.abs(target.guaranteedThroughlineProgressWU - 109.42126295372827) < 1e-6,
     `both completion circles must be deducted from Throughline progress, got ${target.guaranteedThroughlineProgressWU}`);
-  assert.equal(targetToThroughline, sourceToThroughline);
+  assert.ok(Math.abs(targetToThroughline - 2_260.088493842664) < 1e-6,
+    'the fixed route geometry must remain bound to the authored Belt Outpost center');
 
   const seamAnchor = sectorLocalToGlobalForSector(
     CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam.activityAnchor.localPos,
     sectorId,
   );
-  const pathX = acceptedDeparture.x - seamAnchor.x;
-  const pathZ = acceptedDeparture.z - seamAnchor.z;
+  const pathX = fixedDeparture.x - seamAnchor.x;
+  const pathZ = fixedDeparture.z - seamAnchor.z;
   const pathDistanceWU = Math.hypot(pathX, pathZ);
   const collisionPocket = [
     { id: 121, radius: 11.41481447708793, pos: { x: -11_483.771515911701, z: 7_320.0985105152195 } },
     { id: 106, radius: 13.57198176253587, pos: { x: -11_489.171003410438, z: 7_369.322458417971 } },
   ];
+  const trappedArrival = liveAcceptedArrival;
   const failedExtendedTarget = Object.freeze({ x: -11_130.966289293183, z: 7_193.515077392905 });
   assert.ok(Math.abs(Math.hypot(
-    failedExtendedTarget.x - acceptedDeparture.x,
-    failedExtendedTarget.z - acceptedDeparture.z,
+    failedExtendedTarget.x - trappedArrival.x,
+    failedExtendedTarget.z - trappedArrival.z,
   ) - 394.00098635142723) < 1e-6,
   'the failed planner required another 394 WU after reaching the proven arrival');
   for (const rock of collisionPocket) {
     const capturedArrivalGapWU = Math.hypot(
-      acceptedDeparture.x - rock.pos.x,
-      acceptedDeparture.z - rock.pos.z,
+      trappedArrival.x - rock.pos.x,
+      trappedArrival.z - rock.pos.z,
     ) - 16 - rock.radius;
     assert.ok(capturedArrivalGapWU < -2 && capturedArrivalGapWU > -2.01,
       `the failed route must retain rock ${rock.id}'s captured contact fingerprint`);
@@ -1444,19 +1451,19 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
         x: seamAnchor.x + Math.cos(angle) * 90,
         z: seamAnchor.z + Math.sin(angle) * 90,
       };
-      const approachX = acceptedDeparture.x - possibleSeamReceipt.x;
-      const approachZ = acceptedDeparture.z - possibleSeamReceipt.z;
+      const approachX = fixedDeparture.x - possibleSeamReceipt.x;
+      const approachZ = fixedDeparture.z - possibleSeamReceipt.z;
       const approachDistanceWU = Math.hypot(approachX, approachZ);
       const handoff = {
-        x: acceptedDeparture.x - (approachX / approachDistanceWU) * target.arrivalRadiusWU,
-        z: acceptedDeparture.z - (approachZ / approachDistanceWU) * target.arrivalRadiusWU,
+        x: fixedDeparture.x - (approachX / approachDistanceWU) * target.arrivalRadiusWU,
+        z: fixedDeparture.z - (approachZ / approachDistanceWU) * target.arrivalRadiusWU,
       };
       minimumHandoffGapWU = Math.min(
         minimumHandoffGapWU,
         Math.hypot(handoff.x - rock.pos.x, handoff.z - rock.pos.z) - 16 - rock.radius,
       );
     }
-    assert.ok(minimumHandoffGapWU > 50,
+    assert.ok(minimumHandoffGapWU > 48,
       `every sampled seam-circle approach must hand off before rock ${rock.id}, got gap ${minimumHandoffGapWU}`);
   }
   const seamHandoff = {
@@ -1488,29 +1495,32 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
 
   assert.throws(() => planCeresWorkingSeamEgress({
     sectorId: 'sector_helios_prime',
-    player: { alive: true, pos: acceptedDeparture },
+    player: { alive: true, pos: liveAcceptedArrival },
   }), /live accepted Belt Outpost arrival/);
-  const insufficientPathScale = 269 / pathDistanceWU;
+  for (const alternateArrival of [
+    // A legitimate west-ring arrival that reproduces the 26808d70 planner rejection class.
+    { x: -11_598, z: 7_252 },
+    // The previously accepted PQ-020 Belt Outpost arrival on the opposite public ring bearing.
+    { x: -11_427.297119140625, z: 7_212.444274902344 },
+  ]) {
+    const alternate = planCeresWorkingSeamEgress({
+      sectorId,
+      player: { alive: true, pos: alternateArrival },
+    }, { minRemainingTicks: 2_400 });
+    assert.equal(alternate.targetPos, target.targetPos,
+      'every public Belt Outpost arrival bearing must resolve to the same fixed corridor');
+    assert.deepEqual(alternate.sourceArrivalPos, alternateArrival,
+      'the variable public arrival remains bound as evidence');
+    assert.equal(alternate.guaranteedPublicEgressWU, target.guaranteedPublicEgressWU);
+    assert.equal(alternate.guaranteedThroughlineProgressWU, target.guaranteedThroughlineProgressWU);
+  }
   assert.throws(() => planCeresWorkingSeamEgress({
     sectorId,
-    player: {
-      alive: true,
-      pos: {
-        x: seamAnchor.x + pathX * insufficientPathScale,
-        z: seamAnchor.z + pathZ * insufficientPathScale,
-      },
-    },
-  }), /cannot guarantee one public completion radius of escape/);
-  assert.throws(() => planCeresWorkingSeamEgress({
-    sectorId,
-    player: {
-      alive: true,
-      pos: { x: seamAnchor.x - pathDistanceWU, z: seamAnchor.z },
-    },
-  }), /cannot guarantee one public completion radius toward Throughline/);
+    player: { alive: false, pos: liveAcceptedArrival },
+  }), /live accepted Belt Outpost arrival/);
   assert.equal(planCeresWorkingSeamEgress({
     sectorId,
-    player: { alive: true, pos: acceptedDeparture },
+    player: { alive: true, pos: liveAcceptedArrival },
   }).minRemainingTicks, 120,
   'optional post-Continue seam repeats retain the generic 120-tick route horizon');
 
