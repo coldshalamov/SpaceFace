@@ -174,3 +174,17 @@ Nested `AGENTS.md` files exist only at meaningful ownership/risk boundaries:
 
 Use the nearest applicable file and follow links for depth. Do not copy its content into another
 instruction layer.
+
+## Learned User Preferences
+
+- Does not read or judge agent-created code; wants plain-language triage, verified options, and a clear safe set—not code dumps, check names, or requests to weigh technical risk.
+- Skeptical of agent-labeled “bugs”; verify against live code and git history before changing behavior, and prefer obvious/safe honesty fixes first—misattributed fixes have made things worse.
+- When handed a large agent review, wants what is safe to do now; leaves safe-vs-risky judgment to the agent once that bar is clear.
+- Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
+
+## Learned Workspace Facts
+
+- Root `review/README.md` is the durable residue of the 2026-08 thermonuclear review; long `review/` ledgers were deleted on purpose so they cannot mislead—treat “leads” as hints, not mandates (full text remains in git history).
+- When code and docs disagree, check `git log` which side moved before changing either; agents often update code and leave prose behind, and “fixing to the doc” has regressed real fixes.
+- Many `.test.mjs` files are unwired from `check:*`; do not blindly glob-enable them into CI—audit and wire high-value clusters only.
+- Tractor module `magnetRange` is still unwired in mining (UI no longer advertises inert numbers); drill-fade still mutates ship physics from UI—both are verified deferred work, not free cleanups.
