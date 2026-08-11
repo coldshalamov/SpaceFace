@@ -1200,6 +1200,26 @@ export async function runCeresFiveMinutePublicRoute({
       toolkit,
     };
   } catch (error) {
+    if (error?.ceresFlightEntryDiagnostic) {
+      const diagnosticPath = path.join(outputDir, 'public-entry-failure.json');
+      const screenshotPath = path.join(outputDir, 'public-entry-failure.png');
+      const diagnostic = {
+        schema: 'spaceface.ceresPublicEntryFailure.v1',
+        recordedAt: new Date().toISOString(),
+        runtimeKind,
+        fixedSeed,
+        phase,
+        condition: error.ceresFlightEntryDiagnostic,
+        pageIssues: summarizeIssues(
+          pageIssueTracker?.errorIssues?.()
+            || pageIssueTracker?.errors?.()
+            || [],
+        ),
+      };
+      await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
+      await page.screenshot({ path: screenshotPath }).catch(() => {});
+      error.message = `${error.message}; diagnostic=${path.basename(diagnosticPath)}`;
+    }
     error.routePhase ||= phase;
     throw error;
   } finally {
@@ -3585,17 +3605,81 @@ function segmentCrossesCircle(previous, current, center, radius) {
 }
 
 async function waitForCeresFlight(page, fixedSeed, timeout) {
-  await page.waitForFunction((seed) => {
-    const state = window.SF?.state;
-    const player = state?.entities?.get(state.playerId);
-    const active = state?.player?.ownedShips?.[state.player.activeShipIndex];
-    return state?.mode === 'flight'
-      && state.world?.currentSectorId === 'sector_ceres_belt'
-      && state.meta?.seed === seed
-      && active?.defId === 'ship_hornet'
-      && player && player.alive !== false && Number(player.hull) > 0
-      && !document.body.classList.contains('ui-modal-open');
-  }, fixedSeed, { timeout });
+  try {
+    await page.waitForFunction((seed) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get(state.playerId);
+      const active = state?.player?.ownedShips?.[state.player.activeShipIndex];
+      return state?.mode === 'flight'
+        && state.world?.currentSectorId === 'sector_ceres_belt'
+        && state.meta?.seed === seed
+        && active?.defId === 'ship_hornet'
+        && player && player.alive !== false && Number(player.hull) > 0
+        && !document.body.classList.contains('ui-modal-open');
+    }, fixedSeed, { timeout });
+  } catch (error) {
+    error.ceresFlightEntryDiagnostic = await page.evaluate((seed) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state?.playerId) || null;
+      const activeShipIndex = state?.player?.activeShipIndex;
+      const active = state?.player?.ownedShips?.[activeShipIndex] || null;
+      const visibleScreens = [...document.querySelectorAll('[data-screen]')]
+        .filter((element) => {
+          if (element.hidden) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden'
+            && Number(style.opacity || 1) > 0.01 && rect.width > 20 && rect.height > 10;
+        })
+        .map((element) => element.getAttribute('data-screen'))
+        .filter(Boolean)
+        .sort();
+      const actual = {
+        documentReadyState: document.readyState,
+        href: location.href,
+        stateReady: !!state,
+        mode: state?.mode ?? null,
+        sectorId: state?.world?.currentSectorId ?? null,
+        seed: state?.meta?.seed ?? null,
+        playerId: state?.playerId ?? null,
+        playerFound: !!player,
+        playerAlive: player ? player.alive !== false : null,
+        playerHull: player ? Number(player.hull) : null,
+        activeShipIndex: Number.isSafeInteger(activeShipIndex) ? activeShipIndex : null,
+        activeShipDefId: active?.defId ?? null,
+        ownedShipDefIds: Array.isArray(state?.player?.ownedShips)
+          ? state.player.ownedShips.map((ship) => ship?.defId ?? null)
+          : [],
+        modalOpen: document.body.classList.contains('ui-modal-open'),
+        bodyClasses: [...document.body.classList].sort(),
+        visibleScreens,
+      };
+      return {
+        expected: {
+          mode: 'flight',
+          sectorId: 'sector_ceres_belt',
+          seed,
+          activeShipDefId: 'ship_hornet',
+          playerAlive: true,
+          playerHullPositive: true,
+          modalOpen: false,
+        },
+        actual,
+        clauses: {
+          mode: actual.mode === 'flight',
+          sectorId: actual.sectorId === 'sector_ceres_belt',
+          seed: actual.seed === seed,
+          activeShipDefId: actual.activeShipDefId === 'ship_hornet',
+          playerAlive: actual.playerFound && actual.playerAlive === true,
+          playerHullPositive: Number.isFinite(actual.playerHull) && actual.playerHull > 0,
+          modalClosed: actual.modalOpen === false,
+        },
+      };
+    }, fixedSeed).catch((diagnosticError) => ({
+      diagnosticError: diagnosticError?.message || String(diagnosticError),
+    }));
+    throw error;
+  }
 }
 
 async function waitForVisibleScreen(page, id, timeout) {

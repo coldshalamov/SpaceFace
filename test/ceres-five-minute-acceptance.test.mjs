@@ -1241,6 +1241,21 @@ test('public pilot source uses menu/card and Playwright input while private shor
   }
 });
 
+test('public entry timeout preserves clause-level state and a screenshot before cleanup', () => {
+  const { routeSource } = actualPilotSources();
+  for (const marker of [
+    'spaceface.ceresPublicEntryFailure.v1',
+    'public-entry-failure.json',
+    'public-entry-failure.png',
+    'activeShipDefId',
+    'visibleScreens',
+    'modalClosed',
+    'pageIssues',
+  ]) {
+    assert.ok(routeSource.includes(marker), `public-entry failure evidence must retain ${marker}`);
+  }
+});
+
 function runtimeFixture(runtimeKind, { gapS = 1 } = {}) {
   const candidateDigest = runtimeKind === 'browser' ? digest('b') : digest('c');
   const claimId = `ceres-five-minute-${runtimeKind}-claim`;
