@@ -136,6 +136,10 @@ const TOOLKIT_HOSTILES = Object.freeze([
     squadId: 'zone_ceres_ambush',
   }),
 ]);
+const TOOLKIT_COMBAT_AUTHORITY = Object.freeze({
+  targetEntityId: TOOLKIT_HOSTILES[0].entityId,
+  targetWorldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+});
 const TOOLKIT_WEAPON_IDS = Object.freeze([
   'wpn_concussion_cannon_m',
   'wpn_gravity_marker_s',
@@ -1156,13 +1160,96 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   const staged = evaluateCeresToolkitCombatCompletion(complete, {
     routeStartTick,
     deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
   });
   assert.equal(staged.pass, true, staged.failures.join('; '));
   assert.equal(evaluateCeresToolkitCombatCompletion(complete, {
     routeStartTick: complete.startTick,
     deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
   }).pass, false,
   'the camera/collision receipt must be validated against the real route start, not toolkit start');
+
+  const moveTargetConsequences = (receipt, from, to) => {
+    for (const event of receipt.events) {
+      if (event.targetId === from.entityId) event.targetId = to.entityId;
+      if (event.entityId === from.entityId && event.event === 'entity:killed') {
+        event.entityId = to.entityId;
+      }
+      if (event.targetWorldRecordId === from.worldRecordId) {
+        event.targetWorldRecordId = to.worldRecordId;
+      }
+    }
+    for (const event of receipt.combatTrace) {
+      if (event.targetId === from.entityId) event.targetId = to.entityId;
+    }
+    receipt.destroyedRecordIds = [to.worldRecordId];
+    return receipt;
+  };
+  const hostileB = TOOLKIT_HOSTILES[1];
+  const forgedFullB = moveTargetConsequences(
+    structuredClone(runtimeFixture('browser').observations.toolkit),
+    TOOLKIT_HOSTILES[0],
+    hostileB,
+  );
+  assert.equal(evaluateCeresToolkitFinalReceipt(forgedFullB, {
+    routeStartTick,
+    deadlineTick,
+  }).pass, true,
+  'the general final evaluator may prove the complete toolkit against any exact initial hostile');
+  const forgedStagedB = structuredClone(forgedFullB);
+  removeToolkitEvent(forgedStagedB, 'fields:deployed');
+  forgedStagedB.endTick = START_TICK + 7_425;
+  const exactTargetEvaluation = evaluateCeresToolkitCombatCompletion(forgedStagedB, {
+    routeStartTick,
+    deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
+  });
+  assert.equal(exactTargetEvaluation.pass, false,
+    'hostile B cannot close the staged loop while its exact fire-control authority remains A');
+  assert.ok(exactTargetEvaluation.failures.some((failure) => failure.includes('exact combat target')),
+    exactTargetEvaluation.failures.join('; '));
+
+  let forgedReceiptReads = 0;
+  let forgedPointingReads = 0;
+  let forgedVolleys = 0;
+  const recoveredFromHostileB = await runCeresPreRepulsorCombatLoop({
+    routeStartTick,
+    deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
+    readReceipt: async () => {
+      forgedReceiptReads += 1;
+      return forgedReceiptReads === 1 ? forgedStagedB : complete;
+    },
+    readPointingStatus: async () => {
+      forgedPointingReads += 1;
+      return {
+        tick: forgedStagedB.endTick,
+        candidates: [{
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          pointable: true,
+          ndcX: 0,
+          ndcY: 0,
+        }],
+        target: {
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          ndcX: 0,
+          ndcY: 0,
+        },
+      };
+    },
+    fireVolley: async () => {
+      forgedVolleys += 1;
+      return { neutralTick: forgedStagedB.endTick + 26 };
+    },
+  });
+  assert.equal(recoveredFromHostileB.evaluation.pass, true);
+  assert.equal(forgedReceiptReads, 2,
+    'the loop must consume a later exact-A receipt instead of returning on hostile B');
+  assert.equal(forgedPointingReads, 1);
+  assert.equal(forgedVolleys, 1);
 
   const lateSecondKill = structuredClone(runtimeFixture('browser').observations.toolkit);
   const repulsor = findToolkitEvent(lateSecondKill, 'fields:deployed');
@@ -1208,6 +1295,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   const result = await runCeresPreRepulsorCombatLoop({
     routeStartTick,
     deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
     readReceipt: async () => {
       receiptReads += 1;
       return receiptReads === 1 ? incomplete : complete;
@@ -1250,6 +1338,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   const killRace = await runCeresPreRepulsorCombatLoop({
     routeStartTick,
     deadlineTick,
+    ...TOOLKIT_COMBAT_AUTHORITY,
     readReceipt: async () => {
       killRaceReads += 1;
       return killRaceReads === 1 ? incomplete : complete;
@@ -1273,6 +1362,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     runCeresPreRepulsorCombatLoop({
       routeStartTick,
       deadlineTick,
+      ...TOOLKIT_COMBAT_AUTHORITY,
       readReceipt: async () => slowReceipt,
       readPointingStatus: async () => ({
         tick: deadlineTick - 61,
@@ -1307,6 +1397,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     runCeresPreRepulsorCombatLoop({
       routeStartTick,
       deadlineTick,
+      ...TOOLKIT_COMBAT_AUTHORITY,
       readReceipt: async () => boundary,
       readPointingStatus: async () => {
         boundaryPointingReads += 1;
@@ -1324,6 +1415,7 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     await runCeresPreRepulsorCombatLoop({
       routeStartTick,
       deadlineTick,
+      ...TOOLKIT_COMBAT_AUTHORITY,
       readReceipt: async () => incomplete,
       readPointingStatus: async () => ({
         tick: incomplete.endTick,
@@ -1350,6 +1442,55 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     unpointableError.ceresToolkitCombatDiagnostic.pointing.candidates[0].distanceWU,
     4_575,
   );
+
+  const cameraFailureAfterTombstone = structuredClone(complete);
+  cameraFailureAfterTombstone.cameraReposition.impactCapture.endSeq = 1_191;
+  cameraFailureAfterTombstone.cameraReposition.impacts.push({
+    seq: 1_191,
+    event: 'physics:impact',
+    tick: cameraFailureAfterTombstone.cameraReposition.movementEndTick,
+    aId: PLAYER_ENTITY_ID,
+    bId: 229,
+    aType: 'ship',
+    aWorldRecordId: null,
+    aAnchorSlotId: null,
+    bType: 'asteroid',
+    bWorldRecordId: null,
+    bAnchorSlotId: null,
+    phase: 'movement',
+  });
+  let terminalReceiptReads = 0;
+  let terminalPointingReads = 0;
+  let terminalVolleys = 0;
+  await assert.rejects(
+    runCeresPreRepulsorCombatLoop({
+      routeStartTick,
+      deadlineTick,
+      ...TOOLKIT_COMBAT_AUTHORITY,
+      readReceipt: async () => {
+        terminalReceiptReads += 1;
+        return cameraFailureAfterTombstone;
+      },
+      readPointingStatus: async () => {
+        terminalPointingReads += 1;
+        return { tick: cameraFailureAfterTombstone.endTick, candidates: [], target: null };
+      },
+      fireVolley: async () => {
+        terminalVolleys += 1;
+        return { neutralTick: cameraFailureAfterTombstone.endTick + 1 };
+      },
+    }),
+    (error) => error?.ceresToolkitCombatDiagnostic?.reason === 'invalid-receipt'
+      && error.ceresToolkitCombatDiagnostic.receiptFailures.some((failure) => (
+        failure.includes('camera reposition')
+      )),
+  );
+  assert.equal(terminalReceiptReads, 1,
+    'a durable exact-target tombstone makes the first red aggregate receipt terminal');
+  assert.equal(terminalPointingReads, 0,
+    'a terminal tombstone must reject the retained receipt failure before projection');
+  assert.equal(terminalVolleys, 0,
+    'a terminal tombstone must never fire another volley');
   const offscreenTetherAuthority = {
     targetId: TOOLKIT_HOSTILES[0].entityId,
     worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
@@ -1897,24 +2038,63 @@ test('physics-toolkit evaluator rejects summary shortcuts and broken causal iden
     assert.ok(result.failures.length > 0, `${label} must explain the failure`);
   }
 
-  const postMovementContact = runtimeFixture('electron');
-  const camera = postMovementContact.observations.toolkit.cameraReposition;
-  camera.impactCapture.endSeq = 1_191;
-  camera.impacts.push({
-    seq: 1_191,
-    event: 'physics:impact',
-    tick: camera.movementEndTick + 1,
-    aId: postMovementContact.observations.toolkit.playerEntityId,
-    bId: 229,
-    phase: 'post-movement-conflict-wait',
-  });
-  const postMovementResult = evaluateCeresFiveMinuteRuntime(
-    postMovementContact,
+  const appendCameraHostileImpact = (document, overrides = {}) => {
+    const toolkit = document.observations.toolkit;
+    const camera = toolkit.cameraReposition;
+    const hostile = TOOLKIT_HOSTILES[0];
+    const raw = {
+      seq: 1_191,
+      event: 'physics:impact',
+      tick: camera.movementEndTick,
+      aId: toolkit.playerEntityId,
+      bId: hostile.entityId,
+      aType: 'ship',
+      aWorldRecordId: null,
+      aAnchorSlotId: null,
+      bType: 'ship',
+      bWorldRecordId: hostile.worldRecordId,
+      bAnchorSlotId: null,
+      ...overrides,
+    };
+    camera.impactCapture.endSeq = raw.seq;
+    camera.impacts.push({
+      ...raw,
+      otherEntityId: raw.bId,
+      otherType: raw.bType,
+      otherWorldRecordId: raw.bWorldRecordId,
+      otherAnchorSlotId: raw.bAnchorSlotId,
+      phase: raw.tick <= camera.movementEndTick
+        ? 'movement'
+        : 'post-movement-conflict-wait',
+    });
+    document.observations.playerImpactCapture.impacts.push(raw);
+    return { toolkit, camera, raw };
+  };
+
+  const exactBoundContact = runtimeFixture('electron');
+  appendCameraHostileImpact(exactBoundContact);
+  const exactBoundResult = evaluateCeresFiveMinuteRuntime(
+    exactBoundContact,
     { runtimeKind: 'electron' },
   );
-  assert.equal(postMovementResult.pass, true, postMovementResult.failures.join('; '));
-  assert.equal(camera.impacts.at(-1).phase, 'post-movement-conflict-wait',
-    'post-settle contacts stay durable and diagnostic without being mislabeled as camera motion');
+  assert.equal(exactBoundResult.pass, true, exactBoundResult.failures.join('; '));
+
+  for (const [label, overrides] of [
+    ['unknown event-time record', { bWorldRecordId: null }],
+    ['wrong event-time record', { bWorldRecordId: TOOLKIT_HOSTILES[1].worldRecordId }],
+    ['non-cohort event-time identity', { bId: 229, bWorldRecordId: 'wr_npc_outsider' }],
+    ['non-ship body using a cohort id', { bType: 'asteroid' }],
+    ['exact hostile outside movement window', {
+      tick: START_TICK + 7_200,
+    }],
+  ]) {
+    const document = runtimeFixture('electron');
+    appendCameraHostileImpact(document, overrides);
+    const rejection = evaluateCeresFiveMinuteRuntime(document, { runtimeKind: 'electron' });
+    assert.equal(rejection.pass, false, label);
+    assert.ok(rejection.failures.some((failure) => failure.includes('impact')),
+      `${label} must retain the exact impact failure`);
+  }
 
   const legacyShortcut = runtimeFixture('electron');
   legacyShortcut.observations.toolkit = {
@@ -2705,9 +2885,23 @@ test('seed-47 Hornet traverses the toolkit camera corridor with production Fligh
     'each no-boost public-control leg retains more than half of its 220-pulse budget');
   assert.ok(result.receipts.at(-1).distanceWU <= 20);
   assert.ok(result.receipts.at(-1).speed <= 1);
-  assert.equal(result.playerHull, 260);
-  assert.deepEqual(result.playerImpactTicks, [],
-    'the exact public corridor must not trade camera acquisition for another physical impact');
+  assert.ok(result.playerHull > 0 && result.playerHull <= 260);
+  assert.deepEqual(result.boundHostilesBeforeReposition.map((row) => row.worldRecordId).sort(),
+    TOOLKIT_HOSTILES.map((row) => row.worldRecordId).sort(),
+  'the real adopted hostile cohort must exist before the first camera-control tick');
+  const boundByEntity = new Map(result.boundHostilesBeforeReposition
+    .map((row) => [row.entityId, row.worldRecordId]));
+  for (const impact of result.playerImpactEvents) {
+    const playerIsA = impact.aId === result.playerEntityId;
+    const otherId = playerIsA ? impact.bId : impact.aId;
+    const otherType = playerIsA ? impact.bType : impact.aType;
+    const otherWorldRecordId = playerIsA ? impact.bWorldRecordId : impact.aWorldRecordId;
+    const otherAnchorSlotId = playerIsA ? impact.bAnchorSlotId : impact.aAnchorSlotId;
+    assert.equal(otherType, 'ship', 'camera movement may contact only a bound hostile ship');
+    assert.equal(otherWorldRecordId, boundByEntity.get(otherId),
+      'camera contact must retain the exact event-time bound hostile identity');
+    assert.equal(otherAnchorSlotId, null);
+  }
   assert.ok(result.elapsedTicks < 600,
     'camera recovery leaves the five-minute route and ore-cycle reserve materially intact');
 
@@ -3281,10 +3475,19 @@ test('route failures retain bounded transit and approach diagnostics in both fai
     ceresPocketApproachDiagnostic: {
       decisionTail: rows,
     },
+    ceresToolkitCombatDiagnostic: {
+      cameraWindow: { startTick: 6_900, movementEndTick: 7_100, endTick: 7_200 },
+      cameraImpacts: rows.map((row) => ({
+        ...row,
+        otherType: 'ship',
+        otherWorldRecordId: `wr_npc_${row.seq}`,
+      })),
+    },
   });
   assert.deepEqual(Object.keys(projected), [
     'ceresToolkitTransitDiagnostic',
     'ceresPocketApproachDiagnostic',
+    'ceresToolkitCombatDiagnostic',
   ]);
   assert.equal(projected.ceresToolkitTransitDiagnostic.events.length, 24);
   assert.equal(projected.ceresToolkitTransitDiagnostic.events[0].seq, 76,
@@ -3292,6 +3495,11 @@ test('route failures retain bounded transit and approach diagnostics in both fai
   assert.equal(projected.ceresPocketApproachDiagnostic.decisionTail.length, 24);
   assert.equal(projected.ceresToolkitTransitDiagnostic.invalidDistanceWU, null);
   assert.equal(projected.ceresToolkitTransitDiagnostic.detail.length, 2_048);
+  assert.deepEqual(projected.ceresToolkitCombatDiagnostic.cameraWindow,
+    { startTick: 6_900, movementEndTick: 7_100, endTick: 7_200 });
+  assert.equal(projected.ceresToolkitCombatDiagnostic.cameraImpacts.length, 24);
+  assert.equal(projected.ceresToolkitCombatDiagnostic.cameraImpacts[0].otherWorldRecordId,
+    'wr_npc_76');
 
   const source = readFileSync(
     new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
@@ -3488,6 +3696,12 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
     tick: START_TICK + 7_180,
     aId: 1,
     bId: 9,
+    aType: 'ship',
+    aWorldRecordId: null,
+    aAnchorSlotId: null,
+    bType: 'asteroid',
+    bWorldRecordId: null,
+    bAnchorSlotId: 'ceres_throughline_collision_anchor',
   };
   return {
     schema: 'spaceface.ceresFiveMinuteObservation.v1',
@@ -3804,6 +4018,10 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       playerEntityId: PLAYER_ENTITY_ID,
       anchorEntityId: 9,
       anchorImpactTick: START_TICK + 7_180,
+      boundHostiles: TOOLKIT_HOSTILES.map(({ entityId, worldRecordId }) => ({
+        entityId,
+        worldRecordId,
+      })),
       impactCaptureStartSeq: 1_190,
       impactCapture: {
         startTick: START_TICK + 7_180,
@@ -3828,13 +4046,7 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
           mode: 'flight',
         },
       ],
-      impacts: [{
-        seq: 1_190,
-        event: 'physics:impact',
-        tick: START_TICK + 7_180,
-        aId: PLAYER_ENTITY_ID,
-        bId: 9,
-      }],
+      impacts: [],
     },
     initialHostiles: TOOLKIT_HOSTILES.map((entry) => ({ ...entry })),
     events,
@@ -5084,6 +5296,7 @@ async function runSeed47ToolkitCameraReposition() {
     noTeleport: true,
     placePlayer: false,
   });
+  const startTick = 6_834;
   // No generic director row participates in this focused production fixture. The exact authored
   // Throughline encounter is seeded after its durable two-ship cohort exists below.
   state.encounterDirector.pending = [];
@@ -5114,18 +5327,88 @@ async function runSeed47ToolkitCameraReposition() {
       data: { ...spec.data, worldRecordId: traffic.worldRecordId },
     });
   }
+  const makeThroughlineHostile = (defId, worldRecordId, pos) => {
+    const spec = makeEnemySpawnSpec(
+      defId,
+      3,
+      pos,
+      { startedTick: startTick, zoneId: 'zone_ceres_ambush' },
+    );
+    spec.vel = { x: 0, z: 0 };
+    spec.data.worldRecordId = worldRecordId;
+    Object.assign(spec.data.ai, {
+      squadId: 'zone_ceres_ambush',
+      zoneId: 'zone_ceres_ambush',
+      ceresActivityAmbushPhase: 'conflict',
+      passive: false,
+      roe: 'weapons_free',
+      spawnContext: 'zone_hostile',
+    });
+    return sim.spawn(spec);
+  };
+  const destroyed = makeThroughlineHostile(
+    'reaver_pirate',
+    TOOLKIT_HOSTILES[0].worldRecordId,
+    { x: -8972.711669921875, z: 7237.062744140625 },
+  );
+  const survivor = makeThroughlineHostile(
+    'wasp_swarmer',
+    TOOLKIT_HOSTILES[1].worldRecordId,
+    { x: -8908, z: 7267 },
+  );
   const physicsSystem = sim.registry.get('physics');
   const ready = await physicsSystem.prepareBackend(state, { reset: true });
   assert.equal(ready, true, 'toolkit reposition fixture requires production Rapier authority');
   state.nav.autopilot = { active: false, status: 'arrived' };
   state.input.actions = { autopursuit: false, brake: false };
 
-  const startTick = 6_834;
   let tick = startTick;
-  const playerImpactTicks = [];
+  state.tick = startTick;
+  state.simTime = startTick * dt;
+  const directorSystem = sim.registry.get('encounterDirector');
+  assert.equal(directorSystem._seedCeresActivityAmbush('sector_ceres_belt'), true,
+    'production fixture must adopt the exact durable Throughline cohort before reposition');
+  assert.equal(directorSystem._queueCeresActivityAmbush(), true,
+    'production fixture must queue the authored Throughline encounter before reposition');
+  const dir = state.encounterDirector;
+  dir.pressure.combat = 140;
+  dir.lastMeaningfulAt = 0;
+  dir.lastMajorAt = -1e9;
+  dir.window = [];
+  dir.cooldowns = {};
+  directorSystem.update(1, state);
+  const live = dir.live['ceres:activity:throughline-ambush'];
+  assert.ok(live, 'production fixture must fire the authored Throughline encounter');
+  live.data.springAt = state.simTime - dt;
+  directorSystem.update(1, state);
+  assert.equal(live.phase, 'conflict',
+    'production fixture must enter real conflict before camera reposition');
+
+  const playerImpactEvents = [];
   const encounterResolutions = [];
   sim.bus.on('physics:impact', (event) => {
-    if (event.aId === player.id || event.bId === player.id) playerImpactTicks.push(state.tick);
+    if (event.aId !== player.id && event.bId !== player.id) return;
+    const projectParticipant = (entityId) => {
+      const entity = state.entities.get(entityId);
+      return {
+        type: entity?.type ?? null,
+        worldRecordId: entity?.data?.worldRecordId ?? null,
+        anchorSlotId: entity?.data?.activityCollisionAnchorSlotId ?? null,
+      };
+    };
+    const a = projectParticipant(event.aId);
+    const b = projectParticipant(event.bId);
+    playerImpactEvents.push({
+      tick: state.tick,
+      aId: event.aId,
+      bId: event.bId,
+      aType: a.type,
+      aWorldRecordId: a.worldRecordId,
+      aAnchorSlotId: a.anchorSlotId,
+      bType: b.type,
+      bWorldRecordId: b.worldRecordId,
+      bAnchorSlotId: b.anchorSlotId,
+    });
   });
   sim.bus.on('encounter:resolved', (event) => {
     encounterResolutions.push({ ...event, tick: state.tick });
@@ -5207,60 +5490,14 @@ async function runSeed47ToolkitCameraReposition() {
     const cameraPlayerHull = player.hull;
     const cameraElapsedTicks = tick - startTick;
     const transitPlan = planCeresToolkitTransitHandoff();
-    const survivorSpec = makeEnemySpawnSpec(
-      'wasp_swarmer',
-      3,
-      {
-        x: player.pos.x + 70,
-        z: player.pos.z + 15,
-      },
-      { startedTick: state.tick, zoneId: 'zone_ceres_ambush' },
-    );
-    survivorSpec.vel = { x: 0, z: 0 };
-    survivorSpec.data.worldRecordId = TOOLKIT_HOSTILES[1].worldRecordId;
-    Object.assign(survivorSpec.data.ai, {
-      squadId: 'zone_ceres_ambush',
-      zoneId: 'zone_ceres_ambush',
-      ceresActivityAmbushPhase: 'conflict',
-      passive: false,
-      roe: 'weapons_free',
-      spawnContext: 'zone_hostile',
-    });
-    const survivor = sim.spawn(survivorSpec);
-    const destroyedSpec = makeEnemySpawnSpec(
-      'reaver_pirate',
-      3,
-      { x: player.pos.x + 110, z: player.pos.z - 20 },
-      { startedTick: state.tick, zoneId: 'zone_ceres_ambush' },
-    );
-    destroyedSpec.data.worldRecordId = TOOLKIT_HOSTILES[0].worldRecordId;
-    const destroyed = sim.spawn(destroyedSpec);
-    const directorSystem = sim.registry.get('encounterDirector');
-    assert.equal(directorSystem._seedCeresActivityAmbush('sector_ceres_belt'), true,
-      'production fixture must adopt the exact durable Throughline cohort');
-    assert.equal(directorSystem._queueCeresActivityAmbush(), true,
-      'production fixture must queue the authored Throughline encounter');
-    const dir = state.encounterDirector;
-    dir.pressure.combat = 140;
-    dir.lastMeaningfulAt = 0;
-    dir.lastMajorAt = -1e9;
-    dir.window = [];
-    dir.cooldowns = {};
-    directorSystem.update(1, state);
-    const live = dir.live['ceres:activity:throughline-ambush'];
-    assert.ok(live, 'production fixture must fire the authored Throughline encounter');
-    live.data.springAt = state.simTime - dt;
-    directorSystem.update(1, state);
-    assert.equal(live.phase, 'conflict',
-      'production fixture must enter real conflict before the toolkit survivor handoff');
     destroyed.alive = false;
     const transitStartTick = tick;
-    const transitImpactStart = playerImpactTicks.length;
+    const transitImpactStart = playerImpactEvents.length;
     const transitReceipt = drive(transitPlan);
     step(2);
     const transitEndTick = tick;
     const transitTicks = tick - transitStartTick;
-    const transitPlayerImpactTicks = playerImpactTicks.slice(transitImpactStart);
+    const transitPlayerImpactEvents = playerImpactEvents.slice(transitImpactStart);
     const survivorDistanceWU = Math.hypot(
       survivor.pos.x - player.pos.x,
       survivor.pos.z - player.pos.z,
@@ -5291,16 +5528,23 @@ async function runSeed47ToolkitCameraReposition() {
     }
     return {
       receipts,
+      playerEntityId: player.id,
+      boundHostilesBeforeReposition: [destroyed, survivor].map((entity) => ({
+        entityId: entity.id,
+        worldRecordId: entity.data?.worldRecordId || null,
+      })),
       playerHull: cameraPlayerHull,
       playerPos: cameraPlayerPos,
-      playerImpactTicks: playerImpactTicks.slice(0, transitImpactStart),
+      playerImpactEvents: playerImpactEvents.slice(0, transitImpactStart),
+      playerImpactTicks: playerImpactEvents.slice(0, transitImpactStart)
+        .map((event) => event.tick),
       elapsedTicks: cameraElapsedTicks,
       transitPlan,
       transitReceipt,
       transitStartTick,
       transitEndTick,
       transitTicks,
-      transitPlayerImpactTicks,
+      transitPlayerImpactTicks: transitPlayerImpactEvents.map((event) => event.tick),
       survivorAlive: survivor.alive !== false,
       survivorWorldRecordId: survivor.data?.worldRecordId || null,
       survivorDistanceWU,

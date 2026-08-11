@@ -230,6 +230,9 @@ export function projectCeresRouteFailureDiagnostics(error = {}) {
     ceresPocketApproachDiagnostic: boundCeresRouteFailureDiagnosticValue(
       error?.ceresPocketApproachDiagnostic,
     ),
+    ceresToolkitCombatDiagnostic: boundCeresRouteFailureDiagnosticValue(
+      error?.ceresToolkitCombatDiagnostic,
+    ),
   });
 }
 const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
@@ -2559,6 +2562,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
         const sourceEntity = payload.sourceId != null
           ? state.entities?.get(payload.sourceId)
           : null;
+        const impactA = payload.aId != null ? state.entities?.get(payload.aId) : null;
+        const impactB = payload.bId != null ? state.entities?.get(payload.bId) : null;
         const targetEntityId = payload.targetId ?? payload.entityId ?? payload.id ?? null;
         const targetEntity = targetEntityId != null ? state.entities?.get(targetEntityId) : null;
         const eventActorId = payload.actorId ?? payload.minerId ?? payload.freighterId
@@ -2588,6 +2593,12 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
           killerId: payload.killerId ?? null,
           aId: payload.aId ?? null,
           bId: payload.bId ?? null,
+          aType: impactA?.type ?? null,
+          aWorldRecordId: impactA?.data?.worldRecordId ?? null,
+          aAnchorSlotId: impactA?.data?.activityCollisionAnchorSlotId ?? null,
+          bType: impactB?.type ?? null,
+          bWorldRecordId: impactB?.data?.worldRecordId ?? null,
+          bAnchorSlotId: impactB?.data?.activityCollisionAnchorSlotId ?? null,
           attachmentId: payload.attachmentId ?? null,
           encounterId: payload.encounterId ?? payload.id ?? null,
           outcome: payload.outcome ?? null,
@@ -3562,26 +3573,58 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   playerEntityId,
   anchorEntityId,
   anchorImpactTick,
+  boundHostiles,
 } = {}) {
   if (playerEntityId == null || anchorEntityId == null
-      || !Number.isSafeInteger(anchorImpactTick)) {
+      || !Number.isSafeInteger(anchorImpactTick) || !Array.isArray(boundHostiles)
+      || boundHostiles.length < 1) {
     throw new Error('toolkit camera reposition requires the exact collision authority');
   }
-  const start = await page.evaluate(({ expectedPlayerId, expectedAnchorId }) => {
+  const normalizedBoundHostiles = boundHostiles.map((row) => ({
+    entityId: row?.entityId ?? null,
+    worldRecordId: String(row?.worldRecordId || ''),
+  })).sort((left, right) => (
+    String(left.entityId).localeCompare(String(right.entityId))
+      || left.worldRecordId.localeCompare(right.worldRecordId)
+  ));
+  if (normalizedBoundHostiles.some((row) => row.entityId == null || !row.worldRecordId)
+      || new Set(normalizedBoundHostiles.map((row) => row.entityId)).size
+        !== normalizedBoundHostiles.length
+      || new Set(normalizedBoundHostiles.map((row) => row.worldRecordId)).size
+        !== normalizedBoundHostiles.length) {
+    throw new Error('toolkit camera reposition requires unique prebound hostile identities');
+  }
+  const start = await page.evaluate(({
+    expectedPlayerId,
+    expectedAnchorId,
+    expectedBoundHostiles,
+  }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(expectedPlayerId);
     const anchor = state?.entities?.get(expectedAnchorId);
+    const observedBoundHostiles = expectedBoundHostiles.flatMap((expected) => {
+      const entity = state?.entities?.get(expected.entityId);
+      if (entity?.alive === false || entity?.type !== 'ship'
+          || entity?.data?.worldRecordId !== expected.worldRecordId) return [];
+      return [{ entityId: entity.id, worldRecordId: entity.data.worldRecordId }];
+    });
     return {
       tick: Number(state?.tick),
       nextEventSeq: Number(window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq),
       playerEntityId: player?.id ?? null,
       anchorEntityId: anchor?.data?.activityCollisionAnchorSlotId
         === 'ceres_throughline_collision_anchor' ? anchor.id : null,
+      boundHostiles: observedBoundHostiles,
     };
-  }, { expectedPlayerId: playerEntityId, expectedAnchorId: anchorEntityId });
+  }, {
+    expectedPlayerId: playerEntityId,
+    expectedAnchorId: anchorEntityId,
+    expectedBoundHostiles: normalizedBoundHostiles,
+  });
   if (!Number.isSafeInteger(start.tick) || !Number.isSafeInteger(start.nextEventSeq)
       || start.nextEventSeq < 1 || start.tick < anchorImpactTick
-      || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId) {
+      || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId
+      || stableJson(start.boundHostiles) !== stableJson(normalizedBoundHostiles)) {
     throw new Error('toolkit camera reposition lost the exact collision authority');
   }
   const plan = planCeresThroughlineToolkitReposition();
@@ -3602,6 +3645,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     playerEntityId,
     anchorEntityId,
     anchorImpactTick,
+    boundHostiles: Object.freeze(normalizedBoundHostiles.map((row) => Object.freeze({ ...row }))),
     impactCaptureStartSeq: start.nextEventSeq,
     waypoints: plan.waypoints,
     receipts: Object.freeze(receipts.map((receipt) => Object.freeze({ ...receipt }))),
@@ -4384,16 +4428,25 @@ async function drivePublicAnchorCollision(page, endTick, {
 export function evaluateCeresToolkitCombatCompletion(receipt, {
   routeStartTick,
   deadlineTick,
+  targetEntityId,
+  targetWorldRecordId,
 } = {}) {
   if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(deadlineTick)
-      || deadlineTick <= routeStartTick + 1) {
-    throw new TypeError('toolkit combat evaluation requires exact route and deadline ticks');
+      || deadlineTick <= routeStartTick + 1 || targetEntityId == null
+      || !String(targetWorldRecordId || '')) {
+    throw new TypeError('toolkit combat evaluation requires exact route, deadline, and target identity');
   }
   const failures = [];
   const projection = validateToolkitReceiptCore(receipt, {
     startTick: routeStartTick,
     endTick: deadlineTick - 1,
-  }, failures, { stage: 'pre-repulsor' });
+  }, failures, {
+    stage: 'pre-repulsor',
+    targetAuthority: {
+      entityId: targetEntityId,
+      worldRecordId: targetWorldRecordId,
+    },
+  });
   return Object.freeze({
     pass: failures.length === 0,
     failures: Object.freeze(failures),
@@ -4525,6 +4578,8 @@ export async function prepareCeresPublicTetherFireSurface(canvas, page, box, {
 export async function runCeresPreRepulsorCombatLoop({
   routeStartTick,
   deadlineTick,
+  targetEntityId,
+  targetWorldRecordId,
   maxVolleys = 120,
   readReceipt,
   readPointingStatus,
@@ -4532,6 +4587,7 @@ export async function runCeresPreRepulsorCombatLoop({
 } = {}) {
   if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(deadlineTick)
       || deadlineTick <= routeStartTick + 1
+      || targetEntityId == null || !String(targetWorldRecordId || '')
       || !Number.isSafeInteger(maxVolleys) || maxVolleys < 1 || maxVolleys > 120
       || typeof readReceipt !== 'function' || typeof readPointingStatus !== 'function'
       || typeof fireVolley !== 'function') {
@@ -4552,6 +4608,10 @@ export async function runCeresPreRepulsorCombatLoop({
       currentTick: Number.isSafeInteger(currentTick) ? currentTick : null,
       remainingTicks: Number.isSafeInteger(currentTick) ? deadlineTick - currentTick : null,
       volleyCount,
+      targetAuthority: {
+        entityId: targetEntityId,
+        worldRecordId: targetWorldRecordId,
+      },
       receiptFailures: (evaluation?.failures || []).slice(0, 16),
       destroyedRecordIds: (receipt?.destroyedRecordIds || []).slice(0, 8),
       cameraImpacts: (receipt?.cameraReposition?.impacts || []).slice(0, 16)
@@ -4560,12 +4620,23 @@ export async function runCeresPreRepulsorCombatLoop({
           tick: Number(row?.tick),
           aId: row?.aId ?? null,
           bId: row?.bId ?? null,
+          aType: row?.aType || null,
+          aWorldRecordId: row?.aWorldRecordId || null,
+          aAnchorSlotId: row?.aAnchorSlotId || null,
+          bType: row?.bType || null,
+          bWorldRecordId: row?.bWorldRecordId || null,
+          bAnchorSlotId: row?.bAnchorSlotId || null,
           otherEntityId: row?.otherEntityId ?? null,
           otherType: row?.otherType || null,
           otherWorldRecordId: row?.otherWorldRecordId || null,
           otherAnchorSlotId: row?.otherAnchorSlotId || null,
           phase: row?.phase || null,
         })),
+      cameraWindow: receipt?.cameraReposition ? {
+        startTick: Number(receipt.cameraReposition.startTick),
+        movementEndTick: Number(receipt.cameraReposition.movementEndTick),
+        endTick: Number(receipt.cameraReposition.endTick),
+      } : null,
       pointing: pointing ? {
         tick: Number(pointing.tick),
         candidates: (pointing.candidates || []).slice(0, 8).map((row) => ({ ...row })),
@@ -4573,13 +4644,30 @@ export async function runCeresPreRepulsorCombatLoop({
     };
     throw error;
   };
+  const validateExactTargetReceipt = () => {
+    const bound = (receipt?.initialHostiles || []).some((row) => (
+      row?.entityId === targetEntityId && row?.worldRecordId === targetWorldRecordId
+    ));
+    if (!bound) {
+      fail('invalid-receipt', 'toolkit combat receipt lost the exact target identity binding');
+    }
+    if (!evaluation?.pass && (receipt?.destroyedRecordIds || []).includes(targetWorldRecordId)) {
+      fail(
+        'invalid-receipt',
+        'toolkit combat target is durably tombstoned while retained receipt failures remain',
+      );
+    }
+  };
 
   for (;;) {
     receipt = await readReceipt();
     evaluation = evaluateCeresToolkitCombatCompletion(receipt, {
       routeStartTick,
       deadlineTick,
+      targetEntityId,
+      targetWorldRecordId,
     });
+    validateExactTargetReceipt();
     if (evaluation.pass) {
       if (!Number.isSafeInteger(receipt?.endTick)
           || receipt.endTick >= deadlineTick - CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS) {
@@ -4609,7 +4697,10 @@ export async function runCeresPreRepulsorCombatLoop({
       evaluation = evaluateCeresToolkitCombatCompletion(receipt, {
         routeStartTick,
         deadlineTick,
+        targetEntityId,
+        targetWorldRecordId,
       });
+      validateExactTargetReceipt();
       if (evaluation.pass) {
         if (!Number.isSafeInteger(receipt?.endTick)
             || receipt.endTick >= deadlineTick - CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS) {
@@ -4618,6 +4709,10 @@ export async function runCeresPreRepulsorCombatLoop({
         return Object.freeze({ receipt, evaluation, volleyCount });
       }
       fail('unpointable', 'toolkit combat lost exact public fire-control authority before receipts completed');
+    }
+    if (pointing.target.id !== targetEntityId
+        || pointing.target.worldRecordId !== targetWorldRecordId) {
+      fail('invalid-receipt', 'toolkit combat pointing changed the exact target identity');
     }
     const volley = await fireVolley(pointing.target);
     if (!Number.isSafeInteger(volley?.neutralTick) || volley.neutralTick <= pointing.tick) {
@@ -4675,6 +4770,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     playerEntityId: collisionProof.playerEntityId,
     anchorEntityId: collisionProof.anchorEntityId,
     anchorImpactTick: collisionProof.impact.tick,
+    boundHostiles: prebound.boundHostiles,
   });
   const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick, {
     deadlineTick: toolkitActionDeadlineTick,
@@ -4797,6 +4893,8 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     combat = await runCeresPreRepulsorCombatLoop({
       routeStartTick,
       deadlineTick: toolkitActionDeadlineTick,
+      targetEntityId: combatTarget.id,
+      targetWorldRecordId: combatTarget.worldRecordId,
       readReceipt: () => readCeresToolkitReceipt(page, baseline),
       readPointingStatus: () => readCeresTetherCombatStatus(
         page,
@@ -5004,18 +5102,26 @@ async function readCeresToolkitReceipt(page, baseline) {
           && Number(event.tick) <= Number(authority.startTick)
           && (event.aId === authority.playerEntityId || event.bId === authority.playerEntityId))
           .map((event) => {
-            const otherEntityId = event.aId === authority.playerEntityId ? event.bId : event.aId;
-            const other = state?.entities?.get(otherEntityId);
+            const playerIsA = event.aId === authority.playerEntityId;
+            const otherEntityId = playerIsA ? event.bId : event.aId;
             return {
               seq: Number(event.seq),
               event: event.event,
               tick: Number(event.tick),
               aId: event.aId,
               bId: event.bId,
+              aType: event.aType ?? null,
+              aWorldRecordId: event.aWorldRecordId ?? null,
+              aAnchorSlotId: event.aAnchorSlotId ?? null,
+              bType: event.bType ?? null,
+              bWorldRecordId: event.bWorldRecordId ?? null,
+              bAnchorSlotId: event.bAnchorSlotId ?? null,
               otherEntityId,
-              otherType: other?.type || null,
-              otherWorldRecordId: other?.data?.worldRecordId || null,
-              otherAnchorSlotId: other?.data?.activityCollisionAnchorSlotId || null,
+              otherType: playerIsA ? event.bType ?? null : event.aType ?? null,
+              otherWorldRecordId: playerIsA
+                ? event.bWorldRecordId ?? null : event.aWorldRecordId ?? null,
+              otherAnchorSlotId: playerIsA
+                ? event.bAnchorSlotId ?? null : event.aAnchorSlotId ?? null,
               phase: Number(event.tick) <= Number(authority.cameraReposition.movementEndTick)
                 ? 'movement'
                 : 'post-movement-conflict-wait',
@@ -7201,9 +7307,85 @@ function validateAnchorCollisionObservation(observations, route, failures) {
   return projection;
 }
 
+function normalizeCeresImpactBoundHostiles(rows) {
+  if (!Array.isArray(rows) || rows.length < 1) return null;
+  const pairs = rows.map((row) => ({
+    entityId: row?.entityId ?? null,
+    worldRecordId: String(row?.worldRecordId || ''),
+  })).sort((left, right) => (
+    String(left.entityId).localeCompare(String(right.entityId))
+      || left.worldRecordId.localeCompare(right.worldRecordId)
+  ));
+  if (pairs.some((row) => row.entityId == null || !row.worldRecordId)
+      || new Set(pairs.map((row) => row.entityId)).size !== pairs.length
+      || new Set(pairs.map((row) => row.worldRecordId)).size !== pairs.length) return null;
+  return {
+    pairs,
+    byEntity: new Map(pairs.map((row) => [row.entityId, row.worldRecordId])),
+  };
+}
+
+function ceresImpactParticipant(impact, side) {
+  return {
+    entityId: impact?.[`${side}Id`] ?? null,
+    type: impact?.[`${side}Type`] ?? null,
+    worldRecordId: impact?.[`${side}WorldRecordId`] ?? null,
+    anchorSlotId: impact?.[`${side}AnchorSlotId`] ?? null,
+  };
+}
+
+function classifyCeresAuthorizedPlayerImpact(impact, {
+  playerEntityId,
+  anchorEntityId,
+  boundHostiles,
+  cameraStartTick,
+  cameraMovementEndTick,
+} = {}) {
+  if (impact?.event !== 'physics:impact' || !Number.isSafeInteger(impact?.tick)) return null;
+  const aIsPlayer = impact.aId === playerEntityId;
+  const bIsPlayer = impact.bId === playerEntityId;
+  if (aIsPlayer === bIsPlayer) return null;
+  const player = ceresImpactParticipant(impact, aIsPlayer ? 'a' : 'b');
+  const other = ceresImpactParticipant(impact, aIsPlayer ? 'b' : 'a');
+  if (player.entityId !== playerEntityId || player.type !== 'ship'
+      || player.anchorSlotId != null) return null;
+
+  if (other.entityId === anchorEntityId) {
+    if (other.type !== 'asteroid' || other.worldRecordId != null
+        || other.anchorSlotId !== 'ceres_throughline_collision_anchor') return null;
+    return Object.freeze({ kind: 'throughline-anchor', player, other });
+  }
+
+  const expectedWorldRecordId = boundHostiles?.byEntity?.get(other.entityId);
+  if (!expectedWorldRecordId) return null;
+  if (!Number.isSafeInteger(cameraStartTick) || !Number.isSafeInteger(cameraMovementEndTick)
+      || impact.tick < cameraStartTick || impact.tick > cameraMovementEndTick) return null;
+  if (other.type !== 'ship' || other.worldRecordId !== expectedWorldRecordId
+      || other.anchorSlotId != null) return null;
+  return Object.freeze({ kind: 'throughline-bound-hostile', player, other });
+}
+
+function ceresImpactIdentity(impact) {
+  return stableJson({
+    seq: impact?.seq ?? null,
+    event: impact?.event ?? null,
+    tick: impact?.tick ?? null,
+    aId: impact?.aId ?? null,
+    bId: impact?.bId ?? null,
+    aType: impact?.aType ?? null,
+    aWorldRecordId: impact?.aWorldRecordId ?? null,
+    aAnchorSlotId: impact?.aAnchorSlotId ?? null,
+    bType: impact?.bType ?? null,
+    bWorldRecordId: impact?.bWorldRecordId ?? null,
+    bAnchorSlotId: impact?.bAnchorSlotId ?? null,
+  });
+}
+
 function validatePlayerImpactObservation(observations, route, failures) {
   const capture = observations.playerImpactCapture;
   const collision = observations.anchorCollision;
+  const camera = observations.toolkit?.cameraReposition;
+  const boundHostiles = normalizeCeresImpactBoundHostiles(camera?.boundHostiles);
   const expectedPlayerEntityIds = [...new Set((observations.frames || [])
     .map((frame) => frame?.playerId)
     .filter((entityId) => entityId != null))]
@@ -7218,25 +7400,34 @@ function validatePlayerImpactObservation(observations, route, failures) {
   }
 
   const playerEntityIds = new Set(capture.playerEntityIds);
+  const impactAuthority = {
+    playerEntityId: collision?.playerEntityId,
+    anchorEntityId: collision?.anchorEntityId,
+    boundHostiles,
+    cameraStartTick: camera?.startTick,
+    cameraMovementEndTick: camera?.movementEndTick,
+  };
   const invalidImpact = capture.impacts.some((impact) => {
     const aIsPlayer = playerEntityIds.has(impact?.aId);
     const bIsPlayer = playerEntityIds.has(impact?.bId);
-    const playerEntityId = aIsPlayer && !bIsPlayer
-      ? impact.aId
-      : bIsPlayer && !aIsPlayer ? impact.bId : null;
-    const otherEntityId = aIsPlayer && !bIsPlayer
-      ? impact.bId
-      : bIsPlayer && !aIsPlayer ? impact.aId : null;
-    return impact?.event !== 'physics:impact'
-      || !Number.isSafeInteger(impact.tick)
+    return aIsPlayer === bIsPlayer
       || impact.tick < route.startTick || impact.tick > route.endTick
-      || playerEntityId !== collision?.playerEntityId
-      || otherEntityId !== collision?.anchorEntityId;
+      || classifyCeresAuthorizedPlayerImpact(impact, impactAuthority) == null;
   });
-  const authorizedImpacts = Array.isArray(collision?.impacts) ? collision.impacts : null;
-  if (invalidImpact || !authorizedImpacts
-      || stableJson(capture.impacts) !== stableJson(authorizedImpacts)) {
-    failures.push('route contains a player impact outside the exact Throughline anchor proof');
+  const anchorImpacts = Array.isArray(collision?.impacts) ? collision.impacts : null;
+  const cameraImpacts = Array.isArray(camera?.impacts) ? camera.impacts : null;
+  const declaredImpacts = anchorImpacts && cameraImpacts
+    ? [...anchorImpacts, ...cameraImpacts].filter((impact) => (
+      classifyCeresAuthorizedPlayerImpact(impact, impactAuthority) != null
+    ))
+    : null;
+  const capturedIdentities = capture.impacts.map(ceresImpactIdentity).sort();
+  const declaredIdentities = declaredImpacts
+    ? [...new Set(declaredImpacts.map(ceresImpactIdentity))].sort()
+    : null;
+  if (invalidImpact || !declaredIdentities
+      || stableJson(capturedIdentities) !== stableJson(declaredIdentities)) {
+    failures.push('route contains a player impact outside the exact anchor or bound-hostile camera proof');
   }
 }
 
@@ -7391,6 +7582,7 @@ function validateToolkitObservation(observations, route, continueProjection, fai
 
 function validateToolkitReceiptCore(receipt, route, failures, {
   stage = 'full',
+  targetAuthority = null,
 } = {}) {
   const projection = {
     destroyedRecordIds: [],
@@ -7421,6 +7613,15 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   if (initialByEntity.size < 1 || initialByEntity.size !== initial.length) {
     failures.push('toolkit receipt lacks unique durable initial Throughline hostiles');
   }
+  const exactCombatTarget = targetAuthority ? {
+    entityId: targetAuthority.entityId ?? null,
+    worldRecordId: String(targetAuthority.worldRecordId || ''),
+  } : null;
+  if (stage === 'pre-repulsor' && (!exactCombatTarget
+      || exactCombatTarget.entityId == null || !exactCombatTarget.worldRecordId
+      || initialByEntity.get(exactCombatTarget.entityId) !== exactCombatTarget.worldRecordId)) {
+    failures.push('staged toolkit receipt lacks its exact combat target in the initial cohort');
+  }
   const events = Array.isArray(receipt.events) ? receipt.events : [];
   const trace = Array.isArray(receipt.combatTrace) ? receipt.combatTrace : [];
   if (events.some((event, index) => !Number.isSafeInteger(event?.tick)
@@ -7439,6 +7640,10 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   }
   const targetMatchesInitial = (event) => initialByEntity.has(event?.targetId)
     && event.targetWorldRecordId === initialByEntity.get(event.targetId);
+  const targetMatchesCombatAuthority = (event) => exactCombatTarget
+    ? event?.targetId === exactCombatTarget.entityId
+      && event?.targetWorldRecordId === exactCombatTarget.worldRecordId
+    : targetMatchesInitial(event);
   const findAfter = (startIndex, predicate) => {
     for (let index = Math.max(0, startIndex + 1); index < events.length; index += 1) {
       if (predicate(events[index])) return index;
@@ -7472,15 +7677,17 @@ function validateToolkitReceiptCore(receipt, route, failures, {
     failures.push('Mass Seed lacks an ordered player deploy/same-seed lock receipt');
   }
   const combatAttachedIndex = findAfter(lockedSeedIndex, (event) => event.event === 'tether:attached'
-    && event.actorId === receipt.playerEntityId && targetMatchesInitial(event)
+    && event.actorId === receipt.playerEntityId && targetMatchesCombatAuthority(event)
     && event.targetId === attached?.targetId && String(event.attachmentId || '')
     && event.attachmentId !== attached?.attachmentId);
   const combatAttached = events[combatAttachedIndex];
   const combatLatchedIndex = findAfter(combatAttachedIndex, (event) => event.event === 'tether:latched'
-    && event.targetId === combatAttached?.targetId && targetMatchesInitial(event)
+    && event.targetId === combatAttached?.targetId && targetMatchesCombatAuthority(event)
     && event.previewMatched === true);
   if (combatAttachedIndex < 0 || combatLatchedIndex < 0) {
-    failures.push('Massline lacks a second exact attach/latch fire-control receipt after Mass Seed lock');
+    failures.push(exactCombatTarget
+      ? 'Massline lacks a second attach/latch receipt on the exact combat target after Mass Seed lock'
+      : 'Massline lacks a second exact attach/latch fire-control receipt after Mass Seed lock');
   }
   const repulsorIndex = findAfter(-1, (event) => event.event === 'fields:deployed'
     && event.kind === 'repulsor' && event.sourceOwnerId === receipt.playerEntityId);
@@ -7500,16 +7707,18 @@ function validateToolkitReceiptCore(receipt, route, failures, {
       && event.ownerId === receipt.playerEntityId && event.weaponId === weaponId);
     const hitIndex = findAfter(fireIndex, (event) => event.event === 'projectile:hit'
       && event.ownerId === receipt.playerEntityId && event.weaponId === weaponId
-      && targetMatchesInitial(event));
+      && targetMatchesCombatAuthority(event));
     const hit = events[hitIndex];
     const damageIndex = findAfter(fireIndex, (event) => event.event === 'combat:damage'
       && event.attackerId === receipt.playerEntityId && event.weaponId === weaponId
-      && event.targetId === hit?.targetId && targetMatchesInitial(event));
+      && event.targetId === hit?.targetId && targetMatchesCombatAuthority(event));
     const damage = events[damageIndex];
     if (fireIndex < 0 || hitIndex < 0 || damageIndex < 0
         || !(fireIndex < damageIndex && damageIndex < hitIndex)
         || damage?.tick !== hit?.tick) {
-      failures.push(`${weaponId} lacks ordered player fire/hit/damage receipts on an initial hostile`);
+      failures.push(exactCombatTarget
+        ? `${weaponId} lacks ordered player fire/hit/damage receipts on the exact combat target`
+        : `${weaponId} lacks ordered player fire/hit/damage receipts on an initial hostile`);
     } else {
       firstCombatIndex = Math.min(firstCombatIndex, fireIndex);
       lastCombatIndex = Math.max(lastCombatIndex, damageIndex, hitIndex);
@@ -7524,6 +7733,7 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   const gravityDamageTick = damageTickByWeapon.get(CERES_GRAVITY_MARKER_WEAPON_ID);
   const gravityStatusIndex = findAfter(-1, (event) => event.event === 'combat:statusApplied'
       && event.attackerId === receipt.playerEntityId && event.targetId === gravityTarget
+      && targetMatchesCombatAuthority(event)
       && event.statusId === 'status_gravity_marked'
       && Number.isSafeInteger(gravityDamageTick) && event.tick >= gravityDamageTick);
   if (gravityStatusIndex < 0) {
@@ -7536,6 +7746,7 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   const momentumDamageTick = damageTickByWeapon.get(CERES_MOMENTUM_SINK_WEAPON_ID);
   const momentumStatusIndex = findAfter(-1, (event) => event.event === 'combat:statusApplied'
       && event.attackerId === receipt.playerEntityId && event.targetId === momentumTarget
+      && targetMatchesCombatAuthority(event)
       && event.statusId === 'status_momentum_sink'
       && Number.isSafeInteger(momentumDamageTick) && event.tick >= momentumDamageTick);
   if (momentumStatusIndex < 0) {
@@ -7567,6 +7778,10 @@ function validateToolkitReceiptCore(receipt, route, failures, {
       || projection.destroyedRecordIds.some((recordId) => !initialRecordIds.has(recordId))) {
     failures.push('toolkit tombstone is absent or does not belong to an initial Throughline hostile');
   }
+  if (exactCombatTarget
+      && !projection.destroyedRecordIds.includes(exactCombatTarget.worldRecordId)) {
+    failures.push('toolkit tombstone does not bind the exact combat target');
+  }
   const playerOwnedKills = events.map((event, index) => ({ event, index })).filter(({ event }) => (
     event?.event === 'entity:killed'
       && event.killerId === receipt.playerEntityId
@@ -7589,15 +7804,19 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   const repulsorTick = events[repulsorIndex]?.tick;
   const proofKill = playerOwnedKills.find(({ event, index }) => (
     projection.destroyedRecordIds.includes(event.targetWorldRecordId)
+      && (!exactCombatTarget || (event.entityId === exactCombatTarget.entityId
+        && event.targetWorldRecordId === exactCombatTarget.worldRecordId))
       && index > lastCombatIndex && event.tick >= lastCombatTick
       && (stage !== 'full'
         || (index < repulsorIndex && Number.isSafeInteger(repulsorTick)
           && event.tick <= repulsorTick))
   ));
   if (!proofKill) {
-    failures.push(stage === 'full'
-      ? 'toolkit lacks a player-owned tombstone after combat and before Repulsor'
-      : 'toolkit lacks a player-owned tombstone after completed combat');
+    failures.push(exactCombatTarget
+      ? 'toolkit lacks a player-owned tombstone on the exact combat target after completed combat'
+      : stage === 'full'
+        ? 'toolkit lacks a player-owned tombstone after combat and before Repulsor'
+        : 'toolkit lacks a player-owned tombstone after completed combat');
   }
   const prematureCombatBreak = proofKill && events.findIndex((event, index) => (
     index > combatLatchedIndex && index < proofKill.index
@@ -7617,10 +7836,13 @@ function validateToolkitReceiptCore(receipt, route, failures, {
 
 function validateToolkitCameraReposition(receipt, route, failures) {
   const camera = receipt?.cameraReposition;
+  const boundHostiles = normalizeCeresImpactBoundHostiles(camera?.boundHostiles);
+  const initialHostiles = normalizeCeresImpactBoundHostiles(receipt?.initialHostiles);
   const projection = {
     playerEntityId: camera?.playerEntityId ?? null,
     anchorEntityId: camera?.anchorEntityId ?? null,
     anchorImpactTick: camera?.anchorImpactTick ?? null,
+    boundHostiles: boundHostiles?.pairs || [],
   };
   if (!camera || camera.pass !== true || camera.source !== 'public-flight-controls'
       || camera.reason !== 'fixed-camera-hostile-acquisition'
@@ -7634,6 +7856,10 @@ function validateToolkitCameraReposition(receipt, route, failures) {
       || camera.endTick > route.endTick) {
     failures.push('toolkit camera reposition identity/order is incomplete');
     return projection;
+  }
+  if (!boundHostiles || !initialHostiles
+      || stableJson(boundHostiles.pairs) !== stableJson(initialHostiles.pairs)) {
+    failures.push('toolkit camera reposition lacks exact prebound hostile identity');
   }
   const expectedWaypoints = planCeresThroughlineToolkitReposition().waypoints.map((waypoint) => ({
     targetId: waypoint.targetId,
@@ -7677,16 +7903,30 @@ function validateToolkitCameraReposition(receipt, route, failures) {
     failures.push('toolkit camera reposition lacks bounded player-impact capture authority');
     return projection;
   }
-  if (impacts.some((impact, index) => !Number.isSafeInteger(impact?.seq) || impact.seq < 1
+  const impactAuthority = {
+    playerEntityId: camera.playerEntityId,
+    anchorEntityId: camera.anchorEntityId,
+    boundHostiles,
+    cameraStartTick: camera.startTick,
+    cameraMovementEndTick: camera.movementEndTick,
+  };
+  if (impacts.some((impact, index) => {
+    const classification = classifyCeresAuthorizedPlayerImpact(impact, impactAuthority);
+    const playerIsA = impact?.aId === camera.playerEntityId;
+    const other = ceresImpactParticipant(impact, playerIsA ? 'b' : 'a');
+    return !Number.isSafeInteger(impact?.seq) || impact.seq < 1
       || impact.seq < capture.startSeq || impact.seq > capture.endSeq
       || !Number.isSafeInteger(impact?.tick)
       || impact.tick < camera.startTick || impact.tick > camera.endTick
       || (index > 0 && impact.seq <= impacts[index - 1].seq)
-      || impact.event !== 'physics:impact'
-      || (impact.tick <= camera.movementEndTick
-        && !((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
-          || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId))))) {
-    failures.push('toolkit camera reposition contains a non-anchor player impact');
+      || classification == null
+      || impact.otherEntityId !== other.entityId
+      || impact.otherType !== other.type
+      || impact.otherWorldRecordId !== other.worldRecordId
+      || impact.otherAnchorSlotId !== other.anchorSlotId
+      || impact.phase !== 'movement';
+  })) {
+    failures.push('toolkit camera reposition contains an unauthorized player impact');
   }
   return projection;
 }

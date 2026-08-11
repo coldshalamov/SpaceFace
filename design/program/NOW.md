@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore-cycle candidate closure | /root | VALIDATING | `scripts/lib/pq020CeresProofs.mjs`, `scripts/lib/pq020CeresTopology.mjs`, `test/pq020-ceres-topology.test.mjs`, `design/program/NOW.md` | Safe-course topology proof is green and under final review; publish this exact repair, then make exactly one broker Browser attempt |
+| PQ-048.01 ore-cycle candidate closure | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Event-time bound-hostile contact, terminal tombstone diagnostics, and exact A/B combat-target authority are 42/42 focused-green; independently review and publish this exact repair, then make exactly one broker Browser attempt |
 
 ## Uncommitted work without a confirmed live thread
 
