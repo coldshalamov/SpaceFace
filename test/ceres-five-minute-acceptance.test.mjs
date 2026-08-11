@@ -6,8 +6,10 @@ import { physics } from '../src/core/physics.js';
 import { createSimulation } from '../src/core/sim.js';
 
 import {
+  CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
+  ceresPreContinueLegReserveTicks,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
   ceresToolkitConflictAuthorityPass,
@@ -18,16 +20,20 @@ import {
   disableCeresTutorialThroughPublicSettings,
   drivePublicToCeresPoint,
   drivePublicToPocketAnchor,
+  evaluateCeresToolkitCombatCompletion,
+  evaluateCeresToolkitFinalReceipt,
   evaluateCeresFiveMinutePair,
   evaluateCeresFiveMinuteRuntime,
   evaluateCeresHumanReview,
   evaluateZeroVisibilityMetric,
   gapMetricDigest,
+  fireCeresPublicCombatVolley,
   normalizeCeresTrace,
   planCeresThroughlineToolkitReposition,
   planCeresWorkingSeamEgress,
   pointPublicAtCeresHostile,
   projectCeresActivityFrame,
+  runCeresPreRepulsorCombatLoop,
   selectCeresHostilePointingStatus,
   settleCeresPocketApproach,
   triggerCeresPublicFlightAction,
@@ -708,7 +714,6 @@ test('runtime evidence requires raw five-minute route observations, not summary 
     'tether:released',
     'massSeed:deployed',
     'massSeed:locked',
-    'fields:deployed',
     'combat:fire',
     'combat:damage',
     'projectile:hit',
@@ -721,6 +726,7 @@ test('runtime evidence requires raw five-minute route observations, not summary 
     'combat:statusApplied',
     'projectile:hit',
     'entity:killed',
+    'fields:deployed',
   ]);
   assert.deepEqual(observations.toolkit.combatTrace.map((entry) => entry.kind), [
     'physics.impulse',
@@ -1084,6 +1090,206 @@ test('physics-toolkit proof is an ordered causal trace against initial Throughli
   assert.equal(result.pass, true, result.failures?.join('; '));
 });
 
+test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisition', async () => {
+  const routeStartTick = START_TICK;
+  const deadlineTick = END_TICK - CERES_TOOLKIT_ROUTE_RESERVE_TICKS;
+  const complete = structuredClone(runtimeFixture('browser').observations.toolkit);
+  removeToolkitEvent(complete, 'fields:deployed');
+  complete.endTick = START_TICK + 7_425;
+  const staged = evaluateCeresToolkitCombatCompletion(complete, {
+    routeStartTick,
+    deadlineTick,
+  });
+  assert.equal(staged.pass, true, staged.failures.join('; '));
+  assert.equal(evaluateCeresToolkitCombatCompletion(complete, {
+    routeStartTick: complete.startTick,
+    deadlineTick,
+  }).pass, false,
+  'the camera/collision receipt must be validated against the real route start, not toolkit start');
+
+  const lateSecondKill = structuredClone(runtimeFixture('browser').observations.toolkit);
+  const repulsor = findToolkitEvent(lateSecondKill, 'fields:deployed');
+  const secondHostile = TOOLKIT_HOSTILES[1];
+  lateSecondKill.events.push({
+    seq: repulsor.seq + 1,
+    event: 'entity:killed',
+    tick: repulsor.tick + 1,
+    entityId: secondHostile.entityId,
+    targetWorldRecordId: secondHostile.worldRecordId,
+    killerId: PLAYER_ENTITY_ID,
+  });
+  lateSecondKill.destroyedRecordIds.push(secondHostile.worldRecordId);
+  const finalWithLateKill = evaluateCeresToolkitFinalReceipt(lateSecondKill, {
+    routeStartTick,
+    deadlineTick,
+  });
+  assert.equal(finalWithLateKill.pass, true, finalWithLateKill.failures.join('; '));
+
+  const lateTrace = structuredClone(runtimeFixture('browser').observations.toolkit);
+  const lateTraceRepulsor = findToolkitEvent(lateTrace, 'fields:deployed');
+  findCombatTrace(lateTrace, 'physics.impulse').tick = lateTraceRepulsor.tick + 1;
+  findCombatTrace(lateTrace, 'momentumSink.frameBound').tick = lateTraceRepulsor.tick + 2;
+  assert.equal(evaluateCeresToolkitFinalReceipt(lateTrace, {
+    routeStartTick,
+    deadlineTick,
+  }).pass, false, 'Repulsor cannot precede a required production combat-trace consequence');
+
+  const atDeadline = structuredClone(runtimeFixture('browser').observations.toolkit);
+  atDeadline.endTick = deadlineTick;
+  assert.equal(evaluateCeresToolkitFinalReceipt(atDeadline, {
+    routeStartTick,
+    deadlineTick,
+  }).pass, false, 'the durable receipt must preserve the full post-toolkit route reserve');
+
+  const incomplete = structuredClone(complete);
+  incomplete.destroyedRecordIds = [];
+  removeToolkitEvent(incomplete, 'entity:killed');
+  incomplete.endTick = START_TICK + 7_400;
+  let receiptReads = 0;
+  let pointingReads = 0;
+  let volleys = 0;
+  const result = await runCeresPreRepulsorCombatLoop({
+    routeStartTick,
+    deadlineTick,
+    readReceipt: async () => {
+      receiptReads += 1;
+      return receiptReads === 1 ? incomplete : complete;
+    },
+    readPointingStatus: async () => {
+      pointingReads += 1;
+      return {
+        tick: incomplete.endTick,
+        candidates: [{
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          distanceWU: 118,
+          speed: 6,
+          pointable: true,
+          ndcX: 0.2,
+          ndcY: -0.1,
+        }],
+        target: {
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          ndcX: 0.2,
+          ndcY: -0.1,
+        },
+      };
+    },
+    fireVolley: async () => {
+      volleys += 1;
+      return { neutralTick: incomplete.endTick + 26 };
+    },
+  });
+  assert.equal(result.evaluation.pass, true);
+  assert.equal(result.volleyCount, 1);
+  assert.equal(receiptReads, 2,
+    'the second iteration must consume the delayed tombstone before any target lookup');
+  assert.equal(pointingReads, 1);
+  assert.equal(volleys, 1);
+
+  let slowVolleyCount = 0;
+  const slowReceipt = structuredClone(incomplete);
+  slowReceipt.endTick = deadlineTick - 61;
+  await assert.rejects(
+    runCeresPreRepulsorCombatLoop({
+      routeStartTick,
+      deadlineTick,
+      readReceipt: async () => slowReceipt,
+      readPointingStatus: async () => ({
+        tick: deadlineTick - 61,
+        candidates: [{
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          pointable: true,
+          ndcX: 0,
+          ndcY: 0,
+        }],
+        target: {
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          ndcX: 0,
+          ndcY: 0,
+        },
+      }),
+      fireVolley: async () => {
+        slowVolleyCount += 1;
+        return { neutralTick: deadlineTick };
+      },
+    }),
+    (error) => error?.ceresToolkitCombatDiagnostic?.reason === 'deadline',
+  );
+  assert.equal(slowVolleyCount, 1,
+    'a slow volley is rejected from its observed neutral tick, not assumed wall duration');
+
+  let boundaryPointingReads = 0;
+  const boundary = structuredClone(incomplete);
+  boundary.endTick = deadlineTick - 60;
+  await assert.rejects(
+    runCeresPreRepulsorCombatLoop({
+      routeStartTick,
+      deadlineTick,
+      readReceipt: async () => boundary,
+      readPointingStatus: async () => {
+        boundaryPointingReads += 1;
+        return { tick: deadlineTick - 60, candidates: [], target: null };
+      },
+      fireVolley: async () => assert.fail('deadline rejection must precede fire input'),
+    }),
+    (error) => error?.ceresToolkitCombatDiagnostic?.reason === 'deadline',
+  );
+  assert.equal(boundaryPointingReads, 0,
+    'the final one-second volley reserve rejects before projection or public input');
+
+  let unpointableError = null;
+  try {
+    await runCeresPreRepulsorCombatLoop({
+      routeStartTick,
+      deadlineTick,
+      readReceipt: async () => incomplete,
+      readPointingStatus: async () => ({
+        tick: incomplete.endTick,
+        candidates: [{
+          id: TOOLKIT_HOSTILES[0].entityId,
+          worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+          pos: { x: -4_575, z: 0 },
+          vel: { x: -110, z: 0 },
+          speed: 110,
+          distanceWU: 4_575,
+          pointable: false,
+          ndcX: null,
+          ndcY: null,
+        }],
+        target: null,
+      }),
+      fireVolley: async () => assert.fail('an unpointable target must not consume fire input'),
+    });
+  } catch (error) {
+    unpointableError = error;
+  }
+  assert.equal(unpointableError?.ceresToolkitCombatDiagnostic?.reason, 'unpointable');
+  assert.equal(
+    unpointableError.ceresToolkitCombatDiagnostic.pointing.candidates[0].distanceWU,
+    4_575,
+  );
+
+  const librarySource = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const seedIndex = librarySource.indexOf("key: 'Digit4'", librarySource.indexOf(
+    'async function exercisePublicPhysicsToolkit',
+  ));
+  const combatIndex = librarySource.indexOf('runCeresPreRepulsorCombatLoop({', seedIndex);
+  const fixedVolleyIndex = librarySource.indexOf(
+    'fireCeresPublicCombatVolley(page, combatTarget, box, {', combatIndex,
+  );
+  const repulsorIndex = librarySource.indexOf("key: 'Digit6'", combatIndex);
+  assert.ok(seedIndex >= 0 && combatIndex > seedIndex && fixedVolleyIndex > combatIndex
+    && repulsorIndex > fixedVolleyIndex,
+    'the public route must lock Mass Seed, complete combat, then deploy Repulsor');
+});
+
 test('physics-toolkit evaluator rejects summary shortcuts and broken causal identity', () => {
   const mutations = [
     ['camera reposition receipt is missing', (toolkit) => {
@@ -1155,6 +1361,15 @@ test('physics-toolkit evaluator rejects summary shortcuts and broken causal iden
     }],
     ['repulsor source is not player-owned', (toolkit) => {
       findToolkitEvent(toolkit, 'fields:deployed').sourceOwnerId = 702;
+    }],
+    ['repulsor scatters the proof target before combat completes', (toolkit) => {
+      const events = toolkit.events;
+      const repulsorIndex = events.findIndex((event) => event.event === 'fields:deployed');
+      const [repulsor] = events.splice(repulsorIndex, 1);
+      const seedLockIndex = events.findIndex((event) => event.event === 'massSeed:locked');
+      repulsor.tick = events[seedLockIndex].tick + 1;
+      events.splice(seedLockIndex + 1, 0, repulsor);
+      for (const [index, event] of events.entries()) event.seq = 1_201 + index;
     }],
     ['one exact weapon never fired', (toolkit) => {
       removeToolkitEvent(toolkit, 'combat:fire', 'wpn_gravity_marker_s');
@@ -1496,6 +1711,7 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
   const harness = fixedTickToolkitActionPage();
   const attached = await triggerCeresPublicFlightAction(harness.page, {
     key: 'Space',
+    deadlineTick: 710,
     expectedEvent: {
       event: 'tether:attached',
       actorId: PLAYER_ENTITY_ID,
@@ -1520,6 +1736,7 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
   const cut = await triggerCeresPublicFlightAction(harness.page, {
     key: 'Space',
     trigger: 'release',
+    deadlineTick: 710,
     expectedEvent: {
       event: 'tether:broken',
       actorId: PLAYER_ENTITY_ID,
@@ -1536,10 +1753,12 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
 
   const seed = await triggerCeresPublicFlightAction(harness.page, {
     key: 'Digit4',
+    deadlineTick: 710,
     expectedEvent: { event: 'massSeed:deployed', ownerId: PLAYER_ENTITY_ID },
   });
   const repulsor = await triggerCeresPublicFlightAction(harness.page, {
     key: 'Digit6',
+    deadlineTick: 710,
     expectedEvent: {
       event: 'fields:deployed',
       kind: 'repulsor',
@@ -1550,6 +1769,43 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
   assert.equal(seed.receipt.neutralTick, 707);
   assert.equal(repulsor.receipt.eventTick, 708);
   assert.equal(repulsor.receipt.neutralTick, 709);
+
+  const deadlineHarness = fixedTickToolkitActionPage();
+  await assert.rejects(
+    triggerCeresPublicFlightAction(deadlineHarness.page, {
+      key: 'Digit6',
+      deadlineTick: 700,
+      expectedEvent: { event: 'fields:deployed', kind: 'repulsor' },
+    }),
+    /exhausted the toolkit deadline before input/,
+  );
+  assert.equal(deadlineHarness.log.some((entry) => entry.kind === 'down'), false,
+    'the exact toolkit deadline rejects before keydown');
+
+  const pressBoundary = fixedTickToolkitActionPage();
+  await assert.rejects(
+    triggerCeresPublicFlightAction(pressBoundary.page, {
+      key: 'Digit4',
+      deadlineTick: 702,
+      expectedEvent: { event: 'massSeed:deployed', ownerId: PLAYER_ENTITY_ID },
+    }),
+    /exhausted the toolkit deadline before input/,
+  );
+  assert.equal(pressBoundary.log.some((entry) => entry.kind === 'down'), false,
+    'a press action reserves both its event and neutral fixed ticks before keydown');
+
+  const releaseBoundary = fixedTickToolkitActionPage();
+  await assert.rejects(
+    triggerCeresPublicFlightAction(releaseBoundary.page, {
+      key: 'Space',
+      trigger: 'release',
+      deadlineTick: 703,
+      expectedEvent: { event: 'tether:broken', reason: 'tether_cut' },
+    }),
+    /exhausted the toolkit deadline before input/,
+  );
+  assert.equal(releaseBoundary.log.some((entry) => entry.kind === 'down'), false,
+    'a release action reserves held, event, and neutral fixed ticks before keydown');
 
   const eventHolds = harness.log.filter((row) => row.kind === 'event')
     .map((row) => [row.event, row.held]);
@@ -1566,6 +1822,56 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
     timeout: 25,
   }), /public toolkit event never:arrives did not arrive/);
   assert.equal(harness.heldKeys.size, 0, 'a failed public action must still release its key');
+});
+
+test('public combat volleys hold fire through exact fixed ticks and neutralize before deadline', async () => {
+  const target = { ndcX: 0.2, ndcY: -0.1 };
+  const box = { x: 10, y: 20, width: 100, height: 50 };
+  const harness = fixedTickToolkitActionPage();
+  const receipt = await fireCeresPublicCombatVolley(harness.page, target, box, {
+    deadlineTick: 800,
+  });
+  assert.deepEqual(receipt, {
+    source: 'public-mouse-fixed-tick',
+    startTick: 700,
+    heldTick: 718,
+    neutralTick: 726,
+  });
+  assert.deepEqual(harness.log.filter((row) => row.kind.startsWith('mouse')), [
+    { kind: 'mouse-move', x: 70, y: 47.5, tick: 700 },
+    { kind: 'mouse-down', tick: 700 },
+    { kind: 'mouse-up', tick: 718 },
+  ]);
+  assert.equal(harness.log.find((row) => row.kind === 'fixed-tick')?.mouseHeld, true,
+    'the 18-tick hold interval samples public primary fire as held');
+  assert.equal(harness.log.filter((row) => row.kind === 'fixed-tick').at(-1)?.mouseHeld, false,
+    'the final 8-tick interval proves neutral public primary fire');
+  assert.equal(harness.mouseHeld, false);
+
+  const boundary = fixedTickToolkitActionPage();
+  await assert.rejects(
+    fireCeresPublicCombatVolley(boundary.page, target, box, { deadlineTick: 726 }),
+    /exhausted the toolkit deadline before input/,
+  );
+  assert.equal(boundary.log.some((row) => row.kind === 'mouse-down'), false,
+    'an insufficient fixed-tick envelope rejects before mouse input');
+
+  const failure = fixedTickToolkitActionPage();
+  const originalWait = failure.page.waitForFunction;
+  let firstWait = true;
+  failure.page.waitForFunction = async (...args) => {
+    if (firstWait) {
+      firstWait = false;
+      throw new Error('synthetic fixed-tick failure');
+    }
+    return originalWait(...args);
+  };
+  await assert.rejects(
+    fireCeresPublicCombatVolley(failure.page, target, box, { deadlineTick: 800 }),
+    /synthetic fixed-tick failure/,
+  );
+  assert.equal(failure.mouseHeld, false, 'failure cleanup must release public primary fire');
+  assert.equal(failure.log.at(-1)?.kind, 'mouse-up');
 });
 
 test('public hostile acquisition waits for a fresh exact ready Massline receipt', async () => {
@@ -1602,6 +1908,13 @@ test('public hostile acquisition waits for a fresh exact ready Massline receipt'
     afterTick: 900,
   })).context, 'hostile-flyby',
   'the live INTERCEPT context is valid when it binds the same exact ready durable target');
+
+  const atDeadline = hostileMasslineAcquisitionPage({ stateTick: 902, publishedTick: 902 });
+  await assert.rejects(waitForCeresHostileMasslineAcquisition(atDeadline.page, target, {
+    afterTick: 900,
+    deadlineTick: 902,
+  }), /public cursor did not publish the exact ready hostile Massline acquisition/,
+  'an acquisition published at the absolute toolkit deadline is too late');
 
   for (const [label, options] of [
     ['stale receipt', { publishedTick: 900 }],
@@ -1705,6 +2018,30 @@ test('Working Seam egress disables dash-shaped boost without changing generic ap
   }, 'the short station-center corridor must not emit a dash-shaped Shift tap');
 });
 
+test('pre-Continue route reserves preserve toolkit, Cathedral, and save horizons', () => {
+  assert.equal(ceresPreContinueLegReserveTicks('ceres_ambush_run'), 7_200);
+  assert.equal(ceresPreContinueLegReserveTicks('ceres_cathedral_grave'), 4_800);
+  assert.equal(ceresPreContinueLegReserveTicks('ceres_refinery_pocket'), 2_400);
+  assert.equal(ceresPreContinueLegReserveTicks('ceres_working_seam'), 2_400);
+  assert.equal(ceresPreContinueLegReserveTicks('ceres_ambush_run', {
+    continueCompleted: true,
+  }), 2_400, 'post-Continue observation retains only the exact final evidence horizon');
+
+  const librarySource = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(librarySource,
+    /ceresPreContinueLegReserveTicks\(leg\.pocketId,[\s\S]*minRemainingTicks: legReserveTicks/,
+    'the leg selector must flow its reserve into the physical pocket driver');
+  assert.match(librarySource,
+    /drivePublicAnchorCollision\(page, observerBounds\.endTick, \{[\s\S]*minRemainingTicks: CERES_TOOLKIT_ROUTE_RESERVE_TICKS/,
+    'the collision proof must preserve the full toolkit and downstream route reserve');
+  assert.match(librarySource,
+    /const toolkitDeadlineTick = endTick - CERES_TOOLKIT_ROUTE_RESERVE_TICKS/,
+    'every toolkit sub-action must share the absolute 7,200-tick deadline');
+});
+
 test('public toolkit acquisition uses a clear translation corridor and never treats yaw as camera motion', async () => {
   const nearestOffscreen = {
     id: 202,
@@ -1754,12 +2091,19 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
   assert.deepEqual(plan.waypoints.map((waypoint) => ({
     targetPos: waypoint.targetPos,
     arrivalRadiusWU: waypoint.arrivalRadiusWU,
+    minRemainingTicks: waypoint.minRemainingTicks,
     allowBoost: waypoint.allowBoost,
   })), [
-    { targetPos: throughlineBeacon, arrivalRadiusWU: 8, allowBoost: false },
+    {
+      targetPos: throughlineBeacon,
+      arrivalRadiusWU: 8,
+      minRemainingTicks: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+      allowBoost: false,
+    },
     {
       targetPos: { x: hostileSpawn.x, z: hostileSpawn.z - 65 },
       arrivalRadiusWU: 20,
+      minRemainingTicks: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
       allowBoost: false,
     },
   ], 'the collision recovery first backs out, then translates the fixed camera below the hostile spawn');
@@ -1822,7 +2166,8 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
   });
   assert.equal(acquired, null,
     'stationary yaw telemetry cannot turn an off-screen world actor into a pointable target');
-  assert.deepEqual(events, ['wait:150', 'wait:150']);
+  assert.deepEqual(events, ['wait:150'],
+    'two attempts require only the one wait between their projection samples');
 
   let horizonKeydowns = 0;
   const horizonPage = {
@@ -1852,10 +2197,10 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
     'const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {',
   );
   const conflictIndex = librarySource.indexOf(
-    'waitForCeresToolkitConflictAuthority(page, prebound, endTick)', repositionIndex,
+    'waitForCeresToolkitConflictAuthority(page, prebound, endTick, {', repositionIndex,
   );
   const pointIndex = librarySource.indexOf(
-    'let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick)',
+    'const target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick, {',
   );
   assert.ok(repositionIndex >= 0 && conflictIndex > repositionIndex && pointIndex > conflictIndex,
     'translation must precede live conflict classification and render-projection acquisition');
@@ -2672,15 +3017,6 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       tick: START_TICK + 7_252,
       seedId,
     },
-    {
-      seq: 1_208,
-      event: 'fields:deployed',
-      tick: START_TICK + 7_260,
-      fieldId: 'field_repulsor_1_1',
-      kind: 'repulsor',
-      sourceId: 9_002,
-      sourceOwnerId: PLAYER_ENTITY_ID,
-    },
     weaponEvent({ seq: 1_209, event: 'combat:fire', tick: START_TICK + 7_300,
       weaponId: 'wpn_concussion_cannon_m', target }),
     weaponEvent({ seq: 1_210, event: 'combat:damage', tick: START_TICK + 7_310,
@@ -2724,6 +3060,15 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       entityId: target.entityId,
       targetWorldRecordId: target.worldRecordId,
       killerId: PLAYER_ENTITY_ID,
+    },
+    {
+      seq: 1_221,
+      event: 'fields:deployed',
+      tick: START_TICK + 7_430,
+      fieldId: 'field_repulsor_1_1',
+      kind: 'repulsor',
+      sourceId: 9_002,
+      sourceOwnerId: PLAYER_ENTITY_ID,
     },
   ];
   return {
@@ -3235,6 +3580,7 @@ function publicInputReceipt() {
 function fixedTickToolkitActionPage() {
   const heldKeys = new Set();
   const log = [];
+  let mouseHeld = false;
   const state = {
     tick: 700,
     simTime: 700 / 60,
@@ -3277,17 +3623,31 @@ function fixedTickToolkitActionPage() {
         log.push({ kind: 'up', key, tick: state.tick });
       },
     },
+    mouse: {
+      async move(x, y) {
+        log.push({ kind: 'mouse-move', x, y, tick: state.tick });
+      },
+      async down() {
+        mouseHeld = true;
+        log.push({ kind: 'mouse-down', tick: state.tick });
+      },
+      async up() {
+        mouseHeld = false;
+        log.push({ kind: 'mouse-up', tick: state.tick });
+      },
+    },
     async evaluate(callback, argument) {
       return runInPage(callback, argument);
     },
     async waitForFunction(callback, argument) {
-      if (argument?.event) {
-        if (argument.event === 'never:arrives') throw new Error('fake event timeout');
+      const eventCriteria = argument?.criteria ?? argument;
+      if (eventCriteria?.event) {
+        if (eventCriteria.event === 'never:arrives') throw new Error('fake event timeout');
         assert.equal(runInPage(callback, argument), false,
           'stale observer history must not satisfy the new action cursor');
         state.tick += 1;
         state.simTime = state.tick / 60;
-        const event = Object.fromEntries(Object.entries(argument)
+        const event = Object.fromEntries(Object.entries(eventCriteria)
           .filter(([key]) => key !== 'minTick' && key !== 'minSeq'));
         event.seq = trace.nextEventSeq;
         trace.nextEventSeq += 1;
@@ -3307,14 +3667,25 @@ function fixedTickToolkitActionPage() {
         && Number.isSafeInteger(argument?.deltaTicks));
       state.tick = Math.max(state.tick, argument.tick + argument.deltaTicks);
       state.simTime = state.tick / 60;
-      log.push({ kind: 'fixed-tick', tick: state.tick, held: [...heldKeys].sort() });
+      log.push({
+        kind: 'fixed-tick',
+        tick: state.tick,
+        held: [...heldKeys].sort(),
+        mouseHeld,
+      });
       assert.equal(runInPage(callback, argument), true);
     },
   };
-  return { page, heldKeys, log };
+  return {
+    page,
+    heldKeys,
+    log,
+    get mouseHeld() { return mouseHeld; },
+  };
 }
 
 function hostileMasslineAcquisitionPage({
+  stateTick = 901,
   publishedTick = 901,
   selectedTargetId = TOOLKIT_HOSTILES[0].entityId,
   worldRecordId = TOOLKIT_HOSTILES[0].worldRecordId,
@@ -3357,7 +3728,7 @@ function hostileMasslineAcquisitionPage({
       async waitForFunction(callback, argument) {
         assert.equal(runInPage(callback, argument), false,
           'the pre-move/stale frame cannot satisfy acquisition authority');
-        state.tick = 901;
+        state.tick = stateTick;
         state.simTime = state.tick / 60;
         state.input.aimIntentActive = true;
         state.input.pointerScreen.active = true;

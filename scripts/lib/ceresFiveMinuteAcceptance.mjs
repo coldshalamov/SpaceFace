@@ -87,6 +87,7 @@ export const CERES_FIVE_MINUTE_SIMULATION_SECONDS = 300;
 export const CERES_FIVE_MINUTE_VISIBILITY_SEMANTICS = 'world-camera-renderability-v1';
 export const CERES_ORE_CYCLE_PRE_SAVE_CHUNK = 'pre_save';
 export const CERES_ORE_CYCLE_POST_CONTINUE_CHUNK = 'post_continue';
+export const CERES_TOOLKIT_ROUTE_RESERVE_TICKS = 7_200;
 
 export const CERES_FIVE_MINUTE_ACTOR_SLOT_IDS = Object.freeze([
   'ceres_refinery_hauler',
@@ -167,6 +168,11 @@ const CERES_TOOLKIT_CONFLICT_POLL_MS = 150;
 // This is an infrastructure watchdog, not the simulation deadline. Software/browser execution can
 // advance well under one simulation second per wall second, so retain ample headroom for 50 sim-s.
 const CERES_TOOLKIT_CONFLICT_MAX_POLLS = 1_200;
+const CERES_TOOLKIT_VOLLEY_RESERVE_TICKS = 60;
+const CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS = 2;
+const CERES_TOOLKIT_RELEASE_ACTION_MIN_TICKS = 3;
+const CERES_TOOLKIT_FIRE_HOLD_TICKS = 18;
+const CERES_TOOLKIT_FIRE_NEUTRAL_TICKS = 8;
 // The fixed chase camera never follows hull yaw. After the collision receipt, first back out to the
 // authored Throughline beacon, then move along the seed-47 corridor to a point 65 WU south of the
 // authored hostile-presence center. The two collision-anchor centerlines retain >44 WU of physical
@@ -176,6 +182,19 @@ const CERES_TOOLKIT_CAMERA_STAGE_GLOBAL = Object.freeze({
   x: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.x,
   z: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.z - 65,
 });
+const CERES_PRE_CONTINUE_LEG_RESERVE_TICKS = Object.freeze({
+  ceres_ambush_run: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+  ceres_cathedral_grave: 4_800,
+  ceres_refinery_pocket: 2_400,
+});
+
+export function ceresPreContinueLegReserveTicks(pocketId, {
+  continueCompleted = false,
+} = {}) {
+  if (!String(pocketId || '')) throw new TypeError('Ceres leg reserve requires a pocket id');
+  if (continueCompleted) return 2_400;
+  return CERES_PRE_CONTINUE_LEG_RESERVE_TICKS[pocketId] ?? 2_400;
+}
 const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
 const CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU = CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
 const CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS = 2_400;
@@ -365,9 +384,12 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
   const maxWaitTicks = options.maxWaitTicks ?? CERES_TOOLKIT_CONFLICT_WAIT_TICKS;
   const pollMs = options.pollMs ?? CERES_TOOLKIT_CONFLICT_POLL_MS;
   const maxPolls = options.maxPolls ?? CERES_TOOLKIT_CONFLICT_MAX_POLLS;
+  const fixedDeadlineTick = options.deadlineTick ?? endTick - 120;
   if (!Number.isSafeInteger(maxWaitTicks) || maxWaitTicks <= 0
       || !Number.isFinite(pollMs) || pollMs <= 0
-      || !Number.isSafeInteger(maxPolls) || maxPolls <= 0) {
+      || !Number.isSafeInteger(maxPolls) || maxPolls <= 0
+      || !Number.isSafeInteger(fixedDeadlineTick)
+      || fixedDeadlineTick <= 0 || fixedDeadlineTick > endTick - 120) {
     throw new TypeError('toolkit conflict wait options must be positive bounded values');
   }
 
@@ -396,7 +418,7 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     }
     if (waitStartTick == null) {
       waitStartTick = tick;
-      deadlineTick = Math.min(endTick - 120, waitStartTick + maxWaitTicks);
+      deadlineTick = Math.min(fixedDeadlineTick, waitStartTick + maxWaitTicks);
       if (deadlineTick <= waitStartTick) {
         fail('toolkit hostile classification exhausted the exact route horizon');
       }
@@ -754,15 +776,19 @@ async function readCeresPublicActionCursor(page) {
 export async function waitForCeresHostileMasslineAcquisition(page, target, {
   afterTick,
   timeout = 5_000,
+  deadlineTick = null,
 } = {}) {
+  const fixedDeadlineTick = deadlineTick ?? Number.MAX_SAFE_INTEGER;
   if (target?.id == null || !String(target?.worldRecordId || '')
-      || !Number.isSafeInteger(afterTick) || !Number.isFinite(timeout) || timeout <= 0) {
+      || !Number.isSafeInteger(afterTick) || !Number.isFinite(timeout) || timeout <= 0
+      || !Number.isSafeInteger(fixedDeadlineTick) || fixedDeadlineTick <= afterTick + 1) {
     throw new TypeError('hostile Massline acquisition requires exact target identity and cursor tick');
   }
   const authority = {
     targetId: target.id,
     worldRecordId: target.worldRecordId,
     minTick: afterTick + 1,
+    deadlineTick: fixedDeadlineTick,
   };
   const readReceipt = () => page.evaluate(({ targetId, worldRecordId }) => {
     const state = window.SF?.state;
@@ -805,12 +831,12 @@ export async function waitForCeresHostileMasslineAcquisition(page, target, {
     return error;
   };
   try {
-    await page.waitForFunction(({ targetId, worldRecordId, minTick }) => {
+    await page.waitForFunction(({ targetId, worldRecordId, minTick, deadlineTick: terminalTick }) => {
       const state = window.SF?.state;
       const entity = state?.entities?.get(targetId);
       const acquisition = state?.masslineAcquisition;
       const selected = acquisition?.selected;
-      return Number(state?.tick) >= minTick
+      const ready = Number(state?.tick) >= minTick
         && state?.input?.aimIntentActive === true
         && state?.input?.pointerScreen?.active === true
         && state?.input?.autoAim?.targetId == null
@@ -825,6 +851,7 @@ export async function waitForCeresHostileMasslineAcquisition(page, target, {
         && Number(acquisition?.publishedTick) >= minTick
         && Number(acquisition?.publishedTick) <= Number(state?.tick)
         && Number(acquisition?.validUntil) >= Number(state?.simTime);
+      return ready || Number(state?.tick) >= terminalTick;
     }, authority, { timeout });
   } catch (cause) {
     const snapshot = await readReceipt().catch(() => ({ snapshotUnavailable: true }));
@@ -837,8 +864,10 @@ export async function waitForCeresHostileMasslineAcquisition(page, target, {
     throw acquisitionError(cause, { snapshotUnavailable: true });
   }
   if (!Number.isSafeInteger(receipt?.tick) || receipt.tick < authority.minTick
+      || receipt.tick >= authority.deadlineTick
       || !Number.isSafeInteger(receipt?.publishedTick)
       || receipt.publishedTick < authority.minTick || receipt.publishedTick > receipt.tick
+      || receipt.publishedTick >= authority.deadlineTick
       || !Number.isFinite(receipt?.simTime) || !Number.isFinite(receipt?.validUntil)
       || receipt.validUntil < receipt.simTime
       || receipt.aimIntentActive !== true || receipt.pointerActive !== true
@@ -860,6 +889,7 @@ export async function triggerCeresPublicFlightAction(page, {
   expectedEvent,
   trigger = 'press',
   timeout = 20_000,
+  deadlineTick = null,
 } = {}) {
   if (!page?.keyboard || typeof page.keyboard.down !== 'function'
       || typeof page.keyboard.up !== 'function') {
@@ -867,11 +897,18 @@ export async function triggerCeresPublicFlightAction(page, {
   }
   if (!String(key || '') || !expectedEvent?.event
       || !['press', 'release'].includes(trigger)
-      || !Number.isFinite(timeout) || timeout <= 0) {
+      || !Number.isFinite(timeout) || timeout <= 0
+      || (deadlineTick != null && (!Number.isSafeInteger(deadlineTick) || deadlineTick <= 0))) {
     throw new TypeError('public flight action requires a key, event, trigger phase, and timeout');
   }
   const cursor = await readCeresPublicActionCursor(page);
   const pressTick = cursor.tick;
+  const requiredActionTicks = trigger === 'release'
+    ? CERES_TOOLKIT_RELEASE_ACTION_MIN_TICKS
+    : CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS;
+  if (deadlineTick != null && pressTick >= deadlineTick - requiredActionTicks) {
+    throw new Error(`public ${key} ${trigger} pulse exhausted the toolkit deadline before input`);
+  }
   let heldTick = pressTick;
   let event = null;
   let eventCriteria = null;
@@ -885,7 +922,7 @@ export async function triggerCeresPublicFlightAction(page, {
         minTick: Math.max(Number(expectedEvent.minTick) || 0, pressTick + 1),
         minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
       };
-      event = await waitForCeresBusEvent(page, eventCriteria, timeout);
+      event = await waitForCeresBusEvent(page, eventCriteria, timeout, { deadlineTick });
       heldTick = Math.max(pressTick, Number(event?.tick) || pressTick);
     }
   } finally {
@@ -897,7 +934,7 @@ export async function triggerCeresPublicFlightAction(page, {
       minTick: Math.max(Number(expectedEvent.minTick) || 0, heldTick + 1),
       minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
     };
-    event = await waitForCeresBusEvent(page, eventCriteria, timeout);
+    event = await waitForCeresBusEvent(page, eventCriteria, timeout, { deadlineTick });
   }
   const neutralTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
   const eventTick = Number(event?.tick);
@@ -905,7 +942,8 @@ export async function triggerCeresPublicFlightAction(page, {
   if (!Number.isSafeInteger(eventTick) || eventTick <= pressTick
       || (trigger === 'release' && eventTick <= heldTick)
       || !Number.isSafeInteger(eventSeq) || eventSeq < cursor.nextEventSeq
-      || heldTick < pressTick || neutralTick <= eventTick) {
+      || heldTick < pressTick || neutralTick <= eventTick
+      || (deadlineTick != null && neutralTick >= deadlineTick)) {
     throw new Error(`public ${key} ${trigger} pulse lacks ordered fixed-tick event authority`);
   }
   return {
@@ -1495,8 +1533,11 @@ export async function runCeresFiveMinutePublicRoute({
     let oreCycleSaveGate = null;
     while ((await readTick(page)) < observerBounds.endTick) {
       const leg = legs[routeCycle % legs.length];
+      const legReserveTicks = ceresPreContinueLegReserveTicks(leg.pocketId, {
+        continueCompleted: Boolean(continueProof),
+      });
       const remaining = observerBounds.endTick - await readTick(page);
-      if (remaining < 2_400) break;
+      if (remaining <= legReserveTicks) break;
       routeCycle += 1;
       await mark(`select-${leg.slug}`, { pocketId: leg.pocketId, cycle: routeCycle });
       await pq020FunctionalRouteDrivers.selectMapTarget(page, {
@@ -1517,7 +1558,9 @@ export async function runCeresFiveMinutePublicRoute({
       if (leg.target === PQ020_ROUTE_TARGETS.cathedral) {
         await pq020FunctionalRouteDrivers.waitForShipSettled(page);
       }
-      await drivePublicToPocketAnchor(page, leg.pocketId, observerBounds.endTick);
+      await drivePublicToPocketAnchor(page, leg.pocketId, observerBounds.endTick, {
+        minRemainingTicks: legReserveTicks,
+      });
       await mark(`arrive-${leg.slug}`, { pocketId: leg.pocketId, cycle: routeCycle });
       const arrivalSnapshot = await readCeresRouteSnapshot(page);
       const physicalReceipt = await readAutopilotPhysicalReceipt(page, {
@@ -1554,8 +1597,10 @@ export async function runCeresFiveMinutePublicRoute({
       }
 
       if (leg.pocketId === 'ceres_ambush_run' && !toolkit) {
-        collisionProof = await drivePublicAnchorCollision(page, observerBounds.endTick);
-        toolkit = await exercisePublicPhysicsToolkit(page, observerBounds.endTick, collisionProof);
+        collisionProof = await drivePublicAnchorCollision(page, observerBounds.endTick, {
+          minRemainingTicks: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+        });
+        toolkit = await exercisePublicPhysicsToolkit(page, observerBounds, collisionProof);
       }
       if (routeCycle >= legs.length && !continueProof) {
         if (oreCycleGateConfig) {
@@ -1680,6 +1725,7 @@ export async function runCeresFiveMinutePublicRoute({
         snapshot: error.ceresRouteFailureSnapshot,
         toolkitConflict: error?.ceresToolkitConflictDiagnostic || null,
         toolkitAction: error?.ceresToolkitActionDiagnostic || null,
+        toolkitCombat: error?.ceresToolkitCombatDiagnostic || null,
       };
       await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
       await page.screenshot({ path: screenshotPath }).catch(() => {});
@@ -3026,7 +3072,13 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   });
 }
 
-export function planCeresThroughlineToolkitReposition() {
+export function planCeresThroughlineToolkitReposition({
+  minRemainingTicks = CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+} = {}) {
+  if (!Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120
+      || minRemainingTicks >= CERES_FIVE_MINUTE_FIXED_TICKS) {
+    throw new Error('toolkit camera reposition requires a valid fixed-tick reserve');
+  }
   const throughlineBeacon = CERES_POCKET_TARGETS.ceres_ambush_run.targetPos;
   return Object.freeze({
     source: 'public-flight-controls',
@@ -3040,7 +3092,7 @@ export function planCeresThroughlineToolkitReposition() {
           z: throughlineBeacon.z,
         }),
         arrivalRadiusWU: CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU,
-        minRemainingTicks: 120,
+        minRemainingTicks,
         allowBoost: false,
       }),
       Object.freeze({
@@ -3048,7 +3100,7 @@ export function planCeresThroughlineToolkitReposition() {
         targetName: 'Throughline toolkit camera stage',
         targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
         arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks: 120,
+        minRemainingTicks,
         allowBoost: false,
       }),
     ]),
@@ -3309,10 +3361,15 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   });
 }
 
-export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
+export async function drivePublicToPocketAnchor(page, pocketId, endTick, {
+  minRemainingTicks = 120,
+} = {}) {
   const target = CERES_POCKET_TARGETS[pocketId];
   if (!target) throw new Error(`unknown Ceres pocket ${pocketId}`);
-  return drivePublicToCeresPoint(page, target, endTick);
+  return drivePublicToCeresPoint(page, {
+    ...target,
+    minRemainingTicks,
+  }, endTick);
 }
 
 function createCeresPocketApproachDiagnostic(target, endTick) {
@@ -3443,7 +3500,13 @@ function physicalArrivalReceipt({
   };
 }
 
-async function drivePublicAnchorCollision(page, endTick) {
+async function drivePublicAnchorCollision(page, endTick, {
+  minRemainingTicks = 120,
+} = {}) {
+  if (!Number.isSafeInteger(endTick) || !Number.isSafeInteger(minRemainingTicks)
+      || minRemainingTicks < 120 || minRemainingTicks >= endTick) {
+    throw new Error('Throughline collision attempt requires a valid fixed-tick reserve');
+  }
   const slotId = 'ceres_throughline_collision_anchor';
   const canvas = page.locator('#gl-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30_000 });
@@ -3503,7 +3566,7 @@ async function drivePublicAnchorCollision(page, endTick) {
         };
       }
       if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
         throw new Error('Throughline collision attempt exhausted the five-minute horizon');
       }
       if (Math.abs(status.headingError) > 0.09) {
@@ -3525,7 +3588,180 @@ async function drivePublicAnchorCollision(page, endTick) {
   throw new Error('public flight controls did not produce an exact Throughline-anchor impact');
 }
 
-async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
+export function evaluateCeresToolkitCombatCompletion(receipt, {
+  routeStartTick,
+  deadlineTick,
+} = {}) {
+  if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(deadlineTick)
+      || deadlineTick <= routeStartTick + 1) {
+    throw new TypeError('toolkit combat evaluation requires exact route and deadline ticks');
+  }
+  const failures = [];
+  const projection = validateToolkitReceiptCore(receipt, {
+    startTick: routeStartTick,
+    endTick: deadlineTick - 1,
+  }, failures, { stage: 'pre-repulsor' });
+  return Object.freeze({
+    pass: failures.length === 0,
+    failures: Object.freeze(failures),
+    destroyedRecordIds: Object.freeze([...(projection.destroyedRecordIds || [])]),
+  });
+}
+
+export function evaluateCeresToolkitFinalReceipt(receipt, {
+  routeStartTick,
+  deadlineTick,
+} = {}) {
+  if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(deadlineTick)
+      || deadlineTick <= routeStartTick + 1) {
+    throw new TypeError('toolkit final evaluation requires exact route and deadline ticks');
+  }
+  const failures = [];
+  const projection = validateToolkitReceiptCore(receipt, {
+    startTick: routeStartTick,
+    endTick: deadlineTick - 1,
+  }, failures);
+  return Object.freeze({
+    pass: failures.length === 0,
+    failures: Object.freeze(failures),
+    destroyedRecordIds: Object.freeze([...(projection.destroyedRecordIds || [])]),
+  });
+}
+
+export async function fireCeresPublicCombatVolley(page, target, box, {
+  deadlineTick,
+} = {}) {
+  if (!page?.mouse || typeof page.mouse.move !== 'function'
+      || typeof page.mouse.down !== 'function' || typeof page.mouse.up !== 'function'
+      || !Number.isFinite(Number(target?.ndcX)) || !Number.isFinite(Number(target?.ndcY))
+      || !Number.isFinite(Number(box?.x)) || !Number.isFinite(Number(box?.y))
+      || !Number.isFinite(Number(box?.width)) || !Number.isFinite(Number(box?.height))
+      || !Number.isSafeInteger(deadlineTick)) {
+    throw new TypeError('public combat volley requires a pointable target, canvas, and deadline');
+  }
+  const startTick = await readTick(page);
+  const requiredTicks = CERES_TOOLKIT_FIRE_HOLD_TICKS + CERES_TOOLKIT_FIRE_NEUTRAL_TICKS;
+  if (!Number.isSafeInteger(startTick) || startTick >= deadlineTick - requiredTicks) {
+    throw new Error('public combat volley exhausted the toolkit deadline before input');
+  }
+  await page.mouse.move(
+    box.x + (target.ndcX + 1) * 0.5 * box.width,
+    box.y + (1 - (target.ndcY + 1) * 0.5) * box.height,
+  );
+  await page.mouse.down();
+  let heldTick;
+  try {
+    heldTick = await waitForCeresFixedTicks(page, CERES_TOOLKIT_FIRE_HOLD_TICKS);
+  } finally {
+    await page.mouse.up().catch(() => {});
+  }
+  if (!Number.isSafeInteger(heldTick) || heldTick >= deadlineTick) {
+    throw new Error('public combat volley crossed the toolkit deadline while held');
+  }
+  const neutralTick = await waitForCeresFixedTicks(page, CERES_TOOLKIT_FIRE_NEUTRAL_TICKS);
+  if (!Number.isSafeInteger(neutralTick) || neutralTick <= heldTick || neutralTick >= deadlineTick) {
+    throw new Error('public combat volley lacks a pre-deadline neutral frame');
+  }
+  return Object.freeze({
+    source: 'public-mouse-fixed-tick',
+    startTick,
+    heldTick,
+    neutralTick,
+  });
+}
+
+export async function runCeresPreRepulsorCombatLoop({
+  routeStartTick,
+  deadlineTick,
+  maxVolleys = 120,
+  readReceipt,
+  readPointingStatus,
+  fireVolley,
+} = {}) {
+  if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(deadlineTick)
+      || deadlineTick <= routeStartTick + 1
+      || !Number.isSafeInteger(maxVolleys) || maxVolleys < 1 || maxVolleys > 120
+      || typeof readReceipt !== 'function' || typeof readPointingStatus !== 'function'
+      || typeof fireVolley !== 'function') {
+    throw new TypeError('pre-Repulsor combat loop requires bounded callbacks and exact ticks');
+  }
+  let volleyCount = 0;
+  let receipt = null;
+  let evaluation = null;
+  let pointing = null;
+  const fail = (reason, message) => {
+    const currentTick = Number(pointing?.tick ?? receipt?.endTick);
+    const error = new Error(message);
+    error.ceresToolkitCombatDiagnostic = {
+      schema: 'spaceface.ceresToolkitCombatDiagnostic.v1',
+      reason,
+      routeStartTick,
+      deadlineTick,
+      currentTick: Number.isSafeInteger(currentTick) ? currentTick : null,
+      remainingTicks: Number.isSafeInteger(currentTick) ? deadlineTick - currentTick : null,
+      volleyCount,
+      receiptFailures: (evaluation?.failures || []).slice(0, 16),
+      destroyedRecordIds: (receipt?.destroyedRecordIds || []).slice(0, 8),
+      pointing: pointing ? {
+        tick: Number(pointing.tick),
+        candidates: (pointing.candidates || []).slice(0, 8).map((row) => ({ ...row })),
+      } : null,
+    };
+    throw error;
+  };
+
+  for (;;) {
+    receipt = await readReceipt();
+    evaluation = evaluateCeresToolkitCombatCompletion(receipt, {
+      routeStartTick,
+      deadlineTick,
+    });
+    if (evaluation.pass) {
+      if (!Number.isSafeInteger(receipt?.endTick)
+          || receipt.endTick >= deadlineTick - CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS) {
+        fail('deadline', 'toolkit combat completed too late for the post-combat Repulsor receipt');
+      }
+      return Object.freeze({ receipt, evaluation, volleyCount });
+    }
+    if (!Number.isSafeInteger(receipt?.endTick)) {
+      fail('invalid-receipt', 'toolkit combat receipt lacks a simulation tick');
+    }
+    if (receipt.endTick >= deadlineTick - CERES_TOOLKIT_VOLLEY_RESERVE_TICKS) {
+      fail('deadline', 'toolkit combat did not complete before its fixed route deadline');
+    }
+    if (volleyCount >= maxVolleys) {
+      fail('volley-limit', 'toolkit combat exhausted its bounded volley count');
+    }
+
+    pointing = await readPointingStatus();
+    if (!Number.isSafeInteger(pointing?.tick)) {
+      fail('invalid-receipt', 'toolkit combat pointing returned an invalid simulation tick');
+    }
+    if (pointing.tick >= deadlineTick - CERES_TOOLKIT_VOLLEY_RESERVE_TICKS) {
+      fail('deadline', 'toolkit combat reached its deadline before public fire input');
+    }
+    if (!pointing.target) {
+      fail('unpointable', 'toolkit combat target left the public camera before receipts completed');
+    }
+    const volley = await fireVolley(pointing.target);
+    if (!Number.isSafeInteger(volley?.neutralTick) || volley.neutralTick <= pointing.tick) {
+      fail('invalid-receipt', 'toolkit combat volley lacks an ordered neutral tick');
+    }
+    if (volley.neutralTick >= deadlineTick) {
+      fail('deadline', 'toolkit combat volley crossed its fixed route deadline');
+    }
+    volleyCount += 1;
+  }
+}
+
+async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
+  const routeStartTick = Number(routeBounds?.startTick);
+  const endTick = Number(routeBounds?.endTick);
+  if (!Number.isSafeInteger(routeStartTick) || !Number.isSafeInteger(endTick)
+      || endTick - routeStartTick !== CERES_FIVE_MINUTE_FIXED_TICKS) {
+    throw new Error('toolkit exercise requires the exact five-minute route bounds');
+  }
+  const toolkitDeadlineTick = endTick - CERES_TOOLKIT_ROUTE_RESERVE_TICKS;
   const canvas = page.locator('#gl-canvas');
   const box = await canvas.boundingBox();
   if (!box) throw new Error('toolkit exercise requires the flight canvas');
@@ -3562,9 +3798,13 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     anchorEntityId: collisionProof.anchorEntityId,
     anchorImpactTick: collisionProof.impact.tick,
   });
-  const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick);
+  const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick, {
+    deadlineTick: toolkitDeadlineTick,
+  });
   baseline.cameraReposition = cameraReposition;
-  let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick);
+  const target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick, {
+    deadlineTick: toolkitDeadlineTick,
+  });
   if (!target || !baseline.initialHostiles.some((row) => row.entityId === target.id
       && row.worldRecordId === target.worldRecordId)) {
     throw new Error('toolkit exercise could not point at a declared Throughline hostile');
@@ -3576,10 +3816,12 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
   const cursorMovedAtTick = await readTick(page);
   await waitForCeresHostileMasslineAcquisition(page, target, {
     afterTick: cursorMovedAtTick,
+    deadlineTick: toolkitDeadlineTick,
   });
 
   const attachedAction = await triggerCeresPublicFlightAction(page, {
     key: 'Space',
+    deadlineTick: toolkitDeadlineTick,
     expectedEvent: {
       event: 'tether:attached',
       minTick: baseline.startTick,
@@ -3592,10 +3834,11 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     event: 'tether:latched',
     minTick: attached.tick,
     targetId: target.id,
-  });
+  }, 20_000, { deadlineTick: toolkitDeadlineTick });
   const brokenAction = await triggerCeresPublicFlightAction(page, {
     key: 'Space',
     trigger: 'release',
+    deadlineTick: toolkitDeadlineTick,
     expectedEvent: {
       event: 'tether:broken',
       minTick: attached.tick,
@@ -3610,15 +3853,16 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     event: 'tether:cut',
     minTick: broken.tick,
     targetId: target.id,
-  });
+  }, 20_000, { deadlineTick: toolkitDeadlineTick });
   await waitForCeresBusEvent(page, {
     event: 'tether:released',
     minTick: broken.tick,
     targetId: target.id,
-  });
+  }, 20_000, { deadlineTick: toolkitDeadlineTick });
 
   const seedAction = await triggerCeresPublicFlightAction(page, {
     key: 'Digit4',
+    deadlineTick: toolkitDeadlineTick,
     expectedEvent: {
       event: 'massSeed:deployed',
       minTick: baseline.startTick,
@@ -3630,10 +3874,28 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     event: 'massSeed:locked',
     minTick: seed.tick,
     seedId: seed.seedId,
-  }, 30_000);
+  }, 30_000, { deadlineTick: toolkitDeadlineTick });
+
+  let combat;
+  try {
+    combat = await runCeresPreRepulsorCombatLoop({
+      routeStartTick,
+      deadlineTick: toolkitDeadlineTick,
+      readReceipt: () => readCeresToolkitReceipt(page, baseline),
+      readPointingStatus: async () => selectCeresHostilePointingStatus(
+        await readCeresHostilePointingSnapshot(page, baseline.initialHostiles),
+      ),
+      fireVolley: (combatTarget) => fireCeresPublicCombatVolley(page, combatTarget, box, {
+        deadlineTick: toolkitDeadlineTick,
+      }),
+    });
+  } finally {
+    await releasePublicInput(page).catch(() => {});
+  }
 
   await triggerCeresPublicFlightAction(page, {
     key: 'Digit6',
+    deadlineTick: toolkitDeadlineTick,
     expectedEvent: {
       event: 'fields:deployed',
       minTick: baseline.startTick,
@@ -3642,62 +3904,59 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     },
   });
 
-  let receipt = null;
-  try {
-    for (let iteration = 0; iteration < 120; iteration += 1) {
-      if (await readTick(page) >= endTick - 60) break;
-      target = await projectNearestCeresHostile(page, baseline.initialHostiles);
-      if (!target) {
-        target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick);
-        if (!target) {
-          await page.waitForTimeout(200);
-          continue;
-        }
-      }
-      await page.mouse.move(
-        box.x + (target.ndcX + 1) * 0.5 * box.width,
-        box.y + (1 - (target.ndcY + 1) * 0.5) * box.height,
-      );
-      await page.mouse.down();
-      await page.waitForTimeout(300);
-      await page.mouse.up();
-      await page.waitForTimeout(120);
-      receipt = await readCeresToolkitReceipt(page, baseline);
-      const failures = [];
-      validateToolkitReceiptCore(receipt, {
-        startTick: baseline.startTick,
-        endTick: Math.min(endTick, receipt.endTick),
-      }, failures);
-      if (failures.length === 0 && receipt.destroyedRecordIds.length > 0) break;
-    }
-  } finally {
-    await releasePublicInput(page).catch(() => {});
-  }
-  receipt = await readCeresToolkitReceipt(page, baseline);
-  const failures = [];
-  validateToolkitReceiptCore(receipt, {
-    startTick: baseline.startTick,
-    endTick: Math.min(endTick, receipt.endTick),
-  }, failures);
-  if (failures.length > 0 || receipt.destroyedRecordIds.length < 1) {
+  const receipt = await readCeresToolkitReceipt(page, baseline);
+  const finalEvaluation = evaluateCeresToolkitFinalReceipt(receipt, {
+    routeStartTick,
+    deadlineTick: toolkitDeadlineTick,
+  });
+  if (!finalEvaluation.pass || receipt.destroyedRecordIds.length < 1) {
     throw new Error(`public physics toolkit receipts are incomplete: ${[
-      ...failures,
+      ...finalEvaluation.failures,
       ...(receipt.destroyedRecordIds.length < 1 ? ['no initial hostile reached a durable tombstone'] : []),
     ].join('; ')}`);
   }
+  assert.equal(combat.evaluation.pass, true, 'pre-Repulsor combat must close before field deployment');
   return receipt;
 }
 
-async function waitForCeresBusEvent(page, expected, timeout = 20_000) {
+async function waitForCeresBusEvent(page, expected, timeout = 20_000, {
+  deadlineTick = null,
+} = {}) {
   try {
-    await page.waitForFunction((criteria) => {
+    if (deadlineTick == null) {
+      await page.waitForFunction((criteria) => {
+        const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+        return rows.some((row) => Object.entries(criteria).every(([key, value]) => {
+          if (key === 'minTick') return Number(row.tick) >= Number(value);
+          if (key === 'minSeq') return Number(row.seq) >= Number(value);
+          return row[key] === value;
+        }));
+      }, expected, { timeout });
+    } else {
+      await page.waitForFunction(({ criteria, fixedDeadlineTick }) => {
+        const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+        const matched = rows.some((row) => Object.entries(criteria).every(([key, value]) => {
+          if (key === 'minTick') return Number(row.tick) >= Number(value);
+          if (key === 'minSeq') return Number(row.seq) >= Number(value);
+          return row[key] === value;
+        }));
+        return matched || Number(window.SF?.state?.tick) >= fixedDeadlineTick;
+      }, { criteria: expected, fixedDeadlineTick: deadlineTick }, { timeout });
+    }
+    const matched = await page.evaluate((criteria) => {
       const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
-      return rows.some((row) => Object.entries(criteria).every(([key, value]) => {
-        if (key === 'minTick') return Number(row.tick) >= Number(value);
-        if (key === 'minSeq') return Number(row.seq) >= Number(value);
-        return row[key] === value;
+      const row = rows.find((entry) => Object.entries(criteria).every(([key, value]) => {
+        if (key === 'minTick') return Number(entry.tick) >= Number(value);
+        if (key === 'minSeq') return Number(entry.seq) >= Number(value);
+        return entry[key] === value;
       }));
-    }, expected, { timeout });
+      return row ? { ...row } : null;
+    }, expected);
+    if (!matched || (deadlineTick != null
+      && (!Number.isSafeInteger(Number(matched.tick)) || Number(matched.tick) >= deadlineTick))) {
+      throw new Error('public toolkit event reached its fixed-tick deadline');
+    }
+    return matched;
   } catch (cause) {
     const snapshot = await page.evaluate((criteria) => {
       const state = window.SF?.state;
@@ -3788,15 +4047,6 @@ async function waitForCeresBusEvent(page, expected, timeout = 20_000) {
     };
     throw error;
   }
-  return page.evaluate((criteria) => {
-    const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
-    const row = rows.find((entry) => Object.entries(criteria).every(([key, value]) => {
-      if (key === 'minTick') return Number(entry.tick) >= Number(value);
-      if (key === 'minSeq') return Number(entry.seq) >= Number(value);
-      return entry[key] === value;
-    }));
-    return row ? { ...row } : null;
-  }, expected);
 }
 
 async function readCeresToolkitReceipt(page, baseline) {
@@ -3882,6 +4132,15 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
         id: hostile.id,
         worldRecordId: hostile.data?.worldRecordId || null,
         alive: hostile.alive !== false,
+        pos: {
+          x: Number(hostile.pos?.x),
+          z: Number(hostile.pos?.z),
+        },
+        vel: {
+          x: Number(hostile.vel?.x) || 0,
+          z: Number(hostile.vel?.z) || 0,
+        },
+        speed: Math.hypot(Number(hostile.vel?.x) || 0, Number(hostile.vel?.z) || 0),
         distanceWU: Math.hypot(dx, dz),
         headingError,
         pointable: false,
@@ -3944,30 +4203,27 @@ export function selectCeresHostilePointingStatus(snapshot) {
   });
 }
 
-async function projectNearestCeresHostile(page, boundHostiles) {
-  return selectCeresHostilePointingStatus(
-    await readCeresHostilePointingSnapshot(page, boundHostiles),
-  ).target;
-}
-
 export async function pointPublicAtCeresHostile(page, boundHostiles, endTick, {
   maxAttempts = 40,
+  deadlineTick = endTick - 120,
 } = {}) {
   if (!Array.isArray(boundHostiles) || boundHostiles.length < 1
       || !Number.isSafeInteger(endTick) || !Number.isSafeInteger(maxAttempts)
-      || maxAttempts < 1 || maxAttempts > 40) {
+      || maxAttempts < 1 || maxAttempts > 40
+      || !Number.isSafeInteger(deadlineTick) || deadlineTick <= 0
+      || deadlineTick > endTick - 120) {
     throw new Error('public hostile pointing requires bound identities and a fixed horizon');
   }
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const status = selectCeresHostilePointingStatus(
       await readCeresHostilePointingSnapshot(page, boundHostiles),
     );
-    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+    if (!Number.isSafeInteger(status.tick) || status.tick >= deadlineTick) {
       throw new Error('public hostile pointing exhausted the exact route horizon');
     }
     if (status.target) return status.target;
     if (!status.nearest) return null;
-    await page.waitForTimeout(150);
+    if (attempt + 1 < maxAttempts) await page.waitForTimeout(150);
   }
   return null;
 }
@@ -5979,7 +6235,10 @@ function validateAccessibilityObservation(observations, route, failures) {
 function validateToolkitObservation(observations, route, continueProjection, failures) {
   const receipt = observations.toolkit;
   const before = failures.length;
-  const projection = validateToolkitReceiptCore(receipt, route, failures);
+  const projection = validateToolkitReceiptCore(receipt, {
+    ...route,
+    endTick: route.endTick - CERES_TOOLKIT_ROUTE_RESERVE_TICKS - 1,
+  }, failures);
   if (failures.length !== before) return;
   const collision = observations.anchorCollision;
   const camera = projection.cameraReposition;
@@ -5999,7 +6258,9 @@ function validateToolkitObservation(observations, route, continueProjection, fai
   }
 }
 
-function validateToolkitReceiptCore(receipt, route, failures) {
+function validateToolkitReceiptCore(receipt, route, failures, {
+  stage = 'full',
+} = {}) {
   const projection = {
     destroyedRecordIds: [],
     targetRecordIds: [],
@@ -6081,10 +6342,17 @@ function validateToolkitReceiptCore(receipt, route, failures) {
   }
   const repulsorIndex = findAfter(-1, (event) => event.event === 'fields:deployed'
     && event.kind === 'repulsor' && event.sourceOwnerId === receipt.playerEntityId);
-  if (repulsorIndex < 0) failures.push('Repulsor lacks an exact player-owned deployment receipt');
+  if (stage === 'pre-repulsor') {
+    if (repulsorIndex >= 0) failures.push('Repulsor deployed before toolkit combat completion');
+  } else if (repulsorIndex < 0) {
+    failures.push('Repulsor lacks an exact player-owned deployment receipt');
+  }
 
   const damageTargetByWeapon = new Map();
   const damageTickByWeapon = new Map();
+  let firstCombatIndex = Number.POSITIVE_INFINITY;
+  let lastCombatIndex = -1;
+  let lastCombatTick = -1;
   for (const weaponId of CERES_TOOLKIT_WEAPON_IDS) {
     const fireIndex = findAfter(-1, (event) => event.event === 'combat:fire'
       && event.ownerId === receipt.playerEntityId && event.weaponId === weaponId);
@@ -6101,6 +6369,10 @@ function validateToolkitReceiptCore(receipt, route, failures) {
         || damage?.tick !== hit?.tick) {
       failures.push(`${weaponId} lacks ordered player fire/hit/damage receipts on an initial hostile`);
     } else {
+      firstCombatIndex = Math.min(firstCombatIndex, fireIndex);
+      lastCombatIndex = Math.max(lastCombatIndex, damageIndex, hitIndex);
+      lastCombatTick = Math.max(lastCombatTick,
+        events[fireIndex].tick, events[damageIndex].tick, events[hitIndex].tick);
       damageTargetByWeapon.set(weaponId, hit.targetId);
       damageTickByWeapon.set(weaponId, damage.tick);
       projection.targetRecordIds.push(initialByEntity.get(hit.targetId));
@@ -6114,6 +6386,9 @@ function validateToolkitReceiptCore(receipt, route, failures) {
       && Number.isSafeInteger(gravityDamageTick) && event.tick >= gravityDamageTick);
   if (gravityStatusIndex < 0) {
     failures.push('Gravity Marker lacks a truthful player-owned gravity status receipt');
+  } else {
+    lastCombatIndex = Math.max(lastCombatIndex, gravityStatusIndex);
+    lastCombatTick = Math.max(lastCombatTick, events[gravityStatusIndex].tick);
   }
   const momentumTarget = damageTargetByWeapon.get(CERES_MOMENTUM_SINK_WEAPON_ID);
   const momentumDamageTick = damageTickByWeapon.get(CERES_MOMENTUM_SINK_WEAPON_ID);
@@ -6123,6 +6398,9 @@ function validateToolkitReceiptCore(receipt, route, failures) {
       && Number.isSafeInteger(momentumDamageTick) && event.tick >= momentumDamageTick);
   if (momentumStatusIndex < 0) {
     failures.push('Momentum Sink lacks a truthful player-owned status receipt');
+  } else {
+    lastCombatIndex = Math.max(lastCombatIndex, momentumStatusIndex);
+    lastCombatTick = Math.max(lastCombatTick, events[momentumStatusIndex].tick);
   }
   const concussionTarget = damageTargetByWeapon.get(CERES_CONCUSSION_WEAPON_ID);
   const concussionDamageTick = damageTickByWeapon.get(CERES_CONCUSSION_WEAPON_ID);
@@ -6132,6 +6410,7 @@ function validateToolkitReceiptCore(receipt, route, failures) {
     && Number.isSafeInteger(concussionDamageTick) && event.tick >= concussionDamageTick
     && finiteXZ(event.impulse) && Math.hypot(event.impulse.x, event.impulse.z) > EPSILON);
   if (!concussionImpulse) failures.push('Concussion lacks a nonzero concussion_slug impulse receipt');
+  else lastCombatTick = Math.max(lastCombatTick, concussionImpulse.tick);
   const momentumStatusTick = events[momentumStatusIndex]?.tick;
   const momentumFrame = trace.find((event) => event?.kind === 'momentumSink.frameBound'
     && event.actorId === receipt.playerEntityId && event.targetId === momentumTarget
@@ -6139,22 +6418,47 @@ function validateToolkitReceiptCore(receipt, route, failures) {
     && Number.isSafeInteger(momentumStatusTick) && event.tick >= momentumStatusTick
     && finiteXZ(event.frameVelocity));
   if (!momentumFrame) failures.push('Momentum Sink lacks a finite attacker_velocity frame receipt');
+  else lastCombatTick = Math.max(lastCombatTick, momentumFrame.tick);
 
   projection.destroyedRecordIds = sortedStrings(receipt.destroyedRecordIds);
   if (projection.destroyedRecordIds.length < 1
       || projection.destroyedRecordIds.some((recordId) => !initialRecordIds.has(recordId))) {
     failures.push('toolkit tombstone is absent or does not belong to an initial Throughline hostile');
   }
-  const playerOwnedKilledRecordIds = sortedStrings(events.filter((event) => (
+  const playerOwnedKills = events.map((event, index) => ({ event, index })).filter(({ event }) => (
     event?.event === 'entity:killed'
       && event.killerId === receipt.playerEntityId
       && initialByEntity.has(event.entityId)
       && event.targetWorldRecordId === initialByEntity.get(event.entityId)
-  )).map((event) => event.targetWorldRecordId));
+  ));
+  const playerOwnedKilledRecordIds = sortedStrings(
+    playerOwnedKills.map(({ event }) => event.targetWorldRecordId),
+  );
   for (const recordId of projection.destroyedRecordIds) {
     if (!playerOwnedKilledRecordIds.includes(recordId)) {
       failures.push(`toolkit tombstone ${recordId} lacks an exact player-owned entity:killed receipt`);
     }
+  }
+  if (!(releasedIndex < deployedSeedIndex && deployedSeedIndex < lockedSeedIndex
+      && lockedSeedIndex < firstCombatIndex)) {
+    failures.push('toolkit order must be Massline release, Mass Seed lock, then combat');
+  }
+  const repulsorTick = events[repulsorIndex]?.tick;
+  const proofKill = playerOwnedKills.find(({ event, index }) => (
+    projection.destroyedRecordIds.includes(event.targetWorldRecordId)
+      && index > lastCombatIndex && event.tick >= lastCombatTick
+      && (stage !== 'full'
+        || (index < repulsorIndex && Number.isSafeInteger(repulsorTick)
+          && event.tick <= repulsorTick))
+  ));
+  if (!proofKill) {
+    failures.push(stage === 'full'
+      ? 'toolkit lacks a player-owned tombstone after combat and before Repulsor'
+      : 'toolkit lacks a player-owned tombstone after completed combat');
+  }
+  if (stage === 'full' && !(lastCombatIndex >= 0 && Number.isSafeInteger(lastCombatTick)
+      && repulsorIndex > lastCombatIndex && repulsorTick > lastCombatTick && proofKill)) {
+    failures.push('Repulsor must follow completed combat and a player-owned tombstone');
   }
   projection.targetRecordIds = sortedStrings(projection.targetRecordIds);
   return projection;

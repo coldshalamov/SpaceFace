@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 toolkit input | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Review and publish the fixed-tick public toolkit input candidate; then run exactly one broker Browser acceptance and preserve its terminal evidence |
+| PQ-048.01 toolkit combat | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Land the reviewed fixed-tick combat/deadline candidate, then spend exactly one broker Browser launch and preserve its terminal evidence |
 
 ## Uncommitted work without a confirmed live thread
 
