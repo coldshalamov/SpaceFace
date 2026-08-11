@@ -825,6 +825,15 @@ function initializeConvoyPredation(d, live, state) {
     sectorId: live.sectorId,
     zoneId: live.zoneId,
   });
+  d.emit('ai:telegraph', {
+    entityId: raider.id,
+    targetId: target.id,
+    encounterId: live.id,
+    doctrineId: ai.combatDoctrineId,
+    kind: ai.approachTelegraph,
+    durationTicks: Math.max(30, Math.ceil(responseWindowS * 60)),
+    tick: startedTick,
+  });
   return true;
 }
 

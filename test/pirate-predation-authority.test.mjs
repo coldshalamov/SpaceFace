@@ -37,8 +37,9 @@ function boot(seed = 47001) {
     data: { intent: {}, ai: {} },
   });
   state.playerId = player.id;
-  const events = { telegraph: [], engaged: [], cleared: [], resolved: [] };
+  const events = { telegraph: [], aiTelegraph: [], engaged: [], cleared: [], resolved: [] };
   bus.on('encounter:predationTelegraph', (payload) => events.telegraph.push(payload));
+  bus.on('ai:telegraph', (payload) => events.aiTelegraph.push(payload));
   bus.on('encounter:predationEngaged', (payload) => events.engaged.push(payload));
   bus.on('encounter:predationCleared', (payload) => events.cleared.push(payload));
   bus.on('encounter:resolved', (payload) => events.resolved.push(payload));
@@ -66,9 +67,15 @@ function bootTactical(seed = 47009) {
     data: { intent: {}, ai: {} },
   });
   state.playerId = player.id;
+  const events = { telegraph: [], aiTelegraph: [], engaged: [], cleared: [], resolved: [] };
+  bus.on('encounter:predationTelegraph', (payload) => events.telegraph.push(payload));
+  bus.on('ai:telegraph', (payload) => events.aiTelegraph.push(payload));
+  bus.on('encounter:predationEngaged', (payload) => events.engaged.push(payload));
+  bus.on('encounter:predationCleared', (payload) => events.cleared.push(payload));
+  bus.on('encounter:resolved', (payload) => events.resolved.push(payload));
   return {
     sim, state, bus, player, tactical,
-    events: { telegraph: [], engaged: [], cleared: [], resolved: [] },
+    events,
     director: sim.registry.get('encounterDirector'),
   };
 }
@@ -175,6 +182,46 @@ test('curtain route materializes one manifest carrier plus authored raiders with
   assert.equal(isAuthorizedPredationRelation(harness.state, raider, target), false);
   assert.deepEqual(authorize(harness, raider, target), { ok: false, reason: 'passive' });
   assert.equal(isHostileForAI(harness.state, raider, harness.player), false, 'telegraph never targets the player');
+});
+
+test('predation warning projects one physical offensive-raider-to-carrier approach cue', () => {
+  const harness = bootTactical(47011);
+  const startedTick = harness.state.tick;
+  const live = fire(harness, `${ENCOUNTER_ID}:physical-telegraph`);
+  const { target, raider, raiders } = actors(harness, live);
+  const approachCues = () => harness.events.aiTelegraph
+    .filter((payload) => payload.kind === 'pd_curtain_closing');
+
+  assert.equal(harness.events.telegraph.length, 1, 'the domain warning remains its own event');
+  assert.equal(approachCues().length, 1, 'the physical relation cue projects exactly once');
+  assert.deepEqual(approachCues()[0], {
+    entityId: raider.id,
+    targetId: target.id,
+    encounterId: live.id,
+    doctrineId: 'interceptor_flyby',
+    kind: 'pd_curtain_closing',
+    durationTicks: 240,
+    tick: startedTick,
+  });
+  assert.notEqual(raider.data.lootTableId, 'pd_screen_escort',
+    'the cue originates at the selected offensive raider, not the PD screen');
+  assert.equal(target.data.predationRole, 'manifest_carrier');
+  assert.notEqual(target.id, harness.player.id, 'the physical cue points at the civilian carrier');
+  assert.equal(raiders.some((candidate) => (
+    candidate.data.lootTableId === 'pd_screen_escort'
+      && candidate.id === approachCues()[0].entityId
+  )), false);
+
+  // Let the authored warning expire. Tactical AI may emit its later engine_flare as a distinct
+  // doctrine phase; neither that event nor director cadence may duplicate the approach cue.
+  raider.pos.x = target.pos.x + 300;
+  raider.pos.z = target.pos.z - 100;
+  harness.sim.runTicks(Math.ceil((live.data.predationNoFireUntil - harness.state.simTime + 3) * 60));
+  assert.equal(live.data.predationStatus, 'active');
+  assert.ok(harness.events.aiTelegraph.some((payload) => payload.kind === 'engine_flare'),
+    'the later tactical engine flare remains a distinct cue');
+  assert.equal(approachCues().length, 1,
+    'response-window and tactical cadence never repeat the authored approach cue');
 });
 
 test('predation admission waits for carrier, PD curtain, and offensive raider without side effects', () => {
