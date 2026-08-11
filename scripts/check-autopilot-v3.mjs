@@ -9,8 +9,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { createSimulation } from '../src/core/sim.js';
 import { save } from '../src/save/saveSystem.js';
+import { asteroidFormations } from '../src/systems/asteroidFormations.js';
+import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { flightV3 as workspaceFlightV3 } from '../src/systems/flightV3.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -404,7 +408,107 @@ async function runRapierHeliosTerminalScenario() {
   return { dockRange, closestDistance, maxCrossTrack, maxSpeed, completionTick, terminal };
 }
 
+async function runRapierCeresHornetReserveScenario() {
+  // Seed-47 PQ-048 Throughline leg reconstructed from the b0775ffc370b route artifact.
+  // The start is the artifact-bound egress handoff estimate, and the target is the public map fix.
+  const start = { x: -11517.761867066272, z: 7353.819177379723 };
+  const seamAnchor = { x: -11788, z: 7492 };
+  const target = { x: -9248, z: 7272 };
+  const startRot = Math.atan2(start.z - seamAnchor.z, start.x - seamAnchor.x);
+  const reserveTicks = 2400;
+  const sim = createSimulation({
+    seed: 47,
+    systems: [world, asteroidSites, asteroidFormations, FLIGHT_UNDER_TEST, physics],
+  });
+  const { state } = sim;
+  state.mode = 'flight';
+  const player = sim.spawn(makeShipEntitySpec('ship_hornet', {
+    isPlayer: true,
+    player: state.player,
+    pos: { ...start },
+    rot: startRot,
+    fittings: [],
+  }));
+  player.vel = { x: Math.cos(startRot) * 0.8, z: Math.sin(startRot) * 0.8 };
+  player.angVel = 0;
+  player.collides = true;
+  player.prevRot = player.rot;
+  state.playerId = player.id;
+
+  const worldSystem = sim.registry.get('world');
+  worldSystem.enterSector('sector_ceres_belt', {
+    continuous: true,
+    noTeleport: true,
+    placePlayer: false,
+  });
+  const physicsSystem = sim.registry.get('physics');
+  const ready = await physicsSystem.prepareBackend(state, { reset: true });
+  assert.equal(ready, true, 'Ceres Hornet fixture must use the ready production physics authority');
+
+  const initialDistance = Math.hypot(target.x - start.x, target.z - start.z);
+  state.nav.autopilot = {
+    active: true,
+    target: { ...target },
+    targetEntityId: null,
+    label: 'Throughline Weigh Beacon',
+    arrivalRadius: 48,
+    initialDistance,
+    status: 'armed',
+  };
+  state.input.actions = { autopursuit: false, brake: false };
+
+  let completionTick = null;
+  let maxSpeed = 0;
+  let avoidingTicks = 0;
+  let brakingTicks = 0;
+  let boostingTicks = 0;
+  try {
+    // Run past the acceptance reserve so a failure reports the actual deterministic arrival,
+    // rather than only saying that the ship was still active at tick 2400.
+    for (let tick = 0; tick < 6000; tick++) {
+      state.tick = tick;
+      state.simTime = tick * DT;
+      neutralizeGeneratedAutopilotInput(state);
+      sim.step(DT);
+      maxSpeed = Math.max(maxSpeed, Math.hypot(player.vel.x, player.vel.z));
+      if (state.nav.autopilot.status === 'avoiding') avoidingTicks++;
+      if (state.input.brake) brakingTicks++;
+      if (state.input.boost) boostingTicks++;
+      if (state.nav.autopilot.active === false && state.nav.autopilot.status === 'arrived') {
+        completionTick = tick;
+        break;
+      }
+    }
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority();
+    sim.dispose();
+  }
+
+  return {
+    reserveTicks,
+    initialDistance,
+    entityCount: state.entities.size,
+    completionTick,
+    completionSeconds: completionTick == null ? null : completionTick * DT,
+    finalDistance: Math.hypot(target.x - player.pos.x, target.z - player.pos.z),
+    maxSpeed,
+    avoidingTicks,
+    brakingTicks,
+    boostingTicks,
+    status: state.nav.autopilot.status,
+  };
+}
+
 console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
+
+{
+  const result = await runRapierCeresHornetReserveScenario();
+  assert.notEqual(result.completionTick, null,
+    `seed-47 Ceres Hornet must reach Throughline through the production physics authority: ${JSON.stringify(result)}`);
+  assert(result.completionTick <= result.reserveTicks,
+    `seed-47 Ceres Hornet must reach Throughline inside the 2400-tick acceptance reserve: ${JSON.stringify(result)}`);
+  console.log('Check PQ-048 PASSED: seed-47 Hornet reaches Throughline inside the fixed route reserve.', result);
+}
 
 {
   const result = await runRapierHeliosTerminalScenario();

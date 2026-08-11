@@ -11,7 +11,7 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
-import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
@@ -632,7 +632,20 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const targetZ = dist > 0.0001 ? dz / dist : Math.sin(finite(entity.rot));
   const closingSpeed = finite(vel.x) * targetX + finite(vel.z) * targetZ;
   const lateralSpeed = Math.abs(finite(vel.x) * -targetZ + finite(vel.z) * targetX);
-  const brakeAccel = Math.max(positive(profile.reverseAccel, 0), positive(profile.mainAccel, 0) * 0.72, 1);
+  // Reaction drives publish directional thrusters; gravimetric drives publish a coupled
+  // velocity-servo envelope instead. Planning a gravimetric arrival from the reaction-only
+  // fields falls through to 1 WU/s² even though the kernel can brake at maxBrakeAccel, making
+  // the flight computer crawl through most of an otherwise clear route. Mirror the family
+  // authority the propulsion kernel will actually apply when `brake` is asserted.
+  const gravimetricBrakeAccel = profile.family === DRIVE_FAMILIES.GRAVIMETRIC
+    ? positive(profile.maxBrakeAccel, positive(profile.maxAccel, 80))
+    : 0;
+  const brakeAccel = Math.max(
+    gravimetricBrakeAccel,
+    positive(profile.reverseAccel, 0),
+    positive(profile.mainAccel, 0) * 0.72,
+    1,
+  );
   const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
   const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
