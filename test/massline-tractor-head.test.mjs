@@ -34,7 +34,13 @@ test('the fitted Tractor module admits one independently flagged, player-readabl
   assert.equal(legacy.headId, undefined, 'the per-head flag removes only Tractor admission');
   assert.equal(legacy.spring, undefined, 'flag-off retains the ordinary standard spring');
   assert.equal(TIDELINE.mods.masslineHeadId, 'tractor', 'the unique base variant retains its head capability');
-  assert.match(statSnippet(TRACTOR), /400 magnet.*tractor head/i);
+  // The Tractor module's magnetRange mod is catalogued but not aggregated into the live player
+  // stat (playerModSum('magnetRange') is unwired; state.player.magnetRange stays at its default),
+  // so outfitting must not advertise a dead number. Assert the live head is player-readable and the
+  // dead magnet stat is omitted.
+  assert.match(statSnippet(TRACTOR), /tractor head/i);
+  assert.doesNotMatch(statSnippet(TRACTOR), /magnet/i,
+    'magnetRange is not wired into the player stat, so outfitting must not advertise it');
 });
 
 test('the Tractor spring is one-sided, force-bounded, radial, and momentum-conserving', async () => {
