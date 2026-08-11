@@ -38,6 +38,58 @@ test('squad retreat outranks a stale attack-run activity', () => {
   assert.match(maneuver.reason, /director_or_attrition/);
 });
 
+test('targeted TRANSIT breaks squad spacing and seeks contact for physical recovery', () => {
+  const maneuver = movementForActivity({
+    kind: ManeuverKind.FORMATION,
+    targetId: null,
+    formationSlot: { x: 100, z: 0 },
+    formationBound: 170,
+    breakFormation: false,
+    reason: 'stale_formation',
+  }, normalizeActivity({
+    kind: ActivityKind.TRANSIT,
+    reason: 'curtain_convoy:freight_pod_recovery',
+    anchor: { x: 40, z: 12 },
+    preferredRange: 20,
+    targetId: 7,
+    startedTick: 60,
+  }), {
+    objective: { kind: ObjectiveKind.HOLD, targetId: null, reason: 'weak_contact_picture' },
+    formation: { slot: { x: 100, z: 0 }, bound: 170, breakFormation: false },
+  });
+
+  assert.equal(maneuver.kind, ManeuverKind.FORMATION);
+  assert.equal(maneuver.targetId, 7);
+  assert.equal(maneuver.breakFormation, true);
+  assert.equal(maneuver.preferredRange, 20);
+  assert.equal(maneuver.formationBound, 24);
+  assert.deepEqual(maneuver.formationSlot, { x: 40, z: 12 });
+  assert.match(maneuver.reason, /freight_pod_recovery/);
+});
+
+test('untargeted TRANSIT keeps formation travel for ordinary lane traffic', () => {
+  const maneuver = movementForActivity({
+    kind: ManeuverKind.HOLD,
+    targetId: null,
+    formationSlot: { x: 0, z: 0 },
+    formationBound: 170,
+    breakFormation: false,
+    reason: 'lane',
+  }, normalizeActivity({
+    kind: ActivityKind.TRANSIT,
+    reason: 'trade_lane',
+    anchor: { x: 500, z: 0 },
+    startedTick: 10,
+  }), {
+    objective: { kind: ObjectiveKind.HOLD, targetId: null, reason: 'hold' },
+    formation: { slot: { x: 0, z: 0 }, bound: 170, breakFormation: false },
+  });
+
+  assert.equal(maneuver.kind, ManeuverKind.FORMATION);
+  assert.equal(maneuver.targetId, null);
+  assert.equal(maneuver.breakFormation, false);
+});
+
 test('flee and disengage motives cannot keep an offensive fire window alive', () => {
   const target = { id: 1, alive: true };
   const self = { pos: { x: 0, z: 0 } };

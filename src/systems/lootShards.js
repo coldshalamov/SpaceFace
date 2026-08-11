@@ -213,6 +213,12 @@ export const lootShards = {
     if (!victim || !victim.data) return null;
     // One payload per hull death — stamp survives if the dead entity lingers for a tick.
     if (victim.data.manifestPayloadDropped === true) return null;
+    // PQ-047 freight custody owns the physical spill for authored manifest carriers (disable/death
+    // pods through encounterScripts). Do not invent a second conserved body on the same hull.
+    if (victim.data.freightRewardOwner === 'manifest_custody') return null;
+    const custody = victim.data.freightCustody;
+    if (custody && (custody.status === 'carrier' || custody.status === 'spilled'
+      || custody.custodyId != null)) return null;
     const manifest = victim.data.cargoManifest;
     if (!validCivilianManifestForPayload(manifest)) return null;
 

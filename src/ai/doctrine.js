@@ -246,8 +246,29 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
       return freeze({ ...base, kind: ManeuverKind.HOLD, targetId: null, breakFormation: false });
     case ActivityKind.PATROL_ROUTE:
     case ActivityKind.TRANSIT:
-    case ActivityKind.RETURN_TO_ANCHOR:
+    case ActivityKind.RETURN_TO_ANCHOR: {
+      // Ordinary lane transit keeps formation travel. A TRANSIT activity that names a concrete
+      // target (freight pod recovery, rendezvous) must break the squad formation envelope and
+      // seek the activity anchor/target until physical contact can fire. A full interceptor
+      // pass is wrong here: flyby geometry keeps missing slow pickup-scale targets.
+      if (activity.kind === ActivityKind.TRANSIT && activity.targetId != null) {
+        const preferred = Number.isFinite(activity.preferredRange) && activity.preferredRange > 0
+          ? activity.preferredRange
+          : 1;
+        // Bound the formation arrival envelope to the contact standoff so TRAVEL/FORMATION does not
+        // treat a 170-WU squad spacing as "arrived" far outside pickup radius.
+        const bound = Math.max(preferred, 24);
+        return freeze({
+          ...base,
+          kind: ManeuverKind.FORMATION,
+          targetId: activity.targetId,
+          preferredRange: preferred,
+          breakFormation: true,
+          formationBound: bound,
+        });
+      }
       return freeze({ ...base, kind: ManeuverKind.FORMATION, targetId: null, breakFormation: false });
+    }
     case ActivityKind.SCAN_APPROACH:
       return freeze({ ...base, kind: ManeuverKind.INTERCEPT, preferredRange: activity.preferredRange || 620 });
     case ActivityKind.REPOSITION:

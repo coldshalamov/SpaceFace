@@ -179,6 +179,25 @@ test('D2: empty hull drops nothing', () => {
   }
 });
 
+test('D2: authored freight-custody carriers do not invent a second cargo body', () => {
+  const h = bootLoot();
+  try {
+    const victim = h.spawnCivilian();
+    victim.data.freightRewardOwner = 'manifest_custody';
+    victim.data.freightCustody = {
+      status: 'carrier',
+      custodyId: 'fm_test:custody:carrier0',
+      manifestId: victim.data.cargoManifest.manifestId,
+    };
+    h.kill(victim);
+    assert.equal(h.payloads().length, 0,
+      'encounter custody pods own the conserved spill; lootShards must not double-mint');
+    assert.equal(victim.data.manifestPayloadDropped, undefined);
+  } finally {
+    h.restore();
+  }
+});
+
 test('D2: payload is tether-eligible per interaction profile', () => {
   const h = bootLoot();
   try {
