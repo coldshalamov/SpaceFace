@@ -1220,6 +1220,21 @@ export async function runCeresFiveMinutePublicRoute({
       await page.screenshot({ path: screenshotPath }).catch(() => {});
       error.message = `${error.message}; diagnostic=${path.basename(diagnosticPath)}`;
     }
+    if (error?.ceresPocketApproachDiagnostic) {
+      const diagnosticPath = path.join(outputDir, 'pocket-approach-failure.json');
+      const screenshotPath = path.join(outputDir, 'pocket-approach-failure.png');
+      const diagnostic = {
+        schema: 'spaceface.ceresPocketApproachFailure.v1',
+        recordedAt: new Date().toISOString(),
+        runtimeKind,
+        fixedSeed,
+        phase,
+        approach: error.ceresPocketApproachDiagnostic,
+      };
+      await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
+      await page.screenshot({ path: screenshotPath }).catch(() => {});
+      error.message = `${error.message}; diagnostic=${path.basename(diagnosticPath)}`;
+    }
     error.routePhase ||= phase;
     throw error;
   } finally {
@@ -2479,11 +2494,10 @@ export function chooseCeresPocketApproachAction(status) {
     return Object.freeze({ kind: 'invalid' });
   }
   if (distanceWU <= 90 && speed <= 1) return Object.freeze({ kind: 'complete' });
-  if ((distanceWU <= 90 && speed > 1) || (distanceWU < 150 && speed > 45)) {
+  if (distanceWU <= 90 && speed > 1) {
     return Object.freeze({
-      kind: 'brake',
+      kind: 'settle',
       key: 'Digit0',
-      durationMs: 100,
       boost: false,
     });
   }
@@ -2492,6 +2506,14 @@ export function chooseCeresPocketApproachAction(status) {
       kind: 'turn',
       key: headingError > 0 ? 'KeyD' : 'KeyA',
       durationMs: 80,
+    });
+  }
+  if (distanceWU < 150 && speed > 45) {
+    return Object.freeze({
+      kind: 'decelerate',
+      key: 'KeyS',
+      durationMs: 100,
+      boost: false,
     });
   }
   return Object.freeze({
@@ -2513,12 +2535,33 @@ async function readCeresPocketApproachStatus(page, point, terminalTick) {
     let headingError = desired - Number(player.rot || 0);
     while (headingError > Math.PI) headingError -= Math.PI * 2;
     while (headingError < -Math.PI) headingError += Math.PI * 2;
+    const distanceWU = Math.hypot(dx, dz);
+    const velocity = {
+      x: Number(player.vel?.x) || 0,
+      z: Number(player.vel?.z) || 0,
+    };
+    const speed = Math.hypot(velocity.x, velocity.z);
     return {
       tick: Number(state.tick),
       terminalTick: routeEndTick,
-      distanceWU: Math.hypot(dx, dz),
+      distanceWU,
       headingError,
-      speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
+      speed,
+      radialSpeed: distanceWU > 0 ? (velocity.x * dx + velocity.z * dz) / distanceWU : 0,
+      playerAlive: player.alive !== false && Number(player.hull) > 0,
+      playerPos: { x: Number(player.pos.x), z: Number(player.pos.z) },
+      playerVel: velocity,
+      mode: state.mode || null,
+      autopilot: state.nav?.autopilot ? {
+        active: state.nav.autopilot.active === true,
+        label: state.nav.autopilot.label || null,
+        status: state.nav.autopilot.status || null,
+      } : null,
+      input: state.input ? {
+        moveZ: Number(state.input.moveZ) || 0,
+        turnIntent: Number(state.input.turnIntent) || 0,
+        brake: state.input.brake === true,
+      } : null,
     };
   }, { targetPoint: point, routeEndTick: terminalTick });
 }
@@ -2558,11 +2601,14 @@ export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
   const canvas = page.locator('#gl-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30_000 });
   await canvas.focus();
+  const diagnostic = createCeresPocketApproachDiagnostic(target, endTick);
+  let approachPulses = 0;
   try {
-    for (let steeringAttempts = 0; steeringAttempts < 220;) {
+    for (; approachPulses < 220;) {
       const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
       const action = chooseCeresPocketApproachAction(status);
+      recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
         throw new Error(`${target.targetName} approach produced invalid navigation telemetry`);
       }
@@ -2570,34 +2616,110 @@ export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
         throw new Error(`${target.targetName} approach exhausted the exact route horizon`);
       }
       if (action.kind === 'complete') return status;
-      if (action.kind === 'brake') {
+      if (action.kind === 'settle') {
+        diagnostic.counts.settleHolds += 1;
         const settled = await settleCeresPocketApproach(page, {
           point: target.targetPos,
           endTick,
           targetName: target.targetName,
         });
+        recordCeresPocketApproachDecision(diagnostic, settled, 'settle-result');
         if (settled.distanceWU <= 90) return settled;
         continue;
       }
-      steeringAttempts += 1;
+      approachPulses += 1;
+      diagnostic.counts.totalPulses += 1;
       if (action.kind === 'turn') {
+        diagnostic.counts.turnPulses += 1;
         await page.keyboard.down(action.key);
-        await page.waitForTimeout(action.durationMs);
-        await page.keyboard.up(action.key);
-      } else {
-        await page.keyboard.down(action.key);
-        if (action.boost) {
-          await page.keyboard.down('Shift');
+        try {
+          await page.waitForTimeout(action.durationMs);
+        } finally {
+          await page.keyboard.up(action.key).catch(() => {});
         }
-        await page.waitForTimeout(action.durationMs);
-        await page.keyboard.up('Shift').catch(() => {});
-        await page.keyboard.up(action.key);
+      } else {
+        if (action.kind === 'decelerate') diagnostic.counts.deceleratePulses += 1;
+        else diagnostic.counts.thrustPulses += 1;
+        if (action.boost) diagnostic.counts.boostPulses += 1;
+        await page.keyboard.down(action.key);
+        try {
+          if (action.boost) await page.keyboard.down('Shift');
+          await page.waitForTimeout(action.durationMs);
+        } finally {
+          await page.keyboard.up('Shift').catch(() => {});
+          await page.keyboard.up(action.key).catch(() => {});
+        }
       }
     }
+    throw new Error(`public controls did not enter ${target.targetName}`);
+  } catch (error) {
+    const snapshot = snapshotCeresPocketApproachDiagnostic(diagnostic);
+    error.ceresPocketApproachDiagnostic ||= snapshot;
+    throw error;
   } finally {
     await releasePublicInput(page).catch(() => {});
   }
-  throw new Error(`public controls did not enter ${target.targetName}`);
+}
+
+function createCeresPocketApproachDiagnostic(target, endTick) {
+  return {
+    schema: 'spaceface.ceresPocketApproachDiagnostic.v1',
+    pocketId: target.pocketId,
+    targetId: target.targetId,
+    targetName: target.targetName,
+    targetPos: { ...target.targetPos },
+    endTick,
+    startTick: null,
+    bestDistanceWU: null,
+    lastAction: null,
+    lastStatus: null,
+    counts: {
+      totalPulses: 0,
+      turnPulses: 0,
+      thrustPulses: 0,
+      boostPulses: 0,
+      deceleratePulses: 0,
+      settleHolds: 0,
+    },
+    decisionTail: [],
+  };
+}
+
+function recordCeresPocketApproachDecision(diagnostic, status, action) {
+  const compact = {
+    tick: status.tick,
+    action,
+    distanceWU: status.distanceWU,
+    speed: status.speed,
+    radialSpeed: status.radialSpeed,
+    headingError: status.headingError,
+  };
+  diagnostic.startTick ??= Number.isSafeInteger(status.tick) ? status.tick : null;
+  if (Number.isFinite(status.distanceWU)) {
+    diagnostic.bestDistanceWU = diagnostic.bestDistanceWU == null
+      ? status.distanceWU : Math.min(diagnostic.bestDistanceWU, status.distanceWU);
+  }
+  diagnostic.lastAction = action;
+  diagnostic.lastStatus = {
+    ...compact,
+    playerAlive: status.playerAlive,
+    playerPos: status.playerPos,
+    playerVel: status.playerVel,
+    mode: status.mode,
+    autopilot: status.autopilot,
+    input: status.input,
+  };
+  diagnostic.decisionTail.push(compact);
+  if (diagnostic.decisionTail.length > 16) diagnostic.decisionTail.shift();
+}
+
+function snapshotCeresPocketApproachDiagnostic(diagnostic) {
+  return {
+    ...diagnostic,
+    counts: { ...diagnostic.counts },
+    lastStatus: diagnostic.lastStatus ? { ...diagnostic.lastStatus } : null,
+    decisionTail: diagnostic.decisionTail.map((row) => ({ ...row })),
+  };
 }
 
 async function readAutopilotPhysicalReceipt(page, { pocketId }) {
@@ -3816,7 +3938,7 @@ async function readTick(page) {
 async function releasePublicInput(page) {
   if (!page || page.isClosed()) return;
   await page.mouse.up().catch(() => {});
-  for (const key of ['KeyW', 'KeyA', 'KeyD', 'Digit0', 'Shift', 'Space']) {
+  for (const key of ['KeyW', 'KeyA', 'KeyD', 'KeyS', 'Digit0', 'Shift', 'Space']) {
     await page.keyboard.up(key).catch(() => {});
   }
 }

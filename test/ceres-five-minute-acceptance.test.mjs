@@ -1226,14 +1226,22 @@ test('public pocket approach completes only after the hull is settled inside the
     headingError: 0.7,
     speed: 78,
   });
-  assert.equal(observedHandoff.kind, 'brake',
-    'the observed working-seam handoff must brake instead of returning at 78 WU/s');
+  assert.equal(observedHandoff.kind, 'settle',
+    'the observed working-seam handoff must settle instead of returning at 78 WU/s');
   assert.equal(observedHandoff.key, 'Digit0', 'the route uses the public zero-thrust brake');
   assert.equal(chooseCeresPocketApproachAction({
     distanceWU: 140,
     headingError: 0.7,
     speed: 78,
-  }).kind, 'brake', 'close-range braking must not depend on nose alignment');
+  }).kind, 'turn', 'outside the entry circle the proven controller corrects heading first');
+  const approachBrake = chooseCeresPocketApproachAction({
+    distanceWU: 140,
+    headingError: 0.01,
+    speed: 78,
+  });
+  assert.equal(approachBrake.kind, 'decelerate');
+  assert.equal(approachBrake.key, 'KeyS');
+  assert.equal(approachBrake.durationMs, 100);
   assert.equal(chooseCeresPocketApproachAction({
     distanceWU: 2_000,
     headingError: 0.01,
@@ -1287,13 +1295,13 @@ test('public pocket settle holds the brake to the speed condition outside the st
   assert.equal(horizon.events.at(-1), 'up:Digit0', 'failure must release the public brake');
 });
 
-test('public pocket braking preserves the remaining steering-attempt budget after drift', async () => {
+test('public pocket driver trims outside the circle and holds full brake only after entry', async () => {
   const pocket = CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam;
   const targetPoint = sectorLocalToGlobalForSector(
     pocket.activityAnchor.localPos,
     CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
   );
-  const harness = pocketApproachBudgetPage({ targetPoint, endTick: 5_000 });
+  const harness = pocketApproachTwoPhasePage({ targetPoint, endTick: 5_000 });
   const receipt = await drivePublicToPocketAnchor(
     harness.page,
     'ceres_working_seam',
@@ -1301,13 +1309,11 @@ test('public pocket braking preserves the remaining steering-attempt budget afte
   );
   assert.equal(receipt.distanceWU, 80);
   assert.equal(receipt.speed, 0.8);
-  assert.equal(harness.brakeWaits, 1, 'one held-brake settle replaces pulse-budget braking');
-  assert.equal(harness.steeringPulsesAtBrake, 218,
-    'the brake occurs with only two steering attempts left');
-  assert.equal(harness.steeringPulses, 219,
-    'the post-drift thrust remains available because braking spent no steering attempt');
+  assert.deepEqual(harness.sequence, ['turn', 'decelerate', 'thrust', 'settle']);
+  assert.deepEqual(harness.settleStartDistances, [80],
+    'the condition-held Digit0 brake is unreachable before the 90-WU entry circle');
 
-  const expired = pocketApproachBudgetPage({
+  const expired = pocketApproachTwoPhasePage({
     targetPoint,
     endTick: 5_000,
     tick: 4_880,
@@ -1317,10 +1323,34 @@ test('public pocket braking preserves the remaining steering-attempt budget afte
   });
   await assert.rejects(
     drivePublicToPocketAnchor(expired.page, 'ceres_working_seam', 5_000),
-    /Working Seam approach exhausted the exact route horizon/,
+    (error) => {
+      assert.match(error.message, /Working Seam approach exhausted the exact route horizon/);
+      assert.equal(error.ceresPocketApproachDiagnostic?.counts?.totalPulses, 0);
+      assert.ok(error.ceresPocketApproachDiagnostic?.decisionTail?.length <= 16);
+      return true;
+    },
   );
-  assert.equal(expired.steeringPulses, 0, 'an expired settled sample cannot issue a control pulse');
-  assert.equal(expired.brakeWaits, 0, 'an expired settled sample cannot enter the brake helper');
+  assert.deepEqual(expired.sequence, [], 'an expired settled sample cannot issue a control pulse');
+
+  const stuck = pocketApproachTwoPhasePage({
+    targetPoint,
+    endTick: 5_000,
+    initialDistanceWU: 200,
+    initialSpeed: 0,
+    initialRot: -0.7,
+    turnConverges: false,
+  });
+  await assert.rejects(
+    drivePublicToPocketAnchor(stuck.page, 'ceres_working_seam', 5_000),
+    (error) => {
+      const diagnostic = error.ceresPocketApproachDiagnostic;
+      assert.equal(diagnostic?.counts?.totalPulses, 220);
+      assert.equal(diagnostic?.counts?.turnPulses, 220);
+      assert.equal(diagnostic?.decisionTail?.length, 16,
+        'failure telemetry retains only the bounded decision tail');
+      return /public controls did not enter Working Seam/.test(error.message);
+    },
+  );
 });
 
 test('public pilot source uses menu/card and Playwright input while private shortcuts fail closed', () => {
@@ -2333,20 +2363,18 @@ function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds }) {
   };
 }
 
-function pocketApproachBudgetPage({
+function pocketApproachTwoPhasePage({
   targetPoint,
   endTick,
   tick = 1_000,
-  initialDistanceWU = 200,
-  initialSpeed = 0,
-  initialRot = 1,
+  initialDistanceWU = 140,
+  initialSpeed = 78,
+  initialRot = -0.7,
+  turnConverges = true,
 }) {
   const heldKeys = new Set();
-  const counters = {
-    brakeWaits: 0,
-    steeringPulses: 0,
-    steeringPulsesAtBrake: null,
-  };
+  const sequence = [];
+  const settleStartDistances = [];
   const player = {
     id: 1,
     pos: { x: targetPoint.x - initialDistanceWU, z: targetPoint.z },
@@ -2370,9 +2398,8 @@ function pocketApproachBudgetPage({
     }
   };
   const harness = {
-    get brakeWaits() { return counters.brakeWaits; },
-    get steeringPulses() { return counters.steeringPulses; },
-    get steeringPulsesAtBrake() { return counters.steeringPulsesAtBrake; },
+    sequence,
+    settleStartDistances,
     page: {
       isClosed() { return false; },
       locator() {
@@ -2393,24 +2420,31 @@ function pocketApproachBudgetPage({
         assert.equal(options.timeout, 10_000);
         assert.equal(argument.terminalTick, endTick);
         assert.equal(heldKeys.has('Digit0'), true);
-        counters.brakeWaits += 1;
-        counters.steeringPulsesAtBrake = counters.steeringPulses;
-        player.pos.x = targetPoint.x - 100;
+        sequence.push('settle');
+        settleStartDistances.push(Math.hypot(
+          targetPoint.x - player.pos.x,
+          targetPoint.z - player.pos.z,
+        ));
         player.vel.x = 0.8;
         assert.equal(runInPage(callback, argument), true);
       },
-      async waitForTimeout() {
-        assert.equal(heldKeys.has('KeyA') || heldKeys.has('KeyD') || heldKeys.has('KeyW'), true);
-        counters.steeringPulses += 1;
-        if (counters.steeringPulses === 218) {
+      async waitForTimeout(durationMs) {
+        if (heldKeys.has('KeyA') || heldKeys.has('KeyD')) {
+          assert.equal(durationMs, 80);
+          sequence.push('turn');
+          if (turnConverges) player.rot = 0;
+        } else if (heldKeys.has('KeyS')) {
+          assert.equal(durationMs, 100);
+          sequence.push('decelerate');
+          player.pos.x = targetPoint.x - 132;
+          player.vel.x = 40;
+        } else if (heldKeys.has('KeyW')) {
+          assert.equal(durationMs, 160);
+          sequence.push('thrust');
           player.pos.x = targetPoint.x - 80;
           player.vel.x = 78;
           player.rot = 0;
-        } else if (counters.steeringPulses === 219) {
-          player.pos.x = targetPoint.x - 80;
-          player.vel.x = 0.8;
-          player.rot = 0;
-        }
+        } else assert.fail('two-phase approach emitted an unexpected control pulse');
       },
     },
   };
