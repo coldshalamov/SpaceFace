@@ -5242,7 +5242,7 @@
       "priority": 257,
       "title": "Re-author the sixteen selected Everyday Space props to production standard",
       "kind": "implementation",
-      "state": "ready",
+      "state": "integrated",
       "dependsOn": [],
       "mutexes": [
         "blender",
