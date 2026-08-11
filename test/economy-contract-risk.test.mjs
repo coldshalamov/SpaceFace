@@ -232,16 +232,16 @@ test('threshold gates are deterministic and field offers dedupe per station+epoc
       bus.emit('dock:docked', { stationId: HELIOS_STATION.id }); // same epoch
       const fieldOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
         && e.payload && e.payload.source === 'economyContract');
-      assert.equal(fieldOffers.length, 1, 'one field offer per station-epoch');
-      const offer = fieldOffers[0].payload;
       const epoch = fieldContractEpoch(100, 600);
-      assert.equal(offer.id, stableFieldOfferId(HELIOS_STATION.id, epoch));
-      assert.equal(offer.source, 'economyContract');
-      assert.ok(offer.cause && offer.cause.tag === 'route_scarcity', 'cause-named');
-      assert.match(offer.summary, /scarcity|scarce|premium|route/i);
+      assert.equal(fieldOffers.length, 0, 'Helios first-trade cargo_delivery suppresses same-epoch field cargo_delivery');
+      assert.equal(sys.hasEvaluated(HELIOS_STATION.id, epoch), true, 'suppressed field epoch is still evaluated');
       const firstTrade = bus.emitLog.filter((e) => e.evt === 'mission:offered'
         && e.payload && e.payload.source === 'firstTradeContract');
       assert.equal(firstTrade.length, 1, 'first-trade teach offer once per run at Helios');
+      assert.equal(firstTrade[0].payload.type, 'cargo_delivery');
+      const cargoOffers = bus.emitLog.filter((e) => e.evt === 'mission:offered'
+        && e.payload && e.payload.type === 'cargo_delivery');
+      assert.equal(cargoOffers.length, 1, 'only one cargo_delivery offer posts in the Helios dock epoch');
       assert.equal(state.missions.active.length, 0);
       assert.equal(state.missions.boards, undefined);
     }
