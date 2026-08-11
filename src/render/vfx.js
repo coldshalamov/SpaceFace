@@ -79,6 +79,16 @@ import {
   CERES_JOB_ACTION_VFX_ADMISSION_PRIORITY,
   createCeresJobActionVfxController,
 } from './ceresJobActionVfx.js';
+import {
+  LAW_HEAT_ADMISSION,
+  LAW_HEAT_COLORS,
+  LAW_HEAT_LIGHT_KEY,
+  LAW_HEAT_WORST_CASE_LIGHT_SLOTS,
+  createLawHeatTelegraphController,
+  scanSweepAngle,
+  scanSweepIntensity,
+  suspicionDisplayIntensity,
+} from './lawHeatTelegraphVfx.js';
 import { ContinuousPlumeSystem } from './thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from './thruster/systems/rcsImpulse.js';
 import {
@@ -586,6 +596,7 @@ function emptyVfxSubsystemDiag() {
     stationSideEvents: 0, // seeded station operations drawn on pooled sprite/trail substrates
     npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
     ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
+    lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
   };
 }
 
@@ -799,6 +810,9 @@ export const vfx = {
     this._ceresJobActionEmitter = (slot, profile, pulse, reducedMotion, reducedFlash) => {
       this._emitCeresJobActionVfx(slot, profile, pulse, reducedMotion, reducedFlash);
     };
+    // WF-12 law/heat telegraph: scan sweep, suspicion build, WANTED flip. Shares EVENT_LIGHT_POOL.
+    this._lawHeatTelegraph = createLawHeatTelegraphController();
+    this._lawHeatTelegraphLocal = { x: 0, z: 0 };
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -979,6 +993,13 @@ export const vfx = {
       },
       ceresJobActions: this._ceresJobActionVfx
         ? this._ceresJobActionVfx.inspect()
+        : null,
+      lawHeatTelegraph: this._lawHeatTelegraph
+        ? {
+          ...this._lawHeatTelegraph.inspect(),
+          worstCaseLightSlots: LAW_HEAT_WORST_CASE_LIGHT_SLOTS,
+          lightKeys: LAW_HEAT_LIGHT_KEY,
+        }
         : null,
     };
   },
@@ -1375,12 +1396,15 @@ export const vfx = {
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._resetRibbonTrails(p && p.id); this._markEntityCacheDirty(); });
     add(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresJobActionReceipt(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); });
+    // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+    add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+    add('heat:changed', (p) => this._onLawHeatChanged(p));
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -4449,6 +4473,184 @@ export const vfx = {
     );
   },
 
+  // -------------------------------------------------------------------------
+  // WF-12 law/heat telegraph (scan sweep · suspicion · WANTED flip).
+  // Presentation only: stamps from player:scannedByPatrol / heat:changed, draws via the shared
+  // event-light pool. Never writes heat/law state. No full-screen flash path.
+  // -------------------------------------------------------------------------
+
+  _onLawHeatScan(payload) {
+    if (!this._lawHeatTelegraph) return false;
+    const p = payload && typeof payload === 'object' ? { ...payload } : {};
+    const state = this.state;
+    // Resolve scanned hull position from authoritative entity truth when the payload omits pos.
+    if (!(p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z))) {
+      const targetId = p.targetId != null
+        ? p.targetId
+        : (state && state.playerId != null ? state.playerId : null);
+      if (p.targetId == null && targetId != null) p.targetId = targetId;
+      const ent = targetId != null ? this._ent(targetId) : null;
+      if (ent && ent.pos) p.pos = { x: ent.pos.x || 0, z: ent.pos.z || 0 };
+    } else if (p.targetId == null && state && state.playerId != null) {
+      p.targetId = state.playerId;
+    }
+    const nowS = state && Number.isFinite(state.simTime) ? state.simTime : this._t || 0;
+    return this._lawHeatTelegraph.acceptScan(p, nowS);
+  },
+
+  _onLawHeatChanged(payload) {
+    if (!this._lawHeatTelegraph) return null;
+    return this._lawHeatTelegraph.acceptHeat(payload || {});
+  },
+
+  _updateLawHeatTelegraph(dt) {
+    if (!this._lawHeatTelegraph) return 0;
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reducedMotion = accessibility.id === 'reduced-motion'
+      || accessibility.id === 'reduced-motion-and-flash';
+    const reducedFlash = accessibility.flashOpacityScale < 1
+      || accessibility.eventLightPeakScale < 1;
+    const heatValue = this.state && this.state.player && Number.isFinite(this.state.player.heat)
+      ? this.state.player.heat
+      : null;
+    const live = this._lawHeatTelegraph.update(dt, { reducedMotion, heatValue });
+    this._applyLawHeatTelegraphLights(reducedMotion, reducedFlash, accessibility);
+    return live;
+  },
+
+  _applyLawHeatTelegraphLights(reducedMotion, reducedFlash, accessibility) {
+    const ctrl = this._lawHeatTelegraph;
+    if (!ctrl) return;
+    const snap = ctrl.stamp();
+    const peakScale = accessibility && Number.isFinite(accessibility.eventLightPeakScale)
+      ? accessibility.eventLightPeakScale
+      : 1;
+    // Combat event lights go to 0 under reduced-motion. Sustained law status cues are not combat
+    // flashes — keep a calm floor so the same authoritative facts remain readable (GDX-A25).
+    const statusPeak = peakScale > 0
+      ? peakScale
+      : (reducedMotion ? (reducedFlash ? 0.22 : 0.35) : 1);
+    const flashDim = reducedFlash ? 0.55 : 1;
+
+    // ── Scan sweep: sustained directional pass over the scanned hull ──
+    if (snap.scanSweep && snap.scanSweep.active) {
+      const sweep = snap.scanSweep;
+      let x = sweep.x;
+      let z = sweep.z;
+      if (sweep.targetId != null) {
+        const ent = this._ent(sweep.targetId);
+        if (ent && ent.pos) {
+          x = ent.pos.x || 0;
+          z = ent.pos.z || 0;
+          const radius = Math.max(4, ent.radius || 6);
+          const angle = scanSweepAngle(sweep.age, sweep.life, reducedMotion);
+          x += Math.cos(angle) * radius * 1.15;
+          z += Math.sin(angle) * radius * 1.15;
+        }
+      }
+      const intensity = scanSweepIntensity(sweep.age, sweep.life, reducedMotion)
+        * flashDim
+        * statusPeak;
+      this._upsertLawHeatSustainedLight(
+        LAW_HEAT_LIGHT_KEY.SCAN_SWEEP,
+        x, z,
+        LAW_HEAT_COLORS.scanSweep,
+        intensity * 2.4,
+        90,
+        LAW_HEAT_ADMISSION.SCAN_SWEEP,
+      );
+    } else {
+      this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SCAN_SWEEP);
+    }
+
+    // ── Suspicion: low persistent cue scaling with heat approach to WANTED ──
+    if (snap.suspicion && snap.suspicion.active) {
+      const pp = this._playerPos();
+      const intensity = suspicionDisplayIntensity(snap.suspicion.intensity, reducedMotion)
+        * flashDim
+        * statusPeak;
+      this._upsertLawHeatSustainedLight(
+        LAW_HEAT_LIGHT_KEY.SUSPICION,
+        pp.x || 0, pp.z || 0,
+        LAW_HEAT_COLORS.suspicion,
+        intensity * 1.6,
+        110,
+        LAW_HEAT_ADMISSION.SUSPICION,
+      );
+    } else {
+      this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SUSPICION);
+    }
+
+    // ── WANTED flip: one bounded accent (transient pool slot). Never full-screen. ──
+    const pulseSerial = ctrl.consumeWantedPulse && ctrl.consumeWantedPulse();
+    if (pulseSerial) {
+      const pp = this._playerPos();
+      // _flashLight already multiplies by eventLightPeakScale. Under reduced-motion that scale is
+      // 0, so use the sustained-light path for a calm landed accent that still respects no
+      // full-screen flash (bounded pool slot + short lifetime handled by the stamp).
+      if (peakScale > 0) {
+        const peak = (reducedMotion ? 2.2 : 4.8) * flashDim;
+        this._flashLight(
+          { x: pp.x || 0, z: pp.z || 0 },
+          LAW_HEAT_COLORS.wantedFlip,
+          peak,
+          reducedMotion ? 6 : 9,
+          160,
+          LAW_HEAT_ADMISSION.WANTED_FLIP,
+        );
+      } else {
+        // Calm one-shot via a short sustained claim that the stamp lifetime will release.
+        this._upsertLawHeatSustainedLight(
+          'law-wanted-flip',
+          pp.x || 0, pp.z || 0,
+          LAW_HEAT_COLORS.wantedFlip,
+          (reducedFlash ? 0.9 : 1.4) * statusPeak,
+          140,
+          LAW_HEAT_ADMISSION.WANTED_FLIP,
+        );
+      }
+    }
+    // Retire the reduced-motion WANTED accent when the flip stamp ends.
+    if (!(snap.wantedFlip && snap.wantedFlip.active) && peakScale <= 0) {
+      this._releaseLawHeatSustainedLight('law-wanted-flip');
+    }
+  },
+
+  _upsertLawHeatSustainedLight(key, x, z, color, intensity, range, priority) {
+    if (!this._lights || !key) return false;
+    const peak = Math.max(0, intensity);
+    if (peak <= 0.02) {
+      this._releaseLawHeatSustainedLight(key);
+      return false;
+    }
+    let slot = this._findSustainedEventLight(key);
+    if (!slot) {
+      slot = this._claimEventLightSlot(priority, key);
+      if (!slot) return false;
+    }
+    const local = this._toLocalXZ(
+      Number.isFinite(x) ? x : 0,
+      Number.isFinite(z) ? z : 0,
+      this._lawHeatTelegraphLocal || this._spawnLocalXZ,
+    );
+    slot.obj.position.set(local.x, 10, local.z);
+    if (typeof color === 'number') slot.obj.color.setHex(color);
+    else slot.obj.color.set(color);
+    slot.obj.distance = range || 100;
+    slot.obj.intensity = peak;
+    slot.intensity = peak;
+    slot.peak = peak;
+    slot.decay = 0;
+    slot.t = 0;
+    slot.sustained = true;
+    slot.admissionPriority = priority;
+    return true;
+  },
+
+  _releaseLawHeatSustainedLight(key) {
+    return this._retireEventLightSlot(this._findSustainedEventLight(key));
+  },
+
   _spawnCeresJobActionStreak(
     x, y, z, life, width, length, opacity, color, axisX, axisZ,
   ) {
@@ -4621,6 +4823,14 @@ export const vfx = {
     }
     if (this._trailStreakPool) this._commitTrailStreakInstances();
     if (this._spriteBatches) this._integrateSprites(0);
+    return true;
+  },
+
+  _clearLawHeatTelegraph() {
+    if (this._lawHeatTelegraph) this._lawHeatTelegraph.clear();
+    this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SCAN_SWEEP);
+    this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SUSPICION);
+    this._releaseLawHeatSustainedLight('law-wanted-flip');
     return true;
   },
 
@@ -8369,6 +8579,8 @@ export const vfx = {
       sub.stationSideEvents = 0;
     }
     sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
+    // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
+    sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
     // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with
     // no live NPC job, which costs one existence probe per frame and nothing else.
     if (this._npcJobSignaturesRelevant()) {

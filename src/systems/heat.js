@@ -310,7 +310,7 @@ export const heat = {
       const crossed = (before < WANTED_THRESHOLD) !== (player.heat < WANTED_THRESHOLD);
       const now = this.state.simTime || 0;
       if (crossed || now - this._lastEmit > 0.4) {
-        this._emitChanged(reason, crossed);
+        this._emitChanged(reason, crossed, before);
       }
     }
   },
@@ -376,7 +376,7 @@ export const heat = {
     player.heat = clamp01(value);
     if (player.heat > 0) this._refreshZone(false);
     else this._clearZone();
-    if (player.heat !== before) this._emitChanged(reason, true);
+    if (player.heat !== before) this._emitChanged(reason, true, before);
   },
 
   _clearZone() {
@@ -390,16 +390,31 @@ export const heat = {
     zone.clearAfterS = 0;
   },
 
-  _emitChanged(reason, force = false) {
+  /**
+   * Emit heat:changed with edge facts for presentation (GDX-A25).
+   * Single writer still owns only player.heat; this enriches the public observation packet so
+   * law/heat telegraphs can key the WANTED flip and suspicion intensity without inventing state.
+   */
+  _emitChanged(reason, force = false, previousValue = null) {
     const now = this.state.simTime || 0;
     if (!force && now - this._lastEmit <= 0.4) return;
     this._lastEmit = now;
     const player = this.state.player || {};
+    const value = player.heat || 0;
+    const prev = previousValue != null && Number.isFinite(previousValue) ? previousValue : value;
+    const wanted = value >= WANTED_THRESHOLD;
+    const wasWanted = prev >= WANTED_THRESHOLD;
     this.bus.emit('heat:changed', {
-      value: player.heat || 0,
-      level: heatLevelFor(player.heat || 0),
+      value,
+      previousValue: prev,
+      level: heatLevelFor(value),
       zone: heatZoneSnapshot(ensureHeatZone(player)),
       reason,
+      wanted,
+      wantedCrossed: wanted !== wasWanted,
+      // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
+      suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
+      threshold: WANTED_THRESHOLD,
     });
   },
 };
