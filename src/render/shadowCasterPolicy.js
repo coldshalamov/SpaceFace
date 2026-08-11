@@ -3,6 +3,13 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 
 const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 
+// Key-light shadow ortho is ±700 around the player (renderer._ensureKeyLightShadows). Casters
+// outside that box cannot affect the local shadow map, but Three still walks every castShadow
+// mesh into the shadow pass. Gate membership to the box (+margin) so far traffic keeps lighting
+// and contact shadows without paying realtime depth-map cost.
+export const SHADOW_CAST_RADIUS = 800;
+export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
+
 function normalizeLodLevel(level) {
   return level === 'lod0' || level === 'lod1' || level === 'lod2' ? level : null;
 }
@@ -11,10 +18,34 @@ function policyState(root) {
   const userData = root.userData || (root.userData = {});
   let state = userData[POLICY_STATE];
   if (!state) {
-    state = { dirty: true, lodLevel: null };
+    state = { dirty: true, lodLevel: null, castBand: null };
     userData[POLICY_STATE] = state;
   }
   return state;
+}
+
+/**
+ * Whether a root should contribute realtime directional shadow-map casters.
+ * Player always casts. LOD1/LOD2 are screen-small — contact shadow is enough.
+ * LOD0 casts only inside the local shadow ortho.
+ */
+export function allowRealtimeShadowCast({
+  isPlayer = false,
+  lodLevel = 'lod0',
+  distanceSq = 0,
+} = {}) {
+  if (isPlayer) return true;
+  const level = normalizeLodLevel(lodLevel) || 'lod0';
+  if (level === 'lod1' || level === 'lod2') return false;
+  return Number.isFinite(distanceSq) && distanceSq <= SHADOW_CAST_RADIUS_SQ;
+}
+
+/** Squared XZ distance between a mesh local pose and the player local pose. */
+export function shadowCastDistanceSq(meshPos, playerLocalX, playerLocalZ) {
+  if (!meshPos) return Infinity;
+  const dx = meshPos.x - playerLocalX;
+  const dz = meshPos.z - playerLocalZ;
+  return dx * dx + dz * dz;
 }
 
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */
@@ -25,14 +56,22 @@ export function invalidateShadowCasterPolicy(root) {
 }
 
 /**
- * Apply the realtime canopy and shadow policy only when the visible LOD or object hierarchy changed.
- * Returns true when the scene graph was traversed.
+ * Apply the realtime canopy and shadow policy only when the visible LOD, cast band, or hierarchy
+ * changed. Returns true when the scene graph was traversed.
+ *
+ * @param {object} root
+ * @param {string|null} lodLevel
+ * @param {{ allowCast?: boolean }} [options] allowCast defaults true (legacy mount behavior).
  */
-export function syncShadowCasterPolicy(root, lodLevel = null) {
+export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
   if (!root || typeof root.traverse !== 'function') return false;
   const state = policyState(root);
   const nextLodLevel = normalizeLodLevel(lodLevel);
-  if (!state.dirty && state.lodLevel === nextLodLevel) return false;
+  const allowCast = !options || options.allowCast !== false;
+  const nextCastBand = allowCast ? 1 : 0;
+  if (!state.dirty && state.lodLevel === nextLodLevel && state.castBand === nextCastBand) {
+    return false;
+  }
 
   configureRealtimeCanopyMaterials(root);
   root.traverse((object) => {
@@ -52,20 +91,21 @@ export function syncShadowCasterPolicy(root, lodLevel = null) {
       return;
     }
     const materials = Array.isArray(object.material) ? object.material : [object.material];
-    const casts = materials.some((material) => (
+    const opaqueReceiver = materials.some((material) => (
       material
       && !material.transparent
       && material.depthWrite !== false
       && (material.opacity == null || material.opacity >= 1)
       && material.blending === THREE.NormalBlending
     ));
-    object.castShadow = casts;
-    // Opaque hulls receive the same real-time shadows they cast. Transparent shields/plumes do
-    // neither, avoiding self-shadow flicker while preserving contact-shadow grounding.
-    object.receiveShadow = casts;
+    // Far / low-LOD roots keep receiveShadow so entering the local box looks correct immediately,
+    // but they do not enter the directional shadow-map caster set.
+    object.castShadow = allowCast && opaqueReceiver;
+    object.receiveShadow = opaqueReceiver;
   });
 
   state.dirty = false;
   state.lodLevel = nextLodLevel;
+  state.castBand = nextCastBand;
   return true;
 }

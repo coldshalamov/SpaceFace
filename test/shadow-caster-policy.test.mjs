@@ -95,3 +95,12 @@ test('hierarchy invalidation configures newly admitted authored meshes at the sa
   assert.equal(admitted.castShadow, true);
   assert.equal(admitted.receiveShadow, true);
 });
+
+test('allowCast false drops casters but keeps opaque receivers', () => {
+  const root = new THREE.Group();
+  const opaque = opaqueMesh();
+  root.add(opaque);
+  assert.equal(syncShadowCasterPolicy(root, 'lod0', { allowCast: false }), true);
+  assert.equal(opaque.castShadow, false);
+  assert.equal(opaque.receiveShadow, true);
+});

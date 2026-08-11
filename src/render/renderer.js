@@ -85,7 +85,9 @@ import { perfCountersRequested } from '../core/perfCounters.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
 import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
+  allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
+  shadowCastDistanceSq,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
@@ -1797,8 +1799,9 @@ export const render = {
         const target = boundary || root;
         if (target) {
           invalidateShadowCasterPolicy(target);
-          syncShadowCasterPolicy(target, target.userData && target.userData.lod
-            ? target.userData.lod.level : null);
+          const lodLevel = target.userData && target.userData.lod
+            ? target.userData.lod.level : null;
+          syncShadowCasterPolicy(target, lodLevel, this._shadowPolicyOptions(entity, target));
         }
         if (target && entity && entity.id === state.playerId && this._livingHullPresentation) {
           this._livingHullPresentation.attach(target);
@@ -2187,10 +2190,9 @@ export const render = {
         boundary.rotation.y = -entity.rot;
         if (entity.type === 'ship' || entity.type === 'station') {
           attachContactShadow(boundary, entity);
-          syncShadowCasterPolicy(
-            boundary,
-            boundary.userData && boundary.userData.lod ? boundary.userData.lod.level : null,
-          );
+          const lodLevel = boundary.userData && boundary.userData.lod
+            ? boundary.userData.lod.level : null;
+          syncShadowCasterPolicy(boundary, lodLevel, this._shadowPolicyOptions(entity, boundary));
         }
         boundary.visible = false;
         scene.add(boundary);
@@ -3619,7 +3621,8 @@ export const render = {
       m.rotation.y = -e.rot;
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
-        syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+        const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
+        syncShadowCasterPolicy(m, lodLevel, this._shadowPolicyOptions(e, m));
       }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
@@ -3674,7 +3677,8 @@ export const render = {
     if (hull && e.pitch != null) hull.rotation.z = e.pitch;
     if (e.type === 'ship' || e.type === 'station') {
       attachContactShadow(m, e);
-      syncShadowCasterPolicy(m, m.userData && m.userData.lod ? m.userData.lod.level : null);
+      const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
+      syncShadowCasterPolicy(m, lodLevel, this._shadowPolicyOptions(e, m));
     }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
@@ -3859,6 +3863,7 @@ export const render = {
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
       // width with hysteresis. Newly visible roots are fully posed above before this decision.
+      let lodLevel = userData.lod ? userData.lod.level : null;
       if (userData.lod && userData.updateLod) {
         lodChecked++;
         const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
@@ -3866,9 +3871,15 @@ export const render = {
           ? hlodVisualRadius
           : entity.radius;
         const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
-        const level = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
-        userData.updateLod(level);
-        if (userData.hlod && syncShadowCasterPolicy(mesh, level)) shadowPolicyRefreshes++;
+        lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
+        userData.updateLod(lodLevel);
+      }
+      // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
+      // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+      if (entity.type === 'ship' || entity.type === 'station') {
+        if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity, mesh))) {
+          shadowPolicyRefreshes++;
+        }
       }
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
@@ -4308,6 +4319,37 @@ export const render = {
       pz + (off ? off.z : 40),
     );
     this._keyLight.target.position.set(px, 0, pz);
+  },
+
+  /**
+   * Local directional shadow-map membership for one ship/station root. Shadows stay enabled
+   * globally; only casters outside the local ortho / low LOD drop out of the depth pass.
+   */
+  _shadowPolicyOptions(entity, mesh) {
+    const lodLevel = mesh && mesh.userData && mesh.userData.lod
+      ? mesh.userData.lod.level
+      : 'lod0';
+    if (!entity) return { allowCast: true };
+    const isPlayer = entity.id === this.state.playerId;
+    if (isPlayer) return { allowCast: true };
+    let playerLocalX = 0;
+    let playerLocalZ = 0;
+    const player = this.state.playerId
+      ? (this.state.entities && this.state.entities.get(this.state.playerId))
+      : null;
+    if (player && player.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+      playerLocalX = local.x;
+      playerLocalZ = local.z;
+    }
+    const distanceSq = shadowCastDistanceSq(
+      mesh && mesh.position,
+      playerLocalX,
+      playerLocalZ,
+    );
+    return {
+      allowCast: allowRealtimeShadowCast({ isPlayer, lodLevel, distanceSq }),
+    };
   },
 
   _syncShadowMapEnabled() {
