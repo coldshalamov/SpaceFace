@@ -618,16 +618,20 @@ export const travelLanes = {
       const existingId = this._trafficIds[i];
       const existing = existingId != null ? entities.get(existingId) : null;
       if (existing) {
-        // Reposition in place. Entities are never destroyed, so density is constant by construction.
-        existing.pos.x = x;
-        existing.pos.z = z;
-        if (existing.rot != null) {
-          existing.rot = Math.atan2(
-            outbound ? geometry.axis.z : -geometry.axis.z,
-            outbound ? geometry.axis.x : -geometry.axis.x,
-          );
+        if (existing.alive === false) {
+          this._trafficIds[i] = null;
+        } else {
+          // Reposition in place. Entities are never destroyed, so density is constant by construction.
+          existing.pos.x = x;
+          existing.pos.z = z;
+          if (existing.rot != null) {
+            existing.rot = Math.atan2(
+              outbound ? geometry.axis.z : -geometry.axis.z,
+              outbound ? geometry.axis.x : -geometry.axis.x,
+            );
+          }
+          continue;
         }
-        continue;
       }
       if (!near) continue;
       const ent = spawnEntity({
@@ -640,11 +644,9 @@ export const travelLanes = {
         // the spawn pose while this system advances the visual every tick, creating invisible walls.
         collides: false,
         physicsBody: false,
-        hull: 60,
-        hullMax: 60,
         data: {
           parentType: 'lane_traffic',
-          scanLabel: `${this.lane.name} hauler`,
+          scanLabel: `${this.lane.name} lane traffic`,
           laneId: this.lane.id,
           laneTrafficIndex: i,
         },
