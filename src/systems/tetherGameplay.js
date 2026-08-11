@@ -37,7 +37,6 @@ const ACQUISITION_REFRESH_S = 0.08;
 const ACQUISITION_VALID_S = 0.28;
 const INTENT_HISTORY_S = 0.28;
 const STRONG_TURN_THRESHOLD = 0.42;
-const PRECISE_CURSOR_RADIUS = 28;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
@@ -283,27 +282,14 @@ export const tetherGameplay = {
     // publish or consume one either.
     const nearestOnly = state.input?.tetherMode === 'nearest';
     // PHYSICAL_PLAY_GRAMMAR §7.1: the candidate is published EVERY tick, pressed or not — "you can
-    // see what the Massline will grab before you press, and it updates as you move". The press then
-    // consumes exactly the receipt the HUD last rendered, which is the only reason the highlight
-    // cannot lie: preview and latch read the same record.
+    // see what the Massline will grab before you press, and it updates as you move". Steering-only
+    // presses consume the previous-frame receipt; explicit cursor-aim presses refresh current aim
+    // on the press tick.
     //
-    // "LAST RENDERED" IS LITERAL, AND THE PRESS TICK MUST NOT REBUILD IT.
-    // masslineHud sits at index 91 of PRODUCTION_UPDATE_ORDER and this system at 39, so the receipt
-    // standing here at the top of tick N is the record that was on screen at the end of tick N-1 —
-    // the one the player was looking at when they pressed. Forcing a refresh on the press tick (the
-    // old `force = wantsLatch`) rebuilt it first: _refreshAcquisitionPreview skips its 0.08s
-    // throttle on force AND on intent.reversed, and a reversal also sets forceSwitch:true, which
-    // bypasses the Schmitt hysteresis outright (masslineTargetScoring.js stabilizeMasslineSelection).
-    // So the ordinary "swing the other way and grab" latched a body that had never been drawn, and
-    // previewMatched could not report it because it compared the rebuild against itself.
-    //
-    // The press therefore consumes the STANDING receipt. It is rebuilt only when there is nothing
-    // on screen to contradict: no receipt at all (cold press — first flight tick, or the tick after
-    // a save/new-game reset), a receipt this system did not publish on the immediately preceding
-    // tick (so no frame rendered it), or one that has outlived ACQUISITION_VALID_S. The staleness
-    // this buys is one frame, and it is paid for below: _consumeAcquisitionReceipt re-checks
-    // validUntil and then re-runs validateAcquisitionTarget, so a previewed body that died, left
-    // range, or became obstructed between publish and press DENIES instead of latching.
+    // Passive drift keeps the standing receipt and Schmitt hysteresis so the HUD does not flicker.
+    // An explicit cursor-aim press is different: the player is committing NOW, so the press tick
+    // refreshes acquisition from current aim and bypasses the hold. Steering-only presses keep the
+    // previous-frame receipt contract pinned by massline-acquisition-preview.
     const tickNow = Math.trunc(finite(state.tick));
     const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
     const publishedTargetId = publishedReceipt && publishedReceipt.selected
@@ -315,7 +301,10 @@ export const tetherGameplay = {
     if (!def || nearestOnly) {
       this._clearAcquisitionPreview(state);
     } else {
-      if (!wantsLatch || !standingWasRendered) {
+      const pressOwnsCurrentAim = wantsLatch && acquisitionCursorActive(state);
+      if (pressOwnsCurrentAim) {
+        this._refreshAcquisitionPreview(player, def, state, now, true, true);
+      } else if (!wantsLatch || !standingWasRendered) {
         this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
       }
       // Whatever stands now is what masslineHud renders at the end of THIS tick, refreshed or not.
@@ -717,7 +706,7 @@ export const tetherGameplay = {
     if (attachmentId) this.bus.emit('massline:bridleEnded', { attachmentId, reason });
   },
 
-  _refreshAcquisitionPreview(player, def, state, now, force = false) {
+  _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false) {
     const intent = rememberAcquisitionIntent(this, state, player, now);
     if (!force && !intent.reversed && now - this._lastAcquisitionRefreshT < ACQUISITION_REFRESH_S) {
       return state.masslineAcquisition || null;
@@ -736,7 +725,7 @@ export const tetherGameplay = {
       now,
       {
         forceId: snapshot.context.forceId,
-        forceSwitch: intent.reversed,
+        forceSwitch: intent.reversed || pressOverride,
       },
     );
     this._acquisitionMemory = stable.memory;
@@ -1388,6 +1377,12 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     cursorPrecisionOf,
     isHostile: hostileOf,
   });
+  const hostileContextTargetId = context.source === 'cursor-paint'
+    && context.forceId != null
+    && byId.has(context.forceId)
+    && hostileOf(byId.get(context.forceId))
+    ? context.forceId
+    : null;
   const ranked = rankMasslineTargets(player, rankingCandidates, {
     maxRange: maxLength,
     context,
@@ -1398,7 +1393,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
   });
-  return { ranked, byId, context, intent, aim, maxLength, denial: null };
+  return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
 }
 
 function emptyAcquisitionSnapshot(denial, intent) {
@@ -1410,6 +1405,7 @@ function emptyAcquisitionSnapshot(denial, intent) {
     aim: null,
     maxLength: 390,
     denial,
+    hostileContextTargetId: null,
   };
 }
 
@@ -1432,6 +1428,7 @@ function buildAcquisitionReceipt(host, state, now, snapshot, selectedRecord, ove
       moveX: snapshot.intent.moveX,
       moveZ: snapshot.intent.moveZ,
       source: snapshot.context.source,
+      hostileContext: snapshot.hostileContextTargetId != null,
     },
     reason: selected ? selected.reason : 'no-target',
   };
@@ -1464,6 +1461,7 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
     context: snapshot.context.id,
+    hostileContext: snapshot.hostileContextTargetId === record.id,
     intentLabel: snapshot.context.label,
     confidence: clamp01((exact ? 0.62 : 0.42) + record.score * 0.32 + Math.max(0, gap) * 0.7),
     score: record.score,
@@ -1567,7 +1565,7 @@ function preciseCursorScore(entity, aim) {
   if (!entity || !entity.pos || !aim) return 0;
   const miss = Math.max(0,
     Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, finite(entity.radius)));
-  return clamp01(1 - miss / PRECISE_CURSOR_RADIUS);
+  return clamp01(1 - miss / CURSOR_LATCH_GRACE);
 }
 
 function masslineRouteTargetId(state) {
