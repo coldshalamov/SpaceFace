@@ -1,41 +1,39 @@
 <!-- LIFETIME: VOLATILE -->
 # Inference ledger
 
-**Default INFERENCE job:** make the game obviously better in line with VISION.md — usually by
-**finishing or strengthening weak implementations**, or adding **new** content that fits the same
-fantasy (living physical world, readable roles, real work/crime, arcade-industrial craft). The owner
-should not have to re-say “samey enemies/stations/NPCs,” “blocky graphics,” or “NPCs don’t do real
-jobs.”
+**Two doors**
 
-**Allowed:** new roles, places, tools, variants, activities — if they belong in SpaceFace and clearly
-help. **Not the job:** re-derive a new product strategy each time, or pile only into whatever was
-last called “highest ROI.”
+| Door | Who decides the unit | How |
+|---|---|---|
+| `NEXT` / PQ | Program already named it | `program-dispatch` |
+| `INFERENCE` | **Agent invents it** after detecting a gap | detect → diagnose → implement → re-detect |
 
-## How to pick work
+**INFERENCE is not PQ.** Do not wait for a human “concrete next unit.” The owner bottleneck is
+exactly that. Run detection, find empty/cheap/samey structure in the shipped game data, improve it.
 
-1. Prefer **weak but real** seams (half-wired, one exemplar, thin roster, cheap look, empty behavior).
-2. Else add **new** in-character content of a kind the game already needs more of.
-3. Ship through live owners + focused tests. No play-theater as done.
-4. **+1** the surface; bump `refreshed`. Notes ≤6 words.
+```bash
+node scripts/inference-detect.mjs
+# optional: node scripts/inference-detect.mjs --out=design/program/INFERENCE_DETECT_LAST.json
+```
+
+**After a finished unit:** +1 the surface; bump `refreshed`. Notes ≤6 words.
 
 ```yaml
 refreshed: 2026-08-10
+lastDetect: run inference-detect.mjs before choosing work
 ```
 
-| Surface | Recent | Weak/thin? | Notes |
-|---|---:|---|---|
-| NPC jobs / living activity | 3 | yes | Ceres cast started |
-| Enemy combat roles | 0 | **yes** | samey |
-| Stations / places / destinations | 1 | **yes** | cathedral mid |
-| Planets / world sites | 0 | **yes** | fixture-ish |
-| Sector / pocket activity | 2 | yes | Ceres-heavy |
-| Economy / logistics | 0 | **yes** | weak |
-| Ship / part / material craft | 2 | **yes** | hulls, cathedral |
-| Weapons / physics tools | 0 | **yes** | thin |
-| Variants / states / aftermath | 1 | yes | partial |
-| Presentation juice | 4 | less | recent heavy |
-| Feel/combat constants | 5 | less | recent heavy |
-| Story / characters | 0 | yes | thin |
-| Audio | 0 | yes | thin |
+| Surface | Recent | Notes |
+|---|---:|---|
+| feel/combat constants | 5 | heavy recently |
+| presentation juice | 4 | heavy recently |
+| NPC jobs / living activity | 3 | Ceres cast |
+| ship/part material craft | 2 | cathedral mid |
+| enemy combat roles | 0 | detect often ranks high |
+| economy / logistics | 0 | |
+| stations / places | 1 | |
+| weapons / physics tools | 0 | |
+| story | 0 | |
+| audio | 0 | |
 
-**Anti-pile-on:** if Recent is already high and Weak/thin is “less”, pick another weak surface unless the user names the heavy one.
+**Anti-pile-on:** if Recent is already high for that surface, take the next detect gap instead.

@@ -1,0 +1,242 @@
+{
+  "schema": "spaceface.inferenceDetect.v1",
+  "generatedAt": "2026-08-11T03:27:27.056Z",
+  "purpose": "Autonomous gap find for INFERENCE (not PQ dispatch).",
+  "summary": {
+    "gapCount": 11,
+    "top": [
+      "enemy_doctrines",
+      "ship_defs",
+      "enemy_ai_archetypes",
+      "enemy_silhouettes",
+      "npc_job_kinds"
+    ]
+  },
+  "snapshots": {
+    "enemyTypes": 15,
+    "enemyArchetypes": {
+      "n": 15,
+      "unique": 6,
+      "topShare": 0.3333333333333333,
+      "top": "brawler"
+    },
+    "enemyDoctrines": {
+      "n": 14,
+      "unique": 4,
+      "topShare": 0.5714285714285714,
+      "top": "interceptor_flyby"
+    },
+    "enemySilhouettes": {
+      "n": 15,
+      "unique": 8,
+      "topShare": 0.2,
+      "top": "bruiser_armor"
+    },
+    "enemyShips": {
+      "n": 15,
+      "unique": 6,
+      "topShare": 0.26666666666666666,
+      "top": "ship_wasp"
+    },
+    "npcJobKinds": 6,
+    "pocketJobKinds": [
+      "hauler",
+      "tender",
+      "miner",
+      "surveyor",
+      "patrol",
+      "salvor"
+    ],
+    "weapons": 22,
+    "ships": 13,
+    "modules": 49,
+    "stations": 32,
+    "encounters": 48,
+    "hullGlbs": 10
+  },
+  "gaps": [
+    {
+      "id": "enemy_doctrines",
+      "surface": "enemy combat roles",
+      "wf": "WF-02",
+      "metric": {
+        "n": 14,
+        "unique": 4,
+        "topShare": 0.5714285714285714,
+        "top": "interceptor_flyby"
+      },
+      "floorUnique": 5,
+      "softUnique": 9,
+      "why": "Combat doctrine concentration → same engagement pattern.",
+      "how": "Wire more doctrines into live enemy defs used by directors/spawns.",
+      "score": 48
+    },
+    {
+      "id": "ship_defs",
+      "surface": "ships / builds",
+      "wf": "WF-07 / WF-11",
+      "metric": {
+        "n": 13,
+        "unique": 13,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 15,
+      "softUnique": 25,
+      "why": "Few ship defs → progression and traffic feel sparse.",
+      "how": "New ship def + role kit or traffic presentation identity.",
+      "score": 40
+    },
+    {
+      "id": "enemy_ai_archetypes",
+      "surface": "enemy combat roles",
+      "wf": "WF-02",
+      "metric": {
+        "n": 15,
+        "unique": 6,
+        "topShare": 0.3333333333333333,
+        "top": "brawler"
+      },
+      "floorUnique": 6,
+      "softUnique": 10,
+      "why": "Hostile AI behaviors look samey when few archetypes cover the roster.",
+      "how": "Add or rework enemy types with distinct aiArchetype + combatDoctrineId + silhouette, not only HP/dmg.",
+      "score": 32
+    },
+    {
+      "id": "enemy_silhouettes",
+      "surface": "enemy combat roles",
+      "wf": "WF-02 / WF-11",
+      "metric": {
+        "n": 15,
+        "unique": 8,
+        "topShare": 0.2,
+        "top": "bruiser_armor"
+      },
+      "floorUnique": 6,
+      "softUnique": 12,
+      "why": "Shared silhouettes/hulls make factions read as recolors.",
+      "how": "Distinct silhouette or wholeship presentation per role family.",
+      "score": 32
+    },
+    {
+      "id": "npc_job_kinds",
+      "surface": "NPC jobs / living activity",
+      "wf": "WF-01",
+      "metric": {
+        "n": 6,
+        "unique": 6,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 6,
+      "softUnique": 8,
+      "why": "Few job graphs → world work looks like one loop with labels.",
+      "how": "New jobKind with distinct phase graph + Ceres (or sector) cast wiring.",
+      "score": 16
+    },
+    {
+      "id": "pocket_job_cast",
+      "surface": "sector / pocket activity",
+      "wf": "WF-01 / WF-03",
+      "metric": {
+        "n": 6,
+        "unique": 6,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 5,
+      "softUnique": 8,
+      "why": "Authored pocket cast uses few jobKinds → empty industrial feel.",
+      "how": "More actorSlots with real jobKinds and targets in sectorActivityPockets.",
+      "score": 16
+    },
+    {
+      "id": "hull_part_family",
+      "surface": "ship/part material craft",
+      "wf": "WF-11",
+      "metric": {
+        "n": 10,
+        "unique": 10,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 8,
+      "softUnique": 12,
+      "why": "Few hull kits or flat materials → fleet looks cheap.",
+      "how": "Material/form pass on existing hull family or new kit with measureable surface response.",
+      "score": 16
+    },
+    {
+      "id": "weapons_roster",
+      "surface": "weapons / physics tools",
+      "wf": "WF-05",
+      "metric": {
+        "n": 22,
+        "unique": 22,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 12,
+      "softUnique": 20,
+      "why": "Thin weapon/tool roster limits physical mess variety.",
+      "how": "New mechanically distinct weapon/module with multi-use proof.",
+      "score": 0
+    },
+    {
+      "id": "stations_placed",
+      "surface": "stations / places",
+      "wf": "WF-04",
+      "metric": {
+        "n": 32,
+        "unique": 32,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 12,
+      "softUnique": 20,
+      "why": "Few station identities → destinations feel sparse.",
+      "how": "New station or embodied place with distinct role (not menu-only).",
+      "score": 0
+    },
+    {
+      "id": "encounters",
+      "surface": "encounters / incidents",
+      "wf": "WF-02 / WF-08",
+      "metric": {
+        "n": 48,
+        "unique": 48,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 20,
+      "softUnique": 40,
+      "why": "Thin encounter catalog → freeflight incidents feel rare/same.",
+      "how": "New interruptible encounter package on ordinary route.",
+      "score": 0
+    },
+    {
+      "id": "modules",
+      "surface": "progression / modules",
+      "wf": "WF-07",
+      "metric": {
+        "n": 49,
+        "unique": 49,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 20,
+      "softUnique": 35,
+      "why": "Thin module list → builds lack agency options.",
+      "how": "New module with real behavioral hook (not stat-only if possible).",
+      "score": 0
+    }
+  ],
+  "agentInstructions": [
+    "You are NOT waiting for a human-named unit. PQ owns that door.",
+    "Pick the highest-score gap that is not recently piled-on (see INFERENCE_LEDGER).",
+    "Invent a concrete improvement that raises unique count or lowers concentration.",
+    "Implement through live owners; prove with focused tests; re-run this script; score for that gap should not worsen and should usually improve.",
+    "Update INFERENCE_LEDGER +1 for the surface."
+  ]
+}

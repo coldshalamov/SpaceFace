@@ -21,13 +21,16 @@ INFERENCE 5x POLISH
 WF-01 3x
 ```
 
-**Default INFERENCE job:** make the game obviously better in line with VISION.md. Usually that means
-**strengthening weak implementations** or adding **new** fitting content where more would clearly
-help (roles, places, jobs, craft, tools). The owner should not have to restate samey/blocky/empty.
-Do not invent a new product strategy each time.
+**Default INFERENCE job (autonomous — not PQ):**
 
-**Ledger (mandatory, keep it short):** [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — weak surfaces
-and recent +1s. Prefer weak/underfed; avoid pile-on. Tick +1 when a unit finishes.
+1. `node scripts/inference-detect.mjs` — structural thinness/sameiness from shipped data  
+2. Pick a high-score gap (respect ledger anti-pile-on)  
+3. **You invent** the unit (strengthen weak work or add fitting new content)  
+4. Implement via live owners + focused tests  
+5. Re-run detect; tick [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) +1  
+
+This is the door for agents to notice empty/samey/cheap **without** the owner playtesting and
+naming the unit. `NEXT`/PQ is the other door (pre-specified work). Do not collapse them.
 
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
