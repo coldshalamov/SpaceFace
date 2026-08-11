@@ -91,6 +91,7 @@ evidence triggers are proved.
 | [`PQ-042.md`](./PQ-042.md) | select one GPU correction—or no GPU change—from valid pass evidence | PQ-034–041 accepted; clean trace selects A/B/C/D |
 | [`PQ-045.md`](./PQ-045.md) | finish the R5 Ceres lived-world slice through exact dependency leaves | target motion integrated; tender client, topology, causal/NPC/art/VFX work, five-minute evidence, and human verdict; bounded late audit is independent |
 | [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
+| [`PQ-048.md`](./PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | user-authorized 20x campaign; first exact leaf is the Ceres ore cycle |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.

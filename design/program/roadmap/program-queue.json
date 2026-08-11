@@ -2267,6 +2267,37 @@
       "receipt": "design/program/roadmap/receipts/PQ-047-composition-REPORT.md",
       "integratedCommit": "1b6478e5",
       "acceptanceRef": "design/program/roadmap/receipts/PQ-047-composition-REPORT.md"
+    },
+    {
+      "id": "PQ-048",
+      "priority": 48,
+      "title": "Twenty inference-to-convergence player outcomes",
+      "state": "ready",
+      "canonical": [
+        "INFERENCE-20X-2026-08-11"
+      ],
+      "aliases": [
+        "INFERENCE-20X"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/vision/INFERENCE_CONVERGENCE_METHOD.md",
+        "design/vision/GAME_DIRECTION_EXPANSION.md",
+        "design/program/roadmap/active/PQ-048.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "twenty-new-production-packages",
+        "owner-safe-consequence",
+        "ordinary-player-route",
+        "cold-review",
+        "tranche-composition"
+      ],
+      "brief": "User-authorized 20x campaign: twenty new, independently reviewable player outcome packages delivered serially in four composed tranches. Pre-existing work, files, catalog rows, cues, tests, and receipts do not count as units."
     }
   ],
   "dispatchUnits": [
@@ -5559,6 +5590,35 @@
         "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md"
       ],
       "brief": "The default sector cap is 24 with a hard ceiling of 40, native anchor-first squads fill to four through six light ships, and every encounter, mission, law, boss, world, and reinforcement producer remains reservation/bind/release gated through failure, retry, transition, and save."
+    },
+    {
+      "id": "PQ-048.01",
+      "parentId": "PQ-048",
+      "priority": 280,
+      "title": "Make the Ceres ore cycle physically complete",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/economy/freightCausality.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/systems/cargo.js",
+        "src/data/sectorActivityPockets.js",
+        "test/ore-carrier-freight-route.test.mjs",
+        "test/economy-freight-causality.test.mjs",
+        "test/economy-freight-route-depth.test.mjs",
+        "test/traffic-role-mix-reads-contents.test.mjs"
+      ],
+      "checks": [
+        "node --test test/ore-carrier-freight-route.test.mjs test/economy-freight-causality.test.mjs test/economy-freight-route-depth.test.mjs test/traffic-role-mix-reads-contents.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md"
+      ],
+      "brief": "A seam produces an authoritative ore lot; a readable ore barge loads and transports it, can be protected or robbed, and delivery changes the Ceres refinery market exactly once without traffic becoming a cargo or economy writer."
     }
   ]
 }
