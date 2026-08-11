@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { physics } from '../src/core/physics.js';
 import { createSimulation } from '../src/core/sim.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 
 import {
   CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
@@ -32,9 +33,11 @@ import {
   planCeresThroughlineToolkitReposition,
   planCeresWorkingSeamEgress,
   pointPublicAtCeresHostile,
+  prepareCeresPublicTetherFireSurface,
   projectCeresActivityFrame,
   runCeresPreRepulsorCombatLoop,
   selectCeresHostilePointingStatus,
+  selectCeresTetherCombatStatus,
   settleCeresPocketApproach,
   triggerCeresPublicFlightAction,
   validateCeresPilotSources,
@@ -52,6 +55,7 @@ import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 import { asteroidFormations } from '../src/systems/asteroidFormations.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { projectPilotFlightControls } from '../src/systems/input.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
@@ -130,6 +134,7 @@ const TOOLKIT_WEAPON_IDS = Object.freeze([
   'wpn_gravity_marker_s',
   'wpn_momentum_sink_s',
 ]);
+const SEED47_REAVER_KILL_TICK_CEILING = 1_120;
 const POCKET_NAVIGATION = Object.freeze({
   ceres_refinery_pocket: null,
   ceres_working_seam: Object.freeze({
@@ -714,6 +719,8 @@ test('runtime evidence requires raw five-minute route observations, not summary 
     'tether:released',
     'massSeed:deployed',
     'massSeed:locked',
+    'tether:attached',
+    'tether:latched',
     'combat:fire',
     'combat:damage',
     'projectile:hit',
@@ -1031,6 +1038,18 @@ test('physics-toolkit proof is an ordered causal trace against initial Throughli
   assert.equal(deployedSeed.ownerId, PLAYER_ENTITY_ID);
   assert.equal(lockedSeed.seedId, deployedSeed.seedId);
   assert.ok(deployedSeed.tick < lockedSeed.tick);
+  const attachmentRows = toolkit.events.filter((entry) => entry.event === 'tether:attached');
+  const latchRows = toolkit.events.filter((entry) => entry.event === 'tether:latched');
+  assert.equal(attachmentRows.length, 2, 'combat must reacquire the same hostile with a second Massline');
+  assert.equal(latchRows.length, 2);
+  const combatAttached = attachmentRows[1];
+  const combatLatched = latchRows[1];
+  assert.equal(combatAttached.targetId, attached.targetId);
+  assert.equal(combatAttached.targetWorldRecordId, attached.targetWorldRecordId);
+  assert.notEqual(combatAttached.attachmentId, attached.attachmentId);
+  assert.equal(combatLatched.targetId, combatAttached.targetId);
+  assert.equal(combatLatched.previewMatched, true);
+  assert.ok(lockedSeed.seq < combatAttached.seq && combatAttached.seq < combatLatched.seq);
 
   const repulsor = findToolkitEvent(toolkit, 'fields:deployed');
   assert.equal(repulsor.kind, 'repulsor');
@@ -1188,6 +1207,27 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   assert.equal(pointingReads, 1);
   assert.equal(volleys, 1);
 
+  let killRaceReads = 0;
+  let killRacePointingReads = 0;
+  const killRace = await runCeresPreRepulsorCombatLoop({
+    routeStartTick,
+    deadlineTick,
+    readReceipt: async () => {
+      killRaceReads += 1;
+      return killRaceReads === 1 ? incomplete : complete;
+    },
+    readPointingStatus: async () => {
+      killRacePointingReads += 1;
+      return { tick: incomplete.endTick, candidates: [], target: null };
+    },
+    fireVolley: async () => assert.fail('a tombstone that lands during authority lookup needs no extra fire'),
+  });
+  assert.equal(killRace.evaluation.pass, true);
+  assert.equal(killRace.volleyCount, 0);
+  assert.equal(killRaceReads, 2,
+    'authority loss must get one terminal durable-receipt read before it is classified as failure');
+  assert.equal(killRacePointingReads, 1);
+
   let slowVolleyCount = 0;
   const slowReceipt = structuredClone(incomplete);
   slowReceipt.endTick = deadlineTick - 61;
@@ -1272,6 +1312,40 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
     unpointableError.ceresToolkitCombatDiagnostic.pointing.candidates[0].distanceWU,
     4_575,
   );
+  const offscreenTetherAuthority = {
+    targetId: TOOLKIT_HOSTILES[0].entityId,
+    worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+    attachmentId: 'att_player_701_combat',
+  };
+  const tetheredOffscreen = selectCeresTetherCombatStatus({
+    tick: incomplete.endTick,
+    gunTargetId: TOOLKIT_HOSTILES[0].entityId,
+    tether: {
+      active: true,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+      attachmentId: offscreenTetherAuthority.attachmentId,
+    },
+    candidates: [{
+      id: TOOLKIT_HOSTILES[0].entityId,
+      worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+      alive: true,
+      type: 'ship',
+      zoneId: 'zone_ceres_ambush',
+      squadId: 'zone_ceres_ambush',
+      distanceWU: 388.72,
+      speed: 112,
+      pointable: false,
+    }],
+  }, offscreenTetherAuthority);
+  assert.equal(tetheredOffscreen.target?.id, TOOLKIT_HOSTILES[0].entityId,
+    'an exact active Massline keeps fire-control authority after the moving hull leaves the camera');
+  assert.equal(tetheredOffscreen.target?.pointable, false);
+  assert.equal(selectCeresTetherCombatStatus({
+    ...tetheredOffscreen,
+    gunTargetId: TOOLKIT_HOSTILES[0].entityId,
+    tether: { active: true, targetId: TOOLKIT_HOSTILES[0].entityId, attachmentId: 'wrong' },
+  }, offscreenTetherAuthority).target, null,
+  'combat must fail closed if the exact second attachment is lost');
 
   const librarySource = readFileSync(
     new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
@@ -1280,14 +1354,21 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   const seedIndex = librarySource.indexOf("key: 'Digit4'", librarySource.indexOf(
     'async function exercisePublicPhysicsToolkit',
   ));
+  const combatRelatchIndex = librarySource.indexOf('const combatAttachedAction', seedIndex);
   const combatIndex = librarySource.indexOf('runCeresPreRepulsorCombatLoop({', seedIndex);
   const fixedVolleyIndex = librarySource.indexOf(
-    'fireCeresPublicCombatVolley(page, combatTarget, box, {', combatIndex,
+    'fireCeresPublicCombatVolley(page, fireControlTarget, box, {', combatIndex,
   );
   const repulsorIndex = librarySource.indexOf("key: 'Digit6'", combatIndex);
-  assert.ok(seedIndex >= 0 && combatIndex > seedIndex && fixedVolleyIndex > combatIndex
+  assert.ok(seedIndex >= 0 && combatRelatchIndex > seedIndex && combatIndex > combatRelatchIndex
+    && fixedVolleyIndex > combatIndex
     && repulsorIndex > fixedVolleyIndex,
-    'the public route must lock Mass Seed, complete combat, then deploy Repulsor');
+    'the public route must lock Mass Seed, relatch the exact hostile, complete combat, then deploy Repulsor');
+  assert.match(librarySource.slice(fixedVolleyIndex, repulsorIndex), /movePointer: false/,
+    'off-screen Massline fire must retain the actionability-checked canvas point');
+  assert.match(librarySource.slice(fixedVolleyIndex, repulsorIndex),
+    /expectedFireOwnerId: firstCombatFire \? baseline\.playerEntityId : null/,
+    'the first retained-pointer hold must prove a fresh player-owned production fire receipt');
 });
 
 test('physics-toolkit evaluator rejects summary shortcuts and broken causal identity', () => {
@@ -1306,7 +1387,7 @@ test('physics-toolkit evaluator rejects summary shortcuts and broken causal iden
       toolkit.cameraReposition.impacts.push({
         seq: 1_191,
         event: 'physics:impact',
-        tick: toolkit.cameraReposition.endTick,
+        tick: toolkit.cameraReposition.movementEndTick,
         aId: toolkit.playerEntityId,
         bId: 229,
       });
@@ -1348,6 +1429,30 @@ test('physics-toolkit evaluator rejects summary shortcuts and broken causal iden
     ['release precedes break', (toolkit) => {
       findToolkitEvent(toolkit, 'tether:released').tick =
         findToolkitEvent(toolkit, 'tether:broken').tick - 1;
+    }],
+    ['combat Massline relatch is missing', (toolkit) => {
+      const attachments = toolkit.events.filter((event) => event.event === 'tether:attached');
+      toolkit.events.splice(toolkit.events.indexOf(attachments[1]), 1);
+    }],
+    ['combat Massline switches durable targets', (toolkit) => {
+      const attachments = toolkit.events.filter((event) => event.event === 'tether:attached');
+      attachments[1].targetId = TOOLKIT_HOSTILES[1].entityId;
+      attachments[1].targetWorldRecordId = TOOLKIT_HOSTILES[1].worldRecordId;
+    }],
+    ['combat Massline breaks before the proof kill', (toolkit) => {
+      const attachments = toolkit.events.filter((event) => event.event === 'tether:attached');
+      const killIndex = toolkit.events.findIndex((event) => event.event === 'entity:killed');
+      toolkit.events.splice(killIndex, 0, {
+        seq: 0,
+        event: 'tether:broken',
+        tick: toolkit.events[killIndex].tick - 1,
+        actorId: toolkit.playerEntityId,
+        targetId: attachments[1].targetId,
+        targetWorldRecordId: attachments[1].targetWorldRecordId,
+        attachmentId: attachments[1].attachmentId,
+        reason: 'physics_break',
+      });
+      toolkit.events.forEach((event, index) => { event.seq = 1_201 + index; });
     }],
     ['seed lock names another seed', (toolkit) => {
       findToolkitEvent(toolkit, 'massSeed:locked').seedId = 9_999;
@@ -1472,6 +1577,25 @@ test('physics-toolkit evaluator rejects summary shortcuts and broken causal iden
     assert.equal(result.pass, false, label);
     assert.ok(result.failures.length > 0, `${label} must explain the failure`);
   }
+
+  const postMovementContact = runtimeFixture('electron');
+  const camera = postMovementContact.observations.toolkit.cameraReposition;
+  camera.impactCapture.endSeq = 1_191;
+  camera.impacts.push({
+    seq: 1_191,
+    event: 'physics:impact',
+    tick: camera.movementEndTick + 1,
+    aId: postMovementContact.observations.toolkit.playerEntityId,
+    bId: 229,
+    phase: 'post-movement-conflict-wait',
+  });
+  const postMovementResult = evaluateCeresFiveMinuteRuntime(
+    postMovementContact,
+    { runtimeKind: 'electron' },
+  );
+  assert.equal(postMovementResult.pass, true, postMovementResult.failures.join('; '));
+  assert.equal(camera.impacts.at(-1).phase, 'post-movement-conflict-wait',
+    'post-settle contacts stay durable and diagnostic without being mislabeled as camera motion');
 
   const legacyShortcut = runtimeFixture('electron');
   legacyShortcut.observations.toolkit = {
@@ -1848,6 +1972,48 @@ test('public combat volleys hold fire through exact fixed ticks and neutralize b
     'the final 8-tick interval proves neutral public primary fire');
   assert.equal(harness.mouseHeld, false);
 
+  const retained = fixedTickToolkitActionPage({ emitCombatFireOwnerId: PLAYER_ENTITY_ID });
+  const canvas = {
+    async hover(options) {
+      retained.log.push({ kind: 'canvas-hover', ...options, tick: 700 });
+    },
+  };
+  const surface = await prepareCeresPublicTetherFireSurface(canvas, retained.page, box, {
+    deadlineTick: 800,
+  });
+  assert.deepEqual(surface, {
+    source: 'public-canvas-hover',
+    position: { x: 50, y: 25 },
+    startTick: 700,
+    readyTick: 701,
+  });
+  const retainedReceipt = await fireCeresPublicCombatVolley(retained.page, {
+    id: TOOLKIT_HOSTILES[0].entityId,
+    worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+  }, box, {
+    deadlineTick: 800,
+    movePointer: false,
+    expectedFireOwnerId: PLAYER_ENTITY_ID,
+  });
+  assert.equal(retainedReceipt.source, 'public-mouse-fixed-tick-retained-canvas');
+  assert.equal(retainedReceipt.fireEvent.ownerId, PLAYER_ENTITY_ID);
+  assert.ok(retainedReceipt.fireEvent.tick > retainedReceipt.startTick
+    && retainedReceipt.fireEvent.tick <= retainedReceipt.neutralTick,
+  'the actionability-checked first hold must produce a fresh player-owned combat fire receipt');
+  assert.equal(retained.log.filter((row) => row.kind === 'mouse-move').length, 0,
+    'Massline fire control must not chase an off-screen hull with cursor movement');
+  assert.equal(retained.log.filter((row) => row.kind === 'canvas-hover').length, 1,
+    'Playwright actionability must bind primary fire to the canvas instead of an overlapping HUD row');
+  assert.equal(retained.mouseHeld, false);
+
+  const swallowedByOverlay = fixedTickToolkitActionPage();
+  await assert.rejects(fireCeresPublicCombatVolley(swallowedByOverlay.page, target, box, {
+    deadlineTick: 800,
+    expectedFireOwnerId: PLAYER_ENTITY_ID,
+  }), /did not produce a fresh player-owned fire receipt/,
+  'a sampled mouse hold without a production fire event cannot count as a combat volley');
+  assert.equal(swallowedByOverlay.mouseHeld, false);
+
   const boundary = fixedTickToolkitActionPage();
   await assert.rejects(
     fireCeresPublicCombatVolley(boundary.page, target, box, { deadlineTick: 726 }),
@@ -2069,6 +2235,8 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
   });
   assert.equal(selected.nearest.id, nearestOffscreen.id,
     'distance ordering remains diagnostic even when the nearest actor is outside the frustum');
+  assert.deepEqual(selected.candidates.map((row) => row.id), [nearestOffscreen.id, fartherPointable.id],
+    'bounded combat diagnostics must preserve every exact projected cohort candidate');
   assert.deepEqual(selected.target, {
     id: fartherPointable.id,
     worldRecordId: fartherPointable.worldRecordId,
@@ -2240,6 +2408,89 @@ test('seed-47 Hornet traverses the toolkit camera corridor with production Fligh
     assert.ok(Math.abs(projection.x) <= 0.98 && Math.abs(projection.y) <= 0.98,
       `the full public completion shell keeps the recorded hostile pointable at bearing ${bearing}`);
   }
+});
+
+test('seed-47 production Massline relatch retains and leads the Reaver through off-frustum fire', async () => {
+  const result = await runSeed47OffFrustumMasslineCombat();
+
+  assert.deepEqual(result.runtime, {
+    evidenceClass: 'production-manifest',
+    aiBackend: 'sg06-tactical',
+    flightBackend: 'v3',
+  });
+  assert.deepEqual(result.physics, { backend: 'rapier-dynamic', sg02Ready: true });
+  assert.equal(result.targetWorldRecordId, 'wr_npc_b41fdf37');
+
+  assert.equal(result.attachedEvents.length, 2,
+    'the public attach, cut, and relatch sequence must create exactly two physical lines');
+  assert.deepEqual(result.attachedEvents.map((event) => event.targetId), [result.targetId, result.targetId]);
+  assert.notEqual(result.attachedEvents[0].attachmentId, result.attachedEvents[1].attachmentId,
+    'relatch must create a fresh physical attachment rather than revive the cut line');
+  assert.equal(result.latchedEvents.length, 2);
+  assert.ok(result.latchedEvents.every((event) => event.previewMatched === true),
+    'each public press must consume the exact preview that was published on the prior tick');
+  assert.ok(result.latchedEvents.every((event) => event.selectionReceiptId),
+    'each public press must carry a fresh cursor-acquisition receipt');
+  assert.notEqual(result.latchedEvents[0].selectionReceiptId, result.latchedEvents[1].selectionReceiptId);
+  const firstCut = result.brokenEvents.find(
+    (event) => event.attachmentId === result.attachedEvents[0].attachmentId,
+  );
+  assert.equal(firstCut?.reason, 'tether_cut');
+  assert.ok(firstCut.seq < result.attachedEvents[1].seq,
+    'the first physical line must be publicly cut before the fresh relatch');
+  assert.ok(result.tombstone,
+    `full-health Reaver survived the ${SEED47_REAVER_KILL_TICK_CEILING}-tick fixed-pointer ceiling`);
+  assert.equal(result.brokenEvents.some((event) => (
+    event.attachmentId === result.attachedEvents[1].attachmentId
+      && event.seq < result.tombstone.seq
+  )), false, 'the second line must remain unbroken until the exact target is tombstoned');
+
+  assert.ok(result.offFrustumFire.seq > result.latchedEvents[1].seq,
+    'the accepted fire must be fresh evidence after the second latch');
+  assert.ok(Math.abs(result.offFrustumFire.projection.x) > 0.98
+    || Math.abs(result.offFrustumFire.projection.y) > 0.98,
+    'the exact target must already be outside the fixed camera when the accepted round leaves');
+  assert.equal(result.offFrustumFire.targetId, result.targetId);
+  assert.equal(result.offFrustumFire.gunTargetId, result.targetId);
+  assert.equal(result.offFrustumFire.tetherActive, true);
+  assert.equal(result.offFrustumFire.attachmentId, result.attachedEvents[1].attachmentId);
+  assert.ok(Number.isInteger(result.offFrustumFire.projectileId),
+    'the off-frustum fire receipt must bind the fresh projectile it spawned');
+  assert.ok(Math.abs(result.offFrustumFire.leadRad) > 0.04,
+    'the Massline firing solution must lead the crossing target by more than weapon spread');
+
+  assert.ok(result.exactHit.seq > result.offFrustumFire.seq);
+  assert.ok(result.exactHit.tick > result.offFrustumFire.tick);
+  assert.equal(result.exactHit.projectileId, result.offFrustumFire.projectileId,
+    'the exact projectile spawned by the off-frustum fire receipt must land the hit');
+  assert.equal(result.exactHit.ownerId, result.playerId);
+  assert.equal(result.exactHit.targetId, result.targetId);
+  assert.equal(result.exactHit.weaponId, result.offFrustumFire.weaponId);
+  assert.equal(result.exactHit.tetherActive, true);
+  assert.equal(result.exactHit.attachmentId, result.attachedEvents[1].attachmentId);
+  assert.equal(result.exactHit.lineState, 'active');
+  assert.equal(result.targetAliveAtHit, true);
+  assert.ok(result.firstHitCombatTicks <= 240,
+    'the first exact off-frustum hit must retain its original bounded route guarantee');
+
+  assert.ok(result.tombstone.seq > result.exactHit.seq);
+  assert.equal(result.tombstone.id, result.targetId);
+  assert.equal(result.tombstone.worldRecordId, result.targetWorldRecordId);
+  assert.equal(result.tombstone.killerId, result.playerId,
+    'the exact captured Reaver tombstone must belong to the public player weapon route');
+  assert.equal(result.tombstone.tetherActive, true);
+  assert.equal(result.tombstone.attachmentId, result.attachedEvents[1].attachmentId);
+  assert.equal(result.tombstone.lineState, 'active');
+  assert.equal(result.secondLineStayedActiveBeforeKill, true);
+  assert.equal(result.targetAliveAfterLoop, false);
+  assert.ok(result.maxDistanceWU <= 390,
+    'the captured Reaver must stay inside the canonical standard-Massline length');
+  assert.ok(result.combatTicks <= SEED47_REAVER_KILL_TICK_CEILING,
+    'fixed-pointer fire must tombstone the full-health Reaver inside the measured TTK ceiling');
+  assert.ok(result.targetHitCount > 11,
+    'the regression must continue materially beyond the Browser hit-only fingerprint');
+  assert.deepEqual(result.finalAimPoint, result.fixedAimPoint,
+    'the harness cursor must remain fixed after relatch instead of privately following the Reaver');
 });
 
 test('public pocket settle holds the brake to the speed condition outside the steering budget', async () => {
@@ -2568,6 +2819,9 @@ test('public pilot source uses menu/card and Playwright input while private shor
   assert.match(toolkitSource,
     /page\.mouse\.move[\s\S]*waitForCeresHostileMasslineAcquisition\(page, target[\s\S]*triggerCeresPublicFlightAction\(page, \{[\s\S]*key: 'Space'/,
     'the exact fresh rendered hostile receipt must precede the public Massline press');
+  assert.match(toolkitSource,
+    /const lockedSeed[\s\S]*const combatAttachedAction[\s\S]*prepareCeresPublicTetherFireSurface[\s\S]*runCeresPreRepulsorCombatLoop/,
+    'combat must relatch the exact released hostile before fixed-tick fire begins');
   for (const marker of [
     "key: 'Space'",
     "trigger: 'release'",
@@ -2958,6 +3212,7 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
 function toolkitReceiptFixture(destroyedWorldRecordId) {
   const target = TOOLKIT_HOSTILES[0];
   const attachmentId = 'att_player_701_1';
+  const combatAttachmentId = 'att_player_701_2';
   const seedId = 9_001;
   const cameraPlan = planCeresThroughlineToolkitReposition();
   const events = [
@@ -3017,18 +3272,35 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       tick: START_TICK + 7_252,
       seedId,
     },
-    weaponEvent({ seq: 1_209, event: 'combat:fire', tick: START_TICK + 7_300,
+    {
+      seq: 1_208,
+      event: 'tether:attached',
+      tick: START_TICK + 7_260,
+      actorId: PLAYER_ENTITY_ID,
+      targetId: target.entityId,
+      targetWorldRecordId: target.worldRecordId,
+      attachmentId: combatAttachmentId,
+    },
+    {
+      seq: 1_209,
+      event: 'tether:latched',
+      tick: START_TICK + 7_260,
+      targetId: target.entityId,
+      targetWorldRecordId: target.worldRecordId,
+      previewMatched: true,
+    },
+    weaponEvent({ seq: 1_210, event: 'combat:fire', tick: START_TICK + 7_300,
       weaponId: 'wpn_concussion_cannon_m', target }),
-    weaponEvent({ seq: 1_210, event: 'combat:damage', tick: START_TICK + 7_310,
+    weaponEvent({ seq: 1_211, event: 'combat:damage', tick: START_TICK + 7_310,
       weaponId: 'wpn_concussion_cannon_m', target }),
-    weaponEvent({ seq: 1_211, event: 'projectile:hit', tick: START_TICK + 7_310,
+    weaponEvent({ seq: 1_212, event: 'projectile:hit', tick: START_TICK + 7_310,
       weaponId: 'wpn_concussion_cannon_m', target }),
-    weaponEvent({ seq: 1_212, event: 'combat:fire', tick: START_TICK + 7_340,
+    weaponEvent({ seq: 1_213, event: 'combat:fire', tick: START_TICK + 7_340,
       weaponId: 'wpn_gravity_marker_s', target }),
-    weaponEvent({ seq: 1_213, event: 'combat:damage', tick: START_TICK + 7_350,
+    weaponEvent({ seq: 1_214, event: 'combat:damage', tick: START_TICK + 7_350,
       weaponId: 'wpn_gravity_marker_s', target }),
     {
-      seq: 1_214,
+      seq: 1_215,
       event: 'combat:statusApplied',
       tick: START_TICK + 7_350,
       attackerId: PLAYER_ENTITY_ID,
@@ -3036,14 +3308,14 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       targetWorldRecordId: target.worldRecordId,
       statusId: 'status_gravity_marked',
     },
-    weaponEvent({ seq: 1_215, event: 'projectile:hit', tick: START_TICK + 7_350,
+    weaponEvent({ seq: 1_216, event: 'projectile:hit', tick: START_TICK + 7_350,
       weaponId: 'wpn_gravity_marker_s', target }),
-    weaponEvent({ seq: 1_216, event: 'combat:fire', tick: START_TICK + 7_380,
+    weaponEvent({ seq: 1_217, event: 'combat:fire', tick: START_TICK + 7_380,
       weaponId: 'wpn_momentum_sink_s', target }),
-    weaponEvent({ seq: 1_217, event: 'combat:damage', tick: START_TICK + 7_390,
+    weaponEvent({ seq: 1_218, event: 'combat:damage', tick: START_TICK + 7_390,
       weaponId: 'wpn_momentum_sink_s', target }),
     {
-      seq: 1_218,
+      seq: 1_219,
       event: 'combat:statusApplied',
       tick: START_TICK + 7_390,
       attackerId: PLAYER_ENTITY_ID,
@@ -3051,10 +3323,10 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       targetWorldRecordId: target.worldRecordId,
       statusId: 'status_momentum_sink',
     },
-    weaponEvent({ seq: 1_219, event: 'projectile:hit', tick: START_TICK + 7_390,
+    weaponEvent({ seq: 1_220, event: 'projectile:hit', tick: START_TICK + 7_390,
       weaponId: 'wpn_momentum_sink_s', target }),
     {
-      seq: 1_220,
+      seq: 1_221,
       event: 'entity:killed',
       tick: START_TICK + 7_420,
       entityId: target.entityId,
@@ -3062,7 +3334,7 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       killerId: PLAYER_ENTITY_ID,
     },
     {
-      seq: 1_221,
+      seq: 1_222,
       event: 'fields:deployed',
       tick: START_TICK + 7_430,
       fieldId: 'field_repulsor_1_1',
@@ -3577,7 +3849,7 @@ function publicInputReceipt() {
   };
 }
 
-function fixedTickToolkitActionPage() {
+function fixedTickToolkitActionPage({ emitCombatFireOwnerId = null } = {}) {
   const heldKeys = new Set();
   const log = [];
   let mouseHeld = false;
@@ -3667,6 +3939,17 @@ function fixedTickToolkitActionPage() {
         && Number.isSafeInteger(argument?.deltaTicks));
       state.tick = Math.max(state.tick, argument.tick + argument.deltaTicks);
       state.simTime = state.tick / 60;
+      if (mouseHeld && emitCombatFireOwnerId != null
+          && !trace.events.some((event) => event.event === 'combat:fire'
+            && event.ownerId === emitCombatFireOwnerId)) {
+        trace.events.push({
+          seq: trace.nextEventSeq++,
+          event: 'combat:fire',
+          tick: state.tick,
+          ownerId: emitCombatFireOwnerId,
+          weaponId: 'wpn_concussion_cannon_m',
+        });
+      }
       log.push({
         kind: 'fixed-tick',
         tick: state.tick,
@@ -4077,6 +4360,263 @@ async function runSeed47ToolkitCameraReposition() {
   } finally {
     physicsSystem._disableSg02DynamicAuthority();
     sim.dispose();
+  }
+}
+
+async function runSeed47OffFrustumMasslineCombat() {
+  const dt = 1 / 60;
+  const maxCombatTicks = SEED47_REAVER_KILL_TICK_CEILING;
+  const hostileStart = { x: -8972.711669921875, z: 7237.062744140625 };
+  let aimPoint = { ...hostileStart };
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    seed: 47,
+    helpers: {
+      raycastToPlane() { return { ...aimPoint }; },
+    },
+  });
+  const { state, bus } = runtime;
+  const attachedEvents = [];
+  const latchedEvents = [];
+  const brokenEvents = [];
+  let evidenceSeq = 0;
+  let player = null;
+  let target = null;
+  let secondAttachmentId = null;
+  let offFrustumFire = null;
+  let exactHit = null;
+  let tombstone = null;
+  let secondLineStayedActiveBeforeKill = true;
+  let targetAliveAtHit = false;
+  let firstHitCombatTicks = null;
+  let playerFireCount = 0;
+  let targetHitCount = 0;
+  let combatTicks = 0;
+  let maxDistanceWU = 0;
+  let fixedAimPoint = null;
+
+  const lineSnapshot = () => {
+    const line = secondAttachmentId == null
+      ? null
+      : state.combat?.attachments?.byId?.[secondAttachmentId];
+    return {
+      attachmentId: line?.id ?? null,
+      lineState: line?.state ?? null,
+      lineTargetId: line?.targetId ?? null,
+    };
+  };
+  const tetherSnapshot = () => ({
+    tetherActive: state.player?.tether?.active === true,
+    attachmentId: state.player?.tether?.attachmentId ?? null,
+    tetherTargetId: state.player?.tether?.targetId ?? null,
+    gunTargetId: state.player?.gunTargetId ?? null,
+  });
+
+  bus.on('tether:attached', (payload) => {
+    attachedEvents.push({ seq: ++evidenceSeq, tick: state.tick, ...payload });
+  });
+  bus.on('tether:latched', (payload) => {
+    latchedEvents.push({ seq: ++evidenceSeq, tick: state.tick, ...payload });
+  });
+  bus.on('tether:broken', (payload) => {
+    brokenEvents.push({ seq: ++evidenceSeq, tick: state.tick, ...payload });
+  });
+  bus.on('combat:fire', (payload) => {
+    if (!player || !target || payload.ownerId !== player.id) return;
+    playerFireCount += 1;
+    if (offFrustumFire) return;
+    const projection = projectThroughSettledChaseCamera(player.pos, target.pos);
+    if (Math.abs(projection.x) <= 0.98 && Math.abs(projection.y) <= 0.98) return;
+    const projectile = state.entityList.at(-1);
+    if (!projectile || projectile.type !== 'projectile'
+      || projectile.ownerId !== player.id
+      || projectile.data?.weaponId !== payload.weaponId) return;
+    const bearing = Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
+    const leadRad = Math.atan2(
+      Math.sin(payload.dir - bearing),
+      Math.cos(payload.dir - bearing),
+    );
+    offFrustumFire = {
+      seq: ++evidenceSeq,
+      tick: state.tick,
+      ownerId: payload.ownerId,
+      weaponId: payload.weaponId,
+      dir: payload.dir,
+      projectileId: projectile.id,
+      targetId: target.id,
+      projection,
+      bearing,
+      leadRad,
+      distanceWU: Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z),
+      ...tetherSnapshot(),
+      ...lineSnapshot(),
+    };
+  });
+  bus.on('projectile:hit', (payload) => {
+    if (!player || !target || payload.ownerId !== player.id || payload.targetId !== target.id) return;
+    targetHitCount += 1;
+    if (!offFrustumFire || exactHit || payload.weaponId !== offFrustumFire.weaponId) return;
+    const projectile = state.entities.get(offFrustumFire.projectileId);
+    if (!projectile || projectile.alive === false
+      || Math.hypot(projectile.pos.x - payload.pos.x, projectile.pos.z - payload.pos.z) > 1e-9) return;
+    exactHit = {
+      seq: ++evidenceSeq,
+      tick: state.tick,
+      projectileId: projectile.id,
+      ownerId: payload.ownerId,
+      targetId: payload.targetId,
+      weaponId: payload.weaponId,
+      distanceWU: Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z),
+      ...tetherSnapshot(),
+      ...lineSnapshot(),
+    };
+    targetAliveAtHit = target.alive !== false;
+    firstHitCombatTicks = combatTicks + 1;
+  });
+  bus.on('entity:killed', (payload) => {
+    if (!player || !target || tombstone || payload.id !== target.id) return;
+    tombstone = {
+      seq: ++evidenceSeq,
+      tick: state.tick,
+      id: payload.id,
+      killerId: payload.killerId,
+      worldRecordId: target.data?.worldRecordId ?? null,
+      distanceWU: Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z),
+      ...tetherSnapshot(),
+      ...lineSnapshot(),
+    };
+  });
+
+  try {
+    state.mode = 'flight';
+    state.tick = 6_834;
+    state.simTime = state.tick * dt;
+    state.world.currentSectorId = 'sector_ceres_belt';
+
+    player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
+      isPlayer: true,
+      player: state.player,
+      pos: { x: -8982.0283203125, z: 7171.980773925781 },
+      rot: -1.471084233247489,
+      fittings: [...TOOLKIT_WEAPON_IDS],
+    }));
+    player.vel = { x: 0, z: 0 };
+    player.angVel = 0;
+    player.collides = true;
+    state.playerId = player.id;
+
+    const targetSpec = makeEnemySpawnSpec('reaver_pirate', 3, hostileStart, {
+      startedTick: 6_000,
+      zoneId: 'zone_ceres_ambush',
+    });
+    targetSpec.vel = { x: -targetSpec.maxSpeed, z: 0 };
+    targetSpec.rot = Math.PI;
+    targetSpec.data.worldRecordId = 'wr_npc_b41fdf37';
+    Object.assign(targetSpec.data.ai, {
+      squadId: 'zone_ceres_ambush',
+      zoneId: 'zone_ceres_ambush',
+      ceresActivityAmbushPhase: 'conflict',
+      passive: false,
+      roe: 'weapons_free',
+      forcePlayerTarget: true,
+      huntPlayer: true,
+      spawnContext: 'zone_hostile',
+    });
+    targetSpec.data.combat = {
+      targetId: player.id,
+      lockTarget: player.id,
+      lockProgress: 1,
+    };
+    target = runtime.spawn(targetSpec);
+
+    const physicsSystem = runtime.getSystem('physics');
+    const ready = await physicsSystem.prepareBackend(state, { reset: true });
+    assert.equal(ready, true, 'off-frustum Massline fixture requires production Rapier authority');
+    const physicsDiagnostics = state.physicsRuntime?.diagnostics;
+    assert.equal(physicsDiagnostics?.backend, 'rapier-dynamic');
+    assert.equal(physicsDiagnostics?.sg02Ready, true);
+
+    const inputSystem = runtime.getSystem('input');
+    inputSystem._screen.active = true;
+    inputSystem._screen.x = 720;
+    inputSystem._screen.y = 450;
+    const step = (count) => {
+      for (let index = 0; index < count; index += 1) runtime.step(dt);
+    };
+    const tapMassline = () => {
+      step(1);
+      inputSystem._keys.Space = true;
+      step(1);
+      inputSystem._keys.Space = false;
+      step(2);
+    };
+
+    tapMassline();
+    inputSystem._keys.Space = true;
+    step(1);
+    inputSystem._keys.Space = false;
+    step(2);
+    step(16);
+    aimPoint = { x: target.pos.x, z: target.pos.z };
+    tapMassline();
+    secondAttachmentId = attachedEvents.at(-1)?.attachmentId ?? null;
+    fixedAimPoint = { x: player.pos.x, z: player.pos.z };
+    aimPoint = { ...fixedAimPoint };
+
+    inputSystem._m0 = true;
+    while (combatTicks < maxCombatTicks && !tombstone) {
+      runtime.step(dt);
+      combatTicks += 1;
+      const distanceWU = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+      maxDistanceWU = Math.max(maxDistanceWU, distanceWU);
+      if (!tombstone) {
+        const line = lineSnapshot();
+        if (line.lineState !== 'active' || line.lineTargetId !== target.id
+          || state.player?.tether?.active !== true
+          || state.player?.tether?.attachmentId !== secondAttachmentId) {
+          secondLineStayedActiveBeforeKill = false;
+        }
+      }
+    }
+
+    return {
+      runtime: {
+        evidenceClass: runtime.manifest.evidenceClass,
+        aiBackend: runtime.manifest.selectedSlots.aiBackend,
+        flightBackend: runtime.manifest.selectedSlots.flightBackend,
+      },
+      physics: {
+        backend: physicsDiagnostics.backend,
+        sg02Ready: physicsDiagnostics.sg02Ready,
+      },
+      playerId: player.id,
+      targetId: target.id,
+      targetWorldRecordId: target.data.worldRecordId,
+      attachedEvents,
+      latchedEvents,
+      brokenEvents,
+      offFrustumFire,
+      exactHit,
+      tombstone,
+      targetAliveAtHit,
+      targetAliveAfterLoop: target.alive !== false,
+      secondLineStayedActiveBeforeKill,
+      firstHitCombatTicks,
+      playerFireCount,
+      targetHitCount,
+      maxDistanceWU,
+      combatTicks,
+      fixedAimPoint,
+      finalAimPoint: { ...aimPoint },
+    };
+  } finally {
+    const inputSystem = runtime.getSystem('input');
+    if (inputSystem) {
+      inputSystem._m0 = false;
+      inputSystem._keys.Space = false;
+    }
+    runtime.dispose();
   }
 }
 

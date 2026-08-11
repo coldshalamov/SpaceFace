@@ -3630,24 +3630,33 @@ export function evaluateCeresToolkitFinalReceipt(receipt, {
 
 export async function fireCeresPublicCombatVolley(page, target, box, {
   deadlineTick,
+  movePointer = true,
+  expectedFireOwnerId = null,
 } = {}) {
   if (!page?.mouse || typeof page.mouse.move !== 'function'
       || typeof page.mouse.down !== 'function' || typeof page.mouse.up !== 'function'
-      || !Number.isFinite(Number(target?.ndcX)) || !Number.isFinite(Number(target?.ndcY))
+      || (movePointer === true && (!Number.isFinite(Number(target?.ndcX))
+        || !Number.isFinite(Number(target?.ndcY))))
+      || typeof movePointer !== 'boolean'
       || !Number.isFinite(Number(box?.x)) || !Number.isFinite(Number(box?.y))
       || !Number.isFinite(Number(box?.width)) || !Number.isFinite(Number(box?.height))
       || !Number.isSafeInteger(deadlineTick)) {
     throw new TypeError('public combat volley requires a pointable target, canvas, and deadline');
   }
-  const startTick = await readTick(page);
+  const eventCursor = expectedFireOwnerId == null
+    ? null
+    : await readCeresPublicActionCursor(page);
+  const startTick = eventCursor?.tick ?? await readTick(page);
   const requiredTicks = CERES_TOOLKIT_FIRE_HOLD_TICKS + CERES_TOOLKIT_FIRE_NEUTRAL_TICKS;
   if (!Number.isSafeInteger(startTick) || startTick >= deadlineTick - requiredTicks) {
     throw new Error('public combat volley exhausted the toolkit deadline before input');
   }
-  await page.mouse.move(
-    box.x + (target.ndcX + 1) * 0.5 * box.width,
-    box.y + (1 - (target.ndcY + 1) * 0.5) * box.height,
-  );
+  if (movePointer) {
+    await page.mouse.move(
+      box.x + (target.ndcX + 1) * 0.5 * box.width,
+      box.y + (1 - (target.ndcY + 1) * 0.5) * box.height,
+    );
+  }
   await page.mouse.down();
   let heldTick;
   try {
@@ -3662,11 +3671,61 @@ export async function fireCeresPublicCombatVolley(page, target, box, {
   if (!Number.isSafeInteger(neutralTick) || neutralTick <= heldTick || neutralTick >= deadlineTick) {
     throw new Error('public combat volley lacks a pre-deadline neutral frame');
   }
+  const fireEvent = eventCursor ? await page.evaluate(({ ownerId, minTick, minSeq, maxTick }) => (
+    (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => (
+      event?.event === 'combat:fire' && event.ownerId === ownerId
+        && Number(event.tick) > minTick && Number(event.tick) <= maxTick
+        && Number(event.seq) >= minSeq
+    )) || null
+  ), {
+    ownerId: expectedFireOwnerId,
+    minTick: eventCursor.tick,
+    minSeq: eventCursor.nextEventSeq,
+    maxTick: neutralTick,
+  }) : null;
+  if (eventCursor && (!Number.isSafeInteger(fireEvent?.tick) || fireEvent.tick <= startTick
+      || fireEvent.tick > neutralTick || !Number.isSafeInteger(fireEvent?.seq)
+      || fireEvent.seq < eventCursor.nextEventSeq || fireEvent.ownerId !== expectedFireOwnerId)) {
+    throw new Error('public combat volley did not produce a fresh player-owned fire receipt');
+  }
   return Object.freeze({
-    source: 'public-mouse-fixed-tick',
+    source: movePointer
+      ? 'public-mouse-fixed-tick'
+      : 'public-mouse-fixed-tick-retained-canvas',
     startTick,
     heldTick,
     neutralTick,
+    ...(fireEvent ? { fireEvent: Object.freeze({ ...fireEvent }) } : {}),
+  });
+}
+
+export async function prepareCeresPublicTetherFireSurface(canvas, page, box, {
+  deadlineTick,
+} = {}) {
+  if (!canvas || typeof canvas.hover !== 'function' || !page?.mouse
+      || !Number.isFinite(Number(box?.width)) || Number(box.width) <= 0
+      || !Number.isFinite(Number(box?.height)) || Number(box.height) <= 0
+      || !Number.isSafeInteger(deadlineTick)) {
+    throw new TypeError('public tether fire requires a live canvas and exact deadline');
+  }
+  const startTick = await readTick(page);
+  if (!Number.isSafeInteger(startTick) || startTick >= deadlineTick - 1) {
+    throw new Error('public tether fire exhausted the toolkit deadline before canvas acquisition');
+  }
+  const position = {
+    x: Math.max(1, Math.min(Number(box.width) - 1, Number(box.width) * 0.5)),
+    y: Math.max(1, Math.min(Number(box.height) - 1, Number(box.height) * 0.5)),
+  };
+  await canvas.hover({ position, timeout: 5_000 });
+  const readyTick = await waitForCeresFixedTicks(page, 1, 10_000);
+  if (!Number.isSafeInteger(readyTick) || readyTick <= startTick || readyTick >= deadlineTick) {
+    throw new Error('public tether fire canvas acquisition lacks a pre-deadline input frame');
+  }
+  return Object.freeze({
+    source: 'public-canvas-hover',
+    position: Object.freeze(position),
+    startTick,
+    readyTick,
   });
 }
 
@@ -3702,6 +3761,18 @@ export async function runCeresPreRepulsorCombatLoop({
       volleyCount,
       receiptFailures: (evaluation?.failures || []).slice(0, 16),
       destroyedRecordIds: (receipt?.destroyedRecordIds || []).slice(0, 8),
+      cameraImpacts: (receipt?.cameraReposition?.impacts || []).slice(0, 16)
+        .map((row) => ({
+          seq: Number(row?.seq),
+          tick: Number(row?.tick),
+          aId: row?.aId ?? null,
+          bId: row?.bId ?? null,
+          otherEntityId: row?.otherEntityId ?? null,
+          otherType: row?.otherType || null,
+          otherWorldRecordId: row?.otherWorldRecordId || null,
+          otherAnchorSlotId: row?.otherAnchorSlotId || null,
+          phase: row?.phase || null,
+        })),
       pointing: pointing ? {
         tick: Number(pointing.tick),
         candidates: (pointing.candidates || []).slice(0, 8).map((row) => ({ ...row })),
@@ -3741,7 +3812,19 @@ export async function runCeresPreRepulsorCombatLoop({
       fail('deadline', 'toolkit combat reached its deadline before public fire input');
     }
     if (!pointing.target) {
-      fail('unpointable', 'toolkit combat target left the public camera before receipts completed');
+      receipt = await readReceipt();
+      evaluation = evaluateCeresToolkitCombatCompletion(receipt, {
+        routeStartTick,
+        deadlineTick,
+      });
+      if (evaluation.pass) {
+        if (!Number.isSafeInteger(receipt?.endTick)
+            || receipt.endTick >= deadlineTick - CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS) {
+          fail('deadline', 'toolkit combat completed too late for the post-combat Repulsor receipt');
+        }
+        return Object.freeze({ receipt, evaluation, volleyCount });
+      }
+      fail('unpointable', 'toolkit combat lost exact public fire-control authority before receipts completed');
     }
     const volley = await fireVolley(pointing.target);
     if (!Number.isSafeInteger(volley?.neutralTick) || volley.neutralTick <= pointing.tick) {
@@ -3870,24 +3953,70 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     },
   });
   const seed = seedAction.event;
-  await waitForCeresBusEvent(page, {
+  const lockedSeed = await waitForCeresBusEvent(page, {
     event: 'massSeed:locked',
     minTick: seed.tick,
     seedId: seed.seedId,
   }, 30_000, { deadlineTick: toolkitDeadlineTick });
 
+  const combatTarget = await pointPublicAtCeresHostile(page, [{
+    entityId: target.id,
+    worldRecordId: target.worldRecordId,
+  }], endTick, { deadlineTick: toolkitDeadlineTick });
+  if (!combatTarget || combatTarget.id !== target.id
+      || combatTarget.worldRecordId !== target.worldRecordId) {
+    throw new Error('toolkit combat could not reacquire the exact released Throughline hostile');
+  }
+  await page.mouse.move(
+    box.x + (combatTarget.ndcX + 1) * 0.5 * box.width,
+    box.y + (1 - (combatTarget.ndcY + 1) * 0.5) * box.height,
+  );
+  const combatCursorMovedAtTick = await readTick(page);
+  await waitForCeresHostileMasslineAcquisition(page, combatTarget, {
+    afterTick: combatCursorMovedAtTick,
+    deadlineTick: toolkitDeadlineTick,
+  });
+  const combatAttachedAction = await triggerCeresPublicFlightAction(page, {
+    key: 'Space',
+    deadlineTick: toolkitDeadlineTick,
+    expectedEvent: {
+      event: 'tether:attached',
+      minTick: lockedSeed.tick,
+      actorId: baseline.playerEntityId,
+      targetId: combatTarget.id,
+    },
+  });
+  const combatAttached = combatAttachedAction.event;
+  await waitForCeresBusEvent(page, {
+    event: 'tether:latched',
+    minTick: combatAttached.tick,
+    targetId: combatTarget.id,
+  }, 20_000, { deadlineTick: toolkitDeadlineTick });
+  await prepareCeresPublicTetherFireSurface(canvas, page, box, {
+    deadlineTick: toolkitDeadlineTick,
+  });
+
   let combat;
+  let firstCombatFire = true;
   try {
     combat = await runCeresPreRepulsorCombatLoop({
       routeStartTick,
       deadlineTick: toolkitDeadlineTick,
       readReceipt: () => readCeresToolkitReceipt(page, baseline),
-      readPointingStatus: async () => selectCeresHostilePointingStatus(
-        await readCeresHostilePointingSnapshot(page, baseline.initialHostiles),
+      readPointingStatus: () => readCeresTetherCombatStatus(
+        page,
+        combatTarget,
+        combatAttached.attachmentId,
       ),
-      fireVolley: (combatTarget) => fireCeresPublicCombatVolley(page, combatTarget, box, {
-        deadlineTick: toolkitDeadlineTick,
-      }),
+      fireVolley: async (fireControlTarget) => {
+        const volley = await fireCeresPublicCombatVolley(page, fireControlTarget, box, {
+          deadlineTick: toolkitDeadlineTick,
+          movePointer: false,
+          expectedFireOwnerId: firstCombatFire ? baseline.playerEntityId : null,
+        });
+        firstCombatFire = false;
+        return volley;
+      },
     });
   } finally {
     await releasePublicInput(page).catch(() => {});
@@ -4078,13 +4207,24 @@ async function readCeresToolkitReceipt(page, baseline) {
           && Number(event.tick) >= Number(authority.cameraReposition.startTick)
           && Number(event.tick) <= Number(authority.startTick)
           && (event.aId === authority.playerEntityId || event.bId === authority.playerEntityId))
-          .map((event) => ({
-            seq: Number(event.seq),
-            event: event.event,
-            tick: Number(event.tick),
-            aId: event.aId,
-            bId: event.bId,
-          })),
+          .map((event) => {
+            const otherEntityId = event.aId === authority.playerEntityId ? event.bId : event.aId;
+            const other = state?.entities?.get(otherEntityId);
+            return {
+              seq: Number(event.seq),
+              event: event.event,
+              tick: Number(event.tick),
+              aId: event.aId,
+              bId: event.bId,
+              otherEntityId,
+              otherType: other?.type || null,
+              otherWorldRecordId: other?.data?.worldRecordId || null,
+              otherAnchorSlotId: other?.data?.activityCollisionAnchorSlotId || null,
+              phase: Number(event.tick) <= Number(authority.cameraReposition.movementEndTick)
+                ? 'movement'
+                : 'post-movement-conflict-wait',
+            };
+          }),
       };
     })() : null;
     return {
@@ -4192,6 +4332,7 @@ export function selectCeresHostilePointingStatus(snapshot) {
     && Number.isFinite(Number(row.ndcY)) && Math.abs(Number(row.ndcY)) <= 0.98) || null;
   return Object.freeze({
     tick: Number(snapshot?.tick),
+    candidates: Object.freeze(candidates.slice(0, 8).map((row) => Object.freeze({ ...row }))),
     nearest: candidates[0] || null,
     target: pointable ? Object.freeze({
       id: pointable.id,
@@ -4200,6 +4341,77 @@ export function selectCeresHostilePointingStatus(snapshot) {
       ndcX: Number(pointable.ndcX),
       ndcY: Number(pointable.ndcY),
     }) : null,
+  });
+}
+
+export function selectCeresTetherCombatStatus(snapshot, authority) {
+  const targetId = authority?.targetId;
+  const worldRecordId = String(authority?.worldRecordId || '');
+  const attachmentId = String(authority?.attachmentId || '');
+  const candidates = (Array.isArray(snapshot?.candidates) ? snapshot.candidates : [])
+    .filter((row) => row?.id != null && String(row.worldRecordId || ''))
+    .slice(0, 8).map((row) => Object.freeze({ ...row }));
+  const exact = candidates.find((row) => row.id === targetId
+    && row.worldRecordId === worldRecordId) || null;
+  const tether = snapshot?.tether;
+  const hasAuthority = exact?.alive === true && exact.type === 'ship'
+    && exact.zoneId === 'zone_ceres_ambush' && exact.squadId === 'zone_ceres_ambush'
+    && tether?.active === true && tether.targetId === targetId
+    && tether.attachmentId === attachmentId
+    && snapshot?.gunTargetId === targetId;
+  return Object.freeze({
+    tick: Number(snapshot?.tick),
+    candidates: Object.freeze(candidates),
+    nearest: candidates[0] || null,
+    target: hasAuthority ? Object.freeze({
+      id: exact.id,
+      worldRecordId: exact.worldRecordId,
+      attachmentId,
+      distanceWU: Number(exact.distanceWU),
+      speed: Number(exact.speed),
+      pointable: exact.pointable === true,
+    }) : null,
+  });
+}
+
+async function readCeresTetherCombatStatus(page, target, attachmentId) {
+  const snapshot = await page.evaluate(({ targetId, worldRecordId }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    const entity = state?.entities?.get(targetId);
+    const dx = Number(entity?.pos?.x) - Number(player?.pos?.x);
+    const dz = Number(entity?.pos?.z) - Number(player?.pos?.z);
+    return {
+      tick: Number(state?.tick),
+      gunTargetId: state?.player?.gunTargetId ?? null,
+      tether: state?.player?.tether ? {
+        active: state.player.tether.active === true,
+        targetId: state.player.tether.targetId ?? null,
+        attachmentId: state.player.tether.attachmentId || null,
+      } : null,
+      candidates: entity ? [{
+        id: entity.id,
+        worldRecordId: entity.data?.worldRecordId || null,
+        expectedWorldRecordId: worldRecordId,
+        alive: entity.alive !== false,
+        type: entity.type || null,
+        zoneId: entity.data?.ai?.zoneId || null,
+        squadId: entity.data?.ai?.squadId || null,
+        pos: { x: Number(entity.pos?.x), z: Number(entity.pos?.z) },
+        vel: { x: Number(entity.vel?.x) || 0, z: Number(entity.vel?.z) || 0 },
+        speed: Math.hypot(Number(entity.vel?.x) || 0, Number(entity.vel?.z) || 0),
+        distanceWU: Math.hypot(dx, dz),
+        pointable: false,
+      }] : [],
+    };
+  }, {
+    targetId: target.id,
+    worldRecordId: target.worldRecordId,
+  });
+  return selectCeresTetherCombatStatus(snapshot, {
+    targetId: target.id,
+    worldRecordId: target.worldRecordId,
+    attachmentId,
   });
 }
 
@@ -6340,6 +6552,17 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   if (deployedSeedIndex < 0 || lockedSeedIndex < 0) {
     failures.push('Mass Seed lacks an ordered player deploy/same-seed lock receipt');
   }
+  const combatAttachedIndex = findAfter(lockedSeedIndex, (event) => event.event === 'tether:attached'
+    && event.actorId === receipt.playerEntityId && targetMatchesInitial(event)
+    && event.targetId === attached?.targetId && String(event.attachmentId || '')
+    && event.attachmentId !== attached?.attachmentId);
+  const combatAttached = events[combatAttachedIndex];
+  const combatLatchedIndex = findAfter(combatAttachedIndex, (event) => event.event === 'tether:latched'
+    && event.targetId === combatAttached?.targetId && targetMatchesInitial(event)
+    && event.previewMatched === true);
+  if (combatAttachedIndex < 0 || combatLatchedIndex < 0) {
+    failures.push('Massline lacks a second exact attach/latch fire-control receipt after Mass Seed lock');
+  }
   const repulsorIndex = findAfter(-1, (event) => event.event === 'fields:deployed'
     && event.kind === 'repulsor' && event.sourceOwnerId === receipt.playerEntityId);
   if (stage === 'pre-repulsor') {
@@ -6440,8 +6663,9 @@ function validateToolkitReceiptCore(receipt, route, failures, {
     }
   }
   if (!(releasedIndex < deployedSeedIndex && deployedSeedIndex < lockedSeedIndex
-      && lockedSeedIndex < firstCombatIndex)) {
-    failures.push('toolkit order must be Massline release, Mass Seed lock, then combat');
+      && lockedSeedIndex < combatAttachedIndex && combatAttachedIndex < combatLatchedIndex
+      && combatLatchedIndex < firstCombatIndex)) {
+    failures.push('toolkit order must be Massline release, Mass Seed lock, exact combat relatch, then combat');
   }
   const repulsorTick = events[repulsorIndex]?.tick;
   const proofKill = playerOwnedKills.find(({ event, index }) => (
@@ -6455,6 +6679,14 @@ function validateToolkitReceiptCore(receipt, route, failures, {
     failures.push(stage === 'full'
       ? 'toolkit lacks a player-owned tombstone after combat and before Repulsor'
       : 'toolkit lacks a player-owned tombstone after completed combat');
+  }
+  const prematureCombatBreak = proofKill && events.findIndex((event, index) => (
+    index > combatLatchedIndex && index < proofKill.index
+      && event?.event === 'tether:broken'
+      && event.attachmentId === combatAttached?.attachmentId
+  ));
+  if (Number.isInteger(prematureCombatBreak) && prematureCombatBreak >= 0) {
+    failures.push('combat Massline broke before the player-owned proof tombstone');
   }
   if (stage === 'full' && !(lastCombatIndex >= 0 && Number.isSafeInteger(lastCombatTick)
       && repulsorIndex > lastCombatIndex && repulsorTick > lastCombatTick && proofKill)) {
@@ -6532,8 +6764,9 @@ function validateToolkitCameraReposition(receipt, route, failures) {
       || impact.tick < camera.startTick || impact.tick > camera.endTick
       || (index > 0 && impact.seq <= impacts[index - 1].seq)
       || impact.event !== 'physics:impact'
-      || !((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
-        || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId)))) {
+      || (impact.tick <= camera.movementEndTick
+        && !((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
+          || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId))))) {
     failures.push('toolkit camera reposition contains a non-anchor player impact');
   }
   return projection;

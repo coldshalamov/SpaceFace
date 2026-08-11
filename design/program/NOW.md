@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 toolkit combat | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Land the reviewed fixed-tick combat/deadline candidate, then spend exactly one broker Browser launch and preserve its terminal evidence |
+| PQ-048.01 ore-cycle Browser closure | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Exact seed-47 production regression now carries a second public Massline through off-frustum fire to the player-owned Reaver tombstone; focused shared/PQ/product suites and independent review are green, so freeze and publish one changed-candidate broker Browser run next |
 
 ## Uncommitted work without a confirmed live thread
 
