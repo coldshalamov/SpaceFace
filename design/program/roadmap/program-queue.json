@@ -3805,7 +3805,7 @@
       "priority": 233,
       "title": "Re-author the lawful catcher and covert fence identities",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-019.h2-verdict"
       ],
@@ -3828,7 +3828,9 @@
         "npm run check:graphics:asset-receipts",
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-receiver-facility-reauthor-REPORT.md"
+      ],
       "brief": "Preserve exact IDs, placements, scales, collision/custody envelopes, sockets, schedule, save and settlement behavior while giving the lawful catcher a readable impound/capture path and the covert fence a materially and structurally distinct shielded handoff identity.",
       "blocker": null
     },
@@ -5116,7 +5118,7 @@
       "priority": 270,
       "title": "Resolve two late target-motion lifecycle hypotheses without reopening the packet",
       "kind": "acceptance_repair",
-      "state": "integrated",
+      "state": "done",
       "dependsOn": [
         "PQ-045.choreography-repair"
       ],
@@ -5131,7 +5133,9 @@
         "node --test test/npc-jobs-runtime-wiring.test.mjs test/ceres-escort-formation.test.mjs",
         "node --test test/ceres-visible-job-actions.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-late-audit-REPORT.md"
+      ],
       "brief": "Run exactly two fresh causal reproductions from the late withdrawn review: (1) release/sector-exit after the retained terminal actor's numeric ID maps to a different live object, and (2) whether an unrelated id-only same-type destroyed event can trigger target-ambiguity re-admission. If either reproduces, make the smallest owner-level repair and retain the focused parity suites. If neither reproduces, close with a bounded evidence receipt. Do not restart the broad target-motion audit, add generic targetRef behavior, or rerun unchanged baseline/headed evidence."
     },
     {
@@ -5196,7 +5200,7 @@
       "priority": 255,
       "title": "Implement the first six ambient microevents as one causal chain",
       "kind": "implementation",
-      "state": "integrated",
+      "state": "done",
       "dependsOn": [
         "PQ-045.route-topology"
       ],
@@ -5208,7 +5212,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-causal-chain-REPORT.md"
+      ],
       "brief": "ev_rich_seam_strike, ev_miner_calls_hauler, ev_patrol_scans_suspect, ev_disabled_hauler_recovery, ev_tender_services_miner, ev_cutter_strips_wreck. Cap concurrent authored events at two. Choreography-timer scope only: if a concurrency/cooldown/chain policy layer becomes necessary, stop and report, because that is the bounded adapter becoming a global framework."
     },
     {
@@ -5242,7 +5248,7 @@
       "priority": 257,
       "title": "Re-author the sixteen selected Everyday Space props to production standard",
       "kind": "implementation",
-      "state": "integrated",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -5256,7 +5262,9 @@
         "npm run check:baseline",
         "npm run check:graphics:asset-receipts"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-prop-promotion-REPORT.md"
+      ],
       "brief": "Sixteen props chosen to support visible actions, all outside the controlling review 19 REVISE-first list. Every one still needs revision, real LODs, recomputed collision and G0-G7. Pin the toolchain and prove two byte-matching builds first: the pack is not currently reproducible (29 of 46 GLBs differed across two isolated Blender 5.1.2 builds)."
     },
     {
@@ -5265,7 +5273,7 @@
       "priority": 258,
       "title": "Dress the two anonymous Ceres wreck slots from the aftermath pack",
       "kind": "implementation",
-      "state": "integrated",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -5279,7 +5287,9 @@
         "npm run check:baseline",
         "npm run check:graphics:asset-receipts"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-045-wreck-dressing-REPORT.md"
+      ],
       "brief": "Seven selected assets into ceres_ambush_bait_wreck and ceres_cathedral_grave_shard. The pack is entirely untextured (images=0 in all 37 GLBs) and ships 1,891 unmerged meshes with no LODs and no instancing. The three specified-but-unbuilt hull families stay unbuilt."
     },
     {
