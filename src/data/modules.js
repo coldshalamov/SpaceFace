@@ -112,6 +112,8 @@ export const MODULES = [
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
     energyDraw: 3, mods: { magnetRange: 400, masslineHeadId: 'tractor' },
+    // magnetRange is catalogued for a future mining hook; outfitting no longer advertises it
+    // until playerModSum('magnetRange') is wired. masslineHeadId IS live.
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,

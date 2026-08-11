@@ -138,9 +138,11 @@ export function latestLossLine(state, sectorId) {
 }
 
 function lossLine(e, sName) {
-  const factionWord = e.factionId === 'faction_concord' ? 'Concord'
+  // Canonical ids are faction_scn / faction_dmc (short names Concord / Drift).
+  // Legacy aliases kept so old loss-ledger rows still headline correctly.
+  const factionWord = (e.factionId === 'faction_scn' || e.factionId === 'faction_concord') ? 'Concord'
     : e.factionId === 'faction_reach' ? 'Reach'
-    : e.factionId === 'faction_drift' ? 'Drift'
+    : (e.factionId === 'faction_dmc' || e.factionId === 'faction_drift') ? 'Drift'
     : e.factionId === 'faction_quiet' ? 'the Quiet'
     : 'a';
   const noun = e.kind === 'outpost' ? 'outpost'

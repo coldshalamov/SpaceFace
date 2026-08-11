@@ -11,8 +11,8 @@
 //   • estimated fine / bribe (projection only — no double fine path)
 //   • smuggling preflight copy (chips + warning strings)
 //
-// Lead seam: economy.runScan still scans the full illicitCargo list; wiring remainingIllicit
-// into the engine is intentionally out of this packet (noTouch economy.js).
+// Engine path: economy.illicitCargo() → remainingIllicit({stacks,hiddenCapacity}).exposedStacks,
+// and runScan consumes that — only exposed illicit stacks are scanned. This module stays pure.
 
 import { COMMODITIES } from '../data/commodities.js';
 

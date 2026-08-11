@@ -202,7 +202,7 @@ function frame(now):
   steps = 0
   // timeScale: 0=pause, fractions=slow-time, 1=normal
   accumulator += frameDt * state.timeScale
-  while accumulator >= DT and steps < 8:           // cap 8 steps → no spiral of death
+  while accumulator >= DT and steps < 4:           // cap 4 steps → no spiral of death
      stepSim(DT)                                    // see 2.3
      accumulator -= DT
      steps++
@@ -220,33 +220,20 @@ function frame(now):
   requests.
 
 ### 2.3 `stepSim(dt)` — THE UNIFIED SIM UPDATE ORDER (authoritative)
-Every system module is named **exactly once**. Core's 10-step spine is the frame; combat's substeps fit inside; the 5 s economy tick is accumulator-gated; automation runs after economy+mining, before UI.
+**Source of truth:** `src/runtime/authoritativeSystemManifest.js`
+(`PRODUCTION_INIT_ORDER` / `PRODUCTION_UPDATE_ORDER`). Generated navigation:
+`docs/SYSTEM_REGISTRY.md`. Do not re-list the full order here — it drifts.
 
-```
-stepSim(dt):
-  state.tick++ ; state.simTime += dt
-  snapshotPrev()                       // copy pos/rot → prevPos/prevRot for interpolation
+Conceptual spine (illustrative, not the live roster):
+input → AI → flight → weapons → physics (integrate/hash/collide) → combat →
+mining → cargo → economy → automation → world → factions → missions → lifetime sweep.
 
-  1.  input.update(dt)                 // sample keyboard+mouse → state.input; mouse→world ray
-  2.  ai.update(dt)                    // NPC FSM + steering + targeting → entity.data.intent
-  3.  flight.update(dt)                // thrust+drag+rotate for player & NPCs (reads intent + handling penalty from cargo mass)
-  4.  weapons.update(dt)              // [combat substep] cooldown/energy/heat gates → spawn projectile entities, beams; spend cap/heat; lock-on
-  5.  physics.integrate(dt)            // vel += accel*dt ; pos += vel*dt ; sector-bounds accel
-  6.  physics.rebuildHash()            // spatial hash (cell 64) from entityList
-  7.  physics.collide(dt)              // broad-phase + circle/circle response; swept projectile test → emit collision/projectile:hit/pickup:collected/dock:range
-  8.  combat.resolveDamage(dt)         // [combat substep] apply projectile:hit through shield→armor→hull; shield/cap/heat regen; death checks → emit combat:kill
-  9.  mining.update(dt)               // applyMining on beam targets; eject ore pickups; magnet pull; salvage drain
-  10. cargo.update(dt)                // recompute cargoUsedU/cargoMassT caches if dirty (drives flight handling next tick)
-  11. economy.update(dt)              // accumulator += dt; if >=5s → econ tick (drift, events, propagation, recompute prices, emit economy:tick)
-  12. automation.update(dt)           // drones/traders/outposts accrual, upkeep drain, loss/raid rolls (after economy prices, after mining)
-  13. world.update(dt)                // jump state machine, fuel, hazard membership, POI scan ranges, gate proximity
-  14. factions.update(dt)             // day-tick decay & conflict war-ticks (cheap, gated by sim-day boundary)
-  15. missions.update(dt)             // TTL decrement on offers+active missions; expiry; story watcher; stale-target GC
-  16. lifetime.sweep(dt)              // ttl-=dt; despawnAt; alive=false → emit entity:destroyed; free ids; flush event queue
-```
-- Steps 4 & 8 are **combat's** substeps but slot into the core spine at the documented positions (weapons after AI/flight so it reads fresh positions; damage after collision).
+- Weapons run after AI/flight (fresh positions); damage after collision.
+- Economy tick is accumulator-gated (~5s); automation runs after economy+mining.
 - Render + camera follow + interpolation run in `renderFrame`, **not** here.
-- The event bus is **synchronous within a step** for most events, but `entity:destroyed`/spawn are **deferred to step 16** (entities are never spliced mid-step; mark `alive=false`, sweep at end).
+- The event bus is **synchronous within a step** for most events, but
+  `entity:destroyed`/spawn are **deferred to the lifetime sweep** (entities are never
+  spliced mid-step; mark `alive=false`, sweep at end).
 
 ### 2.4 `renderFrame(alpha, frameDt)` (`src/render/renderer.js`)
 ```
@@ -399,7 +386,7 @@ player = {
   boostActive:bool,
   insurance:{ rate:0.6, deductibleCr:500, insuredModules:false, lastStationId:string|null },
   // mining hold derived (mining reads ship.derived)
-  magnetRange:90,
+  magnetRange:250,                   // override hook; live pull floor is mining MAGNET_RANGE (420)
   miningBeam:{ tierId:'beam_mk1', range, dps, directToCargo },
   // stats / meta
   stats:{ lifetimeProfit, tradesCount, biggestSingleProfit, smuggledValue,
@@ -516,8 +503,10 @@ factions = { [factionId]: {
 }}
 conflicts = { [pairKey 'a:b']: { tension:0..100, state:'cold'|'tense'|'war', playerLean:-1..1 } }
 ```
-- 8 factions: `faction_scn, faction_mts, faction_dmc, faction_reach, faction_quiet, faction_vael, faction_free, faction_choir`.
-- Starting rep: scn 0, mts 0, dmc 0, reach -50, quiet 0, vael -120, free +40, choir 0.
+- **14 factions** live in `src/data/factions/` (`FACTION_META`). Do not re-list here.
+  Canonical eight plus six K1 roaming factions (helix / understory / fulfillment / archive /
+  pitborn / verge_layers). Starting rep: `newGameDefaults.factionRep` overrides when present,
+  else `FACTION_META.startingRep` (pitborn +40 via that fallback).
 
 ### 3.11 `missions / story` (owner: missions) — serialized
 ```ts
@@ -592,18 +581,12 @@ export default {
 - `ctx.helpers` exposes the cross-cutting core helpers (§4.3).
 
 ### 4.2 Registry & wiring (`src/core/registry.js`)
-```ts
-const SYSTEMS = [   // registration / init order
-  core, input, ai, flight, weapons, physics, combat, mining, cargo,
-  economy, automation, world, factions, missions, ships, render, vfx, audio, ui, save,
-];
-const UPDATE_ORDER = [   // §2.3 — explicit, may differ from init order
-  input, ai, flight, weapons, physics /*integrate+hash+collide*/, combat /*resolveDamage*/,
-  mining, cargo, economy, automation, world, factions, missions, /* lifetime.sweep is core */
-];
-```
-- `registry.init()` → `for s of SYSTEMS: s.init(ctx)`.
-- `registry.step(dt)` → run `UPDATE_ORDER`, then `core.lifetimeSweep(dt)`.
+**Source of truth for system IDs and order:** `src/runtime/authoritativeSystemManifest.js`
+(currently ~132 init / ~100 update). `registry.js` materializes that manifest; do not
+duplicate the roster in this doc.
+
+- `registry.init()` → init each registered system from the manifest order.
+- `registry.step(dt)` → run the manifest update order, then `core.lifetimeSweep(dt)`.
 - `registry.get(name)` → system lookup (for direct helper calls where an event is overkill).
 - Render/vfx/ui/audio update in `renderFrame`, not the sim step.
 
@@ -867,7 +850,6 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 | `src/render/starfield.js` | **NOT WIRED** — `createStarfield` has no importers. An earlier 4-layer parallax Points + procedural-nebula + distant-planet implementation, superseded by `spaceBackground.js`. Retained deliberately (harvest candidate, see `06_RETAINED_FUTURE_BACKLOG.md`); do not read it as the live draw path. | `createStarfield` (unused) | three |
 | `src/render/vfx.js` | pooled particle system (Points+sprites), explosions/sparks/trails/shield ripple/warp, shake emit | `vfx` system | three, eventBus |
 | `src/render/feel.js` | hit-stop/FOV/vignette response; owns only the `feel:hit-stop` time-effects request | `feel` system | timeEffects, eventBus |
-| `src/render/shaders.js` | GLSL strings: particle, shield fresnel, star, bloom passes, nebula | shader sources | — |
 
 ### src/ui/
 | File | Responsibility | Exports | Deps |
@@ -924,8 +906,8 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 | `src/data/tech.js` | 28 tech nodes (prereqs/cost/unlocks) | `TECH_NODES` |
 | `src/data/commodities.js` | unified commodity registry (§3.6.1) | `COMMODITIES` |
 | `src/data/mining.js` | ores, asteroid types, beam tiers, refine recipes, field params | `ORES`,`ASTEROIDS`,`BEAMS`,`RECIPES`,`FIELDS` |
-| `src/data/sectors.js` | 10 sectors, stations, hazards, POIs, jump tiers, security/danger/wealth helpers | `SECTORS`,`STATION_TYPES`,`HAZARD_TYPES`,`POI_TYPES`,`dangerTier` |
-| `src/data/factions.js` | 8 factions, matrix, spillover, rep actions, tiers, price curves | `FACTION_META` |
+| `src/data/sectors.js` (+ frontier region barrels) | **24 sectors** (10 core + 14 frontier), stations, hazards, POIs, jump tiers, security/danger/wealth helpers | `SECTORS`,`STATION_TYPES`,`HAZARD_TYPES`,`POI_TYPES`,`dangerTier` |
+| `src/data/factions/` | **14 factions**, matrix, spillover, rep actions, tiers, price curves | `FACTION_META` |
 | `src/data/missions.js` | 10 mission types, 8 story beats, offer-mix weights, tuning | `MISSION_TYPES`,`STORY_BEATS`,`OFFER_MIX`,`MISSION_TUNING` |
 | `src/data/automation.js` | drone/trader/outpost defs, activeRef curve, balance | `DRONES`,`TRADERS`,`OUTPOSTS`,`AUTO_BALANCE` |
 | `src/data/audioRecipes.js` | synth recipes + music stem defs | `RECIPES`,`MUSIC_STEMS` |

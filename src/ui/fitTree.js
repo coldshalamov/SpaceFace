@@ -35,7 +35,7 @@ function modifierLines(def) {
   if (m.weaponRangePct) out.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
   if (m.weaponDmgPct) out.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
   if (m.radarRangePct) out.push('+' + Math.round(m.radarRangePct * 100) + '% radar');
-  if (m.magnetRange) out.push(m.magnetRange + ' magnet');
+  // magnetRange module stats are not applied by mining yet — do not advertise a dead number.
   if (m.hullRepairOOC) out.push('+' + m.hullRepairOOC + ' hull/s');
   if (m.droneBay) out.push('drone bay');
   if (m.jumpDriveTier) out.push('jump T' + m.jumpDriveTier);
