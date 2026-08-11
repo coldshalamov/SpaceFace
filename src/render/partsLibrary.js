@@ -39,6 +39,7 @@ import {
   describeWebGlDisposeListenerProvenance,
   mergeWebGlDisposeListenerProvenance,
 } from './contextResourceLifecycle.js';
+import { buildKestrelHero } from './ships/kestrelHero.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -2792,14 +2793,17 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
 }
 
 /**
- * Live flight must never run sync buildComposedShip on the playable thread. Sector prewarm and
- * deferred publication prepare behind a gate; mid-fight demand settles to the procedural substrate.
+ * Live flight must never run sync buildComposedShip for ordinary traffic on the playable thread.
+ * Sector prewarm and deferred publication prepare those behind a gate. The player is the exception:
+ * their live boundary uses a zero-draw direct-admission substrate, so blocking mid-flight player
+ * composition leaves thrusters attached to empty space. Player admission stays on the async queue.
  */
 export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRuntimeState()) {
   if (options && options.deferBoundaryPublication === true) return true;
   const role = String((options && options.residencyRole) || '');
   if (
-    role === 'sector-prewarm'
+    role === 'player'
+    || role === 'sector-prewarm'
     || role === 'sector-prepared-boundary'
     || role === 'sector-prepared-live-boundary'
     || role === 'whole-ship-lod-family'
@@ -2810,7 +2814,65 @@ export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRun
   return false;
 }
 
-/** Unhide the procedural substrate so a gated flight upgrade never leaves an invisible ship. */
+function countDrawableShipSurfaces(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let count = 0;
+  root.traverse((object) => {
+    if (object && (object.isMesh || object.isLine || object.isPoints || object.isSprite)) count += 1;
+  });
+  return count;
+}
+
+function isEmptyAuthoredAdmissionSubstrate(root) {
+  if (!root) return true;
+  if (root.userData && root.userData.authoredAdmissionSubstrate === true) return true;
+  return countDrawableShipSurfaces(root) === 0;
+}
+
+/**
+ * Direct-admission ships mount a zero-draw ownership boundary. When that path cannot publish the
+ * authored body, the player still needs a readable hull — thrusters alone are not a ship.
+ */
+function ensureReadableShipFallbackRoot(boundary, fallbackRoot, entity) {
+  if (!boundary) return fallbackRoot;
+  if (!isEmptyAuthoredAdmissionSubstrate(fallbackRoot)) return fallbackRoot;
+  if (!entity || entity.isPlayer !== true) return fallbackRoot;
+
+  let emergency = null;
+  try {
+    const defId = entity.data && entity.data.defId;
+    if (defId === 'ship_kestrel' || !defId) {
+      emergency = buildKestrelHero(entity);
+    }
+  } catch (error) {
+    console.warn('[partsLibrary] emergency player ship visual failed', error);
+    emergency = null;
+  }
+  if (!emergency || !emergency.isObject3D) {
+    // Last resort: a dark readable wedge so the pilot never vanishes entirely.
+    emergency = new THREE.Group();
+    emergency.name = 'Player_EmergencyReadableHull';
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x6a7480,
+      metalness: 0.55,
+      roughness: 0.42,
+    });
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.55, 1.1), mat);
+    hull.name = 'Player_EmergencyReadableHull_Body';
+    emergency.add(hull);
+  }
+  emergency.userData = emergency.userData || {};
+  emergency.userData.authoredEmergencyReadableFallback = true;
+  emergency.userData.kind = 'ship';
+  emergency.visible = true;
+  if (fallbackRoot && fallbackRoot.parent === boundary) {
+    try { boundary.remove(fallbackRoot); } catch (_) { /* keep going */ }
+  }
+  boundary.add(emergency);
+  return emergency;
+}
+
+/** Unhide (or synthesize) a readable substrate so a gated/failed upgrade never leaves an invisible ship. */
 export function settleAuthoredShipToProceduralFallback(
   boundary,
   fallbackRoot,
@@ -2819,10 +2881,14 @@ export function settleAuthoredShipToProceduralFallback(
   reason = 'flight-compose-gated',
 ) {
   if (!boundary || !fallbackRoot) return false;
-  fallbackRoot.visible = true;
-  if (typeof setActive === 'function') setActive(fallbackRoot);
+  const readable = ensureReadableShipFallbackRoot(boundary, fallbackRoot, entity);
+  if (!readable) return false;
+  readable.visible = true;
+  if (typeof setActive === 'function') setActive(readable);
   boundary.userData.authoredAssetState = 'procedural-settled';
-  boundary.userData.authoredVisualRoot = 'procedural-fallback';
+  boundary.userData.authoredVisualRoot = readable.userData?.authoredEmergencyReadableFallback
+    ? 'emergency-readable-fallback'
+    : 'procedural-fallback';
   boundary.userData.authoredReadableFallbackRetained = true;
   boundary.userData.authoredComposeDeferredReason = reason;
   if (boundary.userData.renderContract) {
@@ -3435,9 +3501,19 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       if (tier1) tier1.countAuthoredAdmissionJob('composition');
     }
     if (!authored) {
-      boundary.userData.authoredAssetState = 'unavailable';
-      boundary.userData.authoredVisualRoot = 'none-build-failed';
-      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      if (entity && entity.isPlayer === true) {
+        settleAuthoredShipToProceduralFallback(
+          boundary,
+          fallbackRoot,
+          entity,
+          setActive,
+          'authored-composition-unavailable',
+        );
+      } else {
+        boundary.userData.authoredAssetState = 'unavailable';
+        boundary.userData.authoredVisualRoot = 'none-build-failed';
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      }
       releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable');
       return false;
     }
@@ -3481,7 +3557,9 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     };
     if (options.overlapAuthoredPipelineCompile === true) {
       const pending = completeAdmission().catch(async (error) => {
-        await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+        await handleAuthoredBoundaryAdmissionError(
+          boundary, entity, renderer, swapped, error, authored, fallbackRoot, setActive,
+        );
         return false;
       });
       boundary.userData.authoredPipelineReady = pending;
@@ -3494,12 +3572,23 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     }
     return await completeAdmission();
   } catch (error) {
-    await handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored);
+    await handleAuthoredBoundaryAdmissionError(
+      boundary, entity, renderer, swapped, error, authored, fallbackRoot, setActive,
+    );
     return false;
   }
 }
 
-async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, swapped, error, authored = null) {
+async function handleAuthoredBoundaryAdmissionError(
+  boundary,
+  entity,
+  renderer,
+  swapped,
+  error,
+  authored = null,
+  fallbackRoot = null,
+  setActive = null,
+) {
   if (!swapped) {
     releaseBoundaryResidency(renderer, boundary, 'authored-swap-failed');
     const cleanupErrors = [];
@@ -3512,10 +3601,24 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         try { await disposePreparedAuthoredShip(authored); } catch (cleanupError) { cleanupErrors.push(cleanupError); }
       }
     }
-    boundary.userData.authoredAssetState = 'unavailable';
-    boundary.userData.authoredVisualRoot = 'none-build-failed';
-    setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
-    console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
+    // Player ships use a zero-draw direct substrate. Fail-closed "unavailable" is correct for NPCs,
+    // but the pilot must never disappear while thrusters keep firing.
+    const playerFallback = entity && entity.isPlayer === true
+      && settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot || boundary.children[0] || boundary,
+        entity,
+        setActive,
+        'authored-swap-failed',
+      );
+    if (!playerFallback) {
+      boundary.userData.authoredAssetState = 'unavailable';
+      boundary.userData.authoredVisualRoot = 'none-build-failed';
+      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+      console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
+    } else {
+      console.warn('[partsLibrary] authored composition failed; published emergency player hull', error);
+    }
     if (cleanupErrors.length) {
       throw new AggregateError([error, ...cleanupErrors], 'Authored composition failure cleanup failed', {
         cause: error,
@@ -3737,6 +3840,16 @@ async function commitAuthoredBoundary(
         entity,
         setActive,
         'flight-compose-gated-commit',
+      );
+      return false;
+    }
+    if (entity && entity.isPlayer === true) {
+      settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot,
+        entity,
+        setActive,
+        'authored-commit-unavailable',
       );
       return false;
     }

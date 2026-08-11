@@ -77,12 +77,20 @@ function directGlslTrailSample(u, v, time) {
 }
 function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) {
   const liquid = directGlslTrailSample(u, side, time);
-  const filament = Math.exp(-side * side * 18);
-  const sheath = Math.exp(-side * side * 5.5);
+  const filament = Math.exp(-side * side * 24);
+  const ribbonOffA = 0.22 + 0.12 * Math.sin(u * 11 + time * 2.8);
+  const ribbonOffB = 0.26 + 0.10 * Math.cos(u * 8.5 - time * 2.1);
+  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32);
+  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30);
+  const ribbons = ribbonA * 0.62 + ribbonB * 0.55;
+  const sheath = Math.exp(-side * side * 4.2);
+  const arcNoise = directGlslValueNoise(u * 22 - time * 1.8, side * 5 + 0.6);
+  const arcT = refClamp01((arcNoise - 0.58) / 0.34);
+  const arcs = arcT * arcT * (3 - 2 * arcT) * Math.exp(-Math.abs(side) * 2.4) * liquid;
   const t = refClamp01(pathT);
-  const tailProgress = refClamp01((t - 0.62) / (1 - 0.62));
+  const tailProgress = refClamp01((t - 0.38) / (1 - 0.38));
   const tailEnvelope = 1 - tailProgress * tailProgress * (3 - 2 * tailProgress);
-  const headProgress = refClamp01(t / 0.14);
+  const headProgress = refClamp01(t / 0.12);
   const headBoost = 1 - headProgress * headProgress * (3 - 2 * headProgress);
   const fluidNoise = directGlslValueNoise(u * 9, time * 0.22);
   const threadNoise = directGlslValueNoise(u * 17 - time * 0.31, side * 2.4 + 1.7);
@@ -92,14 +100,17 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
     liquid,
     filament,
     sheath,
+    ribbons,
+    arcs,
     tailEnvelope,
     headBoost,
     sheathNoise: fluidNoise,
     brokenSheath,
     alpha: Math.min(1, opacity * tailEnvelope
-      * (filament * 0.92 + brokenSheath * 0.62 + sheath * 0.18)
-      * (0.88 + headBoost * 0.22)),
-    radiance: radianceScale * (0.78 + liquid * 0.85 + filament * 0.42 + headBoost * 0.18),
+      * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
+      * (0.86 + headBoost * 0.28)),
+    radiance: radianceScale
+      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22),
   };
 }
 
@@ -129,8 +140,8 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
       sample.opacity,
       sample.radiance,
     );
-    for (const key of ['liquid', 'filament', 'sheath', 'tailEnvelope', 'headBoost', 'sheathNoise',
-      'brokenSheath', 'alpha', 'radiance']) {
+    for (const key of ['liquid', 'filament', 'sheath', 'ribbons', 'arcs', 'tailEnvelope', 'headBoost',
+      'sheathNoise', 'brokenSheath', 'alpha', 'radiance']) {
       const delta = Math.abs(cpu[key] - ref[key]);
       maxDelta = Math.max(maxDelta, delta);
       assert.ok(delta < 1e-10,
@@ -169,10 +180,12 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
     `tailAlpha=${oldTail.alpha.toFixed(4)} ` +
     `breakupDelta=${Math.abs(breakup1 - breakup0).toFixed(4)}`);
   const expectedAlpha = Math.min(1, liveUniforms.opacity * core.tailEnvelope
-    * (core.filament * 0.92 + core.brokenSheath * 0.62 + core.sheath * 0.18)
-    * (0.88 + core.headBoost * 0.22));
+    * (core.filament * 0.88 + core.ribbons * 0.72 + core.brokenSheath * 0.48
+      + core.sheath * 0.10 + core.arcs * 0.55)
+    * (0.86 + core.headBoost * 0.28));
   const expectedRadiance = liveUniforms.radiance
-    * (0.78 + core.liquid * 0.85 + core.filament * 0.42 + core.headBoost * 0.18);
+    * (0.72 + core.liquid * 0.78 + core.filament * 0.48 + core.ribbons * 0.28
+      + core.headBoost * 0.20 + core.arcs * 0.22);
   assert.ok(Math.abs(core.alpha - expectedAlpha) < 1e-12,
     'CPU evidence must apply the shader broken-sheath and uOpacity formula exactly');
   assert.ok(Math.abs(core.radiance - expectedRadiance) < 1e-12,
@@ -230,10 +243,12 @@ assert(ribbonFrag.includes('uTrailTime'), 'ribbon frag must animate with uTrailT
 assert(ribbonFrag.includes('tailEnvelope'), 'ribbon frag must taper by physical history coordinate');
 assert(ribbonFrag.includes('brokenSheath'), 'ribbon frag must layer a broken sheath around the filament');
 assert(ribbonFrag.includes('uRadiance'), 'ribbon frag must expose bounded HDR radiance separately from alpha');
-assert(ribbonFrag.includes('filament * 0.92 + brokenSheath * 0.62 + sheath * 0.18'),
+assert(ribbonFrag.includes('filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55'),
   'ribbon frag must match the CPU alpha-layer formula');
-assert(ribbonFrag.includes('uRadiance * (0.78 + liquid * 0.85 + filament * 0.42 + headBoost * 0.18)'),
+assert(ribbonFrag.includes('0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22'),
   'ribbon frag must match the CPU radiance formula');
+assert(ribbonFrag.includes('ribbons'), 'ribbon frag must braid side ribbons for liquid plasma edges');
+assert(ribbonFrag.includes('arcs'), 'ribbon frag must carry electric edge crackle');
 
 writeFileSync(`${SCRATCH}/trail-texture-metrics.log`, `${log.join('\n')}\nTrail texture sampler checks OK\n`);
 console.log(log.join('\n'));

@@ -13,9 +13,9 @@ import {
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = path.join(ROOT, '.devshots', 'graphics', 'u01-trails');
 
-const PLAYER_SEGS = 72;
-const NPC_SEGS = 48;
-const SPACING = 2.4;
+const PLAYER_SEGS = 34;
+const NPC_SEGS = 24;
+const SPACING = 2.0;
 const DISC = 640;
 const PERIOD = 1 / 30;
 const DENSE_NPC = 12; // production RIBBON_NPC_OWNER_CAP order of magnitude

@@ -98,24 +98,34 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     float along = fract(pathT * 3.15 - uTrailScroll * 1.55);
     float side = vTrailUv.y * 2.0 - 1.0;
     float liquid = trailSampleProcedural(along, side, uTrailTime);
-    // Soft luminous core + wider fluid sheath (not a hard-edged solid card).
-    float filament = exp(-side * side * 18.0);
-    float sheath = exp(-side * side * 5.5);
-    // Long soft tail: hold energy through most of the ribbon, ease out only near the end.
-    float tailEnvelope = 1.0 - smoothstep(0.62, 1.0, pathT);
-    float headBoost = 1.0 - smoothstep(0.0, 0.14, pathT);
+    // Hot core filament + forked side ribbons (liquid/electric edges, not a solid tube).
+    float filament = exp(-side * side * 24.0);
+    float ribbonOffA = 0.22 + 0.12 * sin(along * 11.0 + uTrailTime * 2.8);
+    float ribbonOffB = 0.26 + 0.10 * cos(along * 8.5 - uTrailTime * 2.1);
+    float ribbonA = exp(-pow(side - ribbonOffA, 2.0) * 32.0);
+    float ribbonB = exp(-pow(side + ribbonOffB, 2.0) * 30.0);
+    float ribbons = ribbonA * 0.62 + ribbonB * 0.55;
+    // Soft sheath kept dim so the body does not fill into a solid cable.
+    float sheath = exp(-side * side * 4.2);
+    // Electric crackle along the fluid edges (reference: braided plasma arcs).
+    float arcNoise = trailValueNoise(vec2(along * 22.0 - uTrailTime * 1.8, side * 5.0 + 0.6));
+    float arcs = smoothstep(0.58, 0.92, arcNoise) * exp(-abs(side) * 2.4) * liquid;
+    // Shorter physical wake: energy fades earlier so the trail is a jet, not a long tube.
+    float tailEnvelope = 1.0 - smoothstep(0.38, 1.0, pathT);
+    float headBoost = 1.0 - smoothstep(0.0, 0.12, pathT);
     float fluidNoise = trailValueNoise(vec2(along * 9.0, uTrailTime * 0.22));
     float threadNoise = trailValueNoise(vec2(along * 17.0 - uTrailTime * 0.31, side * 2.4 + 1.7));
     float brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
       * (0.72 + 0.28 * threadNoise);
     float alpha = min(1.0, uOpacity * tailEnvelope
-      * (filament * 0.92 + brokenSheath * 0.62 + sheath * 0.18)
-      * (0.88 + headBoost * 0.22));
+      * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
+      * (0.86 + headBoost * 0.28));
     if (alpha < 0.006) discard;
     vec3 whiteHot = vec3(1.0, 0.988, 0.94);
-    vec3 coolSheath = mix(uColor, vec3(0.55, 0.88, 1.0), 0.28);
-    vec3 radiance = mix(coolSheath, whiteHot, filament * 0.82 + headBoost * 0.18)
-      * uRadiance * (0.78 + liquid * 0.85 + filament * 0.42 + headBoost * 0.18);
+    vec3 coolSheath = mix(uColor, vec3(0.45, 0.82, 1.0), 0.36);
+    float hotMix = clamp(filament * 0.78 + ribbons * 0.22 + headBoost * 0.20 + arcs * 0.18, 0.0, 1.0);
+    vec3 radiance = mix(coolSheath, whiteHot, hotMix)
+      * uRadiance * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22);
     gl_FragColor = vec4(radiance, alpha);
   }
 `;

@@ -11,11 +11,11 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
   "kind": "continuous_plume",
   "engineFamily": "hitch_ion_kestrel",
   "displayName": "Hitch/Kestrel main thruster plume",
-  "notes": "Continuous throttle-responsive ion stream. Identity from flow/geometry/layering, not tint alone. Live seam: engine_ion_small profile fields. Length distribution is deliberately weighted toward a long coherent core so the exhaust reads as drawn-out flowing liquid rather than a hot root inside a haze.",
+  "notes": "Continuous throttle-responsive ion stream. Identity from flow/geometry/layering, not tint alone. Live seam: engine_ion_small profile fields. Compact liquid jet at the nozzle; longer history ribbons live in engineTrailSurfaces, not this volume.",
   "geometry": {
     "axis": "socketForward",
-    "baseLength": 13.0,
-    "baseWidth": 3.1,
+    "baseLength": 8.0,
+    "baseWidth": 2.95,
     "segmentCount": 8,
     "aspect": "stream",
     "taper": 0.72,
@@ -32,12 +32,12 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       },
       "blend": "additive",
       "softEdge": 0.14,
-      "intensity": 6.35,
-      "opacity": 0.72,
+      "intensity": 6.85,
+      "opacity": 0.78,
       "colorHex": "#f5fbff",
-      "widthScale": 0.52,
-      "lengthScale": 0.44,
-      "scrollSpeed": 2.8
+      "widthScale": 0.48,
+      "lengthScale": 0.40,
+      "scrollSpeed": 3.2
     },
     {
       "role": "inner",
@@ -52,12 +52,12 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
       },
       "blend": "additive",
       "softEdge": 0.26,
-      "intensity": 4.15,
-      "opacity": 0.52,
+      "intensity": 4.45,
+      "opacity": 0.56,
       "colorHex": "#3eb8ee",
-      "widthScale": 0.9,
-      "lengthScale": 1.06,
-      "scrollSpeed": 2.2
+      "widthScale": 0.95,
+      "lengthScale": 0.98,
+      "scrollSpeed": 2.6
     },
     {
       "role": "sheath",
@@ -68,13 +68,13 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
         "path": "textures/plume_sheath_noise_v1.png"
       },
       "blend": "additive",
-      "softEdge": 0.32,
-      "intensity": 2.15,
-      "opacity": 0.31,
+      "softEdge": 0.34,
+      "intensity": 2.35,
+      "opacity": 0.34,
       "colorHex": "#3d51c4",
-      "widthScale": 1.76,
-      "lengthScale": 1.34,
-      "scrollSpeed": 1.4
+      "widthScale": 1.85,
+      "lengthScale": 1.16,
+      "scrollSpeed": 1.65
     },
     {
       "role": "vapor",
@@ -85,13 +85,13 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
         "path": "textures/plume_vapor_soft_v1.png"
       },
       "blend": "alpha",
-      "softEdge": 0.44,
-      "intensity": 0.88,
-      "opacity": 0.28,
+      "softEdge": 0.46,
+      "intensity": 0.92,
+      "opacity": 0.26,
       "colorHex": "#29486f",
-      "widthScale": 2.18,
-      "lengthScale": 1.70,
-      "scrollSpeed": 0.85
+      "widthScale": 2.25,
+      "lengthScale": 1.32,
+      "scrollSpeed": 0.95
     },
     {
       "role": "distortion",
@@ -234,8 +234,8 @@ export const KESTREL_RCS_RECIPE = deepFreeze({
   "notes": "Short directional reaction jet — not a miniature main engine, not a circular flash. Structurally distinct timing, aspect, and layer balance.",
   "geometry": {
     "axis": "socketForward",
-    "baseLength": 4.35,
-    "baseWidth": 2.05,
+    "baseLength": 3.2,
+    "baseWidth": 1.85,
     "segmentCount": 3,
     "aspect": "jet",
     "taper": 0.55,

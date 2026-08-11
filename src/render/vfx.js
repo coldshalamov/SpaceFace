@@ -431,9 +431,11 @@ const LOOT_MAGNET_DRAW_RANGE = 460;      // wu; slightly beyond MAGNET_RANGE so 
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
-const PLAYER_RIBBON_SEGMENTS = 72;
-const NPC_RIBBON_SEGMENTS = 48;
-const RIBBON_MIN_SAMPLE_SPACING_WU = 2.4;
+// Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
+// retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
+const PLAYER_RIBBON_SEGMENTS = 34;
+const NPC_RIBBON_SEGMENTS = 24;
+const RIBBON_MIN_SAMPLE_SPACING_WU = 2.0;
 const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
 export const RIBBON_DISCONTINUITY_MAX_WU = 640;
 export const RIBBON_NPC_OWNER_CAP = 8;
