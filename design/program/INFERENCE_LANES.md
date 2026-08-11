@@ -21,9 +21,14 @@ INFERENCE 5x POLISH
 WF-01 3x
 ```
 
-**Balance board (mandatory before INFERENCE):**
-[`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — one short table of recent work by bucket.
-Do not pile into a high-count bucket; prefer underfed ones. Tick +1 after you finish a unit.
+**Default INFERENCE job:** thicken what already exists and is still thin — more enemy roles, NPC
+work, station/place identity, material quality, logistics, variants. The owner should not have to
+restate “it’s samey / blocky / empty of real work.” Build on working recipes; do not invent a new
+product strategy each time.
+
+**Ledger (mandatory, keep it short):** [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) — which
+surfaces are thin and what got +1 recently. Prefer thin surfaces; avoid piling into recently heavy
+ones. Tick +1 when a unit finishes.
 
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
