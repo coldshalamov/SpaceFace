@@ -24,9 +24,7 @@ import {
   CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../../src/data/sectorActivityPockets.js';
-import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
-import { SECTORS } from '../../src/data/sectors.js';
 
 import {
   closeOwnedResources,
@@ -152,27 +150,9 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
     })];
   }),
 ));
-const CERES_WORKING_SEAM_FIELD = SECTOR_ANCHORS.sector_ceres_belt.fields.find(
-  (field) => field.id === 'f_ceres_1',
-);
-assert(CERES_WORKING_SEAM_FIELD, 'Ceres Working Seam field anchor must exist');
-const CERES_WORKING_SEAM_FIELD_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
-  CERES_WORKING_SEAM_FIELD.center,
-  CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
-));
-const CERES_WORKING_SEAM_HAZARD = SECTORS.find(
-  (sector) => sector.id === CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
-)?.hazards?.find((hazard) => hazard.type === 'dense_asteroid');
-assert(CERES_WORKING_SEAM_HAZARD, 'Ceres dense asteroid hazard must exist');
-const CERES_WORKING_SEAM_HAZARD_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
-  CERES_WORKING_SEAM_HAZARD.center,
-  CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
-));
-const CERES_WORKING_SEAM_EGRESS_MIN_EXTENSION_WU = 180;
-const CERES_WORKING_SEAM_EGRESS_EXTENSION_STEP_WU = 10;
-const CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU = 600;
-const CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU = 24;
 const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
+const CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU = CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
+const CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS = 2_400;
 const CERES_POCKET_NAVIGATION = Object.freeze({
   ceres_refinery_pocket: Object.freeze({ label: null, identity: 'station_ceres' }),
   ceres_working_seam: Object.freeze({ label: 'Belt Outpost', identity: 'station_beltout' }),
@@ -1114,11 +1094,15 @@ export async function runCeresFiveMinutePublicRoute({
       routeLog.push({ phase: 'arrival', pocketId: leg.pocketId, target: leg.target.name, arrival });
 
       if (leg.pocketId === 'ceres_working_seam') {
-        const egressTarget = planCeresWorkingSeamEgress(arrival);
+        const egressTarget = planCeresWorkingSeamEgress(arrival, {
+          minRemainingTicks: continueProof
+            ? 120
+            : CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS,
+        });
         await mark('egress-working-seam', {
           pocketId: leg.pocketId,
           targetId: egressTarget.targetId,
-          minimumFieldClearanceWU: egressTarget.minimumFieldClearanceWU,
+          guaranteedPublicEgressWU: egressTarget.guaranteedPublicEgressWU,
         });
         const egress = await drivePublicToCeresPoint(page, egressTarget, observerBounds.endTick);
         routeLog.push({
@@ -2545,7 +2529,9 @@ async function provePublicFlightInput(page) {
   return receipt;
 }
 
-export function planCeresWorkingSeamEgress(beltOutpostArrival) {
+export function planCeresWorkingSeamEgress(beltOutpostArrival, {
+  minRemainingTicks = 120,
+} = {}) {
   const source = beltOutpostArrival?.player?.pos;
   const sourceX = Number(source?.x);
   const sourceZ = Number(source?.z);
@@ -2554,76 +2540,60 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival) {
       || !Number.isFinite(sourceX) || !Number.isFinite(sourceZ)) {
     throw new Error('Working Seam egress requires the live accepted Belt Outpost arrival');
   }
-  const awayX = sourceX - CERES_WORKING_SEAM_FIELD_GLOBAL.x;
-  const awayZ = sourceZ - CERES_WORKING_SEAM_FIELD_GLOBAL.z;
-  const sourceFieldDistanceWU = Math.hypot(awayX, awayZ);
-  if (!(sourceFieldDistanceWU > 0)) {
-    throw new Error('Belt Outpost arrival cannot coincide with the Working Seam field center');
+  if (!Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120
+      || minRemainingTicks >= CERES_FIVE_MINUTE_FIXED_TICKS) {
+    throw new Error('Working Seam egress requires a valid fixed-tick reserve');
   }
-  let extensionWU = CERES_WORKING_SEAM_EGRESS_MIN_EXTENSION_WU;
-  let targetPos = null;
-  let targetFieldDistanceWU = null;
-  let targetHazardDistanceWU = null;
-  let minimumFieldClearanceWU = null;
-  let minimumHazardClearanceWU = null;
-  for (; extensionWU <= CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU;
-    extensionWU += CERES_WORKING_SEAM_EGRESS_EXTENSION_STEP_WU) {
-    const scale = extensionWU / sourceFieldDistanceWU;
-    targetPos = {
-      x: sourceX + awayX * scale,
-      z: sourceZ + awayZ * scale,
-    };
-    targetFieldDistanceWU = Math.hypot(
-      targetPos.x - CERES_WORKING_SEAM_FIELD_GLOBAL.x,
-      targetPos.z - CERES_WORKING_SEAM_FIELD_GLOBAL.z,
-    );
-    targetHazardDistanceWU = Math.hypot(
-      targetPos.x - CERES_WORKING_SEAM_HAZARD_GLOBAL.x,
-      targetPos.z - CERES_WORKING_SEAM_HAZARD_GLOBAL.z,
-    );
-    minimumFieldClearanceWU = targetFieldDistanceWU
-      - CERES_WORKING_SEAM_FIELD.clusterRadius
-      - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
-    minimumHazardClearanceWU = targetHazardDistanceWU
-      - CERES_WORKING_SEAM_HAZARD.radius
-      - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
-    if (minimumFieldClearanceWU >= CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU
-        && minimumHazardClearanceWU >= CERES_WORKING_SEAM_EGRESS_MIN_CLEARANCE_WU) break;
+  const seamAnchor = CERES_POCKET_TARGETS.ceres_working_seam.targetPos;
+  const throughlineAnchor = CERES_POCKET_TARGETS.ceres_ambush_run.targetPos;
+  const pathDistanceWU = Math.hypot(sourceX - seamAnchor.x, sourceZ - seamAnchor.z);
+  const guaranteedPublicEgressWU = pathDistanceWU
+    - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU * 2;
+  if (guaranteedPublicEgressWU < CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU) {
+    throw new Error('Belt Outpost arrival cannot guarantee one public completion radius of escape');
   }
-  if (extensionWU > CERES_WORKING_SEAM_EGRESS_MAX_EXTENSION_WU || !targetPos) {
-    throw new Error('Belt Outpost departure corridor does not clear the Working Seam field and hazard');
+  const seamToThroughlineWU = Math.hypot(
+    throughlineAnchor.x - seamAnchor.x,
+    throughlineAnchor.z - seamAnchor.z,
+  );
+  const arrivalToThroughlineWU = Math.hypot(
+    throughlineAnchor.x - sourceX,
+    throughlineAnchor.z - sourceZ,
+  );
+  const guaranteedThroughlineProgressWU = seamToThroughlineWU - arrivalToThroughlineWU
+    - CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU * 2;
+  if (guaranteedThroughlineProgressWU < CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU) {
+    throw new Error('Belt Outpost arrival cannot guarantee one public completion radius toward Throughline');
   }
+  const targetPos = Object.freeze({ x: sourceX, z: sourceZ });
   return Object.freeze({
     pocketId: 'ceres_working_seam',
     targetId: 'station_beltout-departure-corridor',
     targetName: 'Belt Outpost departure corridor',
-    targetPos: Object.freeze(targetPos),
-    sourceArrivalPos: Object.freeze({ x: sourceX, z: sourceZ }),
-    fieldCenter: CERES_WORKING_SEAM_FIELD_GLOBAL,
-    fieldRadiusWU: CERES_WORKING_SEAM_FIELD.clusterRadius,
-    hazardCenter: CERES_WORKING_SEAM_HAZARD_GLOBAL,
-    hazardRadiusWU: CERES_WORKING_SEAM_HAZARD.radius,
+    targetPos,
+    sourceArrivalPos: targetPos,
     arrivalRadiusWU: CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU,
-    extensionWU,
-    sourceFieldDistanceWU,
-    targetFieldDistanceWU,
-    targetHazardDistanceWU,
-    minimumFieldClearanceWU,
-    minimumHazardClearanceWU,
+    minRemainingTicks,
+    pathDistanceWU,
+    guaranteedPublicEgressWU,
+    guaranteedThroughlineProgressWU,
   });
 }
 
-export function chooseCeresPocketApproachAction(status) {
+export function chooseCeresPocketApproachAction(status, {
+  arrivalRadiusWU = 90,
+} = {}) {
   const distanceWU = Number(status?.distanceWU);
   const headingError = Number(status?.headingError);
   const speed = Number(status?.speed);
   if (!Number.isFinite(distanceWU) || distanceWU < 0
       || !Number.isFinite(headingError)
-      || !Number.isFinite(speed) || speed < 0) {
+      || !Number.isFinite(speed) || speed < 0
+      || !Number.isFinite(arrivalRadiusWU) || arrivalRadiusWU <= 0) {
     return Object.freeze({ kind: 'invalid' });
   }
-  if (distanceWU <= 90 && speed <= 1) return Object.freeze({ kind: 'complete' });
-  if (distanceWU <= 90 && speed > 1) {
+  if (distanceWU <= arrivalRadiusWU && speed <= 1) return Object.freeze({ kind: 'complete' });
+  if (distanceWU <= arrivalRadiusWU && speed > 1) {
     return Object.freeze({
       kind: 'settle',
       key: 'Digit0',
@@ -2698,21 +2668,26 @@ async function readCeresPocketApproachStatus(page, point, terminalTick) {
 export async function settleCeresPocketApproach(page, {
   point,
   endTick,
+  minRemainingTicks = 120,
   targetName = 'Ceres pocket',
 } = {}) {
+  if (!Number.isSafeInteger(endTick) || !Number.isSafeInteger(minRemainingTicks)
+      || minRemainingTicks < 120 || minRemainingTicks >= endTick) {
+    throw new Error('Ceres public settle requires a valid fixed-tick reserve');
+  }
   await page.keyboard.down('Digit0');
   try {
-    await page.waitForFunction(({ terminalTick }) => {
+    await page.waitForFunction(({ terminalTick, reserveTicks }) => {
       const state = window.SF?.state;
       const player = state?.entities?.get(state.playerId);
       if (!player?.pos) return true;
       const tick = Number(state.tick);
       const speed = Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0);
-      return speed <= 1 || !Number.isSafeInteger(tick) || tick >= terminalTick - 120;
-    }, { terminalTick: endTick }, { timeout: 10_000 });
+      return speed <= 1 || !Number.isSafeInteger(tick) || tick >= terminalTick - reserveTicks;
+    }, { terminalTick: endTick, reserveTicks: minRemainingTicks }, { timeout: 10_000 });
     const status = await readCeresPocketApproachStatus(page, point, endTick);
     if (status.missing) throw new Error(`${targetName} settle lost the player`);
-    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
       throw new Error(`${targetName} settle exhausted the exact route horizon`);
     }
     if (!Number.isFinite(status.speed) || status.speed > 1) {
@@ -2733,17 +2708,28 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
   await canvas.waitFor({ state: 'visible', timeout: 30_000 });
   await canvas.focus();
   const diagnostic = createCeresPocketApproachDiagnostic(target, endTick);
+  const arrivalRadiusWU = target.arrivalRadiusWU == null
+    ? 90
+    : Number(target.arrivalRadiusWU);
+  const minRemainingTicks = target.minRemainingTicks == null
+    ? 120
+    : Number(target.minRemainingTicks);
+  if (!Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120
+      || !Number.isSafeInteger(endTick) || minRemainingTicks >= endTick
+      || !Number.isFinite(arrivalRadiusWU) || arrivalRadiusWU <= 0) {
+    throw new Error('Ceres public point approach requires a valid fixed-tick reserve');
+  }
   let approachPulses = 0;
   try {
     for (; approachPulses < 220;) {
       const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
-      const action = chooseCeresPocketApproachAction(status);
+      const action = chooseCeresPocketApproachAction(status, { arrivalRadiusWU });
       recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
         throw new Error(`${target.targetName} approach produced invalid navigation telemetry`);
       }
-      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
         throw new Error(`${target.targetName} approach exhausted the exact route horizon`);
       }
       if (action.kind === 'complete') return status;
@@ -2752,10 +2738,11 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         const settled = await settleCeresPocketApproach(page, {
           point: target.targetPos,
           endTick,
+          minRemainingTicks,
           targetName: target.targetName,
         });
         recordCeresPocketApproachDecision(diagnostic, settled, 'settle-result');
-        if (settled.distanceWU <= 90) return settled;
+        if (settled.distanceWU <= arrivalRadiusWU) return settled;
         continue;
       }
       approachPulses += 1;

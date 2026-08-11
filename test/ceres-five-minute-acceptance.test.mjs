@@ -1250,6 +1250,12 @@ test('public pocket approach completes only after the hull is settled inside the
     speed: 70,
   }).kind, 'thrust');
   assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 95,
+    headingError: 0,
+    speed: 0.8,
+  }, { arrivalRadiusWU: 100 }).kind, 'complete',
+  'the public point driver must honor the target completion radius');
+  assert.equal(chooseCeresPocketApproachAction({
     distanceWU: Number.NaN,
     headingError: 0,
     speed: 0,
@@ -1295,6 +1301,24 @@ test('public pocket settle holds the brake to the speed condition outside the st
     /Working Seam settle exhausted the exact route horizon/,
   );
   assert.equal(horizon.events.at(-1), 'up:Digit0', 'failure must release the public brake');
+
+  const nextLegHorizon = pocketSettlePage({
+    tick: 18_023 - 2_400,
+    endTick: 18_023,
+    distanceWU: 80,
+    pollSpeeds: [78],
+  });
+  await assert.rejects(
+    settleCeresPocketApproach(nextLegHorizon.page, {
+      point: { x: 0, z: 0 },
+      endTick: 18_023,
+      minRemainingTicks: 2_400,
+      targetName: 'Belt Outpost departure corridor',
+    }),
+    /settle exhausted the exact route horizon/,
+  );
+  assert.equal(nextLegHorizon.events.at(-1), 'up:Digit0',
+    'the next-leg reserve failure must release the public brake');
 });
 
 test('public pocket driver trims outside the circle and holds full brake only after entry', async () => {
@@ -1357,10 +1381,10 @@ test('public pocket driver trims outside the circle and holds full brake only af
 
 test('Working Seam evidence publicly restages to the accepted Belt Outpost departure corridor', async () => {
   const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
-  const acceptedDeparture = sectorLocalToGlobalForSector(
-    { x: 860.703, z: -979.556 },
-    sectorId,
-  );
+  const acceptedDeparture = Object.freeze({
+    x: -11_495.697937011719,
+    z: 7_342.5372314453125,
+  });
   const throughline = sectorLocalToGlobalForSector(
     CERES_ACTIVITY_POCKETS_BY_ID.ceres_ambush_run.activityAnchor.localPos,
     sectorId,
@@ -1368,7 +1392,7 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
   const target = planCeresWorkingSeamEgress({
     sectorId,
     player: { alive: true, pos: acceptedDeparture },
-  });
+  }, { minRemainingTicks: 2_400 });
   const sourceToThroughline = Math.hypot(
     throughline.x - acceptedDeparture.x,
     throughline.z - acceptedDeparture.z,
@@ -1377,29 +1401,80 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
     throughline.x - target.targetPos.x,
     throughline.z - target.targetPos.z,
   );
-  assert.ok(target.minimumFieldClearanceWU > 120,
-    `the full 90-WU completion envelope must clear f_ceres_1, got ${target.minimumFieldClearanceWU}`);
-  assert.ok(target.minimumHazardClearanceWU >= 24,
-    `the full completion envelope must clear the dense hazard, got ${target.minimumHazardClearanceWU}`);
-  assert.equal(target.targetFieldDistanceWU > target.sourceFieldDistanceWU, true);
-  assert.equal(targetToThroughline < sourceToThroughline, true,
-    'the restage leaves the mining field on the accepted Throughline side');
+  assert.deepEqual(target.targetPos, acceptedDeparture,
+    'the public return stops at the live accepted arrival instead of extrapolating through it');
+  assert.equal(target.sourceArrivalPos, target.targetPos,
+    'the planned point must retain the exact accepted-arrival identity');
+  assert.ok(Math.abs(target.guaranteedPublicEgressWU - 148.29805849446814) < 1e-6,
+    `both 90-WU completion circles must be deducted, got ${target.guaranteedPublicEgressWU}`);
+  assert.equal(target.minRemainingTicks, 2_400,
+    'the seam return must preserve the next public navigation leg');
+  assert.ok(Math.abs(target.guaranteedThroughlineProgressWU - 120.7052928496696) < 1e-6,
+    `both completion circles must be deducted from Throughline progress, got ${target.guaranteedThroughlineProgressWU}`);
+  assert.equal(targetToThroughline, sourceToThroughline);
 
   const seamAnchor = sectorLocalToGlobalForSector(
     CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam.activityAnchor.localPos,
     sectorId,
   );
+  const pathX = acceptedDeparture.x - seamAnchor.x;
+  const pathZ = acceptedDeparture.z - seamAnchor.z;
+  const pathDistanceWU = Math.hypot(pathX, pathZ);
+  const collisionPocket = [
+    { id: 121, radius: 11.41481447708793, pos: { x: -11_483.771515911701, z: 7_320.0985105152195 } },
+    { id: 106, radius: 13.57198176253587, pos: { x: -11_489.171003410438, z: 7_369.322458417971 } },
+  ];
+  const failedExtendedTarget = Object.freeze({ x: -11_130.966289293183, z: 7_193.515077392905 });
+  assert.ok(Math.abs(Math.hypot(
+    failedExtendedTarget.x - acceptedDeparture.x,
+    failedExtendedTarget.z - acceptedDeparture.z,
+  ) - 394.00098635142723) < 1e-6,
+  'the failed planner required another 394 WU after reaching the proven arrival');
+  for (const rock of collisionPocket) {
+    const capturedArrivalGapWU = Math.hypot(
+      acceptedDeparture.x - rock.pos.x,
+      acceptedDeparture.z - rock.pos.z,
+    ) - 16 - rock.radius;
+    assert.ok(capturedArrivalGapWU < -2 && capturedArrivalGapWU > -2.01,
+      `the failed route must retain rock ${rock.id}'s captured contact fingerprint`);
+    let minimumHandoffGapWU = Number.POSITIVE_INFINITY;
+    for (let sample = 0; sample < 3_600; sample += 1) {
+      const angle = sample * Math.PI / 1_800;
+      const possibleSeamReceipt = {
+        x: seamAnchor.x + Math.cos(angle) * 90,
+        z: seamAnchor.z + Math.sin(angle) * 90,
+      };
+      const approachX = acceptedDeparture.x - possibleSeamReceipt.x;
+      const approachZ = acceptedDeparture.z - possibleSeamReceipt.z;
+      const approachDistanceWU = Math.hypot(approachX, approachZ);
+      const handoff = {
+        x: acceptedDeparture.x - (approachX / approachDistanceWU) * target.arrivalRadiusWU,
+        z: acceptedDeparture.z - (approachZ / approachDistanceWU) * target.arrivalRadiusWU,
+      };
+      minimumHandoffGapWU = Math.min(
+        minimumHandoffGapWU,
+        Math.hypot(handoff.x - rock.pos.x, handoff.z - rock.pos.z) - 16 - rock.radius,
+      );
+    }
+    assert.ok(minimumHandoffGapWU > 50,
+      `every sampled seam-circle approach must hand off before rock ${rock.id}, got gap ${minimumHandoffGapWU}`);
+  }
+  const seamHandoff = {
+    x: seamAnchor.x + (pathX / pathDistanceWU) * 90,
+    z: seamAnchor.z + (pathZ / pathDistanceWU) * 90,
+  };
   const harness = pocketApproachTwoPhasePage({
     targetPoint: target.targetPos,
-    endTick: 2_000,
-    tick: 1_000,
-    initialPos: seamAnchor,
+    endTick: 18_023,
+    tick: 5_836,
+    initialPos: seamHandoff,
     initialSpeed: 0,
     initialRot: 0,
     simulateTrajectory: true,
   });
-  const receipt = await drivePublicToCeresPoint(harness.page, target, 2_000);
-  assert.deepEqual(harness.startPos, seamAnchor, 'the fake begins at the proven Working Seam anchor');
+  const receipt = await drivePublicToCeresPoint(harness.page, target, 18_023);
+  assert.deepEqual(harness.startPos, seamHandoff,
+    'the fake begins on the conservative arrival-facing edge of the Working Seam receipt circle');
   assert.ok(receipt.distanceWU <= 90);
   assert.equal(receipt.speed, 0.8);
   assert.equal(harness.sequence[0], 'turn');
@@ -1407,14 +1482,37 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
   assert.equal(harness.sequence.at(-1), 'settle');
   assert.ok(harness.sequence.filter((action) => action !== 'settle').length < 220,
     'the full diagonal egress remains inside the unchanged steering budget');
-  assert.ok(receipt.tick < 2_000 - 120,
-    'the full egress completes before the exact fixed-tick reserve');
+  assert.ok(receipt.tick < 18_023 - 2_400,
+    'the full egress completes before the next-leg fixed-tick reserve');
   assert.equal(harness.heldKeys.size, 0, 'the public restage releases every flight key before map selection');
 
   assert.throws(() => planCeresWorkingSeamEgress({
     sectorId: 'sector_helios_prime',
     player: { alive: true, pos: acceptedDeparture },
   }), /live accepted Belt Outpost arrival/);
+  const insufficientPathScale = 269 / pathDistanceWU;
+  assert.throws(() => planCeresWorkingSeamEgress({
+    sectorId,
+    player: {
+      alive: true,
+      pos: {
+        x: seamAnchor.x + pathX * insufficientPathScale,
+        z: seamAnchor.z + pathZ * insufficientPathScale,
+      },
+    },
+  }), /cannot guarantee one public completion radius of escape/);
+  assert.throws(() => planCeresWorkingSeamEgress({
+    sectorId,
+    player: {
+      alive: true,
+      pos: { x: seamAnchor.x - pathDistanceWU, z: seamAnchor.z },
+    },
+  }), /cannot guarantee one public completion radius toward Throughline/);
+  assert.equal(planCeresWorkingSeamEgress({
+    sectorId,
+    player: { alive: true, pos: acceptedDeparture },
+  }).minRemainingTicks, 120,
+  'optional post-Continue seam repeats retain the generic 120-tick route horizon');
 
   const routeSource = readFileSync(
     new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
@@ -1424,8 +1522,11 @@ test('Working Seam evidence publicly restages to the accepted Belt Outpost depar
   const routeEnd = routeSource.indexOf('/**\n * Perform every known no-launch prerequisite', routeStart);
   const route = routeSource.slice(routeStart, routeEnd);
   assert.match(route,
-    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival\)[\s\S]*drivePublicToCeresPoint\(page, egressTarget, observerBounds\.endTick\)/,
+    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival, \{[\s\S]*continueProof[\s\S]*CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS[\s\S]*drivePublicToCeresPoint\(page, egressTarget, observerBounds\.endTick\)/,
     'seam arrival evidence must be recorded before the public departure restage');
+  assert.match(route,
+    /const legs = \[[\s\S]*PQ020_ROUTE_TARGETS\.beltOutpost[\s\S]*PQ020_ROUTE_TARGETS\.beacon, method: 'keyboard'[\s\S]*\];/,
+    'the next normal leg after the seam return must publicly keyboard-select Throughline');
   assert.doesNotMatch(route, /player\.pos\s*=|state\.nav\.autopilot\s*=/,
     'the route may observe live state but cannot teleport or privately arm navigation');
   assert.match(route,
@@ -2545,8 +2646,8 @@ function pocketApproachTwoPhasePage({
             const step = Math.min(thrustStepWU, Math.max(0, distance));
             player.pos.x += distance > 0 ? (dx / distance) * step : 0;
             player.pos.z += distance > 0 ? (dz / distance) * step : 0;
-            player.vel.x = distance > 0 ? (dx / distance) * 78 : 0;
-            player.vel.z = distance > 0 ? (dz / distance) * 78 : 0;
+            player.vel.x = distance > 0 && step > 0 ? (dx / distance) * 78 : 0;
+            player.vel.z = distance > 0 && step > 0 ? (dz / distance) * 78 : 0;
             player.rot = Math.atan2(dz, dx);
           } else {
             player.pos.x = targetPoint.x - 80;
