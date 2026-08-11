@@ -47,7 +47,9 @@ export function normalizeField(spec = {}) {
     dir: { x: dx, z: dz },
     radius: positive(spec.radius, 120),
     strength: Math.max(0, finite(spec.strength, 200)),
+    damping: Math.max(0, finite(spec.damping, 0)),
     falloff: positive(spec.falloff, 1.5),
+    maxAffected: Number.isFinite(spec.maxAffected) && spec.maxAffected > 0 ? Math.floor(spec.maxAffected) : Infinity,
     // PQ-013: OPTIONAL annular profile (the planet's artistic-liberties attraction — STEP 12:
     // "softened, bounded, annular"). innerRadius zeroes the field below it; innerSoft ramps 0->1
     // across [innerRadius, innerRadius+innerSoft]. Defaults (0/0) leave every existing field's
@@ -138,7 +140,7 @@ export function fieldAffectsBody(field, bodyProfile) {
 // Raw (pre-coupling) acceleration vector a single field applies at a world point. Writes into
 // `out` ({ax,az}) and returns it; zero outside the radius / wedge. Pure, allocation-free when out
 // is supplied.
-export function fieldRawAcceleration(field, x, z, out) {
+export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
   if (!field || field.strength <= 0 || !(field.radius > 0)) return o;
@@ -168,13 +170,25 @@ export function fieldRawAcceleration(field, x, z, out) {
   }
 
   // Radial well/repulsor. inward = toward center (well), outward = away (repulsor).
-  if (r < 1e-4) return o; // at the exact center the bearing is undefined → no force (avoids NaN)
+  if (r < 1e-4) {
+    // At the exact center the radial bearing is undefined, but an authored snare's velocity drag is
+    // still well-defined. Plain wells/repulsors keep the old zero-force behavior.
+    if (field.damping > 0 && vel) {
+      o.ax = -finite(vel.x) * field.damping * fall;
+      o.az = -finite(vel.z) * field.damping * fall;
+    }
+    return o;
+  }
   const inv = 1 / r;
   const ux = dx * inv, uz = dz * inv; // unit vector center → body
   const a = field.strength * fall;
   const sign = field.kind === FIELD_KINDS.WELL ? -1 : 1; // well pulls in, repulsor pushes out
   o.ax = ux * a * sign;
   o.az = uz * a * sign;
+  if (field.damping > 0 && vel) {
+    o.ax -= finite(vel.x) * field.damping * fall;
+    o.az -= finite(vel.z) * field.damping * fall;
+  }
   return o;
 }
 
@@ -205,7 +219,7 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i];
     if (!fieldAffectsBody(field, profile)) continue;
-    fieldRawAcceleration(field, pos.x, pos.z, _rawScratch);
+    fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
     sx += _rawScratch.ax;
     sz += _rawScratch.az;
   }

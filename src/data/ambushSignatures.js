@@ -9,6 +9,11 @@ export const AMBUSH_SIGNATURES = Object.freeze({
     label: 'Dead beacon',
     hint: 'Dead beacon: possible ambush. Scan and keep distance before crossing the lane.',
   }),
+  field_anchor_controller: Object.freeze({
+    id: 'anchor_spin_echo',
+    label: 'Anchor spin echo',
+    hint: 'Anchor spin echo: heavy controller likely staging a drag field. Keep room to break radius.',
+  }),
   pirate_toll: Object.freeze({
     id: 'cargo_bait',
     label: 'Cargo bait',

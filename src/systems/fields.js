@@ -23,7 +23,7 @@
 // (a save/reload legitimately clears an in-flight field cooldown).
 
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, fieldsFlag } from '../data/fields.js';
-import { createFieldKernel, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
@@ -54,13 +54,17 @@ function defaultRuntime() {
     // Published presentation/predictor mirrors (rebuilt each tick).
     snapshot: [],   // id-sorted normalized field records — the PURE predictor seam consumer input
     active: [],     // per-field presentation records for VFX/HUD
+    anchored: {},   // hull-anchored fields: fieldId -> { fieldId, sourceId, defKey, activateTick }
     telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0 },
   };
 }
 
 function ensureRuntime(state) {
   const f = state.fields;
-  if (f && f.schemaVersion === 1) return f;
+  if (f && f.schemaVersion === 1) {
+    if (!f.anchored || typeof f.anchored !== 'object') f.anchored = {};
+    return f;
+  }
   state.fields = defaultRuntime();
   return state.fields;
 }
@@ -127,7 +131,11 @@ export const fields = {
         this.bus.on('sector:exit', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_exit')),
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
-        this.bus.on('save:loaded', () => this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded')),
+        this.bus.on('save:loaded', () => {
+          this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
+          this._rebuildAnchoredFieldsFromEntities();
+        }),
+        this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
       ];
     }
   },
@@ -150,11 +158,98 @@ export const fields = {
     }
     this._handleInput(state, rt);
     this._syncCone(state, rt);
+    this._syncAnchoredFields(state, rt);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
+  },
+
+  _onEntitySpawned(payload) {
+    if (!fieldsFlag('enabled')) return;
+    const entity = payload && payload.entity;
+    if (!entity || entity.alive === false) return;
+    this._registerAnchoredField(entity);
+  },
+
+  _registerAnchoredField(entity) {
+    const data = entity && entity.data;
+    const anchor = data && data.fieldAnchor;
+    if (!anchor || !this._kernel) return null;
+    const defKey = String(anchor.defKey || anchor.fieldDef || 'anchorSnare');
+    const def = FIELD_DEFS[defKey];
+    if (!def) return null;
+    const rt = ensureRuntime(this.state);
+    const existing = Object.values(rt.anchored).find((rec) => rec && rec.sourceId === entity.id);
+    if (existing && this._kernel.has(existing.fieldId)) return existing.fieldId;
+    if (this._kernel.size >= FIELD_MAX_ACTIVE) return null;
+    const now = nowOf(this.state);
+    const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
+    const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);
+    const radius = positive(anchor.radius, def.radius);
+    const strength = positive(anchor.strength, def.strength);
+    const record = this._kernel.register({
+      id: fieldId,
+      kind: def.kind,
+      center: { x: entity.pos.x, z: entity.pos.z },
+      radius,
+      strength: spinupTicks > 0 ? 0 : strength,
+      damping: positive(anchor.damping, def.damping || 0),
+      falloff: positive(anchor.falloff, def.falloff),
+      durationS: Infinity,
+      sourceId: entity.id,
+      ownerId: entity.id,
+      team: entity.team,
+      createdAt: now,
+      maxAffected: positive(anchor.maxAffected, def.maxAffected),
+      tag: anchor.presentationTag || 'environmental',
+      filters: { excludeId: entity.id },
+    });
+    rt.anchored[fieldId] = {
+      fieldId,
+      defKey,
+      sourceId: entity.id,
+      activateTick: (this.state.tick | 0) + spinupTicks,
+      strength,
+      radius,
+    };
+    this.bus.emit('fields:anchorRegistered', {
+      fieldId,
+      sourceId: entity.id,
+      kind: defKey,
+      radius,
+      activateTick: rt.anchored[fieldId].activateTick,
+    });
+    this._emitDeployCue('well', entity.pos.x, entity.pos.z, radius);
+    return record.id;
+  },
+
+  _syncAnchoredFields(state, rt) {
+    const ids = Object.keys(rt.anchored || {});
+    for (const fieldId of ids) {
+      const rec = rt.anchored[fieldId];
+      const entity = state.entities && state.entities.get ? state.entities.get(rec.sourceId) : null;
+      if (!entity || entity.alive === false) {
+        this._kernel.unregister(fieldId);
+        delete rt.anchored[fieldId];
+        this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason: FIELD_END_REASONS.destroyed });
+        continue;
+      }
+      this._kernel.update(fieldId, {
+        center: { x: entity.pos.x, z: entity.pos.z },
+        strength: (state.tick | 0) >= rec.activateTick ? rec.strength : 0,
+      });
+    }
+  },
+
+  _rebuildAnchoredFieldsFromEntities() {
+    const state = this.state;
+    if (!state || !fieldsFlag('enabled')) return;
+    const source = state.entityList || [];
+    for (const entity of source) {
+      if (entity && entity.alive !== false) this._registerAnchoredField(entity);
+    }
   },
 
   // ── input / deploy ─────────────────────────────────────────────────────────────────────────
@@ -481,11 +576,17 @@ export const fields = {
       if (typeof queryRadius === 'function') {
         queryRadius(field.center, field.radius, this._queryOut);
         queries++;
+        let fieldAffected = 0;
+        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
         for (let j = 0; j < this._queryOut.length; j++) {
           const e = this._queryOut[j];
           if (this._forceableBody(e)) {
+            const profile = this._profileFor(e, state);
+            if (!fieldAffectsBody(field, profile)) continue;
             affected.set(e, true);
             this._considerMassState(field, e);
+            fieldAffected++;
+            if (fieldAffected >= maxAffected) break;
           }
         }
       }
