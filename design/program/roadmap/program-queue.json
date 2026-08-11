@@ -2232,6 +2232,41 @@
       "integratedCommit": "02419f0cdd8f2815b2943a13cf49b484c79c08fd, 489a35a96c5efed64b52b7d31b2d71f2bd1bb0f0, 0209c4cab61d799852f4256825a429fa8672f444, f773e086b2d702b98555e2c13c111ebd64a0028d",
       "acceptanceRef": "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md#portfolio-closeout",
       "receipt": "design/program/roadmap/receipts/PQ-046-swarm-density-REPORT.md"
+    },
+    {
+      "id": "PQ-047",
+      "priority": 47,
+      "title": "Living freight incident 5x",
+      "state": "integrated",
+      "canonical": [
+        "VISION-ALIGNMENT-PHASE-2-FREIGHT"
+      ],
+      "aliases": [
+        "INFERENCE-5X-FREIGHT"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/VISION_ALIGNMENT_PLAN.md",
+        "design/program/roadmap/active/PQ-047.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node --test test/pirate-predation-authority.test.mjs test/freight-cargo-custody.test.mjs test/immediate-aftermath-wreck-identity.test.mjs test/encounter-convoy-loss-economy.test.mjs",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "predation-telegraph",
+        "cargo-conservation",
+        "civilian-recovery",
+        "wreck-identity",
+        "economy-bridge",
+        "composition-review"
+      ],
+      "brief": "Freight became one physical incident: bounded pirate predation with a published telegraph, conserved physical cargo custody, civilian Massline disable recovery, immediate-to-persistent wreck identity, and exactly-once convoy-loss economy pressure and news. Adopted from the stopped codex-root session, gap-closed, and closed by a seeded end-to-end composition review (CLOSE-PACKET).",
+      "receipt": "design/program/roadmap/receipts/PQ-047-composition-REPORT.md",
+      "integratedCommit": "1b6478e5",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-047-composition-REPORT.md"
     }
   ],
   "dispatchUnits": [

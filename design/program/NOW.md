@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-10
-baseCommit: 0eb09fdfe51e0a49e169b7dbef5d752179d2472e
+baseCommit: e0332191fe76d7d0d11ff797b496ed6a0e719809
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -33,8 +33,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-047.living-freight-5x | codex-root | MUTATING | `src/systems/encounterScripts.js`, `test/pirate-predation-authority.test.mjs` | project the exact bounded pirate-to-carrier approach relation through the existing physical telegraph owner, then complete spec and quality review |
-| PQ-018.cathedral-reauthor | external-blender-lane | MUTATING (live Blender process authoring since 15:40) | `assets/ships/parts/blender/place_landmark_wreck_cathedral.blend`, `assets/ships/parts/places/place_landmark_wreck_cathedral.glb`, `assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/**` | do NOT claim PQ-018 from the dispatcher while this row stands; let the running authoring freeze one blend/glb pair, then regenerate captures/manifests (2026-08-10 controller advisory; evaluation evidence retained by fable controller) |
 
 ## Uncommitted work without a confirmed live thread
 
