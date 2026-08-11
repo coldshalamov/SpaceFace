@@ -612,7 +612,8 @@ test('a hard sector round trip rebuilds both bodies and rebinds the same service
 });
 
 test('remaining activity: choreography marks stay abstract and do not spawn object-slot entities', () => {
-  // Seven abstract activity: marks are intentional scan/throughline/perimeter choreography.
+  // Six abstract activity: marks are intentional scan/throughline/perimeter choreography. The
+  // seam Ore Barge's second mark is now the real station sink, not an abstract activity target.
   // Only the deliberate disabled-hull object: slot may materialize as an activityObjectSlotId body.
   const abstractRefs = [];
   for (const pocket of Object.values(CERES_ACTIVITY_POCKETS_BY_ID)) {
@@ -624,7 +625,7 @@ test('remaining activity: choreography marks stay abstract and do not spawn obje
       }
     }
   }
-  assert.equal(abstractRefs.length, 7, 'exactly seven abstract activity: marks remain authored');
+  assert.equal(abstractRefs.length, 6, 'exactly six abstract activity: marks remain authored');
   assert.ok(abstractRefs.every((ref) => !ref.includes('disabled')),
     'the old activity:disabled-hull ghost is not among abstract marks');
 

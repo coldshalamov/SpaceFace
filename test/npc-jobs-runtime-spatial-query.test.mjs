@@ -339,6 +339,12 @@ test('npcJobsRuntime batches eligible hostile queries and excludes controlled hu
     [firstOwner, secondOwner, controlledOwner, hostile],
     [firstOwner, secondOwner, controlledOwner],
   );
+  // Runtime authority requires the retained hull marker to agree with the job bag. Without these
+  // production-shaped markers, the first entry correctly aborts the obsolete batch before it can
+  // touch later entries, so this fixture would not be testing batched threat reconciliation.
+  firstOwner.data.jobId = 'job:first';
+  secondOwner.data.jobId = 'job:second';
+  controlledOwner.data.jobId = 'job:controlled';
   state.npcJobs.byId = {
     'job:first': {
       job: { phase: NPC_JOB_PHASE.TRANSIT, corrupt: false },
