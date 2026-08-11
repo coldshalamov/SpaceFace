@@ -2,10 +2,12 @@
 
 ```yaml
 started: 2026-08-10
-sourceSha256: d77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd
-priorSourceSha256: f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704
+sourceSha256: 7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e
+priorSourceSha256: d77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd
 artVerdictBaseline: REVISE (G1/G2/G4 whole_asset FAIL)
-currentDisposition: REVISE-improved (not KEEP / not A-list claim)
+currentDisposition: reauthor-shipped (implementation leaf; whole-asset KEEP deferred to review)
+releaseSha256: 32094bcd6df7671e9e2d93ae491a6aab33aa1ca9bd2a32cc3548cb7532eedcca
+blendSha256: e76227e8762092072fb963b898eba592a1c2e39caf8c8860dcb43868cc3c40b7
 ```
 
 ## Baseline defects (from captures + art verdict)
@@ -45,19 +47,21 @@ currentDisposition: REVISE-improved (not KEEP / not A-list claim)
 | 18 | Full author rebuild + multi-angle evidence re-render |
 | 19 | Release build (meshopt+KTX2) + hash freeze in admission test |
 | 20 | Manifest bytes/tris sync; site test scopes component count to SITE_ID |
+| 21 | Outer rib-to-rib cladding plates + stringers; casemate fore/aft section lips; denser rooted rupture shards/flaps; BUILD_SEED 18082027; release rebuild |
 
 ## Capture checkpoints
 
 - Baseline: pre-existing `captures/*` (REVISE)  
 - After pass 1: material separation visible; hull over-thinned  
 - After pass 2–3: casemate mass restored; warm alloy frames; rooted rupture; multi-view evidence refreshed  
+- After pass 21: source `7c2f3fcd…` / release `32094bcd…`; LOD 166944/68684/18024; flythrough probe 75/0  
 
 ## Remaining open (why not A-list KEEP yet)
 
-- Upper hangar still reads somewhat as open cage at some angles  
+- Upper hangar still shows framed openings (intentional cavity; cladding now primary outer read)  
 - Bow wedges still relatively simple  
 - Engine bells still primitive frustums (improved materials only)  
-- Independent G7 whole-asset KEEP not claimed  
+- Independent whole-asset G1/G2/G4 KEEP not claimed — owned by `PQ-018.cathedral-reauthor-h1` + `review`  
 
 ## Identity preserved
 

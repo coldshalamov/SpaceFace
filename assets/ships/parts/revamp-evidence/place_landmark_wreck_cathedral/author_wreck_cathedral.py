@@ -37,7 +37,8 @@ BLEND = ROOT / "assets" / "ships" / "parts" / "blender" / f"{ASSET_ID}.blend"
 GLB = ROOT / "assets" / "ships" / "parts" / "places" / f"{ASSET_ID}.glb"
 EXPORTER = ROOT / "tools" / "blender" / "spaceface_export.py"
 # Bump when silhouette-preserving construction language changes so texture seeds stay coherent.
-BUILD_SEED = 18082026
+# 18082026 = I-beam / casemate reauthor; 18082027 = outer plate cladding + rupture root plates.
+BUILD_SEED = 18082027
 REBUILD_TEXTURES = "--rebuild-textures" in sys.argv
 
 # Material separation is a G4 repair: armor/frame/interior/propulsion must not collapse to one
@@ -683,6 +684,19 @@ def build_hull_mass(collection, materials, lod: int) -> None:
                 "Material_Hull_ConcordGray", "layered_exterior_hull", FORE,
                 rotation=rot, bevel=0.62,
             )
+            # Plate-section return lips so casemates read as thick manufactured shell, not solid brick.
+            make_box(
+                collection, materials, lod, f"ForeHullLipFore_{'P' if side < 0 else 'S'}_{index}",
+                (2.4, 13.5, 31.5), (x + 22.5, side * outer, 7 + (index % 2) * 4),
+                "Material_Hull_ConcordGray", "hull_plate_section_lip", FORE,
+                rotation=rot, bevel=0.22,
+            )
+            make_box(
+                collection, materials, lod, f"ForeHullLipAft_{'P' if side < 0 else 'S'}_{index}",
+                (2.4, 13.5, 31.5), (x - 22.5, side * outer, 7 + (index % 2) * 4),
+                "Material_Hull_ConcordGray", "hull_plate_section_lip", FORE,
+                rotation=rot, bevel=0.22,
+            )
             make_box(
                 collection, materials, lod, f"ForeHullInset_{'P' if side < 0 else 'S'}_{index}",
                 (38, 2.2, 22), (x + 1, side * (outer + 6.2), 9 + (index % 2) * 3),
@@ -714,6 +728,18 @@ def build_hull_mass(collection, materials, lod: int) -> None:
                 (47, 13, 32), (x, side * outer, -1 - (index % 2) * 3),
                 "Material_Hull_ConcordGray", "layered_exterior_hull", AFT,
                 rotation=rot, bevel=0.65,
+            )
+            make_box(
+                collection, materials, lod, f"AftHullLipFore_{'P' if side < 0 else 'S'}_{index}",
+                (2.6, 14.5, 33.5), (x + 23.0, side * outer, -1 - (index % 2) * 3),
+                "Material_Hull_ConcordGray", "hull_plate_section_lip", AFT,
+                rotation=rot, bevel=0.24,
+            )
+            make_box(
+                collection, materials, lod, f"AftHullLipAft_{'P' if side < 0 else 'S'}_{index}",
+                (2.6, 14.5, 33.5), (x - 23.0, side * outer, -1 - (index % 2) * 3),
+                "Material_Hull_ConcordGray", "hull_plate_section_lip", AFT,
+                rotation=rot, bevel=0.24,
             )
             make_box(
                 collection, materials, lod, f"AftHullInset_{'P' if side < 0 else 'S'}_{index}",
@@ -832,6 +858,58 @@ def build_ribcage_and_hangar(collection, materials, lod: int) -> None:
                              (x_center, side * (36.8 + level * 4.0), z + 3.0),
                              "Material_Armor_Scorched", "deck_edge_armor", matrix, bevel=0.16)
 
+    # Outer cladding plates span rib-to-rib on the outboard face so the primary readable
+    # silhouette is manufactured shell + framed openings, not a pure open bar cage.
+    # Plates stay outside the 72×58 m fly-through envelope (y ≥ ~38 at the cavity wall).
+    cladding_bands = (
+        (-23, "Lower", "Material_Hull_ConcordGray", 18.0),
+        (8, "Mid", "Material_Armor_Scorched", 16.0),
+        (38, "Upper", "Material_Hull_ConcordGray", 14.0),
+    )
+    for side in (-1, 1):
+        for band_index, (z, band, material_name, height) in enumerate(cladding_bands):
+            for rib_index in range(len(rib_x) - 1):
+                x0, x1 = rib_x[rib_index], rib_x[rib_index + 1]
+                # Skip every third mid band to keep service openings and negative space.
+                if band == "Mid" and (rib_index + side) % 3 == 0:
+                    continue
+                span = abs(x1 - x0) - 6.0
+                if span < 10.0:
+                    continue
+                x_center = (x0 + x1) * 0.5
+                matrix = AFT if x_center < 0 else FORE
+                # Torn edge near the catastrophic break: leave a gap and use scorched plate.
+                near_break = abs(x_center) < 40
+                plate_mat = "Material_Armor_Scorched" if near_break else material_name
+                thickness = 2.6 if lod == 0 else 3.2
+                y_out = side * (72.5 + band_index * 1.2)
+                make_box(
+                    collection, materials, lod,
+                    f"Clad_{band}_{'P' if side < 0 else 'S'}_{rib_index}",
+                    (span * (0.78 if near_break else 0.92), thickness, height),
+                    (x_center, y_out, z + (3 if near_break and side > 0 else 0)),
+                    plate_mat, "outer_hull_cladding_plate", matrix,
+                    rotation=(
+                        math.radians(side * (1.2 + band_index * 0.4)),
+                        math.radians((-4 if near_break else 0) + (rib_index % 2) * 0.8),
+                        math.radians(side * (1.5 + (3 if near_break else 0))),
+                    ),
+                    bevel=0.28,
+                    damage_history=(
+                        "cladding_torn_open_at_catastrophic_break"
+                        if near_break else "assembled_armor_cladding_on_frame"
+                    ),
+                )
+                if lod < 2 and not near_break:
+                    # Stringer behind cladding so the plate has a load path into the rib frame.
+                    make_box(
+                        collection, materials, lod,
+                        f"CladStringer_{band}_{'P' if side < 0 else 'S'}_{rib_index}",
+                        (span * 0.55, 2.0, height * 0.55),
+                        (x_center, side * (68.5 + band_index), z),
+                        "Material_Mechanical_Exposed", "cladding_stringer", matrix, bevel=0.14,
+                    )
+
     # Torn members stay attached to their half (rooted fracture), not free-floating debris.
     # Each shard starts at the bulkhead face and cantilevers outward.
     shards = [
@@ -841,21 +919,44 @@ def build_ribcage_and_hangar(collection, materials, lod: int) -> None:
         (FORE, (13, 48, 40), (24, 66, 58), 4.2, "ForeStarboard"),
         (FORE, (12, 0, -48), (26, 8, -62), 5.0, "KeelFore"),
         (AFT, (-13, 0, -50), (-26, -6, -64), 5.2, "KeelAft"),
+        # Extra mid-break members establish denser rooted rupture at capital scale.
+        # Keep every endpoint outside the 72×58 fly-through channel (y ∈ [-35.5, 35.5], z ∈ [-24, 34]
+        # is the free corridor — root plates and shards must stay outboard/above/below that box).
+        (AFT, (-14, -46, 44), (-3, -66, 58), 3.6, "AftPortMid"),
+        (FORE, (14, 48, 42), (25, 68, 56), 3.6, "ForeStarboardMid"),
+        (FORE, (11, -44, 48), (20, -62, 62), 3.4, "ForePortHigh"),
+        (AFT, (-11, 46, -42), (-22, 64, -56), 3.8, "AftStarboardLow"),
     ]
-    for matrix, start, end, width, label in shards[: (6 if lod == 0 else 4 if lod == 1 else 3)]:
+    for matrix, start, end, width, label in shards[: (10 if lod == 0 else 6 if lod == 1 else 4)]:
         make_i_beam(collection, materials, lod, f"BreakShard_{label}", start, end, width,
                     "Material_Interior_ExposedAlloy", "catastrophic_break_exposed_structure", matrix,
                     bevel=0.18, damage_history="member_torn_from_bulkhead_still_attached")
         # Root plate at bulkhead end of each shard.
+        root_x = start[0] * 0.85 + end[0] * 0.15
+        root_y = start[1] * 0.85 + end[1] * 0.15
+        root_z = start[2] * 0.85 + end[2] * 0.15
         make_box(
             collection, materials, lod, f"BreakRoot_{label}",
-            (5.5, width * 1.6, width * 1.4),
-            ((start[0] + end[0]) * 0.15 + start[0] * 0.7,
-             (start[1] + end[1]) * 0.15 + start[1] * 0.7,
-             (start[2] + end[2]) * 0.15 + start[2] * 0.7),
+            (6.5, width * 1.9, width * 1.7),
+            (root_x, root_y, root_z),
             "Material_Armor_Scorched", "fracture_root_plate", matrix, bevel=0.16,
             damage_history="weld_foot_sheared_at_bulkhead",
         )
+        if lod < 2:
+            # Secondary torn plate flap still hinged at the bulkhead (fracture transition).
+            flap_x = start[0] * 0.55 + end[0] * 0.45
+            flap_y = start[1] * 0.55 + end[1] * 0.45
+            flap_z = start[2] * 0.55 + end[2] * 0.45
+            make_box(
+                collection, materials, lod, f"BreakFlap_{label}",
+                (3.2, width * 2.4, 1.6),
+                (flap_x, flap_y, flap_z),
+                "Material_Armor_Scorched", "torn_armor_flap", matrix,
+                rotation=(math.radians(18 if start[1] >= 0 else -18),
+                          math.radians(12), math.radians(22 if start[1] >= 0 else -22)),
+                bevel=0.12,
+                damage_history="armor_flap_hinged_open_at_fracture",
+            )
 
 
 def build_cathedral_arches_and_break(collection, materials, lod: int) -> None:

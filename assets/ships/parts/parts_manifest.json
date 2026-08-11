@@ -4126,8 +4126,8 @@
       "budgetClass": "landmark",
       "textureSize": 512,
       "mount": "origin",
-      "tris": 213496,
-      "bytes": 16993604,
+      "tris": 253652,
+      "bytes": 18890576,
       "hooks": [],
       "sockets": [
         "SOCKET_Flythrough_Entry",
@@ -4136,22 +4136,22 @@
       ],
       "bounds": {
         "min": [
-          -288.6276,
-          -91.3317,
-          -139.2015
+          -310.466,
+          -169.4696,
+          -117.6135
         ],
         "max": [
-          320.6404,
-          148.2666,
-          113.2121
+          324.1987,
+          199.7729,
+          163.9569
         ],
         "dimensionsM": [
-          609.268,
-          239.5983,
-          252.4135
+          634.6647,
+          369.2426,
+          281.5704
         ]
       },
-      "note": "PQ-018 Wreck Cathedral hero landmark; project-original deterministic Blender build (source sha256 f335935f…, frozen at admission). Explicit LOD0/1/2 roots at 91908/34164/8364 tris and 8 draw groups each; 8 semantic materials, 26 authored 512/256px PBR maps. Semantic markers SOCKET_Flythrough_Entry/Exit, SOCKET_TheMarker, ZONE_*, SALVAGE_*, INTERACTION_HangarCavity carry spaceface.semanticRole and are preserved through release. Declares a 72m x 58m clear +X/-X fly-through envelope; this row admits the asset only — World Site wiring, Ceres placement, and route acceptance remain PQ-018 Phase 2-4."
+      "note": "PQ-018 Wreck Cathedral hero landmark; re-authored construction language (source sha256 7c2f3fcd… superseding REVISE baseline f335935f…). Explicit LOD0/1/2 roots at 166944/68684/18024 tris and 8 draw groups each; 8 semantic materials, 26 authored 512/256px PBR maps. Outer cladding plates + casemate section lips + rooted rupture members; materials separate armor/frame/alloy/propulsion/service/emissive. Semantic markers SOCKET_Flythrough_Entry/Exit, SOCKET_TheMarker, ZONE_*, SALVAGE_*, INTERACTION_HangarCavity preserved through release. Declares a 72m x 58m clear +X/-X fly-through envelope. Whole-asset G1/G2/G4 KEEP remains for cathedral-reauthor-h1/review."
     },
     {
       "id": "wholeship_ashline_dart",

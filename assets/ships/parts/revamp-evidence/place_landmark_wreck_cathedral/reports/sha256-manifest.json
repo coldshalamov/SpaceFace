@@ -6,143 +6,143 @@
   "files": [
     {
       "path": "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
-      "bytes": 9603510,
-      "sha256": "1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13"
+      "bytes": 13693850,
+      "sha256": "e76227e8762092072fb963b898eba592a1c2e39caf8c8860dcb43868cc3c40b7"
     },
     {
       "path": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
-      "bytes": 11155156,
-      "sha256": "f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704"
+      "bytes": 18890576,
+      "sha256": "7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png",
-      "bytes": 1484307,
-      "sha256": "48125e6eb77cf3d309d934d8a2f66f3ed8c8f15e8a9368f75a0ad5c17ef27166"
+      "bytes": 1474418,
+      "sha256": "fe96d565735ac9d94c9db661ad88ed93c08aff6469945577d966384965e7ce18"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png",
-      "bytes": 1963279,
-      "sha256": "7c56440e8b8e7a1a982c74d2aa2ecabcf4d824fd0bf62a27c826c888cef81e78"
+      "bytes": 2028119,
+      "sha256": "3720ed053d690a160cd5f1993bb7915cd30dd0da45fd734d79a0530849253e4c"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png",
-      "bytes": 1109031,
-      "sha256": "fa520d4f22906c730085c4afdf1fd1d673d2be9aa281c4c4735fc90956970e7e"
+      "bytes": 1111661,
+      "sha256": "a7e8d6f00afc543b86c2c45f685c77ad40b8c25b483cb4b1dbd8d0e0ba5c82ed"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png",
-      "bytes": 2123794,
-      "sha256": "0cc84d6380395440fe70a90235aea45b42e2b9992889c11475c2a8ce6e10a847"
+      "bytes": 2138176,
+      "sha256": "24a2d884eb7f4e5848c50aed92d3e75b6195698352dbbc6c3372235974b0a33b"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_ao_no_bloom.png",
-      "bytes": 996073,
-      "sha256": "8cfa88a7333401bcf8e6ef0afc1da840fb27cd3f152108d8e42e445215eca81a"
+      "bytes": 990684,
+      "sha256": "951aeb936564bd5db0841e78279b22dfc5f2b631597e520615276596e09662b3"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_basecolor_no_bloom.png",
-      "bytes": 1327429,
-      "sha256": "a2a490fc514bdedc77dc9017b367b8769979eadee32e0aaf5c052700c9429459"
+      "bytes": 1276546,
+      "sha256": "b36e9e6a197052ac1b6d8266a88741fe45235d8ca60bf50b13c0e1edb2776570"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_emissive_no_bloom.png",
-      "bytes": 684889,
-      "sha256": "01a94fc356c75eb1a4cd4ea17e620f95e7a1d60f4fd12292cf6d47a49ff3707a"
+      "bytes": 683433,
+      "sha256": "0502215488be31dfe340cfd7536a748612e7c8cb90e1ca79250625770ea61e21"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_metallic_no_bloom.png",
-      "bytes": 986796,
-      "sha256": "00784936c034bdffa0e7ada52188d27f6b2cf4ece4ea3ec45e35906ee52674e0"
+      "bytes": 1002333,
+      "sha256": "4f6a8a90515800e313852b7ca4fbd59917af9c964742c8b4b62525d01b8eb88e"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_normal_no_bloom.png",
-      "bytes": 1207676,
-      "sha256": "b40c3e3ad9b15671a4494eafc9d296f35b6d6cceefaa71cb5959c46dce925246"
+      "bytes": 1198241,
+      "sha256": "094570fbf1b218b299017373b84320eeacf7f73ed3b35746199dbadda6f96a5b"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_roughness_no_bloom.png",
-      "bytes": 1013114,
-      "sha256": "145298acdf1483f1a71398b162b2b69e0cab30e75c4c20f377a901dffe460845"
+      "bytes": 1026295,
+      "sha256": "00afad693b5f36799e7d8b335d2dd236293ba4238ea6c651c1f15b5c67c7122e"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png",
-      "bytes": 1205346,
-      "sha256": "64767180bd92c4aa6015afe6afdde88f17fb693026cea916dcdeeaa79f575d6b"
+      "bytes": 1187694,
+      "sha256": "b379d8020efe857913ed0ca92d9ddaa8152e9db8004ab8b3c2211556ac2b5cef"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png",
-      "bytes": 1196446,
-      "sha256": "a6b4b171e81fa5a45da034c60f23cd6d1c4b98331edb2a75655a28410783f3eb"
+      "bytes": 1189361,
+      "sha256": "011ab45bdf9c7ee8c9d0974e9db86d12e386da4fcc4cb50d6b98d3a20f4d1c4b"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png",
-      "bytes": 1195516,
-      "sha256": "120e031c60da00b80188b4c81b61c9356c5bdeeb5a00f736069881b5d9e9356e"
+      "bytes": 1178573,
+      "sha256": "070592768b64374f6984fe0ec20ff14b7d46cf497830a0dacd6ab0cae9c219f8"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png",
-      "bytes": 1548564,
-      "sha256": "92634370f669cc6ca0bc8471dd7b1be4297c9ef86a975aade0414364ebc8b38d"
+      "bytes": 1585265,
+      "sha256": "1bf87ac875316cbf00fc5fa50edea91bd94f8f1a9424ed05ed487c59fcb70ec7"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png",
-      "bytes": 2497616,
-      "sha256": "12f1da231b551920fdaa9a34c82e613728e02ace92ff9c6fb6359da3a68140cd"
+      "bytes": 2645393,
+      "sha256": "6f677d02831bd3bc969c5920efec98d2368894e8a5fdee5390e2beb149d51eca"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_side.png",
-      "bytes": 1561144,
-      "sha256": "308b6c50bd2c8121540765c855ce99121d4a6948d37bbe3f976a0ba2edc721b6"
+      "bytes": 1570073,
+      "sha256": "42fc1a708d90ccc3582ad1bc1bb8c60c8606f502b9d94569eeac899d0e5be4f4"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_basecolor.png",
-      "bytes": 287864,
-      "sha256": "639472ff157d813f6c9bd16de0a45cad5d76a80820a3eb20d25517fb9cda046d"
+      "bytes": 290445,
+      "sha256": "4a485fe138e43b8d3cc6b1f57fbcf1c1351bba488850162230e90ac817f55d70"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_normal.png",
-      "bytes": 194420,
-      "sha256": "9f40de2e58258ba4c19127da5bab92361c890c0cae81eba3837ba815432d6b30"
+      "bytes": 194152,
+      "sha256": "6148dfcf600e5222292ce60e8dc7147cf788c368ec02e6bfb259babdf9c2fe0d"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_orm.png",
-      "bytes": 294070,
-      "sha256": "275abccda8ca76904cb9a980312a0ff491fe3eeef3b1b4973a7172508de185d8"
+      "bytes": 293367,
+      "sha256": "9c3a766d165777abe8b526389e01353722a8b76826dbc261de5af1d465aa5769"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_basecolor.png",
-      "bytes": 265470,
-      "sha256": "a12601d3db57b7e69477270ea0ae6cdb9a20320ab434a7daf14eca590899bdec"
+      "bytes": 258263,
+      "sha256": "ef828339dfca9fb64c142e021b4b3121c6ffdca906caea3d8bf9956394000cfc"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_normal.png",
-      "bytes": 194546,
-      "sha256": "0c74eb265cdf3678f63c50dc501d88f01014a1a154334586d4a0918c66018098"
+      "bytes": 194380,
+      "sha256": "b9f8acccd0ede0890b7a140f404a22f6f5311cbfd0bb294dfbac9648866a3fe9"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_orm.png",
-      "bytes": 299811,
-      "sha256": "4e280e8589455f16dc8efbe2c5394854f34ce041ec9ca5ce4b12685c18ee9679"
+      "bytes": 297855,
+      "sha256": "8bdd489e1da1066a224dac32ef7cebb4afea37db5d301aa7847c230e9502bdc2"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_basecolor.png",
-      "bytes": 218782,
-      "sha256": "f659cd5f9209b82805c1566d4bc1bcb1b12db010685bcc80e580f647fe015e71"
+      "bytes": 244869,
+      "sha256": "ba936528246025c9f9d2c2edb46a62b757fa2abd6c5f504ada34037c255be00b"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_normal.png",
-      "bytes": 228797,
-      "sha256": "654459fef94772a238e75536bc0beb31cc9ff0821b3fd0fbcb85363fe4ad0681"
+      "bytes": 229143,
+      "sha256": "3068f23ce8be7b4d3515c26edbe1879982d57052322fcf79c405a2b9f0d71c40"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_orm.png",
-      "bytes": 294289,
-      "sha256": "16f901d9e3fe981bc5e5dbde2d34d60778a300875714b2841bd68f342c69ff53"
+      "bytes": 293708,
+      "sha256": "bc7868ce1d05e7cc14cb1fb5a3385463295189a3b9b1af6ba0f91df2d836a422"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_basecolor.png",
-      "bytes": 73263,
-      "sha256": "50942afb76afcd8534732bcda4dbf37701bce51bb0fc02b00ea4a153dc2cc5f9"
+      "bytes": 73763,
+      "sha256": "09cd2a70be35526398d574c80167e10c4ace5603780c22a1e78d1176582fcbee"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_emissive.png",
@@ -151,18 +151,18 @@
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_normal.png",
-      "bytes": 49640,
-      "sha256": "4c0f08b2a0aa6b8196b44c3cacb8006684ff82d9b6dcc8b60e6c6f861225768e"
+      "bytes": 49635,
+      "sha256": "d8112f1bdf8a688a0254341be738659dcebd2fa511025c79919e27cb6383cd1d"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_orm.png",
-      "bytes": 71934,
-      "sha256": "a31b341e42559c5db43e5e84252e4b3cb2bdd2367f6f65e13755a93b9f153606"
+      "bytes": 72219,
+      "sha256": "0a646b8ab636e79e3205a139170d7baa8321135cc99e424c445cef2c46f5d186"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_basecolor.png",
-      "bytes": 68232,
-      "sha256": "6974408633525c998e536abb91b19f8f6e7e77a4dfcead633c94410ffc7f19ac"
+      "bytes": 68234,
+      "sha256": "92c783f40e44e215f9df9d7408fee1434e585cdb405d142dfb5ef013f607b69b"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_emissive.png",
@@ -171,63 +171,63 @@
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_normal.png",
-      "bytes": 49595,
-      "sha256": "8bdcea67e3bc74ead47bda5768b1e0ff797a544d604096664da7ccd2ecb9690c"
+      "bytes": 49558,
+      "sha256": "751bf9b3132051dbe3e798c11a7cf6c86ed5761559b48056a76d173128152cf5"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_orm.png",
-      "bytes": 72476,
-      "sha256": "091a3bdcbf7aebfff0ee993cdc19e091d8b552f5d11ba1a4f49a428b929ccfb6"
+      "bytes": 71949,
+      "sha256": "31084f5b720fa2a060730970511a66d0484c058aa4ff69ba22cc888112df4217"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_basecolor.png",
-      "bytes": 273616,
-      "sha256": "3a7172675af2f3cf0aa7d00b85542ea2efa93eaea5d1301ba3218231c90c250a"
+      "bytes": 294579,
+      "sha256": "1292c0dd75a90244e579616109e7fd4d491ad3dad17f752230c9459ae695068f"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_normal.png",
-      "bytes": 194352,
-      "sha256": "19a6283efa6e062606033afd5d47958fed388db651b1c1002b1435bee68a4620"
+      "bytes": 194550,
+      "sha256": "ccf133cc59e44c027a292992e079d461ef083c2d7c6ca9efe127d122ba715324"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_orm.png",
-      "bytes": 293637,
-      "sha256": "af8fc3decdced8c67d955d635a92999218e94a1607d55bb3af5539e4a196b90b"
+      "bytes": 294150,
+      "sha256": "ba8787848d521070a6046f23d90a7e5ec6a977dc64f7c6f444287a032961d402"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_basecolor.png",
-      "bytes": 293625,
-      "sha256": "87349e123ae8d5e718f5b9773bcfb1f6585b4ea0b3915f3091752c745d964891"
+      "bytes": 274212,
+      "sha256": "d66897ed59e4e1c1c82f9b87b0bf9c0596de182e711dd5bf46c98360243d58a1"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_normal.png",
-      "bytes": 216911,
-      "sha256": "b2932afc44ef17b5de9b3a666d36f3f842fd2109c537b5c057b609a4741dd682"
+      "bytes": 216981,
+      "sha256": "5bfafe068cfc9c3efe31c834a42f793b7df7b893c74ce050c1f3107a8f1e6352"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_orm.png",
-      "bytes": 293387,
-      "sha256": "de999d207d5b7dd6d7f1d13b7c684141b25dfd6e4c84ebf7bd7c871a36dfc191"
+      "bytes": 292366,
+      "sha256": "d100d7983ffc4be172ab26c5e5aef0dedbbd146cbea1c0ab4f55a5f01173bfcc"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_basecolor.png",
-      "bytes": 274713,
-      "sha256": "cf2fdd8abb176fde488fba686619d4914c24fbd82859e7af8863061a8240b907"
+      "bytes": 264428,
+      "sha256": "4707aaad1754744596b93026142fb3bfe489b36af2ef6e7c25493861b6b7ffb9"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_normal.png",
-      "bytes": 194306,
-      "sha256": "56ab44db619ff5f4fcc72483c2d2b46438a773fac8922adc443b80bc3014fab3"
+      "bytes": 194342,
+      "sha256": "146ca56936f87528d0f6d3dbffe4c98586f97f65cb8db91944c72c0996d89138"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_orm.png",
-      "bytes": 292869,
-      "sha256": "b643eb85c89399e90f360cf939eaeecf5045ac454e678e925ff86d605eabf6ab"
+      "bytes": 294353,
+      "sha256": "b6f7ca72be429d0d4a85a8904eda7b63225cb0fdd1b55bb440a079cb9035c011"
     },
     {
       "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4",
-      "bytes": 1343329,
-      "sha256": "1937900331abeef1c06c265ee5ecd42bbe4dc3d0376c1560c2561bfb73237c9a"
+      "bytes": 1547783,
+      "sha256": "2c29d44512c5ea2c851b3144296a62be755fe53d3210b8e0e018dd01b293d9ad"
     }
   ]
 }

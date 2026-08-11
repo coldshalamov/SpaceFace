@@ -3645,7 +3645,7 @@
       "priority": 230,
       "title": "Re-author the Wreck Cathedral's dominant hull and rupture story",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-018.art-verdict"
       ],
@@ -3667,7 +3667,9 @@
         "npm run check:asset-reachability",
         "node scripts/check-pq018-coordinate-reservation.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-018-cathedral-reauthor-REPORT.md"
+      ],
       "brief": "Preserve the exact identity, two-half envelope, fly-through, sockets, markers, coordinate, proxies and useful authored work while replacing dominant primitive slabs, unrooted bar families, weak fracture transitions and clay-dark material allocation with capital-scale manufactured shells, rooted exposed structure, causal rupture and distinct armor/frame/propulsion/service responses.",
       "blocker": null
     },

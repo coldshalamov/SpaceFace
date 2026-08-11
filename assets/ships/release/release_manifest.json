@@ -1316,20 +1316,6 @@
       "contractNodeCount": 23
     },
     {
-      "id": "place_landmark_wreck_cathedral",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
-      "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
-      "sourceSha256": "d77097b75cbb05c95d9d90e43b2013e89664c956ca55578854ea736657914fdd",
-      "releaseSha256": "b377d33d9eb59912ceb6be6b61ddf992cb386b460f431908f8925b366a2b64de",
-      "sourceBytes": 16993604,
-      "releaseBytes": 7183000,
-      "textures": 26,
-      "ktx2Textures": 26,
-      "meshoptBufferViews": 97,
-      "contractNodeCount": 30
-    },
-    {
       "id": "place_ceres_bait_wreck",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_ceres_bait_wreck.glb",
@@ -1670,6 +1656,20 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "place_landmark_wreck_cathedral",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
+      "sourceSha256": "7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e",
+      "releaseSha256": "32094bcd6df7671e9e2d93ae491a6aab33aa1ca9bd2a32cc3548cb7532eedcca",
+      "sourceBytes": 18890576,
+      "releaseBytes": 7563260,
+      "textures": 26,
+      "ktx2Textures": 26,
+      "meshoptBufferViews": 97,
+      "contractNodeCount": 30
     }
   ]
 }
