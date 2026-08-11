@@ -11,9 +11,17 @@ import {
 
 export const WORLD_SITE_MANIFEST_VERSION = 4;
 
-const CERES_WRECK_CATHEDRAL_GLOBAL_POS = Object.freeze(
+export const CERES_WRECK_CATHEDRAL_GLOBAL_POS = Object.freeze(
   sectorLocalToGlobalForSector(CERES_WRECK_CATHEDRAL_LOCAL_POS, 'sector_ceres_belt'),
 );
+const CERES_WRECK_CATHEDRAL_COURSE_BEARING_RAD = -6 * Math.PI / 180;
+export const CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS = 48;
+export const CERES_WRECK_CATHEDRAL_COURSE_POS = Object.freeze({
+  x: CERES_WRECK_CATHEDRAL_GLOBAL_POS.x
+    + Math.cos(CERES_WRECK_CATHEDRAL_COURSE_BEARING_RAD) * 440,
+  z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z
+    + Math.sin(CERES_WRECK_CATHEDRAL_COURSE_BEARING_RAD) * 440,
+});
 
 function stagePresentation(color, intensity, pulseRate, rotationRate) {
   return Object.freeze({
@@ -340,6 +348,9 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
     mapAnnotation: Object.freeze({
       kind: 'world-site', poiType: 'capital-wreck', label: 'Wreck Cathedral',
       searchText: 'Wreck Cathedral Ceres capital wreck Concord Vigilant archive black box',
+      coursePos: CERES_WRECK_CATHEDRAL_COURSE_POS,
+      courseLabel: 'Wreck Cathedral',
+      courseArrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
     }),
     producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' }),
     debug: Object.freeze({

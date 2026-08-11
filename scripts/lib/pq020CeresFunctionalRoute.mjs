@@ -932,25 +932,70 @@ export function assertEndpointApproach(snapshot, sourceSectorId) {
   assert(sourceGate, `Ceres exposes no endpoint gate back to ${sourceSectorId}`);
 }
 
-async function waitForAutopilotArrival(page, target) {
-  await page.waitForFunction((label) => {
-    const autopilot = window.SF?.state?.nav?.autopilot;
-    return !!(autopilot && autopilot.active === true && String(autopilot.label || '') === label);
-  }, target.name, { timeout: 30_000 });
-
-  const handle = await page.waitForFunction(({ label, sectorId }) => {
+async function waitForAutopilotArrival(page, target, {
+  deadlineTick = null,
+} = {}) {
+  if (deadlineTick != null && !Number.isSafeInteger(deadlineTick)) {
+    throw new TypeError(`${target.name} autopilot deadline must be a safe simulation tick`);
+  }
+  const armedHandle = await page.waitForFunction(({ label, sectorId, deadline }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const autopilot = state?.nav?.autopilot;
     if (!state || !player || !autopilot) return false;
+    const tick = Number(state.tick);
     const base = {
+      terminal: true,
+      tick,
+      sectorId: state.world?.currentSectorId || null,
+      playerAlive: player.alive !== false && Number(player.hull) > 0,
+      autopilot: {
+        active: autopilot.active === true,
+        label: String(autopilot.label || ''),
+        status: String(autopilot.status || ''),
+      },
+    };
+    if (!base.playerAlive) return { ...base, ok: false, reason: 'player-dead' };
+    if (base.sectorId !== sectorId) return { ...base, ok: false, reason: 'left-ceres' };
+    if (deadline != null && (!Number.isSafeInteger(tick) || tick >= deadline)) {
+      return { ...base, ok: false, reason: 'route-deadline', deadlineTick: deadline };
+    }
+    if (base.autopilot.label !== label) return false;
+    if (base.autopilot.active === true) return { ...base, ok: true, reason: 'armed' };
+    return { ...base, ok: false, reason: base.autopilot.status || 'inactive' };
+  }, {
+    label: target.name,
+    sectorId: PQ020_CERES_SECTOR_ID,
+    deadline: deadlineTick,
+  }, { timeout: 30_000 });
+  const armed = await consumePageConditionValue(armedHandle);
+  assert.equal(armed.ok, true,
+    `${target.name} autopilot did not arm: ${armed.reason || 'unknown'} at tick ${armed.tick ?? 'unknown'}`);
+
+  const handle = await page.waitForFunction(({ label, sectorId, deadline, waitStartedAtTick }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    const autopilot = state?.nav?.autopilot;
+    if (!state || !player || !autopilot) return false;
+    const playerX = player.pos?.x;
+    const playerZ = player.pos?.z;
+    const velocityX = player.vel?.x;
+    const velocityZ = player.vel?.z;
+    const motionValid = typeof playerX === 'number' && Number.isFinite(playerX)
+      && typeof playerZ === 'number' && Number.isFinite(playerZ)
+      && typeof velocityX === 'number' && Number.isFinite(velocityX)
+      && typeof velocityZ === 'number' && Number.isFinite(velocityZ);
+    const base = {
+      tick: Number(state.tick),
+      waitStartedAtTick,
       sectorId: state.world?.currentSectorId || null,
       currentZone: state.world?.currentZone ? { ...state.world.currentZone } : null,
       player: {
         alive: player.alive !== false && Number(player.hull) > 0,
         hull: Number(player.hull),
-        pos: { x: player.pos.x, z: player.pos.z },
-        speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
+        pos: { x: playerX, z: playerZ },
+        velocity: { x: velocityX, z: velocityZ },
+        speed: motionValid ? Math.hypot(velocityX, velocityZ) : null,
       },
       autopilot: {
         active: autopilot.active === true,
@@ -962,13 +1007,29 @@ async function waitForAutopilotArrival(page, target) {
     };
     if (!base.player.alive) return { terminal: true, ok: false, reason: 'player-dead', ...base };
     if (base.sectorId !== sectorId) return { terminal: true, ok: false, reason: 'left-ceres', ...base };
+    if (!motionValid) return { terminal: true, ok: false, reason: 'invalid-player-motion', ...base };
+    if (deadline != null && (!Number.isSafeInteger(base.tick) || base.tick >= deadline)) {
+      return {
+        terminal: true,
+        ok: false,
+        reason: 'route-deadline',
+        deadlineTick: deadline,
+        ...base,
+      };
+    }
     if (autopilot.active === false && autopilot.label === label) {
       return { terminal: true, ok: autopilot.status === 'arrived', reason: autopilot.status, ...base };
     }
     return false;
-  }, { label: target.name, sectorId: PQ020_CERES_SECTOR_ID }, { timeout: AUTOPILOT_TIMEOUT_MS });
+  }, {
+    label: target.name,
+    sectorId: PQ020_CERES_SECTOR_ID,
+    deadline: deadlineTick,
+    waitStartedAtTick: armed.tick,
+  }, { timeout: AUTOPILOT_TIMEOUT_MS });
   const terminal = await consumePageConditionValue(handle);
-  assert.equal(terminal.ok, true, `${target.name} autopilot ended as ${terminal.reason}`);
+  assert.equal(terminal.ok, true,
+    `${target.name} autopilot ended as ${terminal.reason} at tick ${terminal.tick ?? 'unknown'}`);
   return terminal;
 }
 
@@ -978,10 +1039,25 @@ function assertZone(arrival, target) {
   assert.equal(arrival.currentZone?.name, target.zoneName);
 }
 
-async function waitForCathedralAdmission(page) {
-  const handle = await page.waitForFunction((siteId) => {
+async function waitForCathedralAdmission(page, {
+  deadlineTick = null,
+} = {}) {
+  if (deadlineTick != null && !Number.isSafeInteger(deadlineTick)) {
+    throw new TypeError('Cathedral admission deadline must be a safe simulation tick');
+  }
+  const handle = await page.waitForFunction(({ siteId, deadline }) => {
     const state = window.SF?.state;
     if (!state?.entities) return false;
+    const tick = Number(state.tick);
+    if (deadline != null && (!Number.isSafeInteger(tick) || tick >= deadline)) {
+      return {
+        terminal: true,
+        ok: false,
+        reason: 'route-deadline',
+        tick,
+        deadlineTick: deadline,
+      };
+    }
     const root = [...state.entities.values()].find((entity) => (
       entity?.alive !== false && entity.data?.worldRecordId === `${siteId}/root`
     ));
@@ -997,6 +1073,10 @@ async function waitForCathedralAdmission(page) {
       && entity.data?.worldSitePresentationAdmitted === true
     )).length;
     return ready && authored && admittedComponents === 7 ? {
+      terminal: true,
+      ok: true,
+      reason: 'admitted',
+      tick,
       ready,
       authored,
       admittedComponents,
@@ -1004,8 +1084,11 @@ async function waitForCathedralAdmission(page) {
       presentationAdmission: root.presentationAdmission,
       authoredAssetState,
     } : false;
-  }, PQ020_CATHEDRAL_SITE_ID, { timeout: ADMISSION_TIMEOUT_MS });
-  return consumePageConditionValue(handle);
+  }, { siteId: PQ020_CATHEDRAL_SITE_ID, deadline: deadlineTick }, { timeout: ADMISSION_TIMEOUT_MS });
+  const terminal = await consumePageConditionValue(handle);
+  assert.equal(terminal.ok, true,
+    `Cathedral admission ended as ${terminal.reason || 'unknown'} at tick ${terminal.tick ?? 'unknown'}`);
+  return terminal;
 }
 
 async function waitForCathedralFraming(page, framing) {
@@ -1092,13 +1175,56 @@ async function setPublicCameraZoom(page, targetZoom) {
   return page.evaluate(() => Number(window.SF?.state?.camera?.zoom));
 }
 
-async function waitForShipSettled(page) {
-  await page.waitForFunction(() => {
+async function waitForShipSettled(page, {
+  deadlineTick = null,
+} = {}) {
+  if (deadlineTick != null && !Number.isSafeInteger(deadlineTick)) {
+    throw new TypeError('ship-settle deadline must be a safe simulation tick');
+  }
+  const handle = await page.waitForFunction((deadline) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     if (!player) return false;
-    return Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0) <= 1;
-  }, null, { timeout: 30_000 });
+    const tick = Number(state.tick);
+    const velocityX = player.vel?.x;
+    const velocityZ = player.vel?.z;
+    const speed = typeof velocityX === 'number' && Number.isFinite(velocityX)
+      && typeof velocityZ === 'number' && Number.isFinite(velocityZ)
+      ? Math.hypot(velocityX, velocityZ)
+      : null;
+    if (!Number.isFinite(speed)) {
+      return {
+        terminal: true,
+        ok: false,
+        reason: 'invalid-player-motion',
+        tick,
+        deadlineTick: deadline,
+        speed,
+        velocity: { x: velocityX, z: velocityZ },
+      };
+    }
+    if (deadline != null && (!Number.isSafeInteger(tick) || tick >= deadline)) {
+      return {
+        terminal: true,
+        ok: false,
+        reason: 'route-deadline',
+        tick,
+        deadlineTick: deadline,
+        speed,
+      };
+    }
+    return speed <= 1 ? {
+      terminal: true,
+      ok: true,
+      reason: 'settled',
+      tick,
+      speed,
+    } : false;
+  }, deadlineTick, { timeout: 30_000 });
+  const terminal = await consumePageConditionValue(handle);
+  assert.equal(terminal.ok, true,
+    `ship settle ended as ${terminal.reason || 'unknown'} at tick ${terminal.tick ?? 'unknown'}`);
+  return terminal;
 }
 
 async function quickSave(page) {

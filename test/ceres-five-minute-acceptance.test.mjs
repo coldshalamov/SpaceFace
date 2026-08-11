@@ -8,6 +8,8 @@ import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRu
 
 import {
   CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+  CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
+  CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
   ceresPreContinueLegReserveTicks,
@@ -23,6 +25,7 @@ import {
   drivePublicToPocketAnchor,
   evaluateCeresToolkitCombatCompletion,
   evaluateCeresToolkitFinalReceipt,
+  evaluateCeresToolkitTransitHandoff,
   evaluateCeresFiveMinutePair,
   evaluateCeresFiveMinuteRuntime,
   evaluateCeresHumanReview,
@@ -31,11 +34,14 @@ import {
   fireCeresPublicCombatVolley,
   normalizeCeresTrace,
   planCeresThroughlineToolkitReposition,
+  planCeresToolkitTransitHandoff,
   planCeresWorkingSeamEgress,
   pointPublicAtCeresHostile,
   prepareCeresPublicTetherFireSurface,
+  projectCeresRouteFailureDiagnostics,
   projectCeresActivityFrame,
   runCeresPreRepulsorCombatLoop,
+  runCeresToolkitTransitHandoff,
   selectCeresHostilePointingStatus,
   selectCeresTetherCombatStatus,
   settleCeresPocketApproach,
@@ -56,6 +62,7 @@ import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 import { asteroidFormations } from '../src/systems/asteroidFormations.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { projectPilotFlightControls } from '../src/systems/input.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
@@ -953,6 +960,39 @@ test('machine evaluation rejects missing or forged route observations despite to
     ['wrong anchor collision participant', (doc) => {
       doc.observations.anchorCollision.impacts[0].bId = 42;
     }],
+    ['whole-route player-impact capture is missing', (doc) => {
+      delete doc.observations.playerImpactCapture;
+    }],
+    ['Cathedral collision is appended to both impact ledgers', (doc) => {
+      const impact = {
+        seq: 2,
+        event: 'physics:impact',
+        tick: START_TICK + 10_900,
+        aId: 1,
+        bId: 777,
+      };
+      doc.observations.playerImpactCapture.impacts.push(structuredClone(impact));
+      doc.observations.anchorCollision.impacts.push(structuredClone(impact));
+    }],
+    ['whole-route player-impact event list is omitted', (doc) => {
+      delete doc.observations.playerImpactCapture.impacts;
+    }],
+    ['old-page observer stops without a public simulation pause', (doc) => {
+      delete doc.observations.continueProof.preReloadPause;
+    }],
+    ['old-page observer claims a pause while simulation remains live', (doc) => {
+      doc.observations.continueProof.preReloadPause.timeScale = 1;
+    }],
+    ['old-page pause lies beyond the original route horizon', (doc) => {
+      doc.observations.continueProof.preReloadPause.tick = END_TICK + 1;
+    }],
+    ['post-Continue impact observer is not armed before the public transition', (doc) => {
+      delete doc.observations.continueProof.postContinueObserverBridge;
+    }],
+    ['post-Continue impact observer begins after the loaded snapshot', (doc) => {
+      doc.observations.continueProof.postContinueObserverBridge.firstFlightSampleTick =
+        doc.observations.continueProof.loadedAtTick + 1;
+    }],
     ['vacuous tombstone proof', (doc) => {
       doc.observations.continueProof.hostileTombstonesBefore = [];
       doc.observations.continueProof.hostileTombstonesAfter = [];
@@ -999,11 +1039,9 @@ test('machine evaluation rejects missing or forged route observations despite to
     exactEnd: END_TICK,
     endWasClipped: false,
   };
-  assert.equal(
-    evaluateCeresFiveMinuteRuntime(exactEndpoint, { runtimeKind: 'browser' }).pass,
-    true,
-    'a genuinely exact endpoint remains valid',
-  );
+  const exactEndpointResult = evaluateCeresFiveMinuteRuntime(exactEndpoint, { runtimeKind: 'browser' });
+  assert.equal(exactEndpointResult.pass, true,
+    `a genuinely exact endpoint remains valid: ${exactEndpointResult.failures.join(' | ')}`);
 });
 
 test('physics-toolkit proof is an ordered causal trace against initial Throughline identities', () => {
@@ -1369,6 +1407,287 @@ test('pre-Repulsor combat closes from a fresh tombstone receipt before reacquisi
   assert.match(librarySource.slice(fixedVolleyIndex, repulsorIndex),
     /expectedFireOwnerId: firstCombatFire \? baseline\.playerEntityId : null/,
     'the first retained-pointer hold must prove a fresh player-owned production fire receipt');
+});
+
+test('toolkit transit handoff is exact, Cathedralward, and fails closed at every owned boundary', () => {
+  const toolkit = toolkitReceiptFixture(TOOLKIT_HOSTILES[0].worldRecordId);
+  const handoff = toolkit.transitHandoff;
+  const deadlineTick = END_TICK - CERES_TOOLKIT_ROUTE_RESERVE_TICKS;
+  const result = evaluateCeresToolkitTransitHandoff(handoff, {
+    toolkitReceipt: toolkit,
+    deadlineTick,
+  });
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.survivingHostiles, [{
+    entityId: TOOLKIT_HOSTILES[1].entityId,
+    worldRecordId: TOOLKIT_HOSTILES[1].worldRecordId,
+  }]);
+  assert.ok(result.cathedralProgressWU > 2_500,
+    'the real stage-to-handoff receipt must remove more than 2,500 WU from the Cathedral leg');
+  const plan = planCeresToolkitTransitHandoff();
+  assert.equal(plan.corridorDistanceWU, 2_800);
+  assert.equal(plan.allowBoost, false);
+  assert.equal(plan.controlClock, 'fixed-tick');
+  assert.ok(plan.guaranteedThroughlineClearanceWU > 180);
+  assert.ok(plan.guaranteedCathedralProgressWU > 2_500);
+
+  for (const [label, mutate] of [
+    ['deadline endpoint', (candidate) => { candidate.endTick = deadlineTick; candidate.end.tick = deadlineTick; }],
+    ['nonfinite handoff distance', (candidate) => { candidate.end.handoffDistanceWU = null; }],
+    ['nonfinite zone clearance', (candidate) => { candidate.end.throughlineZoneClearanceWU = null; }],
+    ['wrong Repulsor field authority', (candidate) => { candidate.repulsorFieldIds[0] = 'field_other'; }],
+    ['wrong Mass Seed start authority', (candidate) => { candidate.start.massSeed.seedId = 9_999; }],
+    ['missing Mass Seed start authority', (candidate) => { candidate.start.massSeed.active = false; }],
+    ['Repulsor still active', (candidate) => {
+      candidate.end.repulsorFields = [{ fieldId: 'field_repulsor_1_1', emitterId: null }];
+    }],
+    ['Mass Seed still active', (candidate) => { candidate.end.massSeed.active = true; }],
+    ['Massline still active', (candidate) => { candidate.end.tether.active = true; }],
+    ['input not neutral', (candidate) => { candidate.end.input.neutral = false; }],
+    ['NaN input cannot sanitize to neutral', (candidate) => { candidate.end.input.moveX = NaN; }],
+    ['player not settled', (candidate) => { candidate.end.player.speed = 1.01; }],
+    ['NaN velocity cannot sanitize to settled', (candidate) => { candidate.end.player.speed = NaN; }],
+    ['survivor replaced', (candidate) => {
+      candidate.end.survivors[0].observedWorldRecordId = 'wr_replacement';
+    }],
+    ['survivor killed', (candidate) => { candidate.end.survivors[0].alive = false; }],
+    ['survivor outside old shell but inside escape radius without receipt', (candidate) => {
+      candidate.end.survivors[0].distanceWU = 600;
+      delete candidate.encounterResolution;
+    }],
+    ['missing escape receipt', (candidate) => { delete candidate.encounterResolution; }],
+    ['wrong escape encounter', (candidate) => {
+      candidate.encounterResolution.encounterId = 'ceres:activity:other';
+    }],
+    ['wrong escape outcome', (candidate) => { candidate.encounterResolution.outcome = 'cleared'; }],
+    ['escape tick before handoff', (candidate) => {
+      candidate.encounterResolution.tick = candidate.startTick - 1;
+    }],
+    ['escape tick after handoff', (candidate) => {
+      candidate.encounterResolution.tick = candidate.endTick + 1;
+    }],
+    ['escape sequence before handoff', (candidate) => {
+      candidate.encounterResolution.seq = candidate.start.nextEventSeq - 1;
+    }],
+    ['handoff cursor overlaps toolkit events', (candidate) => {
+      candidate.start.nextEventSeq = Math.max(...toolkit.events.map((event) => event.seq));
+    }],
+    ['escape sequence after handoff', (candidate) => {
+      candidate.encounterResolution.seq = candidate.end.nextEventSeq;
+    }],
+    ['missing approach receipt', (candidate) => { candidate.approaches.shift(); }],
+    ['approach receipts reordered', (candidate) => { candidate.approaches.reverse(); }],
+    ['final approach begins before transient cleanup', (candidate) => {
+      candidate.approaches[1].startTick = candidate.transientClearTick - 1;
+    }],
+    ['wall-clock approach receipt', (candidate) => {
+      candidate.approaches[0].source = 'public-keyboard-wall-time';
+      candidate.approaches[0].controlClock = 'wall-time';
+    }],
+    ['wrong approach identity', (candidate) => {
+      candidate.approaches[1].targetId = 'ceres-other-waypoint';
+    }],
+    ['NaN approach velocity cannot sanitize to settled', (candidate) => {
+      candidate.approaches[0].playerVel.x = NaN;
+    }],
+    ['NaN approach input cannot sanitize to valid controls', (candidate) => {
+      candidate.approaches[1].input.moveZ = NaN;
+    }],
+    ['approach deadline changed', (candidate) => {
+      candidate.approaches[0].deadlineTick -= 1;
+    }],
+    ['missing manual tether cut', (candidate) => { delete candidate.tetherCutAction; }],
+    ['manual tether cut reordered after approach', (candidate) => {
+      candidate.tetherCutAction.neutralTick = candidate.approaches[0].startTick + 1;
+    }],
+    ['wall-clock tether cut', (candidate) => {
+      candidate.tetherCutAction.source = 'public-keyboard-wall-time';
+    }],
+    ['wrong tether cut identity', (candidate) => {
+      candidate.tetherCutAction.event.targetId = TOOLKIT_HOSTILES[1].entityId;
+    }],
+    ['cut fabricated for inactive start tether', (candidate) => {
+      candidate.start.tether = { active: false, targetId: null, attachmentId: null };
+    }],
+    ['player killed', (candidate) => { candidate.end.player.alive = false; }],
+    ['no Cathedral headroom', (candidate) => {
+      candidate.end.cathedralDistanceWU = candidate.start.cathedralDistanceWU - 2_099;
+    }],
+    ['wall-time pulse contract', (candidate) => { candidate.waypoint.controlClock = 'wall-time'; }],
+  ]) {
+    const candidate = structuredClone(handoff);
+    mutate(candidate);
+    assert.equal(evaluateCeresToolkitTransitHandoff(candidate, {
+      toolkitReceipt: toolkit,
+      deadlineTick,
+    }).pass, false, label);
+  }
+
+  const lateToolkit = structuredClone(toolkit);
+  lateToolkit.endTick = deadlineTick - CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS;
+  lateToolkit.transitHandoff.startTick = lateToolkit.endTick + 1;
+  lateToolkit.transitHandoff.start.tick = lateToolkit.endTick + 1;
+  assert.equal(evaluateCeresToolkitTransitHandoff(lateToolkit.transitHandoff, {
+    toolkitReceipt: lateToolkit,
+    deadlineTick,
+  }).pass, false, 'the durable evaluator must retain the entire handoff reserve before transit');
+
+  const alreadyInactive = structuredClone(handoff);
+  alreadyInactive.start.tether = { active: false, targetId: null, attachmentId: null };
+  alreadyInactive.tetherCutAction = null;
+  assert.equal(evaluateCeresToolkitTransitHandoff(alreadyInactive, {
+    toolkitReceipt: toolkit,
+    deadlineTick,
+  }).pass, true, 'an already-inactive start tether requires no fabricated public cut');
+});
+
+test('public route orders fixed-tick transit after Repulsor and before the Cathedral leg', () => {
+  const source = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const routeStart = source.indexOf('export async function runCeresFiveMinutePublicRoute');
+  const routeEnd = source.indexOf('/**\n * Perform every known no-launch prerequisite', routeStart);
+  const route = source.slice(routeStart, routeEnd);
+  const legsIndex = route.indexOf('const legs = [');
+  const throughlineIndex = route.indexOf('PQ020_ROUTE_TARGETS.beacon', legsIndex);
+  const cathedralIndex = route.indexOf('PQ020_ROUTE_TARGETS.cathedral', throughlineIndex);
+  const toolkitIndex = route.indexOf('const toolkitReceipt = await exercisePublicPhysicsToolkit', cathedralIndex);
+  const handoffIndex = route.indexOf('const transitHandoff = await runCeresToolkitTransitHandoff', toolkitIndex);
+  const markIndex = route.indexOf("await mark('toolkit-transit-handoff'", handoffIndex);
+  assert.ok(legsIndex >= 0 && throughlineIndex > legsIndex && cathedralIndex > throughlineIndex
+    && toolkitIndex > cathedralIndex && handoffIndex > toolkitIndex && markIndex > handoffIndex,
+  'the Throughline loop must close toolkit, run its transit handoff, then advance to Cathedral');
+
+  const toolkitStart = source.indexOf('async function exercisePublicPhysicsToolkit');
+  const toolkitEnd = source.indexOf('async function waitForCeresBusEvent', toolkitStart);
+  const toolkitSource = source.slice(toolkitStart, toolkitEnd);
+  const repulsorIndex = toolkitSource.indexOf("key: 'Digit6'");
+  const finalReceiptIndex = toolkitSource.indexOf('const receipt = await readCeresToolkitReceipt', repulsorIndex);
+  const returnIndex = toolkitSource.indexOf('return receipt;', finalReceiptIndex);
+  assert.ok(repulsorIndex >= 0 && finalReceiptIndex > repulsorIndex && returnIndex > finalReceiptIndex,
+    'Repulsor and final toolkit proof must close before the route can begin transit');
+
+  const driverStart = source.indexOf('export async function drivePublicToCeresPoint');
+  const driverEnd = source.indexOf('export async function repositionPublicForCeresToolkit', driverStart);
+  const driver = source.slice(driverStart, driverEnd);
+  assert.match(driver,
+    /target\.controlClock === 'fixed-tick'[\s\S]*waitForCeresFixedTicks\(page, ticks/,
+    'the handoff controller must hold real public keys for fixed simulation ticks');
+  assert.doesNotMatch(source.slice(source.indexOf('export function planCeresToolkitTransitHandoff'),
+    source.indexOf('export function chooseCeresPocketApproachAction')),
+  /allowBoost: true|controlClock: 'wall-time'/,
+  'the transit plan cannot silently re-enable dash or wall-time pulse authority');
+  assert.match(source, /'encounter:telegraph', 'encounter:spawned', 'encounter:resolved'/,
+    'the observer must subscribe to the encounter director resolution event');
+  assert.match(source, /outcome: payload\.outcome \?\? null/,
+    'the observer must retain the authoritative resolution outcome');
+  assert.doesNotMatch(source, /encounter:ended/,
+    'the observer cannot depend on a nonexistent encounter ending event');
+
+  assert.match(route,
+    /const legDeadlineTick = observerBounds\.endTick - legReserveTicks[\s\S]*waitForCathedralAdmission\(page, \{[\s\S]*deadlineTick: legDeadlineTick[\s\S]*waitForAutopilotArrival\(page, leg\.target, \{[\s\S]*deadlineTick: legDeadlineTick[\s\S]*waitForShipSettled\(page, \{[\s\S]*deadlineTick: legDeadlineTick/,
+    'the exact Cathedral reserve boundary must reach admission, autopilot, and settle');
+});
+
+test('Continue freezes the old observer and arms the next before either page can advance unobserved', () => {
+  const source = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('async function publicSaveAndContinue');
+  const end = source.indexOf('async function applyPublicReducedAccessibility', start);
+  assert.ok(start >= 0 && end > start);
+  const producer = source.slice(start, end);
+  const pause = producer.indexOf("await page.keyboard.press('Escape')");
+  const freeze = producer.indexOf("source: 'public-pause-before-observer-stop'", pause);
+  const oldSnapshot = producer.indexOf('const preReload = await readCeresRouteSnapshot', freeze);
+  const stop = producer.indexOf('const traceChunk = await stopCeresRouteObserver', oldSnapshot);
+  const reload = producer.indexOf('await page.reload(', stop);
+  const arm = producer.indexOf('await installCeresRouteObserver(page, observerBounds, observerPocketId, {');
+  const defer = producer.indexOf('deferSamplesUntilFlight: true', arm);
+  const click = producer.indexOf("getByRole('button', { name: 'Continue', exact: true }).click", defer);
+  const flight = producer.indexOf('await waitForCeresFlight(page, fixedSeed', click);
+  const loadedSnapshot = producer.indexOf('const after = await readCeresRouteSnapshot', flight);
+  assert.ok(pause >= 0 && freeze > pause && oldSnapshot > freeze && stop > oldSnapshot
+      && reload > stop && arm > reload && defer > arm && click > defer
+      && flight > click && loadedSnapshot > flight,
+  'the old page must freeze before teardown and the new page must subscribe before Continue');
+});
+
+test('public transit driver cuts Massline, outlives exact fields, and settles on fixed ticks', async (t) => {
+  const toolkit = toolkitReceiptFixture(TOOLKIT_HOSTILES[0].worldRecordId);
+  const harness = toolkitTransitHandoffPage(toolkit);
+  const deadlineTick = END_TICK - CERES_TOOLKIT_ROUTE_RESERVE_TICKS;
+  const receipt = await runCeresToolkitTransitHandoff(harness.page, {
+    toolkitReceipt: toolkit,
+    deadlineTick,
+  });
+  assert.equal(receipt.evaluation.pass, true);
+  assert.ok(receipt.startTick > toolkit.endTick);
+  assert.ok(receipt.endTick < deadlineTick);
+  assert.ok(receipt.endTick - receipt.startTick < CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS);
+  assert.deepEqual(receipt.repulsorFieldIds, ['field_repulsor_1_1']);
+  assert.equal(receipt.massSeedId, 9_001);
+  assert.equal(receipt.start.repulsorFields[0]?.emitterId, 9_002,
+    'exact event-bound field authority survives a missing emitter entity');
+  assert.deepEqual(receipt.end.repulsorFields, []);
+  assert.equal(receipt.end.massSeed.active, false);
+  assert.equal(receipt.end.tether.active, false);
+  assert.equal(receipt.end.input.neutral, true);
+  assert.ok(receipt.end.player.speed <= 1);
+  assert.deepEqual(receipt.approaches.map((approach) => ({
+    schema: approach.schema,
+    source: approach.source,
+    targetId: approach.targetId,
+    controlClock: approach.controlClock,
+    deadlineTick: approach.deadlineTick,
+  })), [0, 1].map(() => ({
+    schema: 'spaceface.ceresPublicPointApproachReceipt.v1',
+    source: 'public-keyboard-fixed-tick',
+    targetId: receipt.waypoint.targetId,
+    controlClock: 'fixed-tick',
+    deadlineTick,
+  })));
+  assert.ok(receipt.startTick < receipt.approaches[0].completionTick
+    && receipt.approaches[0].completionTick <= receipt.transientClearTick
+    && receipt.transientClearTick <= receipt.approaches[1].startTick
+    && receipt.approaches[1].completionTick < receipt.endTick);
+  assert.equal(receipt.tetherCutAction.event.targetId, receipt.start.tether.targetId);
+  assert.equal(receipt.tetherCutAction.event.attachmentId, receipt.start.tether.attachmentId);
+  assert.ok(receipt.tetherCutAction.neutralTick <= receipt.approaches[0].startTick);
+  assert.ok(receipt.end.handoffDistanceWU <= receipt.waypoint.arrivalRadiusWU);
+  assert.ok(receipt.end.survivors[0].distanceWU >= CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU);
+  assert.deepEqual({
+    event: receipt.encounterResolution.event,
+    encounterId: receipt.encounterResolution.encounterId,
+    outcome: receipt.encounterResolution.outcome,
+  }, {
+    event: 'encounter:resolved',
+    encounterId: 'ceres:activity:throughline-ambush',
+    outcome: 'escaped',
+  });
+  assert.ok(receipt.encounterResolution.tick >= receipt.startTick
+    && receipt.encounterResolution.tick <= receipt.endTick);
+  assert.ok(receipt.encounterResolution.seq >= receipt.start.nextEventSeq
+    && receipt.encounterResolution.seq < receipt.end.nextEventSeq);
+  assert.equal(harness.wallWaits, 0,
+    'the transit controller cannot translate wall milliseconds into steering distance');
+  assert.ok(harness.fixedTickWaits > 20,
+    'the executable route must repeatedly hold public controls against simulation ticks');
+  assert.equal(harness.heldKeys.size, 0);
+  assert.ok(harness.events.some((event) => event.event === 'tether:broken'));
+  assert.ok(harness.events.some((event) => event.event === 'tether:released'));
+  assert.ok(harness.events.some((event) => event.event === 'encounter:resolved'
+    && event.encounterId === 'ceres:activity:throughline-ambush'
+    && event.outcome === 'escaped'));
+  t.diagnostic(JSON.stringify({
+    fullHandoffTicks: receipt.endTick - receipt.startTick,
+    escapeResolutionTick: receipt.encounterResolution.tick,
+    escapeResolutionSeq: receipt.encounterResolution.seq,
+    survivorDistanceWU: receipt.end.survivors[0].distanceWU,
+    cathedralDistanceWU: receipt.end.cathedralDistanceWU,
+  }));
 });
 
 test('physics-toolkit evaluator rejects summary shortcuts and broken causal identity', () => {
@@ -2160,6 +2479,11 @@ test('public pocket approach completes only after the hull is settled inside the
     headingError: 0,
     speed: 0,
   }).kind, 'invalid');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: null,
+    headingError: 0,
+    speed: 0,
+  }).kind, 'invalid', 'missing distance cannot coerce to a completed zero-distance approach');
 });
 
 test('Working Seam egress disables dash-shaped boost without changing generic approaches', () => {
@@ -2374,7 +2698,7 @@ test('public toolkit acquisition uses a clear translation corridor and never tre
     'translation must precede live conflict classification and render-projection acquisition');
 });
 
-test('seed-47 Hornet traverses the toolkit camera corridor with production Flight V3 and Rapier', async () => {
+test('seed-47 Hornet traverses the toolkit camera corridor with production Flight V3 and Rapier', async (t) => {
   const result = await runSeed47ToolkitCameraReposition();
   assert.deepEqual(result.receipts.map((receipt) => receipt.pass), [true, true]);
   assert.ok(result.receipts.every((receipt) => receipt.pulses < 100),
@@ -2408,6 +2732,51 @@ test('seed-47 Hornet traverses the toolkit camera corridor with production Fligh
     assert.ok(Math.abs(projection.x) <= 0.98 && Math.abs(projection.y) <= 0.98,
       `the full public completion shell keeps the recorded hostile pointable at bearing ${bearing}`);
   }
+
+  assert.equal(result.transitReceipt.pass, true);
+  assert.ok(result.transitReceipt.distanceWU <= result.transitPlan.arrivalRadiusWU);
+  assert.ok(result.transitReceipt.speed <= 1);
+  assert.ok(result.transitReceipt.pulses < 220,
+    'the full fixed-tick no-boost handoff must fit the public controller pulse budget');
+  assert.ok(result.transitTicks < CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
+    'the production Flight V3/Rapier handoff must fit its durable pre-end-7200 reserve');
+  assert.equal(result.survivorAlive, true);
+  assert.equal(result.survivorWorldRecordId, TOOLKIT_HOSTILES[1].worldRecordId);
+  assert.deepEqual(result.encounterInitialRecordIds, TOOLKIT_HOSTILES
+    .map((row) => row.worldRecordId).sort(),
+  'the production encounter starts from the real two-hostile durable cohort');
+  assert.ok(result.survivorDistanceWU >= CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
+    'the settled handoff must cross the director-authored escape radius');
+  assert.deepEqual(result.encounterResolution && {
+    encounterId: result.encounterResolution.encounterId,
+    outcome: result.encounterResolution.outcome,
+  }, {
+    encounterId: 'ceres:activity:throughline-ambush',
+    outcome: 'escaped',
+  }, 'the production encounter director must resolve the exact adopted ambush as escaped');
+  assert.ok(result.encounterResolution.tick >= result.transitStartTick
+    && result.encounterResolution.tick <= result.transitEndTick,
+  'the production escape resolution must occur inside the measured handoff');
+  assert.ok(result.remainingCathedralDistanceWU <= 1_850,
+    'the authored 2,800-WU corridor must leave materially less than half the center leg');
+  assert.equal(result.cathedralArrived, true,
+    `the remaining Cathedral leg did not arrive within ${result.cathedralTicks} ticks`);
+  assert.ok(result.cathedralTicks < 2_300,
+    'the deterministic remaining Cathedral leg must fit the 2,400-tick route boundary with margin');
+  assert.deepEqual(result.transitPlayerImpactTicks, [],
+    'the measured Cathedralward corridor must not trade route headroom for a collision');
+  t.diagnostic(JSON.stringify({
+    transitStartTick: result.transitStartTick,
+    transitEndTick: result.transitEndTick,
+    transitTicks: result.transitTicks,
+    transitPulses: result.transitReceipt.pulses,
+    escapeResolutionTick: result.encounterResolution.tick,
+    survivorDistanceWU: result.survivorDistanceWU,
+    escapeMarginWU: result.survivorDistanceWU - CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
+    remainingCathedralDistanceWU: result.remainingCathedralDistanceWU,
+    remainingCathedralTicks: result.cathedralTicks,
+    playerImpactTicks: result.transitPlayerImpactTicks,
+  }));
 });
 
 test('seed-47 production Massline relatch retains and leads the Reaver through off-frustum fire', async () => {
@@ -2532,6 +2901,24 @@ test('public pocket settle holds the brake to the speed condition outside the st
     /Working Seam settle exhausted the exact route horizon/,
   );
   assert.equal(horizon.events.at(-1), 'up:Digit0', 'failure must release the public brake');
+
+  const invalidMotion = pocketSettlePage({
+    tick: 1_000,
+    endTick: 2_000,
+    distanceWU: 80,
+    pollSpeeds: [NaN],
+  });
+  await assert.rejects(
+    settleCeresPocketApproach(invalidMotion.page, {
+      point: { x: 0, z: 0 },
+      endTick: 2_000,
+      targetName: 'Working Seam',
+    }),
+    /Working Seam (?:settle observed invalid navigation telemetry|public brake did not settle the player)/,
+    'NaN velocity terminates the wait only to a fail-closed status check',
+  );
+  assert.equal(invalidMotion.events.at(-1), 'up:Digit0',
+    'invalid motion still releases the public brake');
 
   const nextLegHorizon = pocketSettlePage({
     tick: 18_023 - 2_400,
@@ -2883,6 +3270,41 @@ test('public entry timeout preserves clause-level state and a screenshot before 
   }
 });
 
+test('route failures retain bounded transit and approach diagnostics in both failure artifacts', () => {
+  const rows = Array.from({ length: 100 }, (_, seq) => ({ seq, detail: `row-${seq}` }));
+  const projected = projectCeresRouteFailureDiagnostics({
+    ceresToolkitTransitDiagnostic: {
+      events: rows,
+      invalidDistanceWU: NaN,
+      detail: 'x'.repeat(3_000),
+    },
+    ceresPocketApproachDiagnostic: {
+      decisionTail: rows,
+    },
+  });
+  assert.deepEqual(Object.keys(projected), [
+    'ceresToolkitTransitDiagnostic',
+    'ceresPocketApproachDiagnostic',
+  ]);
+  assert.equal(projected.ceresToolkitTransitDiagnostic.events.length, 24);
+  assert.equal(projected.ceresToolkitTransitDiagnostic.events[0].seq, 76,
+    'bounded failure telemetry retains the most recent causal tail');
+  assert.equal(projected.ceresPocketApproachDiagnostic.decisionTail.length, 24);
+  assert.equal(projected.ceresToolkitTransitDiagnostic.invalidDistanceWU, null);
+  assert.equal(projected.ceresToolkitTransitDiagnostic.detail.length, 2_048);
+
+  const source = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source,
+    /const routeDiagnostics = projectCeresRouteFailureDiagnostics\(error\);[\s\S]*?\.\.\.routeDiagnostics,/,
+    'route-failure.json must carry both bounded diagnostic keys');
+  assert.match(source,
+    /const boundedRouteDiagnostics = runError\?\.ceresRouteDiagnostics[\s\S]*?\.\.\.boundedRouteDiagnostics,/,
+    'latest-failure.json must retain the same bounded diagnostic projection');
+});
+
 function runtimeFixture(runtimeKind, { gapS = 1 } = {}) {
   const candidateDigest = runtimeKind === 'browser' ? digest('b') : digest('c');
   const claimId = `ceres-five-minute-${runtimeKind}-claim`;
@@ -3060,6 +3482,13 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
     releaseTick: START_TICK + 13_320,
     neutralTick: START_TICK + 13_321,
   };
+  const anchorImpact = {
+    seq: 1,
+    event: 'physics:impact',
+    tick: START_TICK + 7_180,
+    aId: 1,
+    bId: 9,
+  };
   return {
     schema: 'spaceface.ceresFiveMinuteObservation.v1',
     visibilitySemantics: 'world-camera-renderability-v1',
@@ -3093,6 +3522,12 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
       endWasClipped: true,
     },
     movingJobBuckets: minuteJobBuckets,
+    playerImpactCapture: {
+      startTick: START_TICK,
+      endTick: END_TICK,
+      playerEntityIds: [1],
+      impacts: [structuredClone(anchorImpact)],
+    },
     throughlineAmbush: {
       pass: true,
       encounterId: 'ceres:activity:throughline-ambush',
@@ -3127,17 +3562,12 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
       collides: true,
       setupAnchors: structuredClone(collisionAnchors),
       finalAnchors: structuredClone(collisionAnchors),
-      impacts: [{
-        event: 'physics:impact',
-        tick: START_TICK + 7_180,
-        aId: 1,
-        bId: 9,
-      }],
+      impacts: [structuredClone(anchorImpact)],
     },
     continueProof: {
       pass: true,
       source: 'public-save-continue',
-      publicPath: ['F5', 'reload', 'main_menu', 'continue'],
+      publicPath: ['F5', 'pause', 'reload', 'main_menu', 'continue'],
       savedAtTick: START_TICK + 12_800,
       loadedAtTick: START_TICK + 12_860,
       actorRecordsBefore: structuredClone(actorRecords),
@@ -3160,6 +3590,21 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
       replacementSpawnCount: 0,
       seedBefore: 47,
       seedAfter: 47,
+      preReloadPause: {
+        source: 'public-pause-before-observer-stop',
+        tick: START_TICK + 12_800,
+        timeScale: 0,
+        mode: 'flight',
+      },
+      postContinueObserverBridge: {
+        source: 'observer-armed-before-public-continue',
+        installationPhase: 'main-menu-before-public-continue',
+        startTick: START_TICK,
+        endTick: END_TICK,
+        firstFlightSampleTick: START_TICK + 12_860,
+        firstFlightPlayerId: 1,
+        active: true,
+      },
     },
     accessibility: (() => {
       const before = accessibilitySnapshot({ tick: START_TICK + 12_900 });
@@ -3343,7 +3788,7 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       sourceOwnerId: PLAYER_ENTITY_ID,
     },
   ];
-  return {
+  const receipt = {
     schema: 'spaceface.ceresFiveMinuteToolkitReceipt.v1',
     inputSource: 'public-keyboard-mouse',
     startTick: START_TICK + 7_200,
@@ -3416,6 +3861,164 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
       },
     ],
     destroyedRecordIds: [destroyedWorldRecordId],
+  };
+  receipt.transitHandoff = toolkitTransitHandoffFixture(receipt);
+  return receipt;
+}
+
+function toolkitTransitHandoffFixture(toolkitReceipt) {
+  const waypoint = planCeresToolkitTransitHandoff();
+  const startPos = planCeresThroughlineToolkitReposition().waypoints.at(-1).targetPos;
+  const cathedral = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_cathedral_grave.activityAnchor.localPos,
+    CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  );
+  const survivingHostile = TOOLKIT_HOSTILES.find((row) => (
+    !toolkitReceipt.destroyedRecordIds.includes(row.worldRecordId)
+  ));
+  const survivor = (distanceWU) => ({
+    entityId: survivingHostile.entityId,
+    worldRecordId: survivingHostile.worldRecordId,
+    observedWorldRecordId: survivingHostile.worldRecordId,
+    alive: true,
+    distanceWU,
+  });
+  const player = (pos, speed = 0.5) => ({
+    entityId: PLAYER_ENTITY_ID,
+    alive: true,
+    hull: 250,
+    pos: { ...pos },
+    speed,
+  });
+  const input = {
+    moveX: 0,
+    moveZ: 0,
+    turnIntent: 0,
+    boost: false,
+    brake: false,
+    fire: false,
+    tetherFire: false,
+    tetherCut: false,
+    deployMassSeed: false,
+    deployRepulsor: false,
+    neutral: true,
+  };
+  const snapshot = ({ tick, pos, start = false }) => ({
+    tick,
+    nextEventSeq: start ? 1_300 : 1_305,
+    simTime: tick / TICK_RATE_HZ,
+    player: player(pos),
+    input: { ...input },
+    tether: start
+      ? { active: true, targetId: TOOLKIT_HOSTILES[0].entityId, attachmentId: 'att_player_701_2' }
+      : { active: false, targetId: null, attachmentId: null },
+    massSeed: start
+      ? { active: true, seedId: 9_001, ownerId: PLAYER_ENTITY_ID, phase: 'active', expireAt: 170 }
+      : { active: false, seedId: null, ownerId: null, phase: 'idle', expireAt: null },
+    repulsorFields: start
+      ? [{ fieldId: 'field_repulsor_1_1', emitterId: 9_002, expireAt: 150 }]
+      : [],
+    survivors: [survivor(start ? 92 : 2_900)],
+    handoffDistanceWU: Math.hypot(waypoint.targetPos.x - pos.x, waypoint.targetPos.z - pos.z),
+    cathedralDistanceWU: Math.hypot(cathedral.x - pos.x, cathedral.z - pos.z),
+    throughlineZoneClearanceWU: start
+      ? Math.hypot(
+          pos.x - AMBUSH_ZONE_GLOBAL.x,
+          pos.z - AMBUSH_ZONE_GLOBAL.z,
+        ) - Number(ZONE_CERES_THROUGHLINE.radius)
+      : waypoint.guaranteedThroughlineClearanceWU + waypoint.arrivalRadiusWU,
+  });
+  const startTick = toolkitReceipt.endTick + 1;
+  const endTick = END_TICK - CERES_TOOLKIT_ROUTE_RESERVE_TICKS - 300;
+  const deadlineTick = END_TICK - CERES_TOOLKIT_ROUTE_RESERVE_TICKS;
+  const firstApproachCompletionTick = startTick + 1_000;
+  const transientClearTick = endTick - 3;
+  const finalApproachCompletionTick = endTick - 2;
+  const approach = ({ approachStartTick, completionTick, pulses }) => ({
+    schema: 'spaceface.ceresPublicPointApproachReceipt.v1',
+    pass: true,
+    source: 'public-keyboard-fixed-tick',
+    targetId: waypoint.targetId,
+    targetName: waypoint.targetName,
+    targetPos: { ...waypoint.targetPos },
+    arrivalRadiusWU: waypoint.arrivalRadiusWU,
+    allowBoost: false,
+    controlClock: 'fixed-tick',
+    deadlineTick,
+    terminalTick: deadlineTick,
+    minRemainingTicks: waypoint.minRemainingTicks,
+    startTick: approachStartTick,
+    completionTick,
+    tick: completionTick,
+    pulses,
+    distanceWU: 40,
+    speed: 0.5,
+    headingError: 0,
+    radialSpeed: -0.5,
+    playerPos: { x: waypoint.targetPos.x + 40, z: waypoint.targetPos.z },
+    playerVel: { x: 0.5, z: 0 },
+    input: { moveZ: 0, turnIntent: 0, brake: false },
+    playerAlive: true,
+    mode: 'flight',
+  });
+  return {
+    schema: 'spaceface.ceresToolkitTransitHandoff.v1',
+    pass: true,
+    source: 'public-keyboard-read-only-observation',
+    startTick,
+    endTick,
+    deadlineTick,
+    playerEntityId: PLAYER_ENTITY_ID,
+    massSeedId: 9_001,
+    repulsorFieldIds: ['field_repulsor_1_1'],
+    survivingHostiles: [{
+      entityId: survivingHostile.entityId,
+      worldRecordId: survivingHostile.worldRecordId,
+    }],
+    waypoint: structuredClone(waypoint),
+    tetherCutAction: {
+      source: 'public-keyboard-fixed-tick',
+      key: 'Space',
+      trigger: 'release',
+      expectedEvent: 'tether:broken',
+      pressTick: startTick,
+      heldTick: startTick + 1,
+      eventTick: startTick + 2,
+      minEventSeq: 1_300,
+      eventSeq: 1_300,
+      neutralTick: startTick + 3,
+      event: {
+        seq: 1_300,
+        event: 'tether:broken',
+        tick: startTick + 2,
+        actorId: PLAYER_ENTITY_ID,
+        targetId: TOOLKIT_HOSTILES[0].entityId,
+        attachmentId: 'att_player_701_2',
+        reason: 'tether_cut',
+      },
+    },
+    encounterResolution: {
+      seq: 1_304,
+      event: 'encounter:resolved',
+      tick: endTick - 4,
+      encounterId: 'ceres:activity:throughline-ambush',
+      outcome: 'escaped',
+    },
+    approaches: [
+      approach({
+        approachStartTick: startTick + 3,
+        completionTick: firstApproachCompletionTick,
+        pulses: 160,
+      }),
+      approach({
+        approachStartTick: transientClearTick,
+        completionTick: finalApproachCompletionTick,
+        pulses: 0,
+      }),
+    ],
+    transientClearTick,
+    start: snapshot({ tick: startTick, pos: startPos, start: true }),
+    end: snapshot({ tick: endTick, pos: waypoint.targetPos }),
   };
 }
 
@@ -3591,6 +4194,7 @@ function observationFrame(bucket, tick, moved, playerPos = null) {
     clippedFromObservedTick: null,
     sectorId: 'sector_ceres_belt',
     timeScale: 1,
+    playerId: 1,
     playerAlive: true,
     playerPos: playerPos || pocketFramePosition(bucket),
     simTimeS: (tick - START_TICK) / TICK_RATE_HZ,
@@ -4214,11 +4818,253 @@ function pocketApproachTwoPhasePage({
   return harness;
 }
 
+function toolkitTransitHandoffPage(toolkitReceipt) {
+  const waypoint = planCeresToolkitTransitHandoff();
+  const startPos = planCeresThroughlineToolkitReposition().waypoints.at(-1).targetPos;
+  const targetDirection = Math.atan2(
+    waypoint.targetPos.z - startPos.z,
+    waypoint.targetPos.x - startPos.x,
+  );
+  const heldKeys = new Set();
+  const player = {
+    id: PLAYER_ENTITY_ID,
+    type: 'ship',
+    alive: true,
+    hull: 260,
+    radius: 16,
+    pos: { ...startPos },
+    vel: { x: 0, z: 0 },
+    rot: targetDirection,
+    data: {},
+  };
+  const survivor = {
+    id: TOOLKIT_HOSTILES[1].entityId,
+    type: 'ship',
+    alive: true,
+    hull: 60,
+    pos: { x: startPos.x + 70, z: startPos.z + 15 },
+    vel: { x: 0, z: 0 },
+    data: { worldRecordId: TOOLKIT_HOSTILES[1].worldRecordId },
+  };
+  const entities = new Map([
+    [player.id, player],
+    [survivor.id, survivor],
+  ]);
+  const state = {
+    tick: toolkitReceipt.endTick,
+    simTime: toolkitReceipt.endTick / TICK_RATE_HZ,
+    mode: 'flight',
+    playerId: player.id,
+    entities,
+    entityList: [...entities.values()],
+    player: {
+      tether: {
+        active: true,
+        targetId: TOOLKIT_HOSTILES[0].entityId,
+        attachmentId: 'att_player_701_2',
+      },
+    },
+    input: {
+      moveX: 0,
+      moveZ: 0,
+      turnIntent: 0,
+      boost: false,
+      brake: false,
+      fire: false,
+      actions: {},
+    },
+    massSeed: {
+      schemaVersion: 1,
+      phase: 'active',
+      seedId: 9_001,
+      ownerId: player.id,
+      expireAt: (toolkitReceipt.endTick + 900) / TICK_RATE_HZ,
+    },
+    fields: {
+      schemaVersion: 1,
+      deployed: {
+        field_repulsor_1_1: {
+          fieldId: 'field_repulsor_1_1',
+          kind: 'repulsor',
+          // Deliberately absent from entities: exact fieldId authority must not turn a missing
+          // emitter lookup into a false "already inactive" result.
+          emitterId: 9_002,
+          expireAt: (toolkitReceipt.endTick + 420) / TICK_RATE_HZ,
+        },
+      },
+      active: [{ id: 'field_repulsor_1_1', kind: 'repulsor' }],
+    },
+  };
+  const trace = {
+    nextEventSeq: Math.max(...toolkitReceipt.events.map((event) => event.seq)) + 1,
+    events: toolkitReceipt.events.map((event) => ({ ...event })),
+  };
+  const seedExpireTick = toolkitReceipt.endTick + 900;
+  const repulsorExpireTick = toolkitReceipt.endTick + 420;
+  let pendingTetherCut = null;
+  let encounterResolved = false;
+  let wallWaits = 0;
+  let fixedTickWaits = 0;
+
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = {
+      SF: { state },
+      __SF_CERES_FIVE_MINUTE_TRACE__: trace,
+    };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  const emit = (event, payload) => {
+    trace.events.push({
+      seq: trace.nextEventSeq,
+      event,
+      tick: state.tick,
+      ...payload,
+    });
+    trace.nextEventSeq += 1;
+  };
+  const step = () => {
+    state.tick += 1;
+    state.simTime = state.tick / TICK_RATE_HZ;
+    if (pendingTetherCut && state.tick > pendingTetherCut.afterTick) {
+      const payload = {
+        actorId: player.id,
+        targetId: pendingTetherCut.targetId,
+        attachmentId: pendingTetherCut.attachmentId,
+        reason: 'tether_cut',
+      };
+      emit('tether:broken', payload);
+      emit('tether:cut', {
+        targetId: pendingTetherCut.targetId,
+        attachmentId: pendingTetherCut.attachmentId,
+      });
+      emit('tether:released', {
+        targetId: pendingTetherCut.targetId,
+        attachmentId: pendingTetherCut.attachmentId,
+      });
+      state.player.tether = { active: false, targetId: null, attachmentId: null };
+      pendingTetherCut = null;
+    }
+    if (state.tick >= repulsorExpireTick) {
+      delete state.fields.deployed.field_repulsor_1_1;
+      state.fields.active = [];
+    }
+    if (state.tick >= seedExpireTick) {
+      state.massSeed = {
+        schemaVersion: 1,
+        phase: 'idle',
+        seedId: null,
+        ownerId: null,
+        expireAt: 0,
+      };
+    }
+
+    const yaw = (heldKeys.has('KeyD') ? 1 : 0) - (heldKeys.has('KeyA') ? 1 : 0);
+    player.rot += yaw * 0.04;
+    const speedBefore = Math.hypot(player.vel.x, player.vel.z);
+    let speed = speedBefore;
+    if (heldKeys.has('KeyS') || heldKeys.has('Digit0')) {
+      speed = Math.max(0, speed - 6);
+      if (speedBefore > 0) {
+        player.vel.x *= speed / speedBefore;
+        player.vel.z *= speed / speedBefore;
+      }
+    } else if (heldKeys.has('KeyW')) {
+      player.vel.x += Math.cos(player.rot) * 4;
+      player.vel.z += Math.sin(player.rot) * 4;
+      speed = Math.hypot(player.vel.x, player.vel.z);
+      if (speed > 168) {
+        player.vel.x *= 168 / speed;
+        player.vel.z *= 168 / speed;
+      }
+    }
+    player.pos.x += player.vel.x / TICK_RATE_HZ;
+    player.pos.z += player.vel.z / TICK_RATE_HZ;
+    if (!encounterResolved && Math.hypot(
+      survivor.pos.x - player.pos.x,
+      survivor.pos.z - player.pos.z,
+    ) >= CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU) {
+      emit('encounter:resolved', {
+        encounterId: 'ceres:activity:throughline-ambush',
+        outcome: 'escaped',
+      });
+      encounterResolved = true;
+    }
+    state.input.moveX = 0;
+    state.input.moveZ = heldKeys.has('KeyW') ? 1 : heldKeys.has('KeyS') ? -1 : 0;
+    state.input.turnIntent = yaw;
+    state.input.boost = heldKeys.has('Shift');
+    state.input.brake = heldKeys.has('Digit0') || heldKeys.has('KeyS');
+    state.input.fire = false;
+    state.input.actions = {
+      tetherFire: false,
+      tetherCut: false,
+      deployMassSeed: false,
+      deployRepulsor: false,
+    };
+  };
+
+  const page = {
+    isClosed() { return false; },
+    locator(selector) {
+      assert.equal(selector, '#gl-canvas');
+      return {
+        async waitFor({ state: expectedState }) { assert.equal(expectedState, 'visible'); },
+        async focus() {},
+      };
+    },
+    keyboard: {
+      async down(key) { heldKeys.add(key); },
+      async up(key) {
+        const wasHeld = heldKeys.delete(key);
+        if (key === 'Space' && wasHeld && state.player.tether.active) {
+          pendingTetherCut = {
+            afterTick: state.tick,
+            targetId: state.player.tether.targetId,
+            attachmentId: state.player.tether.attachmentId,
+          };
+        }
+      },
+    },
+    mouse: {
+      async up() {},
+    },
+    async evaluate(callback, argument) {
+      return runInPage(callback, argument);
+    },
+    async waitForFunction(callback, argument) {
+      if (Number.isSafeInteger(argument?.deltaTicks)) fixedTickWaits += 1;
+      for (let poll = 0; poll < 8_000; poll += 1) {
+        if (runInPage(callback, argument)) return true;
+        step();
+      }
+      throw new Error('fake public transit wait exceeded its deterministic poll budget');
+    },
+    async waitForTimeout() {
+      wallWaits += 1;
+      throw new Error('fixed-tick transit attempted a wall-time steering pulse');
+    },
+  };
+  return {
+    page,
+    heldKeys,
+    events: trace.events,
+    get wallWaits() { return wallWaits; },
+    get fixedTickWaits() { return fixedTickWaits; },
+  };
+}
+
 async function runSeed47ToolkitCameraReposition() {
   const dt = 1 / 60;
   const sim = createSimulation({
     seed: 47,
-    systems: [world, asteroidSites, asteroidFormations, flightV3, physics],
+    systems: [world, asteroidSites, asteroidFormations, flightV3, physics, encounterDirector],
   });
   const { state } = sim;
   state.mode = 'flight';
@@ -4238,6 +5084,9 @@ async function runSeed47ToolkitCameraReposition() {
     noTeleport: true,
     placePlayer: false,
   });
+  // No generic director row participates in this focused production fixture. The exact authored
+  // Throughline encounter is seeded after its durable two-ship cohort exists below.
+  state.encounterDirector.pending = [];
   for (const traffic of [
     {
       worldRecordId: 'wr_convoy_cb57b215',
@@ -4274,8 +5123,12 @@ async function runSeed47ToolkitCameraReposition() {
   const startTick = 6_834;
   let tick = startTick;
   const playerImpactTicks = [];
+  const encounterResolutions = [];
   sim.bus.on('physics:impact', (event) => {
     if (event.aId === player.id || event.bId === player.id) playerImpactTicks.push(state.tick);
+  });
+  sim.bus.on('encounter:resolved', (event) => {
+    encounterResolutions.push({ ...event, tick: state.tick });
   });
   const neutralize = () => Object.assign(state.input, {
     moveX: 0,
@@ -4350,12 +5203,113 @@ async function runSeed47ToolkitCameraReposition() {
       if (!receipt.pass) break;
       step(2);
     }
+    const cameraPlayerPos = { x: player.pos.x, z: player.pos.z };
+    const cameraPlayerHull = player.hull;
+    const cameraElapsedTicks = tick - startTick;
+    const transitPlan = planCeresToolkitTransitHandoff();
+    const survivorSpec = makeEnemySpawnSpec(
+      'wasp_swarmer',
+      3,
+      {
+        x: player.pos.x + 70,
+        z: player.pos.z + 15,
+      },
+      { startedTick: state.tick, zoneId: 'zone_ceres_ambush' },
+    );
+    survivorSpec.vel = { x: 0, z: 0 };
+    survivorSpec.data.worldRecordId = TOOLKIT_HOSTILES[1].worldRecordId;
+    Object.assign(survivorSpec.data.ai, {
+      squadId: 'zone_ceres_ambush',
+      zoneId: 'zone_ceres_ambush',
+      ceresActivityAmbushPhase: 'conflict',
+      passive: false,
+      roe: 'weapons_free',
+      spawnContext: 'zone_hostile',
+    });
+    const survivor = sim.spawn(survivorSpec);
+    const destroyedSpec = makeEnemySpawnSpec(
+      'reaver_pirate',
+      3,
+      { x: player.pos.x + 110, z: player.pos.z - 20 },
+      { startedTick: state.tick, zoneId: 'zone_ceres_ambush' },
+    );
+    destroyedSpec.data.worldRecordId = TOOLKIT_HOSTILES[0].worldRecordId;
+    const destroyed = sim.spawn(destroyedSpec);
+    const directorSystem = sim.registry.get('encounterDirector');
+    assert.equal(directorSystem._seedCeresActivityAmbush('sector_ceres_belt'), true,
+      'production fixture must adopt the exact durable Throughline cohort');
+    assert.equal(directorSystem._queueCeresActivityAmbush(), true,
+      'production fixture must queue the authored Throughline encounter');
+    const dir = state.encounterDirector;
+    dir.pressure.combat = 140;
+    dir.lastMeaningfulAt = 0;
+    dir.lastMajorAt = -1e9;
+    dir.window = [];
+    dir.cooldowns = {};
+    directorSystem.update(1, state);
+    const live = dir.live['ceres:activity:throughline-ambush'];
+    assert.ok(live, 'production fixture must fire the authored Throughline encounter');
+    live.data.springAt = state.simTime - dt;
+    directorSystem.update(1, state);
+    assert.equal(live.phase, 'conflict',
+      'production fixture must enter real conflict before the toolkit survivor handoff');
+    destroyed.alive = false;
+    const transitStartTick = tick;
+    const transitImpactStart = playerImpactTicks.length;
+    const transitReceipt = drive(transitPlan);
+    step(2);
+    const transitEndTick = tick;
+    const transitTicks = tick - transitStartTick;
+    const transitPlayerImpactTicks = playerImpactTicks.slice(transitImpactStart);
+    const survivorDistanceWU = Math.hypot(
+      survivor.pos.x - player.pos.x,
+      survivor.pos.z - player.pos.z,
+    );
+    const encounterResolution = encounterResolutions.find((event) => (
+      event.encounterId === 'ceres:activity:throughline-ambush' && event.outcome === 'escaped'
+    )) || null;
+    const cathedral = sectorLocalToGlobalForSector(
+      CERES_ACTIVITY_POCKETS_BY_ID.ceres_cathedral_grave.activityAnchor.localPos,
+      CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+    );
+    const remainingCathedralDistanceWU = Math.hypot(
+      cathedral.x - player.pos.x,
+      cathedral.z - player.pos.z,
+    );
+    state.nav.autopilot = {
+      active: true,
+      target: { ...cathedral },
+      targetEntityId: null,
+      label: 'Wreck Cathedral',
+      arrivalRadius: 48,
+      initialDistance: remainingCathedralDistanceWU,
+      status: 'armed',
+    };
+    let cathedralTicks = 0;
+    for (; cathedralTicks < 2_300 && state.nav.autopilot.status !== 'arrived'; cathedralTicks += 1) {
+      step(1);
+    }
     return {
       receipts,
-      playerHull: player.hull,
-      playerPos: { x: player.pos.x, z: player.pos.z },
-      playerImpactTicks,
-      elapsedTicks: tick - startTick,
+      playerHull: cameraPlayerHull,
+      playerPos: cameraPlayerPos,
+      playerImpactTicks: playerImpactTicks.slice(0, transitImpactStart),
+      elapsedTicks: cameraElapsedTicks,
+      transitPlan,
+      transitReceipt,
+      transitStartTick,
+      transitEndTick,
+      transitTicks,
+      transitPlayerImpactTicks,
+      survivorAlive: survivor.alive !== false,
+      survivorWorldRecordId: survivor.data?.worldRecordId || null,
+      survivorDistanceWU,
+      encounterInitialRecordIds: [destroyed, survivor]
+        .map((entity) => entity.data?.worldRecordId || null).sort(),
+      encounterResolution,
+      remainingCathedralDistanceWU,
+      cathedralArrived: state.nav.autopilot.status === 'arrived',
+      cathedralTicks,
     };
   } finally {
     physicsSystem._disableSg02DynamicAuthority();

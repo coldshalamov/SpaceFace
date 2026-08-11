@@ -10,21 +10,59 @@ import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createSimulation } from '../src/core/sim.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import {
   CERES_ACTIVITY_POCKETS_BY_ID,
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import {
+  CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+  CERES_WRECK_CATHEDRAL_COURSE_POS,
+  CERES_WRECK_CATHEDRAL_GLOBAL_POS,
+} from '../src/data/worldSiteManifests.js';
 import { save } from '../src/save/saveSystem.js';
 import { asteroidFormations } from '../src/systems/asteroidFormations.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
-import { flightV3 as workspaceFlightV3 } from '../src/systems/flightV3.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import {
+  flightV3 as workspaceFlightV3,
+  resolveAutopilotArrivalRadius,
+} from '../src/systems/flightV3.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
+import {
+  CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+  CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
+  CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
+  ceresPreContinueLegReserveTicks,
+  chooseCeresPocketApproachAction,
+  planCeresToolkitTransitHandoff,
+} from './lib/ceresFiveMinuteAcceptance.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const DT = 1 / 60;
+const CERES_CATHEDRAL_PROXY_WORLD_RECORD_IDS = Object.freeze([
+  'world_site_wreck_cathedral/collision/lower_center',
+  'world_site_wreck_cathedral/collision/lower_port',
+  'world_site_wreck_cathedral/collision/lower_starboard',
+  'world_site_wreck_cathedral/collision/upper_port_inner',
+  'world_site_wreck_cathedral/collision/upper_port_outer',
+  'world_site_wreck_cathedral/collision/upper_starboard_inner',
+  'world_site_wreck_cathedral/collision/upper_starboard_outer',
+]);
+const CERES_CATHEDRAL_POST_HANDOFF_WINDOW_TICKS = CERES_TOOLKIT_ROUTE_RESERVE_TICKS
+  - ceresPreContinueLegReserveTicks('ceres_cathedral_grave');
+const CERES_CATHEDRAL_ACTUAL_MIN_PROXY_GAP_WU = 20;
+const RECOVERED_SEED_47_TOOLKIT_ENDPOINT = Object.freeze({
+  source: 'candidate-bound-recovered-seed-47-toolkit-endpoint',
+  tick: 7955,
+  pos: Object.freeze({ x: -8918.610595703125, z: 7112.6971435546875 }),
+  vel: Object.freeze({ x: 59.91373825073242, z: -83.78228759765625 }),
+  rot: -1.471084233247489,
+  hull: 257.7484,
+});
 const FLIGHT_UNDER_TEST = process.argv.includes('--head-flight')
   ? await loadHeadFlightV3()
   : workspaceFlightV3;
@@ -523,7 +561,561 @@ async function runRapierCeresHornetReserveScenario() {
   };
 }
 
+async function runProductionLeviathanCathedralCourseScenario() {
+  const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
+  const transitPlan = planCeresToolkitTransitHandoff();
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    seed: 47,
+  });
+  const { state, bus } = runtime;
+  let physicsSystem = null;
+  try {
+    state.mode = 'flight';
+    state.tick = 9265;
+    state.simTime = state.tick * DT;
+    state.world.currentSectorId = sectorId;
+    const start = transitPlan.targetPos;
+    const startRot = Math.atan2(
+      CERES_WRECK_CATHEDRAL_COURSE_POS.z - start.z,
+      CERES_WRECK_CATHEDRAL_COURSE_POS.x - start.x,
+    );
+    const player = runtime.spawn(makeShipEntitySpec('ship_leviathan', {
+      isPlayer: true,
+      player: state.player,
+      pos: { ...start },
+      rot: startRot,
+      fittings: [],
+    }));
+    player.vel = { x: 0, z: 0 };
+    player.angVel = 0;
+    player.collides = true;
+    state.playerId = player.id;
+
+    const playerImpacts = [];
+    bus.on('physics:impact', (event) => {
+      if (event.aId === player.id || event.bId === player.id) {
+        playerImpacts.push({ tick: state.tick, aId: event.aId, bId: event.bId });
+      }
+    });
+    runtime.getSystem('world').enterSector(sectorId, {
+      continuous: true,
+      noTeleport: true,
+      placePlayer: false,
+    });
+    physicsSystem = runtime.getSystem('physics');
+    assert.equal(await physicsSystem.prepareBackend(state, { reset: true }), true,
+      'Leviathan Cathedral course requires ready production Rapier authority');
+    bus.emit('ui:setCourse', {
+      pos: { ...CERES_WRECK_CATHEDRAL_COURSE_POS },
+      label: 'Wreck Cathedral',
+      arrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+      autopilot: true,
+    });
+    const effectiveArrivalRadius = resolveAutopilotArrivalRadius(
+      player,
+      state.nav.autopilot,
+      { radius: 0 },
+    );
+    const inputSystem = runtime.getSystem('input');
+    const proxyIds = new Set();
+    let minProxyGap = Infinity;
+    let maxSpeed = 0;
+    let brakingTicks = 0;
+    let boostingTicks = 0;
+    let avoidingTicks = 0;
+    const startTick = state.tick;
+    for (let tick = 0; tick < CERES_CATHEDRAL_POST_HANDOFF_WINDOW_TICKS; tick++) {
+      if (state.nav.autopilot?.active === false
+          && state.nav.autopilot?.status === 'arrived') break;
+      for (const code in inputSystem._keys) inputSystem._keys[code] = false;
+      runtime.step(DT);
+      maxSpeed = Math.max(maxSpeed, Math.hypot(player.vel.x, player.vel.z));
+      if (state.input.brake) brakingTicks++;
+      if (state.input.boost) boostingTicks++;
+      if (state.nav.autopilot?.status === 'avoiding') avoidingTicks++;
+      for (const entity of state.entityList) {
+        const worldRecordId = String(entity?.data?.worldRecordId || '');
+        if (!worldRecordId.startsWith('world_site_wreck_cathedral/collision/')) continue;
+        proxyIds.add(worldRecordId);
+        minProxyGap = Math.min(minProxyGap, Math.hypot(
+          entity.pos.x - player.pos.x,
+          entity.pos.z - player.pos.z,
+        ) - Number(entity.radius || 0) - Number(player.radius || 0));
+      }
+    }
+    return {
+      runtime: {
+        evidenceClass: runtime.manifest.evidenceClass,
+        flightBackend: runtime.manifest.selectedSlots.flightBackend,
+      },
+      physics: {
+        backend: state.physicsRuntime?.diagnostics?.backend || null,
+        sg02Ready: state.physicsRuntime?.diagnostics?.sg02Ready === true,
+      },
+      hullId: player.data?.defId || null,
+      hullRadius: player.radius,
+      requestedArrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+      effectiveArrivalRadius,
+      ticks: state.tick - startTick,
+      status: state.nav.autopilot?.status || null,
+      finalDistance: Math.hypot(
+        CERES_WRECK_CATHEDRAL_COURSE_POS.x - player.pos.x,
+        CERES_WRECK_CATHEDRAL_COURSE_POS.z - player.pos.z,
+      ),
+      finalSpeed: Math.hypot(player.vel.x, player.vel.z),
+      minProxyGap,
+      proxyWorldRecordIds: [...proxyIds].sort(),
+      playerImpacts,
+      maxSpeed,
+      brakingTicks,
+      boostingTicks,
+      avoidingTicks,
+    };
+  } finally {
+    if (physicsSystem) physicsSystem._disableSg02DynamicAuthority();
+    runtime.dispose();
+  }
+}
+
+async function runProductionRecoveredCeresCorridorScenario() {
+  const sectorId = 'sector_ceres_belt';
+  const encounterId = 'ceres:activity:throughline-ambush';
+  const survivorWorldRecordId = 'wr_npc_cc9f0184';
+  const transitReserveTicks = CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS;
+  const cathedralReserveTicks = CERES_CATHEDRAL_POST_HANDOFF_WINDOW_TICKS;
+  const requiredMarginTicks = 100;
+  const startTick = RECOVERED_SEED_47_TOOLKIT_ENDPOINT.tick;
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    seed: 47,
+  });
+  const { state, bus } = runtime;
+  let player = null;
+  let survivor = null;
+  let physicsSystem = null;
+
+  const stageMetrics = Object.create(null);
+  const metricsFor = (stage) => (stageMetrics[stage] ||= {
+    maxSpeed: 0,
+    brakingTicks: 0,
+    boostingTicks: 0,
+    avoidingTicks: 0,
+    minCathedralProxyGap: Infinity,
+    minCathedralProxyWorldRecordId: null,
+    cathedralProxyWorldRecordIds: [],
+    minTrafficGap: Infinity,
+    minTrafficWorldRecordId: null,
+  });
+  let stage = 'handoff';
+  const playerImpacts = [];
+  const encounterResolutions = [];
+
+  try {
+    state.mode = 'flight';
+    state.tick = startTick;
+    state.simTime = startTick * DT;
+    state.world.currentSectorId = sectorId;
+
+    player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
+      isPlayer: true,
+      player: state.player,
+      pos: { ...RECOVERED_SEED_47_TOOLKIT_ENDPOINT.pos },
+      rot: RECOVERED_SEED_47_TOOLKIT_ENDPOINT.rot,
+      fittings: [
+        'wpn_concussion_cannon_m',
+        'wpn_gravity_marker_s',
+        'wpn_momentum_sink_s',
+      ],
+    }));
+    player.vel = { ...RECOVERED_SEED_47_TOOLKIT_ENDPOINT.vel };
+    player.angVel = 0;
+    player.collides = true;
+    player.hull = RECOVERED_SEED_47_TOOLKIT_ENDPOINT.hull;
+    state.playerId = player.id;
+    state.player.tether = {
+      ...(state.player.tether || {}),
+      active: false,
+      targetId: null,
+      attachmentId: null,
+    };
+    const initialHull = player.hull;
+
+    const survivorSpec = makeEnemySpawnSpec(
+      'wasp_swarmer',
+      3,
+      { x: player.pos.x + 70, z: player.pos.z + 15 },
+      { startedTick: state.tick, zoneId: 'zone_ceres_ambush' },
+    );
+    survivorSpec.vel = { x: 0, z: 0 };
+    survivorSpec.data.worldRecordId = survivorWorldRecordId;
+    Object.assign(survivorSpec.data.ai, {
+      squadId: 'zone_ceres_ambush',
+      zoneId: 'zone_ceres_ambush',
+      ceresActivityAmbushPhase: 'conflict',
+      passive: false,
+      roe: 'weapons_free',
+      spawnContext: 'zone_hostile',
+    });
+    survivor = runtime.spawn(survivorSpec);
+
+    bus.on('physics:impact', (event) => {
+      if (event.aId === player.id || event.bId === player.id) {
+        playerImpacts.push({ tick: state.tick, aId: event.aId, bId: event.bId });
+      }
+    });
+    bus.on('encounter:resolved', (event) => {
+      if (event.encounterId !== encounterId) return;
+      encounterResolutions.push({
+        tick: state.tick,
+        encounterId: event.encounterId,
+        outcome: event.outcome,
+        survivorDistance: Math.hypot(
+          player.pos.x - survivor.pos.x,
+          player.pos.z - survivor.pos.z,
+        ),
+      });
+    });
+
+    runtime.getSystem('world').enterSector(sectorId, {
+      continuous: true,
+      noTeleport: true,
+      placePlayer: false,
+    });
+    assert.equal(survivor.data.ai.ceresActivityAmbushPhase, 'armed',
+      'sector entry must park the durable Throughline actor through production ownership');
+    survivor.data.ai.ceresActivityAmbushPhase = 'conflict';
+    state.encounterDirector.stats.ceresActivityAmbush = { phase: 'revealed' };
+    bus.emit('save:restoring', { slot: 'seed47-cathedral-regression' });
+    bus.emit('save:loaded', { slot: 'seed47-cathedral-regression' });
+    assert.equal(state.encounterDirector.live[encounterId]?.phase, 'conflict',
+      'Continue must resume the real authored Throughline conflict');
+
+    physicsSystem = runtime.getSystem('physics');
+    assert.equal(await physicsSystem.prepareBackend(state, { reset: true }), true,
+      'combined Ceres route requires ready production Rapier authority');
+    const physics = {
+      backend: state.physicsRuntime?.diagnostics?.backend || null,
+      sg02Ready: state.physicsRuntime?.diagnostics?.sg02Ready === true,
+    };
+    const inputSystem = runtime.getSystem('input');
+    const releaseInput = () => {
+      for (const code in inputSystem._keys) inputSystem._keys[code] = false;
+      inputSystem._m0 = false;
+      inputSystem._m1 = false;
+    };
+    const sample = () => {
+      const metrics = metricsFor(stage);
+      metrics.maxSpeed = Math.max(metrics.maxSpeed, Math.hypot(player.vel.x, player.vel.z));
+      if (state.input.brake) metrics.brakingTicks++;
+      if (state.input.boost) metrics.boostingTicks++;
+      if (state.nav.autopilot?.status === 'avoiding') metrics.avoidingTicks++;
+      for (const entity of state.entityList) {
+        if (!entity || entity.id === player.id || entity.alive === false
+            || entity.collides !== true || !entity.pos) continue;
+        const gap = Math.hypot(
+          entity.pos.x - player.pos.x,
+          entity.pos.z - player.pos.z,
+        ) - Number(entity.radius || 0) - Number(player.radius || 0);
+        const worldRecordId = String(entity.data?.worldRecordId || '');
+        if (worldRecordId.startsWith('world_site_wreck_cathedral/collision/')) {
+          if (gap < metrics.minCathedralProxyGap) {
+            metrics.minCathedralProxyGap = gap;
+            metrics.minCathedralProxyWorldRecordId = worldRecordId;
+          }
+          if (!metrics.cathedralProxyWorldRecordIds.includes(worldRecordId)) {
+            metrics.cathedralProxyWorldRecordIds.push(worldRecordId);
+            metrics.cathedralProxyWorldRecordIds.sort();
+          }
+        }
+        if (entity.type === 'ship' && gap < metrics.minTrafficGap) {
+          metrics.minTrafficGap = gap;
+          metrics.minTrafficWorldRecordId = worldRecordId || null;
+        }
+      }
+    };
+    const step = (heldKeys = null) => {
+      releaseInput();
+      if (heldKeys) {
+        for (const code of heldKeys) inputSystem._keys[code] = true;
+      }
+      runtime.step(DT);
+      sample();
+    };
+    const runCourse = (pos, label, arrivalRadius, limit) => {
+      bus.emit('ui:setCourse', {
+        pos: { x: pos.x, z: pos.z },
+        label,
+        arrivalRadius,
+        autopilot: true,
+      });
+      const legStartTick = state.tick;
+      for (let tick = 0; tick < limit; tick++) {
+        if (state.nav.autopilot?.active === false
+            && state.nav.autopilot?.status === 'arrived') break;
+        step();
+      }
+      return {
+        startTick: legStartTick,
+        completionTick: state.tick,
+        ticks: state.tick - legStartTick,
+        status: state.nav.autopilot?.status || null,
+        distance: Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z),
+        speed: Math.hypot(player.vel.x, player.vel.z),
+      };
+    };
+
+    const pointStatus = (pos) => {
+      const dx = pos.x - player.pos.x;
+      const dz = pos.z - player.pos.z;
+      let headingError = Math.atan2(dz, dx) - player.rot;
+      while (headingError > Math.PI) headingError -= Math.PI * 2;
+      while (headingError < -Math.PI) headingError += Math.PI * 2;
+      return {
+        distanceWU: Math.hypot(dx, dz),
+        headingError,
+        speed: Math.hypot(player.vel.x, player.vel.z),
+      };
+    };
+    const runFixedTickApproach = (pos, arrivalRadius, maxPulses = 220) => {
+      const legStartTick = state.tick;
+      let pulses = 0;
+      let settleHolds = 0;
+      let boostActions = 0;
+      let complete = false;
+      while (pulses < maxPulses) {
+        const action = chooseCeresPocketApproachAction(pointStatus(pos), {
+          arrivalRadiusWU: arrivalRadius,
+          allowBoost: false,
+        });
+        if (action.kind === 'complete') {
+          complete = true;
+          break;
+        }
+        assert.notEqual(action.kind, 'invalid', 'fixed-tick public approach requires finite telemetry');
+        if (action.kind === 'settle') {
+          settleHolds++;
+          for (let tick = 0; tick < 600 && pointStatus(pos).speed > 1; tick++) {
+            step(['Digit0']);
+          }
+          continue;
+        }
+        pulses++;
+        if (action.boost === true) boostActions++;
+        assert.equal(action.boost === true, false,
+          'fixed-tick Ceres point approaches must remain dash-safe');
+        const pulseTicks = Math.max(1, Math.round(action.durationMs / 1000 / DT));
+        const heldKeys = action.kind === 'turn'
+          ? [action.key]
+          : action.kind === 'decelerate'
+            ? ['KeyS']
+            : ['KeyW'];
+        for (let tick = 0; tick < pulseTicks; tick++) step(heldKeys);
+      }
+      const terminal = pointStatus(pos);
+      return {
+        startTick: legStartTick,
+        completionTick: state.tick,
+        ticks: state.tick - legStartTick,
+        status: complete ? 'arrived' : 'incomplete',
+        distance: terminal.distanceWU,
+        speed: terminal.speed,
+        pulses,
+        settleHolds,
+        boostActions,
+      };
+    };
+
+    const transitPlan = planCeresToolkitTransitHandoff();
+    const handoff = runFixedTickApproach(
+      transitPlan.targetPos,
+      transitPlan.arrivalRadiusWU,
+    );
+    releaseInput();
+    step();
+    const handoffNeutralInput = {
+      moveX: state.input.moveX,
+      moveZ: state.input.moveZ,
+      turnIntent: state.input.turnIntent,
+      boost: state.input.boost,
+      brake: state.input.brake,
+    };
+    const survivorDistanceAtHandoff = Math.hypot(
+      player.pos.x - survivor.pos.x,
+      player.pos.z - survivor.pos.z,
+    );
+
+    stage = 'cathedral-safe-course';
+    const cathedralStartTick = state.tick;
+    const safeCourse = runCourse(
+      CERES_WRECK_CATHEDRAL_COURSE_POS,
+      'Wreck Cathedral',
+      CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+      cathedralReserveTicks,
+    );
+
+    stage = 'cathedral-center';
+    const settleStartTick = state.tick;
+    while (state.tick - settleStartTick < 600
+        && Math.hypot(player.vel.x, player.vel.z) > 1) step();
+    const safeCourseSettleTicks = state.tick - settleStartTick;
+    const centerApproach = runFixedTickApproach(CERES_WRECK_CATHEDRAL_GLOBAL_POS, 90);
+    releaseInput();
+
+    return {
+      runtime: {
+        evidenceClass: runtime.manifest.evidenceClass,
+        aiBackend: runtime.manifest.selectedSlots.aiBackend,
+        flightBackend: runtime.manifest.selectedSlots.flightBackend,
+      },
+      physics,
+      continuationFixture: RECOVERED_SEED_47_TOOLKIT_ENDPOINT.source,
+      hull: {
+        id: player.data?.defId || null,
+        radius: player.radius,
+      },
+      transitPlan,
+      handoff: {
+        ...handoff,
+        reserveTicks: transitReserveTicks,
+        marginTicks: transitReserveTicks - handoff.ticks,
+        survivorDistance: survivorDistanceAtHandoff,
+        neutralInput: handoffNeutralInput,
+      },
+      encounterResolution: encounterResolutions[0] || null,
+      survivor: {
+        alive: survivor.alive !== false,
+        worldRecordId: survivor.data?.worldRecordId || null,
+      },
+      safeCourse: {
+        ...safeCourse,
+        pos: { ...CERES_WRECK_CATHEDRAL_COURSE_POS },
+        arrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+        settleTicks: safeCourseSettleTicks,
+      },
+      cathedral: {
+        startTick: cathedralStartTick,
+        completionTick: state.tick,
+        ticks: state.tick - cathedralStartTick,
+        reserveTicks: cathedralReserveTicks,
+        marginTicks: cathedralReserveTicks - (state.tick - cathedralStartTick),
+        centerDriveTicks: centerApproach.ticks,
+        centerPulses: centerApproach.pulses,
+        centerSettleHolds: centerApproach.settleHolds,
+        centerBoostActions: centerApproach.boostActions,
+        distanceWU: centerApproach.distance,
+        speed: centerApproach.speed,
+        status: centerApproach.status,
+      },
+      metrics: stageMetrics,
+      playerImpacts,
+      playerAlive: player.alive !== false && player.hull > 0,
+      hullLoss: initialHull - player.hull,
+      requiredMarginTicks,
+    };
+  } finally {
+    if (physicsSystem) physicsSystem._disableSg02DynamicAuthority();
+    runtime.dispose();
+  }
+}
+
 console.log('--- V3 AUTOPILOT ACCEPTANCE ---');
+assert.equal(
+  CERES_CATHEDRAL_POST_HANDOFF_WINDOW_TICKS,
+  CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
+  'the shared Ceres route must leave one fixed post-toolkit window for each handoff/Cathedral stage',
+);
+
+{
+  const result = await runProductionLeviathanCathedralCourseScenario();
+  assert.deepEqual(result.runtime, {
+    evidenceClass: 'production-manifest',
+    flightBackend: 'v3',
+  });
+  assert.deepEqual(result.physics, { backend: 'rapier-dynamic', sg02Ready: true });
+  assert.equal(result.hullId, 'ship_leviathan');
+  assert.equal(result.hullRadius, 45);
+  assert.equal(result.requestedArrivalRadius, 48);
+  assert.equal(result.effectiveArrivalRadius, 63,
+    'Leviathan must exercise Flight V3\'s hull-expanded arrival shell');
+  assert.equal(result.status, 'arrived');
+  assert(result.ticks <= CERES_CATHEDRAL_POST_HANDOFF_WINDOW_TICKS,
+    `Leviathan must arrive inside the shared post-handoff window: ${JSON.stringify(result)}`);
+  assert(result.finalDistance <= result.effectiveArrivalRadius && result.finalSpeed < 11,
+    `Leviathan must physically settle on its effective arrival shell: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.proxyWorldRecordIds, CERES_CATHEDRAL_PROXY_WORLD_RECORD_IDS);
+  assert(Number.isFinite(result.minProxyGap)
+      && result.minProxyGap > CERES_CATHEDRAL_ACTUAL_MIN_PROXY_GAP_WU,
+  `Leviathan course must retain its named runtime proxy gap: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.playerImpacts, []);
+  console.log('Check Cathedral Leviathan PASSED: the largest canonical hull arrives through live Flight V3 + Rapier without impact.', result);
+}
+
+{
+  const result = await runProductionRecoveredCeresCorridorScenario();
+  assert.deepEqual(result.runtime, {
+    evidenceClass: 'production-manifest',
+    aiBackend: 'sg06-tactical',
+    flightBackend: 'v3',
+  });
+  assert.equal(result.continuationFixture,
+    RECOVERED_SEED_47_TOOLKIT_ENDPOINT.source,
+    'the deterministic geometry regression must identify its recovered post-toolkit fixture honestly');
+  assert.deepEqual(result.hull, { id: 'ship_hornet', radius: 16 },
+    'the pocket-center continuation is deliberately bounded to the route\'s Hornet fixture');
+  assert.deepEqual(result.physics, { backend: 'rapier-dynamic', sg02Ready: true });
+  assert.equal(result.handoff.status, 'arrived');
+  assert(result.handoff.distance <= result.transitPlan.arrivalRadiusWU
+      && result.handoff.speed <= 1,
+  `fixed-tick handoff must settle on its authored completion shell: ${JSON.stringify(result)}`);
+  assert(result.handoff.pulses < 220 && result.handoff.boostActions === 0,
+    `handoff must use the bounded no-boost public controller: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.handoff.neutralInput, {
+    moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false,
+  });
+  assert(result.handoff.marginTicks >= result.requiredMarginTicks,
+    `Throughline handoff needs a non-fragile route margin: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.encounterResolution && {
+    encounterId: result.encounterResolution.encounterId,
+    outcome: result.encounterResolution.outcome,
+  }, { encounterId: 'ceres:activity:throughline-ambush', outcome: 'escaped' });
+  assert(result.encounterResolution.survivorDistance >= CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
+    `canonical encounter receipt must bind the 2600-WU escape boundary: ${JSON.stringify(result)}`);
+  assert(result.handoff.completionTick - result.encounterResolution.tick >= result.requiredMarginTicks,
+    `canonical escape must precede handoff completion with real time margin: ${JSON.stringify(result)}`);
+  assert(result.handoff.survivorDistance >= CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU + 100,
+    `handoff endpoint must retain physical separation margin: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.survivor, { alive: true, worldRecordId: 'wr_npc_cc9f0184' });
+  assert.equal(result.safeCourse.status, 'arrived');
+  assert.equal(result.safeCourse.arrivalRadius, 48);
+  assert(result.safeCourse.distance <= result.safeCourse.arrivalRadius);
+  assert(result.cathedral.status === 'arrived'
+      && result.cathedral.distanceWU <= 90 && result.cathedral.speed <= 1,
+    `public center approach must settle inside the Cathedral pocket: ${JSON.stringify(result)}`);
+  assert(result.cathedral.centerPulses < 220 && result.cathedral.centerBoostActions === 0,
+    `Cathedral center approach must use the bounded no-boost controller: ${JSON.stringify(result)}`);
+  assert(result.cathedral.marginTicks >= result.requiredMarginTicks,
+    `safe-course and center completion need route margin: ${JSON.stringify(result)}`);
+  assert.deepEqual(
+    result.metrics['cathedral-safe-course'].cathedralProxyWorldRecordIds,
+    CERES_CATHEDRAL_PROXY_WORLD_RECORD_IDS,
+  );
+  assert.deepEqual(
+    result.metrics['cathedral-center'].cathedralProxyWorldRecordIds,
+    CERES_CATHEDRAL_PROXY_WORLD_RECORD_IDS,
+  );
+  assert(Number.isFinite(result.metrics['cathedral-safe-course'].minCathedralProxyGap)
+      && result.metrics['cathedral-safe-course'].minCathedralProxyGap > 10,
+    `authored Cathedral course needs a positive collision envelope: ${JSON.stringify(result)}`);
+  assert(Number.isFinite(result.metrics['cathedral-center'].minCathedralProxyGap)
+      && result.metrics['cathedral-center'].minCathedralProxyGap > 10,
+    `center completion must retain a positive solid-proxy envelope: ${JSON.stringify(result)}`);
+  assert.deepEqual(result.playerImpacts, []);
+  assert.equal(result.playerAlive, true);
+  console.log('Check PQ-048 Cathedral PASSED: the candidate-bound recovered seed-47 Hornet continuation resolves the resumed ambush, reaches the authored safe course, and settles inside the wreck pocket.', result);
+}
 
 {
   const result = await runRapierCeresHornetReserveScenario();

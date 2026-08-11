@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
+import {
+  CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
+  CERES_WRECK_CATHEDRAL_COURSE_POS,
+  CERES_WRECK_CATHEDRAL_GLOBAL_POS,
+  worldSiteManifestById,
+} from '../src/data/worldSiteManifests.js';
+import { SHIPS } from '../src/data/ships.js';
 import {
   CINDER_SLUICE_GLOBAL_POS,
   CINDER_SLUICE_SECTOR_ID,
@@ -12,14 +18,41 @@ import {
   applyWorldSiteFailure,
   applyWorldSiteOperation,
   createWorldSiteRecord,
+  planWorldSiteMaterialization,
   projectWorldSite,
 } from '../src/systems/worldSiteKernel.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { resolveAutopilotArrivalRadius } from '../src/systems/flightV3.js';
 import { traffic } from '../src/systems/traffic.js';
 import { buildSystemModel, resolveCourseTarget } from '../src/ui/galaxyMap.js';
 import { worldSiteHistoryRows, worldSiteMapMarkers } from '../src/ui/worldSiteMapLayer.js';
 
 const SITE_ID = 'world_site_helios_relay';
+const CATHEDRAL_SAFE_ARRIVAL_SHELL_MIN_GAP_WU = 20;
+const CATHEDRAL_HORNET_CENTER_CORRIDOR_MIN_GAP_WU = 20;
+const CATHEDRAL_PROXY_IDS = Object.freeze([
+  'lower_center',
+  'lower_port',
+  'lower_starboard',
+  'upper_port_inner',
+  'upper_port_outer',
+  'upper_starboard_inner',
+  'upper_starboard_outer',
+]);
+
+function pointToSegmentDistance(point, start, end) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const length2 = dx * dx + dz * dz;
+  const t = length2 > 0
+    ? Math.max(0, Math.min(1,
+      ((point.x - start.x) * dx + (point.z - start.z) * dz) / length2))
+    : 0;
+  return Math.hypot(
+    point.x - (start.x + dx * t),
+    point.z - (start.z + dz * t),
+  );
+}
 
 function siteState() {
   const manifest = worldSiteManifestById(SITE_ID);
@@ -92,6 +125,117 @@ test('Cinder map identity stays on the machinery while course plotting uses its 
     reason: 'Cinder Sluice safe approach',
     waypointKind: 'local',
     arrivalRadius: 48,
+    autopilot: true,
+  });
+});
+
+test('Cathedral course arrival is all-hull safe while pocket-center transit stays Hornet-bound', () => {
+  const siteId = 'world_site_wreck_cathedral';
+  const manifest = worldSiteManifestById(siteId);
+  const record = createWorldSiteRecord(manifest, { tick: 0 });
+  const state = {
+    simTime: 0,
+    world: { currentSectorId: manifest.sectorId },
+    entities: new Map(),
+    entityList: [],
+    sites: {
+      worldOrder: [siteId],
+      worldById: { [siteId]: record },
+    },
+  };
+
+  const marker = buildSystemModel(state, manifest.sectorId).points
+    .find((point) => point.id === siteId);
+  assert.ok(marker, 'the live Cathedral marker reaches the default system-map model');
+  assert.deepEqual({ x: marker.x, z: marker.z }, CERES_WRECK_CATHEDRAL_GLOBAL_POS,
+    'the visible POI remains on the physical wreck center');
+  const courseOffset = {
+    x: CERES_WRECK_CATHEDRAL_COURSE_POS.x - CERES_WRECK_CATHEDRAL_GLOBAL_POS.x,
+    z: CERES_WRECK_CATHEDRAL_COURSE_POS.z - CERES_WRECK_CATHEDRAL_GLOBAL_POS.z,
+  };
+  const courseDistance = Math.hypot(courseOffset.x, courseOffset.z);
+  assert.ok(Math.abs(courseDistance - 440) < 1e-9);
+  assert.ok(Math.abs(Math.atan2(courseOffset.z, courseOffset.x) - -6 * Math.PI / 180) < 1e-12);
+  assert.equal(CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS, 48);
+
+  const materialization = planWorldSiteMaterialization(manifest, record);
+  assert.deepEqual(
+    materialization.collisionProxies.map((proxy) => proxy.proxyId).sort(),
+    CATHEDRAL_PROXY_IDS,
+  );
+  const direction = { x: courseOffset.x / courseDistance, z: courseOffset.z / courseDistance };
+  const pocketRingPoint = {
+    x: CERES_WRECK_CATHEDRAL_GLOBAL_POS.x + direction.x * 90,
+    z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z + direction.z * 90,
+  };
+  const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }))
+    .sort((a, b) => b.radius - a.radius || a.id.localeCompare(b.id));
+  assert.deepEqual(hulls[0], { id: 'ship_leviathan', radius: 45 });
+  assert.equal(hulls.length, 13, 'every canonical player-selectable hull participates');
+  const envelopes = hulls.map((hull) => {
+    const effectiveArrivalRadius = resolveAutopilotArrivalRadius(
+      { radius: hull.radius },
+      { arrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS },
+      { radius: 0 },
+    );
+    const shell = materialization.collisionProxies.map((proxy) => ({
+      id: proxy.proxyId,
+      gap: Math.hypot(
+        proxy.pos.x - CERES_WRECK_CATHEDRAL_COURSE_POS.x,
+        proxy.pos.z - CERES_WRECK_CATHEDRAL_COURSE_POS.z,
+      ) - proxy.radius - hull.radius - effectiveArrivalRadius,
+    })).sort((a, b) => a.gap - b.gap)[0];
+    const corridor = materialization.collisionProxies.map((proxy) => ({
+      id: proxy.proxyId,
+      gap: pointToSegmentDistance(
+        proxy.pos,
+        CERES_WRECK_CATHEDRAL_COURSE_POS,
+        pocketRingPoint,
+      ) - proxy.radius - hull.radius,
+    })).sort((a, b) => a.gap - b.gap)[0];
+    assert(shell.gap > CATHEDRAL_SAFE_ARRIVAL_SHELL_MIN_GAP_WU,
+      `${hull.id} full arrival shell has only ${shell.gap} WU at ${shell.id}`);
+    return { ...hull, effectiveArrivalRadius, shell, corridor };
+  });
+  const leviathan = envelopes[0];
+  assert.deepEqual(leviathan, {
+    id: 'ship_leviathan',
+    radius: 45,
+    effectiveArrivalRadius: 63,
+    shell: { id: 'upper_starboard_outer', gap: leviathan.shell.gap },
+    corridor: { id: 'lower_starboard', gap: leviathan.corridor.gap },
+  });
+  assert.ok(Math.abs(leviathan.shell.gap - 26.363327005444518) < 1e-9);
+  const hornet = envelopes.find((hull) => hull.id === 'ship_hornet');
+  assert.deepEqual(hornet, {
+    id: 'ship_hornet',
+    radius: 16,
+    effectiveArrivalRadius: 48,
+    shell: { id: 'upper_starboard_outer', gap: hornet.shell.gap },
+    corridor: { id: 'lower_starboard', gap: hornet.corridor.gap },
+  });
+  assert(hornet.corridor.gap > CATHEDRAL_HORNET_CENTER_CORRIDOR_MIN_GAP_WU,
+    `Hornet center corridor has only ${hornet.corridor.gap} WU at ${hornet.corridor.id}`);
+  assert.ok(Math.abs(hornet.corridor.gap - 35.421060932552464) < 1e-9);
+
+  const upperStarboard = materialization.collisionProxies
+    .find((proxy) => proxy.proxyId === 'upper_starboard_outer');
+  const lowerStarboard = materialization.collisionProxies
+    .find((proxy) => proxy.proxyId === 'lower_starboard');
+  const starboardPhysicalGap = Math.hypot(
+    upperStarboard.pos.x - lowerStarboard.pos.x,
+    upperStarboard.pos.z - lowerStarboard.pos.z,
+  ) - upperStarboard.radius - lowerStarboard.radius;
+  assert(starboardPhysicalGap < leviathan.effectiveArrivalRadius * 2,
+    'the 114.8-WU wreck gap cannot support a universal path from Leviathan\'s 126-WU arrival shell');
+  assert.deepEqual(marker.coursePos, CERES_WRECK_CATHEDRAL_COURSE_POS);
+  assert.deepEqual(resolveCourseTarget(marker), {
+    type: 'poi',
+    pos: { ...CERES_WRECK_CATHEDRAL_COURSE_POS },
+    label: 'Wreck Cathedral',
+    reason: 'Wreck Cathedral',
+    waypointKind: 'local',
+    arrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
     autopilot: true,
   });
 });

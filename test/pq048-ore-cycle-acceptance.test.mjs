@@ -223,10 +223,18 @@ test('ore-cycle save gate reads its receipt by value after a raw-CDP boolean wai
 
 test('shared Ceres autopilot wait consumes the CSP poller direct terminal receipt', async () => {
   const target = PQ020_ROUTE_TARGETS.beltOutpost;
+  const armed = {
+    terminal: true,
+    ok: true,
+    reason: 'armed',
+    tick: 90,
+  };
   const terminal = {
     terminal: true,
     ok: true,
     reason: 'arrived',
+    tick: 120,
+    waitStartedAtTick: 90,
     sectorId: 'sector_ceres_belt',
     currentZone: { id: target.zoneId, name: target.zoneName },
     player: { alive: true, hull: 100, pos: { x: 10, z: 20 }, speed: 0 },
@@ -242,7 +250,7 @@ test('shared Ceres autopilot wait consumes the CSP poller direct terminal receip
   const cspPatchedPage = {
     async waitForFunction() {
       calls += 1;
-      return calls === 1 ? true : structuredClone(terminal);
+      return calls === 1 ? structuredClone(armed) : structuredClone(terminal);
     },
   };
 
@@ -250,6 +258,124 @@ test('shared Ceres autopilot wait consumes the CSP poller direct terminal receip
 
   assert.equal(calls, 2);
   assert.deepEqual(arrival, terminal);
+});
+
+test('shared Ceres autopilot wait rejects the exact fixed-tick leg boundary', async () => {
+  const target = PQ020_ROUTE_TARGETS.cathedral;
+  const deadlineTick = 240;
+  const player = {
+    id: 1,
+    alive: true,
+    hull: 100,
+    pos: { x: -9_200, z: 7_200 },
+    vel: { x: 0, z: 0 },
+  };
+  const state = {
+    tick: deadlineTick - 1,
+    playerId: player.id,
+    entities: new Map([[player.id, player]]),
+    world: { currentSectorId: 'sector_ceres_belt', currentZone: null },
+    nav: {
+      autopilot: {
+        active: true,
+        label: target.name,
+        status: 'boosting',
+        distance: 1_400,
+        arrivalRadius: 48,
+      },
+    },
+  };
+  const priorWindow = globalThis.window;
+  globalThis.window = { SF: { state } };
+  let calls = 0;
+  const cspPatchedPage = {
+    async waitForFunction(predicate, argument) {
+      calls += 1;
+      if (calls === 2) state.tick = deadlineTick;
+      return predicate(argument);
+    },
+  };
+
+  try {
+    await assert.rejects(
+      pq020FunctionalRouteDrivers.waitForAutopilotArrival(cspPatchedPage, target, {
+        deadlineTick,
+      }),
+      /Wreck Cathedral autopilot ended as route-deadline at tick 240/,
+    );
+  } finally {
+    if (priorWindow === undefined) delete globalThis.window;
+    else globalThis.window = priorWindow;
+  }
+  assert.equal(calls, 2);
+});
+
+test('shared Ceres route waits reject nonfinite player motion instead of sanitizing it to settled', async () => {
+  const target = PQ020_ROUTE_TARGETS.cathedral;
+  const player = {
+    id: 1,
+    alive: true,
+    hull: 100,
+    pos: { x: -9_200, z: 7_200 },
+    vel: { x: Number.NaN, z: 0 },
+  };
+  const state = {
+    tick: 100,
+    playerId: player.id,
+    entities: new Map([[player.id, player]]),
+    world: { currentSectorId: 'sector_ceres_belt', currentZone: null },
+    nav: {
+      autopilot: {
+        active: true,
+        label: target.name,
+        status: 'boosting',
+        distance: 1_400,
+        arrivalRadius: 48,
+      },
+    },
+  };
+  const priorWindow = globalThis.window;
+  globalThis.window = { SF: { state } };
+  const page = {
+    async waitForFunction(predicate, argument) {
+      return predicate(argument);
+    },
+  };
+
+  try {
+    await assert.rejects(
+      pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, target, { deadlineTick: 240 }),
+      /Wreck Cathedral autopilot ended as invalid-player-motion at tick 100/,
+    );
+    await assert.rejects(
+      pq020FunctionalRouteDrivers.waitForShipSettled(page, { deadlineTick: 240 }),
+      /ship settle ended as invalid-player-motion at tick 100/,
+    );
+
+    for (const invalidVelocity of [null, '0']) {
+      player.vel.x = invalidVelocity;
+      await assert.rejects(
+        pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, target, { deadlineTick: 240 }),
+        /Wreck Cathedral autopilot ended as invalid-player-motion at tick 100/,
+      );
+      await assert.rejects(
+        pq020FunctionalRouteDrivers.waitForShipSettled(page, { deadlineTick: 240 }),
+        /ship settle ended as invalid-player-motion at tick 100/,
+      );
+    }
+
+    player.vel.x = 0;
+    for (const invalidPosition of [null, '-9200']) {
+      player.pos.x = invalidPosition;
+      await assert.rejects(
+        pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, target, { deadlineTick: 240 }),
+        /Wreck Cathedral autopilot ended as invalid-player-motion at tick 100/,
+      );
+    }
+  } finally {
+    if (priorWindow === undefined) delete globalThis.window;
+    else globalThis.window = priorWindow;
+  }
 });
 
 test('durable identity joins extraction before Continue to arrival after rematerialization', () => {
@@ -554,7 +680,7 @@ function validFixture() {
     continueProof: {
       pass: true,
       source: 'public-save-continue',
-      publicPath: ['F5', 'reload', 'main_menu', 'continue'],
+      publicPath: ['F5', 'pause', 'reload', 'main_menu', 'continue'],
       savedAtTick: 20,
       loadedAtTick: 21,
       actorRecordsBefore: [structuredClone(actorRecord)],

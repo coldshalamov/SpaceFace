@@ -753,7 +753,7 @@ function validateContinueBoundary(
   failures,
 ) {
   if (!receipt || receipt.pass !== true || receipt.source !== 'public-save-continue'
-      || stableJson(receipt.publicPath) !== stableJson(['F5', 'reload', 'main_menu', 'continue'])
+      || stableJson(receipt.publicPath) !== stableJson(['F5', 'pause', 'reload', 'main_menu', 'continue'])
       || !Number.isSafeInteger(receipt.savedAtTick)
       || !Number.isSafeInteger(receipt.loadedAtTick)
       || receipt.loadedAtTick < receipt.savedAtTick) {

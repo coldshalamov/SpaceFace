@@ -138,10 +138,20 @@ test('paired runtimes share exact route, source, scenario, regression, productio
     command.includes('test/npc-jobs-runtime-spatial-query.test.mjs')
   )), 'the current Ceres NPC route regression must run before broker authority');
   const propulsionAuthorityGate = 'node --test test/propulsion-spawned-ship-authority.test.mjs';
+  const worldSiteMapGate = 'node --test test/world-site-map-traffic.test.mjs';
+  const autopilotGate = 'node scripts/check-autopilot-v3.mjs';
   for (const manifest of pairedManifests) {
     assert.ok(
       manifest.fastGateCommands.includes(propulsionAuthorityGate),
       `${manifest.id} must run propulsion spawned-ship authority before broker authority`,
+    );
+    assert.ok(
+      manifest.fastGateCommands.includes(worldSiteMapGate),
+      `${manifest.id} must run the world-site map course contract before broker authority`,
+    );
+    assert.ok(
+      manifest.fastGateCommands.includes(autopilotGate),
+      `${manifest.id} must run the production Cathedral course proof before broker authority`,
     );
   }
 
@@ -157,21 +167,27 @@ test('paired runtimes share exact route, source, scenario, regression, productio
     'src/data/ships.js',
     'src/data/weapons.js',
     'src/data/modules.js',
+    'src/data/worldSiteManifests.js',
     'src/render/camera.js',
     'src/render/renderer.js',
     'src/runtime/nodeSystemFactoryTable.js',
     'src/systems/asteroidFormations.js',
+    'src/systems/asteroidSites.js',
     'src/systems/factionPresence.js',
     'src/systems/traffic.js',
     'src/systems/npcJobsRuntime.js',
     'src/systems/encounterDirector.js',
     'src/systems/encounterScripts.js',
+    'src/systems/worldSiteKernel.js',
+    'src/ui/galaxyMap.js',
     'src/ui/screens/mainMenu.js',
     'src/ui/screens/sandbox.js',
     'src/ui/sandbox/sandboxSetup.js',
+    'src/ui/worldSiteMapLayer.js',
   ]) assert.ok(browserManifest.productionSourcePaths.includes(productionPath), productionPath);
 
   for (const regressionPath of [
+    'scripts/check-autopilot-v3.mjs',
     'test/ceres-five-minute-acceptance.test.mjs',
     'test/ceres-five-minute-manifests.test.mjs',
     'test/ceres-active-pockets.test.mjs',
@@ -185,6 +201,7 @@ test('paired runtimes share exact route, source, scenario, regression, productio
     'test/propulsion-spawned-ship-authority.test.mjs',
     'test/pq020-ceres-topology.test.mjs',
     'test/pq020-ceres-proofs.test.mjs',
+    'test/world-site-map-traffic.test.mjs',
   ]) assert.ok(browserManifest.regressionSourcePaths.includes(regressionPath), regressionPath);
 
   for (const harnessPath of [

@@ -44,6 +44,8 @@ export const CERES_FIVE_MINUTE_SOURCE_IDENTITY = Object.freeze({
 
 const COMMON_FAST_GATES = Object.freeze([
   'node --test test/propulsion-spawned-ship-authority.test.mjs',
+  'node --test test/world-site-map-traffic.test.mjs',
+  'node scripts/check-autopilot-v3.mjs',
   'node --test test/ceres-five-minute-acceptance.test.mjs test/ceres-five-minute-manifests.test.mjs',
   'node --test test/ceres-active-pockets.test.mjs test/sandbox-recovery-launcher.test.mjs test/ceres-activity-traffic-cast.test.mjs test/ceres-activity-faction-tender.test.mjs test/ceres-activity-ambush-director.test.mjs test/npc-jobs-runtime-spatial-query.test.mjs test/npc-jobs-runtime-wiring.test.mjs test/ceres-activity-runtime-lifecycle.test.mjs',
   'npm run check:pq020:ceres-topology',
@@ -56,6 +58,7 @@ const SCENARIO_PATHS = Object.freeze([
 ]);
 
 const REGRESSION_PATHS = Object.freeze([
+  'scripts/check-autopilot-v3.mjs',
   'test/ceres-five-minute-acceptance.test.mjs',
   'test/ceres-five-minute-manifests.test.mjs',
   'test/ceres-active-pockets.test.mjs',
@@ -69,6 +72,7 @@ const REGRESSION_PATHS = Object.freeze([
   'test/propulsion-spawned-ship-authority.test.mjs',
   'test/pq020-ceres-topology.test.mjs',
   'test/pq020-ceres-proofs.test.mjs',
+  'test/world-site-map-traffic.test.mjs',
 ]);
 
 const PRODUCTION_PATHS = Object.freeze([
@@ -89,10 +93,12 @@ const PRODUCTION_PATHS = Object.freeze([
   'src/data/sectorZones.js',
   'src/data/ships.js',
   'src/data/weapons.js',
+  'src/data/worldSiteManifests.js',
   'src/render/camera.js',
   'src/render/renderer.js',
   'src/runtime/nodeSystemFactoryTable.js',
   'src/systems/asteroidFormations.js',
+  'src/systems/asteroidSites.js',
   'src/systems/encounterDirector.js',
   'src/systems/encounterScripts.js',
   'src/systems/factionPresence.js',
@@ -102,12 +108,15 @@ const PRODUCTION_PATHS = Object.freeze([
   'src/systems/ships.js',
   'src/systems/traffic.js',
   'src/systems/world.js',
+  'src/systems/worldSiteKernel.js',
+  'src/ui/galaxyMap.js',
   'src/ui/hud.js',
   'src/ui/input.js',
   'src/ui/screenManager.js',
   'src/ui/screens/mainMenu.js',
   'src/ui/screens/sandbox.js',
   'src/ui/sandbox/sandboxSetup.js',
+  'src/ui/worldSiteMapLayer.js',
 ]);
 
 const HARNESS_PATHS = Object.freeze([
