@@ -66,7 +66,7 @@ import {
 } from './stationSideEventVfx.js';
 import {
   createNpcJobSignatureFrameScratch,
-  resolveNpcJobSignature,
+  resolveNpcJobSignaturePreferCue,
   writeNpcJobSignatureFrame,
   NPC_JOB_SIGNATURE_CAPACITY,
   NPC_JOB_SIGNATURE_DRAW_RANGE,
@@ -4749,10 +4749,13 @@ export const vfx = {
         if (dx * dx + dz * dz > drawRange2) continue;
       }
 
-      const profile = resolveNpcJobSignature(
+      // D3: prefer entity.data.ceresCausalCue when present; fall back to job phase.
+      // Same profile table, same 12-slot pool — no new profiles or pool growth.
+      const profile = resolveNpcJobSignaturePreferCue(
         entry.kind,
         job.phase,
         this._npcJobLoaded(entry.kind, job.phase),
+        ent.data && ent.data.ceresCausalCue,
       );
       if (!profile) continue;
 

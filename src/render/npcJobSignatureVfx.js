@@ -361,6 +361,18 @@ export function resolveNpcJobSignature(kind, phase, loaded) {
   return BY_PHASE[phase] || null;
 }
 
+/**
+ * D3 adapter: prefer a Ceres causal-chain cue id (entity.data.ceresCausalCue) when it names a
+ * known profile; otherwise fall back to ordinary job-phase resolution. No new profiles.
+ */
+export function resolveNpcJobSignaturePreferCue(kind, phase, loaded, cue) {
+  if (typeof cue === 'string' && cue.length > 0) {
+    const fromCue = NPC_JOB_SIGNATURE_PROFILES[cue];
+    if (fromCue) return fromCue;
+  }
+  return resolveNpcJobSignature(kind, phase, loaded);
+}
+
 // ─── Deploy / stow ────────────────────────────────────────────────────────────────────────────────
 // Working gear is not permanently out. A barge's magnet arms, a surveyor's pin boom, a salvor's
 // umbrellas and a tender's plate racks all swing out to work and fold back to fly — that motion is
