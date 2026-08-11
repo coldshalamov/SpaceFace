@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-11
-baseCommit: 1a578b1d8daa8a26dbbd49008045213db0529170
+baseCommit: e3dfd6cdf99cf2ff3fb9cf79d74a959133c9aa4b
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 page-condition value compatibility | `/root` | PUBLISHING | `scripts/lib/playwrightCspPolling.mjs`; `scripts/lib/rawCdpLifecycleBrowser.mjs`; `scripts/lib/pq020CeresFunctionalRoute.mjs`; `scripts/validation-manifests/pq020-ceres-topology.mjs`; `test/playwright-csp-polling.test.mjs`; `test/performance-lifecycle-contracts.test.mjs`; `test/pq020-ceres-topology-manifest.test.mjs`; `test/pq048-ore-cycle-acceptance.test.mjs` | Publish the backend-neutral page-condition consumer |
 
 ## Uncommitted work without a confirmed live thread
 
