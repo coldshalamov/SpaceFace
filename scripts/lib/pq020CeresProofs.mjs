@@ -845,6 +845,14 @@ export function buildExactAgreementReport() {
 
     // ── Cathedral reservation: PQ-018 owned; consumed exactly, never relocated ──
     const cathedralPoint = model.points.find((point) => point.id === PQ020_CATHEDRAL_SITE_ID);
+    const cathedralCourse = cathedralPoint ? resolveCourseTarget(cathedralPoint) : null;
+    const cathedralCourseAnnotation = cathedralManifest.mapAnnotation || {};
+    const expectedCathedralCourseIntent = {
+      type: 'poi',
+      reason: cathedralCourseAnnotation.courseLabel,
+      waypointKind: 'local',
+      autopilot: true,
+    };
     const cathedralRoot = physicalByPlaceId.get(`${cathedralManifest.worldObjectId}/root`);
     rows.push(agreementRow({
       id: 'cathedral',
@@ -853,7 +861,14 @@ export function buildExactAgreementReport() {
       atlasGlobal: atlasNodes.get(PQ020_CATHEDRAL_SITE_ID)?.globalPos,
       mapPointGlobal: cathedralPoint ? { x: cathedralPoint.x, z: cathedralPoint.z } : null,
       mapDrawLocal: cathedralPoint?.drawPos,
-      courseGlobal: cathedralPoint ? resolveCourseTarget(cathedralPoint)?.pos : null,
+      courseGlobal: cathedralCourse?.pos,
+      expectedCourseGlobal: cathedralCourseAnnotation.coursePos,
+      courseLabel: cathedralCourse?.label,
+      expectedCourseLabel: cathedralCourseAnnotation.courseLabel,
+      courseArrivalRadius: cathedralCourse?.arrivalRadius,
+      expectedCourseArrivalRadius: cathedralCourseAnnotation.courseArrivalRadius,
+      courseIntent: projectCourseIntent(cathedralCourse),
+      expectedCourseIntent: expectedCathedralCourseIntent,
       physicalGlobal: cathedralRoot?.pos || cathedralManifest.placement.pos,
       manifestGlobal: cathedralManifest.placement.pos,
       required: [
@@ -881,11 +896,18 @@ export function buildExactAgreementReport() {
 
 function agreementRow({
   id, sourceId, authoredLocal, atlasGlobal = null, mapPointGlobal = null, mapDrawLocal = null,
-  courseGlobal = null, physicalGlobal = null, manifestGlobal = null, mapZoneLocal = null,
+  courseGlobal = null, expectedCourseGlobal = undefined,
+  courseLabel = null, expectedCourseLabel = null,
+  courseArrivalRadius = null, expectedCourseArrivalRadius = null,
+  courseIntent = null, expectedCourseIntent = null,
+  physicalGlobal = null, manifestGlobal = null, mapZoneLocal = null,
   mapZoneRadius = null, authoredRadius = null, absent = null, required = [],
 }) {
   const local = roundPoint(authoredLocal);
   const expectedGlobal = local ? roundPoint(sectorLocalToGlobalForSector(local, PQ020_SECTOR_ID)) : null;
+  const resolvedExpectedCourseGlobal = expectedCourseGlobal === undefined
+    ? expectedGlobal
+    : roundPoint(expectedCourseGlobal);
   const mismatches = [];
   // FAIL-CLOSED. A consumer this row declares `required` must be present AND equal. Without this,
   // a consumer that silently returned null would make the row pass vacuously — the exact shape of
@@ -905,7 +927,7 @@ function agreementRow({
   // GLOBAL-frame consumers.
   compare('atlasGlobal', atlasGlobal, expectedGlobal);
   compare('mapPointGlobal', mapPointGlobal, expectedGlobal);
-  compare('courseGlobal', courseGlobal, expectedGlobal);
+  compare('courseTarget', courseGlobal, resolvedExpectedCourseGlobal);
   compare('physicalGlobal', physicalGlobal, expectedGlobal);
   compare('manifestGlobal', manifestGlobal, expectedGlobal);
   // SECTOR-LOCAL-frame consumers.
@@ -913,6 +935,19 @@ function agreementRow({
   compare('mapZoneLocal', mapZoneLocal, local);
   if (mapZoneRadius != null && authoredRadius != null && mapZoneRadius !== authoredRadius) {
     mismatches.push(`mapZoneRadius:${mapZoneRadius}!=${authoredRadius}`);
+  }
+  if (expectedCourseLabel != null && courseLabel !== expectedCourseLabel) {
+    mismatches.push(`courseLabel:${stableStringify(courseLabel)}!=${stableStringify(expectedCourseLabel)}`);
+  }
+  if (expectedCourseArrivalRadius != null
+      && courseArrivalRadius !== expectedCourseArrivalRadius) {
+    mismatches.push(`courseRadius:${courseArrivalRadius}!=${expectedCourseArrivalRadius}`);
+  }
+  if (expectedCourseIntent != null
+      && stableStringify(courseIntent) !== stableStringify(expectedCourseIntent)) {
+    mismatches.push(
+      `courseIntent:${stableStringify(courseIntent)}!=${stableStringify(expectedCourseIntent)}`,
+    );
   }
   return {
     id,
@@ -923,6 +958,15 @@ function agreementRow({
     mapPointGlobal: roundPoint(mapPointGlobal),
     mapDrawLocal: roundPoint(mapDrawLocal),
     courseGlobal: roundPoint(courseGlobal),
+    expectedCourseGlobal: required.includes('courseGlobal') || courseGlobal != null
+      ? resolvedExpectedCourseGlobal
+      : null,
+    courseLabel,
+    expectedCourseLabel,
+    courseArrivalRadius,
+    expectedCourseArrivalRadius,
+    courseIntent,
+    expectedCourseIntent,
     physicalGlobal: roundPoint(physicalGlobal),
     manifestGlobal: roundPoint(manifestGlobal),
     mapZoneLocal: roundPoint(mapZoneLocal),
@@ -933,6 +977,16 @@ function agreementRow({
     missing,
     mismatches,
     agrees: mismatches.length === 0,
+  };
+}
+
+function projectCourseIntent(course) {
+  if (!course) return null;
+  return {
+    type: course.type || null,
+    reason: course.reason || null,
+    waypointKind: course.waypointKind || null,
+    autopilot: course.autopilot === true,
   };
 }
 

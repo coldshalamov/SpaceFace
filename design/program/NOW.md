@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore-cycle candidate closure | /root | VALIDATING | `src/data/worldSiteManifests.js`, `scripts/check-autopilot-v3.mjs`, `scripts/lib/pq020CeresFunctionalRoute.mjs`, `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `scripts/lib/pq048OreCycleAcceptance.mjs`, `scripts/validation-manifests/ceres-five-minute-browser.mjs`, `scripts/validation-manifests/pq048-ore-cycle-browser.mjs`, `test/world-site-map-traffic.test.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `test/ceres-five-minute-manifests.test.mjs`, `test/pq048-ore-cycle-acceptance.test.mjs`, `design/program/NOW.md` | Combined headless gate and independent handoff/course/impact reviews are green; publish this exact atomic candidate, then make exactly one broker Browser attempt |
+| PQ-048.01 ore-cycle candidate closure | /root | VALIDATING | `scripts/lib/pq020CeresProofs.mjs`, `scripts/lib/pq020CeresTopology.mjs`, `test/pq020-ceres-topology.test.mjs`, `design/program/NOW.md` | Safe-course topology proof is green and under final review; publish this exact repair, then make exactly one broker Browser attempt |
 
 ## Uncommitted work without a confirmed live thread
 

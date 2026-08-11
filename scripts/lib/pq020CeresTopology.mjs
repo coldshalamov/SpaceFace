@@ -1024,6 +1024,7 @@ function validateContinuationProofs(snapshot, failures) {
       if (row.missing?.length) failures.push(`exactAgreement:${row.id}:missing:${row.missing.join(',')}`);
       if (row.mismatches?.length) failures.push(`exactAgreement:${row.id}:${row.mismatches.join(',')}`);
     }
+    validateCathedralAgreementRow(failures, agreement.rows);
   }
 
   // ── routing honesty: the itinerary is gated, the generic verdict is only RECORDED ──
@@ -1274,6 +1275,53 @@ function exact(failures, label, actual, expected) {
 function exactPoint(failures, label, actual, expected) {
   if (!samePoint(actual, expected)) {
     failures.push(`${label}:${stableStringify(actual || null)}!=${stableStringify(expected)}`);
+  }
+}
+
+function validateCathedralAgreementRow(failures, rows) {
+  const row = Array.isArray(rows)
+    ? rows.find((candidate) => candidate?.id === 'cathedral')
+    : null;
+  if (!row) return;
+  const cathedralManifest = worldSiteManifestById(PQ020_CATHEDRAL_SITE_ID);
+  const label = 'exactAgreement:cathedral';
+  const canonicalGlobal = roundPoint(cathedralManifest?.placement?.pos);
+  const canonicalLocal = canonicalGlobal
+    ? roundPoint(globalToSectorLocalForSector(canonicalGlobal, PQ020_CERES_SECTOR_ID))
+    : null;
+  exact(failures, `${label}:sourceId`, row.sourceId, PQ020_CATHEDRAL_SITE_ID);
+  exactPoint(failures, `${label}:authoredLocal`, row.authoredLocal, canonicalLocal);
+  exactPoint(failures, `${label}:expectedGlobal`, row.expectedGlobal, canonicalGlobal);
+  for (const field of ['atlasGlobal', 'mapPointGlobal', 'physicalGlobal', 'manifestGlobal']) {
+    exactPoint(failures, `${label}:${field}`, row[field], canonicalGlobal);
+  }
+  exactPoint(failures, `${label}:mapDrawLocal`, row.mapDrawLocal, canonicalLocal);
+  exact(failures, `${label}:agrees`, row.agrees, true);
+
+  const annotation = cathedralManifest?.mapAnnotation || {};
+  const courseTarget = roundPoint(annotation.coursePos);
+  exactPoint(failures, `${label}:courseTarget`, row.courseGlobal, courseTarget);
+  exactPoint(failures, `${label}:expectedCourseTarget`, row.expectedCourseGlobal, courseTarget);
+  exact(failures, `${label}:courseLabel`, row.courseLabel, annotation.courseLabel);
+  exact(failures, `${label}:expectedCourseLabel`, row.expectedCourseLabel, annotation.courseLabel);
+  exact(failures, `${label}:courseRadius`, row.courseArrivalRadius, annotation.courseArrivalRadius);
+  exact(
+    failures,
+    `${label}:expectedCourseRadius`,
+    row.expectedCourseArrivalRadius,
+    annotation.courseArrivalRadius,
+  );
+  const courseIntent = {
+    type: 'poi',
+    reason: annotation.courseLabel,
+    waypointKind: 'local',
+    autopilot: true,
+  };
+  if (stableStringify(row.courseIntent) !== stableStringify(courseIntent)) {
+    failures.push(`${label}:courseIntent`);
+  }
+  if (stableStringify(row.expectedCourseIntent) !== stableStringify(courseIntent)) {
+    failures.push(`${label}:expectedCourseIntent`);
   }
 }
 

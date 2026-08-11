@@ -317,6 +317,35 @@ test('PQ-020 validator fails closed on continuation-proof drift', async () => {
   missingConsumer.exactAgreement.allAgree = false;
   assert.equal(validatePq020CeresTopologySnapshot(missingConsumer).pass, false);
 
+  // Cathedral navigation deliberately targets the manifest-authored safe course rather than the
+  // wreck centre. The validator must recompute that binding instead of trusting the row's cached
+  // mismatch metadata.
+  const baselineCathedralRow = snapshot.exactAgreement.rows
+    .find((row) => row.id === 'cathedral');
+  assert.notDeepEqual(baselineCathedralRow.courseGlobal, baselineCathedralRow.expectedGlobal);
+  assert.deepEqual(baselineCathedralRow.courseGlobal, baselineCathedralRow.expectedCourseGlobal);
+  assert.equal(baselineCathedralRow.courseLabel, 'Wreck Cathedral');
+  assert.equal(baselineCathedralRow.courseArrivalRadius, 48);
+  assert.deepEqual(baselineCathedralRow.courseIntent, {
+    type: 'poi', reason: 'Wreck Cathedral', waypointKind: 'local', autopilot: true,
+  });
+  for (const [label, failureLabel, mutate] of [
+    ['target', 'courseTarget', (row) => { row.courseGlobal.x += 1; }],
+    ['label', 'courseLabel', (row) => { row.courseLabel = 'Unsafe Cathedral centre'; }],
+    ['radius', 'courseRadius', (row) => { row.courseArrivalRadius += 1; }],
+    ['intent', 'courseIntent', (row) => { row.courseIntent.autopilot = false; }],
+  ]) {
+    const courseDrift = structuredClone(snapshot);
+    const cathedralRow = courseDrift.exactAgreement.rows
+      .find((row) => row.id === 'cathedral');
+    mutate(cathedralRow);
+    const courseDriftReceipt = validatePq020CeresTopologySnapshot(courseDrift);
+    assert.equal(courseDriftReceipt.pass, false, `Cathedral course ${label} drift must fail`);
+    assert.ok(courseDriftReceipt.failures.some((failure) => (
+      failure.startsWith(`exactAgreement:cathedral:${failureLabel}`)
+    )), `Cathedral course ${label} drift must identify the recomputed binding`);
+  }
+
   // An itinerary waypoint drifting off its authored anchor must fail.
   const itineraryDrift = structuredClone(snapshot);
   itineraryDrift.routing.throughCeresItinerary.allWaypointsMatchAuthored = false;
