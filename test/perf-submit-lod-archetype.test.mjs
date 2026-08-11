@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  authoredPreloadPlanForEntity,
+  authoredPreloadPlanForEntityAtLod,
+  authoredPrewarmRequestsForEntities,
+  runMaterialSharingContractProbe,
+  spawnableShipArchetypePrewarmUrls,
+  wholeShipLodFileForEntity,
+} from '../src/render/partsLibrary.js';
+import * as THREE from 'three';
+
+test('tintable hull variants with different base albedo still share after palette keying', () => {
+  const probe = runMaterialSharingContractProbe(THREE);
+  assert.equal(probe.hullShareMerged, true);
+  assert.equal(probe.hullProgramFamilyShared, true);
+});
+
+test('wasp LOD family selects distinct files without expanding cold-start plan', () => {
+  const entity = { type: 'ship', data: { defId: 'ship_wasp' } };
+  const cold = authoredPreloadPlanForEntity(entity, { requiredWholeShip: true });
+  assert.deepEqual(cold.hull, ['wholeships/wasp_production_v1.glb']);
+  assert.equal(
+    wholeShipLodFileForEntity(entity, 'lod1', { requiredWholeShip: true }),
+    'wholeships/wasp_production_v1_lod1.glb',
+  );
+  assert.equal(
+    wholeShipLodFileForEntity(entity, 'lod2', { requiredWholeShip: true }),
+    'wholeships/wasp_production_v1_lod2.glb',
+  );
+  assert.deepEqual(
+    authoredPreloadPlanForEntityAtLod(entity, 'lod1', { requiredWholeShip: true }).hull,
+    ['wholeships/wasp_production_v1_lod1.glb'],
+  );
+});
+
+test('sector prewarm requests include spawnable hostile and traffic archetype hulls', () => {
+  const urls = spawnableShipArchetypePrewarmUrls();
+  assert.ok(urls.includes('wholeships/ashline_dart.glb'));
+  assert.ok(urls.includes('wholeships/helios_lark.glb'));
+  assert.ok(urls.includes('wholeships/wasp_production_v1.glb'));
+
+  const requests = authoredPrewarmRequestsForEntities([], { sectorId: 'test' });
+  const hullUrls = requests.filter((r) => r.slot === 'hull').map((r) => r.url);
+  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/ashline_dart.glb')));
+  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span.glb')));
+});

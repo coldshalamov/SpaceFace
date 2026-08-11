@@ -744,6 +744,19 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
   const requests = [];
   const seen = new Set();
 
+  const pushPlan = (plan) => {
+    for (const [slot, files] of Object.entries(plan || {})) {
+      for (const file of files || []) {
+        if (!file) continue;
+        const url = `${partRoot}${file}`;
+        const key = `${url}::${slot}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        requests.push(Object.freeze({ url, slot }));
+      }
+    }
+  };
+
   for (const entity of entities || []) {
     if (!entity || entity.alive === false) continue;
     if (!includePlayer && (entity.isPlayer === true || (playerId && String(entity.id) === playerId))) continue;
@@ -766,17 +779,13 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       const placeFile = placeFileForEntity(entity);
       if (placeFile) plan = { place: [placeFile] };
     }
+    pushPlan(plan);
+  }
 
-    for (const [slot, files] of Object.entries(plan)) {
-      for (const file of files || []) {
-        if (!file) continue;
-        const url = `${partRoot}${file}`;
-        const key = `${url}::${slot}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        requests.push(Object.freeze({ url, slot }));
-      }
-    }
+  // Always retain combat/traffic archetype GLBs for the sector so mid-fight spawns can admit
+  // without a cold decode hitch (composition still uses the prepared/defer path).
+  if (options.includeSpawnableArchetypes !== false) {
+    pushPlan({ hull: [...spawnableShipArchetypePrewarmUrls()] });
   }
 
   requests.sort((a, b) => a.url.localeCompare(b.url) || a.slot.localeCompare(b.slot));
@@ -987,13 +996,40 @@ export function wholeShipVisualForEntity(entity, options = {}) {
   }) : null;
 }
 
+/** LOD0 stays the cold-start admit file. LOD1/2 are selected on demotion only. */
+export function wholeShipLodFileForEntity(entity, level, options = {}) {
+  const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
+  if (!selection) return null;
+  const family = selection.lodFamily;
+  if (!family) return selection.file;
+  const key = level === 'lod1' || level === 'lod2' ? level : 'lod0';
+  return family[key] || family.lod0 || selection.file;
+}
+
+export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
+  if (!entity || entity.type !== 'ship') return {};
+  const file = wholeShipLodFileForEntity(entity, level, options);
+  if (file) return { hull: [file] };
+  return authoredPreloadPlanForEntity(entity, options);
+}
+
+/** Spawnable combat/traffic presentation keys for sector asset prewarm (not only live entities). */
+export function spawnableShipArchetypePrewarmUrls() {
+  return Object.freeze([
+    ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
+    ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
+    WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
+  ]);
+}
+
 /** Pure contract hook used by runtime composition and missing/corrupt fixture checks. */
 export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
   const selection = wholeShipVisualForEntity(entity, options);
   if (!selection) return null;
-  const wholeShipFile = selection.file;
+  const wholeShipFile = options.forceWholeShipFile || selection.file;
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
-  const expectedAssetId = selection.assetId;
+  // Forced LOD siblings may not share the LOD0 assetId; match on file path only then.
+  const expectedAssetId = options.forceWholeShipFile ? null : selection.assetId;
   const record = (records || []).find((candidate) => (
     String(candidate && candidate.url || '').endsWith(wholeShipFile)
       && (!expectedAssetId || candidate.assetId === expectedAssetId)
@@ -2761,6 +2797,7 @@ export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRun
     role === 'sector-prewarm'
     || role === 'sector-prepared-boundary'
     || role === 'sector-prepared-live-boundary'
+    || role === 'whole-ship-lod-family'
   ) {
     return true;
   }
@@ -3408,6 +3445,13 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
         swapped = await commitAuthoredBoundary(
           boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
         );
+        if (swapped) {
+          installWholeShipLodFamilyController(boundary, entity, setActive, {
+            ...options,
+            renderer,
+            scene,
+          });
+        }
       } finally {
         recordAdmissionSlice(commitStartedAtMs);
         const tier1 = tier1CausalCounters();
@@ -3550,6 +3594,100 @@ function installPreparedBoundaryPublisher(boundary, publish) {
     delete boundary.userData.__publishPreparedAuthoredBoundary;
     return true;
   };
+}
+
+/**
+ * Pilot: ship_wasp separate-file LOD family. LOD0 remains the admitted root; demotion lazily
+ * composes LOD1/LOD2 behind the whole-ship-lod-family residency role and swaps without blanking.
+ */
+function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {
+  if (!boundary || !entity || entity.isPlayer === true) return false;
+  const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
+  const family = selection && selection.lodFamily;
+  if (!family || selection.roleId !== 'ship_wasp') return false;
+  if (boundary.userData.wholeShipLodFamilyInstalled) return false;
+
+  const roots = Object.create(null);
+  let activeLevel = 'lod0';
+  let pendingLevel = null;
+  const findActiveRoot = () => {
+    for (const child of boundary.children || []) {
+      if (child && child.visible !== false && child.userData && child.userData.authoredVisualRoot !== 'procedural-fallback') {
+        return child;
+      }
+    }
+    return boundary.children && boundary.children[0] || null;
+  };
+  roots.lod0 = findActiveRoot();
+  if (!roots.lod0) return false;
+
+  const baseUpdate = boundary.userData.updateLod;
+  boundary.userData.wholeShipLodFamily = family;
+  boundary.userData.wholeShipLodFamilyInstalled = true;
+  boundary.userData.wholeShipLodActiveLevel = 'lod0';
+
+  const swapTo = (level) => {
+    const next = roots[level];
+    if (!next) return false;
+    const prev = roots[activeLevel];
+    if (prev && prev !== next) {
+      prev.visible = false;
+      if (prev.parent === boundary) boundary.remove(prev);
+    }
+    next.visible = true;
+    if (next.parent !== boundary) boundary.add(next);
+    if (typeof setActive === 'function') setActive(next);
+    activeLevel = level;
+    boundary.userData.wholeShipLodActiveLevel = level;
+    return true;
+  };
+
+  boundary.userData.updateLod = (level) => {
+    const requested = normalizeRequestedLod(level);
+    if (typeof baseUpdate === 'function') baseUpdate(requested);
+    if (requested === activeLevel) return;
+    if (roots[requested]) {
+      swapTo(requested);
+      return;
+    }
+    if (pendingLevel === requested) return;
+    const renderer = options.renderer;
+    const scene = options.scene || (boundary.parent);
+    if (!renderer || !scene) return;
+    pendingLevel = requested;
+    const file = family[requested];
+    if (!file) {
+      pendingLevel = null;
+      return;
+    }
+    void (async () => {
+      try {
+        const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
+          ...options,
+          requiredWholeShip: true,
+          forceWholeShipFile: file,
+          bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
+          residencyRole: 'whole-ship-lod-family',
+        });
+        if (pendingLevel !== requested || !boundary.parent) return;
+        const composed = buildComposedShip(entity, library, scene, boundary, {
+          ...options,
+          requiredWholeShip: true,
+          forceWholeShipFile: file,
+          residencyRole: 'whole-ship-lod-family',
+        });
+        if (!composed || !composed.root) return;
+        composed.root.visible = false;
+        roots[requested] = composed.root;
+        if (pendingLevel === requested) swapTo(requested);
+      } catch (error) {
+        console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error);
+      } finally {
+        if (pendingLevel === requested) pendingLevel = null;
+      }
+    })();
+  };
+  return true;
 }
 
 async function commitAuthoredBoundary(
@@ -7106,6 +7244,10 @@ function canonicalizeMaplessHullMaterials(root, palette) {
 
 function materialShareSignature(material, tags = {}) {
   if (!material || usesFineMaterialShareSignature(tags, material)) return materialBatchSignature(material);
+  const role = authoredSurfaceTintRole(tags, material);
+  // Palette tint is applied after sharing and lives in the instance key (`role|tint|...`).
+  // Including authored base color here splits fleets that share maps but differ by tiny albedo.
+  const tintable = role === 'hull' || role === 'accent' || role === 'dark' || role === 'thruster';
   const emissiveHex = colorSig(material.emissive);
   return [
     material.type || 'Material',
@@ -7116,7 +7258,7 @@ function materialShareSignature(material, tags = {}) {
     material.vertexColors ? 1 : 0,
     fixedSig(material.alphaTest, 2),
     fixedSig(material.opacity, 2),
-    colorSig(material.color),
+    tintable ? `color:tintable:${role}` : colorSig(material.color),
     fixedSig(material.roughness, 2),
     fixedSig(material.metalness, 2),
     emissiveHex,

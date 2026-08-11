@@ -16,7 +16,7 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
-import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
@@ -2895,7 +2895,57 @@ function buildWreck(e) {
   g.userData.kind = 'wreck';
   g.userData.interactionKind = identity.kind;
   g.userData.visualLanguage = identity.hazardous ? 'mechanical-reactor-hazard' : 'mechanical-wreckage';
+  consolidateWreckDrawCalls(g);
   return g;
+}
+
+/**
+ * Same look, fewer draws: bake per-piece transforms and merge meshes that already share one
+ * material. Hot reactor cores stay discrete so emissive read and future VFX hooks survive.
+ */
+function consolidateWreckDrawCalls(group) {
+  if (!group || !group.children || group.children.length < 2) return;
+  const byMaterial = new Map();
+  const retained = [];
+  for (const child of [...group.children]) {
+    if (!child || !child.isMesh || !child.material) {
+      retained.push(child);
+      continue;
+    }
+    if ((Number(child.material.emissiveIntensity) || 0) > 0.5) {
+      retained.push(child);
+      continue;
+    }
+    const list = byMaterial.get(child.material) || [];
+    list.push(child);
+    byMaterial.set(child.material, list);
+  }
+  while (group.children.length) group.remove(group.children[0]);
+  for (const child of retained) group.add(child);
+  for (const [material, meshes] of byMaterial) {
+    if (meshes.length === 1) {
+      group.add(meshes[0]);
+      continue;
+    }
+    const geos = [];
+    for (const mesh of meshes) {
+      mesh.updateMatrix();
+      const cloned = mesh.geometry.clone();
+      cloned.applyMatrix4(mesh.matrix);
+      geos.push(cloned);
+    }
+    const merged = mergeGeometries(geos, false);
+    for (const geo of geos) geo.dispose();
+    if (!merged) {
+      for (const mesh of meshes) group.add(mesh);
+      continue;
+    }
+    const batch = new THREE.Mesh(merged, material);
+    batch.name = `Wreck_Batch_${material.name || material.userData?.spacefaceProgramFamily || 'shared'}`;
+    batch.castShadow = true;
+    batch.receiveShadow = true;
+    group.add(batch);
+  }
 }
 
 function buildMine(e) {
