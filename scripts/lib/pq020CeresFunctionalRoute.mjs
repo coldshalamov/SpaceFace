@@ -11,6 +11,8 @@
 
 import assert from 'node:assert/strict';
 
+import { consumePageConditionValue } from './playwrightCspPolling.mjs';
+
 export const PQ020_CERES_FUNCTIONAL_SCHEMA = 'spaceface.pq020-ceres-functional-route.v1';
 export const PQ020_CERES_SECTOR_ID = 'sector_ceres_belt';
 export const PQ020_HELIOS_SECTOR_ID = 'sector_helios_prime';
@@ -663,7 +665,7 @@ async function waitForJumpArrival(page, { sourceSectorId, targetSectorId }) {
     }
     return false;
   }, { source: sourceSectorId, target: targetSectorId }, { timeout: JUMP_TIMEOUT_MS });
-  const terminal = await handle.jsonValue();
+  const terminal = await consumePageConditionValue(handle);
   assert.equal(terminal.ok, true, `${sourceSectorId} -> ${targetSectorId} failed: ${terminal.reason || 'unknown'}`);
 
   const snapshot = await page.evaluate(({ source, target, endpoints }) => {
@@ -742,7 +744,7 @@ async function waitForAutopilotArrival(page, target) {
     }
     return false;
   }, { label: target.name, sectorId: PQ020_CERES_SECTOR_ID }, { timeout: AUTOPILOT_TIMEOUT_MS });
-  const terminal = await handle.jsonValue();
+  const terminal = await consumePageConditionValue(handle);
   assert.equal(terminal.ok, true, `${target.name} autopilot ended as ${terminal.reason}`);
   return terminal;
 }
@@ -780,7 +782,7 @@ async function waitForCathedralAdmission(page) {
       authoredAssetState,
     } : false;
   }, PQ020_CATHEDRAL_SITE_ID, { timeout: ADMISSION_TIMEOUT_MS });
-  return handle.jsonValue();
+  return consumePageConditionValue(handle);
 }
 
 async function waitForCathedralFraming(page, framing) {
@@ -844,7 +846,7 @@ async function waitForCathedralFraming(page, framing) {
     cameraZoom: framing.cameraZoom,
     name: framing.name,
   }, { timeout: 30_000 });
-  const terminal = await handle.jsonValue();
+  const terminal = await consumePageConditionValue(handle);
   assert.equal(appliedCameraZoom, framing.cameraZoom,
     `Cathedral ${framing.name} public camera control did not reach ${framing.cameraZoom}`);
   assert.equal(terminal.ok, true,

@@ -43,6 +43,7 @@ test('pq020-ceres-topology is a one-use fixed-seed Browser acceptance manifest',
   assert.equal(PQ020_CERES_TOPOLOGY_FIXED_SEED, 47);
   assert.match(manifest.artifactRoot.replace(/\\/g, '/'), /^\.devshots\/pq020-ceres-topology$/);
   assert.ok(manifest.timeoutMs >= 480_000, 'the four-stop public route needs a non-toy timeout');
+  assert.ok(manifest.harnessSourcePaths.includes('scripts/lib/playwrightCspPolling.mjs'));
   assert.equal(createPq020CeresTopologyManifest({ timeoutMs: 1234 }).timeoutMs, 1234);
 });
 

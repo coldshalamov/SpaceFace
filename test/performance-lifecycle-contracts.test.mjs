@@ -639,6 +639,25 @@ test('raw Browser window driver never installs the Playwright focus override', a
   assert.deepEqual(calls, [['Browser.getWindowForTarget', null]]);
 });
 
+test('raw Browser waitForFunction preserves a truthy by-value receipt', async () => {
+  const receipt = { terminal: true, ok: true, route: 'ceres_working_seam' };
+  let evaluations = 0;
+  class FakeSession extends EventEmitter {
+    async send(method) {
+      assert.equal(method, 'Runtime.evaluate');
+      evaluations += 1;
+      if (evaluations === 1) return { result: { type: 'boolean', value: false } };
+      return { result: { type: 'object', value: structuredClone(receipt) } };
+    }
+  }
+  const page = new RawCdpLifecyclePage(new FakeSession(), { initialUrl: 'about:blank' });
+
+  const result = await page.waitForFunction(() => ({ terminal: true }), null, { timeout: 500 });
+
+  assert.equal(evaluations, 2);
+  assert.deepEqual(result, receipt);
+});
+
 test('raw Browser keyboard emits text-bearing keyDown and a physical keyUp for public input', async () => {
   const calls = [];
   class FakeSession extends EventEmitter {

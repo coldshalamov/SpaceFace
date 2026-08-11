@@ -189,7 +189,8 @@ export class RawCdpLifecyclePage extends EventEmitter {
     let lastError = null;
     while (Date.now() < deadline) {
       try {
-        if (await this.evaluate(pageFunction, arg)) return true;
+        const value = await this.evaluate(pageFunction, arg);
+        if (value) return value;
       } catch (error) {
         lastError = error;
       }

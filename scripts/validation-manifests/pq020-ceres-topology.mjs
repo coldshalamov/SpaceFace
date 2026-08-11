@@ -78,6 +78,7 @@ export function createPq020CeresTopologyManifest(overrides = {}) {
       'scripts/probe-pq020-ceres-topology.mjs',
       'scripts/check-pq020-ceres-topology-electron.mjs',
       'scripts/check-pq020-electron-request-provenance.mjs',
+      'scripts/lib/playwrightCspPolling.mjs',
       'scripts/lib/pq020CeresFunctionalRoute.mjs',
       'scripts/lib/pq020CeresProofs.mjs',
       'scripts/lib/pq020CeresTopology.mjs',

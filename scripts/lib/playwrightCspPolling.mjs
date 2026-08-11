@@ -21,6 +21,17 @@ export function installCspSafePlaywrightPolling(page, { pollingMs = 50 } = {}) {
   return page;
 }
 
+export async function consumePageConditionValue(valueOrHandle) {
+  if (!valueOrHandle || typeof valueOrHandle.jsonValue !== 'function') return valueOrHandle;
+  try {
+    return await valueOrHandle.jsonValue();
+  } finally {
+    try {
+      await valueOrHandle.dispose?.();
+    } catch (_) { /* best-effort parity with Playwright handle cleanup */ }
+  }
+}
+
 export async function waitForPageCondition(
   page,
   predicate,

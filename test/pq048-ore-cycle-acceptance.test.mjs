@@ -23,6 +23,10 @@ import {
   projectCeresActivityFrame,
   waitForCeresOreCycleSaveGate,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
+import {
+  PQ020_ROUTE_TARGETS,
+  pq020FunctionalRouteDrivers,
+} from '../scripts/lib/pq020CeresFunctionalRoute.mjs';
 
 const ENTITY_ID = 481;
 const REMATERIALIZED_ENTITY_ID = 10_481;
@@ -215,6 +219,37 @@ test('ore-cycle save gate reads its receipt by value after a raw-CDP boolean wai
   assert.deepEqual(receipt, expected);
   assert.equal(waitCalls, 1);
   assert.equal(evaluateCalls, 3, 'clear, by-value read, and cleanup must use page.evaluate');
+});
+
+test('shared Ceres autopilot wait consumes the CSP poller direct terminal receipt', async () => {
+  const target = PQ020_ROUTE_TARGETS.beltOutpost;
+  const terminal = {
+    terminal: true,
+    ok: true,
+    reason: 'arrived',
+    sectorId: 'sector_ceres_belt',
+    currentZone: { id: target.zoneId, name: target.zoneName },
+    player: { alive: true, hull: 100, pos: { x: 10, z: 20 }, speed: 0 },
+    autopilot: {
+      active: false,
+      label: target.name,
+      status: 'arrived',
+      distance: 0,
+      arrivalRadius: 80,
+    },
+  };
+  let calls = 0;
+  const cspPatchedPage = {
+    async waitForFunction() {
+      calls += 1;
+      return calls === 1 ? true : structuredClone(terminal);
+    },
+  };
+
+  const arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(cspPatchedPage, target);
+
+  assert.equal(calls, 2);
+  assert.deepEqual(arrival, terminal);
 });
 
 test('durable identity joins extraction before Continue to arrival after rematerialization', () => {

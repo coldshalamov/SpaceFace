@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  consumePageConditionValue,
   installCspSafePlaywrightPolling,
   waitForPageCondition,
 } from '../scripts/lib/playwrightCspPolling.mjs';
@@ -29,4 +30,20 @@ test('CSP-safe polling fails closed on invalid inputs', async () => {
   const page = { evaluate: async () => true, waitForTimeout: async () => {} };
   await assert.rejects(waitForPageCondition(page, null), /condition must be a function/);
   assert.throws(() => installCspSafePlaywrightPolling({}, {}), /requires a live Page/);
+});
+
+test('page-condition consumers accept direct CSP values and native-style handles', async () => {
+  const direct = { ready: true, source: 'csp-polling' };
+  assert.equal(await consumePageConditionValue(direct), direct);
+
+  let disposed = false;
+  const handle = {
+    async jsonValue() { return { ready: true, source: 'native-handle' }; },
+    async dispose() { disposed = true; },
+  };
+  assert.deepEqual(await consumePageConditionValue(handle), {
+    ready: true,
+    source: 'native-handle',
+  });
+  assert.equal(disposed, true);
 });
