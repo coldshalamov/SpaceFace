@@ -43,6 +43,8 @@ test('PQ preflight and inherited shared gates run before broker claim issuance',
     assert.ok(pq048Manifest.fastGateCommands.includes(sharedGate),
       `PQ manifest dropped shared no-launch gate: ${sharedGate}`);
   }
+  assert.ok(pq048Manifest.fastGateCommands.includes('node scripts/check-autopilot-v3.mjs'),
+    'the regression that acknowledges a failed Throughline route must run before claim issuance');
   assert.equal(new Set(pq048Manifest.fastGateCommands).size, pq048Manifest.fastGateCommands.length,
     'fast gates must not burn time by repeating an identical command');
   const checker = readFileSync(path.join(ROOT, 'scripts/check-pq048-ore-cycle.mjs'), 'utf8');
@@ -59,6 +61,7 @@ test('manifest reuses the shared Ceres driver and binds every PQ product/harness
       'scripts/lib/pq048OreCycleAcceptance.mjs',
     ],
     regressionSourcePaths: [
+      'scripts/check-autopilot-v3.mjs',
       'test/ceres-active-pockets.test.mjs',
       'test/ceres-activity-traffic-cast.test.mjs',
       'test/ceres-visible-job-actions.test.mjs',

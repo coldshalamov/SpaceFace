@@ -19,6 +19,7 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
     fastGateCommands: [
       'node scripts/check-pq048-ore-cycle.mjs --preflight',
       ...base.fastGateCommands.slice(1),
+      'node scripts/check-autopilot-v3.mjs',
       'node --test test/pq048-ore-cycle-acceptance.test.mjs test/pq048-ore-cycle-manifest.test.mjs',
       'node --test test/ore-carrier-freight-route.test.mjs test/ceres-visible-job-actions.test.mjs test/freight-cargo-custody.test.mjs',
     ],
@@ -28,6 +29,7 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
     ),
     regressionSourcePaths: unique(
       base.regressionSourcePaths,
+      'scripts/check-autopilot-v3.mjs',
       'test/ceres-active-pockets.test.mjs',
       'test/ceres-activity-traffic-cast.test.mjs',
       'test/ceres-visible-job-actions.test.mjs',
