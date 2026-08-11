@@ -23,14 +23,37 @@ WF-01 3x
 
 **Default INFERENCE job (autonomous — not PQ):**
 
-1. `node scripts/inference-detect.mjs` — structural thinness/sameiness from shipped data  
-2. Pick a high-score gap (respect ledger anti-pile-on)  
-3. **You invent** the unit (strengthen weak work or add fitting new content)  
-4. Implement via live owners + focused tests  
-5. Re-run detect; tick [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md) +1  
+1. `node scripts/inference-detect.mjs [--scope=X] [--nx=N]` — prints the **director board**:
+   repair / starved / opportunity / integration / recovery cells, plus blocked
+   fingerprints, failed-twice patterns, and overused references from memory.
+2. **Take the suggested mode unless you can state evidence for overriding it.**
+   A structural count is a *symptom*: before building against a repair gap,
+   verify the experiential reality on the ordinary route (what does the player
+   actually see repeat or go missing?). A gap that is real in the registry but
+   invisible in play is the wrong unit.
+3. **You invent** the unit inside the chosen cell — via the divergence protocol in
+   [`02_CREATIVE_CONVERGENCE_LOOP.md`](../inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md):
+   independent passes, one of them blind to the reference library, at least one
+   candidate justified purely from SpaceFace's own systems and fiction.
+   **Printed examples anywhere in the workflow docs are spent ideas — never candidates.**
+4. Implement via live owners + focused tests; prove on the ordinary route.
+5. Cold review per [`05_ADVERSARIAL_REVIEW_PROTOCOL.md`](../inference-workflows/05_ADVERSARIAL_REVIEW_PROTOCOL.md)
+   — a separate context, blinded evidence, never the creator grading itself.
+6. Record honestly — accepted, rejected, and cut alike:
+   `node scripts/inference-record.mjs` (see [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md)).
+   Accepted live units require an evidence artifact and a filled review record.
 
 This is the door for agents to notice empty/samey/cheap **without** the owner playtesting and
 naming the unit. `NEXT`/PQ is the other door (pre-specified work). Do not collapse them.
+
+**Why a board and not a top score:** the previous detector ranked eleven registry
+counts and asked agents to raise them. That selected for whatever was easiest to
+count — rows, labels, files — and could never select economy, story, audio,
+exploration, UI, feel, or integration work at all. Fabricated vocabulary (a novel
+doctrine string the runtime silently discards) *raised* the old score while making
+combat worse. The board separates detection from choice, validates strings against
+what the runtime recognizes, counts only released assets as live, and schedules the
+unmeasured domains by staleness so no department starves silently.
 
 This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
 populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
@@ -108,15 +131,19 @@ WF-18 3x — identify where the current implementation drifted from the intended
 
 ## Scale shorthand (`Nx`)
 
-This is sizing shorthand, **not** a scheduling system. The admitted packet still decides whether `N`
-units are coherent, whether fewer are more truthful, and what proof each needs.
+`Nx` is an **effort and ambition target, not a shipping quota.** It sets the size of
+the candidate pool, the diversity bar, and the review depth — it never obligates
+shipping N units. A 5x run that finds one transformative unit, two strong supports,
+and cuts twelve weak ideas beat a 5x run that shipped five acceptable ones.
 
 - **`1x`** — one substantial, reviewed improvement.
-- **`3x`** — three related/diverse reviewed improvements.
-- **`5x`** — a larger coherent production tranche.
+- **`3x`** — up to three related/diverse reviewed improvements.
+- **`5x`** — a larger coherent production tranche, honestly sized.
 
 `Nx` counts **independently reviewable accepted production units** — never files, commits, candidates,
-recolors, or test cases. Full candidate-budget, diversity, and stop-rule detail is in
+recolors, or test cases — and **accepted may be lower than requested**; the report
+states what was cut and why, which is a health signal, not a failure. Full
+candidate-budget, diversity, slate-slot, and stop-rule detail is in
 [`01_SCALE_AND_DISPATCH.md`](../inference-workflows/01_SCALE_AND_DISPATCH.md).
 
 ## Generic activation prompt

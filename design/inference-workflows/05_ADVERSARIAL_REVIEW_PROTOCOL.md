@@ -41,6 +41,37 @@ Resolves conflicting feedback, protects owner boundaries, and decides whether th
 
 At 1x, one reviewer may combine the player and domain lenses. At 5x, use two separate reviewers where tools permit.
 
+## Independence rule
+
+The creator **never** issues its own verdict. "Cold" means a context that did not
+implement, did not read the implementation narrative, and was not prompted by the
+creator's framing of what the player "should" perceive. A subagent seeded with
+the creator's summary is the creator wearing a mask — that is the observed
+failure (self-verdicts have lied in this repo before; see the Gemini vision
+episode in project memory). Structural enforcement: an accepted live unit cannot
+be recorded without a filled review record file
+(`scripts/inference-record.mjs` refuses it), and the review record names whether
+the reviewer context was fresh.
+
+Known judge biases to actively counter (sources in RESEARCH_SOURCES.md):
+
+- **Self-preference** — a model rates its own style higher. Where possible, use
+  a different model or at minimum a context with none of the creator's prose.
+- **Position bias** — verdicts flip with presentation order. For any pairwise or
+  before/after comparison, present both orders (A/B then B/A); if the verdict
+  flips, record it as UNCERTAIN, not as either answer.
+- **Rubric gaming** — a fixed checklist can be satisfied structurally while the
+  experience stays dull. The checklist below frames attention; the blocking
+  question is experiential:
+
+> **The blocking question:** would the player voluntarily keep interacting with
+> this? A reviewer may not issue KEEP without answering it, in writing, from the
+> evidence. "The checklist passes" is not an answer.
+
+Calibrate against anchors: compare the unit to one named accepted unit (is it at
+least this good?) and one named cut unit (is it clearly better than this?).
+Record reviewer **uncertainty** explicitly — a low-confidence KEEP is a REVISE.
+
 ## Blindness rule
 
 The reviewer should not receive:
@@ -144,6 +175,25 @@ Review:
 - whether the player has meaningful options rather than simultaneous noise.
 
 The reviewer may cut an individually accepted unit from a specific composition while preserving it for another sector.
+
+## Human taste gates — where agent review is not enough
+
+Every agent reviewer in this system shares training priors and reads the same
+North Star docs; their agreement is correlated, not independent. Some decisions
+stay human:
+
+- hero art acceptance (G7-class verdicts);
+- core control feel changes;
+- whole-slice creative acceptance;
+- any CUT of previously human-accepted work.
+
+**The reel:** every 3x/5x tranche produces one ~60-second ordinary-play capture
+of its units in the normal camera on the normal route (existing capture tooling;
+no beauty shots). The captures accumulate for the owner to review at their own
+cadence with one question: *does any clip look like the fantasy in VISION.md?*
+An owner verdict at reel level may CUT whole families. This is deliberately
+cheap for a non-coding owner and is the only uncorrelated taste in the loop —
+do not optimize it away.
 
 ## Review prompt template
 

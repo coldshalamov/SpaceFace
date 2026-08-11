@@ -2,6 +2,12 @@
 
 Use this when the problem is described as a symptom rather than a department.
 
+With no symptom given, run `node scripts/inference-detect.mjs` first: the
+director board suggests a mode and lists starved domains. Only eight workflows
+have structural metrics feeding them (see `WORKFLOW_INDEX.json` `detect` field);
+the other eleven are reachable only through the board's starved / opportunity /
+integration / recovery cells — never through a count.
+
 ## “The world is empty / nothing happens near me”
 
 Primary: `WF-03` Sector & World Composition, `WF-01` NPC & Living World, `WF-08` player-interruptible activities, then `WF-16` variants/states after an exemplar works. Use `WF-17` when accepted ingredients need to become one route.

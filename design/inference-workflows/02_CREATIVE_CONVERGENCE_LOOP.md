@@ -84,29 +84,64 @@ SpaceFace transfer: unusual traffic/wreck/field behavior creates a physical lead
 
 Deliverable: a **Mechanism Transfer Sheet**.
 
-## Phase 4 — divergent ideation
+## Phase 4 — divergent ideation through INDEPENDENT passes
 
-Generate a candidate pool larger than the requested scale.
+One context generating the whole pool sequentially converges on its first frame:
+every later candidate is an echo of the first. LLM ideation also homogenizes —
+separate agents that read the same examples first produce the same pool
+(see RESEARCH_SOURCES.md: creative-homogeneity findings). Structure divergence
+against both failure modes:
 
-Use five lenses:
+**Rule zero — printed examples are SPENT.** Every example in these docs (the
+miner→hauler→tender chain, the Ceres refinery cast, the swarmer/controller/
+anchor roster, the Helios civic-traffic list, every example invocation) is a
+tombstone: it exists to show *shape* and is permanently used up as *content*.
+Submitting one as a candidate is a rule violation, not a shortcut. The live
+pocket cast shipping 1:1 with the docs' example list is the observed failure
+this rule exists to stop.
 
-1. **Functional lens** — what new useful job, tactic, route, state, or operation is missing?
-2. **Physical lens** — how can existing motion, mass, collision, tether, field, or geometry produce it?
-3. **World lens** — why does this exist in the fiction/economy and what else responds to it?
-4. **Presentation lens** — what would make it instantly readable and exciting at normal camera scale?
-5. **Player-agency lens** — how can the player help, exploit, steal, sabotage, master, or transform it?
+**Independent passes** (separate subagent contexts where tools permit; at
+minimum, separated generations that do not read each other before the merge):
 
-Force diversity by generating candidates across:
+1. **Repo-native pass** — reads ONLY SpaceFace: VISION, current systems, current
+   data, current fiction. Never reads the reference library. Asks: what do the
+   systems already here make possible that nothing exploits?
+2. **Player-fantasy pass** — starts from an anecdote worth retelling ("holy
+   shit, I did that" / "oh fuck, I did that") and works backward to the unit.
+3. **World-logic pass** — starts from the economy/faction/industrial fiction:
+   who needs this to exist, and who responds?
+4. **Reference-mechanism pass** — the ONLY pass that reads
+   `03_REFERENCE_GAME_PATTERN_LIBRARY.md`; transfers mechanisms, never surfaces,
+   and rotates away from references the board flags as overused.
+5. **Contrarian/wildcard pass** (optional at 3x+) — argues with the emerging
+   consensus: what is everyone else's pool missing or wrong about?
 
-- ordinary/common;
-- risky/criminal;
-- emergency/failure;
-- rare/mysterious;
-- player-built/transformed.
+At least one accepted candidate per slate must come from the repo-native pass —
+justified entirely from SpaceFace's own systems and fiction, traceable to no
+reference game.
+
+Within each pass, still force spread across: ordinary/common; risky/criminal;
+emergency/failure; rare/mysterious; player-built/transformed.
 
 Do not evaluate while generating. Weak ideas are allowed during divergence.
 
-Deliverable: a **Candidate Pool** with at least the scale minimum.
+Deliverable: a **Candidate Pool** with at least the scale minimum, each candidate
+tagged with its originating pass and a fingerprint
+(`verb, subject, sector, layer, tempo, domain`).
+
+## Phase 4b — opportunity search (mandatory at 3x+, recommended always)
+
+Deficit-repair is not the only door. Before selection, run one explicit pass that
+ignores every detected gap and asks:
+
+- What existing SpaceFace system creates an unexploited possibility?
+- What would be funny, beautiful, dangerous, surprising, socially revealing, or
+  trailer-worthy even though no defect asks for it?
+- What can only this game — top-down physics, Massline, working universe — do?
+
+Every substantial run considers both repair candidates and opportunity
+candidates. The director board's OPPORTUNITY cell exists so this pass has a
+recorded outlet; a run that picks it records `--mode opportunity`.
 
 ## Phase 5 — synthesis and combination
 

@@ -99,21 +99,34 @@ Use when:
 
 Do not begin at 5x for an unproven base mechanic or art recipe.
 
-## 6. Candidate accounting
+## 6. Candidate accounting — slots, not sums
 
-Candidates are scored 0–5 on:
+Candidates are still characterized 0–5 on: North Star alignment; player-visible
+delta; systemic multiplication; distinctness; craft/spectacle potential;
+feasibility within current owners; reusability after acceptance. **But the slate
+is never selected by adding those numbers.** An additive total systematically
+picks the candidate that is decent at everything and exceptional at nothing —
+the fourth hauler variant beats the unforgettable thing forever.
 
-1. North Star alignment;
-2. player-visible delta;
-3. systemic multiplication;
-4. distinctness;
-5. craft/spectacle potential;
-6. feasibility within current owners;
-7. reusability after acceptance.
+Select by **slots**. At 3x/5x the slate must fill different kinds of value, and a
+candidate wins a slot by being the best *at that slot's job*:
 
-Cost and risk are recorded separately rather than rewarded. A high-value high-risk candidate may be selected for a prototype; a low-value cheap candidate should not win merely because it is easy.
+- **one systemic unit** — multiplies existing systems (the classic all-rounder);
+- **one spectacle unit** — the only-SpaceFace physical moment; judge it by the
+  trailer test: *would this clip show something no other space game shows?*
+- **one texture unit** — quiet, funny, beautiful, dreadful, ordinary labor, or a
+  single great landmark. **Texture units are exempt from the three-vector rule**
+  (README): one vector moved well is enough when the value is atmosphere or
+  identity. A world that is all legible industry has no awe in it.
+- remaining slots: domain-appropriate (common high-frequency unit, rare
+  discovery, identity/character/place unit…).
 
-## 7. Diversity requirements
+At 1x, state which slot the unit fills. Feasibility **breaks ties inside a slot**;
+it never decides *between* slots. Cost and risk are recorded separately rather
+than rewarded — a high-value high-risk candidate may be selected for a prototype;
+a low-value cheap candidate must not win merely because it is easy.
+
+## 7. Diversity requirements — against the tranche AND the corpus
 
 At 3x and 5x, the portfolio must not consist of cosmetic siblings pretending to be gameplay breadth.
 
@@ -126,6 +139,18 @@ Examples:
 - Five particles with different colors are not five VFX families.
 
 Each workflow defines subtype axes. At 5x, at least three axes must vary.
+
+Mechanically: give every candidate a fingerprint over the axes
+`verb, subject, sector, layer, tempo, domain` and check the slate with
+`checkSlate` (scripts/lib/inferenceCore.mjs) — pairs must differ on at least two
+axes, and a multi-domain scope at 3x+ must span at least two of its domains
+(`5x POLISH` returning five VFX tweaks is a scope violation, enforced).
+
+**Distinctness is judged against everything already shipped, not only this
+tranche.** The board prints blocked fingerprints and the memory holds accepted
+ones; a candidate that `sameIdea`-matches an accepted unit is multiplication
+(route it to WF-16 deliberately), not novelty. Run 14's "new" occupation must be
+compared against runs 1–13 — that comparison is exactly what the memory is for.
 
 ## 8. Parallel execution
 

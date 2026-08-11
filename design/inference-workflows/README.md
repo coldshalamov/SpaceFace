@@ -19,20 +19,25 @@ Use a separate adversarial reviewer. Implement, review, revise, and prove the re
 or:
 
 ```text
-WF-02 5x — Ceres physics-combat ecology: expendable swarmers, a displacement threat, a controller, a heavy anchor target and an elite. Use current AI/combat/physics owners.
+WF-02 5x — a physics-combat ecology for one sector: roles YOU derive from the current
+deficit, spanning expendable/control/heavy/specialist functions. Use current
+AI/combat/physics owners.
 ```
 
-The workflow supplies the creative and production reasoning that a one-line task omits.
+The workflow supplies the creative and production reasoning that a one-line task
+omits. (An earlier version of this example named the exact roster — and agents
+shipped that roster nearly verbatim. Examples name shapes now; the content is
+yours to invent.)
 
 ## What `1x`, `3x`, and `5x` mean
 
-`x` counts **accepted production units**, not generated candidates, files, rows, recolors, commits or attempts.
+`Nx` is an **effort and ambition target, not a shipping quota**. `x` counts **accepted production units**, not generated candidates, files, rows, recolors, commits or attempts — and accepted may honestly be fewer than requested.
 
 - **1x** — one complete unit; at least four candidates considered; one cold adversarial review; one revision or replacement; one ordinary-route proof.
-- **3x** — three accepted units; at least ten candidates; at least two distinct subtypes; per-unit review plus a cohesion review.
-- **5x** — five accepted units or one explicit five-unit vertical tranche; at least sixteen candidates; at least three subtypes; two review lenses; portfolio integration; a 5–10 minute route; a propagation recipe.
+- **3x** — up to three accepted units; at least ten candidates; at least two distinct subtypes; per-unit review plus a cohesion review.
+- **5x** — up to five accepted units or one explicit five-unit vertical tranche; at least sixteen candidates; at least three subtypes; two review lenses; portfolio integration; a 5–10 minute route; a propagation recipe.
 
-The agent may return fewer units honestly when the remaining candidates are filler, blocked or below bar.
+A run that ships one transformative unit, two strong supports, and cuts twelve weak ideas beat a run that shipped five acceptable ones. The report states what was cut and why — a healthy cut list is evidence the bar exists.
 
 ## Required reading order
 
@@ -70,7 +75,12 @@ A workflow invocation is not a request for another plan. The executing agent mus
 
 ## The convergence target
 
-Every accepted unit must move at least three vectors forward:
+Every accepted unit should move at least three vectors forward — **except an
+explicitly declared texture unit** (see `01_SCALE_AND_DISPATCH.md` §6), which may
+move one vector well when its value is atmosphere, humor, beauty, quiet, dread,
+or place identity. A world that is wall-to-wall legible causal machinery has no
+awe in it; the slice workflows demand quiet beats, so the unit pipeline must be
+allowed to produce them.
 
 1. **Physical expression** — more is done through motion, force, position, timing, geometry or embodied operation.
 2. **Living-world causality** — actors/places operate as a universe rather than props waiting for the player.
@@ -124,24 +134,21 @@ Use `07_WORKFLOW_ROUTER.md` to choose workflows from symptoms.
 
 ## Recommended first uses for current SpaceFace
 
+Run `node scripts/inference-detect.mjs` and take the board's suggested mode. The
+invocations below name SHAPES of work, deliberately not content — every concrete
+example previously printed here has shipped or is spent (see 02, Phase 4 rule
+zero: printed examples are tombstones, not templates):
+
 ```text
-WF-18 3x — recover the three largest gaps between intended and actual physics-game feel.
+WF-18 3x — recover the largest gaps between intended and actual physics-game feel (you find them).
 ```
 
 ```text
-WF-17 5x — execute the professional Ceres reference-sector benchmark after current entry conditions are satisfied.
+WF-17 1x — wire one authored-but-unwired family from the integration-debt cell into ordinary play.
 ```
 
 ```text
-WF-01 3x — Ceres miner → hauler → tender/salvor response ecology.
-```
-
-```text
-WF-11 3x — re-author three slice-critical occupational/industrial families selected from donor packs.
-```
-
-```text
-WF-12 5x — boost → Massline latch/load/release → collision destruction → field escape presentation grammar.
+<starved-domain WF> 1x — take the top starved domain from the board and produce its first recorded unit.
 ```
 
 ## Governing sentence

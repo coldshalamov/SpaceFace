@@ -23,10 +23,10 @@ A new hull with the label “Repair Tender” is not a unit. A generic ship foll
 ## Scale
 
 - **1x:** one occupation or response package; four or more candidate interpretations.
-- **3x:** three complementary roles forming a local chain, such as miner → hauler → tender.
-- **5x:** five-role ecology covering producer, transporter, authority/predator, responder and opportunist; one group incident and ten-minute portfolio proof.
+- **3x:** three complementary roles forming a local causal chain — roles YOU derive from the pocket's actual economy, not a chain copied from these docs.
+- **5x:** five-role ecology spanning distinct economic functions (production, transport, authority/predation, response, opportunism are the *function classes*, not a cast list); one group incident and ten-minute portfolio proof.
 
-At 3x/5x, roles must differ in silhouette, route, work signal and decision context—not only hull or speed.
+At 3x/5x, roles must differ in silhouette, route, work signal and decision context—not only hull or speed. The currently shipped job kinds and pocket cast are the SPENT baseline: a new unit must not re-propose them under new names (the board's blocked/accepted fingerprints are the check).
 
 ## Current SpaceFace starting points
 

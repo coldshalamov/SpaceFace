@@ -81,24 +81,47 @@ This is the correct use of inference for “more.”
 
 Do not infer that a system generalizes because one data row passes tests.
 
-## Learning record
+## Portfolio descriptors and pairwise distinctness
 
-Every 3x/5x tranche creates a durable recipe:
+Individually accepted units can still form a weak portfolio. Before closing a
+3x/5x tranche, place every unit on these descriptors and check pairs:
+
+- player verb; silhouette; tempo (burst/sustained/ambient/decay);
+- emotional tone (industry/threat/comedy/awe/quiet/dread);
+- frequency (common/intermittent/rare/hero);
+- scene layer (foreground/midground/background — see the camera-band budget in
+  `design/vision/GAME_DIRECTION_EXPANSION.md` §4);
+- spatial pattern; social/economic purpose; failure state; player relationship.
+
+Two units sharing most descriptors are one unit wearing two names. A portfolio
+that is all-foreground, all-burst, or all-industry fails even if every unit
+passed review. Deliberate imbalance is fine when stated (a quiet sector SHOULD
+skew quiet); accidental imbalance is the defect.
+
+Note on concentration metrics: the detector flags label concentration in
+registries, but uniform distribution is NOT the play target — good ecologies are
+Pareto-shaped (many common grunts, rare specials). Fix concentration by adding
+missing *kinds*, never by flattening spawn frequency.
+
+## Learning record — write it to memory, not prose
+
+Every run (1x included, and runs that shipped nothing) records itself:
+
+```bash
+node scripts/inference-record.mjs run --mode <mode> --domains <WF-XX,...> [--scope S] [--nx N]
+node scripts/inference-record.mjs unit ...   # per unit: accepted AND rejected AND cut
+```
+
+That machine record (decay, saturation, blocked fingerprints, failed-twice,
+reference rotation) is what future runs actually consume. The prose recipe below
+is kept ONLY for what the fingerprint cannot carry — write it into the tranche's
+receipt or portfolio review record, not into a new standalone document:
 
 ```text
-Portfolio name:
 Experience thesis:
-Units accepted / rejected:
-Shared grammar:
-Distinctness axes:
-Useful dimensions and timing bands:
+Shared grammar and distinctness axes:
 Successful owner seams:
-Art/material/VFX rules:
-Performance cost:
-Human review findings:
-What should be reused:
-What must remain authored:
-What failed twice:
+What should be reused / what must remain authored:
 Next sector/system suitable for propagation:
 ```
 

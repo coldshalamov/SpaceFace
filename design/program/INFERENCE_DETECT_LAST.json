@@ -1,24 +1,26 @@
 {
-  "schema": "spaceface.inferenceDetect.v1",
-  "generatedAt": "2026-08-11T03:27:27.056Z",
-  "purpose": "Autonomous gap find for INFERENCE (not PQ dispatch).",
-  "summary": {
-    "gapCount": 11,
-    "top": [
-      "enemy_doctrines",
-      "ship_defs",
-      "enemy_ai_archetypes",
-      "enemy_silhouettes",
-      "npc_job_kinds"
-    ]
+  "schema": "spaceface.inferenceDetect.v2",
+  "generatedAt": "2026-08-11T04:15:25.647Z",
+  "purpose": "Autonomous INFERENCE director board (not PQ dispatch). Structural metrics detect; the board chooses.",
+  "scope": null,
+  "scopeWfs": null,
+  "nx": null,
+  "slateRequirements": {
+    "acceptedMax": 1,
+    "acceptedMin": 0,
+    "minCandidates": 4,
+    "minDistinctAxesPerPair": 2,
+    "minDomainsSpanned": 1,
+    "honestUnderdelivery": "Ship fewer, better units when the rest are filler; record cut candidates and why."
   },
+  "memoryWarnings": [],
   "snapshots": {
     "enemyTypes": 15,
-    "enemyArchetypes": {
+    "enemyBehaviorCombos": {
       "n": 15,
-      "unique": 6,
-      "topShare": 0.3333333333333333,
-      "top": "brawler"
+      "unique": 5,
+      "topShare": 0.5333333333333333,
+      "top": "attack_run/weapons_free"
     },
     "enemyDoctrines": {
       "n": 14,
@@ -32,12 +34,7 @@
       "topShare": 0.2,
       "top": "bruiser_armor"
     },
-    "enemyShips": {
-      "n": 15,
-      "unique": 6,
-      "topShare": 0.26666666666666666,
-      "top": "ship_wasp"
-    },
+    "enemyTelegraphCoverage": "5/15",
     "npcJobKinds": 6,
     "pocketJobKinds": [
       "hauler",
@@ -47,18 +44,40 @@
       "patrol",
       "salvor"
     ],
+    "pocketSectors": [
+      "sector_ceres_belt"
+    ],
     "weapons": 22,
+    "weaponBehavioralHookShare": 1,
     "ships": 13,
     "modules": 49,
+    "moduleBehavioralHookShare": 0.22,
     "stations": 32,
     "encounters": 48,
-    "hullGlbs": 10
+    "hullsLive": 10,
+    "hullsSourceOnly": 0,
+    "incubatorGlbs": 121,
+    "microeventCatalog": 58,
+    "fabricatedDoctrines": [],
+    "fabricatedSilhouettes": [],
+    "fabricatedArchetypes": [],
+    "ghostJobKinds": [],
+    "unschedulableEncounters": [],
+    "unreferencedEnemies": [
+      "dreadnought_boss"
+    ]
   },
+  "dataDefects": [],
+  "advisories": [
+    "enemies never referenced by any encounter recipe (verify another owner actually spawns them): dreadnought_boss"
+  ],
   "gaps": [
     {
       "id": "enemy_doctrines",
       "surface": "enemy combat roles",
-      "wf": "WF-02",
+      "wfs": [
+        "WF-02"
+      ],
       "metric": {
         "n": 14,
         "unique": 4,
@@ -67,14 +86,37 @@
       },
       "floorUnique": 5,
       "softUnique": 9,
-      "why": "Combat doctrine concentration → same engagement pattern.",
-      "how": "Wire more doctrines into live enemy defs used by directors/spawns.",
+      "why": "Combat doctrine concentration → same engagement pattern. Only doctrine ids in CombatDoctrineId count; a NEW doctrine means implementing runtime behavior, not inventing a string.",
+      "how": "Implement a new doctrine in src/ai/combatDoctrine.js AND wire it into live enemy defs used by directors/spawns.",
+      "blindSpots": "A bespoke single-occupant doctrine raises unique without changing most fights.",
       "score": 48
+    },
+    {
+      "id": "enemy_behavior_vocabulary",
+      "surface": "enemy combat roles",
+      "wfs": [
+        "WF-02"
+      ],
+      "metric": {
+        "n": 15,
+        "unique": 5,
+        "topShare": 0.5333333333333333,
+        "top": "attack_run/weapons_free"
+      },
+      "floorUnique": 6,
+      "softUnique": 10,
+      "why": "Few consumed activity/roe combos → engagements resolve the same way regardless of label.",
+      "how": "New defaultActivity/roe combination wired through the live AI stack + encounter proof. The prose `behavior` field does not count.",
+      "blindSpots": "Cannot see whether combos are readable, fun, or reachable in ordinary play.",
+      "score": 44
     },
     {
       "id": "ship_defs",
       "surface": "ships / builds",
-      "wf": "WF-07 / WF-11",
+      "wfs": [
+        "WF-07",
+        "WF-11"
+      ],
       "metric": {
         "n": 13,
         "unique": 13,
@@ -85,28 +127,35 @@
       "softUnique": 25,
       "why": "Few ship defs → progression and traffic feel sparse.",
       "how": "New ship def + role kit or traffic presentation identity.",
+      "blindSpots": "A stat row is not a capability milestone; ships are pure stat records today.",
       "score": 40
     },
     {
-      "id": "enemy_ai_archetypes",
-      "surface": "enemy combat roles",
-      "wf": "WF-02",
+      "id": "pocket_sector_coverage",
+      "surface": "sector / pocket activity",
+      "wfs": [
+        "WF-03"
+      ],
       "metric": {
-        "n": 15,
-        "unique": 6,
-        "topShare": 0.3333333333333333,
-        "top": "brawler"
+        "n": 24,
+        "unique": 1,
+        "topShare": 0,
+        "top": "sector_ceres_belt"
       },
-      "floorUnique": 6,
-      "softUnique": 10,
-      "why": "Hostile AI behaviors look samey when few archetypes cover the roster.",
-      "how": "Add or rework enemy types with distinct aiArchetype + combatDoctrineId + silhouette, not only HP/dmg.",
-      "score": 32
+      "floorUnique": 2,
+      "softUnique": 6,
+      "why": "Authored activity pockets exist in 1/24 sectors — everywhere else is a scatter radius.",
+      "how": "Author a pocket for a NON-Ceres sector with its own cast, routes, and identity (contrast, not clone).",
+      "blindSpots": "A pocket data block is not a lived pocket; needs route proof.",
+      "score": 35
     },
     {
       "id": "enemy_silhouettes",
       "surface": "enemy combat roles",
-      "wf": "WF-02 / WF-11",
+      "wfs": [
+        "WF-02",
+        "WF-11"
+      ],
       "metric": {
         "n": 15,
         "unique": 8,
@@ -117,12 +166,15 @@
       "softUnique": 12,
       "why": "Shared silhouettes/hulls make factions read as recolors.",
       "how": "Distinct silhouette or wholeship presentation per role family.",
+      "blindSpots": "Cannot see whether silhouettes read at the normal camera bands.",
       "score": 32
     },
     {
       "id": "npc_job_kinds",
       "surface": "NPC jobs / living activity",
-      "wf": "WF-01",
+      "wfs": [
+        "WF-01"
+      ],
       "metric": {
         "n": 6,
         "unique": 6,
@@ -131,14 +183,18 @@
       },
       "floorUnique": 6,
       "softUnique": 8,
-      "why": "Few job graphs → world work looks like one loop with labels.",
-      "how": "New jobKind with distinct phase graph + Ceres (or sector) cast wiring.",
+      "why": "Few job graphs → world work looks like one loop with labels. Only kinds WITH a phase graph count.",
+      "how": "New jobKind with a genuinely distinct phase graph + sector cast wiring.",
+      "blindSpots": "Cannot see whether work is visible, interruptible, or consequential near the player.",
       "score": 16
     },
     {
       "id": "pocket_job_cast",
       "surface": "sector / pocket activity",
-      "wf": "WF-01 / WF-03",
+      "wfs": [
+        "WF-01",
+        "WF-03"
+      ],
       "metric": {
         "n": 6,
         "unique": 6,
@@ -149,12 +205,15 @@
       "softUnique": 8,
       "why": "Authored pocket cast uses few jobKinds → empty industrial feel.",
       "how": "More actorSlots with real jobKinds and targets in sectorActivityPockets.",
+      "blindSpots": "Counts authored data, not running actors. Comments are excluded; wiring is not proven.",
       "score": 16
     },
     {
-      "id": "hull_part_family",
+      "id": "hull_part_family_live",
       "surface": "ship/part material craft",
-      "wf": "WF-11",
+      "wfs": [
+        "WF-11"
+      ],
       "metric": {
         "n": 10,
         "unique": 10,
@@ -163,14 +222,37 @@
       },
       "floorUnique": 8,
       "softUnique": 12,
-      "why": "Few hull kits or flat materials → fleet looks cheap.",
-      "how": "Material/form pass on existing hull family or new kit with measureable surface response.",
+      "why": "Live (released) hull kits: 10; source-only: 0. Only released assets count.",
+      "how": "Material/form pass on an existing released family, or new kit taken all the way through release + runtime identity.",
+      "blindSpots": "Release presence is not an art verdict; G-gates and normal-camera review still apply.",
       "score": 16
+    },
+    {
+      "id": "modules",
+      "surface": "progression / modules",
+      "wfs": [
+        "WF-07"
+      ],
+      "metric": {
+        "n": 49,
+        "unique": 49,
+        "topShare": 0,
+        "top": null
+      },
+      "floorUnique": 20,
+      "softUnique": 35,
+      "extraScore": 10,
+      "why": "Thin module list limits build agency. Behavioral-hook share: 22% — stat-mod rows dominate.",
+      "how": "New module with a real behavioral hook (not stat-only if possible).",
+      "blindSpots": "Cannot see whether a module changes what the player DOES.",
+      "score": 10
     },
     {
       "id": "weapons_roster",
       "surface": "weapons / physics tools",
-      "wf": "WF-05",
+      "wfs": [
+        "WF-05"
+      ],
       "metric": {
         "n": 22,
         "unique": 22,
@@ -179,14 +261,18 @@
       },
       "floorUnique": 12,
       "softUnique": 20,
-      "why": "Thin weapon/tool roster limits physical mess variety.",
-      "how": "New mechanically distinct weapon/module with multi-use proof.",
+      "extraScore": 0,
+      "why": "Thin mechanism variety limits physical mess. Behavioral-hook share: 100% (stat-only rows are not mechanisms).",
+      "how": "New mechanically distinct weapon/tool with multi-use proof — impulse, field, deploy, status; not damage-number reskins.",
+      "blindSpots": "Cannot see whether a weapon creates new tactics in ordinary play.",
       "score": 0
     },
     {
       "id": "stations_placed",
       "surface": "stations / places",
-      "wf": "WF-04",
+      "wfs": [
+        "WF-04"
+      ],
       "metric": {
         "n": 32,
         "unique": 32,
@@ -197,12 +283,16 @@
       "softUnique": 20,
       "why": "Few station identities → destinations feel sparse.",
       "how": "New station or embodied place with distinct role (not menu-only).",
+      "blindSpots": "Cannot distinguish an embodied destination from a menu entrance.",
       "score": 0
     },
     {
       "id": "encounters",
       "surface": "encounters / incidents",
-      "wf": "WF-02 / WF-08",
+      "wfs": [
+        "WF-02",
+        "WF-08"
+      ],
       "metric": {
         "n": 48,
         "unique": 48,
@@ -213,30 +303,189 @@
       "softUnique": 40,
       "why": "Thin encounter catalog → freeflight incidents feel rare/same.",
       "how": "New interruptible encounter package on ordinary route.",
-      "score": 0
-    },
-    {
-      "id": "modules",
-      "surface": "progression / modules",
-      "wf": "WF-07",
-      "metric": {
-        "n": 49,
-        "unique": 49,
-        "topShare": 0,
-        "top": null
-      },
-      "floorUnique": 20,
-      "softUnique": 35,
-      "why": "Thin module list → builds lack agency options.",
-      "how": "New module with real behavioral hook (not stat-only if possible).",
+      "blindSpots": "Catalog size says nothing about trigger frequency or variety in play.",
       "score": 0
     }
   ],
+  "board": {
+    "suggestedMode": "integration",
+    "modeReason": "179 authored-but-unwired items and no integration run in the last 5 — wire before authoring more",
+    "repair": [
+      {
+        "id": "enemy_doctrines",
+        "score": 48,
+        "wfs": [
+          "WF-02"
+        ],
+        "recentWeight": 0,
+        "saturated": false,
+        "why": "Combat doctrine concentration → same engagement pattern. Only doctrine ids in CombatDoctrineId count; a NEW doctrine means implementing runtime behavior, not inventing a string."
+      },
+      {
+        "id": "enemy_behavior_vocabulary",
+        "score": 44,
+        "wfs": [
+          "WF-02"
+        ],
+        "recentWeight": 0,
+        "saturated": false,
+        "why": "Few consumed activity/roe combos → engagements resolve the same way regardless of label."
+      },
+      {
+        "id": "ship_defs",
+        "score": 40,
+        "wfs": [
+          "WF-07",
+          "WF-11"
+        ],
+        "recentWeight": 1.87,
+        "saturated": false,
+        "why": "Few ship defs → progression and traffic feel sparse."
+      },
+      {
+        "id": "pocket_sector_coverage",
+        "score": 35,
+        "wfs": [
+          "WF-03"
+        ],
+        "recentWeight": 0,
+        "saturated": false,
+        "why": "Authored activity pockets exist in 1/24 sectors — everywhere else is a scatter radius."
+      },
+      {
+        "id": "enemy_silhouettes",
+        "score": 32,
+        "wfs": [
+          "WF-02",
+          "WF-11"
+        ],
+        "recentWeight": 1.87,
+        "saturated": false,
+        "why": "Shared silhouettes/hulls make factions read as recolors."
+      },
+      {
+        "id": "npc_job_kinds",
+        "score": 16,
+        "wfs": [
+          "WF-01"
+        ],
+        "recentWeight": 2.72,
+        "saturated": true,
+        "why": "Few job graphs → world work looks like one loop with labels. Only kinds WITH a phase graph count."
+      },
+      {
+        "id": "pocket_job_cast",
+        "score": 16,
+        "wfs": [
+          "WF-01",
+          "WF-03"
+        ],
+        "recentWeight": 2.72,
+        "saturated": true,
+        "why": "Authored pocket cast uses few jobKinds → empty industrial feel."
+      },
+      {
+        "id": "hull_part_family_live",
+        "score": 16,
+        "wfs": [
+          "WF-11"
+        ],
+        "recentWeight": 1.87,
+        "saturated": false,
+        "why": "Live (released) hull kits: 10; source-only: 0. Only released assets count."
+      }
+    ],
+    "starved": [
+      {
+        "wf": "WF-06",
+        "name": "economy / logistics",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-08",
+        "name": "missions / activities",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-09",
+        "name": "narrative / characters / ledger",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-10",
+        "name": "exploration / discovery",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-13",
+        "name": "audio / world sound",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-14",
+        "name": "UI / UX / onboarding",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-16",
+        "name": "variants / states / aftermath",
+        "measured": false,
+        "staleness": "never"
+      },
+      {
+        "wf": "WF-17",
+        "name": "vertical slice / integration",
+        "measured": false,
+        "staleness": "never"
+      }
+    ],
+    "integration": [
+      {
+        "id": "incubator_glbs",
+        "count": 121,
+        "note": "assets/incubator/** source GLBs with no runtime consumer. Select + re-author + prove families one at a time; never bulk-promote."
+      },
+      {
+        "id": "microevent_catalog",
+        "count": 58,
+        "note": "design/incubator/microevent_library events with no runtime consumer. Prove one causal chain before any framework."
+      }
+    ],
+    "recovery": [
+      {
+        "id": "composed-ship-admission-stall",
+        "wf": "WF-19",
+        "severity": "ambient",
+        "status": "open",
+        "date": "2026-08-10",
+        "note": "Stochastic ~250ms combat spike from buildComposedShip admission stall. Documented known condition (EXPANSION_PROGRAM section 6); not an inference target unless explicitly assigned."
+      },
+      {
+        "id": "drill-presentation-pipeline-duplication",
+        "wf": "WF-15",
+        "severity": "suspected-foundation",
+        "status": "open",
+        "date": "2026-08-07",
+        "note": "Drill minigame audit (2026-08-07) found a second presentation pipeline, third CSS surface, and sim-pause silence making drilling feel cheap. VERIFY against live code before acting; may be partially repaired since."
+      }
+    ],
+    "blocked": [],
+    "failedTwice": [],
+    "overusedReferences": []
+  },
   "agentInstructions": [
     "You are NOT waiting for a human-named unit. PQ owns that door.",
-    "Pick the highest-score gap that is not recently piled-on (see INFERENCE_LEDGER).",
-    "Invent a concrete improvement that raises unique count or lowers concentration.",
-    "Implement through live owners; prove with focused tests; re-run this script; score for that gap should not worsen and should usually improve.",
-    "Update INFERENCE_LEDGER +1 for the surface."
+    "Suggested mode this run: INTEGRATION — 179 authored-but-unwired items and no integration run in the last 5 — wire before authoring more. Override only with stated evidence.",
+    "Pick ONE board cell, then invent the unit yourself inside it. A count is a symptom, not a task: verify the experiential reality on the ordinary route before building.",
+    "Printed examples in the workflow docs are SPENT ideas — never submit one as a candidate (design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md).",
+    "Candidates matching a BLOCKED fingerprint need new recorded evidence, not silence.",
+    "Slate: up to 1 accepted unit(s), >=4 candidates, pairwise-distinct fingerprints (>=2 axes), span >=1 domain(s). Fewer accepted units than requested is an HONEST outcome.",
+    "Implement through live owners; prove on the ordinary route; then record the unit: node scripts/inference-record.mjs --help"
   ]
 }

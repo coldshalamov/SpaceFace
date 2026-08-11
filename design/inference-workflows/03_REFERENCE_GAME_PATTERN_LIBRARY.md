@@ -2,6 +2,20 @@
 
 This library exists to improve creative reasoning without turning SpaceFace into a collage of borrowed surfaces. A reference is useful only when the agent extracts the **mechanism** that creates a player experience, identifies the production conditions behind it, and translates that mechanism through SpaceFace's existing verbs, owners, camera, fiction, and performance envelope.
 
+**This library is an attractor — handle accordingly.** These same ~16 games appear
+throughout the workflow docs; agents that read them before ideating converge on
+them, and repeated runs average toward "competent Freelancer-with-tethers" instead
+of natively SpaceFace-weird. Countermeasures, enforced elsewhere and repeated here:
+
+- the **repo-native divergence pass** (02, Phase 4) never reads this file;
+- at least one accepted candidate per slate traces to **no** reference game;
+- the board flags any reference used 3+ times in 30 days — **rotate away from
+  flagged references** or state why the mechanism is genuinely load-bearing;
+- record references used per unit (`inference-record.mjs --refs`), or rotation
+  cannot bind;
+- a mechanism may be transferred; a *cast list, roster, or scenario* from any
+  reference (or from these docs' own examples) may not.
+
 ## How to use references
 
 For every selected reference, write four lines:
