@@ -1478,11 +1478,18 @@ test('Working Seam evidence publicly restages to the fixed Belt Outpost departur
     initialSpeed: 0,
     initialRot: 0,
     simulateTrajectory: true,
+    // A 160ms gravimetric pulse from the fake's 40 WU/s trimmed state travels about 7.7 WU
+    // (40t + 0.5*105t^2). Keep the fake production-scale so it cannot teleport through the
+    // 90-WU completion shell or the station collider.
+    thrustStepWU: 8,
   });
   const receipt = await drivePublicToCeresPoint(harness.page, target, 18_023);
   assert.deepEqual(harness.startPos, seamHandoff,
     'the fake begins on the conservative arrival-facing edge of the Working Seam receipt circle');
   assert.ok(receipt.distanceWU <= 90);
+  const stationHullGapWU = receipt.distanceWU - 16 - 26;
+  assert.ok(stationHullGapWU > 30,
+    `the production-scale public trajectory must stop clear of Belt Outpost, got gap ${stationHullGapWU}`);
   assert.equal(receipt.speed, 0.8);
   assert.equal(harness.sequence[0], 'turn');
   assert.equal(harness.sequence.includes('decelerate'), true);

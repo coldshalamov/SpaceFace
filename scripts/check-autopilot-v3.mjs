@@ -10,6 +10,12 @@ import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createSimulation } from '../src/core/sim.js';
+import {
+  CERES_ACTIVITY_POCKETS_BY_ID,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY,
+} from '../src/data/sectorActivityPockets.js';
+import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { save } from '../src/save/saveSystem.js';
 import { asteroidFormations } from '../src/systems/asteroidFormations.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
@@ -409,11 +415,29 @@ async function runRapierHeliosTerminalScenario() {
 }
 
 async function runRapierCeresHornetReserveScenario() {
-  // Seed-47 PQ-048 Throughline leg reconstructed from the b0775ffc370b route artifact.
-  // The start is the artifact-bound egress handoff estimate, and the target is the public map fix.
-  const start = { x: -11517.761867066272, z: 7353.819177379723 };
-  const seamAnchor = { x: -11788, z: 7492 };
-  const target = { x: -9248, z: 7272 };
+  // Seed-47 PQ-048 Throughline leg begins on the authored Belt Outpost center's public 90-WU
+  // completion shell. Derive the handoff from the same data authority as the Browser route so an
+  // anchor move cannot leave this exact production-physics reserve regression on a stale point.
+  const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
+  const seamAnchor = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam.activityAnchor.localPos,
+    sectorId,
+  );
+  const beltOutpostAnchor = SECTOR_ANCHORS[sectorId].stations
+    .find((station) => station.id === 'station_beltout');
+  assert.ok(beltOutpostAnchor?.pos, 'PQ-048 reserve fixture requires the authored Belt Outpost');
+  const beltOutpost = sectorLocalToGlobalForSector(beltOutpostAnchor.pos, sectorId);
+  const egressX = beltOutpost.x - seamAnchor.x;
+  const egressZ = beltOutpost.z - seamAnchor.z;
+  const egressDistance = Math.hypot(egressX, egressZ);
+  const start = {
+    x: beltOutpost.x - (egressX / egressDistance) * 90,
+    z: beltOutpost.z - (egressZ / egressDistance) * 90,
+  };
+  const target = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_ambush_run.activityAnchor.localPos,
+    sectorId,
+  );
   const startRot = Math.atan2(start.z - seamAnchor.z, start.x - seamAnchor.x);
   const reserveTicks = 2400;
   const sim = createSimulation({
@@ -436,7 +460,7 @@ async function runRapierCeresHornetReserveScenario() {
   state.playerId = player.id;
 
   const worldSystem = sim.registry.get('world');
-  worldSystem.enterSector('sector_ceres_belt', {
+  worldSystem.enterSector(sectorId, {
     continuous: true,
     noTeleport: true,
     placePlayer: false,
