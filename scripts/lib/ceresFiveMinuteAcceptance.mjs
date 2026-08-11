@@ -26,6 +26,7 @@ import {
 } from '../../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
+import { SECTOR_ZONES } from '../../src/data/sectorZones.js';
 
 import {
   closeOwnedResources,
@@ -137,6 +138,14 @@ const CERES_AMBUSH_ANCHOR_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
   ZONE_CERES_THROUGHLINE.center,
   'sector_ceres_belt',
 ));
+const CERES_AMBUSH_PRESENCE_ZONE = SECTOR_ZONES.sector_ceres_belt
+  ?.find((zone) => zone.id === 'zone_ceres_ambush');
+assert.ok(CERES_AMBUSH_PRESENCE_ZONE?.presence?.spawnCenter,
+  'authored Ceres ambush hostile spawn center is required');
+const CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL = Object.freeze(sectorLocalToGlobalForSector(
+  CERES_AMBUSH_PRESENCE_ZONE.presence.spawnCenter,
+  'sector_ceres_belt',
+));
 const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
   CERES_FIVE_MINUTE_POCKET_IDS.map((pocketId) => {
     const pocket = CERES_ACTIVITY_POCKETS_BY_ID[pocketId];
@@ -151,6 +160,17 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
     })];
   }),
 ));
+const CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU = 8;
+const CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU = 20;
+// The fixed chase camera never follows hull yaw. After the collision receipt, first back out to the
+// authored Throughline beacon, then move along the seed-47 corridor to a point 65 WU south of the
+// authored hostile-presence center. The two collision-anchor centerlines retain >44 WU of physical
+// clearance for the Hornet in the bound world fixture, while the exact hostile cohort is brought
+// close enough for a real render projection instead of a fabricated yaw-to-frustum coupling.
+const CERES_TOOLKIT_CAMERA_STAGE_GLOBAL = Object.freeze({
+  x: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.x,
+  z: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.z - 65,
+});
 const CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU = 90;
 const CERES_WORKING_SEAM_MIN_GUARANTEED_EGRESS_WU = CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU;
 const CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS = 2_400;
@@ -234,7 +254,8 @@ export function ceresHostileOpportunityPass(rows) {
   for (const row of rows) {
     if (!row || row.entityId == null || !String(row.worldRecordId || '')
         || entityIds.has(row.entityId) || recordIds.has(row.worldRecordId)
-        || row.ceresActivityAmbush !== true || row.team !== 1 || row.factionId !== 'faction_reach'
+        || row.ceresActivityAmbushPhase !== 'conflict'
+        || row.team !== 1 || row.factionId !== 'faction_reach'
         || row.lawful !== false
         || row.passive !== false || row.roe !== 'weapons_free'
         || row.spawnContext !== 'zone_hostile'
@@ -243,6 +264,16 @@ export function ceresHostileOpportunityPass(rows) {
     recordIds.add(row.worldRecordId);
   }
   return true;
+}
+
+export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
+  const initial = Array.isArray(baseline?.initialHostiles) ? baseline.initialHostiles : [];
+  const bound = Array.isArray(prebound?.boundHostiles) ? prebound.boundHostiles : [];
+  if (baseline?.playerEntityId == null || baseline.playerEntityId !== prebound?.playerEntityId
+      || initial.length !== bound.length || !ceresHostileOpportunityPass(initial)) return false;
+  const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
+  const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
+  return stableJson(initialPairs) === stableJson(boundPairs);
 }
 
 /**
@@ -1132,7 +1163,7 @@ export async function runCeresFiveMinutePublicRoute({
 
       if (leg.pocketId === 'ceres_ambush_run' && !toolkit) {
         collisionProof = await drivePublicAnchorCollision(page, observerBounds.endTick);
-        toolkit = await exercisePublicPhysicsToolkit(page, observerBounds.endTick);
+        toolkit = await exercisePublicPhysicsToolkit(page, observerBounds.endTick, collisionProof);
       }
       if (routeCycle >= legs.length && !continueProof) {
         if (oreCycleGateConfig) {
@@ -2119,7 +2150,9 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
         if (data.activityActorSlotId) byActor.set(data.activityActorSlotId, entity);
         if (data.activityObjectSlotId) byObject.set(data.activityObjectSlotId, entity);
         if (data.activityCollisionAnchorSlotId) byAnchor.set(data.activityCollisionAnchorSlotId, entity);
-        if (data.ai?.zoneId === 'zone_ceres_ambush' || data.ai?.squadId === 'zone_ceres_ambush') {
+        if (entity.type === 'ship' && String(data.worldRecordId || '')
+            && data.ai?.zoneId === 'zone_ceres_ambush'
+            && data.ai?.squadId === 'zone_ceres_ambush') {
           hostiles.push(entity);
         }
       }
@@ -2589,6 +2622,7 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
     targetPos,
     sourceArrivalPos: Object.freeze({ x: sourceX, z: sourceZ }),
     arrivalRadiusWU: CERES_WORKING_SEAM_EGRESS_ARRIVAL_RADIUS_WU,
+    allowBoost: false,
     minRemainingTicks,
     pathDistanceWU,
     guaranteedPublicEgressWU,
@@ -2596,8 +2630,38 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   });
 }
 
+export function planCeresThroughlineToolkitReposition() {
+  const throughlineBeacon = CERES_POCKET_TARGETS.ceres_ambush_run.targetPos;
+  return Object.freeze({
+    source: 'public-flight-controls',
+    reason: 'fixed-camera-hostile-acquisition',
+    waypoints: Object.freeze([
+      Object.freeze({
+        targetId: 'ceres-throughline-toolkit-backout',
+        targetName: 'Throughline toolkit backout',
+        targetPos: Object.freeze({
+          x: throughlineBeacon.x,
+          z: throughlineBeacon.z,
+        }),
+        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU,
+        minRemainingTicks: 120,
+        allowBoost: false,
+      }),
+      Object.freeze({
+        targetId: 'ceres-throughline-toolkit-camera-stage',
+        targetName: 'Throughline toolkit camera stage',
+        targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
+        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+        minRemainingTicks: 120,
+        allowBoost: false,
+      }),
+    ]),
+  });
+}
+
 export function chooseCeresPocketApproachAction(status, {
   arrivalRadiusWU = 90,
+  allowBoost = true,
 } = {}) {
   const distanceWU = Number(status?.distanceWU);
   const headingError = Number(status?.headingError);
@@ -2617,10 +2681,11 @@ export function chooseCeresPocketApproachAction(status, {
     });
   }
   if (Math.abs(headingError) > 0.08) {
+    const turnMagnitude = Math.abs(headingError);
     return Object.freeze({
       kind: 'turn',
       key: headingError > 0 ? 'KeyD' : 'KeyA',
-      durationMs: 80,
+      durationMs: turnMagnitude > 0.45 ? 80 : turnMagnitude > 0.2 ? 40 : 20,
     });
   }
   if (distanceWU < 150 && speed > 45) {
@@ -2635,7 +2700,7 @@ export function chooseCeresPocketApproachAction(status, {
     kind: 'thrust',
     key: 'KeyW',
     durationMs: 160,
-    boost: distanceWU > 220 && speed < 120,
+    boost: allowBoost !== false && distanceWU > 220 && speed < 120,
   });
 }
 
@@ -2740,7 +2805,10 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
     for (; approachPulses < 220;) {
       const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
-      const action = chooseCeresPocketApproachAction(status, { arrivalRadiusWU });
+      const action = chooseCeresPocketApproachAction(status, {
+        arrivalRadiusWU,
+        allowBoost: target.allowBoost !== false,
+      });
       recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
         throw new Error(`${target.targetName} approach produced invalid navigation telemetry`);
@@ -2793,6 +2861,56 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
   } finally {
     await releasePublicInput(page).catch(() => {});
   }
+}
+
+export async function repositionPublicForCeresToolkit(page, endTick, {
+  playerEntityId,
+  anchorEntityId,
+  anchorImpactTick,
+} = {}) {
+  if (playerEntityId == null || anchorEntityId == null
+      || !Number.isSafeInteger(anchorImpactTick)) {
+    throw new Error('toolkit camera reposition requires the exact collision authority');
+  }
+  const start = await page.evaluate(({ expectedPlayerId, expectedAnchorId }) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(expectedPlayerId);
+    const anchor = state?.entities?.get(expectedAnchorId);
+    return {
+      tick: Number(state?.tick),
+      nextEventSeq: Number(window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq),
+      playerEntityId: player?.id ?? null,
+      anchorEntityId: anchor?.data?.activityCollisionAnchorSlotId
+        === 'ceres_throughline_collision_anchor' ? anchor.id : null,
+    };
+  }, { expectedPlayerId: playerEntityId, expectedAnchorId: anchorEntityId });
+  if (!Number.isSafeInteger(start.tick) || !Number.isSafeInteger(start.nextEventSeq)
+      || start.nextEventSeq < 1 || start.tick < anchorImpactTick
+      || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId) {
+    throw new Error('toolkit camera reposition lost the exact collision authority');
+  }
+  const plan = planCeresThroughlineToolkitReposition();
+  const receipts = [];
+  for (const waypoint of plan.waypoints) {
+    receipts.push(await drivePublicToCeresPoint(page, waypoint, endTick));
+  }
+  const completedAtTick = Number(receipts.at(-1)?.tick);
+  if (!Number.isSafeInteger(completedAtTick) || completedAtTick < start.tick) {
+    throw new Error('toolkit camera reposition lacks an ordered completion tick');
+  }
+  return Object.freeze({
+    pass: true,
+    source: plan.source,
+    reason: plan.reason,
+    startTick: start.tick,
+    movementEndTick: completedAtTick,
+    playerEntityId,
+    anchorEntityId,
+    anchorImpactTick,
+    impactCaptureStartSeq: start.nextEventSeq,
+    waypoints: plan.waypoints,
+    receipts: Object.freeze(receipts.map((receipt) => Object.freeze({ ...receipt }))),
+  });
 }
 
 export async function drivePublicToPocketAnchor(page, pocketId, endTick) {
@@ -3011,48 +3129,85 @@ async function drivePublicAnchorCollision(page, endTick) {
   throw new Error('public flight controls did not produce an exact Throughline-anchor impact');
 }
 
-async function exercisePublicPhysicsToolkit(page, endTick) {
+async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
   const canvas = page.locator('#gl-canvas');
   const box = await canvas.boundingBox();
   if (!box) throw new Error('toolkit exercise requires the flight canvas');
   await canvas.focus();
-  const baseline = await page.evaluate(() => {
+  const prebound = await page.evaluate(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
-    const initialHostiles = (state?.entityList || []).filter((entity) => (
-      entity?.alive !== false && String(entity.data?.worldRecordId || '') && (
+    const boundHostiles = (state?.entityList || []).filter((entity) => (
+      entity?.alive !== false && entity?.type === 'ship'
+      && String(entity.data?.worldRecordId || '') && (
         entity.data?.ai?.zoneId === 'zone_ceres_ambush'
-          || entity.data?.ai?.squadId === 'zone_ceres_ambush'
+          && entity.data?.ai?.squadId === 'zone_ceres_ambush'
       )
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId,
-      ceresActivityAmbush: entity.data?.ceresActivityAmbush === true,
-      team: entity.team ?? entity.data?.team ?? null,
-      factionId: entity.factionId || entity.data?.factionId || null,
-      lawful: entity.data?.ai?.lawful === true,
-      passive: entity.data?.ai?.passive === true,
-      roe: entity.data?.ai?.roe || null,
-      spawnContext: entity.data?.ai?.spawnContext || null,
-      zoneId: entity.data?.ai?.zoneId || null,
-      squadId: entity.data?.ai?.squadId || null,
     })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
     return {
-      startTick: Number(state?.tick),
       playerEntityId: player?.id ?? null,
-      combatTraceStartSeq: Number(state?.combat?.trace?.nextSeq) || 1,
-      initialHostiles,
+      boundHostiles,
     };
   });
-  if (baseline.playerEntityId == null || baseline.initialHostiles.length < 1) {
+  if (prebound.playerEntityId == null || prebound.boundHostiles.length < 1) {
     throw new Error('toolkit exercise requires the live player and durable Throughline hostiles');
   }
 
-  let target = null;
-  for (let attempt = 0; attempt < 40 && !target; attempt += 1) {
-    target = await projectNearestCeresHostile(page);
-    if (!target) await page.waitForTimeout(150);
+  if (collisionProof?.pass !== true || collisionProof.playerEntityId == null
+      || collisionProof.anchorEntityId == null
+      || !Number.isSafeInteger(collisionProof.impact?.tick)) {
+    throw new Error('toolkit exercise requires the exact preceding collision receipt');
   }
+  const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
+    playerEntityId: collisionProof.playerEntityId,
+    anchorEntityId: collisionProof.anchorEntityId,
+    anchorImpactTick: collisionProof.impact.tick,
+  });
+  let baseline = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    baseline = await page.evaluate((authority) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get(state.playerId);
+      const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
+      const initialHostiles = (state?.entityList || []).filter((entity) => (
+        entity?.alive !== false && entity?.type === 'ship'
+        && bound.get(entity.id) === entity.data?.worldRecordId
+        && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
+        && entity.data?.ai?.squadId === 'zone_ceres_ambush'
+      )).map((entity) => ({
+        entityId: entity.id,
+        worldRecordId: entity.data.worldRecordId,
+        ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
+        team: entity.team ?? entity.data?.team ?? null,
+        factionId: entity.factionId || entity.data?.factionId || null,
+        lawful: entity.data?.ai?.lawful === true,
+        passive: entity.data?.ai?.passive === true,
+        roe: entity.data?.ai?.roe || null,
+        spawnContext: entity.data?.ai?.spawnContext || null,
+        zoneId: entity.data?.ai?.zoneId || null,
+        squadId: entity.data?.ai?.squadId || null,
+      })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
+      return {
+        startTick: Number(state?.tick),
+        playerEntityId: player?.id ?? null,
+        combatTraceStartSeq: Number(state?.combat?.trace?.nextSeq) || 1,
+        initialHostiles,
+      };
+    }, prebound);
+    if (ceresToolkitConflictAuthorityPass(baseline, prebound)) break;
+    if (!Number.isSafeInteger(baseline.startTick) || baseline.startTick >= endTick - 120) {
+      throw new Error('toolkit hostile classification exhausted the exact route horizon');
+    }
+    await page.waitForTimeout(150);
+  }
+  if (!ceresToolkitConflictAuthorityPass(baseline, prebound)) {
+    throw new Error('toolkit exercise did not reach exact live Throughline conflict authority');
+  }
+  baseline.cameraReposition = cameraReposition;
+  let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick);
   if (!target || !baseline.initialHostiles.some((row) => row.entityId === target.id
       && row.worldRecordId === target.worldRecordId)) {
     throw new Error('toolkit exercise could not point at a declared Throughline hostile');
@@ -3118,10 +3273,13 @@ async function exercisePublicPhysicsToolkit(page, endTick) {
   try {
     for (let iteration = 0; iteration < 120; iteration += 1) {
       if (await readTick(page) >= endTick - 60) break;
-      target = await projectNearestCeresHostile(page);
+      target = await projectNearestCeresHostile(page, baseline.initialHostiles);
       if (!target) {
-        await page.waitForTimeout(200);
-        continue;
+        target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick);
+        if (!target) {
+          await page.waitForTimeout(200);
+          continue;
+        }
       }
       await page.mouse.move(
         box.x + (target.ndcX + 1) * 0.5 * box.width,
@@ -3176,6 +3334,8 @@ async function waitForCeresBusEvent(page, expected, timeout = 20_000) {
 async function readCeresToolkitReceipt(page, baseline) {
   return page.evaluate((authority) => {
     const state = window.SF?.state;
+    const routeTrace = window.__SF_CERES_FIVE_MINUTE_TRACE__;
+    const routeEvents = routeTrace?.events || [];
     const records = state?.world?.records?.byId || {};
     const destroyedRecordIds = authority.initialHostiles.map((row) => row.worldRecordId)
       .filter((recordId) => {
@@ -3183,6 +3343,32 @@ async function readCeresToolkitReceipt(page, baseline) {
         return record?.alive === false
           && (record.outcome === 'destroyed' || record.outcome === 'defeated');
       }).sort();
+    const cameraReposition = authority.cameraReposition ? (() => {
+      const captureStartSeq = Number(authority.cameraReposition.impactCaptureStartSeq);
+      const captureEndSeq = Number(routeTrace?.nextEventSeq) - 1;
+      return {
+        ...authority.cameraReposition,
+        endTick: authority.startTick,
+        impactCapture: {
+          startTick: authority.cameraReposition.startTick,
+          endTick: authority.startTick,
+          startSeq: captureStartSeq,
+          endSeq: captureEndSeq,
+        },
+        impacts: routeEvents.filter((event) => event?.event === 'physics:impact'
+          && Number(event.seq) >= captureStartSeq && Number(event.seq) <= captureEndSeq
+          && Number(event.tick) >= Number(authority.cameraReposition.startTick)
+          && Number(event.tick) <= Number(authority.startTick)
+          && (event.aId === authority.playerEntityId || event.bId === authority.playerEntityId))
+          .map((event) => ({
+            seq: Number(event.seq),
+            event: event.event,
+            tick: Number(event.tick),
+            aId: event.aId,
+            bId: event.bId,
+          })),
+      };
+    })() : null;
     return {
       schema: 'spaceface.ceresFiveMinuteToolkitReceipt.v1',
       inputSource: 'public-keyboard-mouse',
@@ -3190,7 +3376,8 @@ async function readCeresToolkitReceipt(page, baseline) {
       endTick: Number(state?.tick),
       playerEntityId: authority.playerEntityId,
       initialHostiles: authority.initialHostiles,
-      events: (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [])
+      cameraReposition,
+      events: routeEvents
         .filter((event) => Number(event.tick) >= authority.startTick)
         .map((event) => ({ ...event })),
       combatTrace: (state?.combat?.trace?.events || [])
@@ -3201,47 +3388,120 @@ async function readCeresToolkitReceipt(page, baseline) {
   }, baseline);
 }
 
-async function projectNearestCeresHostile(page) {
-  return page.evaluate(() => {
+async function readCeresHostilePointingSnapshot(page, boundHostiles) {
+  return page.evaluate((authorityRows) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const camera = state?.render?.camera;
-    if (!state || !player || !camera) return null;
-    const hostile = (state.entityList || [])
-      .filter((entity) => entity?.alive !== false && (
-        entity.data?.ai?.zoneId === 'zone_ceres_ambush'
-        || entity.data?.ai?.squadId === 'zone_ceres_ambush'
-      ))
-      .sort((left, right) => (
-        Math.hypot(left.pos.x - player.pos.x, left.pos.z - player.pos.z)
-        - Math.hypot(right.pos.x - player.pos.x, right.pos.z - player.pos.z)
-      ))[0];
-    const root = hostile?.view?.root || hostile?.mesh;
-    if (!hostile || !root?.matrixWorld?.elements) return null;
-    const world = root.matrixWorld.elements;
-    const view = camera.matrixWorldInverse.elements;
-    const projection = camera.projectionMatrix.elements;
-    const x = world[12]; const y = world[13]; const z = world[14];
-    const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
-    const vy = view[1] * x + view[5] * y + view[9] * z + view[13];
-    const vz = view[2] * x + view[6] * y + view[10] * z + view[14];
-    const vw = view[3] * x + view[7] * y + view[11] * z + view[15];
-    const cx = projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12] * vw;
-    const cy = projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13] * vw;
-    const cw = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15] * vw;
-    if (!Number.isFinite(cw) || cw <= 0) return null;
-    const ndcX = cx / cw;
-    const ndcY = cy / cw;
-    if (!Number.isFinite(ndcX) || !Number.isFinite(ndcY)
-        || Math.abs(ndcX) > 0.98 || Math.abs(ndcY) > 0.98) return null;
-    return {
-      id: hostile.id,
-      worldRecordId: hostile.data?.worldRecordId || null,
-      alive: hostile.alive !== false,
-      ndcX,
-      ndcY,
-    };
+    if (!state || !player || !camera) {
+      return { tick: Number(state?.tick), candidates: [] };
+    }
+    const bound = new Map((authorityRows || []).map((row) => [row.entityId, row.worldRecordId]));
+    const candidates = (state.entityList || []).filter((entity) => (
+      entity?.alive !== false
+        && entity?.type === 'ship'
+        && bound.get(entity.id) === entity.data?.worldRecordId
+        && (entity.data?.ai?.zoneId === 'zone_ceres_ambush'
+          && entity.data?.ai?.squadId === 'zone_ceres_ambush')
+    )).map((hostile) => {
+      const dx = Number(hostile.pos?.x) - Number(player.pos?.x);
+      const dz = Number(hostile.pos?.z) - Number(player.pos?.z);
+      const desired = Math.atan2(dz, dx);
+      let headingError = desired - Number(player.rot || 0);
+      while (headingError > Math.PI) headingError -= Math.PI * 2;
+      while (headingError < -Math.PI) headingError += Math.PI * 2;
+      const row = {
+        id: hostile.id,
+        worldRecordId: hostile.data?.worldRecordId || null,
+        alive: hostile.alive !== false,
+        distanceWU: Math.hypot(dx, dz),
+        headingError,
+        pointable: false,
+        ndcX: null,
+        ndcY: null,
+      };
+      const root = hostile?.view?.root || hostile?.mesh;
+      if (!root?.matrixWorld?.elements
+          || !camera.matrixWorldInverse?.elements || !camera.projectionMatrix?.elements) return row;
+      let node = root;
+      while (node) {
+        if (node.visible === false) return row;
+        node = node.parent || null;
+      }
+      const world = root.matrixWorld.elements;
+      const view = camera.matrixWorldInverse.elements;
+      const projection = camera.projectionMatrix.elements;
+      const x = world[12]; const y = world[13]; const z = world[14];
+      const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
+      const vy = view[1] * x + view[5] * y + view[9] * z + view[13];
+      const vz = view[2] * x + view[6] * y + view[10] * z + view[14];
+      const vw = view[3] * x + view[7] * y + view[11] * z + view[15];
+      const cx = projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12] * vw;
+      const cy = projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13] * vw;
+      const cw = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15] * vw;
+      if (!Number.isFinite(cw) || cw <= 0) return row;
+      row.ndcX = cx / cw;
+      row.ndcY = cy / cw;
+      row.pointable = Number.isFinite(row.ndcX) && Number.isFinite(row.ndcY)
+        && Math.abs(row.ndcX) <= 0.98 && Math.abs(row.ndcY) <= 0.98;
+      return row;
+    });
+    return { tick: Number(state.tick), candidates };
+  }, (boundHostiles || []).map((row) => ({
+    entityId: row.entityId,
+    worldRecordId: row.worldRecordId,
+  })));
+}
+
+export function selectCeresHostilePointingStatus(snapshot) {
+  const candidates = (Array.isArray(snapshot?.candidates) ? snapshot.candidates : [])
+    .filter((row) => row?.id != null && String(row.worldRecordId || '')
+      && Number.isFinite(Number(row.distanceWU)) && Number(row.distanceWU) >= 0
+      && Number.isFinite(Number(row.headingError)))
+    .sort((left, right) => Number(left.distanceWU) - Number(right.distanceWU)
+      || String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
+  const pointable = candidates.find((row) => row.pointable === true
+    && Number.isFinite(Number(row.ndcX)) && Math.abs(Number(row.ndcX)) <= 0.98
+    && Number.isFinite(Number(row.ndcY)) && Math.abs(Number(row.ndcY)) <= 0.98) || null;
+  return Object.freeze({
+    tick: Number(snapshot?.tick),
+    nearest: candidates[0] || null,
+    target: pointable ? Object.freeze({
+      id: pointable.id,
+      worldRecordId: pointable.worldRecordId,
+      alive: pointable.alive !== false,
+      ndcX: Number(pointable.ndcX),
+      ndcY: Number(pointable.ndcY),
+    }) : null,
   });
+}
+
+async function projectNearestCeresHostile(page, boundHostiles) {
+  return selectCeresHostilePointingStatus(
+    await readCeresHostilePointingSnapshot(page, boundHostiles),
+  ).target;
+}
+
+export async function pointPublicAtCeresHostile(page, boundHostiles, endTick, {
+  maxAttempts = 40,
+} = {}) {
+  if (!Array.isArray(boundHostiles) || boundHostiles.length < 1
+      || !Number.isSafeInteger(endTick) || !Number.isSafeInteger(maxAttempts)
+      || maxAttempts < 1 || maxAttempts > 40) {
+    throw new Error('public hostile pointing requires bound identities and a fixed horizon');
+  }
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const status = selectCeresHostilePointingStatus(
+      await readCeresHostilePointingSnapshot(page, boundHostiles),
+    );
+    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
+      throw new Error('public hostile pointing exhausted the exact route horizon');
+    }
+    if (status.target) return status.target;
+    if (!status.nearest) return null;
+    await page.waitForTimeout(150);
+  }
+  return null;
 }
 
 async function publicSaveAndContinue({
@@ -3439,8 +3699,9 @@ async function readAccessibilitySnapshot(page) {
       return [{ slotId, entityId: entity.id }];
     }).sort((left, right) => left.slotId.localeCompare(right.slotId));
     const hostileWorldRecordIds = entities.filter((entity) => (
-      entity.data?.ai?.zoneId === 'zone_ceres_ambush'
-        || entity.data?.ai?.squadId === 'zone_ceres_ambush'
+      entity.type === 'ship' && String(entity.data?.worldRecordId || '')
+      && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
+        && entity.data?.ai?.squadId === 'zone_ceres_ambush'
     )).map((entity) => entity.data?.worldRecordId).filter(Boolean).sort();
     return {
       tick: Number(state?.tick),
@@ -3504,8 +3765,8 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId || null,
       jobId: entity.data.jobId || null,
-       ceresActivityAmbush: entity.data?.ceresActivityAmbush === true,
-       team: entity.team ?? entity.data?.team ?? null,
+      ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
+      team: entity.team ?? entity.data?.team ?? null,
       factionId: entity.factionId || entity.data?.factionId || null,
       lawful: entity.data?.ai?.lawful === true,
       passive: entity.data?.ai?.passive === true,
@@ -3528,12 +3789,13 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
       collides: entity.collides !== false && Number(entity.mass) > 0,
     })).sort((left, right) => left.slotId.localeCompare(right.slotId));
     const hostiles = entities.filter((entity) => (
-      entity.data?.ai?.zoneId === 'zone_ceres_ambush'
-      || entity.data?.ai?.squadId === 'zone_ceres_ambush'
+      entity.type === 'ship' && String(entity.data?.worldRecordId || '')
+      && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
+      && entity.data?.ai?.squadId === 'zone_ceres_ambush'
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data?.worldRecordId || null,
-      ceresActivityAmbush: entity.data?.ceresActivityAmbush === true,
+      ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
       team: entity.team ?? null,
       factionId: entity.factionId || entity.data?.factionId || null,
       lawful: entity.data?.ai?.lawful === true,
@@ -3558,7 +3820,7 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
       return expectedHostileIdSet.size > 0
         ? expectedHostileIdSet.has(recordId)
         : (record.ai?.zoneId === 'zone_ceres_ambush'
-          || record.ai?.squadId === 'zone_ceres_ambush');
+          && record.ai?.squadId === 'zone_ceres_ambush');
     }).map((record) => record.recordId || record.id || record.worldRecordId).sort();
     return {
       mode: state?.mode || null,
@@ -5231,6 +5493,17 @@ function validateToolkitObservation(observations, route, continueProjection, fai
   const before = failures.length;
   const projection = validateToolkitReceiptCore(receipt, route, failures);
   if (failures.length !== before) return;
+  const collision = observations.anchorCollision;
+  const camera = projection.cameraReposition;
+  const boundAnchorImpact = (Array.isArray(collision?.impacts) ? collision.impacts : [])
+    .some((impact) => impact?.event === 'physics:impact'
+      && impact.tick === camera.anchorImpactTick
+      && ((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
+        || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId)));
+  if (camera.playerEntityId !== collision?.playerEntityId
+      || camera.anchorEntityId !== collision?.anchorEntityId || !boundAnchorImpact) {
+    failures.push('toolkit camera reposition is not bound to the exact preceding anchor impact');
+  }
   for (const recordId of projection.destroyedRecordIds) {
     if (!continueProjection.tombstones.includes(recordId)) {
       failures.push(`toolkit hostile tombstone ${recordId} is not preserved through Continue`);
@@ -5239,7 +5512,11 @@ function validateToolkitObservation(observations, route, continueProjection, fai
 }
 
 function validateToolkitReceiptCore(receipt, route, failures) {
-  const projection = { destroyedRecordIds: [], targetRecordIds: [] };
+  const projection = {
+    destroyedRecordIds: [],
+    targetRecordIds: [],
+    cameraReposition: null,
+  };
   if (!receipt || receipt.schema !== 'spaceface.ceresFiveMinuteToolkitReceipt.v1'
       || receipt.inputSource !== 'public-keyboard-mouse'
       || !Number.isSafeInteger(receipt.startTick) || !Number.isSafeInteger(receipt.endTick)
@@ -5252,6 +5529,7 @@ function validateToolkitReceiptCore(receipt, route, failures) {
   if (!ceresHostileOpportunityPass(initial)) {
     failures.push('toolkit receipt lacks raw live hostile-criminal classification');
   }
+  projection.cameraReposition = validateToolkitCameraReposition(receipt, route, failures);
   const initialByEntity = new Map();
   const initialRecordIds = new Set();
   for (const row of initial) {
@@ -5391,6 +5669,81 @@ function validateToolkitReceiptCore(receipt, route, failures) {
     }
   }
   projection.targetRecordIds = sortedStrings(projection.targetRecordIds);
+  return projection;
+}
+
+function validateToolkitCameraReposition(receipt, route, failures) {
+  const camera = receipt?.cameraReposition;
+  const projection = {
+    playerEntityId: camera?.playerEntityId ?? null,
+    anchorEntityId: camera?.anchorEntityId ?? null,
+    anchorImpactTick: camera?.anchorImpactTick ?? null,
+  };
+  if (!camera || camera.pass !== true || camera.source !== 'public-flight-controls'
+      || camera.reason !== 'fixed-camera-hostile-acquisition'
+      || camera.playerEntityId !== receipt.playerEntityId || camera.anchorEntityId == null
+      || !Number.isSafeInteger(camera.anchorImpactTick)
+      || !Number.isSafeInteger(camera.startTick) || !Number.isSafeInteger(camera.movementEndTick)
+      || !Number.isSafeInteger(camera.endTick)
+      || camera.anchorImpactTick < route.startTick || camera.anchorImpactTick > camera.startTick
+      || camera.startTick < route.startTick || camera.startTick >= camera.movementEndTick
+      || camera.movementEndTick > camera.endTick || camera.endTick !== receipt.startTick
+      || camera.endTick > route.endTick) {
+    failures.push('toolkit camera reposition identity/order is incomplete');
+    return projection;
+  }
+  const expectedWaypoints = planCeresThroughlineToolkitReposition().waypoints.map((waypoint) => ({
+    targetId: waypoint.targetId,
+    targetName: waypoint.targetName,
+    targetPos: waypoint.targetPos,
+    arrivalRadiusWU: waypoint.arrivalRadiusWU,
+    minRemainingTicks: waypoint.minRemainingTicks,
+    allowBoost: waypoint.allowBoost,
+  }));
+  const actualWaypoints = (Array.isArray(camera.waypoints) ? camera.waypoints : []).map((waypoint) => ({
+    targetId: waypoint?.targetId,
+    targetName: waypoint?.targetName,
+    targetPos: waypoint?.targetPos,
+    arrivalRadiusWU: waypoint?.arrivalRadiusWU,
+    minRemainingTicks: waypoint?.minRemainingTicks,
+    allowBoost: waypoint?.allowBoost,
+  }));
+  if (stableJson(actualWaypoints) !== stableJson(expectedWaypoints)) {
+    failures.push('toolkit camera reposition changed its exact public waypoint contract');
+  }
+  const receipts = Array.isArray(camera.receipts) ? camera.receipts : [];
+  if (receipts.length !== expectedWaypoints.length || receipts.some((row, index) => (
+    !Number.isSafeInteger(row?.tick)
+      || row.tick < camera.startTick || row.tick > camera.movementEndTick
+      || (index > 0 && row.tick < receipts[index - 1].tick)
+      || !Number.isFinite(Number(row.distanceWU))
+      || Number(row.distanceWU) > expectedWaypoints[index].arrivalRadiusWU
+      || !Number.isFinite(Number(row.speed)) || Number(row.speed) > 1
+      || row.playerAlive !== true || row.mode !== 'flight'
+  )) || receipts.at(-1)?.tick !== camera.movementEndTick) {
+    failures.push('toolkit camera reposition lacks settled ordered waypoint receipts');
+  }
+  const capture = camera.impactCapture;
+  const impacts = camera.impacts;
+  if (!capture || !Array.isArray(impacts)
+      || !Number.isSafeInteger(capture.startTick) || capture.startTick !== camera.startTick
+      || !Number.isSafeInteger(capture.endTick) || capture.endTick !== camera.endTick
+      || !Number.isSafeInteger(capture.startSeq) || capture.startSeq < 1
+      || capture.startSeq !== camera.impactCaptureStartSeq
+      || !Number.isSafeInteger(capture.endSeq) || capture.endSeq < capture.startSeq - 1) {
+    failures.push('toolkit camera reposition lacks bounded player-impact capture authority');
+    return projection;
+  }
+  if (impacts.some((impact, index) => !Number.isSafeInteger(impact?.seq) || impact.seq < 1
+      || impact.seq < capture.startSeq || impact.seq > capture.endSeq
+      || !Number.isSafeInteger(impact?.tick)
+      || impact.tick < camera.startTick || impact.tick > camera.endTick
+      || (index > 0 && impact.seq <= impacts[index - 1].seq)
+      || impact.event !== 'physics:impact'
+      || !((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
+        || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId)))) {
+    failures.push('toolkit camera reposition contains a non-anchor player impact');
+  }
   return projection;
 }
 

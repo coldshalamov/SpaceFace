@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { physics } from '../src/core/physics.js';
+import { createSimulation } from '../src/core/sim.js';
+
 import {
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
+  ceresToolkitConflictAuthorityPass,
   chooseCeresPocketApproachAction,
   countsTowardCeresPocketVisibility,
   createAccessibilityMatchedCheckpoint,
@@ -19,8 +23,11 @@ import {
   evaluateZeroVisibilityMetric,
   gapMetricDigest,
   normalizeCeresTrace,
+  planCeresThroughlineToolkitReposition,
   planCeresWorkingSeamEgress,
+  pointPublicAtCeresHostile,
   projectCeresActivityFrame,
+  selectCeresHostilePointingStatus,
   settleCeresPocketApproach,
   validateCeresPilotSources,
   validatePublicInputReceipt,
@@ -32,6 +39,13 @@ import {
 } from '../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import { asteroidFormations } from '../src/systems/asteroidFormations.js';
+import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { projectPilotFlightControls } from '../src/systems/input.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { world } from '../src/systems/world.js';
 
 const RUNTIME_SCHEMA = 'spaceface.ceresFiveMinuteRuntimeEvidence.v1';
 const REVIEW_SCHEMA = 'spaceface.ceresFiveMinuteHumanReview.v1';
@@ -76,7 +90,7 @@ const TOOLKIT_HOSTILES = Object.freeze([
   Object.freeze({
     entityId: 701,
     worldRecordId: 'wr_npc_b64ae208',
-    ceresActivityAmbush: true,
+    ceresActivityAmbushPhase: 'conflict',
     team: 1,
     factionId: 'faction_reach',
     lawful: false,
@@ -89,7 +103,7 @@ const TOOLKIT_HOSTILES = Object.freeze([
   Object.freeze({
     entityId: 702,
     worldRecordId: 'wr_npc_cc9f0184',
-    ceresActivityAmbush: true,
+    ceresActivityAmbushPhase: 'conflict',
     team: 1,
     factionId: 'faction_reach',
     lawful: false,
@@ -160,12 +174,38 @@ test('raw lawful/service and hostile-opportunity classifiers fail closed on live
     ['hostile becomes passive', (rows) => { rows[0].passive = true; }],
     ['hostile loses weapons-free ROE', (rows) => { rows[0].roe = 'hold_fire'; }],
     ['hostile becomes lawful', (rows) => { rows[0].lawful = true; }],
-    ['hostile loses adopted cohort marker', (rows) => { rows[0].ceresActivityAmbush = false; }],
+    ['hostile loses adopted conflict marker', (rows) => { rows[0].ceresActivityAmbushPhase = 'offer'; }],
+    ['hostile keeps only the zone half of the cohort identity', (rows) => { rows[0].squadId = null; }],
+    ['hostile keeps only the squad half of the cohort identity', (rows) => { rows[0].zoneId = null; }],
   ]) {
     const candidate = structuredClone(hostiles);
     mutate(candidate);
     assert.equal(ceresHostileOpportunityPass(candidate), false, label);
   }
+
+  const prebound = {
+    playerEntityId: PLAYER_ENTITY_ID,
+    boundHostiles: hostiles.map((row) => ({
+      entityId: row.entityId,
+      worldRecordId: row.worldRecordId,
+    })),
+  };
+  assert.equal(ceresToolkitConflictAuthorityPass({
+    playerEntityId: PLAYER_ENTITY_ID,
+    initialHostiles: hostiles,
+  }, prebound), true);
+  const offered = structuredClone(hostiles);
+  offered[0].ceresActivityAmbushPhase = 'offer';
+  assert.equal(ceresToolkitConflictAuthorityPass({
+    playerEntityId: PLAYER_ENTITY_ID,
+    initialHostiles: offered,
+  }, prebound), false, 'pre-reposition offer authority cannot freeze the toolkit receipt');
+  const replacement = structuredClone(hostiles);
+  replacement[0].entityId += 10_000;
+  assert.equal(ceresToolkitConflictAuthorityPass({
+    playerEntityId: PLAYER_ENTITY_ID,
+    initialHostiles: replacement,
+  }, prebound), false, 'post-reposition classification cannot replace the bound durable cohort');
 
   assert.equal(countsTowardCeresPocketVisibility('ceres_cinder_service_hauler'), false);
   assert.equal(countsTowardCeresPocketVisibility('ceres_throughline_collision_anchor'), true);
@@ -479,6 +519,13 @@ test('runtime evidence requires raw five-minute route observations, not summary 
   assert.equal(Object.hasOwn(observations.toolkit, 'massSeedPressed'), false);
   assert.equal(Object.hasOwn(observations.toolkit, 'repulsorPressed'), false);
   assert.equal(Object.hasOwn(observations.toolkit, 'primaryFireAttempted'), false);
+  assert.equal(observations.toolkit.cameraReposition.source, 'public-flight-controls');
+  assert.equal(observations.toolkit.cameraReposition.anchorImpactTick,
+    observations.anchorCollision.impacts[0].tick);
+  assert.equal(observations.toolkit.cameraReposition.impacts.every((impact) => (
+    impact.aId === observations.toolkit.playerEntityId
+      && impact.bId === observations.anchorCollision.anchorEntityId
+  )), true);
   assert.deepEqual(observations.toolkit.initialHostiles, TOOLKIT_HOSTILES);
   assert.deepEqual(observations.toolkit.events.map((entry) => entry.event), [
     'tether:attached',
@@ -866,6 +913,31 @@ test('physics-toolkit proof is an ordered causal trace against initial Throughli
 
 test('physics-toolkit evaluator rejects summary shortcuts and broken causal identity', () => {
   const mutations = [
+    ['camera reposition receipt is missing', (toolkit) => {
+      delete toolkit.cameraReposition;
+    }],
+    ['camera reposition impact observation is missing', (toolkit) => {
+      delete toolkit.cameraReposition.impacts;
+    }],
+    ['camera reposition impact capture bound is missing', (toolkit) => {
+      delete toolkit.cameraReposition.impactCapture;
+    }],
+    ['camera reposition hits a non-anchor body', (toolkit) => {
+      toolkit.cameraReposition.impactCapture.endSeq = 1_191;
+      toolkit.cameraReposition.impacts.push({
+        seq: 1_191,
+        event: 'physics:impact',
+        tick: toolkit.cameraReposition.endTick,
+        aId: toolkit.playerEntityId,
+        bId: 229,
+      });
+    }],
+    ['camera reposition is not bound to the anchor impact', (toolkit) => {
+      toolkit.cameraReposition.anchorImpactTick += 1;
+    }],
+    ['camera reposition silently enables boost', (toolkit) => {
+      toolkit.cameraReposition.waypoints[1].allowBoost = true;
+    }],
     ['missing tether attachment', (toolkit) => removeToolkitEvent(toolkit, 'tether:attached')],
     ['tether attachment is not player-owned', (toolkit) => {
       findToolkitEvent(toolkit, 'tether:attached').actorId = 404;
@@ -1236,7 +1308,17 @@ test('public pocket approach completes only after the hull is settled inside the
     distanceWU: 140,
     headingError: 0.7,
     speed: 78,
-  }).kind, 'turn', 'outside the entry circle the proven controller corrects heading first');
+  }).durationMs, 80, 'large corrections retain the established full public turn pulse');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 280,
+    headingError: 0.3,
+    speed: 0.8,
+  }).durationMs, 40, 'medium corrections avoid crossing the narrow alignment window');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 280,
+    headingError: -0.12,
+    speed: 0.8,
+  }).durationMs, 20, 'near-aligned corrections use one fixed-step-scale pulse');
   const approachBrake = chooseCeresPocketApproachAction({
     distanceWU: 140,
     headingError: 0.01,
@@ -1261,6 +1343,220 @@ test('public pocket approach completes only after the hull is settled inside the
     headingError: 0,
     speed: 0,
   }).kind, 'invalid');
+});
+
+test('Working Seam egress disables dash-shaped boost without changing generic approaches', () => {
+  const alignedShortCorridor = {
+    distanceWU: 278.78177829171545,
+    headingError: 0,
+    speed: 0.8,
+  };
+  const generic = chooseCeresPocketApproachAction(alignedShortCorridor);
+  assert.equal(generic.kind, 'thrust');
+  assert.equal(generic.boost, true, 'ordinary long approaches retain their existing boost policy');
+
+  const dashSafe = chooseCeresPocketApproachAction(alignedShortCorridor, {
+    arrivalRadiusWU: 90,
+    allowBoost: false,
+  });
+  assert.deepEqual(dashSafe, {
+    kind: 'thrust',
+    key: 'KeyW',
+    durationMs: 160,
+    boost: false,
+  }, 'the short station-center corridor must not emit a dash-shaped Shift tap');
+});
+
+test('public toolkit acquisition uses a clear translation corridor and never treats yaw as camera motion', async () => {
+  const nearestOffscreen = {
+    id: 202,
+    worldRecordId: 'wr_npc_b41fdf37',
+    alive: true,
+    distanceWU: 276.1269,
+    headingError: -1.049,
+    pointable: false,
+    ndcX: null,
+    ndcY: null,
+  };
+  const fartherPointable = {
+    id: 203,
+    worldRecordId: 'wr_npc_farther',
+    alive: true,
+    distanceWU: 310,
+    headingError: -0.2,
+    pointable: true,
+    ndcX: 0.42,
+    ndcY: -0.1,
+  };
+  const selected = selectCeresHostilePointingStatus({
+    tick: 6_834,
+    candidates: [nearestOffscreen, fartherPointable],
+  });
+  assert.equal(selected.nearest.id, nearestOffscreen.id,
+    'distance ordering remains diagnostic even when the nearest actor is outside the frustum');
+  assert.deepEqual(selected.target, {
+    id: fartherPointable.id,
+    worldRecordId: fartherPointable.worldRecordId,
+    alive: true,
+    ndcX: fartherPointable.ndcX,
+    ndcY: fartherPointable.ndcY,
+  }, 'a farther exact cohort member must not be hidden by the nearest off-screen actor');
+
+  const plan = planCeresThroughlineToolkitReposition();
+  const throughlineBeacon = sectorLocalToGlobalForSector(
+    CERES_ACTIVITY_POCKETS_BY_ID.ceres_ambush_run.activityAnchor.localPos,
+    CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  );
+  assert.equal(plan.source, 'public-flight-controls');
+  const hostileSpawn = sectorLocalToGlobalForSector(
+    SECTOR_ZONES.sector_ceres_belt.find((zone) => zone.id === 'zone_ceres_ambush')
+      .presence.spawnCenter,
+    CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  );
+  assert.deepEqual(plan.waypoints.map((waypoint) => ({
+    targetPos: waypoint.targetPos,
+    arrivalRadiusWU: waypoint.arrivalRadiusWU,
+    allowBoost: waypoint.allowBoost,
+  })), [
+    { targetPos: throughlineBeacon, arrivalRadiusWU: 8, allowBoost: false },
+    {
+      targetPos: { x: hostileSpawn.x, z: hostileSpawn.z - 65 },
+      arrivalRadiusWU: 20,
+      allowBoost: false,
+    },
+  ], 'the collision recovery first backs out, then translates the fixed camera below the hostile spawn');
+
+  const segmentGap = (point, radiusWU, start, end) => {
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const lengthSquared = dx * dx + dz * dz;
+    const t = Math.max(0, Math.min(1,
+      ((point.x - start.x) * dx + (point.z - start.z) * dz) / lengthSquared));
+    const closest = { x: start.x + dx * t, z: start.z + dz * t };
+    return Math.hypot(point.x - closest.x, point.z - closest.z) - 16 - radiusWU;
+  };
+  const stage = plan.waypoints[1].targetPos;
+  const anchorFixture = [
+    { offset: { x: 48, z: 64 }, radiusWU: 15.773138417862356 },
+    { offset: { x: 150, z: 20 }, radiusWU: 12.386358419433236 },
+  ];
+  for (const anchor of anchorFixture) {
+    const point = {
+      x: throughlineBeacon.x + anchor.offset.x,
+      z: throughlineBeacon.z + anchor.offset.z,
+    };
+    const centerlineGap = segmentGap(point, anchor.radiusWU, throughlineBeacon, stage);
+    assert.ok(centerlineGap > 44,
+      'the seed-47 Hornet centerline retains more than 44 WU of hull clearance');
+    assert.ok(centerlineGap - plan.waypoints[0].arrivalRadiusWU > 36,
+      'the full 8-WU backout completion envelope retains more than 36 WU of clearance');
+  }
+
+  const boundHostiles = [{
+    entityId: nearestOffscreen.id,
+    worldRecordId: nearestOffscreen.worldRecordId,
+  }];
+  const events = [];
+  let tick = 6_834;
+  const page = {
+    keyboard: {
+      async down(key) { assert.fail(`projection wait must not press ${key}`); },
+      async up(key) { assert.fail(`projection wait must not release ${key}`); },
+    },
+    async evaluate(_callback, authorityRows) {
+      assert.deepEqual(authorityRows, boundHostiles,
+        'every projection poll stays bound to exact entity and durable record identity');
+      return {
+        tick,
+        candidates: [{
+          ...nearestOffscreen,
+        }],
+      };
+    },
+    async waitForTimeout(durationMs) {
+      events.push(`wait:${durationMs}`);
+      assert.equal(durationMs, 150);
+      tick += 9;
+    },
+  };
+  const acquired = await pointPublicAtCeresHostile(page, boundHostiles, END_TICK, {
+    maxAttempts: 2,
+  });
+  assert.equal(acquired, null,
+    'stationary yaw telemetry cannot turn an off-screen world actor into a pointable target');
+  assert.deepEqual(events, ['wait:150', 'wait:150']);
+
+  let horizonKeydowns = 0;
+  const horizonPage = {
+    keyboard: {
+      async down() { horizonKeydowns += 1; },
+      async up() {},
+    },
+    async evaluate() {
+      return {
+        tick: END_TICK - 120,
+        candidates: [nearestOffscreen],
+      };
+    },
+    async waitForTimeout() { assert.fail('horizon rejection must not wait or pulse a key'); },
+  };
+  await assert.rejects(
+    pointPublicAtCeresHostile(horizonPage, boundHostiles, END_TICK),
+    /exhausted the exact route horizon/,
+  );
+  assert.equal(horizonKeydowns, 0, 'the exact reserve boundary rejects before public input');
+
+  const librarySource = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const repositionIndex = librarySource.indexOf(
+    'const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {',
+  );
+  const conflictIndex = librarySource.indexOf(
+    'ceresToolkitConflictAuthorityPass(baseline, prebound)', repositionIndex,
+  );
+  const pointIndex = librarySource.indexOf(
+    'let target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick)',
+  );
+  assert.ok(repositionIndex >= 0 && conflictIndex > repositionIndex && pointIndex > conflictIndex,
+    'translation must precede live conflict classification and render-projection acquisition');
+});
+
+test('seed-47 Hornet traverses the toolkit camera corridor with production Flight V3 and Rapier', async () => {
+  const result = await runSeed47ToolkitCameraReposition();
+  assert.deepEqual(result.receipts.map((receipt) => receipt.pass), [true, true]);
+  assert.ok(result.receipts.every((receipt) => receipt.pulses < 100),
+    'each no-boost public-control leg retains more than half of its 220-pulse budget');
+  assert.ok(result.receipts.at(-1).distanceWU <= 20);
+  assert.ok(result.receipts.at(-1).speed <= 1);
+  assert.equal(result.playerHull, 260);
+  assert.deepEqual(result.playerImpactTicks, [],
+    'the exact public corridor must not trade camera acquisition for another physical impact');
+  assert.ok(result.elapsedTicks < 600,
+    'camera recovery leaves the five-minute route and ore-cycle reserve materially intact');
+
+  const recordedHostile = { x: -8972.711669921875, z: 7237.062744140625 };
+  const preReposition = projectThroughSettledChaseCamera(
+    { x: -9231.115234375, z: 7334.3955078125 },
+    recordedHostile,
+  );
+  const postReposition = projectThroughSettledChaseCamera(result.playerPos, recordedHostile);
+  assert.ok(Math.abs(preReposition.x) > 0.98,
+    'the exact failed hostile begins outside the fixed camera frustum');
+  assert.ok(Math.abs(postReposition.x) <= 0.98 && Math.abs(postReposition.y) <= 0.98,
+    'the same durable hostile projects inside the settled fixed camera after public translation');
+  const stage = planCeresThroughlineToolkitReposition().waypoints.at(-1);
+  for (let bearing = 0; bearing < 360; bearing += 1) {
+    const radians = bearing * Math.PI / 180;
+    const endpoint = {
+      x: stage.targetPos.x + Math.cos(radians) * stage.arrivalRadiusWU,
+      z: stage.targetPos.z + Math.sin(radians) * stage.arrivalRadiusWU,
+    };
+    const projection = projectThroughSettledChaseCamera(endpoint, recordedHostile);
+    assert.ok(Math.abs(projection.x) <= 0.98 && Math.abs(projection.y) <= 0.98,
+      `the full public completion shell keeps the recorded hostile pointable at bearing ${bearing}`);
+  }
 });
 
 test('public pocket settle holds the brake to the speed condition outside the steering budget', async () => {
@@ -1410,6 +1706,8 @@ test('Working Seam evidence publicly restages to the fixed Belt Outpost departur
     'the plan must retain the live accepted-arrival evidence separately from its fixed target');
   assert.notEqual(target.sourceArrivalPos, target.targetPos,
     'live evidence and the fixed corridor must not share mutable identity');
+  assert.equal(target.allowBoost, false,
+    'the fixed station-center corridor must explicitly suppress manual dash taps');
   assert.ok(Math.abs(target.guaranteedPublicEgressWU - 188.78177829171545) < 1e-6,
     `both 90-WU completion circles must be deducted, got ${target.guaranteedPublicEgressWU}`);
   assert.equal(target.minRemainingTicks, 2_400,
@@ -1843,7 +2141,7 @@ function routeObservationsFixture(runtimeKind, candidateDigest, samples, recorde
       finalAnchors: structuredClone(collisionAnchors),
       impacts: [{
         event: 'physics:impact',
-        tick: START_TICK + 7_300,
+        tick: START_TICK + 7_180,
         aId: 1,
         bId: 9,
       }],
@@ -1927,6 +2225,7 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
   const target = TOOLKIT_HOSTILES[0];
   const attachmentId = 'att_player_701_1';
   const seedId = 9_001;
+  const cameraPlan = planCeresThroughlineToolkitReposition();
   const events = [
     {
       seq: 1_201,
@@ -2044,6 +2343,48 @@ function toolkitReceiptFixture(destroyedWorldRecordId) {
     startTick: START_TICK + 7_200,
     endTick: START_TICK + 8_000,
     playerEntityId: PLAYER_ENTITY_ID,
+    cameraReposition: {
+      pass: true,
+      source: cameraPlan.source,
+      reason: cameraPlan.reason,
+      startTick: START_TICK + 7_180,
+      movementEndTick: START_TICK + 7_199,
+      endTick: START_TICK + 7_200,
+      playerEntityId: PLAYER_ENTITY_ID,
+      anchorEntityId: 9,
+      anchorImpactTick: START_TICK + 7_180,
+      impactCaptureStartSeq: 1_190,
+      impactCapture: {
+        startTick: START_TICK + 7_180,
+        endTick: START_TICK + 7_200,
+        startSeq: 1_190,
+        endSeq: 1_190,
+      },
+      waypoints: structuredClone(cameraPlan.waypoints),
+      receipts: [
+        {
+          tick: START_TICK + 7_190,
+          distanceWU: 7.5,
+          speed: 0.8,
+          playerAlive: true,
+          mode: 'flight',
+        },
+        {
+          tick: START_TICK + 7_199,
+          distanceWU: 18.25,
+          speed: 0.6,
+          playerAlive: true,
+          mode: 'flight',
+        },
+      ],
+      impacts: [{
+        seq: 1_190,
+        event: 'physics:impact',
+        tick: START_TICK + 7_180,
+        aId: PLAYER_ENTITY_ID,
+        bId: 9,
+      }],
+    },
     initialHostiles: TOOLKIT_HOSTILES.map((entry) => ({ ...entry })),
     events,
     combatTrace: [
@@ -2676,6 +3017,175 @@ function pocketApproachTwoPhasePage({
     },
   };
   return harness;
+}
+
+async function runSeed47ToolkitCameraReposition() {
+  const dt = 1 / 60;
+  const sim = createSimulation({
+    seed: 47,
+    systems: [world, asteroidSites, asteroidFormations, flightV3, physics],
+  });
+  const { state } = sim;
+  state.mode = 'flight';
+  const player = sim.spawn(makeShipEntitySpec('ship_hornet', {
+    isPlayer: true,
+    player: state.player,
+    pos: { x: -9231.115234375, z: 7334.3955078125 },
+    rot: 0.6881743019473432,
+    fittings: [],
+  }));
+  player.vel = { x: 0, z: 0 };
+  player.angVel = 0;
+  player.collides = true;
+  state.playerId = player.id;
+  sim.registry.get('world').enterSector('sector_ceres_belt', {
+    continuous: true,
+    noTeleport: true,
+    placePlayer: false,
+  });
+  for (const traffic of [
+    {
+      worldRecordId: 'wr_convoy_cb57b215',
+      pos: { x: -9030.272705078125, z: 7187.342346191406 },
+      radius: 14,
+    },
+    {
+      worldRecordId: 'wr_convoy_743b2d60',
+      pos: { x: -8937.385009765625, z: 7156.213134765625 },
+      radius: 18,
+    },
+  ]) {
+    const spec = makeShipEntitySpec('ship_kestrel', {
+      team: 2,
+      factionId: 'faction_free',
+      pos: traffic.pos,
+      fittings: [],
+    });
+    sim.spawn({
+      ...spec,
+      radius: traffic.radius,
+      collides: true,
+      vel: { x: 0, z: 0 },
+      angVel: 0,
+      data: { ...spec.data, worldRecordId: traffic.worldRecordId },
+    });
+  }
+  const physicsSystem = sim.registry.get('physics');
+  const ready = await physicsSystem.prepareBackend(state, { reset: true });
+  assert.equal(ready, true, 'toolkit reposition fixture requires production Rapier authority');
+  state.nav.autopilot = { active: false, status: 'arrived' };
+  state.input.actions = { autopursuit: false, brake: false };
+
+  const startTick = 6_834;
+  let tick = startTick;
+  const playerImpactTicks = [];
+  sim.bus.on('physics:impact', (event) => {
+    if (event.aId === player.id || event.bId === player.id) playerImpactTicks.push(state.tick);
+  });
+  const neutralize = () => Object.assign(state.input, {
+    moveX: 0,
+    moveZ: 0,
+    turnIntent: 0,
+    boost: false,
+    brake: false,
+  });
+  const step = (count, input = {}) => {
+    for (let index = 0; index < count; index += 1) {
+      neutralize();
+      Object.assign(state.input, input);
+      state.tick = tick;
+      state.simTime = tick * dt;
+      tick += 1;
+      sim.step(dt);
+    }
+  };
+  const status = (target) => {
+    const dx = target.targetPos.x - player.pos.x;
+    const dz = target.targetPos.z - player.pos.z;
+    let headingError = Math.atan2(dz, dx) - player.rot;
+    while (headingError > Math.PI) headingError -= Math.PI * 2;
+    while (headingError < -Math.PI) headingError += Math.PI * 2;
+    return {
+      distanceWU: Math.hypot(dx, dz),
+      headingError,
+      speed: Math.hypot(player.vel.x, player.vel.z),
+    };
+  };
+  const drive = (target) => {
+    let pulses = 0;
+    for (; pulses < 220;) {
+      const current = status(target);
+      const action = chooseCeresPocketApproachAction(current, {
+        arrivalRadiusWU: target.arrivalRadiusWU,
+        allowBoost: target.allowBoost,
+      });
+      if (action.kind === 'complete') {
+        return { pass: true, pulses, ...current };
+      }
+      if (action.kind === 'settle') {
+        for (let index = 0; index < 600 && status(target).speed > 1; index += 1) {
+          step(1, projectPilotFlightControls({ brakeHeld: true }));
+        }
+        continue;
+      }
+      pulses += 1;
+      const pulseTicks = Math.max(1, Math.round(action.durationMs / 1_000 / dt));
+      if (action.kind === 'turn') {
+        step(pulseTicks, projectPilotFlightControls({
+          yawRight: action.key === 'KeyD',
+          yawLeft: action.key === 'KeyA',
+        }));
+      } else if (action.kind === 'decelerate') {
+        step(pulseTicks, projectPilotFlightControls({ reverse: true }));
+      } else if (action.kind === 'thrust') {
+        assert.equal(action.boost, false, 'toolkit camera reposition must remain dash-safe');
+        step(pulseTicks, projectPilotFlightControls({ forward: true }));
+      } else {
+        assert.fail(`unexpected toolkit reposition action ${action.kind}`);
+      }
+    }
+    return { pass: false, pulses, ...status(target) };
+  };
+
+  try {
+    const receipts = [];
+    for (const waypoint of planCeresThroughlineToolkitReposition().waypoints) {
+      const receipt = drive(waypoint);
+      receipts.push(receipt);
+      if (!receipt.pass) break;
+      step(2);
+    }
+    return {
+      receipts,
+      playerHull: player.hull,
+      playerPos: { x: player.pos.x, z: player.pos.z },
+      playerImpactTicks,
+      elapsedTicks: tick - startTick,
+    };
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority();
+    sim.dispose();
+  }
+}
+
+function projectThroughSettledChaseCamera(focus, worldPoint) {
+  const zoomWU = 144 * 0.88;
+  const tilt = 60 * Math.PI / 180;
+  const fov = 50 * Math.PI / 180;
+  const aspect = 1440 / 900;
+  const near = 1;
+  const far = 14_000;
+  const dx = worldPoint.x - focus.x;
+  const dz = worldPoint.z - focus.z;
+  const depth = zoomWU + Math.cos(tilt) * dz;
+  if (!(depth > 0)) return { x: Infinity, y: Infinity, z: Infinity };
+  const halfHeight = depth * Math.tan(fov / 2);
+  return {
+    // Three's fixed chase camera faces world +Z, so camera-right is world -X.
+    x: -dx / (halfHeight * aspect),
+    y: Math.sin(tilt) * dz / halfHeight,
+    z: (far + near) / (far - near) - (2 * far * near) / ((far - near) * depth),
+  };
 }
 
 function actualPilotSources() {
