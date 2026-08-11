@@ -68,6 +68,12 @@ const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
 const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
 const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
 const FOV_DECAY = 6.5;         // exponential decay rate (higher = snappier return)
+// U13 (WF-15 dense-scene legibility): the punch ENVELOPE still steps to full amplitude so combat
+// energy is unchanged, but the applied camera FOV rises at a bounded rate so dense recoil+hit
+// stacking cannot thrash the projection matrix at 100+ deg/s. Decay only runs once the applied
+// FOV has caught the envelope peak — spectacle lands in full; only the discontinuous jump is gone.
+export const FOV_PUNCH_RISE_RATE = 28; // deg/s — full 2.2° heavy punch peaks in ~80 ms
+export const FOV_PUNCH_CAP = FOV_PUNCH_DEATH + 1;
 // Weapon-recoil fov kick (per player shot). Smaller than a heavy-hit punch since it fires often; a
 // quick 0.5-1.5° kick that decays fast reads as "kickback" without going seasick on auto fire.
 const RECOIL_FOV_MAX = 1.5;    // deg additive per shot (scaled down by recoilWeight)
@@ -115,6 +121,52 @@ const GRAIN_SCROLL_PX_S = 340;     // px/s — the field shears past at a fixed 
 // to the floor instead: the overlay fails dark, which is the correct direction for a whiteout bug.
 const clamp01 = (x) => (Number.isFinite(x) ? (x < 0 ? 0 : x > 1 ? 1 : x) : 0);
 const clampTo = (x, max) => (Number.isFinite(x) ? (x < 0 ? 0 : x > max ? max : x) : 0);
+
+/**
+ * Peak-preserving FOV punch integrator (U13 / WF-15).
+ *
+ * `envelope` is the authored impulse amplitude (may stack). `applied` is what the PerspectiveCamera
+ * actually carries. Envelope decay waits until applied has caught the peak (so a 2.2° heavy punch
+ * still lands at 2.2°), and applied always rate-limits toward the envelope in BOTH directions so
+ * dense recoil+hit stacking cannot thrash the projection matrix on the way up or down. Negative
+ * envelopes (warp-arrival dip) mirror the same contract.
+ *
+ * Pure and allocation-free so the dense-scene probe and feel.frame share one implementation.
+ */
+export function stepFovPunch(envelope, applied, dt, riseRate = FOV_PUNCH_RISE_RATE) {
+  let env = Number.isFinite(envelope) ? envelope : 0;
+  let app = Number.isFinite(applied) ? applied : 0;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const rate = Number.isFinite(riseRate) && riseRate > 0 ? riseRate : FOV_PUNCH_RISE_RATE;
+  const maxStep = rate * step;
+
+  // Decay only after the camera has reached the authored peak. Until then the envelope holds so the
+  // applied FOV can still climb all the way to the impulse the designer fired.
+  const caught = Math.abs(app - env) <= Math.max(1e-4, maxStep * 0.5);
+  if (caught || Math.abs(app) >= Math.abs(env) - 1e-4) {
+    env = damp(env, 0, FOV_DECAY, step);
+    if (Math.abs(env) < 0.001) env = 0;
+  }
+
+  // Applied FOV is always rate-limited toward the envelope (rise and return). This caps projection
+  // thrash under dense fire without reducing peak amplitude.
+  if (env > app) app = Math.min(env, app + maxStep);
+  else if (env < app) app = Math.max(env, app - maxStep);
+  else app = env;
+  if (Math.abs(app) < 0.001) app = 0;
+
+  return { envelope: env, applied: app };
+}
+
+/** Clamp an impulse onto the shared punch envelope (stacking energy, hard cap). */
+export function addFovPunch(envelope, add, cap = FOV_PUNCH_CAP) {
+  const cur = Number.isFinite(envelope) ? envelope : 0;
+  const delta = Number.isFinite(add) ? add : 0;
+  const limit = Number.isFinite(cap) ? cap : FOV_PUNCH_CAP;
+  // Negative adds (warp dip) floor at -3 to match the prior hard clamp.
+  if (delta < 0) return Math.max(-3.0, cur + delta);
+  return Math.min(cur + delta, limit);
+}
 
 // The scalar drive behind the speed-line overlay, extracted so it can be probed headlessly
 // (scripts/check-speed-lines.mjs) — the canvas loop below is the only caller, so the probe tests
@@ -237,7 +289,8 @@ export const feel = {
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
-    this._fovPunch = 0;       // current additive fov offset (deg)
+    this._fovPunch = 0;       // envelope: authored punch amplitude (deg), may stack
+    this._fovPunchApplied = 0; // what the PerspectiveCamera actually carries (rise-rate limited)
     this._vig = 0;            // current vignette opacity (0..1)
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
     // slider and the punch never fight.)
@@ -685,7 +738,7 @@ export const feel = {
       const w = recoilWeight(p.weaponId);
       // fov punch scaled by weapon weight, clamped to [min, max]
       const fov = RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * (w / 0.2);
-      this._fovPunch = Math.min(this._fovPunch + fov, FOV_PUNCH_DEATH + 1);
+      this._fovPunch = addFovPunch(this._fovPunch, fov);
       // small camera shake via the controller (trauma is squared internally → 0.04 reads as a nudge)
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(w * 0.4);
@@ -703,11 +756,11 @@ export const feel = {
     const _warpCtrl = () => this.state.render && this.state.render.cameraCtrl;
     bus.on('jump:chargeStart', () => {
       if (!_warpGate()) return;
-      this._fovPunch = Math.min(this._fovPunch + 2.5, FOV_PUNCH_DEATH + 1);   // anticipation kick
+      this._fovPunch = addFovPunch(this._fovPunch, 2.5);   // anticipation kick
     });
     bus.on('jump:start', () => {
       if (!_warpGate()) return;
-      this._fovPunch = Math.min(this._fovPunch + 6.0, FOV_PUNCH_DEATH + 1);   // warp-out punch
+      this._fovPunch = addFovPunch(this._fovPunch, 6.0);   // warp-out punch
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.18);
     });
@@ -715,7 +768,7 @@ export const feel = {
       if (!_warpGate()) return;
       // arrival: a brief fov DIP (negative punch) then it eases back — reads as decelerating out of warp.
       // We model the dip as a negative fov offset clamped so the composite never goes below ~0.5° floor.
-      this._fovPunch = Math.max(-3.0, this._fovPunch - 3.0);
+      this._fovPunch = addFovPunch(this._fovPunch, -3.0);
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15);
     });
@@ -730,7 +783,7 @@ export const feel = {
       const qty = Math.max(1, p.qty || 1);
       // scale gently with qty: 1 unit -> ~0.6, big strike (8+) -> capped ~1.4
       const fov = Math.min(1.4, 0.4 + Math.log2(qty) * 0.35);
-      this._fovPunch = Math.min(this._fovPunch + fov, FOV_PUNCH_DEATH + 1);
+      this._fovPunch = addFovPunch(this._fovPunch, fov);
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(Math.min(0.08, 0.03 + qty * 0.005));
     });
@@ -743,7 +796,7 @@ export const feel = {
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
-      this._fovPunch = Math.min(this._fovPunch + BOOST_FOV_PUNCH, FOV_PUNCH_DEATH + 1);
+      this._fovPunch = addFovPunch(this._fovPunch, BOOST_FOV_PUNCH);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(BOOST_TRAUMA);
     });
@@ -859,8 +912,8 @@ export const feel = {
       this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
       this.timeEffects.set('feel:hit-stop', this._hsRequest);
     }
-    // FOV punch: add on top of any in-flight punch (they decay together), then clamp.
-    this._fovPunch = Math.min(this._fovPunch + fovAdd, FOV_PUNCH_DEATH + 1);
+    // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
+    this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
 
     // Vignette: swap gradient class and raise opacity toward the peak.
     const vigEl = this._ensureVignette();
@@ -925,16 +978,14 @@ export const feel = {
     }
 
     // ---- FOV punch integration ----
-    // Sign-symmetric exponential decay toward 0: a punch can be positive (kick out — impacts,
-    // recoil, warp-out) or negative (dip in — warp arrival deceleration). The decay rate is the same
-    // either way; we snap to 0 once within epsilon so the camera settles exactly on the settings FOV.
-    // damp() rather than Euler (`x += -x * rate * dt`): frame() receives the loop's frameDt
-    // unclamped, and loop.js only caps it at 0.25 s, so a hitch made the Euler step factor
-    // FOV_DECAY * dt = 1.625 — past 1, which flips the sign. A kick-out became a dip-in after any
-    // stall. damp() is exp(-rate*dt) and cannot overshoot at any dt.
-    if (Math.abs(this._fovPunch) > 0.001) {
-      this._fovPunch = damp(this._fovPunch, 0, FOV_DECAY, frameDt);
-      if (Math.abs(this._fovPunch) < 0.001) this._fovPunch = 0;
+    // Envelope holds the authored impulse energy; applied is what the camera carries. Rise is
+    // rate-limited (U13 dense-scene legibility) so recoil+hit stacking cannot thrash the projection
+    // matrix; decay only runs after applied has caught the envelope peak so spectacle still lands
+    // in full. Shared pure step with the headless dense-scene probe.
+    if (Math.abs(this._fovPunch) > 0.001 || Math.abs(this._fovPunchApplied) > 0.001) {
+      const stepped = stepFovPunch(this._fovPunch, this._fovPunchApplied, frameDt);
+      this._fovPunch = stepped.envelope;
+      this._fovPunchApplied = stepped.applied;
     }
     const cam = this.state.render && this.state.render.camera;
     if (cam && cam.isPerspectiveCamera) {
@@ -942,8 +993,8 @@ export const feel = {
       // punch cooperate: the slider sets settings.video.fov (renderer live-applies it), and we add
       // the transient punch on top. When no punch is active we simply mirror the setting, so the
       // slider is always authoritative and never fights the punch.
-      const baseFov = (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || cam.fov || 50;
-      const target = baseFov + this._fovPunch;
+      const baseFov = (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || 50;
+      const target = baseFov + this._fovPunchApplied;
       if (Math.abs(cam.fov - target) > 0.001) {
         cam.fov = target;
         cam.updateProjectionMatrix();

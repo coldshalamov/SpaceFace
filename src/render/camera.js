@@ -30,7 +30,9 @@ const THREAT_ZOOM_BASE = 0.04;
 const THREAT_ZOOM_RANGE = 0.08;
 const TETHER_ZOOM_BASE = 0.03;
 const TETHER_ZOOM_RANGE = 0.06;
-const ACTIVE_ATTACKER_SAFE_NDC = 0.6;
+// U13: slightly tighter than the 0.80 pair contract so an active attacker stays readable inside the
+// 10% margin even when safe-rect clamping and dodge lead compete for focus.
+const ACTIVE_ATTACKER_SAFE_NDC = 0.55;
 const COMPOSITION_BIAS_LERP = 1.6;
 const COMPOSITION_BIAS_SLEW = 90;
 const CONTEXT_ZOOM_LERP = 1.2;
@@ -39,6 +41,15 @@ const SAFE_VIEW_Z = 0.46;
 const LOOKAHEAD_MAX = 18;           // wu — normal cap
 const LOOKAHEAD_MAX_CRUISE = 26;    // wu — cruise-only cap (spec2/02 §2)
 const LOOKAHEAD_SPEED_SCALE = 0.35; // velocity bias multiplier
+// U13 (WF-15): when an active attacker owns combat framing, velocity look-ahead must not yank the
+// pair out of the safe frame during a dodge. Full look-ahead remains for travel/cruise; combat only
+// keeps a fraction so the pilot's dodge still reads without the camera abandoning the threat.
+export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.32;
+// Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
+// the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
+// is meaningfully closer or a new active attacker appears.
+export const COMPOSITION_THREAT_STICK_S = 0.28;
+export const COMPOSITION_THREAT_STICK_CLOSER = 0.85; // challenger must be < 85% of sticky distance
 const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
@@ -60,6 +71,9 @@ export const SPEED_ZOOM_MAX = 1.18;  // ordinary hull-max factor
 export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 1.55;
 export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
+// U13: single-frame outward zoom cap. The Focus-lease continuity contract forbids a cut larger
+// than 6 wu/frame; stay under that while still letting active-attacker minZoom open the frame.
+const ZOOM_OUT_STEP_MAX_WU = 5.5;
 // R1 gameplay-scale reset: 144 WU is the selected normal framing. At 1600×1000 the starter hull
 // occupies ~10.6% of frame width while a nearby structure and three actors can share the view. The
 // GameState schema owns the same fresh-run default; explicit runtime camera:zoom choices remain exact.
@@ -302,6 +316,31 @@ function readFlybyLeaseTargetId(state) {
   return focus.targetId;
 }
 
+/**
+ * Cheap gate for combat look-ahead attenuation (U13). True when the chase camera is about to
+ * treat an active attacker as functional framing — sticky hold still active, live Flyby lease, or
+ * any hostile currently targeting the player. Pure; does not mutate sticky.
+ */
+export function playerHasActiveAttackerFraming(state, player, sticky = null) {
+  if (!state || !player) return false;
+  if (sticky && sticky.wasActive && sticky.remainS > 0 && sticky.id != null) {
+    const held = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(sticky.id)
+      : null;
+    if (held && held.alive !== false && held.hull > 0) return true;
+  }
+  if (readFlybyLeaseTargetId(state) != null) return true;
+  if (!state.entities || typeof state.entities.values !== 'function') return false;
+  for (const e of cameraThreatCandidates(state)) {
+    if (e === player) continue;
+    if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const combat = e.data && e.data.combat;
+    if (combat && (combat.targetId === player.id || combat.lockTarget === player.id)) return true;
+  }
+  return false;
+}
+
 function extendCompositionMinZoom(minZoom, item, fx, fz, tanHalf, aspect, tilt) {
   const radius = Math.max(0, finiteOr(item.radius, 4));
   const dx = Math.abs(item.pos.x - fx);
@@ -323,7 +362,14 @@ function cameraThreatCandidates(state) {
     : [];
 }
 
-export function resolveChaseComposition(state, player, focus, view = {}, out = null, tetherOut = null) {
+/**
+ * Optional sticky bag for dense-scene threat thrash (U13). Mutated in place by resolveChaseComposition
+ * when provided by the live chase camera. Pure callers (checks/tests) omit it and get frame-instant
+ * selection exactly as before.
+ *
+ *   sticky = { id: null|entityId, remainS: number, wasActive: boolean }
+ */
+export function resolveChaseComposition(state, player, focus, view = {}, out = null, tetherOut = null, sticky = null) {
   const result = out || {};
   let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
   let fz = focus && Number.isFinite(focus.z) ? focus.z : (player && player.pos ? player.pos.z : 0);
@@ -345,6 +391,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     result.hasTetherFocus = false;
     result.zoomBias = zoomBias;
     result.minZoom = 0;
+    result.composedThreatId = null;
     return result;
   }
 
@@ -408,13 +455,56 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     if (resolvedNearest) nearestThreat = resolvedNearest;
   }
 
-  const composedThreat = activeAttacker || nearestThreat;
-  const composedThreatD2 = activeAttacker ? activeAttackerD2 : nearestThreatD2;
+  // U13 sticky composition: hold the prior composed threat briefly so a dense furball does not slew
+  // the chase bias between near-equidistant attackers every frame. Active attackers still win over
+  // passive nearest, and a meaningfully closer challenger breaks the hold immediately.
+  let composedThreat = activeAttacker || nearestThreat;
+  let composedThreatD2 = activeAttacker ? activeAttackerD2 : nearestThreatD2;
+  let composedIsActive = !!activeAttacker;
+  if (sticky && state.entities && typeof state.entities.get === 'function') {
+    const dtStick = Math.max(0, finiteOr(view.dt, 0));
+    if (sticky.remainS > 0) sticky.remainS = Math.max(0, sticky.remainS - dtStick);
+    const held = sticky.id != null ? state.entities.get(sticky.id) : null;
+    const heldAlive = !!(held && held.alive !== false && held.hull > 0 && held.pos
+      && isComposableThreatType(held) && isHostileToPlayer(held, player.team, state));
+    if (heldAlive) {
+      const heldD2 = (held.pos.x - player.pos.x) ** 2 + (held.pos.z - player.pos.z) ** 2;
+      const challenger = activeAttacker || nearestThreat;
+      const challengerD2 = activeAttacker ? activeAttackerD2 : nearestThreatD2;
+      const closerBreak = challenger && challenger !== held
+        && challengerD2 < heldD2 * COMPOSITION_THREAT_STICK_CLOSER * COMPOSITION_THREAT_STICK_CLOSER;
+      const activeUpgrade = activeAttacker && activeAttacker !== held && !sticky.wasActive;
+      if (sticky.remainS > 0 && !closerBreak && !activeUpgrade) {
+        composedThreat = held;
+        composedThreatD2 = heldD2;
+        const combat = held.data && held.data.combat;
+        composedIsActive = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+          || (leasedTargetId != null && held.id === leasedTargetId);
+      } else if (composedThreat) {
+        sticky.id = composedThreat.id;
+        sticky.remainS = COMPOSITION_THREAT_STICK_S;
+        sticky.wasActive = composedIsActive;
+      } else {
+        sticky.id = null;
+        sticky.remainS = 0;
+        sticky.wasActive = false;
+      }
+    } else if (composedThreat) {
+      sticky.id = composedThreat.id;
+      sticky.remainS = COMPOSITION_THREAT_STICK_S;
+      sticky.wasActive = composedIsActive;
+    } else {
+      sticky.id = null;
+      sticky.remainS = 0;
+      sticky.wasActive = false;
+    }
+  }
+
   if (composedThreat && composedThreatD2 > 1) {
     const d = Math.sqrt(composedThreatD2);
     // A contact actively attacking the player is functional context, not ambient composition.
     // Bias near the pair midpoint; passive hostiles keep the restrained ordinary chase nudge.
-    const bias = activeAttacker
+    const bias = composedIsActive
       ? d * 0.5
       : Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
     fx += ((composedThreat.pos.x - player.pos.x) / d) * bias;
@@ -436,24 +526,34 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   }
 
   let minZoom = 0;
-  if (activeAttacker) {
-    const fov = Math.max(10, Math.min(140, finiteOr(view.fov, 50)));
-    const tanHalf = Math.tan(fov * Math.PI / 360);
+  // minZoom / safe-rect geometry must use the player's authored base FOV, never the feel-layer FOV
+  // punch. Punching the projection is spectacle; letting it reframe combat composition is thrash.
+  const compositionFov = Math.max(10, Math.min(140, finiteOr(view.baseFov, finiteOr(view.fov, 50))));
+  if (composedIsActive && composedThreat && player.pos) {
+    const tanHalf = Math.tan(compositionFov * Math.PI / 360);
     const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
     const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
+    // Fit against the biased composition focus AND against the player position. The chase follow
+    // may safe-rect-clamp focus back toward the ship after this returns; a minZoom computed only
+    // at the ideal midpoint would then under-zoom and crop the attacker (U13 dense-scene miss).
+    const px = player.pos.x;
+    const pz = player.pos.z;
     minZoom = extendCompositionMinZoom(minZoom, player, fx, fz, tanHalf, aspect, tilt);
-    minZoom = extendCompositionMinZoom(minZoom, activeAttacker, fx, fz, tanHalf, aspect, tilt);
+    minZoom = extendCompositionMinZoom(minZoom, composedThreat, fx, fz, tanHalf, aspect, tilt);
+    minZoom = extendCompositionMinZoom(minZoom, player, px, pz, tanHalf, aspect, tilt);
+    minZoom = extendCompositionMinZoom(minZoom, composedThreat, px, pz, tanHalf, aspect, tilt);
     minZoom = Math.min(CAMERA_ZOOM_MAX, minZoom);
   }
 
   result.x = fx;
   result.z = fz;
   result.nearbyEnemies = nearbyEnemies;
-  result.hasThreatFocus = !!nearestThreat;
-  result.hasActiveAttacker = !!activeAttacker;
+  result.hasThreatFocus = !!nearestThreat || !!composedThreat;
+  result.hasActiveAttacker = composedIsActive;
   result.hasTetherFocus = !!tetherAnchor;
   result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
   result.minZoom = minZoom;
+  result.composedThreatId = composedThreat ? composedThreat.id : null;
   return result;
 }
 
@@ -574,6 +674,8 @@ export function createChaseCamera(state) {
   let _contextZoomBias = 0;
   let _contextMinZoom = 0;
   let _dynamicNear = cam.near;
+  // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
+  const _compositionSticky = { id: null, remainS: 0, wasActive: false };
   const cameraDirector = createCameraDirector();
   let _directorFrame = cameraDirector.output;
   const _directorView = {
@@ -581,8 +683,10 @@ export function createChaseCamera(state) {
     followZ: 0,
     followZoom: DEFAULT_ZOOM,
     fov: cam.fov,
+    baseFov: cam.fov,
     aspect: cam.aspect,
     tiltDeg: c.tilt || 60,
+    dt: 0,
   };
   // FOLLOW runs every rendered frame. Keep its temporary value records camera-owned so ordinary
   // flight does not manufacture garbage merely to pass the same numbers between pure calculations.
@@ -719,9 +823,21 @@ export function createChaseCamera(state) {
           fx = _playerLocalScratch.x;
           fz = _playerLocalScratch.z;
         }
+        // Authored base FOV (settings) drives composition geometry. The feel-layer punch rides on
+        // cam.fov for spectacle only — it must not reframe minZoom / safe-rect every recoil tick.
+        const baseFov = Math.max(
+          10,
+          Math.min(140, finiteOr(state.settings && state.settings.video && state.settings.video.fov, 50)),
+        );
+        // Cheap combat-framing gate for look-ahead attenuation: sticky active hold, live lease, or
+        // any hostile currently targeting the player. Avoids a full composition pass before lead.
+        const combatLookaheadScale = playerHasActiveAttackerFraming(state, p, _compositionSticky)
+          ? ACTIVE_ATTACKER_LOOKAHEAD_SCALE
+          : 1;
+
         if (playerSpeed > 1) {
           const laCap = isCruising(state) ? LOOKAHEAD_MAX_CRUISE : LOOKAHEAD_MAX;
-          const la = Math.min(c.lookAhead, laCap, playerSpeed * LOOKAHEAD_SPEED_SCALE);
+          const la = Math.min(c.lookAhead, laCap, playerSpeed * LOOKAHEAD_SPEED_SCALE) * combatLookaheadScale;
           fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
           // Band-3 velocity lead (ADR D7): at >5x combat speed a few WU of camera lead along the
           // velocity vector read as terrifying speed. READ, never re-derived — `readVelocityLanguage`
@@ -729,10 +845,13 @@ export function createChaseCamera(state) {
           // would become a second producer and drift from what the streaks and the sky are saying.
           // The record forces cameraLeadWU to 0 under motionReduce, so this single read respects it
           // without the camera lane second-guessing the field's reduction.
+          // Under active-attacker framing the lead is scaled with ordinary look-ahead so extreme-speed
+          // combat still keeps the pair readable instead of leading into empty space.
           const vl = readVelocityLanguage(state);
           const leadWU = vl && vl.drive && Number.isFinite(vl.drive.cameraLeadWU) ? vl.drive.cameraLeadWU : 0;
           if (leadWU > 0) {
-            fx += (vx / playerSpeed) * leadWU; fz += (vz / playerSpeed) * leadWU;
+            const combatLead = leadWU * combatLookaheadScale;
+            fx += (vx / playerSpeed) * combatLead; fz += (vz / playerSpeed) * combatLead;
           }
         }
         const aimLead = resolveAimLead(state.input, p, _aimLeadScratch);
@@ -743,9 +862,11 @@ export function createChaseCamera(state) {
         _directorView.followX = baseFx;
         _directorView.followZ = baseFz;
         _directorView.followZoom = resolveBaseZoom() * _speedZoomFactor;
-        _directorView.fov = cam.fov;
+        _directorView.fov = baseFov;
+        _directorView.baseFov = baseFov;
         _directorView.aspect = cam.aspect;
         _directorView.tiltDeg = c.tilt || 60;
+        _directorView.dt = frameDt;
         // Seed pair entry from the pose the player actually saw last frame, not the director's
         // undamped FOLLOW request. Functional pair framing is identical under reduced motion.
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW) {
@@ -771,6 +892,7 @@ export function createChaseCamera(state) {
             _directorView,
             _compositionScratch,
             _tetherAnchorScratch,
+            _compositionSticky,
           );
           const motionScale = isMotionReduced(state) ? 0.35 : 1;
           // Keeping an active attacker visible is functional combat framing, not decorative motion.
@@ -788,7 +910,7 @@ export function createChaseCamera(state) {
           _safeFocusInputScratch.x = fx;
           _safeFocusInputScratch.z = fz;
           _safeFocusOptionsScratch.zoom = _dynamicZoom;
-          _safeFocusOptionsScratch.fov = cam.fov;
+          _safeFocusOptionsScratch.fov = baseFov;
           _safeFocusOptionsScratch.aspect = cam.aspect;
           const desiredSafe = clampFocusToPlayerSafeRect(
             _safeFocusInputScratch,
@@ -870,9 +992,21 @@ export function createChaseCamera(state) {
           if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
         }
       }
-      _dynamicZoom = directorOwnsComposition
-        ? _directorFrame.zoom
-        : damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+      if (directorOwnsComposition) {
+        _dynamicZoom = _directorFrame.zoom;
+      } else {
+        let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+        // When minZoom is demanding more distance than the ease would open this frame, step toward
+        // the floor at the continuity cap so a distant active attacker re-enters without a cut.
+        if (_contextMinZoom > _dynamicZoom + 0.5 && targetZoom >= _contextMinZoom - 1e-6) {
+          nextZoom = Math.max(nextZoom, Math.min(_contextMinZoom, _dynamicZoom + ZOOM_OUT_STEP_MAX_WU));
+        }
+        // Hard continuity cap on any outward jump (damp alone can overshoot 6 wu on a large gap).
+        if (nextZoom > _dynamicZoom) {
+          nextZoom = Math.min(nextZoom, _dynamicZoom + ZOOM_OUT_STEP_MAX_WU);
+        }
+        _dynamicZoom = nextZoom;
+      }
       // Oversized authored gates can physically surround the chase camera even while the aperture
       // is correctly composed. The director derives a conservative near plane from the mounted
       // gate's real depth bounds; easing is owned by the same 0.35 s transition as focus/zoom.
@@ -885,8 +1019,13 @@ export function createChaseCamera(state) {
       }
       if (p && p.pos && !directorOwnsComposition) {
         // Safe-rect is frame-local (player proxy holds projected XZ for this frame).
+        // Use authored base FOV so feel-layer punches cannot expand/contract the safe rect mid-dodge.
+        const safeBaseFov = Math.max(
+          10,
+          Math.min(140, finiteOr(state.settings && state.settings.video && state.settings.video.fov, 50)),
+        );
         _safeFocusOptionsScratch.zoom = _dynamicZoom;
-        _safeFocusOptionsScratch.fov = cam.fov;
+        _safeFocusOptionsScratch.fov = safeBaseFov;
         _safeFocusOptionsScratch.aspect = cam.aspect;
         const safeFocus = clampFocusToPlayerSafeRect(
           c.focus,
