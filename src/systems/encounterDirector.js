@@ -1056,12 +1056,17 @@ export const encounterDirector = {
       const ai = e.data && e.data.ai;
       if (!ai) continue;
       ai.passive = !!passive;
+      const spawn = {
+        role: live.roles && live.roles[e.id],
+        pos: e.pos,
+        passive: !!passive,
+      };
+      if (!passive && live.data && live.data.ceresActivityAmbush === true) {
+        const player = this.player();
+        if (player && player.id != null) spawn.targetId = player.id;
+      }
       setEntityDoctrine(e, {
-        activity: activityForEncounterSpawn(live, {
-          role: live.roles && live.roles[e.id],
-          pos: e.pos,
-          passive: !!passive,
-        }, { now: this.now(), passive: !!passive }),
+        activity: activityForEncounterSpawn(live, spawn, { now: this.now(), passive: !!passive }),
       });
       if (live.data && live.data.ceresActivityAmbush === true) {
         ai[CERES_ACTIVITY_AMBUSH_MARKER] = passive ? 'offer' : 'conflict';

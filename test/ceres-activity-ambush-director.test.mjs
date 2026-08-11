@@ -300,6 +300,9 @@ test('high-speed band crossing is paced once, adopts the durable cohort, springs
   assert.deepEqual(h.state.encounterDirector.active, {}, 'adopted actors never enter the director budget ledger');
   assert.equal(h.events.filter((row) => row.name === 'encounter:telegraph').length, 1);
   assert.equal(h.events.filter((row) => row.name === 'encounter:spawned').length, 1);
+  for (const entity of h.cohort) {
+    assert.equal(entity.data.ai.activity.targetId, null, 'offer actors have no combat target');
+  }
 
   h.player.pos.x = THROUGHLINE_GLOBAL.x + 145;
   h.player.pos.z = THROUGHLINE_GLOBAL.z;
@@ -309,6 +312,9 @@ test('high-speed band crossing is paced once, adopts the durable cohort, springs
   for (const entity of h.cohort) {
     assert.equal(entity.data.ai.passive, false);
     assert.equal(entity.data.ai[PHASE_KEY], 'conflict');
+    assert.equal(entity.data.ai.activity.kind, 'attack_run');
+    assert.equal(entity.data.ai.roe, 'weapons_free');
+    assert.equal(entity.data.ai.activity.targetId, h.player.id, 'every adopted actor targets the live player');
   }
 
   h.player.pos.x = THROUGHLINE_GLOBAL.x + 5000;
@@ -320,9 +326,15 @@ test('high-speed band crossing is paced once, adopts the durable cohort, springs
   assert.deepEqual(h.calls, { spawn: 0, request: 0, release: 0, releaseSome: 0 });
 });
 
-test('Continue resumes only live durable members and hard exit abort restores without despawn or replacement', () => {
+test('Continue resumes conflict against the current player using only live durable members', () => {
   const h = bootCeres();
-  crossAndFire(h);
+  const sprung = crossAndFire(h);
+  h.player.pos.x = THROUGHLINE_GLOBAL.x + 145;
+  h.player.pos.z = THROUGHLINE_GLOBAL.z;
+  h.state.simTime = sprung.data.springAt + 0.01;
+  h.director.update(1, h.state);
+  assert.equal(sprung.phase, 'conflict');
+
   const continuousLive = h.state.encounterDirector.live[AMBUSH_ID];
   h.bus.emit('sector:exit', { sectorId: CERES, continuous: true, noTeleport: true });
   h.bus.emit('sector:enter', { sectorId: CERES, continuous: true, noTeleport: true });
@@ -333,12 +345,27 @@ test('Continue resumes only live durable members and hard exit abort restores wi
   );
   const retired = h.cohort[1];
   retired.alive = false;
+  const priorPlayerId = h.player.id;
+  const replacementPlayer = h.sim.spawn(shipSpec({
+    x: h.player.pos.x,
+    z: h.player.pos.z,
+  }, { intent: {}, ai: {} }, 0));
+  h.state.playerId = replacementPlayer.id;
+  h.player = replacementPlayer;
+  h.calls.spawn = 0;
   const entityCount = h.state.entityList.length;
 
   h.bus.emit('save:loaded', {});
   let live = h.state.encounterDirector.live[AMBUSH_ID];
   assert.ok(live, 'revealed one-shot truth resumes after Continue');
+  assert.equal(live.phase, 'conflict');
   assert.deepEqual(live.ids, [h.cohort[0].id], 'dead durable members are neither adopted nor replaced');
+  assert.notEqual(h.player.id, priorPlayerId, 'Continue fixture installs a different live player identity');
+  assert.equal(
+    h.cohort[0].data.ai.activity.targetId,
+    h.player.id,
+    'conflict resume rebinds the surviving actor to the current player',
+  );
   assert.equal(h.state.entityList.length, entityCount);
   assert.equal(h.calls.spawn, 0);
   assert.equal(h.calls.request, 0);
