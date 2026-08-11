@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/NOW.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Run exactly one broker Browser acceptance for candidate `55650166`; on PASS publish the bound leaf receipt |
+| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/NOW.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Run exactly one broker Browser acceptance for reviewed candidate `ed8f3a86`; on PASS publish the bound leaf receipt |
 
 ## Uncommitted work without a confirmed live thread
 
