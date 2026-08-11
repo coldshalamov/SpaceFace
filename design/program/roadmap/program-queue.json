@@ -2248,7 +2248,7 @@
       "mutexes": [],
       "sources": [
         "design/program/VISION_ALIGNMENT_PLAN.md",
-        "design/program/roadmap/active/PQ-047.md"
+        "design/program/roadmap/retired/PQ-047.md"
       ],
       "checks": [
         "npm run check:baseline",
