@@ -940,12 +940,185 @@ export async function waitForCeresHostileMasslineAcquisition(page, target, {
   return Object.freeze(receipt);
 }
 
+function readCeresExactActiveTetherAuthority(page, authority) {
+  return page.evaluate((expected) => {
+    const state = window.SF?.state;
+    const target = state?.entities?.get(expected.targetId);
+    const tether = state?.player?.tether || null;
+    const byId = state?.combat?.attachments?.byId;
+    const attachment = byId instanceof Map
+      ? (byId.get(expected.attachmentId) || null)
+      : (byId?.[String(expected.attachmentId)] || null);
+    const latch = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => (
+      event?.event === 'tether:latched'
+        && event.targetId === expected.targetId
+        && event.previewMatched === true
+        && Number(event.seq) === expected.latchedSeq
+        && Number(event.tick) === expected.latchedTick
+    )) || null;
+    return {
+      tick: Number(state?.tick),
+      playerEntityId: state?.playerId ?? null,
+      mirror: tether ? {
+        active: tether.active === true,
+        targetId: tether.targetId ?? null,
+        attachmentId: tether.attachmentId || null,
+      } : null,
+      target: target ? {
+        id: target.id,
+        alive: target.alive === true,
+        type: target.type || null,
+        worldRecordId: target.data?.worldRecordId || null,
+      } : null,
+      attachment: attachment ? {
+        id: attachment.id || null,
+        state: attachment.state || null,
+        ownerId: attachment.ownerId ?? null,
+        targetId: attachment.targetId ?? null,
+      } : null,
+      latch: latch ? {
+        seq: Number(latch.seq),
+        tick: Number(latch.tick),
+        targetId: latch.targetId ?? null,
+        previewMatched: latch.previewMatched === true,
+      } : null,
+    };
+  }, authority);
+}
+
+function ceresExactActiveTetherAuthorityPass(snapshot, authority, deadlineTick) {
+  return Number.isSafeInteger(snapshot?.tick)
+    && snapshot.tick >= authority.latchedTick
+    && snapshot.tick < deadlineTick
+    && snapshot.playerEntityId === authority.playerEntityId
+    && snapshot?.mirror?.active === true
+    && snapshot.mirror.targetId === authority.targetId
+    && snapshot.mirror.attachmentId === authority.attachmentId
+    && snapshot?.target?.id === authority.targetId
+    && snapshot.target.alive === true
+    && snapshot.target.type === 'ship'
+    && snapshot.target.worldRecordId === authority.targetWorldRecordId
+    && snapshot?.attachment?.id === authority.attachmentId
+    && snapshot.attachment.state === 'active'
+    && snapshot.attachment.ownerId === authority.playerEntityId
+    && snapshot.attachment.targetId === authority.targetId
+    && snapshot?.latch?.seq === authority.latchedSeq
+    && snapshot.latch.tick === authority.latchedTick
+    && snapshot.latch.targetId === authority.targetId
+    && snapshot.latch.previewMatched === true;
+}
+
+function ceresTetherAuthorityError(reason, authority, snapshot, timeoutMs) {
+  const error = new Error(`${reason}: exact active Massline authority is unavailable`);
+  error.code = reason;
+  error.ceresToolkitActionDiagnostic = {
+    schema: 'spaceface.ceresToolkitActionDiagnostic.v1',
+    expectedEvent: 'tether:broken',
+    reason,
+    timeoutMs,
+    authority: { ...authority },
+    snapshot: snapshot ? { ...snapshot } : null,
+  };
+  return error;
+}
+
+export async function waitForCeresExactActiveTetherAuthority(page, authority, {
+  timeout = 5_000,
+  deadlineTick,
+} = {}) {
+  if (!page || authority?.playerEntityId == null || authority?.targetId == null
+      || !String(authority?.targetWorldRecordId || '')
+      || !String(authority?.attachmentId || '')
+      || !Number.isSafeInteger(authority?.latchedTick)
+      || !Number.isSafeInteger(authority?.latchedSeq) || authority.latchedSeq < 1
+      || !Number.isFinite(timeout) || timeout <= 0
+      || !Number.isSafeInteger(deadlineTick) || deadlineTick <= authority.latchedTick) {
+    throw new TypeError('exact active tether authority requires player, target, latch, attachment, and deadline identity');
+  }
+  try {
+    await page.waitForFunction((expected) => {
+      const state = window.SF?.state;
+      const target = state?.entities?.get(expected.targetId);
+      const tether = state?.player?.tether || null;
+      const byId = state?.combat?.attachments?.byId;
+      const attachment = byId instanceof Map
+        ? byId.get(expected.attachmentId)
+        : byId?.[String(expected.attachmentId)];
+      const latched = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).some((event) => (
+        event?.event === 'tether:latched'
+          && event.targetId === expected.targetId
+          && event.previewMatched === true
+          && Number(event.seq) === expected.latchedSeq
+          && Number(event.tick) === expected.latchedTick
+      ));
+      const ready = Number(state?.tick) >= expected.latchedTick
+        && state?.playerId === expected.playerEntityId
+        && tether?.active === true
+        && tether.targetId === expected.targetId
+        && tether.attachmentId === expected.attachmentId
+        && target?.id === expected.targetId
+        && target.alive === true
+        && target.type === 'ship'
+        && target.data?.worldRecordId === expected.targetWorldRecordId
+        && attachment?.id === expected.attachmentId
+        && attachment.state === 'active'
+        && attachment.ownerId === expected.playerEntityId
+        && attachment.targetId === expected.targetId
+        && latched;
+      const terminalLoss = target?.alive === false
+        || (attachment && attachment.state !== 'active')
+        || (tether && tether.active === false && Number(state?.tick) > expected.latchedTick);
+      return ready || terminalLoss || Number(state?.tick) >= expected.deadlineTick;
+    }, { ...authority, deadlineTick }, { timeout });
+  } catch (cause) {
+    const snapshot = await readCeresExactActiveTetherAuthority(page, authority)
+      .catch(() => ({ snapshotUnavailable: true }));
+    const error = ceresTetherAuthorityError(
+      'active-tether-authority-timeout', authority, snapshot, timeout,
+    );
+    error.cause = cause;
+    throw error;
+  }
+  const snapshot = await readCeresExactActiveTetherAuthority(page, authority);
+  if (!ceresExactActiveTetherAuthorityPass(snapshot, authority, deadlineTick)) {
+    throw ceresTetherAuthorityError(
+      'active-tether-authority-invalid', authority, snapshot, timeout,
+    );
+  }
+  return Object.freeze({
+    schema: 'spaceface.ceresExactActiveTetherAuthority.v1',
+    source: 'read-only-player-target-attachment-authority',
+    pass: true,
+    ...authority,
+    observedTick: snapshot.tick,
+  });
+}
+
+async function assertCeresExactActiveTetherAuthorityBeforeRelease(
+  page,
+  authority,
+  deadlineTick,
+) {
+  const snapshot = await readCeresExactActiveTetherAuthority(page, authority);
+  if (!ceresExactActiveTetherAuthorityPass(
+    snapshot,
+    authority,
+    deadlineTick ?? Number.MAX_SAFE_INTEGER,
+  )) {
+    throw ceresTetherAuthorityError(
+      'target_lost-before-release', authority, snapshot, 0,
+    );
+  }
+  return snapshot;
+}
+
 export async function triggerCeresPublicFlightAction(page, {
   key,
   expectedEvent,
   trigger = 'press',
   timeout = 20_000,
   deadlineTick = null,
+  exactTetherAuthority = null,
 } = {}) {
   if (!page?.keyboard || typeof page.keyboard.down !== 'function'
       || typeof page.keyboard.up !== 'function') {
@@ -954,7 +1127,8 @@ export async function triggerCeresPublicFlightAction(page, {
   if (!String(key || '') || !expectedEvent?.event
       || !['press', 'release'].includes(trigger)
       || !Number.isFinite(timeout) || timeout <= 0
-      || (deadlineTick != null && (!Number.isSafeInteger(deadlineTick) || deadlineTick <= 0))) {
+      || (deadlineTick != null && (!Number.isSafeInteger(deadlineTick) || deadlineTick <= 0))
+      || (exactTetherAuthority != null && trigger !== 'release')) {
     throw new TypeError('public flight action requires a key, event, trigger phase, and timeout');
   }
   const cursor = await readCeresPublicActionCursor(page);
@@ -965,40 +1139,45 @@ export async function triggerCeresPublicFlightAction(page, {
   if (deadlineTick != null && pressTick >= deadlineTick - requiredActionTicks) {
     throw new Error(`public ${key} ${trigger} pulse exhausted the toolkit deadline before input`);
   }
+  if (exactTetherAuthority != null) {
+    await assertCeresExactActiveTetherAuthorityBeforeRelease(
+      page,
+      exactTetherAuthority,
+      deadlineTick,
+    );
+  }
   let heldTick = pressTick;
+  let keyUpTick = null;
   let event = null;
   let eventCriteria = null;
   await page.keyboard.down(key);
   try {
-    if (trigger === 'release') {
-      heldTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
-    } else {
-      eventCriteria = {
-        ...expectedEvent,
-        minTick: Math.max(Number(expectedEvent.minTick) || 0, pressTick + 1),
-        minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
-      };
-      event = await waitForCeresBusEvent(page, eventCriteria, timeout, { deadlineTick });
-      heldTick = Math.max(pressTick, Number(event?.tick) || pressTick);
-    }
+    heldTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
   } finally {
     await page.keyboard.up(key);
+    keyUpTick = await readTick(page);
   }
-  if (trigger === 'release') {
-    eventCriteria = {
-      ...expectedEvent,
-      minTick: Math.max(Number(expectedEvent.minTick) || 0, heldTick + 1),
-      minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
-    };
-    event = await waitForCeresBusEvent(page, eventCriteria, timeout, { deadlineTick });
-  }
+  eventCriteria = {
+    ...expectedEvent,
+    minTick: Math.max(
+      Number(expectedEvent.minTick) || 0,
+      trigger === 'release' ? keyUpTick + 1 : pressTick + 1,
+    ),
+    minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
+  };
+  event = await waitForCeresBusEvent(page, eventCriteria, timeout, { deadlineTick });
   const neutralTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
   const eventTick = Number(event?.tick);
   const eventSeq = Number(event?.seq);
   if (!Number.isSafeInteger(eventTick) || eventTick <= pressTick
-      || (trigger === 'release' && eventTick <= heldTick)
+      || (trigger === 'press' && eventTick > keyUpTick)
+      || (trigger === 'release' && eventTick <= keyUpTick)
       || !Number.isSafeInteger(eventSeq) || eventSeq < cursor.nextEventSeq
-      || heldTick < pressTick || neutralTick <= eventTick
+      || !Number.isSafeInteger(heldTick) || heldTick <= pressTick
+      || !Number.isSafeInteger(keyUpTick) || keyUpTick < heldTick
+      || neutralTick <= Math.max(eventTick, keyUpTick)
+      || (deadlineTick != null && (heldTick >= deadlineTick
+        || keyUpTick >= deadlineTick || eventTick >= deadlineTick))
       || (deadlineTick != null && neutralTick >= deadlineTick)) {
     throw new Error(`public ${key} ${trigger} pulse lacks ordered fixed-tick event authority`);
   }
@@ -1011,6 +1190,7 @@ export async function triggerCeresPublicFlightAction(page, {
       expectedEvent: expectedEvent.event,
       pressTick,
       heldTick,
+      keyUpTick,
       eventTick,
       minEventSeq: cursor.nextEventSeq,
       eventSeq,
@@ -3954,14 +4134,19 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
         || tetherCutAction?.expectedEvent !== 'tether:broken'
         || !Number.isSafeInteger(tetherCutAction?.pressTick)
         || !Number.isSafeInteger(tetherCutAction?.heldTick)
+        || !Number.isSafeInteger(tetherCutAction?.keyUpTick)
         || !Number.isSafeInteger(tetherCutAction?.eventTick)
         || !Number.isSafeInteger(tetherCutAction?.neutralTick)
         || !Number.isSafeInteger(tetherCutAction?.minEventSeq)
         || !Number.isSafeInteger(tetherCutAction?.eventSeq)
         || tetherCutAction.pressTick < receipt.startTick
         || tetherCutAction.heldTick <= tetherCutAction.pressTick
-        || tetherCutAction.eventTick <= tetherCutAction.heldTick
-        || tetherCutAction.neutralTick <= tetherCutAction.eventTick
+        || tetherCutAction.keyUpTick < tetherCutAction.heldTick
+        || tetherCutAction.eventTick <= tetherCutAction.keyUpTick
+        || tetherCutAction.neutralTick <= Math.max(
+          tetherCutAction.eventTick,
+          tetherCutAction.keyUpTick,
+        )
         || tetherCutAction.neutralTick > firstApproach?.startTick
         || tetherCutAction.minEventSeq < receipt.start.nextEventSeq
         || tetherCutAction.eventSeq < tetherCutAction.minEventSeq
@@ -4804,18 +4989,33 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     },
   });
   const attached = attachedAction.event;
-  await waitForCeresBusEvent(page, {
+  const latched = await waitForCeresBusEvent(page, {
     event: 'tether:latched',
     minTick: attached.tick,
+    minSeq: attached.seq + 1,
     targetId: target.id,
+    previewMatched: true,
   }, 20_000, { deadlineTick: toolkitActionDeadlineTick });
+  const exactTetherAuthority = Object.freeze({
+    playerEntityId: baseline.playerEntityId,
+    targetId: target.id,
+    targetWorldRecordId: target.worldRecordId,
+    attachmentId: attached.attachmentId,
+    latchedTick: latched.tick,
+    latchedSeq: latched.seq,
+  });
+  await waitForCeresExactActiveTetherAuthority(page, exactTetherAuthority, {
+    deadlineTick: toolkitActionDeadlineTick,
+  });
   const brokenAction = await triggerCeresPublicFlightAction(page, {
     key: 'Space',
     trigger: 'release',
     deadlineTick: toolkitActionDeadlineTick,
+    exactTetherAuthority,
     expectedEvent: {
       event: 'tether:broken',
       minTick: attached.tick,
+      minSeq: latched.seq + 1,
       actorId: baseline.playerEntityId,
       targetId: target.id,
       attachmentId: attached.attachmentId,

@@ -48,6 +48,7 @@ import {
   triggerCeresPublicFlightAction,
   validateCeresPilotSources,
   validatePublicInputReceipt,
+  waitForCeresExactActiveTetherAuthority,
   waitForCeresHostileMasslineAcquisition,
   waitForCeresToolkitConflictAuthority,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
@@ -1638,6 +1639,16 @@ test('toolkit transit handoff is exact, Cathedralward, and fails closed at every
       candidate.approaches[0].deadlineTick -= 1;
     }],
     ['missing manual tether cut', (candidate) => { delete candidate.tetherCutAction; }],
+    ['missing manual tether key-up tick', (candidate) => {
+      delete candidate.tetherCutAction.keyUpTick;
+    }],
+    ['manual tether key-up precedes held sample', (candidate) => {
+      candidate.tetherCutAction.keyUpTick = candidate.tetherCutAction.heldTick - 1;
+    }],
+    ['manual tether event precedes key-up', (candidate) => {
+      candidate.tetherCutAction.eventTick = candidate.tetherCutAction.keyUpTick;
+      candidate.tetherCutAction.event.tick = candidate.tetherCutAction.keyUpTick;
+    }],
     ['manual tether cut reordered after approach', (candidate) => {
       candidate.tetherCutAction.neutralTick = candidate.approaches[0].startTick + 1;
     }],
@@ -2348,6 +2359,7 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
     expectedEvent: 'tether:attached',
     pressTick: 700,
     heldTick: 701,
+    keyUpTick: 701,
     eventTick: 701,
     minEventSeq: 80,
     eventSeq: 80,
@@ -2370,6 +2382,8 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
   assert.equal(cut.receipt.pressTick, 702);
   assert.equal(cut.receipt.heldTick, 703,
     'the cut down-state must be sampled for one exact fixed tick');
+  assert.equal(cut.receipt.keyUpTick, 703,
+    'the cut key-up is recorded at the actual post-sample fixed tick');
   assert.equal(cut.receipt.eventTick, 704,
     'the cut event must follow the sampled key release');
   assert.equal(cut.receipt.neutralTick, 705);
@@ -2445,6 +2459,169 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
     timeout: 25,
   }), /public toolkit event never:arrives did not arrive/);
   assert.equal(harness.heldKeys.size, 0, 'a failed public action must still release its key');
+
+  const delayedFreshPress = fixedTickToolkitActionPage({
+    deferPressEventUntilObserver: true,
+  });
+  await assert.rejects(
+    triggerCeresPublicFlightAction(delayedFreshPress.page, {
+      key: 'Digit4',
+      deadlineTick: 710,
+      expectedEvent: { event: 'massSeed:deployed', ownerId: PLAYER_ENTITY_ID },
+    }),
+    /lacks ordered fixed-tick event authority/,
+  );
+  assert.deepEqual(delayedFreshPress.log.filter((row) => (
+    row.kind === 'up' || row.kind === 'event'
+  )).map((row) => ({ kind: row.kind, tick: row.tick })), [
+    { kind: 'up', tick: 701 },
+    { kind: 'event', tick: 702 },
+  ], 'a fresh same-shape press event emitted after key-up remains causally invalid');
+});
+
+test('press-trigger toolkit input releases after one sampled tick despite delayed event observation', async () => {
+  const harness = delayedToolkitObserverPage({ observerDelayTicks: 35 });
+  const attached = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Space',
+    deadlineTick: 780,
+    expectedEvent: {
+      event: 'tether:attached',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+    },
+  });
+
+  assert.equal(attached.event.tick, 701,
+    'the exact attach edge occurs on the first fixed tick that samples Space held');
+  assert.equal(attached.receipt.heldTick, 701);
+  assert.deepEqual(harness.log.filter((row) => row.kind === 'up').at(0), {
+    kind: 'up', key: 'Space', tick: 701,
+  }, 'Playwright observer latency cannot extend the public key hold beyond one sampled tick');
+
+  const latched = harness.trace.events.find((event) => event.event === 'tether:latched'
+    && event.targetId === TOOLKIT_HOSTILES[0].entityId);
+  const exactTetherAuthority = {
+    playerEntityId: PLAYER_ENTITY_ID,
+    targetId: TOOLKIT_HOSTILES[0].entityId,
+    targetWorldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+    attachmentId: 'att_delayed_1',
+    latchedTick: latched.tick,
+    latchedSeq: latched.seq,
+  };
+  const authorityReceipt = await waitForCeresExactActiveTetherAuthority(
+    harness.page,
+    exactTetherAuthority,
+    { deadlineTick: 780 },
+  );
+  assert.equal(authorityReceipt.pass, true);
+  assert.equal(authorityReceipt.targetWorldRecordId, TOOLKIT_HOSTILES[0].worldRecordId);
+
+  const cut = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Space',
+    trigger: 'release',
+    deadlineTick: 780,
+    exactTetherAuthority,
+    expectedEvent: {
+      event: 'tether:broken',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+      attachmentId: 'att_delayed_1',
+      reason: 'tether_cut',
+    },
+  });
+  assert.equal(cut.event.reason, 'tether_cut');
+  assert.ok(harness.trace.events.some((event) => event.event === 'tether:cut'
+    && event.targetId === TOOLKIT_HOSTILES[0].entityId));
+  assert.ok(harness.trace.events.some((event) => event.event === 'tether:released'
+    && event.targetId === TOOLKIT_HOSTILES[0].entityId));
+  assert.equal(harness.heldKeys.size, 0);
+});
+
+test('exact tether authority waits beyond the latch tick for the owner mirror', async () => {
+  const harness = delayedToolkitObserverPage({ observerDelayTicks: 0 });
+  await harness.page.keyboard.down('Space');
+  harness.advanceFixedTick();
+  await harness.page.keyboard.up('Space');
+  const attached = harness.trace.events.find((event) => event.event === 'tether:attached');
+  const latched = harness.trace.events.find((event) => event.event === 'tether:latched');
+  assert.equal(attached.tick, 701);
+  assert.equal(latched.tick, 701);
+  assert.deepEqual(harness.state.player.tether, {
+    active: false, targetId: null, attachmentId: null,
+  }, 'the player-facing mirror remains inactive on the production latch tick');
+  assert.deepEqual(harness.state.combat.attachments.byId.att_delayed_1, {
+    id: 'att_delayed_1',
+    state: 'active',
+    ownerId: PLAYER_ENTITY_ID,
+    targetId: TOOLKIT_HOSTILES[0].entityId,
+  }, 'the backing attachment owner is already active on the latch tick');
+
+  const receipt = await waitForCeresExactActiveTetherAuthority(harness.page, {
+    playerEntityId: PLAYER_ENTITY_ID,
+    targetId: TOOLKIT_HOSTILES[0].entityId,
+    targetWorldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+    attachmentId: 'att_delayed_1',
+    latchedTick: latched.tick,
+    latchedSeq: latched.seq,
+  }, { deadlineTick: 780 });
+  assert.equal(receipt.observedTick, 702,
+    'exact authority becomes valid only on the distinct owner-mirror update');
+  assert.deepEqual(harness.log.filter((row) => row.kind === 'authority-poll'), [
+    { kind: 'authority-poll', tick: 701, accepted: false },
+    { kind: 'authority-poll', tick: 702, accepted: true },
+  ]);
+});
+
+test('manual cut preflight rejects lost exact tether authority before a second keydown', async () => {
+  const harness = delayedToolkitObserverPage({ observerDelayTicks: 1 });
+  const attached = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Space',
+    deadlineTick: 780,
+    expectedEvent: {
+      event: 'tether:attached',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+    },
+  });
+  const latched = harness.trace.events.find((event) => event.event === 'tether:latched'
+    && event.targetId === TOOLKIT_HOSTILES[0].entityId);
+  const exactTetherAuthority = {
+    playerEntityId: PLAYER_ENTITY_ID,
+    targetId: TOOLKIT_HOSTILES[0].entityId,
+    targetWorldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+    attachmentId: attached.event.attachmentId,
+    latchedTick: latched.tick,
+    latchedSeq: latched.seq,
+  };
+  await waitForCeresExactActiveTetherAuthority(harness.page, exactTetherAuthority, {
+    deadlineTick: 780,
+  });
+  harness.scheduleTargetLossAfterTicks(1);
+  harness.advanceFixedTick();
+  assert.equal(harness.trace.events.at(-1)?.reason, 'target_lost',
+    'target loss is a separately scheduled owner event, not a Space-hold side effect');
+  const downCount = harness.log.filter((row) => row.kind === 'down').length;
+
+  await assert.rejects(
+    triggerCeresPublicFlightAction(harness.page, {
+      key: 'Space',
+      trigger: 'release',
+      deadlineTick: 780,
+      exactTetherAuthority,
+      expectedEvent: {
+        event: 'tether:broken',
+        actorId: PLAYER_ENTITY_ID,
+        targetId: TOOLKIT_HOSTILES[0].entityId,
+        attachmentId: 'att_delayed_1',
+        reason: 'tether_cut',
+      },
+    }),
+    (error) => error?.code === 'target_lost-before-release'
+      && error?.ceresToolkitActionDiagnostic?.reason === 'target_lost-before-release'
+      && error?.ceresToolkitActionDiagnostic?.timeoutMs === 0,
+  );
+  assert.equal(harness.log.filter((row) => row.kind === 'down').length, downCount,
+    'lost authority fails before the second public input gesture begins');
 });
 
 test('public combat volleys hold fire through exact fixed ticks and neutralize before deadline', async () => {
@@ -4195,6 +4372,7 @@ function toolkitTransitHandoffFixture(toolkitReceipt) {
       expectedEvent: 'tether:broken',
       pressTick: startTick,
       heldTick: startTick + 1,
+      keyUpTick: startTick + 1,
       eventTick: startTick + 2,
       minEventSeq: 1_300,
       eventSeq: 1_300,
@@ -4665,7 +4843,10 @@ function publicInputReceipt() {
   };
 }
 
-function fixedTickToolkitActionPage({ emitCombatFireOwnerId = null } = {}) {
+function fixedTickToolkitActionPage({
+  emitCombatFireOwnerId = null,
+  deferPressEventUntilObserver = false,
+} = {}) {
   const heldKeys = new Set();
   const log = [];
   let mouseHeld = false;
@@ -4731,22 +4912,22 @@ function fixedTickToolkitActionPage({ emitCombatFireOwnerId = null } = {}) {
       const eventCriteria = argument?.criteria ?? argument;
       if (eventCriteria?.event) {
         if (eventCriteria.event === 'never:arrives') throw new Error('fake event timeout');
-        assert.equal(runInPage(callback, argument), false,
-          'stale observer history must not satisfy the new action cursor');
-        state.tick += 1;
-        state.simTime = state.tick / 60;
-        const event = Object.fromEntries(Object.entries(eventCriteria)
-          .filter(([key]) => key !== 'minTick' && key !== 'minSeq'));
-        event.seq = trace.nextEventSeq;
-        trace.nextEventSeq += 1;
-        event.tick = state.tick;
-        trace.events.push(event);
-        log.push({
-          kind: 'event',
-          event: event.event,
-          tick: state.tick,
-          held: [...heldKeys].sort(),
-        });
+        if (!runInPage(callback, argument)) {
+          state.tick += 1;
+          state.simTime = state.tick / 60;
+          const event = Object.fromEntries(Object.entries(eventCriteria)
+            .filter(([key]) => key !== 'minTick' && key !== 'minSeq'));
+          event.seq = trace.nextEventSeq;
+          trace.nextEventSeq += 1;
+          event.tick = state.tick;
+          trace.events.push(event);
+          log.push({
+            kind: 'event',
+            event: event.event,
+            tick: state.tick,
+            held: [...heldKeys].sort(),
+          });
+        }
         assert.equal(runInPage(callback, argument), true,
           'the exact post-cursor event must satisfy the condition');
         return;
@@ -4755,6 +4936,34 @@ function fixedTickToolkitActionPage({ emitCombatFireOwnerId = null } = {}) {
         && Number.isSafeInteger(argument?.deltaTicks));
       state.tick = Math.max(state.tick, argument.tick + argument.deltaTicks);
       state.simTime = state.tick / 60;
+      let pressEvent = null;
+      if (!deferPressEventUntilObserver && heldKeys.has('Space')
+          && !trace.events.some((event) => event.seq >= 80 && event.event === 'tether:attached')) {
+        pressEvent = {
+          event: 'tether:attached',
+          actorId: PLAYER_ENTITY_ID,
+          targetId: TOOLKIT_HOSTILES[0].entityId,
+        };
+      } else if (!deferPressEventUntilObserver && heldKeys.has('Digit4')) {
+        pressEvent = { event: 'massSeed:deployed', ownerId: PLAYER_ENTITY_ID };
+      } else if (!deferPressEventUntilObserver && heldKeys.has('Digit6')) {
+        pressEvent = {
+          event: 'fields:deployed',
+          kind: 'repulsor',
+          sourceOwnerId: PLAYER_ENTITY_ID,
+        };
+      }
+      if (pressEvent) {
+        pressEvent.seq = trace.nextEventSeq++;
+        pressEvent.tick = state.tick;
+        trace.events.push(pressEvent);
+        log.push({
+          kind: 'event',
+          event: pressEvent.event,
+          tick: state.tick,
+          held: [...heldKeys].sort(),
+        });
+      }
       if (mouseHeld && emitCombatFireOwnerId != null
           && !trace.events.some((event) => event.event === 'combat:fire'
             && event.ownerId === emitCombatFireOwnerId)) {
@@ -4780,6 +4989,185 @@ function fixedTickToolkitActionPage({ emitCombatFireOwnerId = null } = {}) {
     heldKeys,
     log,
     get mouseHeld() { return mouseHeld; },
+  };
+}
+
+function delayedToolkitObserverPage({ observerDelayTicks = 35 } = {}) {
+  const heldKeys = new Set();
+  const log = [];
+  const target = {
+    id: TOOLKIT_HOSTILES[0].entityId,
+    type: 'ship',
+    alive: true,
+    hull: 40,
+    data: {
+      worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+      ai: { zoneId: 'zone_ceres_ambush', squadId: 'zone_ceres_ambush' },
+    },
+  };
+  const player = { id: PLAYER_ENTITY_ID, type: 'ship', alive: true, data: {} };
+  const state = {
+    tick: 700,
+    simTime: 700 / TICK_RATE_HZ,
+    playerId: player.id,
+    player: {
+      tether: { active: false, targetId: null, attachmentId: null },
+    },
+    entities: new Map([[player.id, player], [target.id, target]]),
+    entityList: [player, target],
+    combat: { attachments: { byId: {} } },
+    input: { actions: {} },
+  };
+  const trace = { nextEventSeq: 80, events: [] };
+  let firstAttachTick = null;
+  let mirrorActivationTick = null;
+  let pendingManualCut = false;
+  let scheduledTargetLossTick = null;
+
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = {
+      SF: { state },
+      __SF_CERES_FIVE_MINUTE_TRACE__: trace,
+    };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  const emit = (event, payload) => {
+    trace.events.push({ seq: trace.nextEventSeq++, event, tick: state.tick, ...payload });
+  };
+  const step = () => {
+    state.tick += 1;
+    state.simTime = state.tick / TICK_RATE_HZ;
+    if (scheduledTargetLossTick != null && state.tick >= scheduledTargetLossTick
+        && target.alive === true) {
+      target.alive = false;
+      const attachment = state.combat.attachments.byId.att_delayed_1;
+      if (attachment) {
+        attachment.state = 'broken';
+        attachment.breakReason = 'target_lost';
+      }
+      state.player.tether = { active: false, targetId: null, attachmentId: null };
+      emit('tether:broken', {
+        actorId: player.id,
+        targetId: target.id,
+        attachmentId: 'att_delayed_1',
+        reason: 'target_lost',
+      });
+      scheduledTargetLossTick = null;
+    } else if (pendingManualCut) {
+      const payload = {
+        actorId: player.id,
+        targetId: target.id,
+        attachmentId: 'att_delayed_1',
+        reason: 'tether_cut',
+      };
+      emit('tether:broken', payload);
+      emit('tether:cut', payload);
+      emit('tether:released', payload);
+      state.player.tether = { active: false, targetId: null, attachmentId: null };
+      state.combat.attachments.byId.att_delayed_1.state = 'broken';
+      pendingManualCut = false;
+    }
+    if (mirrorActivationTick != null && state.tick >= mirrorActivationTick
+        && target.alive === true
+        && state.combat.attachments.byId.att_delayed_1?.state === 'active') {
+      state.player.tether = {
+        active: true,
+        targetId: target.id,
+        attachmentId: 'att_delayed_1',
+      };
+      mirrorActivationTick = null;
+    }
+    if (heldKeys.has('Space') && firstAttachTick == null) {
+      firstAttachTick = state.tick;
+      state.combat.attachments.byId.att_delayed_1 = {
+        id: 'att_delayed_1', state: 'active', ownerId: player.id, targetId: target.id,
+      };
+      emit('tether:attached', {
+        actorId: player.id,
+        targetId: target.id,
+        attachmentId: 'att_delayed_1',
+      });
+      emit('tether:latched', { targetId: target.id, previewMatched: true });
+      mirrorActivationTick = state.tick + 1;
+    }
+    log.push({
+      kind: 'fixed-tick',
+      tick: state.tick,
+      held: [...heldKeys].sort(),
+      mirrorActive: state.player.tether.active === true,
+      attachmentState: state.combat.attachments.byId.att_delayed_1?.state || null,
+      targetAlive: target.alive === true,
+    });
+  };
+
+  const page = {
+    keyboard: {
+      async down(key) {
+        heldKeys.add(key);
+        log.push({ kind: 'down', key, tick: state.tick });
+      },
+      async up(key) {
+        heldKeys.delete(key);
+        if (key === 'Space' && state.player.tether.active === true
+            && state.tick > firstAttachTick) pendingManualCut = true;
+        log.push({ kind: 'up', key, tick: state.tick });
+      },
+    },
+    async evaluate(callback, argument) {
+      return runInPage(callback, argument);
+    },
+    async waitForFunction(callback, argument) {
+      if (argument?.criteria?.event) {
+        let guard = 0;
+        while (!runInPage(callback, argument) && guard < 100) {
+          step();
+          guard += 1;
+        }
+        if (!runInPage(callback, argument)) throw new Error('fake event timeout');
+        if (argument.criteria.event === 'tether:attached') {
+          for (let index = 0; index < observerDelayTicks; index += 1) step();
+        }
+        return;
+      }
+      if (argument?.targetWorldRecordId && Number.isSafeInteger(argument?.latchedSeq)) {
+        let guard = 0;
+        let accepted = runInPage(callback, argument);
+        log.push({ kind: 'authority-poll', tick: state.tick, accepted });
+        while (!accepted && guard < 10) {
+          step();
+          guard += 1;
+          accepted = runInPage(callback, argument);
+          log.push({ kind: 'authority-poll', tick: state.tick, accepted });
+        }
+        if (!accepted) throw new Error('fake tether authority timeout');
+        return;
+      }
+      assert.ok(Number.isSafeInteger(argument?.tick)
+        && Number.isSafeInteger(argument?.deltaTicks));
+      while (state.tick < argument.tick + argument.deltaTicks) step();
+      assert.equal(runInPage(callback, argument), true);
+    },
+  };
+  return {
+    page,
+    heldKeys,
+    log,
+    state,
+    target,
+    trace,
+    advanceFixedTick: step,
+    scheduleTargetLossAfterTicks(deltaTicks = 1) {
+      assert.ok(Number.isSafeInteger(deltaTicks) && deltaTicks >= 1);
+      scheduledTargetLossTick = state.tick + deltaTicks;
+      return scheduledTargetLossTick;
+    },
   };
 }
 
