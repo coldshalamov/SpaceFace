@@ -7,6 +7,7 @@ import {
   canonicalGapProjection,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
+  chooseCeresPocketApproachAction,
   countsTowardCeresPocketVisibility,
   createAccessibilityMatchedCheckpoint,
   deriveZeroVisibleActivityIntervals,
@@ -1210,6 +1211,37 @@ test('public input receipt proves one press-observe-release-neutral keyboard act
     assert.equal(result.pass, false, label);
     assert.ok(result.failures.length > 0, `${label} must explain the failure`);
   }
+});
+
+test('public pocket approach completes only after the hull is settled inside the anchor', () => {
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 80,
+    headingError: 0.01,
+    speed: 0.8,
+  }).kind, 'complete');
+  const observedHandoff = chooseCeresPocketApproachAction({
+    distanceWU: 80,
+    headingError: 0.7,
+    speed: 78,
+  });
+  assert.equal(observedHandoff.kind, 'brake',
+    'the observed working-seam handoff must brake instead of returning at 78 WU/s');
+  assert.equal(observedHandoff.key, 'Digit0', 'the route uses the public zero-thrust brake');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 140,
+    headingError: 0.7,
+    speed: 78,
+  }).kind, 'brake', 'close-range braking must not depend on nose alignment');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: 2_000,
+    headingError: 0.01,
+    speed: 70,
+  }).kind, 'thrust');
+  assert.equal(chooseCeresPocketApproachAction({
+    distanceWU: Number.NaN,
+    headingError: 0,
+    speed: 0,
+  }).kind, 'invalid');
 });
 
 test('public pilot source uses menu/card and Playwright input while private shortcuts fail closed', () => {

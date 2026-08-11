@@ -2469,6 +2469,39 @@ async function provePublicFlightInput(page) {
   return receipt;
 }
 
+export function chooseCeresPocketApproachAction(status) {
+  const distanceWU = Number(status?.distanceWU);
+  const headingError = Number(status?.headingError);
+  const speed = Number(status?.speed);
+  if (!Number.isFinite(distanceWU) || distanceWU < 0
+      || !Number.isFinite(headingError)
+      || !Number.isFinite(speed) || speed < 0) {
+    return Object.freeze({ kind: 'invalid' });
+  }
+  if (distanceWU <= 90 && speed <= 1) return Object.freeze({ kind: 'complete' });
+  if ((distanceWU <= 90 && speed > 1) || (distanceWU < 150 && speed > 45)) {
+    return Object.freeze({
+      kind: 'brake',
+      key: 'Digit0',
+      durationMs: 100,
+      boost: false,
+    });
+  }
+  if (Math.abs(headingError) > 0.08) {
+    return Object.freeze({
+      kind: 'turn',
+      key: headingError > 0 ? 'KeyD' : 'KeyA',
+      durationMs: 80,
+    });
+  }
+  return Object.freeze({
+    kind: 'thrust',
+    key: 'KeyW',
+    durationMs: 160,
+    boost: distanceWU > 220 && speed < 120,
+  });
+}
+
 async function drivePublicToPocketAnchor(page, pocketId, endTick) {
   const target = CERES_POCKET_TARGETS[pocketId];
   if (!target) throw new Error(`unknown Ceres pocket ${pocketId}`);
@@ -2496,25 +2529,26 @@ async function drivePublicToPocketAnchor(page, pocketId, endTick) {
         };
       }, { point: target.targetPos, terminalTick: endTick });
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
-      if (status.distanceWU <= 90) return status;
+      const action = chooseCeresPocketApproachAction(status);
+      if (action.kind === 'invalid') {
+        throw new Error(`${target.targetName} approach produced invalid navigation telemetry`);
+      }
+      if (action.kind === 'complete') return status;
       if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - 120) {
         throw new Error(`${target.targetName} approach exhausted the exact route horizon`);
       }
-      if (Math.abs(status.headingError) > 0.08) {
-        const key = status.headingError > 0 ? 'KeyD' : 'KeyA';
-        await page.keyboard.down(key);
-        await page.waitForTimeout(80);
-        await page.keyboard.up(key);
+      if (action.kind === 'turn') {
+        await page.keyboard.down(action.key);
+        await page.waitForTimeout(action.durationMs);
+        await page.keyboard.up(action.key);
       } else {
-        const brake = status.distanceWU < 150 && status.speed > 45;
-        const key = brake ? 'KeyS' : 'KeyW';
-        await page.keyboard.down(key);
-        if (!brake && status.distanceWU > 220 && status.speed < 120) {
+        await page.keyboard.down(action.key);
+        if (action.boost) {
           await page.keyboard.down('Shift');
         }
-        await page.waitForTimeout(brake ? 100 : 160);
+        await page.waitForTimeout(action.durationMs);
         await page.keyboard.up('Shift').catch(() => {});
-        await page.keyboard.up(key);
+        await page.keyboard.up(action.key);
       }
     }
   } finally {
@@ -3739,7 +3773,7 @@ async function readTick(page) {
 async function releasePublicInput(page) {
   if (!page || page.isClosed()) return;
   await page.mouse.up().catch(() => {});
-  for (const key of ['KeyW', 'KeyA', 'KeyD', 'Shift', 'Space']) {
+  for (const key of ['KeyW', 'KeyA', 'KeyD', 'Digit0', 'Shift', 'Space']) {
     await page.keyboard.up(key).catch(() => {});
   }
 }
