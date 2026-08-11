@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8652be7c061bffb927e8225fc111b3c127d61f5091713ce10b88723ae5894913",
+  "contentHash": "4909f68224856935c7028e04efdc6fd2321d8baa31dd0cc6aac5c55c264775c3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-cargo-latch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b9bf8442cf7e3ebdffbd0869d49ac1302fcf08ac337a49d10a02148836a5c3f9",
+      "materialHash": "f67c885363680f032d53fe314f9a4fc6eb6ec36cf7939aed1cb2cb22ed4986df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-cargo-latch",
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-chute-scar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b9bf8442cf7e3ebdffbd0869d49ac1302fcf08ac337a49d10a02148836a5c3f9",
+      "materialHash": "f67c885363680f032d53fe314f9a4fc6eb6ec36cf7939aed1cb2cb22ed4986df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-chute-scar",
@@ -170,7 +170,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-dock-scrape.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
+      "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-dock-scrape",
@@ -195,7 +195,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b9bf8442cf7e3ebdffbd0869d49ac1302fcf08ac337a49d10a02148836a5c3f9",
+      "materialHash": "f67c885363680f032d53fe314f9a4fc6eb6ec36cf7939aed1cb2cb22ed4986df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-exhaust-soot",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-hopper-rim.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b9bf8442cf7e3ebdffbd0869d49ac1302fcf08ac337a49d10a02148836a5c3f9",
+      "materialHash": "f67c885363680f032d53fe314f9a4fc6eb6ec36cf7939aed1cb2cb22ed4986df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-hopper-rim",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-manifest-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "d74c5ffd42834bbfc3310345e0977f47225ef7a4c14a45643b15342481ba9c0c",
+      "materialHash": "69a87667c747fdeaf5b7fd8af9e307273255a7f2ab4d9dcc91919621b0c2f164",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-manifest-stencil",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-ore-dust-cake.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
+      "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-ore-dust-cake",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-det-rust-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "d74c5ffd42834bbfc3310345e0977f47225ef7a4c14a45643b15342481ba9c0c",
+      "materialHash": "69a87667c747fdeaf5b7fd8af9e307273255a7f2ab4d9dcc91919621b0c2f164",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-rust-stripe",
@@ -320,7 +320,7 @@
       "id": "sf.render.hull-miner.mesh.lod0-hull-miner-main.primitive.0",
       "indexCount": 25431,
       "indexed": true,
-      "materialHash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
+      "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_MINER",
       "nodeId": "sf.render.hull-miner.mesh.lod0-hull-miner-main",
@@ -345,7 +345,7 @@
       "id": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette.primitive.0",
       "indexCount": 10182,
       "indexed": true,
-      "materialHash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
+      "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_MINER.001",
       "nodeId": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette",
@@ -370,7 +370,7 @@
       "id": "sf.render.hull-miner.mesh.lod2-hull-miner-silhouette.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
+      "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_MINER.002",
       "nodeId": "sf.render.hull-miner.mesh.lod2-hull-miner-silhouette",
@@ -383,8 +383,40 @@
   "lods": [],
   "materials": [
     {
-      "hash": "aee4cf9e938f54aa11b1b694d329d3b0ee41e3b4d7eaa4bebe289d3a1dcd1186",
-      "id": "material:aee4cf9e938f54aa11b1b694",
+      "hash": "69a87667c747fdeaf5b7fd8af9e307273255a7f2ab4d9dcc91919621b0c2f164",
+      "id": "material:69a87667c747fdeaf5b7fd8a",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_miner_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_miner_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_miner_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_miner_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
+      "id": "material:9159ba5c9d1163f1f4ea025c",
       "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -415,8 +447,8 @@
       ]
     },
     {
-      "hash": "b9bf8442cf7e3ebdffbd0869d49ac1302fcf08ac337a49d10a02148836a5c3f9",
-      "id": "material:b9bf8442cf7e3ebdffbd0869",
+      "hash": "f67c885363680f032d53fe314f9a4fc6eb6ec36cf7939aed1cb2cb22ed4986df",
+      "id": "material:f67c885363680f032d53fe31",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -441,38 +473,6 @@
         {
           "colorSpace": "linear",
           "name": "hull_miner_mechanical_orm_1k",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d74c5ffd42834bbfc3310345e0977f47225ef7a4c14a45643b15342481ba9c0c",
-      "id": "material:d74c5ffd42834bbfc3310345",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_miner_baseColor_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_miner_accent_orm_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_miner_neutral_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_miner_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1073,19 +1073,19 @@
       "sha256": "499b2f722e23bb8ceea1661e8a8c25604600a6fb5a9cd018158ea1b9e58a5967"
     },
     "sourceGlb": {
-      "bytes": 704648,
-      "sha256": "000bd9050d3215af37b0a2cc195cac9065ca857c6a20fc7a3cab448eef1e0db9",
+      "bytes": 733588,
+      "sha256": "b8903083c75a0aa498e930e02b61ff4bc9496ea3fe699ef55765a42753e58246",
       "uri": "hull_miner.glb"
     },
     "sourceManifest": {
       "bytes": 57392,
-      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1170632,
-    "sha256": "af829a1b80d06a2c3db34944b301e7675a621c58bf64c7f02a825597c8dc00a3",
+    "bytes": 1199572,
+    "sha256": "3c8b8c8f0c9825a4c9b6edbe10945a7fb4d4096796ae9b82d4e297bace0dcdb3",
     "uri": "render.glb"
   },
   "runtime": {

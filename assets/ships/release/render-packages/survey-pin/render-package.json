@@ -289,7 +289,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ad3bead3135c01091b8ef80c22f7cbf87f2363eefe8b66b30f118d4c0dcff487",
+  "contentHash": "bad59852f2f62c98ef4bd8c48f387b778d19efbd2b3e6e333475752da15ce633",
   "dynamicGroups": [
     {
       "id": "sf.render.survey-pin.mesh.lod0-hook-drive-core.dynamic",
@@ -1882,7 +1882,7 @@
     },
     "sourceManifest": {
       "bytes": 57392,
-      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
       "uri": "pilots.json"
     }
   },

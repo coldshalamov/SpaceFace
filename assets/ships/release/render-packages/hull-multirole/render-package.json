@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a00bf6c59a8131e7027b4dff46233fc6d9c60c07ad26e49c1c82a2e5502fd9db",
+  "contentHash": "5512657dbfdc70ab3ae087cf429e0b6353da502b3a8e1e99bb68a98e53f92e16",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "0f6f5f68c5d01f4ed50bdabd0552936ef43f795a18d811ba0904467698ebd705",
+      "materialHash": "efe7967e647c9263b358d6138d521b5dc70c277f41d2cd14a8995a5d07a7d5a9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "0f6f5f68c5d01f4ed50bdabd0552936ef43f795a18d811ba0904467698ebd705",
+      "materialHash": "efe7967e647c9263b358d6138d521b5dc70c277f41d2cd14a8995a5d07a7d5a9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
@@ -170,7 +170,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-field-repair",
@@ -195,7 +195,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "0f6f5f68c5d01f4ed50bdabd0552936ef43f795a18d811ba0904467698ebd705",
+      "materialHash": "efe7967e647c9263b358d6138d521b5dc70c277f41d2cd14a8995a5d07a7d5a9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "0f6f5f68c5d01f4ed50bdabd0552936ef43f795a18d811ba0904467698ebd705",
+      "materialHash": "efe7967e647c9263b358d6138d521b5dc70c277f41d2cd14a8995a5d07a7d5a9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "931a08d32d66ed95ac4d3577a6bca121af20cf587861eb47cb79f35ce9ec9f78",
+      "materialHash": "b402caa47cead073daad749cfd1b111f2609346419d2826d6a953406425d0d9e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe",
@@ -320,7 +320,7 @@
       "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main.primitive.0",
       "indexCount": 5106,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_STARTER.003",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main",
@@ -345,7 +345,7 @@
       "id": "sf.render.hull-multirole.mesh.lod1-hull-multirole-silhouette.primitive.0",
       "indexCount": 2808,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_STARTER.001",
       "nodeId": "sf.render.hull-multirole.mesh.lod1-hull-multirole-silhouette",
@@ -370,7 +370,7 @@
       "id": "sf.render.hull-multirole.mesh.lod2-hull-multirole-silhouette.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
+      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_STARTER.002",
       "nodeId": "sf.render.hull-multirole.mesh.lod2-hull-multirole-silhouette",
@@ -383,9 +383,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0f6f5f68c5d01f4ed50bdabd0552936ef43f795a18d811ba0904467698ebd705",
-      "id": "material:0f6f5f68c5d01f4ed50bdabd",
-      "name": "Material_Mechanical",
+      "hash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
+      "id": "material:749f6c4288b21b8d99380a26",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -396,7 +396,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_multirole_mechanical_orm_1k",
+          "name": "hull_multirole_hull_orm_1k",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -408,15 +408,15 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_multirole_mechanical_orm_1k",
+          "name": "hull_multirole_hull_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "931a08d32d66ed95ac4d3577a6bca121af20cf587861eb47cb79f35ce9ec9f78",
-      "id": "material:931a08d32d66ed95ac4d3577",
+      "hash": "b402caa47cead073daad749cfd1b111f2609346419d2826d6a953406425d0d9e",
+      "id": "material:b402caa47cead073daad749c",
       "name": "Material_Accent",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -447,9 +447,9 @@
       ]
     },
     {
-      "hash": "bedd3feedd69fd47ea0358f3b0fe5c2c4338337d64fa06b8829e09ec13feafa3",
-      "id": "material:bedd3feedd69fd47ea0358f3",
-      "name": "Material_Hull",
+      "hash": "efe7967e647c9263b358d6138d521b5dc70c277f41d2cd14a8995a5d07a7d5a9",
+      "id": "material:efe7967e647c9263b358d613",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -460,7 +460,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_multirole_hull_orm_1k",
+          "name": "hull_multirole_mechanical_orm_1k",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -472,7 +472,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_multirole_hull_orm_1k",
+          "name": "hull_multirole_mechanical_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1073,19 +1073,19 @@
       "sha256": "2ba62fc80c77a8915742dcc484f0e674a1042c5c1b30112174fd1632e6e6b57d"
     },
     "sourceGlb": {
-      "bytes": 311300,
-      "sha256": "d5ec027690b2b3adddebbaee15213e86f0b0bfcf86f8d29a3ca33f3c9d9d74a5",
+      "bytes": 576952,
+      "sha256": "d7cc7156177ad3a4b1b89d2d76c4a78604c791e16ec944a609bdf407db05ab06",
       "uri": "hull_multirole.glb"
     },
     "sourceManifest": {
       "bytes": 57392,
-      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 440012,
-    "sha256": "639f382955058055c001f5071805303e7340b7aafd670f922e79f82f2440be89",
+    "bytes": 705660,
+    "sha256": "844c3e0823e47de7b1590d827c65c0fca28ecc8aaef51cd76d9cdc53bd2d2ba2",
     "uri": "render.glb"
   },
   "runtime": {

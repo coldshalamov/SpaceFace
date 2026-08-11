@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5cbbc81d775afc2d89b9dc96b440f1f42f4da8e2ae5aac19dae364796d559a9d",
+  "contentHash": "5c2b017b67adfd21343b76d9409b3583424ac33c8c117e0420833d60eff7fe7b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1199,7 +1199,7 @@
     },
     "sourceManifest": {
       "bytes": 57392,
-      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
       "uri": "pilots.json"
     }
   },

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2b82a69258d811047aac8d3e5ea5a371d42195dbf096290b46237cfb93b392f6",
+  "contentHash": "1937a8aa19120b887f7d6b3bf0a517506f3a77aeaf14c4f9ce2f55e83a35c1ff",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-armor-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-armor-plate",
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-battle-scar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-battle-scar",
@@ -170,7 +170,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "64e6a95453daca1b8ef34859f21c96f2c2c3973bf43ba9685ef56f04c85123ad",
+      "materialHash": "770079566f4d76650181f1f0edebad5719d35b2d3a060dc3d010af1f06abe9e0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
@@ -195,7 +195,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-military-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "037c3eab361388a9d86e5c7081461834f37746a2de4db807c900962dd8aa45fa",
+      "materialHash": "f169c542357522415f03f559b929bcd9acc7d561d42ece74974b346b65287c8c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "64e6a95453daca1b8ef34859f21c96f2c2c3973bf43ba9685ef56f04c85123ad",
+      "materialHash": "770079566f4d76650181f1f0edebad5719d35b2d3a060dc3d010af1f06abe9e0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-turret-mount.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "64e6a95453daca1b8ef34859f21c96f2c2c3973bf43ba9685ef56f04c85123ad",
+      "materialHash": "770079566f4d76650181f1f0edebad5719d35b2d3a060dc3d010af1f06abe9e0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "64e6a95453daca1b8ef34859f21c96f2c2c3973bf43ba9685ef56f04c85123ad",
+      "materialHash": "770079566f4d76650181f1f0edebad5719d35b2d3a060dc3d010af1f06abe9e0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
@@ -320,7 +320,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main.primitive.0",
       "indexCount": 7272,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_GUNSHIP",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main",
@@ -345,7 +345,7 @@
       "id": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette.primitive.0",
       "indexCount": 3999,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_GUNSHIP.001",
       "nodeId": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette",
@@ -370,7 +370,7 @@
       "id": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette.primitive.0",
       "indexCount": 150,
       "indexed": true,
-      "materialHash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
+      "materialHash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_GUNSHIP.002",
       "nodeId": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette",
@@ -383,40 +383,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "037c3eab361388a9d86e5c7081461834f37746a2de4db807c900962dd8aa45fa",
-      "id": "material:037c3eab361388a9d86e5c70",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_gunship_baseColor_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_gunship_accent_orm_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_gunship_neutral_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_gunship_accent_orm_1k",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4541ab4143ead70daa884df262f7ceec62878c637790eeb0d60d88afe6f4fee8",
-      "id": "material:4541ab4143ead70daa884df2",
+      "hash": "3112a962920fdac06705494709ae06ad3d8b866610d45180777cad22c4e56875",
+      "id": "material:3112a962920fdac067054947",
       "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -447,8 +415,8 @@
       ]
     },
     {
-      "hash": "64e6a95453daca1b8ef34859f21c96f2c2c3973bf43ba9685ef56f04c85123ad",
-      "id": "material:64e6a95453daca1b8ef34859",
+      "hash": "770079566f4d76650181f1f0edebad5719d35b2d3a060dc3d010af1f06abe9e0",
+      "id": "material:770079566f4d76650181f1f0",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -473,6 +441,38 @@
         {
           "colorSpace": "linear",
           "name": "hull_gunship_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f169c542357522415f03f559b929bcd9acc7d561d42ece74974b346b65287c8c",
+      "id": "material:f169c542357522415f03f559",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_gunship_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_gunship_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1073,19 +1073,19 @@
       "sha256": "955890b548ec822eb0c74bc62205ffe02e9caf98004af40435c5fad7bee43681"
     },
     "sourceGlb": {
-      "bytes": 358348,
-      "sha256": "f94751bdd5033f91c52239ec15ae44640b60fbef827d4e60d474f5234177b911",
+      "bytes": 700340,
+      "sha256": "9dcf83114eeddf5f45f5dcb32f50d970661a3bb3989d53ed9b62d6b8d66b42da",
       "uri": "hull_gunship.glb"
     },
     "sourceManifest": {
       "bytes": 57392,
-      "sha256": "77ab3c881c6e24f2f73cef83f3c0d499976dd5112c249de69a5f7c0598ee9cc3",
+      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 504256,
-    "sha256": "c28e5ea4f04f436652f75db5233539b07371b33f5e218bb5d5582d534aae0479",
+    "bytes": 846244,
+    "sha256": "0c98d00c29e992bb53bde1ebece49ca1067c49199972dd6f36e652fe42d9af5a",
     "uri": "render.glb"
   },
   "runtime": {
