@@ -30,8 +30,10 @@ import {
   projectCeresActivityFrame,
   selectCeresHostilePointingStatus,
   settleCeresPocketApproach,
+  triggerCeresPublicFlightAction,
   validateCeresPilotSources,
   validatePublicInputReceipt,
+  waitForCeresHostileMasslineAcquisition,
   waitForCeresToolkitConflictAuthority,
 } from '../scripts/lib/ceresFiveMinuteAcceptance.mjs';
 import { ZONE_CERES_THROUGHLINE } from '../src/data/authoredPlaces.js';
@@ -46,6 +48,7 @@ import { asteroidFormations } from '../src/systems/asteroidFormations.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { projectPilotFlightControls } from '../src/systems/input.js';
+import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
@@ -1460,6 +1463,171 @@ test('public input receipt proves one press-observe-release-neutral keyboard act
   }
 });
 
+test('public toolkit actions cross fixed ticks and reject stale observer events', async () => {
+  const missedGrammar = createMasslineInputGrammar();
+  assert.equal(missedGrammar.step(1 / 60, {
+    held: false,
+    attached: false,
+    source: null,
+  }).latch, false,
+  'a down/up pair completed between fixed updates is indistinguishable from neutral input');
+  const sampledGrammar = createMasslineInputGrammar();
+  assert.equal(sampledGrammar.step(1 / 60, {
+    held: true,
+    attached: false,
+    source: 'keyboard',
+  }).latch, true, 'a fixed tick that samples Space held publishes the latch edge');
+  assert.equal(sampledGrammar.step(1 / 60, {
+    held: false,
+    attached: true,
+    source: null,
+  }).cut, false, 'the latch press release is published before beginning a distinct cut press');
+  assert.equal(sampledGrammar.step(1 / 60, {
+    held: true,
+    attached: true,
+    source: 'keyboard',
+  }).cut, false, 'the cut press must remain held for a sampled attached tick');
+  assert.equal(sampledGrammar.step(1 / 60, {
+    held: false,
+    attached: true,
+    source: null,
+  }).cut, true, 'the following sampled release publishes the exact cut edge');
+
+  const harness = fixedTickToolkitActionPage();
+  const attached = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Space',
+    expectedEvent: {
+      event: 'tether:attached',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+    },
+  });
+  assert.deepEqual(attached.receipt, {
+    source: 'public-keyboard-fixed-tick',
+    key: 'Space',
+    trigger: 'press',
+    expectedEvent: 'tether:attached',
+    pressTick: 700,
+    heldTick: 701,
+    eventTick: 701,
+    minEventSeq: 80,
+    eventSeq: 80,
+    neutralTick: 702,
+  });
+  assert.equal(attached.event.seq, 80,
+    'the same-tick stale event before the action cursor must not satisfy the latch');
+
+  const cut = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Space',
+    trigger: 'release',
+    expectedEvent: {
+      event: 'tether:broken',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+      reason: 'tether_cut',
+    },
+  });
+  assert.equal(cut.receipt.pressTick, 702);
+  assert.equal(cut.receipt.heldTick, 703,
+    'the cut down-state must be sampled for one exact fixed tick');
+  assert.equal(cut.receipt.eventTick, 704,
+    'the cut event must follow the sampled key release');
+  assert.equal(cut.receipt.neutralTick, 705);
+
+  const seed = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Digit4',
+    expectedEvent: { event: 'massSeed:deployed', ownerId: PLAYER_ENTITY_ID },
+  });
+  const repulsor = await triggerCeresPublicFlightAction(harness.page, {
+    key: 'Digit6',
+    expectedEvent: {
+      event: 'fields:deployed',
+      kind: 'repulsor',
+      sourceOwnerId: PLAYER_ENTITY_ID,
+    },
+  });
+  assert.equal(seed.receipt.eventTick, 706);
+  assert.equal(seed.receipt.neutralTick, 707);
+  assert.equal(repulsor.receipt.eventTick, 708);
+  assert.equal(repulsor.receipt.neutralTick, 709);
+
+  const eventHolds = harness.log.filter((row) => row.kind === 'event')
+    .map((row) => [row.event, row.held]);
+  assert.deepEqual(eventHolds, [
+    ['tether:attached', ['Space']],
+    ['tether:broken', []],
+    ['massSeed:deployed', ['Digit4']],
+    ['fields:deployed', ['Digit6']],
+  ], 'press-trigger actions stay held through their event; cut fires only after release');
+
+  await assert.rejects(triggerCeresPublicFlightAction(harness.page, {
+    key: 'Digit4',
+    expectedEvent: { event: 'never:arrives' },
+    timeout: 25,
+  }), /public toolkit event never:arrives did not arrive/);
+  assert.equal(harness.heldKeys.size, 0, 'a failed public action must still release its key');
+});
+
+test('public hostile acquisition waits for a fresh exact ready Massline receipt', async () => {
+  const target = {
+    id: TOOLKIT_HOSTILES[0].entityId,
+    worldRecordId: TOOLKIT_HOSTILES[0].worldRecordId,
+  };
+  const valid = hostileMasslineAcquisitionPage();
+  const receipt = await waitForCeresHostileMasslineAcquisition(valid.page, target, {
+    afterTick: 900,
+  });
+  assert.deepEqual(receipt, {
+    tick: 901,
+    simTime: 15.016666666666667,
+    aimIntentActive: true,
+    pointerActive: true,
+    autoAimTargetId: null,
+    schemaVersion: 1,
+    receiptId: 'massline-acquisition:44',
+    publishedTick: 901,
+    validUntil: 15.516666666666667,
+    targetId: target.id,
+    worldRecordId: target.worldRecordId,
+    targetAlive: true,
+    targetType: 'ship',
+    zoneId: 'zone_ceres_ambush',
+    squadId: 'zone_ceres_ambush',
+    status: 'ready',
+    context: 'precision-pick',
+    expectedWorldRecordId: target.worldRecordId,
+  });
+  const liveIntercept = hostileMasslineAcquisitionPage({ context: 'hostile-flyby' });
+  assert.equal((await waitForCeresHostileMasslineAcquisition(liveIntercept.page, target, {
+    afterTick: 900,
+  })).context, 'hostile-flyby',
+  'the live INTERCEPT context is valid when it binds the same exact ready durable target');
+
+  for (const [label, options] of [
+    ['stale receipt', { publishedTick: 900 }],
+    ['replacement entity', { selectedTargetId: target.id + 1 }],
+    ['replacement durable record', { worldRecordId: 'wr_npc_replacement' }],
+    ['denied acquisition', { status: 'blocked' }],
+    ['weapon-synthesized aim', { autoAimTargetId: target.id }],
+  ]) {
+    const harness = hostileMasslineAcquisitionPage(options);
+    await assert.rejects(waitForCeresHostileMasslineAcquisition(harness.page, target, {
+      afterTick: 900,
+      timeout: 25,
+    }), (error) => {
+      assert.match(error.message, /public cursor did not publish the exact ready hostile Massline acquisition/);
+      assert.equal(error.ceresToolkitActionDiagnostic?.schema,
+        'spaceface.ceresToolkitActionDiagnostic.v1');
+      assert.equal(error.ceresToolkitActionDiagnostic?.expectedEvent,
+        'massline:acquisitionReady');
+      assert.equal(error.ceresToolkitActionDiagnostic?.snapshot?.authority?.targetId, target.id);
+      assert.equal(error.ceresToolkitActionDiagnostic?.snapshot?.authority?.worldRecordId,
+        target.worldRecordId);
+      return true;
+    }, label);
+  }
+});
+
 test('public pocket approach completes only after the hull is settled inside the anchor', () => {
   assert.equal(chooseCeresPocketApproachAction({
     distanceWU: 80,
@@ -2039,6 +2207,33 @@ test('public pilot source uses menu/card and Playwright input while private shor
   assert.ok(routeStart >= 0 && tutorialSetupIndex > routeStart
     && sandboxIndex > tutorialSetupIndex && setupAssertionIndex > sandboxIndex,
   'public Settings must disable onboarding before Sandbox and live setup must verify the result');
+
+  const toolkitStart = validSources.routeSource.indexOf(
+    'async function exercisePublicPhysicsToolkit', routeStart,
+  );
+  const toolkitEnd = validSources.routeSource.indexOf(
+    'async function waitForCeresBusEvent', toolkitStart,
+  );
+  const toolkitSource = validSources.routeSource.slice(toolkitStart, toolkitEnd);
+  assert.ok(toolkitStart > routeStart && toolkitEnd > toolkitStart,
+    'source audit must isolate the public physics toolkit route');
+  assert.doesNotMatch(toolkitSource,
+    /keyboard\.press\((?:'|")(?:Space|Digit4|Digit6)(?:'|")\)/,
+    'fixed-tick flight actions cannot use zero-duration Playwright presses');
+  assert.match(toolkitSource,
+    /page\.mouse\.move[\s\S]*waitForCeresHostileMasslineAcquisition\(page, target[\s\S]*triggerCeresPublicFlightAction\(page, \{[\s\S]*key: 'Space'/,
+    'the exact fresh rendered hostile receipt must precede the public Massline press');
+  for (const marker of [
+    "key: 'Space'",
+    "trigger: 'release'",
+    "key: 'Digit4'",
+    "key: 'Digit6'",
+  ]) {
+    assert.ok(toolkitSource.includes(marker), `toolkit source must retain ${marker}`);
+  }
+  assert.match(validSources.routeSource,
+    /'Space', 'Digit4', 'Digit6'/,
+    'global public-input cleanup must release every toolkit flight key');
 
   const forbidden = [
     "SF.bus.emit('game:new', { seed: 47 })",
@@ -3034,6 +3229,158 @@ function publicInputReceipt() {
     observedState: { active: true },
     neutralState: { active: false },
     motionObserved: true,
+  };
+}
+
+function fixedTickToolkitActionPage() {
+  const heldKeys = new Set();
+  const log = [];
+  const state = {
+    tick: 700,
+    simTime: 700 / 60,
+    playerId: PLAYER_ENTITY_ID,
+    player: {},
+    input: { actions: {} },
+  };
+  const trace = {
+    nextEventSeq: 80,
+    events: [{
+      seq: 79,
+      event: 'tether:attached',
+      tick: 700,
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+    }],
+  };
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = {
+      SF: { state },
+      __SF_CERES_FIVE_MINUTE_TRACE__: trace,
+    };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  const page = {
+    keyboard: {
+      async down(key) {
+        heldKeys.add(key);
+        log.push({ kind: 'down', key, tick: state.tick });
+      },
+      async up(key) {
+        heldKeys.delete(key);
+        log.push({ kind: 'up', key, tick: state.tick });
+      },
+    },
+    async evaluate(callback, argument) {
+      return runInPage(callback, argument);
+    },
+    async waitForFunction(callback, argument) {
+      if (argument?.event) {
+        if (argument.event === 'never:arrives') throw new Error('fake event timeout');
+        assert.equal(runInPage(callback, argument), false,
+          'stale observer history must not satisfy the new action cursor');
+        state.tick += 1;
+        state.simTime = state.tick / 60;
+        const event = Object.fromEntries(Object.entries(argument)
+          .filter(([key]) => key !== 'minTick' && key !== 'minSeq'));
+        event.seq = trace.nextEventSeq;
+        trace.nextEventSeq += 1;
+        event.tick = state.tick;
+        trace.events.push(event);
+        log.push({
+          kind: 'event',
+          event: event.event,
+          tick: state.tick,
+          held: [...heldKeys].sort(),
+        });
+        assert.equal(runInPage(callback, argument), true,
+          'the exact post-cursor event must satisfy the condition');
+        return;
+      }
+      assert.ok(Number.isSafeInteger(argument?.tick)
+        && Number.isSafeInteger(argument?.deltaTicks));
+      state.tick = Math.max(state.tick, argument.tick + argument.deltaTicks);
+      state.simTime = state.tick / 60;
+      log.push({ kind: 'fixed-tick', tick: state.tick, held: [...heldKeys].sort() });
+      assert.equal(runInPage(callback, argument), true);
+    },
+  };
+  return { page, heldKeys, log };
+}
+
+function hostileMasslineAcquisitionPage({
+  publishedTick = 901,
+  selectedTargetId = TOOLKIT_HOSTILES[0].entityId,
+  worldRecordId = TOOLKIT_HOSTILES[0].worldRecordId,
+  status = 'ready',
+  context = 'precision-pick',
+  autoAimTargetId = null,
+} = {}) {
+  const state = {
+    tick: 900,
+    simTime: 15,
+    input: {
+      aimIntentActive: false,
+      pointerScreen: { active: false },
+      autoAim: null,
+    },
+    entities: new Map([[TOOLKIT_HOSTILES[0].entityId, {
+      id: TOOLKIT_HOSTILES[0].entityId,
+      type: 'ship',
+      alive: true,
+      data: {
+        worldRecordId,
+        ai: { zoneId: 'zone_ceres_ambush', squadId: 'zone_ceres_ambush' },
+      },
+    }]]),
+    masslineAcquisition: null,
+  };
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = { SF: { state } };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  return {
+    page: {
+      async waitForFunction(callback, argument) {
+        assert.equal(runInPage(callback, argument), false,
+          'the pre-move/stale frame cannot satisfy acquisition authority');
+        state.tick = 901;
+        state.simTime = state.tick / 60;
+        state.input.aimIntentActive = true;
+        state.input.pointerScreen.active = true;
+        state.input.autoAim = autoAimTargetId == null ? null : { targetId: autoAimTargetId };
+        state.masslineAcquisition = {
+          schemaVersion: 1,
+          id: 'massline-acquisition:44',
+          publishedTick,
+          validUntil: state.simTime + 0.5,
+          selected: {
+            targetId: selectedTargetId,
+            status,
+            context,
+          },
+        };
+        if (!runInPage(callback, argument)) {
+          throw new Error('fake acquisition condition remained false');
+        }
+      },
+      async evaluate(callback, argument) {
+        return runInPage(callback, argument);
+      },
+    },
   };
 }
 

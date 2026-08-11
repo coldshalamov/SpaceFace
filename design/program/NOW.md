@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore cycle | /root | VALIDATING | `design/program/NOW.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Run exactly one broker Browser acceptance for the reviewed public tutorial-off/conflict-authority candidate; on PASS publish the bound leaf receipt |
+| PQ-048.01 toolkit input | /root | VALIDATING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Review and publish the fixed-tick public toolkit input candidate; then run exactly one broker Browser acceptance and preserve its terminal evidence |
 
 ## Uncommitted work without a confirmed live thread
 

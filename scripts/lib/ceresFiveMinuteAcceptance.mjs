@@ -725,6 +725,206 @@ export async function disableCeresTutorialThroughPublicSettings(page) {
   };
 }
 
+async function waitForCeresFixedTicks(page, count = 1, timeout = 10_000) {
+  const delta = Math.max(1, Math.trunc(Number(count) || 0));
+  const startTick = await readTick(page);
+  if (!Number.isSafeInteger(startTick)) throw new Error('public fixed-tick pulse lacks a start tick');
+  await page.waitForFunction(({ tick, deltaTicks }) => (
+    Number(window.SF?.state?.tick) >= tick + deltaTicks
+  ), { tick: startTick, deltaTicks: delta }, { timeout });
+  const endTick = await readTick(page);
+  if (!Number.isSafeInteger(endTick) || endTick < startTick + delta) {
+    throw new Error('public fixed-tick pulse did not observe its exact hold interval');
+  }
+  return endTick;
+}
+
+async function readCeresPublicActionCursor(page) {
+  const cursor = await page.evaluate(() => ({
+    tick: Number(window.SF?.state?.tick),
+    nextEventSeq: Number(window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq),
+  }));
+  if (!Number.isSafeInteger(cursor?.tick) || !Number.isSafeInteger(cursor?.nextEventSeq)
+      || cursor.nextEventSeq < 1) {
+    throw new Error('public flight action lacks an exact tick/event cursor');
+  }
+  return cursor;
+}
+
+export async function waitForCeresHostileMasslineAcquisition(page, target, {
+  afterTick,
+  timeout = 5_000,
+} = {}) {
+  if (target?.id == null || !String(target?.worldRecordId || '')
+      || !Number.isSafeInteger(afterTick) || !Number.isFinite(timeout) || timeout <= 0) {
+    throw new TypeError('hostile Massline acquisition requires exact target identity and cursor tick');
+  }
+  const authority = {
+    targetId: target.id,
+    worldRecordId: target.worldRecordId,
+    minTick: afterTick + 1,
+  };
+  const readReceipt = () => page.evaluate(({ targetId, worldRecordId }) => {
+    const state = window.SF?.state;
+    const entity = state?.entities?.get(targetId);
+    const acquisition = state?.masslineAcquisition;
+    const selected = acquisition?.selected;
+    return {
+      tick: Number(state?.tick),
+      simTime: Number(state?.simTime),
+      aimIntentActive: state?.input?.aimIntentActive === true,
+      pointerActive: state?.input?.pointerScreen?.active === true,
+      autoAimTargetId: state?.input?.autoAim?.targetId ?? null,
+      schemaVersion: acquisition?.schemaVersion ?? null,
+      receiptId: acquisition?.id || null,
+      publishedTick: Number(acquisition?.publishedTick),
+      validUntil: Number(acquisition?.validUntil),
+      targetId: selected?.targetId ?? null,
+      worldRecordId: entity?.data?.worldRecordId || null,
+      targetAlive: entity?.alive !== false,
+      targetType: entity?.type || null,
+      zoneId: entity?.data?.ai?.zoneId || null,
+      squadId: entity?.data?.ai?.squadId || null,
+      status: selected?.status || null,
+      context: selected?.context || null,
+      expectedWorldRecordId: worldRecordId,
+    };
+  }, authority);
+  const acquisitionError = (cause, snapshot) => {
+    const error = new Error(`public cursor did not publish the exact ready hostile Massline acquisition within ${timeout}ms`);
+    error.cause = cause;
+    error.ceresToolkitActionDiagnostic = {
+      schema: 'spaceface.ceresToolkitActionDiagnostic.v1',
+      expectedEvent: 'massline:acquisitionReady',
+      timeoutMs: timeout,
+      snapshot: {
+        authority: { ...authority },
+        receipt: snapshot || null,
+      },
+    };
+    return error;
+  };
+  try {
+    await page.waitForFunction(({ targetId, worldRecordId, minTick }) => {
+      const state = window.SF?.state;
+      const entity = state?.entities?.get(targetId);
+      const acquisition = state?.masslineAcquisition;
+      const selected = acquisition?.selected;
+      return Number(state?.tick) >= minTick
+        && state?.input?.aimIntentActive === true
+        && state?.input?.pointerScreen?.active === true
+        && state?.input?.autoAim?.targetId == null
+        && entity?.alive !== false
+        && entity?.type === 'ship'
+        && entity?.data?.worldRecordId === worldRecordId
+        && entity?.data?.ai?.zoneId === 'zone_ceres_ambush'
+        && entity?.data?.ai?.squadId === 'zone_ceres_ambush'
+        && acquisition?.schemaVersion === 1
+        && selected?.targetId === targetId
+        && selected?.status === 'ready'
+        && Number(acquisition?.publishedTick) >= minTick
+        && Number(acquisition?.publishedTick) <= Number(state?.tick)
+        && Number(acquisition?.validUntil) >= Number(state?.simTime);
+    }, authority, { timeout });
+  } catch (cause) {
+    const snapshot = await readReceipt().catch(() => ({ snapshotUnavailable: true }));
+    throw acquisitionError(cause, snapshot);
+  }
+  let receipt = null;
+  try {
+    receipt = await readReceipt();
+  } catch (cause) {
+    throw acquisitionError(cause, { snapshotUnavailable: true });
+  }
+  if (!Number.isSafeInteger(receipt?.tick) || receipt.tick < authority.minTick
+      || !Number.isSafeInteger(receipt?.publishedTick)
+      || receipt.publishedTick < authority.minTick || receipt.publishedTick > receipt.tick
+      || !Number.isFinite(receipt?.simTime) || !Number.isFinite(receipt?.validUntil)
+      || receipt.validUntil < receipt.simTime
+      || receipt.aimIntentActive !== true || receipt.pointerActive !== true
+      || receipt.autoAimTargetId != null
+      || receipt.schemaVersion !== 1
+      || receipt.targetId !== target.id || receipt.worldRecordId !== target.worldRecordId
+      || receipt.targetAlive !== true || receipt.targetType !== 'ship'
+      || receipt.zoneId !== 'zone_ceres_ambush' || receipt.squadId !== 'zone_ceres_ambush'
+      || receipt.expectedWorldRecordId !== target.worldRecordId
+      || receipt.status !== 'ready' || !String(receipt.context || '')
+      || !String(receipt.receiptId || '')) {
+    throw acquisitionError(new Error('post-condition receipt lost acquisition authority'), receipt);
+  }
+  return Object.freeze(receipt);
+}
+
+export async function triggerCeresPublicFlightAction(page, {
+  key,
+  expectedEvent,
+  trigger = 'press',
+  timeout = 20_000,
+} = {}) {
+  if (!page?.keyboard || typeof page.keyboard.down !== 'function'
+      || typeof page.keyboard.up !== 'function') {
+    throw new TypeError('public flight action requires a live keyboard page');
+  }
+  if (!String(key || '') || !expectedEvent?.event
+      || !['press', 'release'].includes(trigger)
+      || !Number.isFinite(timeout) || timeout <= 0) {
+    throw new TypeError('public flight action requires a key, event, trigger phase, and timeout');
+  }
+  const cursor = await readCeresPublicActionCursor(page);
+  const pressTick = cursor.tick;
+  let heldTick = pressTick;
+  let event = null;
+  let eventCriteria = null;
+  await page.keyboard.down(key);
+  try {
+    if (trigger === 'release') {
+      heldTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
+    } else {
+      eventCriteria = {
+        ...expectedEvent,
+        minTick: Math.max(Number(expectedEvent.minTick) || 0, pressTick + 1),
+        minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
+      };
+      event = await waitForCeresBusEvent(page, eventCriteria, timeout);
+      heldTick = Math.max(pressTick, Number(event?.tick) || pressTick);
+    }
+  } finally {
+    await page.keyboard.up(key);
+  }
+  if (trigger === 'release') {
+    eventCriteria = {
+      ...expectedEvent,
+      minTick: Math.max(Number(expectedEvent.minTick) || 0, heldTick + 1),
+      minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
+    };
+    event = await waitForCeresBusEvent(page, eventCriteria, timeout);
+  }
+  const neutralTick = await waitForCeresFixedTicks(page, 1, Math.min(timeout, 10_000));
+  const eventTick = Number(event?.tick);
+  const eventSeq = Number(event?.seq);
+  if (!Number.isSafeInteger(eventTick) || eventTick <= pressTick
+      || (trigger === 'release' && eventTick <= heldTick)
+      || !Number.isSafeInteger(eventSeq) || eventSeq < cursor.nextEventSeq
+      || heldTick < pressTick || neutralTick <= eventTick) {
+    throw new Error(`public ${key} ${trigger} pulse lacks ordered fixed-tick event authority`);
+  }
+  return {
+    event,
+    receipt: {
+      source: 'public-keyboard-fixed-tick',
+      key,
+      trigger,
+      expectedEvent: expectedEvent.event,
+      pressTick,
+      heldTick,
+      eventTick,
+      minEventSeq: cursor.nextEventSeq,
+      eventSeq,
+      neutralTick,
+    },
+  };
+}
+
 export function projectCeresActivityFrame(row = {}) {
   return {
     tick: row.tick,
@@ -1479,6 +1679,7 @@ export async function runCeresFiveMinutePublicRoute({
         phase,
         snapshot: error.ceresRouteFailureSnapshot,
         toolkitConflict: error?.ceresToolkitConflictDiagnostic || null,
+        toolkitAction: error?.ceresToolkitActionDiagnostic || null,
       };
       await writeFile(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, 'utf8').catch(() => {});
       await page.screenshot({ path: screenshotPath }).catch(() => {});
@@ -2189,8 +2390,10 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
     const eventNames = [
       'encounter:telegraph', 'encounter:spawned', 'encounter:ended',
       'physics:impact', 'entity:killed', 'entity:destroyed',
-      'tether:attached', 'tether:latched', 'tether:broken', 'tether:cut', 'tether:released',
-      'massSeed:deployed', 'massSeed:locked', 'fields:deployed',
+      'tether:attached', 'tether:latched', 'tether:latchDenied',
+      'tether:broken', 'tether:cut', 'tether:released',
+      'massSeed:deployed', 'massSeed:deployDenied', 'massSeed:locked',
+      'fields:deployed', 'fields:deployDenied',
       'combat:fire', 'projectile:hit', 'combat:damage', 'combat:statusApplied',
       'save:completed', 'save:loaded',
       'mining:npcExtraction', 'aiTrader:requestTrade',
@@ -3370,28 +3573,39 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     box.x + (target.ndcX + 1) * 0.5 * box.width,
     box.y + (1 - (target.ndcY + 1) * 0.5) * box.height,
   );
-
-  await page.keyboard.press('Space');
-  const attached = await waitForCeresBusEvent(page, {
-    event: 'tether:attached',
-    minTick: baseline.startTick,
-    actorId: baseline.playerEntityId,
-    targetId: target.id,
+  const cursorMovedAtTick = await readTick(page);
+  await waitForCeresHostileMasslineAcquisition(page, target, {
+    afterTick: cursorMovedAtTick,
   });
+
+  const attachedAction = await triggerCeresPublicFlightAction(page, {
+    key: 'Space',
+    expectedEvent: {
+      event: 'tether:attached',
+      minTick: baseline.startTick,
+      actorId: baseline.playerEntityId,
+      targetId: target.id,
+    },
+  });
+  const attached = attachedAction.event;
   await waitForCeresBusEvent(page, {
     event: 'tether:latched',
     minTick: attached.tick,
     targetId: target.id,
   });
-  await page.keyboard.press('Space');
-  const broken = await waitForCeresBusEvent(page, {
-    event: 'tether:broken',
-    minTick: attached.tick,
-    actorId: baseline.playerEntityId,
-    targetId: target.id,
-    attachmentId: attached.attachmentId,
-    reason: 'tether_cut',
+  const brokenAction = await triggerCeresPublicFlightAction(page, {
+    key: 'Space',
+    trigger: 'release',
+    expectedEvent: {
+      event: 'tether:broken',
+      minTick: attached.tick,
+      actorId: baseline.playerEntityId,
+      targetId: target.id,
+      attachmentId: attached.attachmentId,
+      reason: 'tether_cut',
+    },
   });
+  const broken = brokenAction.event;
   await waitForCeresBusEvent(page, {
     event: 'tether:cut',
     minTick: broken.tick,
@@ -3403,24 +3617,29 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
     targetId: target.id,
   });
 
-  await page.keyboard.press('Digit4');
-  const seed = await waitForCeresBusEvent(page, {
-    event: 'massSeed:deployed',
-    minTick: baseline.startTick,
-    ownerId: baseline.playerEntityId,
+  const seedAction = await triggerCeresPublicFlightAction(page, {
+    key: 'Digit4',
+    expectedEvent: {
+      event: 'massSeed:deployed',
+      minTick: baseline.startTick,
+      ownerId: baseline.playerEntityId,
+    },
   });
+  const seed = seedAction.event;
   await waitForCeresBusEvent(page, {
     event: 'massSeed:locked',
     minTick: seed.tick,
     seedId: seed.seedId,
   }, 30_000);
 
-  await page.keyboard.press('Digit6');
-  await waitForCeresBusEvent(page, {
-    event: 'fields:deployed',
-    minTick: baseline.startTick,
-    kind: 'repulsor',
-    sourceOwnerId: baseline.playerEntityId,
+  await triggerCeresPublicFlightAction(page, {
+    key: 'Digit6',
+    expectedEvent: {
+      event: 'fields:deployed',
+      minTick: baseline.startTick,
+      kind: 'repulsor',
+      sourceOwnerId: baseline.playerEntityId,
+    },
   });
 
   let receipt = null;
@@ -3470,17 +3689,112 @@ async function exercisePublicPhysicsToolkit(page, endTick, collisionProof) {
 }
 
 async function waitForCeresBusEvent(page, expected, timeout = 20_000) {
-  await page.waitForFunction((criteria) => {
-    const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
-    return rows.some((row) => Object.entries(criteria).every(([key, value]) => (
-      key === 'minTick' ? Number(row.tick) >= Number(value) : row[key] === value
-    )));
-  }, expected, { timeout });
+  try {
+    await page.waitForFunction((criteria) => {
+      const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+      return rows.some((row) => Object.entries(criteria).every(([key, value]) => {
+        if (key === 'minTick') return Number(row.tick) >= Number(value);
+        if (key === 'minSeq') return Number(row.seq) >= Number(value);
+        return row[key] === value;
+      }));
+    }, expected, { timeout });
+  } catch (cause) {
+    const snapshot = await page.evaluate((criteria) => {
+      const state = window.SF?.state;
+      const trace = window.__SF_CERES_FIVE_MINUTE_TRACE__;
+      const selected = state?.masslineAcquisition?.selected || null;
+      const tether = state?.player?.tether || null;
+      const toolkitEventNames = new Set([
+        'tether:attached', 'tether:latched', 'tether:latchDenied',
+        'tether:broken', 'tether:cut', 'tether:released',
+        'massSeed:deployed', 'massSeed:deployDenied', 'massSeed:locked',
+        'fields:deployed', 'fields:deployDenied',
+      ]);
+      return {
+        tick: Number(state?.tick),
+        expected: { ...criteria },
+        playerEntityId: state?.playerId ?? null,
+        playerTargetId: state?.player?.targetId ?? null,
+        input: {
+          tetherFire: state?.input?.actions?.tetherFire === true,
+          tetherCut: state?.input?.actions?.tetherCut === true,
+          masslinePhase: state?.input?.actions?.massline?.phase || null,
+          masslineSource: state?.input?.actions?.massline?.source || null,
+          deployMassSeed: state?.input?.actions?.deployMassSeed === true,
+          deployRepulsor: state?.input?.actions?.deployRepulsor === true,
+        },
+        tether: tether ? {
+          active: tether.active === true,
+          targetId: tether.targetId ?? null,
+          attachmentId: tether.attachmentId || null,
+        } : null,
+        acquisition: selected ? {
+          targetId: selected.targetId ?? null,
+          context: selected.context || null,
+          score: Number.isFinite(Number(selected.score)) ? Number(selected.score) : null,
+          validUntil: Number.isFinite(Number(state.masslineAcquisition?.validUntil))
+            ? Number(state.masslineAcquisition.validUntil)
+            : null,
+        } : null,
+        massSeed: state?.massSeed ? {
+          schemaVersion: state.massSeed.schemaVersion ?? null,
+          seedId: state.massSeed.seedId ?? null,
+          ownerId: state.massSeed.ownerId ?? null,
+          lockAt: Number.isFinite(Number(state.massSeed.lockAt))
+            ? Number(state.massSeed.lockAt) : null,
+          expireAt: Number.isFinite(Number(state.massSeed.expireAt))
+            ? Number(state.massSeed.expireAt) : null,
+          cooldownUntil: Number.isFinite(Number(state.player?.massSeed?.cooldownUntil))
+            ? Number(state.player.massSeed.cooldownUntil) : null,
+          lastDenial: state.massSeed.lastDenial ? { ...state.massSeed.lastDenial } : null,
+        } : null,
+        fields: state?.fields ? {
+          schemaVersion: state.fields.schemaVersion ?? null,
+          active: (state.fields.active || []).slice(0, 8).map((row) => ({
+            fieldId: row?.fieldId ?? null,
+            kind: row?.kind ?? null,
+            sourceId: row?.sourceId ?? null,
+            expireAt: Number.isFinite(Number(row?.expireAt)) ? Number(row.expireAt) : null,
+          })),
+          cooldowns: {
+            well: Number.isFinite(Number(state.fields.cooldowns?.well))
+              ? Number(state.fields.cooldowns.well) : null,
+            repulsor: Number.isFinite(Number(state.fields.cooldowns?.repulsor))
+              ? Number(state.fields.cooldowns.repulsor) : null,
+          },
+          lastDenial: state.fields.lastDenial ? { ...state.fields.lastDenial } : null,
+        } : null,
+        recentEvents: (trace?.events || []).filter((row) => toolkitEventNames.has(row?.event))
+          .slice(-16).map((row) => ({
+          seq: Number(row.seq),
+          event: String(row.event || ''),
+          tick: Number(row.tick),
+          actorId: row.actorId ?? null,
+          ownerId: row.ownerId ?? null,
+          targetId: row.targetId ?? null,
+          attachmentId: row.attachmentId || null,
+          reason: row.reason || null,
+          kind: row.kind || null,
+        })),
+      };
+    }, expected).catch(() => ({ snapshotUnavailable: true }));
+    const error = new Error(`public toolkit event ${expected?.event || 'unknown'} did not arrive within ${timeout}ms`);
+    error.cause = cause;
+    error.ceresToolkitActionDiagnostic = {
+      schema: 'spaceface.ceresToolkitActionDiagnostic.v1',
+      expectedEvent: expected?.event || null,
+      timeoutMs: timeout,
+      snapshot,
+    };
+    throw error;
+  }
   return page.evaluate((criteria) => {
     const rows = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
-    const row = rows.find((entry) => Object.entries(criteria).every(([key, value]) => (
-      key === 'minTick' ? Number(entry.tick) >= Number(value) : entry[key] === value
-    )));
+    const row = rows.find((entry) => Object.entries(criteria).every(([key, value]) => {
+      if (key === 'minTick') return Number(entry.tick) >= Number(value);
+      if (key === 'minSeq') return Number(entry.seq) >= Number(value);
+      return entry[key] === value;
+    }));
     return row ? { ...row } : null;
   }, expected);
 }
@@ -4512,7 +4826,9 @@ async function readTick(page) {
 async function releasePublicInput(page) {
   if (!page || page.isClosed()) return;
   await page.mouse.up().catch(() => {});
-  for (const key of ['KeyW', 'KeyA', 'KeyD', 'KeyS', 'Digit0', 'Shift', 'Space']) {
+  for (const key of [
+    'KeyW', 'KeyA', 'KeyD', 'KeyS', 'Digit0', 'Shift', 'Space', 'Digit4', 'Digit6',
+  ]) {
     await page.keyboard.up(key).catch(() => {});
   }
 }
