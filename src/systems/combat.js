@@ -194,6 +194,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
+  if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
     spec.data.ai.approachTelegraph = def.telegraph.cue;
@@ -215,6 +216,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
 
 function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'attach_spool';
+  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_spool';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
   return 'engine_flare';
 }
@@ -224,6 +226,7 @@ function tacticalCapabilitiesFor(def) {
   if (Array.isArray(def.weapons) && def.weapons.length) caps.add('ranged');
   for (const capability of ARCHETYPE_TACTICAL_CAPABILITIES[def.aiArchetype] || []) caps.add(capability);
   if (def.combatDoctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) caps.add('tug');
+  if (def.combatDoctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) caps.add('screen');
   if (def.factionLawful) caps.add('disable');
   if (def.reinforcements) caps.add('screen');
   if (def.shipClass === 'capital') {

@@ -80,6 +80,7 @@ export const FIELD_DEFS = Object.freeze({
     kind: FIELD_KINDS.WELL,
     radius: 190,
     strength: 240,
+    damping: 0,
     falloff: 1.6,
     durationS: 9,
     cooldownS: 7,
@@ -95,6 +96,7 @@ export const FIELD_DEFS = Object.freeze({
     kind: FIELD_KINDS.REPULSOR,
     radius: 170,
     strength: 300,
+    damping: 0,
     falloff: 1.3,
     durationS: 7,
     cooldownS: 8,
@@ -110,12 +112,28 @@ export const FIELD_DEFS = Object.freeze({
     kind: FIELD_KINDS.CONE,
     radius: 260,
     strength: 260,
+    damping: 0,
     falloff: 1.2,
     halfAngleRad: 0.56,   // ~32 degrees half-angle wedge
     edgeSoftRad: 0.14,    // angular ramp band at the wedge edge (readable, not a cliff)
     durationS: Infinity,  // sustained while toggled on
     cooldownS: 0,
     originGap: 10,        // wedge apex sits just ahead of the hull nose
+  }),
+  // ANCHOR SNARE — an enemy-hull anchored area-control field. It deliberately reuses the Well
+  // kind/presentation and the same force owner, but adds bounded velocity damping to make the
+  // radius feel like a drag/snare instead of a pure gravity well. The source hull is excluded;
+  // escorts and the player are not.
+  anchorSnare: Object.freeze({
+    id: 'field_anchor_snare_standard',
+    kind: FIELD_KINDS.WELL,
+    radius: 235,
+    strength: 185,
+    damping: 3.2,
+    falloff: 1.15,
+    durationS: Infinity,
+    spinupTicks: 45,
+    maxAffected: 12,
   }),
 });
 

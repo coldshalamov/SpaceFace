@@ -14,6 +14,7 @@ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
   TETHER_CONTROL_RAIDER: 'tether_control_raider',
+  FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
 });
 
@@ -33,6 +34,8 @@ const TETHER_ATTACH_TICKS = 15;
 const TETHER_CONTROL_TICKS = 90;
 const TETHER_ESCAPE_TICKS = 90;
 const TETHER_REFORM_TICKS = 45;
+const FIELD_ANCHOR_HOLD_TICKS = 180;
+const FIELD_ANCHOR_RECOVER_TICKS = 75;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
@@ -108,6 +111,7 @@ export class CombatDoctrineRuntime {
       && target.disabled === true) {
       const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
+          : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
           : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior);
@@ -116,6 +120,8 @@ export class CombatDoctrineRuntime {
       updateInterceptor(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
       updateTetherRaider(record, tick, entityId, perception, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
+      updateFieldAnchor(record, tick, self, target, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -145,6 +151,8 @@ export function overrideDirectiveForCombatDoctrine(directive, doctrine) {
     kind = doctrine.phase === 'flank' || doctrine.phase === 'escape' || doctrine.phase === 'reform'
       ? ObjectiveKind.ENGAGE
       : ObjectiveKind.TUG;
+  } else if (doctrine.doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
+    kind = doctrine.phase === 'recover' ? ObjectiveKind.ENGAGE : ObjectiveKind.SCREEN;
   }
   const targetId = doctrine.actionTargetId != null ? doctrine.actionTargetId : doctrine.targetId;
   return Object.freeze({
@@ -255,6 +263,19 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
   record.actionTargetId = tether ? (tether.attachmentId || tether.id) : target.id;
 }
 
+function updateFieldAnchor(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'approach' && distance <= 540) enter(record, 'field_spool', tick, 'field_spool');
+  else if (record.phase === 'field_spool' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'anchor_hold', tick, null);
+  else if (record.phase === 'anchor_hold' && (age >= FIELD_ANCHOR_HOLD_TICKS || distance < 220)) {
+    beginEgress(record, 'recover', tick, self, target, 'field_cycle_complete');
+  } else if (record.phase === 'recover' && age >= FIELD_ANCHOR_RECOVER_TICKS && distance >= 520) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) {
+    advanceCycle(record, tick, 'approach');
+  }
+}
+
 function updateRanged(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   const closing = closingSpeed(self, target);
@@ -311,7 +332,7 @@ function enter(record, phase, tick, telegraphKind) {
     ? Object.freeze({ kind: telegraphKind, durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: tick })
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
-  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window';
+  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window' || phase === 'anchor_hold';
 }
 
 function advanceCycle(record, tick, phase) {
@@ -371,6 +392,26 @@ function snapshot(record, target, directive, factionBehavior = null) {
     preferredRange = phase === 'flank' ? 190 : 90;
     if (phase === 'attach_window') allowedActionId = 'action_attach';
     if (phase === 'control') allowedActionId = 'action_reel';
+  } else if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
+    formationLocked = phase === 'approach' || phase === 'field_spool' || phase === 'anchor_hold' || phase === 'reform';
+    lateralSign = 0;
+    faceTarget = true;
+    if (phase === 'recover' || phase === 'retreat') {
+      maneuverKind = ManeuverKind.RETREAT;
+      maneuverTargetId = null;
+      preferredRange = 620;
+    } else if (phase === 'reform') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+      preferredRange = 500;
+    } else if (phase === 'anchor_hold' || phase === 'field_spool') {
+      maneuverKind = ManeuverKind.HOLD;
+      preferredRange = 460;
+    } else {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      preferredRange = 500;
+    }
+    if (phase === 'anchor_hold') allowedActionId = 'action_burst';
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
@@ -380,7 +421,7 @@ function snapshot(record, target, directive, factionBehavior = null) {
     faceTarget = phase !== 'retreat';
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
-  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'retreat';
+  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover' || phase === 'retreat';
   if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
   return Object.freeze({
     doctrineId,
@@ -438,6 +479,10 @@ function targetScore(doctrineId, contact) {
       bandScore(contact.cargoBand, ['empty', 'light', 'valuable', 'rich']) * 2 +
       bandScore(contact.tetherabilityBand, ['poor', 'fair', 'good', 'excellent']) * 2;
   }
+  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
+    return threat * 4 + (3 - bandScore(contact.mobilityBand, ['low', 'medium', 'high'])) * 3 +
+      bandScore(contact.cargoBand, ['empty', 'light', 'valuable', 'rich']);
+  }
   return threat * 5 + (3 - bandScore(contact.mobilityBand, ['low', 'medium', 'high'])) * 2;
 }
 
@@ -463,6 +508,7 @@ function bandScore(value, ordered) {
 function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
+  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
   return 'ingress';
 }
 
@@ -473,6 +519,7 @@ function flightProfileFor(doctrineId, self) {
   }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
+  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_anchor';
   return 'ranged_standoff';
 }
 
