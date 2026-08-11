@@ -827,7 +827,7 @@ function eligibleCivilianRecovery(entity, state, expectedManifest = null) {
     || data.isMissionTarget === true || ai.missionId != null || ai.missionTarget === true) return false;
   const authoredRole = [data.trafficRole, data.role, ai.encounterRole, ai.role]
     .find((value) => typeof value === 'string' && value.trim());
-  if (!authoredRole || !/(^|[\s_-])(hauler|freight|freighter)([\s_-]|$)/i.test(authoredRole)) return false;
+  if (!authoredRole || !/(^|[\s_-])(hauler|freight|freighter|ore_carrier)([\s_-]|$)/i.test(authoredRole)) return false;
   const manifest = civilianManifestFor(entity);
   if (!manifest || !sameManifestIdentity(manifest, expectedManifest || manifest)) return false;
   const custody = data.freightCustody;

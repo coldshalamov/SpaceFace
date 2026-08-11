@@ -407,10 +407,9 @@ test('R5A activity: marks stay abstract and never name a materialized object slo
     'ambush_hauler_outbound',
     'cathedral_patrol_beat_a',
     'cathedral_patrol_beat_b',
-    'seam_miner_work_pad',
     'seam_survey_mark_a',
     'seam_survey_mark_b',
-  ], 'exactly the seven scan/throughline/perimeter marks remain abstract choreography');
+  ], 'exactly the six scan/throughline/perimeter marks remain abstract choreography');
 
   const objectSlotIds = new Set(CERES_ACTIVITY_POCKETS
     .flatMap((pocket) => pocket.objectSlots)

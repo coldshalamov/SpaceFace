@@ -13,6 +13,10 @@ import {
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
 } from '../src/data/environmentalMachinery.js';
 import { traffic as trafficBase } from '../src/systems/traffic.js';
+import {
+  salvagePoolFromManifest,
+  validCivilianManifestForPayload,
+} from '../src/systems/lootShards.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from '../src/systems/npcJobs.js';
 import { normalizeRecord, RECORD_KIND, stableRecordId } from '../src/world/worldRecords.js';
 
@@ -31,7 +35,7 @@ const EXPECTED_SLOT_IDS = [
 ];
 const EXPECTED_HULLS = {
   ceres_refinery_hauler: 'ship_mule',
-  ceres_seam_miner: 'ship_pelican',
+  ceres_seam_miner: 'ship_ironback',
   ceres_seam_surveyor: 'ship_ranger',
   ceres_ambush_loaded_hauler: 'ship_mule',
   ceres_ambush_escort: 'ship_wasp',
@@ -485,6 +489,48 @@ test('repeated Ceres entry and save-loaded adopt the same bodies without healing
   assertExactAuthoredJobs(harness);
 });
 
+test('Continue migrates the exact pre-ore-cycle seam route and loaded miner manifest in place', () => {
+  const harness = boot();
+  enterCeres(harness);
+  const slot = castSlot('ceres_seam_miner');
+  const actor = authoredEntities(harness.state)
+    .find((entity) => entity.data.activityActorSlotId === slot.id);
+  const rec = harness.state.traffic.freighters.find((row) => row.id === actor.id);
+  const entry = harness.npcJobs.get(expectedJobId(slot));
+  const legacy = harness.system._buildMinerManifest(
+    actor,
+    5,
+    'cmdty_ore_iron',
+    8,
+    'miner',
+  );
+  const originalIdentity = {
+    manifestId: legacy.manifestId,
+    freighterKey: legacy.freighterKey,
+    lines: JSON.parse(JSON.stringify(legacy.lines)),
+    totalQty: legacy.totalQty,
+  };
+  actor.data.cargoManifest = legacy;
+  rec.manifest = legacy;
+  entry.job.route[0].targetRef = 'activity:seam-work-pad';
+  assert.equal(entry.job.route[1].targetRef, 'field:slot:ceres_seam_ore_clast');
+
+  harness.bus.emit('save:loaded');
+
+  assert.equal(entry.job.route[0].targetRef, 'dest:station_ceres');
+  assert.equal(entry.job.route[1].targetRef, 'field:slot:ceres_seam_ore_clast');
+  const migrated = actor.data.cargoManifest;
+  assert.equal(migrated.role, 'ore_carrier');
+  assert.equal(migrated.manifestId, originalIdentity.manifestId);
+  assert.equal(migrated.freighterKey, originalIdentity.freighterKey);
+  assert.deepEqual(migrated.lines, originalIdentity.lines);
+  assert.equal(migrated.totalQty, originalIdentity.totalQty);
+  assert.equal(migrated.lotId, originalIdentity.manifestId);
+  assert.equal(migrated.lotSource.fieldId, 'f_ceres_1');
+  assert.equal(migrated.custody.holderId, actor.data.worldRecordId);
+  assert.strictEqual(rec.manifest, migrated);
+});
+
 test('active records without bodies and terminal tombstones suppress exact slots without fallback', () => {
   const minerSlot = castSlot('ceres_seam_miner');
   const records = {
@@ -794,6 +840,58 @@ test('destroying an authored pocket actor releases its job without inventing eco
   assert.equal(harness.npcJobReleases.includes(jobId), true);
   assert.equal(harness.emitted.some((event) => event.name === 'freight:loss'), false);
   assert.equal(harness.emitted.some((event) => event.name === 'mining:npcExtraction'), false);
+});
+
+test('destroying the loaded authored Ore Barge routes the same lot through loss and physical payload custody', () => {
+  const harness = boot();
+  enterCeres(harness);
+  const slot = castSlot('ceres_seam_miner');
+  const actor = authoredEntities(harness.state)
+    .find((entity) => entity.data.activityActorSlotId === slot.id);
+  const rec = harness.state.traffic.freighters.find((row) => row.id === actor.id);
+  const manifest = harness.system._buildMinerManifest(
+    actor,
+    7,
+    'cmdty_ore_iron',
+    8,
+    'ore_carrier',
+    {
+      workId: 'npc-miner-work:ceres-loaded-loss',
+      asteroidId: 77,
+      fieldId: 'f_ceres_1',
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+    },
+  );
+  rec.manifest = manifest;
+  actor.data.cargoManifest = manifest;
+  actor.alive = false;
+
+  harness.bus.emit('entity:killed', {
+    id: actor.id,
+    killerId: 999,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+  });
+
+  const losses = harness.emitted.filter((event) => event.name === 'freight:loss');
+  assert.equal(losses.length, 1);
+  assert.equal(losses[0].payload.manifestId, manifest.manifestId);
+  assert.equal(losses[0].payload.lotId, manifest.lotId);
+  assert.deepEqual(losses[0].payload.lotSource, manifest.lotSource);
+  assert.equal(validCivilianManifestForPayload(manifest), true,
+    'the ordinary loot owner accepts the authored barge manifest');
+  assert.deepEqual(salvagePoolFromManifest(manifest), { cmdty_ore_iron: 8 },
+    'physical payload custody receives the conserved ore quantity');
+  assert.equal(harness.npcJobs.get(expectedJobId(slot)), null);
+  assert.equal(harness.state.traffic.freighters.some((row) => row.id === actor.id), false);
+
+  harness.bus.emit('entity:killed', {
+    id: actor.id,
+    killerId: 999,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+  });
+  assert.equal(harness.emitted.filter((event) => event.name === 'freight:loss').length, 1,
+    'the dead authored lot cannot publish a second loss');
+  assert.equal(harness.emitted.some((event) => event.name === 'freight:arrival'), false);
 });
 
 test('continuous exit preserves the cast; hard exit captures all eight before scoped cleanup', () => {

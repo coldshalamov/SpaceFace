@@ -1029,7 +1029,7 @@ test('Continue-style numeric id reassignment resolves from stable refs and tombs
     'a durable tombstone suppresses a stale live actor body');
 });
 
-test('offscreen no-sink catch-up emits no history; the next live completion emits exactly once', () => {
+test('offscreen no-sink catch-up emits no history; the next live ore cycle emits each owner effect once', () => {
   const harness = bootActionHarness();
   const actor = harness.actorBySlotId.get('ceres_seam_miner');
   const entry = harness.jobs[actor.data.jobId];
@@ -1055,8 +1055,11 @@ test('offscreen no-sink catch-up emits no history; the next live completion emit
   for (let i = 0; i < 100 && harness.events(ACTION_RECEIPT_EVENT).length === 0; i++) {
     advance(entry.job, 0.05, (intent) => harness.bus.emit(intent.event, intent));
   }
-  assert.equal(harness.events(ACTION_RECEIPT_EVENT).length, 1);
+  const liveReceipts = harness.events(ACTION_RECEIPT_EVENT);
+  assert.equal(liveReceipts.length, 2, 'one work receipt plus one refinery-unload receipt');
+  assert.deepEqual(liveReceipts.map((receipt) => receipt.action).sort(), ['unload', 'work']);
   assert.equal(harness.events('mining:npcExtraction').length, 1);
+  assert.equal(harness.events('freight:arrival').length, 1);
 });
 
 test('real save/Continue rewinds owner state and transient Ceres dedupe before the job completes again', () => {

@@ -179,10 +179,11 @@ const TRAFFIC_ROLES = {
   // own TRAFFIC_ROLES entry and its own whole-ship binding (wholeships/ore_barge.glb), so ship,
   // team, speed, label and hull all resolve to the barge. The Ironback def was the unused
   // mining_barge hull class this trade always implied (ROLE_MATRIX row "ore carrier"). It docks
-  // at stations like any bulk hull but carries no market manifest: wiring it into freight
-  // causality (FREIGHT_TRADING_ROLES, economy) is a separate, deliberately excluded lane.
+  // at stations like any bulk hull. PQ-048.01 closes its formerly inert seam by reusing the miner
+  // work kernel: the Ironback cuts one ore-only lot, carries it under this stable role identity,
+  // and settles it through freight/economy ownership.
   ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
-              label: 'Ore Barge', docks: true, trades: false },
+              label: 'Ore Barge', docks: true, trades: true, seeks: 'asteroid' },
 };
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
@@ -231,6 +232,9 @@ const CERES_PRIMARY_ACTION_BY_JOB_KIND = Object.freeze({
   surveyor: Object.freeze({ action: 'work', phase: NPC_JOB_PHASE.WORK, intentField: 'field' }),
   salvor: Object.freeze({ action: 'work', phase: NPC_JOB_PHASE.WORK, intentField: 'field' }),
   patrol: Object.freeze({ action: 'hold', phase: NPC_JOB_PHASE.HOLD, intentField: 'at' }),
+});
+const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
+  action: 'unload', phase: NPC_JOB_PHASE.UNLOAD, intentField: 'destination',
 });
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
@@ -482,11 +486,12 @@ function ceresActivityJobSpec(entry) {
   };
 }
 
-function exactCeresRouteTargetRefMode(route, canonicalRoute) {
+function exactCeresRouteTargetRefMode(route, canonicalRoute, legacyTargetRefs = null) {
   if (!Array.isArray(route) || !Array.isArray(canonicalRoute)
     || route.length !== canonicalRoute.length || route.length === 0) return 'invalid';
   let absent = 0;
   let exact = 0;
+  let legacyExplicit = 0;
   for (let index = 0; index < route.length; index++) {
     const waypoint = route[index];
     const canonical = canonicalRoute[index];
@@ -500,10 +505,15 @@ function exactCeresRouteTargetRefMode(route, canonicalRoute) {
     if (waypointKeys !== expectedKeys || Object.keys(waypoint.pos).sort().join(',') !== 'x,z') return 'invalid';
     if (!targetRefOwned) absent++;
     else if (waypoint.targetRef === canonical.targetRef) exact++;
+    else if (Array.isArray(legacyTargetRefs)
+      && legacyTargetRefs.length === route.length
+      && waypoint.targetRef === legacyTargetRefs[index]) legacyExplicit++;
     else return 'invalid';
   }
   if (absent === route.length) return 'legacy';
   if (exact === route.length) return 'current';
+  if (absent === 0 && legacyExplicit > 0
+    && exact + legacyExplicit === route.length) return 'legacy';
   return 'invalid';
 }
 
@@ -968,7 +978,14 @@ export const traffic = {
         || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID
         || entry.worldRecordId !== worldRecordId
         || !Number.isFinite(job.speed) || job.speed !== canonical.speed) continue;
-      const mode = exactCeresRouteTargetRefMode(job.route, canonical.route);
+      const legacyTargetRefs = slot.id === CERES_SEAM_MINER_SLOT_ID
+        ? ['activity:seam-work-pad', 'field:slot:ceres_seam_ore_clast']
+        : null;
+      const mode = exactCeresRouteTargetRefMode(job.route, canonical.route, legacyTargetRefs);
+      const entity = entityWithWorldRecord(this.state, worldRecordId);
+      if (slot.id === CERES_SEAM_MINER_SLOT_ID && entity) {
+        this._migrateLegacyCeresOreCarrierManifest(entity);
+      }
       if (mode === 'current') continue;
       if (mode !== 'legacy') continue;
       job.route = job.route.map((waypoint, index) => ({
@@ -979,6 +996,42 @@ export const traffic = {
       adopted++;
     }
     return adopted;
+  },
+
+  _migrateLegacyCeresOreCarrierManifest(entity) {
+    const current = entity && entity.data && entity.data.cargoManifest;
+    if (!current || current.role !== 'miner' || !validCausalManifest(current)
+      || typeof current.manifestId !== 'string' || !current.manifestId
+      || typeof current.freighterKey !== 'string' || !current.freighterKey) return false;
+    const holderId = entity.data.worldRecordId || String(entity.id);
+    const migrated = {
+      ...current,
+      role: 'ore_carrier',
+      lotId: typeof current.lotId === 'string' && current.lotId
+        ? current.lotId
+        : current.manifestId,
+      lotSource: current.lotSource && typeof current.lotSource === 'object'
+        ? { ...current.lotSource }
+        : {
+            workId: `legacy-miner-manifest:${current.manifestId}`,
+            asteroidId: null,
+            fieldId: 'f_ceres_1',
+            sectorId: CERES_ACTIVITY_SECTOR_ID,
+          },
+      custody: current.custody && typeof current.custody === 'object'
+        ? { ...current.custody, holderKind: 'traffic', holderId }
+        : {
+            holderKind: 'traffic',
+            holderId,
+            acquiredBy: 'mining:npcExtraction',
+          },
+    };
+    entity.data.cargoManifest = migrated;
+    const rec = this.state.traffic && Array.isArray(this.state.traffic.freighters)
+      ? this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id)
+      : null;
+    if (rec) rec.manifest = migrated;
+    return true;
   },
 
   _assignCeresActivityJob(entity, entry) {
@@ -1004,6 +1057,22 @@ export const traffic = {
         if (manifest && Array.isArray(manifest.lines) && manifest.lines.length > 0) {
           spec.payload.manifest = manifest;
         }
+      }
+    }
+    if (entry.slot.id === CERES_SEAM_MINER_SLOT_ID
+      && entry.slot.presentationRole === 'ore_carrier') {
+      // New or recommissioned Ore Barges leave the refinery empty. A non-empty manifest restored
+      // from the durable entity is the in-flight lot and must never be replaced on Continue.
+      this._migrateLegacyCeresOreCarrierManifest(entity);
+      const current = entity.data.cargoManifest;
+      if (!current || !Array.isArray(current.lines)) {
+        entity.data.cargoManifest = this._buildMinerManifest(
+          entity,
+          0,
+          null,
+          0,
+          'ore_carrier',
+        );
       }
     }
     return assign(entity, spec);
@@ -1381,18 +1450,18 @@ export const traffic = {
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (!spec) return;
     const jobId = assign(ent, spec);
-    if (jobId && role === 'miner') {
+    if (jobId && (role === 'miner' || role === 'ore_carrier')) {
       // A commissioned barge departs empty. Its real cargo is created only when a materialized work
       // stop completes, so scanners never show a miner carrying random market goods outbound.
       const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === ent.id);
-      this._setTrafficManifest(ent, rec, this._buildMinerManifest(ent, 0, null, 0));
+      this._setTrafficManifest(ent, rec, this._buildMinerManifest(ent, 0, null, 0, role));
     }
   },
 
   _buildJobSpec(role, ent, originStation, target, stations, sectorId) {
     const home = originStation && originStation.pos ? originStation : (stations && stations[0]);
     if (!home || !home.pos) return null;
-    if (role === 'miner') {
+    if (role === 'miner' || role === 'ore_carrier') {
       // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit
       // sector. `spread` walks the nearest few faces so a shift's barges sit beside each other
       // instead of stacking on one; it is derived from the live job count, so it is deterministic
@@ -2774,6 +2843,8 @@ export const traffic = {
           source: intent.source,
           intentId: intent.intentId,
           freighterId: rec.id,
+          lotId: intent.lotId,
+          lotSource: intent.lotSource,
         });
         if (!stillCurrent()) {
           this._releaseCausalReservation(reservation, '_pendingArrivalIds', '_pendingArrivalTokens');
@@ -2885,7 +2956,9 @@ export const traffic = {
     if (!this.state.world || this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
     const { jobId, worldRecordId, entity, activityEntry } = base;
     const { slot } = activityEntry;
-    const rule = CERES_PRIMARY_ACTION_BY_JOB_KIND[slot.jobKind];
+    const rule = slot.id === CERES_SEAM_MINER_SLOT_ID && action === 'unload'
+      ? CERES_ORE_BARGE_UNLOAD_ACTION
+      : CERES_PRIMARY_ACTION_BY_JOB_KIND[slot.jobKind];
     if (!rule || rule.action !== action || intent.kind !== slot.jobKind) return null;
 
     const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
@@ -3142,7 +3215,7 @@ export const traffic = {
     let effectType = null;
     let effectApplied = false;
     try {
-      if (context.slot.id === CERES_SEAM_MINER_SLOT_ID) {
+      if (context.slot.id === CERES_SEAM_MINER_SLOT_ID && context.action === 'work') {
         effectType = 'mining:npcExtraction';
         effectApplied = this._applyNpcMinerExtraction(
           context,
@@ -3152,6 +3225,32 @@ export const traffic = {
           { causalGuard },
         );
         if (!effectApplied) throw new Error('ceres_miner_effect_rejected');
+      } else if (context.slot.id === CERES_SEAM_MINER_SLOT_ID && context.action === 'unload') {
+        effectType = 'freight:arrival';
+        const deliveredManifest = context.rec.manifest
+          || (context.entity.data && context.entity.data.cargoManifest)
+          || null;
+        if (!validCausalManifest(deliveredManifest) || deliveredManifest.role !== 'ore_carrier') {
+          throw new Error('ceres_ore_barge_manifest_rejected');
+        }
+        effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
+          dockSeq: context.sequence,
+          manifest: deliveredManifest,
+          ceresAction: true,
+          causalGuard,
+        });
+        if (!effectApplied) throw new Error('ceres_ore_barge_arrival_rejected');
+        this._setTrafficManifest(
+          context.entity,
+          context.rec,
+          this._buildMinerManifest(
+            context.entity,
+            context.sequence,
+            null,
+            0,
+            'ore_carrier',
+          ),
+        );
       } else if (context.slot.id === CERES_REFINERY_HAULER_SLOT_ID) {
         effectType = 'freight:arrival';
         effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
@@ -3186,7 +3285,7 @@ export const traffic = {
     return recorded;
   },
 
-  _jobTrafficContext(intent, expectedRole) {
+  _jobTrafficContext(intent, expectedRole, acceptedTrafficRoles = expectedRole) {
     if (!intent || intent.kind !== expectedRole) return null;
     const jobId = typeof intent.jobId === 'string' ? intent.jobId : '';
     if (!jobId.startsWith('job:') || jobId.length <= 4) return null;
@@ -3196,11 +3295,14 @@ export const traffic = {
 
     this._ensureState();
     const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id);
-    if (!rec || rec.role !== expectedRole) return null;
+    const accepted = Array.isArray(acceptedTrafficRoles)
+      ? acceptedTrafficRoles
+      : [acceptedTrafficRoles];
+    if (!rec || !accepted.includes(rec.role)) return null;
     return { jobId, worldRecordId, entity, rec };
   },
 
-  _buildMinerManifest(entity, workSeq, commodityId, qty) {
+  _buildMinerManifest(entity, workSeq, commodityId, qty, role = 'miner', lotSource = null) {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const freighterKey = entity && entity.data && entity.data.worldRecordId
       || entity && entity.id
@@ -3209,13 +3311,22 @@ export const traffic = {
     const manifest = buildCargoManifest({
       seed,
       freighterKey: `${freighterKey}:work:${Math.max(0, workSeq | 0)}`,
-      role: 'miner',
+      role,
       marketKeys: commodityId ? [commodityId] : FREIGHT_MARKET_KEYS_FALLBACK,
       capacity: amount,
     });
     if (amount > 0 && commodityId) {
       manifest.lines = [{ commodityId, qty: amount }];
       manifest.totalQty = amount;
+    }
+    if (role === 'ore_carrier' && amount > 0 && commodityId) {
+      manifest.lotId = manifest.manifestId;
+      manifest.lotSource = lotSource ? { ...lotSource } : null;
+      manifest.custody = {
+        holderKind: 'traffic',
+        holderId: String(freighterKey),
+        acquiredBy: 'mining:npcExtraction',
+      };
     }
     return manifest;
   },
@@ -3261,7 +3372,7 @@ export const traffic = {
     }
 
     if (intent.kind !== 'miner') return false;
-    const context = this._jobTrafficContext(intent, 'miner');
+    const context = this._jobTrafficContext(intent, 'miner', ['miner', 'ore_carrier']);
     if (!context) return false;
     const fieldWaypoint = typeof intent.field === 'string' ? intent.field : '';
     if (!fieldWaypoint.startsWith('field:') || fieldWaypoint.length <= 6) return false;
@@ -3337,7 +3448,24 @@ export const traffic = {
       // advertises yield only through the chain ledger seeds (rich_seam / miner_loaded) — never by
       // rewriting this quantum or minting a second cargo parcel. Owner tests pin the 8u batch.
       const extractedU = Math.min(NPC_MINER_WORK_BATCH_U, authoredYield);
-      const manifest = this._buildMinerManifest(context.entity, seq, commodityId, extractedU);
+      const carrierRole = context.rec && context.rec.role === 'ore_carrier'
+        ? 'ore_carrier'
+        : 'miner';
+      const manifest = this._buildMinerManifest(
+        context.entity,
+        seq,
+        commodityId,
+        extractedU,
+        carrierRole,
+        carrierRole === 'ore_carrier'
+          ? {
+              workId,
+              asteroidId: asteroid.id,
+              fieldId: String(fieldId),
+              sectorId: (this.state.world && this.state.world.currentSectorId) || null,
+            }
+          : null,
+      );
       if (!this._setTrafficManifest(context.entity, context.rec, manifest)) throw new Error('miner_manifest_rejected');
       this.bus.emit('mining:npcExtraction', {
         jobId: context.jobId,
@@ -4120,7 +4248,9 @@ export const traffic = {
     }
 
     if (intent.kind !== 'hauler' && intent.kind !== 'miner') return false;
-    const context = this._jobTrafficContext(intent, intent.kind);
+    const context = intent.kind === 'miner'
+      ? this._jobTrafficContext(intent, 'miner', ['miner', 'ore_carrier'])
+      : this._jobTrafficContext(intent, intent.kind);
     if (!context) return false;
 
     const destination = typeof intent.destination === 'string' ? intent.destination : '';
@@ -4139,7 +4269,13 @@ export const traffic = {
       this._setTrafficManifest(
         context.entity,
         context.rec,
-        this._buildMinerManifest(context.entity, intent.seq, null, 0),
+        this._buildMinerManifest(
+          context.entity,
+          intent.seq,
+          null,
+          0,
+          context.rec.role === 'ore_carrier' ? 'ore_carrier' : 'miner',
+        ),
       );
     }
     return applied;
@@ -4182,6 +4318,9 @@ export const traffic = {
       }
     }
     if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
+    const ceresOreCarrier = role === 'ore_carrier'
+      && ((ent && ent.data && ent.data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID)
+        || (rec && rec.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID));
     if ((ent && ent.data && ent.data.ceresActivityCast === true)
       || (rec && rec.ceresActivityCast === true)) {
       // Cast identity is durable world state. Release its movement owner, but do not fabricate a
@@ -4191,13 +4330,18 @@ export const traffic = {
         || (rec && rec.worldRecordId)
         || null;
       this._releaseCeresActivityJob(recordId);
-      if (idx >= 0) list.splice(idx, 1);
-      const activeIdx = this._active.indexOf(p.id);
-      if (activeIdx >= 0) this._active.splice(activeIdx, 1);
-      if (lostWorldSiteRoute) {
-        this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+      if (!ceresOreCarrier) {
+        if (idx >= 0) list.splice(idx, 1);
+        const activeIdx = this._active.indexOf(p.id);
+        if (activeIdx >= 0) this._active.splice(activeIdx, 1);
+        if (lostWorldSiteRoute) {
+          this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+        }
+        return;
       }
-      return;
+      // PQ-048.01: unlike presentation-only cast, the Ore Barge owns a conserved manifest. Fall
+      // through to the ordinary freight-loss path so robbery/destruction moves that same lot into
+      // the existing scarcity/news/physical-cargo custody route exactly once.
     }
     const lawLoss = role === 'patrol' || role === 'escort';
     if (role && !lawLoss && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {

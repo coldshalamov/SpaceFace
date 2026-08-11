@@ -353,7 +353,11 @@ const seamActors = Object.freeze([
   actor({
     id: 'ceres_seam_miner',
     pocketId: seamId,
-    presentationRole: 'miner',
+    // Preserve the durable slot id for saves, but the shipped actor is the Ironback Ore Barge:
+    // one heavy hull cuts a bounded parcel at the seam and physically carries that same lot back
+    // to Ceres refinery. `jobKind: miner` deliberately reuses the extraction/work owner rather
+    // than inventing an ore-carrier state machine.
+    presentationRole: 'ore_carrier',
     jobKind: 'miner',
     spawnOffset: point(-42, -24),
     route: route({
@@ -361,19 +365,11 @@ const seamActors = Object.freeze([
       jobKind: 'miner',
       durationS: 24,
       receiptType: 'mining:npcExtraction',
-      // Tight wedge, 62.1 deg / 123.8 WU — the shortest span at Ceres, so the miner is also the
-      // slowest thing in the sector. That is the point: it is working one face, not travelling.
-      //
-      // The ore-face mark is a holding point BESIDE the clast, not on its bearing, for the same
-      // reason the tender's client mark is held off the disabled hull: npcJobsRuntime drives this
-      // actor to the live rock, and if the authored fallback pointed the same way as the live
-      // target, "it is tracking the real ore" and "it is flying its authored waypoint" would be
-      // indistinguishable on screen and in test. ceres-activity-runtime-lifecycle asserts that
-      // separation exceeds 0.25 rad from an approach 200 WU west of the live clast; no point on the
-      // clast's own bearing can satisfy it (the whole band tops out near 0.15 rad), so this mark is
-      // deliberately ~38 deg around from the rock and the constraint is re-asserted next door.
+      // The first mark resolves to the real refinery berth; the second resolves to the authored
+      // physical clast. Their separation is the visible transport leg. The local offsets remain
+      // deterministic fallback geometry while targetRef keeps live station/asteroid authority.
       marks: [
-        mark('seam_miner_work_pad', -29, -117, 'activity:seam-work-pad'),
+        mark('seam_miner_work_pad', -29, -117, 'dest:station_ceres'),
         mark('seam_miner_ore_face', -116, -29, 'field:slot:ceres_seam_ore_clast'),
       ],
     }),

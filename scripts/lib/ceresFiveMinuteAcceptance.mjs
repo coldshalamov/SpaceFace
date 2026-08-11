@@ -82,6 +82,8 @@ export const CERES_FIVE_MINUTE_TICK_RATE_HZ = 60;
 export const CERES_FIVE_MINUTE_FIXED_TICKS = 18_000;
 export const CERES_FIVE_MINUTE_SIMULATION_SECONDS = 300;
 export const CERES_FIVE_MINUTE_VISIBILITY_SEMANTICS = 'world-camera-renderability-v1';
+export const CERES_ORE_CYCLE_PRE_SAVE_CHUNK = 'pre_save';
+export const CERES_ORE_CYCLE_POST_CONTINUE_CHUNK = 'post_continue';
 
 export const CERES_FIVE_MINUTE_ACTOR_SLOT_IDS = Object.freeze([
   'ceres_refinery_hauler',
@@ -505,7 +507,44 @@ export function projectCeresActivityFrame(row = {}) {
     routePocketId: row.routePocketId,
     nearestPocketId: row.nearestPocketId,
     visibleActivityCount: row.visibleActivityCount,
+    playerEconomy: row.playerEconomy,
+    observerChunk: row.observerChunk ?? null,
+    observerChunkIndex: row.observerChunkIndex ?? null,
+    routePhase: row.routePhase ?? null,
   };
+}
+
+/**
+ * Continue installs a fresh page observer whose local event sequence restarts at one. Bind the
+ * combined route to one monotonic sequence after stable tick ordering while retaining each local
+ * source sequence for diagnostics.
+ */
+export function normalizeCeresOreCycleEvents(events) {
+  if (!Array.isArray(events)) return [];
+  return events
+    .map((event, sourceIndex) => ({ event, sourceIndex }))
+    .filter(({ event }) => [
+      'mining:npcExtraction',
+      'aiTrader:requestTrade',
+      'freight:arrival',
+      'freight:loss',
+      'traffic:jobActionReceipt',
+    ].includes(event?.event))
+    .sort((left, right) => observerChunkOrder(left.event) - observerChunkOrder(right.event)
+      || Number(left.event.tick) - Number(right.event.tick)
+      || left.sourceIndex - right.sourceIndex)
+    .map(({ event }, index) => ({
+      ...event,
+      sourceSeq: Number.isSafeInteger(event.seq) ? event.seq : null,
+      seq: index + 1,
+    }));
+}
+
+function observerChunkOrder(row) {
+  if (Number.isSafeInteger(row?.observerChunkIndex)) return row.observerChunkIndex;
+  if (row?.observerChunk === CERES_ORE_CYCLE_PRE_SAVE_CHUNK) return 0;
+  if (row?.observerChunk === CERES_ORE_CYCLE_POST_CONTINUE_CHUNK) return 1;
+  return 2;
 }
 
 /**
@@ -920,12 +959,14 @@ export async function runCeresFiveMinutePublicRoute({
   fixedSeed = CERES_FIVE_MINUTE_FIXED_SEED,
   rootUrl,
   pageIssueTracker = null,
+  oreCycleGate = null,
   log = () => {},
 } = {}) {
   if (!page) throw new TypeError('Ceres five-minute route requires a Playwright page');
   if (!outputDir) throw new TypeError('Ceres five-minute route requires an output directory');
   if (!['browser', 'electron'].includes(runtimeKind)) throw new TypeError('Ceres route runtime is invalid');
   if (fixedSeed !== CERES_FIVE_MINUTE_FIXED_SEED) throw new Error('Ceres route seed must be 47');
+  const oreCycleGateConfig = normalizeCeresOreCycleGateConfig(oreCycleGate);
   await mkdir(outputDir, { recursive: true });
 
   const screenshots = [];
@@ -1008,6 +1049,7 @@ export async function runCeresFiveMinutePublicRoute({
     let accessibility = null;
     let toolkit = null;
     let collisionProof = null;
+    let oreCycleSaveGate = null;
     while ((await readTick(page)) < observerBounds.endTick) {
       const leg = legs[routeCycle % legs.length];
       const remaining = observerBounds.endTick - await readTick(page);
@@ -1052,14 +1094,35 @@ export async function runCeresFiveMinutePublicRoute({
         toolkit = await exercisePublicPhysicsToolkit(page, observerBounds.endTick);
       }
       if (routeCycle >= legs.length && !continueProof) {
+        if (oreCycleGateConfig) {
+          await mark('ore-cycle-pre-save-gate', {
+            pocketId: leg.pocketId,
+            minPostContinueTicks: oreCycleGateConfig.minPostContinueTicks,
+          });
+          oreCycleSaveGate = await waitForCeresOreCycleSaveGate(page, {
+            endTick: observerBounds.endTick,
+            ...oreCycleGateConfig,
+          });
+          routeLog.push({ phase: 'ore-cycle-loaded-before-save', ...oreCycleSaveGate });
+        }
         continueProof = await publicSaveAndContinue({
           page,
           rootUrl,
           pageIssueTracker,
           fixedSeed,
           toolkit,
+          oreCycleGateReceipt: oreCycleSaveGate,
         });
-        traceChunks.push(continueProof.traceChunk);
+        if (oreCycleGateConfig
+            && continueProof.savedAtTick
+              > observerBounds.endTick - oreCycleGateConfig.minPostContinueTicks) {
+          throw new Error('CERES_ORE_CYCLE_POST_CONTINUE_HORIZON_EXHAUSTED');
+        }
+        continueProof.oreCycleSaveGate = oreCycleSaveGate;
+        traceChunks.push({
+          ...continueProof.traceChunk,
+          observerChunk: CERES_ORE_CYCLE_PRE_SAVE_CHUNK,
+        });
         await installCeresRouteObserver(page, observerBounds, leg.pocketId);
         await mark('continue-restored', { pocketId: leg.pocketId, tick: continueProof.after.tick });
         await pq020FunctionalRouteDrivers.waitForShipSettled(page);
@@ -1069,7 +1132,12 @@ export async function runCeresFiveMinutePublicRoute({
 
     await page.waitForFunction((targetTick) => Number(window.SF?.state?.tick) >= targetTick,
       observerBounds.endTick, { timeout: 480_000 });
-    traceChunks.push(await stopCeresRouteObserver(page));
+    traceChunks.push({
+      ...await stopCeresRouteObserver(page),
+      observerChunk: continueProof
+        ? CERES_ORE_CYCLE_POST_CONTINUE_CHUNK
+        : CERES_ORE_CYCLE_PRE_SAVE_CHUNK,
+    });
     const trace = normalizeCeresTrace(traceChunks, observerBounds);
     const finalSnapshot = await readCeresRouteSnapshot(page);
     const observations = summarizeCeresRouteObservations({
@@ -1211,6 +1279,7 @@ export async function runCeresFiveMinuteAcceptance({
   mode = 'acceptance',
   outputRoot,
   brokerClaimToken = process.env.SF_BROKER_CLAIM || null,
+  routeOptions = null,
   log = () => {},
 } = {}) {
   const repoRoot = path.resolve(String(root || ''));
@@ -1349,6 +1418,7 @@ export async function runCeresFiveMinuteAcceptance({
       fixedSeed: manifest.fixedSeed,
       rootUrl: resources.rootUrl,
       pageIssueTracker: resources.pageIssueTracker,
+      oreCycleGate: routeOptions?.oreCycleGate ?? null,
       log,
     });
     routeFingerprint = await strictWorktreeFingerprint(repoRoot);
@@ -1724,6 +1794,78 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
     };
     window.__SF_CERES_FIVE_MINUTE_TRACE__ = trace;
 
+    const projectCargoManifest = (manifest) => {
+      if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return null;
+      const lines = Array.isArray(manifest.lines) ? manifest.lines.map((line) => ({
+        commodityId: line?.commodityId ?? null,
+        qty: Number.isFinite(line?.qty) ? Number(line.qty) : null,
+      })) : [];
+      return {
+        manifestId: manifest.manifestId ?? null,
+        lotId: manifest.lotId ?? null,
+        lotSource: manifest.lotSource && typeof manifest.lotSource === 'object'
+          ? { ...manifest.lotSource }
+          : null,
+        role: manifest.role ?? null,
+        lines,
+        totalQty: Number.isFinite(manifest.totalQty) ? Number(manifest.totalQty) : null,
+        custody: manifest.custody && typeof manifest.custody === 'object'
+          ? { ...manifest.custody }
+          : null,
+      };
+    };
+    const projectPlayerEconomy = (live) => {
+      const player = live?.player || {};
+      const cargo = player.cargo && typeof player.cargo === 'object' ? player.cargo : {};
+      const items = cargo.items && typeof cargo.items === 'object' && !Array.isArray(cargo.items)
+        ? Object.fromEntries(Object.entries(cargo.items).sort(([left], [right]) => left.localeCompare(right)))
+        : {};
+      return {
+        credits: Number.isFinite(player.credits) ? Number(player.credits) : null,
+        cargo: {
+          items,
+          usedVolume: Number.isFinite(cargo.usedVolume) ? Number(cargo.usedVolume) : null,
+          usedMass: Number.isFinite(cargo.usedMass) ? Number(cargo.usedMass) : null,
+          capVolume: Number.isFinite(cargo.capVolume) ? Number(cargo.capVolume) : null,
+          capMass: Number.isFinite(cargo.capMass) ? Number(cargo.capMass) : null,
+        },
+      };
+    };
+
+    // The economy owner was registered during system initialization. Temporarily place this
+    // read-only capture first while preserving every existing listener's relative order, then add
+    // the normal trace listener last below. One event therefore binds the real value immediately
+    // before owner mutation and the real value after all synchronous owner handlers return.
+    const stockBeforeByTradePayload = new WeakMap();
+    const captureMarketStockBeforeOwner = (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const stationId = payload.stationId ?? null;
+      const commodityId = payload.commodityId ?? payload.good ?? null;
+      const stock = stationId && commodityId
+        ? state.economy?.markets?.[stationId]?.[commodityId]?.stock
+        : null;
+      stockBeforeByTradePayload.set(payload, {
+        stationId,
+        commodityId,
+        stock: Number.isFinite(stock) ? Number(stock) : null,
+      });
+    };
+    const offMarketStockBefore = bus.on(
+      'aiTrader:requestTrade',
+      captureMarketStockBeforeOwner,
+    );
+    const tradeListeners = bus._listeners?.get?.('aiTrader:requestTrade');
+    if (!(tradeListeners instanceof Set)) {
+      offMarketStockBefore();
+      throw new Error('Ceres observer cannot order the market owner receipt');
+    }
+    const priorTradeListeners = [...tradeListeners]
+      .filter((listener) => listener !== captureMarketStockBeforeOwner);
+    tradeListeners.clear();
+    tradeListeners.add(captureMarketStockBeforeOwner);
+    for (const listener of priorTradeListeners) tradeListeners.add(listener);
+    trace.unsubs.push(offMarketStockBefore);
+
     const eventNames = [
       'encounter:telegraph', 'encounter:spawned', 'encounter:ended',
       'physics:impact', 'entity:killed', 'entity:destroyed',
@@ -1731,6 +1873,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
       'massSeed:deployed', 'massSeed:locked', 'fields:deployed',
       'combat:fire', 'projectile:hit', 'combat:damage', 'combat:statusApplied',
       'save:completed', 'save:loaded',
+      'mining:npcExtraction', 'aiTrader:requestTrade',
+      'freight:arrival', 'freight:loss', 'traffic:jobActionReceipt',
       'npcjobs:commission', 'npcjobs:depart', 'npcjobs:transit', 'npcjobs:approach',
       'npcjobs:work', 'npcjobs:load', 'npcjobs:unload', 'npcjobs:return',
       'npcjobs:hold', 'npcjobs:cycle', 'npcjobs:arrived', 'npcjobs:complete',
@@ -1742,10 +1886,24 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
           : null;
         const targetEntityId = payload.targetId ?? payload.entityId ?? payload.id ?? null;
         const targetEntity = targetEntityId != null ? state.entities?.get(targetEntityId) : null;
+        const eventActorId = payload.actorId ?? payload.minerId ?? payload.freighterId
+          ?? payload.entityId ?? null;
+        const eventActor = eventActorId != null ? state.entities?.get(eventActorId) : null;
+        const stationId = payload.stationId ?? null;
+        const commodityId = payload.commodityId ?? payload.good ?? null;
+        const marketStockAfter = stationId && commodityId
+          ? state.economy?.markets?.[stationId]?.[commodityId]?.stock
+          : null;
+        const marketBeforeReceipt = event === 'aiTrader:requestTrade'
+          && payload && typeof payload === 'object'
+          ? stockBeforeByTradePayload.get(payload)
+          : null;
         trace.events.push({
           seq: trace.nextEventSeq++,
           event,
           tick: Number(window.SF?.state?.tick),
+          routePhase: trace.routePhase,
+          routePocketId: trace.routePocketId,
           id: payload.id ?? null,
           entityId: payload.entityId ?? payload.targetId ?? payload.id ?? null,
           targetId: payload.targetId ?? null,
@@ -1771,7 +1929,53 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
           applied: Number.isFinite(payload.applied) ? payload.applied : null,
           reason: payload.reason ?? null,
           worldRecordId: payload.worldRecordId ?? null,
+          actorSlotId: payload.actorSlotId ?? eventActor?.data?.activityActorSlotId ?? null,
+          actorWorldRecordId: eventActor?.data?.worldRecordId ?? null,
+          actorJobId: payload.jobId ?? eventActor?.data?.jobId ?? null,
+          actorRole: eventActor?.data?.trafficRole ?? eventActor?.data?.role ?? null,
+          actorDefId: eventActor?.data?.defId ?? null,
+          actorHull: Number.isFinite(eventActor?.hull) ? Number(eventActor.hull) : null,
+          minerId: payload.minerId ?? null,
+          freighterId: payload.freighterId ?? null,
+          asteroidId: payload.asteroidId ?? null,
+          fieldId: payload.fieldId ?? null,
+          sectorId: payload.sectorId ?? null,
+          stationId,
+          commodityId,
+          side: payload.side ?? null,
+          qty: Number.isFinite(payload.qty) ? Number(payload.qty) : null,
+          extractedU: Number.isFinite(payload.extractedU) ? Number(payload.extractedU) : null,
+          workId: payload.workId ?? null,
+          intentId: payload.intentId ?? null,
+          receiptId: payload.receiptId ?? null,
+          actionId: payload.actionId ?? null,
+          action: payload.action ?? null,
+          sequence: Number.isSafeInteger(payload.sequence) ? payload.sequence : null,
+          kernelSequence: Number.isSafeInteger(payload.kernelSequence)
+            ? payload.kernelSequence
+            : null,
+          effectType: payload.effectType ?? null,
+          effectApplied: payload.effectApplied ?? null,
+          manifestId: payload.manifestId ?? null,
+          lotId: payload.lotId ?? null,
+          lotSource: payload.lotSource && typeof payload.lotSource === 'object'
+            ? { ...payload.lotSource }
+            : null,
+          trades: Array.isArray(payload.trades) ? payload.trades.map((trade) => ({
+            stationId: trade?.stationId ?? null,
+            commodityId: trade?.commodityId ?? null,
+            side: trade?.side ?? null,
+            qty: Number.isFinite(trade?.qty) ? Number(trade.qty) : null,
+          })) : [],
+          totalQty: Number.isFinite(payload.totalQty) ? Number(payload.totalQty) : null,
+          marketStockBefore: Number.isFinite(marketBeforeReceipt?.stock)
+            ? Number(marketBeforeReceipt.stock)
+            : null,
+          marketStockAfter: Number.isFinite(marketStockAfter) ? Number(marketStockAfter) : null,
+          cargoManifestAfter: projectCargoManifest(eventActor?.data?.cargoManifest),
+          playerEconomyAfter: projectPlayerEconomy(state),
         });
+        if (marketBeforeReceipt) stockBeforeByTradePayload.delete(payload);
         if (trace.events.length > 4_000) trace.events.splice(0, trace.events.length - 4_000);
       });
       if (typeof off === 'function') trace.unsubs.push(off);
@@ -1855,6 +2059,11 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
           entityId: entity.id,
           worldRecordId: entity.data?.worldRecordId || null,
           jobId: entity.data?.jobId || null,
+          role: entity.data?.trafficRole || entity.data?.role || null,
+          defId: entity.data?.defId || null,
+          hull: Number.isFinite(entity.hull) ? Number(entity.hull) : null,
+          hullMax: Number.isFinite(entity.hullMax) ? Number(entity.hullMax) : null,
+          cargoManifest: projectCargoManifest(entity.data?.cargoManifest),
           team: entity.team ?? entity.data?.team ?? null,
           factionId: entity.factionId || entity.data?.factionId || null,
           lawful: entity.data?.ai?.lawful === true,
@@ -1886,6 +2095,7 @@ async function installCeresRouteObserver(page, bounds, initialPocketId) {
         collisionAnchorSlotIds: [...byAnchor.keys()].sort(),
         hostileIds: hostiles.map((entity) => entity.id).sort((a, b) => String(a).localeCompare(String(b))),
         actorStates,
+        playerEconomy: projectPlayerEconomy(live),
       };
       trace.samples.push(row);
       if (!playerAlive || row.sectorId !== 'sector_ceres_belt' || row.timeScale !== 1
@@ -1920,6 +2130,230 @@ async function setCeresObserverPhase(page, routePhase, routePocketId) {
     trace.routePhase = phase;
     if (pocket) trace.routePocketId = pocket;
   }, { phase: routePhase, pocket: routePocketId });
+}
+
+function normalizeCeresOreCycleGateConfig(config) {
+  if (!config || config.enabled !== true) return null;
+  const minPostContinueTicks = Number(config.minPostContinueTicks);
+  const timeoutMs = Number(config.timeoutMs);
+  if (!Number.isSafeInteger(minPostContinueTicks) || minPostContinueTicks < 600
+      || minPostContinueTicks >= CERES_FIVE_MINUTE_FIXED_TICKS
+      || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 240_000) {
+    throw new TypeError('Ceres ore-cycle gate requires bounded post-Continue ticks and timeout');
+  }
+  return { enabled: true, minPostContinueTicks, timeoutMs };
+}
+
+export function evaluateCeresOreCycleSaveGateReceipt(
+  receipt,
+  { endTick, minPostContinueTicks } = {},
+) {
+  const failures = [];
+  const deadlineTick = Number(endTick) - Number(minPostContinueTicks);
+  const actor = receipt?.actor;
+  const manifest = receipt?.manifest;
+  const line = manifest?.lines?.[0];
+  if (!Number.isSafeInteger(endTick) || !Number.isSafeInteger(minPostContinueTicks)
+      || !Number.isSafeInteger(deadlineTick)) {
+    failures.push('ore-cycle save gate horizon is invalid');
+  }
+  if (receipt?.status !== 'loaded' || receipt?.routePhase !== 'ore-cycle-pre-save-gate'
+      || !Number.isSafeInteger(receipt?.tick) || receipt.tick > deadlineTick
+      || receipt.deadlineTick !== deadlineTick
+      || receipt.remainingTicks !== endTick - receipt.tick
+      || receipt.remainingTicks < minPostContinueTicks) {
+    failures.push('ore-cycle save gate did not reserve the required post-Continue horizon');
+  }
+  if (actor?.slotId !== 'ceres_seam_miner' || actor?.role !== 'ore_carrier'
+      || actor?.defId !== 'ship_ironback' || actor?.entityId == null
+      || !String(actor?.worldRecordId || '') || !String(actor?.jobId || '')) {
+    failures.push('ore-cycle save gate did not observe the durable live Ore Barge');
+  }
+  if (!manifest || manifest.role !== 'ore_carrier'
+      || !String(manifest.manifestId || '') || manifest.lotId !== manifest.manifestId
+      || !Array.isArray(manifest.lines) || manifest.lines.length !== 1
+      || !Number.isSafeInteger(manifest.totalQty) || manifest.totalQty <= 0
+      || line?.qty !== manifest.totalQty || !String(line?.commodityId || '')
+      || !String(manifest.lotSource?.workId || '')
+      || manifest.lotSource?.asteroidId == null
+      || manifest.lotSource?.fieldId !== 'f_ceres_1'
+      || manifest.lotSource?.sectorId !== 'sector_ceres_belt'
+      || manifest.custody?.holderKind !== 'traffic'
+      || manifest.custody?.holderId !== actor?.worldRecordId
+      || manifest.custody?.acquiredBy !== 'mining:npcExtraction') {
+    failures.push('ore-cycle save gate did not observe a valid loaded extraction lot in Ore Barge custody');
+  }
+  return { pass: failures.length === 0, failures };
+}
+
+export function evaluateCeresPersistedOreCycleSaveReceipt(
+  receipt,
+  { gateReceipt } = {},
+) {
+  const failures = [];
+  if (!receipt || receipt.schema !== 'spaceface.ceresPersistedOreCycleSave.v1'
+      || receipt.source !== 'sf.save.quick'
+      || receipt.envelope?.fmt !== 'spaceface-save'
+      || receipt.envelope?.slot !== 'quick'
+      || !Number.isSafeInteger(receipt.envelope?.version)
+      || !String(receipt.envelope?.checksum || '')
+      || !Number.isFinite(Date.parse(String(receipt.envelope?.savedAt || '')))) {
+    failures.push('persisted quick-save envelope identity is invalid');
+  }
+  if (!Number.isSafeInteger(receipt?.savedAtTick)
+      || receipt.savedAtTick !== receipt?.saveCompletedTick) {
+    failures.push('persisted quick-save tick does not equal the synchronous save completion tick');
+  }
+  const savedActor = receipt?.actor;
+  const gateActor = gateReceipt?.actor;
+  if (savedActor?.worldRecordId !== gateActor?.worldRecordId
+      || savedActor?.role !== 'ore_carrier'
+      || savedActor?.defId !== 'ship_ironback'
+      || !Number.isFinite(savedActor?.hull) || savedActor.hull <= 0) {
+    failures.push('persisted quick-save does not contain the gated durable Ironback record');
+  }
+  if (receipt?.job?.jobId !== gateActor?.jobId
+      || receipt?.job?.worldRecordId !== gateActor?.worldRecordId) {
+    failures.push('persisted quick-save job does not bind the gated Ore Barge world record');
+  }
+  if (stableJson(receipt?.manifest) !== stableJson(gateReceipt?.manifest)) {
+    failures.push('persisted quick-save Ore Barge lot differs from the loaded gate lot');
+  }
+  return { pass: failures.length === 0, failures };
+}
+
+async function waitForCeresOreCycleSaveGate(page, {
+  endTick,
+  minPostContinueTicks,
+  timeoutMs,
+}) {
+  const deadlineTick = endTick - minPostContinueTicks;
+  let handle;
+  try {
+    handle = await page.waitForFunction(({ deadline }) => {
+      const trace = window.__SF_CERES_FIVE_MINUTE_TRACE__;
+      if (trace?.sample) trace.sample(true);
+      const latest = trace?.samples?.at?.(-1) || null;
+      const actor = latest?.actorStates?.find?.((row) => row?.slotId === 'ceres_seam_miner');
+      const manifest = actor?.cargoManifest;
+      const line = manifest?.lines?.[0];
+      const loaded = actor?.role === 'ore_carrier'
+        && actor?.defId === 'ship_ironback'
+        && actor?.entityId != null
+        && !!actor?.worldRecordId
+        && !!actor?.jobId
+        && manifest?.role === 'ore_carrier'
+        && !!manifest?.manifestId
+        && manifest?.lotId === manifest?.manifestId
+        && Array.isArray(manifest?.lines)
+        && manifest.lines.length === 1
+        && Number.isSafeInteger(manifest?.totalQty)
+        && manifest.totalQty > 0
+        && line?.qty === manifest.totalQty
+        && !!line?.commodityId
+        && !!manifest?.lotSource?.workId
+        && manifest?.lotSource?.asteroidId != null
+        && manifest?.lotSource?.fieldId === 'f_ceres_1'
+        && manifest?.lotSource?.sectorId === 'sector_ceres_belt'
+        && manifest?.custody?.holderKind === 'traffic'
+        && manifest?.custody?.holderId === actor.worldRecordId
+        && manifest?.custody?.acquiredBy === 'mining:npcExtraction';
+      const tick = Number(latest?.observedTick);
+      if (loaded) {
+        return {
+          status: 'loaded',
+          tick,
+          deadlineTick: deadline,
+          remainingTicks: Number(trace?.bounds?.endTick) - tick,
+          routePhase: latest.routePhase,
+          actor: {
+            slotId: actor.slotId,
+            role: actor.role,
+            defId: actor.defId,
+            entityId: actor.entityId,
+            worldRecordId: actor.worldRecordId,
+            jobId: actor.jobId,
+          },
+          manifest,
+        };
+      }
+      if (Number.isSafeInteger(tick) && tick >= deadline) {
+        return { status: 'deadline', tick, deadlineTick: deadline };
+      }
+      return false;
+    }, { deadline: deadlineTick }, { timeout: timeoutMs });
+    const receipt = await handle.jsonValue();
+    const evaluated = evaluateCeresOreCycleSaveGateReceipt(receipt, {
+      endTick,
+      minPostContinueTicks,
+    });
+    if (!evaluated.pass) {
+      throw new Error(`CERES_ORE_CYCLE_SAVE_GATE_FAILED: ${evaluated.failures.join('; ')}`);
+    }
+    return receipt;
+  } catch (error) {
+    if (String(error?.message || error).startsWith('CERES_ORE_CYCLE_SAVE_GATE_FAILED')) throw error;
+    throw new Error(`CERES_ORE_CYCLE_SAVE_GATE_TIMEOUT: ${error?.message || error}`);
+  } finally {
+    await handle?.dispose?.().catch(() => {});
+  }
+}
+
+async function readPersistedCeresOreCycleSave(page, gateReceipt) {
+  return page.evaluate((expected) => {
+    const projectManifest = (manifest) => {
+      if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return null;
+      return {
+        manifestId: manifest.manifestId ?? null,
+        lotId: manifest.lotId ?? null,
+        lotSource: manifest.lotSource && typeof manifest.lotSource === 'object'
+          ? { ...manifest.lotSource }
+          : null,
+        role: manifest.role ?? null,
+        lines: Array.isArray(manifest.lines) ? manifest.lines.map((line) => ({
+          commodityId: line?.commodityId ?? null,
+          qty: Number.isFinite(line?.qty) ? Number(line.qty) : null,
+        })) : [],
+        totalQty: Number.isFinite(manifest.totalQty) ? Number(manifest.totalQty) : null,
+        custody: manifest.custody && typeof manifest.custody === 'object'
+          ? { ...manifest.custody }
+          : null,
+      };
+    };
+    let envelope = null;
+    try { envelope = JSON.parse(localStorage.getItem('sf.save.quick') || 'null'); } catch (_) {}
+    const record = envelope?.data?.world?.records?.byId?.[expected.worldRecordId] || null;
+    const jobEntry = envelope?.data?.npcJobs?.byId?.[expected.jobId] || null;
+    const saveEvent = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [])
+      .filter((event) => event?.event === 'save:completed').at(-1) || null;
+    return {
+      schema: 'spaceface.ceresPersistedOreCycleSave.v1',
+      source: 'sf.save.quick',
+      envelope: envelope ? {
+        fmt: envelope.fmt ?? null,
+        version: envelope.version ?? null,
+        slot: envelope.slot ?? null,
+        savedAt: envelope.savedAt ?? null,
+        checksum: envelope.checksum ?? null,
+      } : null,
+      savedAtTick: Number(envelope?.data?.entities?.tick),
+      saveCompletedTick: Number(saveEvent?.tick),
+      actor: record ? {
+        worldRecordId: record.recordId ?? expected.worldRecordId,
+        role: record.trafficRole ?? null,
+        defId: record.shipDefId ?? null,
+        hull: Number.isFinite(record.hull) ? Number(record.hull) : null,
+      } : null,
+      job: jobEntry ? {
+        jobId: jobEntry.job?.id ?? null,
+        worldRecordId: jobEntry.worldRecordId ?? null,
+      } : null,
+      manifest: projectManifest(record?.cargoManifest),
+    };
+  }, {
+    worldRecordId: gateReceipt?.actor?.worldRecordId ?? null,
+    jobId: gateReceipt?.actor?.jobId ?? null,
+  });
 }
 
 async function stopCeresRouteObserver(page) {
@@ -2431,6 +2865,7 @@ async function publicSaveAndContinue({
   pageIssueTracker,
   fixedSeed,
   toolkit,
+  oreCycleGateReceipt = null,
 }) {
   const initialHostileWorldRecordIds = sortedStrings(
     (toolkit?.initialHostiles || []).map((row) => row?.worldRecordId),
@@ -2439,7 +2874,18 @@ async function publicSaveAndContinue({
   await page.waitForFunction(() => !!localStorage.getItem('sf.save.quick')
     && (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [])
       .some((event) => event.event === 'save:completed'), null, { timeout: 30_000 });
-  const savedAtTick = await readTick(page);
+  const persistedOreCycleSave = oreCycleGateReceipt
+    ? await readPersistedCeresOreCycleSave(page, oreCycleGateReceipt)
+    : null;
+  if (oreCycleGateReceipt) {
+    const persisted = evaluateCeresPersistedOreCycleSaveReceipt(persistedOreCycleSave, {
+      gateReceipt: oreCycleGateReceipt,
+    });
+    if (!persisted.pass) {
+      throw new Error(`CERES_ORE_CYCLE_PERSISTED_SAVE_INVALID: ${persisted.failures.join('; ')}`);
+    }
+  }
+  const savedAtTick = persistedOreCycleSave?.savedAtTick ?? await readTick(page);
   const preReload = await readCeresRouteSnapshot(page, initialHostileWorldRecordIds);
   const traceChunk = await stopCeresRouteObserver(page);
 
@@ -2537,6 +2983,7 @@ async function publicSaveAndContinue({
     replacementSpawnCount,
     seedBefore: preReload.seed,
     seedAfter: after.seed,
+    persistedOreCycleSave,
     traceChunk,
   };
 }
@@ -2780,12 +3227,34 @@ function assertCeresSetup(snapshot, fixedSeed) {
 }
 
 export function normalizeCeresTrace(chunks, bounds) {
-  const rows = chunks.flatMap((chunk) => chunk?.samples || []).sort((left, right) => (
-    Number(left.observedTick) - Number(right.observedTick)
-  ));
+  const rows = chunks.flatMap((chunk, observerChunkIndex) => (
+    (chunk?.samples || []).map((row, observerSourceIndex) => ({
+      ...row,
+      observerChunk: chunk?.observerChunk ?? row?.observerChunk ?? null,
+      observerChunkIndex,
+      observerSourceIndex,
+    }))
+  )).sort((left, right) => Number(left.observedTick) - Number(right.observedTick)
+    || left.observerChunkIndex - right.observerChunkIndex
+    || left.observerSourceIndex - right.observerSourceIndex);
   const byObservedTick = new Map();
   for (const row of rows) byObservedTick.set(Number(row.observedTick), row);
   const rawSamples = [...byObservedTick.values()].sort((left, right) => left.observedTick - right.observedTick);
+  const oreCycleSampleMap = new Map();
+  for (const row of rows) {
+    const tick = Number(row.observedTick);
+    if (tick < bounds.startTick || tick > bounds.endTick) continue;
+    oreCycleSampleMap.set(`${row.observerChunkIndex}:${tick}`, {
+      ...row,
+      tick,
+      observedSimTimeS: Number(row.simTimeS),
+      clippedFromObservedTick: null,
+    });
+  }
+  const oreCycleSamples = [...oreCycleSampleMap.values()].sort((left, right) => (
+    left.observerChunkIndex - right.observerChunkIndex
+      || left.observedTick - right.observedTick
+  ));
   const exactStart = rawSamples.find((row) => row.observedTick === bounds.startTick);
   const exactEnd = rawSamples.find((row) => row.observedTick === bounds.endTick);
   const beforeOrAt = rawSamples.filter((row) => row.observedTick <= bounds.endTick);
@@ -2822,8 +3291,18 @@ export function normalizeCeresTrace(chunks, bounds) {
     schema: 'spaceface.ceresFiveMinuteFrameTrace.v1',
     bounds,
     samples: deduped,
+    oreCycleSamples,
     rawSampleCount: rawSamples.length,
-    events: chunks.flatMap((chunk) => chunk?.events || []).sort((a, b) => Number(a.tick) - Number(b.tick)),
+    events: chunks.flatMap((chunk, observerChunkIndex) => (
+      (chunk?.events || []).map((event, observerSourceIndex) => ({
+        ...event,
+        observerChunk: chunk?.observerChunk ?? event?.observerChunk ?? null,
+        observerChunkIndex,
+        observerSourceIndex,
+      }))
+    )).sort((left, right) => left.observerChunkIndex - right.observerChunkIndex
+      || Number(left.tick) - Number(right.tick)
+      || left.observerSourceIndex - right.observerSourceIndex),
     failures: chunks.flatMap((chunk) => chunk?.failures || []),
     bracket: {
       before: beforeOrAt.at(-1)?.observedTick ?? null,
@@ -2915,6 +3394,8 @@ function summarizeCeresRouteObservations({
         === stableJson([...CERES_FIVE_MINUTE_COLLISION_ANCHOR_SLOT_IDS].sort())
   ));
   const activityFrames = trace.samples.map(projectCeresActivityFrame);
+  const oreCycleFrames = (trace.oreCycleSamples || trace.samples).map(projectCeresActivityFrame);
+  const oreCycleEvents = normalizeCeresOreCycleEvents(trace.events);
   const ambushCrossing = deriveAmbushCrossingReceipt(trace);
   const setupAnchors = setup.census.anchors.map((row) => ({
     slotId: row.slotId,
@@ -2952,6 +3433,8 @@ function summarizeCeresRouteObservations({
     replacementSpawnCount: continueProof.replacementSpawnCount,
     seedBefore: continueProof.seedBefore,
     seedAfter: continueProof.seedAfter,
+    oreCycleSaveGate: continueProof.oreCycleSaveGate || null,
+    persistedOreCycleSave: continueProof.persistedOreCycleSave || null,
   } : null;
   const toolkitProjection = toolkit ? { ...toolkit } : null;
   return {
@@ -2961,6 +3444,8 @@ function summarizeCeresRouteObservations({
     visibilitySamples,
     recordedMetric,
     frames: activityFrames,
+    oreCycleFrames,
+    oreCycleEvents,
     traceFailures: trace.failures,
     traceBracket: trace.bracket,
     arrivals: pocketArrivals,
@@ -3495,6 +3980,7 @@ function createCeresRuntimeEvidence({
         branch: fingerprint.branch,
       },
       consumedLedgerSchema: consumedLedger?.schema || null,
+      validationManifestId: manifest.id || null,
     },
     artifactIdentity,
     artifacts,
@@ -3718,7 +4204,13 @@ function validateRuntimeAuthority(document, runtimeKind, failures) {
   }
   const normalizedArtifactRoot = String(authority.artifactRoot || '')
     .replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
-  const expectedArtifactRoot = `.devshots/physics-as-spectacle/ceres-five-minute/${runtimeKind}`;
+  const manifestId = String(authority.validationManifestId
+    || `ceres-five-minute-${runtimeKind}`);
+  const expectedArtifactRoot = manifestId === `ceres-five-minute-${runtimeKind}`
+    ? `.devshots/physics-as-spectacle/ceres-five-minute/${runtimeKind}`
+    : manifestId === 'pq048-ore-cycle-browser' && runtimeKind === 'browser'
+      ? '.devshots/pq048-ore-cycle/browser'
+      : null;
   if (normalizedArtifactRoot !== expectedArtifactRoot) {
     failures.push('artifact root does not match the exact runtime manifest root');
   }
@@ -3761,6 +4253,24 @@ function validateConsumedLedger(runtimeEvidence, ledger, failures) {
   ]) {
     if (actual !== expected) failures.push(`${prefix} consumed-ledger ${label} mismatch`);
   }
+}
+
+/**
+ * Validate one consumed broker entry against the exact runtime authority it admitted.
+ *
+ * The paired Ceres publisher historically validates the common candidate/worktree fields above.
+ * PQ-derived publications also need an exported, read-only validator for the exact consumed entry,
+ * including the manifest digest that selected the route contract.
+ */
+export function evaluateCeresConsumedClaimLedger({ runtimeEvidence, ledger } = {}) {
+  const failures = [];
+  validateConsumedLedger(runtimeEvidence, ledger, failures);
+  const expectedManifestDigest = runtimeEvidence?.authority?.digests?.runtimeManifestDigest;
+  if (!String(expectedManifestDigest || '')
+      || ledger?.digests?.manifestDigest !== expectedManifestDigest) {
+    failures.push(`${runtimeEvidence?.runtimeKind || 'unknown runtime'} consumed-ledger manifest digest mismatch`);
+  }
+  return { pass: failures.length === 0, failures };
 }
 
 function validatePocketArrivals(observations, route, failures) {

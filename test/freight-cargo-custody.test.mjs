@@ -349,6 +349,22 @@ test('ordinary combat-to-recovery order refreshes civilian guidance from 7 to th
   assert.equal(secured[0].remainingQty, 4);
 });
 
+test('an ore_carrier role enters the same nonlethal recovery path without changing manifest identity', () => {
+  const h = boot(0x0480_0001);
+  const live = fire(h, ':ore-carrier-recovery');
+  const { carrier } = actors(h, live);
+  const manifestId = carrier.data.cargoManifest.manifestId;
+  carrier.data.trafficRole = 'ore_carrier';
+  carrier.data.cargoManifest.role = 'ore_carrier';
+
+  disable(h, live);
+
+  assert.equal(carrier.data.surrenderRecovery.recoveryKind, 'civilian_disabled');
+  assert.equal(carrier.data.surrenderRecovery.manifest.manifestId, manifestId);
+  assert.equal(carrier.data.surrenderRecovery.manifest.role, 'ore_carrier');
+  assert.match(carrier.data.surrenderRecovery.instruction, /tether|tow/i);
+});
+
 test('the real player pickup seam moves only that pod to player custody and wins the raider race', () => {
   const h = boot(47502);
   const live = fire(h, ':player');
