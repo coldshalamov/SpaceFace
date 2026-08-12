@@ -8,6 +8,9 @@ import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRu
 
 import {
   CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES,
+  CERES_BROWSER_DISABLE_FEATURES_SWITCH,
+  CERES_PLAYWRIGHT_DISABLED_FEATURES,
+  CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH,
   CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
   CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
   CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
@@ -114,12 +117,31 @@ const COLLISION_ANCHOR_SLOT_IDS = Object.freeze([
 
 const PLAYER_ENTITY_ID = 1;
 
-test('Browser route disables Chromium occlusion throttling for the fixed simulation horizon', () => {
+test('Browser route disables Windows native occlusion for the fixed simulation horizon', () => {
   assert.deepEqual(CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES, [
     '--disable-background-timer-throttling',
     '--disable-backgrounding-occluded-windows',
     '--disable-renderer-backgrounding',
   ]);
+  assert.deepEqual(
+    CERES_BROWSER_DISABLE_FEATURES_SWITCH.slice('--disable-features='.length).split(','),
+    [...CERES_PLAYWRIGHT_DISABLED_FEATURES, 'CalculateNativeWinOcclusion'],
+    'the single custom switch must preserve every pinned Playwright feature before adding native occlusion',
+  );
+
+  const playwrightBundle = readFileSync(
+    new URL('../node_modules/playwright-core/lib/coreBundle.js', import.meta.url),
+    'utf8',
+  );
+  const defaultsStart = playwrightBundle.indexOf('disabledFeatures = [');
+  const defaultsEnd = playwrightBundle.indexOf('].filter(Boolean);', defaultsStart);
+  assert.ok(defaultsStart >= 0 && defaultsEnd > defaultsStart,
+    'the installed Playwright Chromium disabled-feature policy must remain inspectable');
+  const installedDefaults = [...playwrightBundle.slice(defaultsStart, defaultsEnd)
+    .matchAll(/^\s+"([A-Za-z0-9]+)",?$/gm)]
+    .map((match) => match[1]);
+  assert.deepEqual(CERES_PLAYWRIGHT_DISABLED_FEATURES, installedDefaults,
+    'the merged Browser feature switch must preserve the installed Playwright defaults exactly');
 
   const routeSource = readFileSync(
     new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
@@ -133,6 +155,14 @@ test('Browser route disables Chromium occlusion throttling for the fixed simulat
   assert.match(launcherSource,
     /\.\.\.CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES/,
     'the Browser launcher must apply the occlusion-safe fixed-horizon policy');
+  assert.match(launcherSource,
+    /ignoreDefaultArgs: \[CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH\][\s\S]*CERES_BROWSER_DISABLE_FEATURES_SWITCH/,
+    'the Browser launcher must replace Playwright default features with one merged effective switch');
+  assert.equal(
+    [CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH, CERES_BROWSER_DISABLE_FEATURES_SWITCH]
+      .filter((entry) => entry.startsWith('--disable-features=')).length,
+    2,
+    'the policy exposes exactly the removed default and its merged replacement');
 });
 
 const TOOLKIT_HOSTILES = Object.freeze([

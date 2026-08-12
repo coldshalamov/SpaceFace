@@ -90,6 +90,28 @@ export const CERES_ORE_CYCLE_POST_CONTINUE_CHUNK = 'post_continue';
 export const CERES_TOOLKIT_ROUTE_RESERVE_TICKS = 7_200;
 export const CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS = 2_400;
 export const CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU = 2_600;
+export const CERES_PLAYWRIGHT_DISABLED_FEATURES = Object.freeze([
+  'AvoidUnnecessaryBeforeUnloadCheckSync',
+  'BoundaryEventDispatchTracksNodeRemoval',
+  'DestroyProfileOnBrowserClose',
+  'DialMediaRouteProvider',
+  'GlobalMediaControls',
+  'HttpsUpgrades',
+  'LensOverlay',
+  'MediaRouter',
+  'PaintHolding',
+  'ThirdPartyStoragePartitioning',
+  'Translate',
+  'AutoDeElevate',
+  'RenderDocument',
+  'OptimizationHints',
+  'msForceBrowserSignIn',
+  'msEdgeUpdateLaunchServicesPreferredVersion',
+]);
+export const CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH =
+  `--disable-features=${CERES_PLAYWRIGHT_DISABLED_FEATURES.join(',')}`;
+export const CERES_BROWSER_DISABLE_FEATURES_SWITCH =
+  `${CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH},CalculateNativeWinOcclusion`;
 export const CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES = Object.freeze([
   '--disable-background-timer-throttling',
   '--disable-backgrounding-occluded-windows',
@@ -6768,12 +6790,14 @@ async function launchCeresBrowserRuntime({ root, executablePath, resources }) {
   resources.browserServer = await chromium.launchServer({
     headless: false,
     executablePath,
+    ignoreDefaultArgs: [CERES_PLAYWRIGHT_DISABLE_FEATURES_SWITCH],
     args: [
       '--incognito',
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-extensions',
       ...CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES,
+      CERES_BROWSER_DISABLE_FEATURES_SWITCH,
       '--window-size=1440,900',
       '--force-device-scale-factor=1',
     ],
