@@ -5712,6 +5712,31 @@
       "brief": "The existing Ceres tender physically approaches and holds beside the exact combat-disabled seam miner, repairs the drive through combat authority, and releases the original jobs to resume without adding actors, traffic cargo/economy writes, or a normal-success wreck aftermath."
     },
     {
+      "id": "PQ-048.08",
+      "parentId": "PQ-048",
+      "priority": 287,
+      "title": "Make station salvage demand consequential",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/traffic.js",
+        "test/salvage-station-intake.test.mjs",
+        "test/salvor-occupation.test.mjs"
+      ],
+      "checks": [
+        "node --test test/salvage-station-intake.test.mjs test/salvor-occupation.test.mjs",
+        "npm run check:sim:compare",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-08-station-salvage-demand-REPORT.md"
+      ],
+      "brief": "A general salvor delivers one complete conserved manifest to the existing Vesta Forge scrap listing; economy admits each exact identity once, player sales use that same listing, and rejected, conflicting, or Continue attempts retain custody without traffic writing the market."
+    },
+    {
       "id": "PQ-048.09",
       "parentId": "PQ-048",
       "priority": 288,
