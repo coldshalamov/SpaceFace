@@ -5706,6 +5706,33 @@
         "design/program/roadmap/receipts/PQ-048-09-priority-courier-lane-REPORT.md"
       ],
       "brief": "One stable saved courier runs a scheduled Tethys-to-Customs freight leg with readable sprint and recovery, normal/late/interrupted outcomes, one bounded escort opportunity, and an idempotent arrival or loss consequence without expanding the legacy roster."
+    },
+    {
+      "id": "PQ-048.11",
+      "parentId": "PQ-048",
+      "priority": 290,
+      "title": "Complete Tethys black-market discovery",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/frontierRumors.js",
+        "src/data/sectors.js",
+        "src/systems/scanner.js",
+        "src/systems/world.js",
+        "src/ui/screens/bar.js",
+        "test/pq048-tethys-black-market-discovery.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-tethys-black-market-discovery.test.mjs",
+        "node --test test/frontier-rumor-cards.test.mjs test/frontier-station-chart-notes.test.mjs test/scanner-signal-investigation.test.mjs test/station-contact-memory-controller.test.mjs test/pq019c-heist-save-reload.test.mjs test/funnel-cache.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-11-tethys-black-market-discovery-REPORT.md"
+      ],
+      "brief": "A purchased approximate Tethys lead requires an active scan and tracked physical investigation of the existing black-market buoy, then remembers one idempotent Quiet contact with truthful live-heist access or absence and risk; this state is the prerequisite for PQ-048.19 guidance."
     }
   ]
 }
