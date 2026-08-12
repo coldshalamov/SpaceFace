@@ -520,7 +520,9 @@
     "check:all:smoke": "node scripts/check-ci-report.mjs --smoke",
     "check:src-reachability": "node scripts/check-src-reachability.mjs",
     "check:perf-counters": "node --test test/perf-counters.test.mjs",
-    "probe:shader-timeline": "node scripts/probe-shader-compile-timeline.mjs"
+    "probe:shader-timeline": "node scripts/probe-shader-compile-timeline.mjs",
+    "check:thruster:lookdev": "node scripts/check-thruster-lookdev.mjs",
+    "check:thruster:plasma-unit": "node --test test/plasma-stream-thruster.test.mjs"
   },
   "private": true,
   "devDependencies": {
