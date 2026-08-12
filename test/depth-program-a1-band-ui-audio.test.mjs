@@ -174,6 +174,48 @@ test('Band HUD invalidates only when its rendered signal projection changes', ()
   hud.destroy();
 });
 
+test('Quiessence Band source shows the durable hull-census progress and refreshes on scan', () => {
+  const documentRef = fakeDocument();
+  const host = new MiniElement('div');
+  host.id = 'hud';
+  documentRef.body.appendChild(host);
+  const bus = createBus();
+  const state = {
+    mode: 'flight',
+    ui: { docked: false },
+    bandRadio: { channelId: 'quiet_memorial', signalStrength: 0.82 },
+    v2Flavor: {
+      presentedReceipts: [
+        'quiessence:301:1',
+        'quiessence:302:2',
+        'quiessence:duplicate:2',
+        'landmark_lore:unrelated:scan',
+      ],
+    },
+  };
+  const hud = uiModule.createBandHud({ state, bus }, { documentRef, host });
+  bus.emit('band:status', {
+    channelId: 'quiet_memorial',
+    effectiveChannelId: 'quiet_memorial',
+    sourceId: 'landmark_quiessence',
+    signalStrength: 0.82,
+    silence: false,
+  });
+
+  assert.match(hud.button.textContent, /QUIET MEMORIAL\s+CENSUS 2\/17/);
+  assert.match(hud.button.getAttribute('aria-label'), /Census 2 of 17/);
+
+  state.v2Flavor.presentedReceipts.push('quiessence:303:3');
+  bus.emit('v2:flavorPresented', {
+    packId: 'quiessence',
+    sourceRef: 'landmark_c14_quiessence',
+    entityId: 303,
+  });
+  assert.match(hud.button.textContent, /CENSUS 3\/17/);
+  assert.match(hud.button.getAttribute('aria-label'), /Census 3 of 17/);
+  hud.destroy();
+});
+
 function param(value = 0) {
   return {
     value,

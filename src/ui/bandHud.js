@@ -1,7 +1,24 @@
 // A1 The Band — compact tuner chip. Read-only over sim state; emits intents only.
 
 import { BAND_CHANNEL_BY_ID } from '../data/bandRadio.js';
+import QUIESSENCE_PACK from '../data/flavor/060-quiessence.js';
 import { createHudDragController } from './hudLayout.js';
+
+const QUIESSENCE_INDEXES = new Set(QUIESSENCE_PACK.entries.map((entry) => entry.shipIndex));
+
+export function quiessenceCensusProgress(state) {
+  const scanned = new Set();
+  for (const receipt of (state && state.v2Flavor && state.v2Flavor.presentedReceipts || [])) {
+    if (typeof receipt !== 'string' || !receipt.startsWith(`${QUIESSENCE_PACK.id}:`)) continue;
+    const index = Number(receipt.slice(receipt.lastIndexOf(':') + 1));
+    if (QUIESSENCE_INDEXES.has(index)) scanned.add(index);
+  }
+  return {
+    scanned: scanned.size,
+    total: QUIESSENCE_INDEXES.size,
+    complete: scanned.size === QUIESSENCE_INDEXES.size,
+  };
+}
 
 export const BAND_HUD_CSS = `
   /* Keep the tuner out of the radar and contact-roster column by default. Players can still
@@ -59,6 +76,9 @@ export function createBandHud(ctx, options = {}) {
   button.addEventListener('click', onClick);
   if (bus && typeof bus.on === 'function') {
     unsubscribers.push(bus.on('band:status', (payload) => { status = payload || null; update(); }));
+    unsubscribers.push(bus.on('v2:flavorPresented', (payload) => {
+      if (payload && payload.sourceRef === 'landmark_c14_quiessence') update();
+    }));
     unsubscribers.push(bus.on('save:loaded', () => { status = null; update(); }));
   }
 
@@ -76,12 +96,15 @@ export function createBandHud(ctx, options = {}) {
     const label = sourceId === 'planet_hush' ? 'RF VOID'
       : sourceId === 'landmark_quiessence' ? 'QUIET MEMORIAL'
         : channel && channel.label || 'OFF';
+    const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
+    const censusText = census ? `  CENSUS ${census.scanned}/${census.total}` : '';
     const meter = channelId ? signalMeter(strength, silence) : '---';
-    const text = `BAND  ${label}  ${meter}`;
+    const text = `BAND  ${label}${censusText}  ${meter}`;
     const dataOff = channelId ? 'false' : 'true';
     const dataSilence = silence ? 'true' : 'false';
+    const censusAria = census ? ` Census ${census.scanned} of ${census.total}${census.complete ? ', complete' : ''}.` : '';
     const ariaLabel = channelId
-      ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}. Activate for next channel.`
+      ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}.${censusAria} Activate for next channel.`
       : 'Band tuner, off. Activate for next channel.';
     const effectiveChannel = effectiveId || 'off';
     // Signal strength is published at 5 Hz, but the chip renders four threshold buckets. Key the
