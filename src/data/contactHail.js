@@ -289,6 +289,11 @@ function manifestText(state, target) {
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
   const data = entity.data || {};
+  if (data.ceresCausalDisabled === true) {
+    return opts.depth === 'lock'
+      ? 'WORK · DRIVE DISABLED'
+      : 'WORK · DRIVE DISABLED · RECOVERY REQUIRED';
+  }
   // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
@@ -328,6 +333,9 @@ const CAUSAL_MEANS = Object.freeze({
 
 function workerStatusText(target) {
   const data = target && target.data || {};
+  if (data.ceresCausalDisabled === true) {
+    return 'STATUS · DRIVE DISABLED · RECOVERY REQUIRED';
+  }
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
   const phaseLabel = phase

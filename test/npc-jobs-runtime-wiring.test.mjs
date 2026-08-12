@@ -114,6 +114,37 @@ test('materialized: the job advances phases and writes the civilian transit inte
   assert.ok(Math.abs(e.data.intent.aimAngle) < 0.2, `aim toward field at +x (got ${e.data.intent.aimAngle})`);
 });
 
+test('Ceres disabled-hauler condition physically brakes the job hull until recovery clears it', () => {
+  const sim = boot();
+  const e = hull(sim, 'rec-disabled-hauler');
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const entry = jobs._byId()['job:rec-disabled-hauler'];
+  let guard = 0;
+  while (entry.job.phase !== NPC_JOB_PHASE.TRANSIT && guard++ < 600) sim.step(DT);
+  assert.equal(entry.job.phase, NPC_JOB_PHASE.TRANSIT, 'hauler reaches its ordinary moving leg');
+
+  jobs._drive(entry, e);
+  assert.ok(e.data.intent.moveZ > 0, 'ordinary hauler follows its live job route');
+  assert.equal(e.data.intent.brake, false);
+
+  e.data.ceresCausalDisabled = true;
+  jobs._drive(entry, e);
+  assert.deepEqual({
+    moveX: e.data.intent.moveX,
+    moveZ: e.data.intent.moveZ,
+    boost: e.data.intent.boost,
+    brake: e.data.intent.brake,
+    fire: e.data.intent.fire,
+  }, { moveX: 0, moveZ: 0, boost: false, brake: true, fire: false },
+  'the authored breakdown removes thrust and actively brakes the material hull');
+
+  delete e.data.ceresCausalDisabled;
+  jobs._drive(entry, e);
+  assert.ok(e.data.intent.moveZ > 0, 'the same hull resumes its existing route after recovery');
+  assert.equal(e.data.intent.brake, false);
+});
+
 test('post-sink replacement aborts the obsolete batch before any same-ID successor is touched', () => {
   const sim = boot();
   const staleHullA = hull(sim, 'rec-reentrant-replace-a');

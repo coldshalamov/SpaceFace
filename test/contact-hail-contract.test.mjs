@@ -236,6 +236,30 @@ test('a passive neutral trader answers from its real route and durable manifest'
   assert.match(text, /6 .*PROVISIONS/i);
 });
 
+test('a disabled Ceres hauler hails its exact recovery need without mutating gameplay', () => {
+  const target = trader('disabled-hauler');
+  Object.assign(target.data, {
+    ceresCausalEventId: 'ev_disabled_hauler_recovery',
+    ceresCausalPhase: 'distress',
+    ceresCausalCue: 'breaking_the_pattern',
+    ceresCausalDisabled: true,
+  });
+  const state = baseState(target);
+  const before = authoritySnapshot(state);
+  const { bus } = mount(state);
+  bus.emit('contactHail:request', { targetId: target.id });
+  const offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.equal(offer.kind, 'worker');
+  bus.emit('contactHail:choice', {
+    requestId: offer.requestId,
+    targetId: offer.targetId,
+    choice: 'status',
+  });
+  assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '),
+    /DRIVE DISABLED · RECOVERY REQUIRED/i);
+  assert.deepEqual(authoritySnapshot(state), before);
+});
+
 test('an active toll pirate hands off the exact existing parley demand surface', () => {
   const pirate = entity('pirate-1', { team: 3, data: { ai: { squadId: 'sq-9' } } });
   const state = baseState(pirate);

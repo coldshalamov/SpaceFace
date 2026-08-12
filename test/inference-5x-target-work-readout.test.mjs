@@ -72,3 +72,21 @@ test('U5: salvage stack phase is readable on lock-on', () => {
   const intel = targetIntelReadout(salvor, player, { playerId: 'player' }, 800);
   assert.equal(intel.workStatus, 'WORK · STACKING SALVAGE');
 });
+
+test('disabled Ceres hauler advertises recovery need on the ordinary target panel', () => {
+  const player = entity('player', { team: 1, data: {} });
+  const hauler = entity('hauler', {
+    team: 2,
+    data: {
+      trafficRole: 'hauler',
+      ceresCausalEventId: 'ev_disabled_hauler_recovery',
+      ceresCausalPhase: 'distress',
+      ceresCausalCue: 'breaking_the_pattern',
+      ceresCausalDisabled: true,
+      ai: { passive: true },
+    },
+  });
+  const intel = targetIntelReadout(hauler, player, { playerId: 'player' }, 350);
+  assert.equal(intel.workStatus, 'WORK · DRIVE DISABLED');
+  assert.equal(intel.motive, 'NONCOMBATANT');
+});

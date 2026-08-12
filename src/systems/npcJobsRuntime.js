@@ -2240,6 +2240,14 @@ export const npcJobsRuntime = {
     if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
     const phase = job.phase;
 
+    // The Ceres recovery chain marks the exact refinery hauler while its drive is disabled. Keep
+    // the pure job clock advancing for offscreen/onscreen convergence, but make the materialized
+    // hull genuinely powerless until traffic clears the owner-authored condition at recovery.
+    if (entity.data && entity.data.ceresCausalDisabled === true) {
+      this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+      return;
+    }
+
     if (phase === NPC_JOB_PHASE.FLEE) {
       // Boost directly away from the remembered threat (civilian bolt, like traffic _stepFlee).
       const threat = entry.threatId != null && this.state.entities ? this.state.entities.get(entry.threatId) : null;
