@@ -9441,6 +9441,8 @@ export const vfx = {
       const driveInfo = this._engineDriveFor(player);
       const socketCount = this._writeProductionPlumeSockets(player);
       if (energy.plasmaStream) {
+        const cam = this.state.render && this.state.render.camera;
+        if (cam && typeof energy.plasmaStream.setCamera === 'function') energy.plasmaStream.setCamera(cam);
         energy.plasmaStream.update(
           dt,
           socketCount > 0 ? this._productionPlumeSocketView : null,
@@ -9498,6 +9500,8 @@ export const vfx = {
           fleet.setShipSockets(ship, this._plasmaEmptySockets || [], 0);
           fleet.setShipDrive(ship, this._plasmaIdleDrive || driveInfo);
           const a11y = this._productionThrusterA11y || {};
+          const cam = this.state.render && this.state.render.camera;
+          if (cam && typeof energy.plasmaStream.setCamera === 'function') energy.plasmaStream.setCamera(cam);
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,
@@ -9556,6 +9560,8 @@ export const vfx = {
         if (energy.plasmaStream) {
           fleet.setShipSockets(ship, this._plasmaEmptySockets || [], 0);
           fleet.setShipDrive(ship, this._plasmaIdleDrive || driveInfo);
+          const cam = this.state.render && this.state.render.camera;
+          if (cam && typeof energy.plasmaStream.setCamera === 'function') energy.plasmaStream.setCamera(cam);
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,

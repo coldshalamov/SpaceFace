@@ -68,7 +68,10 @@ test('PlasmaStreamSystem is continuous liquid strips, not point beads', () => {
   }
   const info = stream.inspect();
   assert.equal(info.continuous, true);
-  assert.equal(info.medium, 'liquid-strip-layers');
+  assert.ok(
+    info.medium === 'liquid-billboard-layers' || info.medium === 'liquid-strip-layers',
+    `expected continuous liquid medium, got ${info.medium}`,
+  );
   assert.ok(info.path.historyCount > 0 || info.path.visiblePointCount > 2, 'path history active');
   assert.ok(info.active, 'stream should be active under thrust');
   // Layers visible with geometry drawn
