@@ -3,11 +3,16 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { COMMODITIES } from './commodities.js';
+import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
 export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
+export const CONTACT_HAIL_ACTION_HELP = 'help';
+const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
+const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
+const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
 // Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
@@ -145,6 +150,32 @@ function contactHeaveToAvailable(state, entity, kind) {
   return !!rec && rec.heaveTo !== false;
 }
 
+function richSeamHelpAvailable(state, entity, kind) {
+  if (!state || kind !== 'worker' || !entity) return false;
+  const data = entity.data || {};
+  const role = String(data.trafficRole || data.role || '').toLowerCase();
+  if (role !== 'ore_carrier' || data.activityActorSlotId !== CERES_SEAM_MINER_SLOT_ID
+    || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || (state.world && state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || data.jobId !== `job:${data.worldRecordId}`) return false;
+  const entities = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : Array.isArray(state.entityList) ? state.entityList : [];
+  for (const candidate of entities) {
+    const opportunity = candidate && candidate.type === 'asteroid'
+      ? richSeamOpportunityForEntity(state, candidate)
+      : null;
+    const candidateData = candidate && candidate.data || {};
+    if (candidateData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+      || candidateData.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || candidateData.homeSectorId !== CERES_ACTIVITY_SECTOR_ID
+      || opportunity && opportunity.sectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+    if (opportunity && opportunity.state === 'open' && !opportunity.reservationId) return true;
+  }
+  return false;
+}
+
 function callsign(entity) {
   const data = entity && entity.data || {};
   return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED VESSEL')
@@ -176,6 +207,7 @@ export function contactHailAvailability(state) {
     entity: target,
     parley: classification.parley,
     heaveToAvailable: contactHeaveToAvailable(state, target, classification.kind),
+    richSeamHelpAvailable: richSeamHelpAvailable(state, target, classification.kind),
   };
 }
 
@@ -193,6 +225,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   }
   if (availability.kind === 'worker') {
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
+    if (availability.richSeamHelpAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HELP, label: 'HELP' });
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
@@ -336,13 +369,27 @@ const CAUSAL_MEANS = Object.freeze({
   spilling_the_count: 'STACKING LOOT · HOLD FAT',
 });
 
-function workerStatusText(target) {
+function workerStatusText(target, state = null) {
   const data = target && target.data || {};
   if (data.ceresCausalDisabled === true) {
     return 'STATUS · DRIVE DISABLED · RECOVERY REQUIRED';
   }
   if (data.ceresCausalServiceHold === true) {
     return 'STATUS · SERVICE HOLD · MINER OFFLINE';
+  }
+  if (state && richSeamHelpAvailable(state, target, 'worker')) {
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values() : [];
+    const richOpportunity = [...entities]
+      .map((entity) => {
+        const data = entity && entity.data || {};
+        if (!entity || entity.type !== 'asteroid' || data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+          || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
+        return richSeamOpportunityForEntity(state, entity);
+      })
+      .find((opportunity) => opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
+        && opportunity.state === 'open' && !opportunity.reservationId);
+    return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
   }
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
@@ -389,9 +436,24 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   } else if (offer.kind === 'patrol' && id === 'identify') {
     line = `${callsign(target)} · LAWFUL PATROL · ACTIVE BEAT`;
   } else if (offer.kind === 'worker' && id === 'status') {
-    line = workerStatusText(target);
+    line = workerStatusText(target, state);
   } else if (offer.kind === 'worker' && id === 'identify') {
     line = workerIdentifyText(target);
+  } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
+    const available = richSeamHelpAvailable(state, target, 'worker');
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values() : [];
+    const opportunity = available
+      ? [...entities].map((entity) => {
+        const data = entity && entity.data || {};
+        if (!entity || entity.type !== 'asteroid' || data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+          || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
+        return richSeamOpportunityForEntity(state, entity);
+      })
+        .find((candidate) => candidate && candidate.sectorId === CERES_ACTIVITY_SECTOR_ID
+          && candidate.state === 'open' && !candidate.reservationId)
+      : null;
+    line = opportunity ? `HELP · RICH SEAM +${opportunity.bonusU}u · MINER TAKING THE HOT CUT` : 'HELP · NO OPEN SEAM';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
   } else if (offer.kind === 'trader' && id === 'manifest') {

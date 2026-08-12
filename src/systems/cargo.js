@@ -76,10 +76,74 @@ function emitChanged(cargo) {
   if (busRef) busRef.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
 }
 
+function richLotSource(source, commodityId, qty) {
+  if (!source || typeof source !== 'object') return null;
+  const opportunityId = typeof source.richOpportunityId === 'string' && source.richOpportunityId
+    ? source.richOpportunityId
+    : typeof source.opportunityId === 'string' && source.opportunityId ? source.opportunityId : null;
+  if (!opportunityId) return null;
+  const amount = Math.max(0, Math.floor(Number(source.richQty != null ? source.richQty : qty) || 0));
+  if (amount <= 0) return null;
+  const lotId = typeof source.lotId === 'string' && source.lotId
+    ? source.lotId
+    : `rich-lot:${opportunityId}`;
+  return {
+    lotId,
+    commodityId,
+    qty: amount,
+    richOpportunityId: opportunityId,
+    richBonusU: Math.max(0, Math.floor(Number(source.richBonusU) || 0)),
+    fieldId: source.fieldId == null ? null : String(source.fieldId),
+    activityObjectSlotId: source.activityObjectSlotId == null ? null : String(source.activityObjectSlotId),
+    resolution: source.richResolution || source.resolution || null,
+    sourceOwner: source.sourceOwner || (source.claimedByKind === 'npc' ? 'npc' : 'player'),
+  };
+}
+
+function appendRichLot(cargo, source, commodityId, qty) {
+  const lot = richLotSource(source, commodityId, qty);
+  if (!lot) return;
+  lot.qty = Math.min(lot.qty, qty);
+  if (!Array.isArray(cargo.richLots)) cargo.richLots = [];
+  const existing = cargo.richLots.find((row) => row && row.lotId === lot.lotId);
+  if (existing) {
+    existing.qty += lot.qty;
+    return;
+  }
+  cargo.richLots.push(lot);
+}
+
+function decrementRichLots(cargo, commodityId, qty) {
+  if (!Array.isArray(cargo.richLots) || qty <= 0) return;
+  let remaining = qty;
+  for (const lot of cargo.richLots) {
+    if (remaining <= 0) break;
+    if (!lot || lot.commodityId !== commodityId || !(lot.qty > 0)) continue;
+    const used = Math.min(remaining, lot.qty);
+    lot.qty -= used;
+    remaining -= used;
+  }
+  cargo.richLots = cargo.richLots.filter((lot) => lot && lot.qty > 0);
+}
+
+function richLotSourcesForQty(cargo, commodityId, qty) {
+  if (!Array.isArray(cargo.richLots) || qty <= 0) return [];
+  const allocations = [];
+  let remaining = qty;
+  for (const lot of cargo.richLots) {
+    if (remaining <= 0) break;
+    if (!lot || lot.commodityId !== commodityId || !(lot.qty > 0)) continue;
+    const richQty = Math.min(remaining, lot.qty);
+    allocations.push({ ...lot, richQty });
+    remaining -= richQty;
+  }
+  return allocations;
+}
+
 /** Add `qty` units of `commodityId` to the player hold. Clamps to remaining VOLUME (hard cap).
  *  Updates the usedVolume/usedMass caches incrementally (so back-to-back adds in one tick respect
  *  the cap and the emitted totals are accurate). Returns the amount actually accepted. */
-export function addCargo(state, commodityId, qty) {
+export function addCargo(state, commodityId, qty, lotSource = null) {
   const cargo = state.player.cargo;
   const def = defOf(state, commodityId);
   const requested = finiteWholePickupAmount(qty);
@@ -92,6 +156,7 @@ export function addCargo(state, commodityId, qty) {
     cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
     cargo.usedVolume += accepted * volPerU;
     cargo.usedMass += accepted * def.mass;
+    if (lotSource) appendRichLot(cargo, lotSource, commodityId, accepted);
     emitChanged(cargo);
   }
   if (accepted < requested && busRef) busRef.emit('cargo:full', { commodityId });
@@ -112,6 +177,7 @@ export function removeCargo(state, commodityId, qty) {
   if (left > 0) cargo.items[commodityId] = left; else delete cargo.items[commodityId];
   cargo.usedVolume -= removed * volumePerUnit(def);
   cargo.usedMass -= removed * def.mass;
+  decrementRichLots(cargo, commodityId, removed);
   if (cargo.usedVolume < 0) cargo.usedVolume = 0;
   if (cargo.usedMass < 0) cargo.usedMass = 0;
   emitChanged(cargo);
@@ -143,7 +209,7 @@ export const cargo = {
         // Synchronous acceptance is the collection commit point. Physics/mining emit one mutable
         // payload, cargo writes the exact accepted remainder, then the emitting owner decides
         // whether the physical pickup survives. Downstream observers see stable final fields.
-        const accepted = addCargo(state, commodityId, qty);
+        const accepted = addCargo(state, commodityId, qty, payload.richLotSource || payload.lotSource);
         payload.acceptedAmount = accepted;
         payload.rejectedAmount = Math.max(0, qty - accepted);
         if (qty <= 0) payload.invalidAmount = true;
@@ -206,11 +272,23 @@ export const cargo = {
     }
     cargo.usedVolume = vol;
     cargo.usedMass = mass;
+    if (Array.isArray(cargo.richLots)) {
+      const available = cargo.items || {};
+      const remaining = { ...available };
+      cargo.richLots = cargo.richLots
+        .filter((lot) => lot && typeof lot.commodityId === 'string' && lot.qty > 0 && available[lot.commodityId] > 0)
+        .map((lot) => {
+          const qty = Math.min(Math.floor(Number(lot.qty) || 0), Math.floor(Number(remaining[lot.commodityId]) || 0));
+          remaining[lot.commodityId] = Math.max(0, (remaining[lot.commodityId] || 0) - qty);
+          return { ...lot, qty };
+        })
+        .filter((lot) => lot.qty > 0);
+    }
     emitChanged(cargo);
   },
 
-  addCargo(commodityId, qty) {
-    return addCargo(this.state, commodityId, qty);
+  addCargo(commodityId, qty, lotSource = null) {
+    return addCargo(this.state, commodityId, qty, lotSource);
   },
 
   removeCargo(commodityId, qty) {
@@ -220,6 +298,7 @@ export const cargo = {
   /** Dump up to `qty` units of `commodityId` into space as recoverable pickups. Returns amount dumped. */
   jettison(commodityId, qty) {
     const state = this.state;
+    const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);
     if (dumped <= 0) return 0;
     const player = state.entities.get(state.playerId);
@@ -230,22 +309,33 @@ export const cargo = {
       const r = Math.max(0, Number(player.radius) || 0) + JETTISON_PICKUP_RADIUS + JETTISON_CLEARANCE;
       const vx = Number.isFinite(player.vel && player.vel.x) ? player.vel.x : 0;
       const vz = Number.isFinite(player.vel && player.vel.z) ? player.vel.z : 0;
-      this.helpers.spawnEntity({
-        type: 'pickup',
-        // Reaction mass leaves directly aft, already outside both hull contact and the mining
-        // collector. A short sim-time embargo lets it establish separation before magnetism can
-        // reclaim it; after that it is ordinary recoverable cargo again.
-        pos: { x: px - fx * r, z: pz - fz * r },
-        vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
-        radius: JETTISON_PICKUP_RADIUS,
-        collides: false,
-        data: {
-          kind: 'cargo', commodityId, amount: dumped,
-          jettisonedCargo: true,
-          pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
-          despawnAt: state.simTime + 180,
-        },
-      });
+      const spawnJettisonPickup = (amount, richSource = null) => {
+        if (!(amount > 0)) return;
+        this.helpers.spawnEntity({
+          type: 'pickup',
+          // Reaction mass leaves directly aft, already outside both hull contact and the mining
+          // collector. A short sim-time embargo lets it establish separation before magnetism can
+          // reclaim it; after that it is ordinary recoverable cargo again.
+          pos: { x: px - fx * r, z: pz - fz * r },
+          vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
+          radius: JETTISON_PICKUP_RADIUS,
+          collides: false,
+          data: {
+            kind: 'cargo', commodityId, amount,
+            ...(richSource ? { richLotSource: { ...richSource, richQty: amount } } : {}),
+            jettisonedCargo: true,
+            pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
+            despawnAt: state.simTime + 180,
+          },
+        });
+      };
+      let allocated = 0;
+      for (const richSource of richSources) {
+        const amount = Math.min(dumped - allocated, richSource.richQty);
+        spawnJettisonPickup(amount, richSource);
+        allocated += amount;
+      }
+      spawnJettisonPickup(Math.max(0, dumped - allocated));
     }
     // Receipt seam (Wave M2 §5.3): the dump is announced so reaction-impulse/heat/AI layers can
     // observe it without owning cargo. Emitting is not a state write — the 47-A harness has no

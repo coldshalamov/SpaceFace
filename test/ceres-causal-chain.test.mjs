@@ -22,7 +22,12 @@ import {
   traffic as trafficBase,
 } from '../src/systems/traffic.js';
 import { RECORD_KIND, stableRecordId } from '../src/world/worldRecords.js';
-import { richSeamOpportunityForEntity } from '../src/systems/fieldDepletion.js';
+import {
+  claimRichSeamOpportunity,
+  fieldDepletion as fieldDepletionBase,
+  richSeamOpportunityForEntity,
+} from '../src/systems/fieldDepletion.js';
+import { richSeamTargetReadout } from '../src/ui/targetPanel.js';
 
 const SEED = 47;
 const TENDER_SLOT_ID = 'ceres_refinery_tender';
@@ -431,6 +436,129 @@ test('rich-seam strike opens one material opportunity and exact miner work loads
     slot: { id: 'ceres_seam_miner' },
   }, { seq: state.tick }, asteroid, work.workId), false);
   assert.equal(miner.data.cargoManifest.totalQty, 16, 'duplicate work cannot mint a second rich lot');
+});
+
+test('explicit HELP reserves the seam for the NPC owner and changes the resolved lot', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  const depletion = { ...fieldDepletionBase };
+  depletion.init({ state, bus });
+  stepTo(traffic, state, 0);
+  stepTo(traffic, state, 24);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  const open = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(open.state, 'open');
+
+  bus.emit('contactHail:response', {
+    requestId: 'contact-hail:worker:rich-help',
+    targetId: miner.id,
+    choice: 'help',
+  });
+  const reserved = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(reserved.state, 'open');
+  assert.equal(reserved.reservedByKind, 'npc');
+  assert.equal(reserved.reservedById, miner.id);
+  assert.equal(reserved.reservedByStableId, miner.data.worldRecordId);
+  assert.equal(reserved.reservedByActivityActorSlotId, 'ceres_seam_miner');
+  assert.equal(reserved.reservedByJobId, miner.data.jobId);
+  assert.match(richSeamTargetReadout(asteroid, state).text, /NPC HELP LOCK/);
+  assert.equal(claimRichSeamOpportunity(state, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'player-exploit-after-help',
+    claimedByKind: 'player',
+    claimedById: 1,
+    resolution: 'exploit',
+    simTime: state.simTime,
+  }), null, 'HELP cedes the open opportunity to the named NPC miner');
+
+  const work = applyCeresMinerWork(traffic, state, asteroid, 901);
+  assert.equal(work.applied, true);
+  const worked = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(worked.state, 'worked');
+  assert.equal(worked.resolution, 'help');
+  assert.equal(miner.data.cargoManifest.lotSource.richResolution, 'help');
+  assert.equal(state.fieldDepletion.fields[asteroid.data.fieldId].extractedU, 16);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid, 901).applied, false);
+  assert.equal(state.fieldDepletion.fields[asteroid.data.fieldId].extractedU, 16);
+  depletion.destroy();
+});
+
+test('HELP reservation survives Continue rematerialization by stable miner identity only', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  const depletion = { ...fieldDepletionBase };
+  depletion.init({ state, bus });
+  stepTo(traffic, state, 0);
+  stepTo(traffic, state, 24);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  bus.emit('contactHail:response', { requestId: 'stable-help', targetId: miner.id, choice: 'help' });
+  const saved = depletion.serialize();
+
+  const continuedState = { ...state, simTime: 25, fieldDepletion: {} };
+  const continuedBus = createBus();
+  const continuedDepletion = { ...fieldDepletionBase };
+  continuedDepletion.init({ state: continuedState, bus: continuedBus });
+  continuedDepletion.deserialize(saved);
+  const rematerialized = { ...miner, id: 999, data: { ...miner.data } };
+  continuedState.entities = new Map([...state.entities.entries()].map(([id, entity]) => [id === miner.id ? 999 : id, id === miner.id ? rematerialized : entity]));
+  continuedState.entityList = [...continuedState.entities.values()];
+  const open = richSeamOpportunityForEntity(continuedState, asteroid);
+  assert.equal(open.reservedByStableId, miner.data.worldRecordId);
+  const partialSaved = JSON.parse(JSON.stringify(saved));
+  const partialOpportunity = Object.values(partialSaved.opportunities)[0];
+  delete partialOpportunity.reservedByStableId;
+  delete partialOpportunity.reservedByWorldRecordId;
+  delete partialOpportunity.reservedByActivityActorSlotId;
+  delete partialOpportunity.reservedByJobId;
+  const partialState = { ...state, fieldDepletion: {} };
+  const partialDepletion = { ...fieldDepletionBase };
+  partialDepletion.init({ state: partialState, bus: createBus() });
+  partialDepletion.deserialize(partialSaved);
+  assert.equal(richSeamOpportunityForEntity(partialState, asteroid).reservationId, null,
+    'partial legacy reservation fails closed instead of retaining an id-only lock');
+  const resumedClaim = claimRichSeamOpportunity(continuedState, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'continued-work',
+    claimedByKind: 'npc',
+    claimedById: rematerialized.id,
+    claimedByStableId: rematerialized.data.worldRecordId,
+    claimedByWorldRecordId: rematerialized.data.worldRecordId,
+    claimedByActivityActorSlotId: rematerialized.data.activityActorSlotId,
+    claimedByJobId: rematerialized.data.jobId,
+    simTime: 25,
+  });
+  assert.equal(resumedClaim.state, 'worked');
+
+  const wrongState = { ...state, fieldDepletion: JSON.parse(JSON.stringify(saved)) };
+  assert.equal(claimRichSeamOpportunity(wrongState, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'wrong-owner',
+    claimedByKind: 'npc',
+    claimedById: 1000,
+    claimedByStableId: 'other-world-record',
+    claimedByWorldRecordId: 'other-world-record',
+    claimedByActivityActorSlotId: 'ceres_seam_miner',
+    claimedByJobId: 'job:other-world-record',
+    simTime: 25,
+  }), null);
+  continuedDepletion.destroy();
+  partialDepletion.destroy();
+  depletion.destroy();
+});
+
+test('reserved HELP seam resolves immediately to MISS when its stable miner dies', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepTo(traffic, state, 24);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  bus.emit('contactHail:response', { requestId: 'death-help', targetId: miner.id, choice: 'help' });
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'open');
+  bus.emit('entity:killed', { id: miner.id });
+  const missed = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(missed.state, 'missed');
+  assert.equal(missed.resolution, 'miss');
+  assert.doesNotMatch(richSeamTargetReadout(asteroid, state).text, /NPC HELP LOCK/);
 });
 
 test('actor death falls back and plants interrupt seeds (divergent from complete)', () => {

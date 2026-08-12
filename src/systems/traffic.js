@@ -63,6 +63,8 @@ import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
   claimRichSeamOpportunity,
   openRichSeamOpportunity,
+  missReservedRichSeamOpportunity,
+  reserveRichSeamOpportunity,
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
 
@@ -84,6 +86,22 @@ const MINER_FIELD_SPREAD_CAP = 4;
 // it faster than the player can participate.
 const NPC_MINER_WORK_BATCH_U = 8;
 const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
+
+function ceresSeamMinerOwnerIdentity(entity, record = null) {
+  const data = entity && entity.data || {};
+  const worldRecordId = data.worldRecordId || record && record.worldRecordId;
+  const activityActorSlotId = data.activityActorSlotId || record && record.activityActorSlotId;
+  const jobId = data.jobId || (worldRecordId ? `job:${worldRecordId}` : null);
+  if (typeof worldRecordId !== 'string' || !worldRecordId
+    || activityActorSlotId !== CERES_SEAM_MINER_SLOT_ID
+    || typeof jobId !== 'string' || jobId !== `job:${worldRecordId}`) return null;
+  return {
+    stableId: worldRecordId,
+    worldRecordId,
+    activityActorSlotId,
+    jobId,
+  };
+}
 // General-population salvors (WF-01 / U03): demand-driven cleanup of live wrecks and loose
 // civilian-manifest payloads. Bounded small so aftermath never becomes a salvage fleet parade.
 // Ceres authored pockets are gated out separately — their cathedral salvor is cast choreography.
@@ -686,6 +704,9 @@ export const traffic = {
     this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {}));
     this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
     this.bus.on('npcjobs:hold', (p) => this._onNpcJobHold(p || {}));
+    // HELP is an explicit player hail intent. Traffic reserves the finite opportunity for the
+    // answering seam miner; physical WORK below remains the sole rich-load/depletion writer.
+    this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {}));
     this.bus.on('save:restoring', () => {
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
@@ -952,6 +973,25 @@ export const traffic = {
 
   _releaseCeresActivityJob(recordId) {
     if (typeof recordId !== 'string' || !recordId) return false;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const seamRecordId = stableRecordId(
+      seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      CERES_ACTIVITY_CAST_BY_SLOT_ID.get(CERES_SEAM_MINER_SLOT_ID)?.slot.worldRecordSlotId,
+    );
+    if (recordId === seamRecordId) {
+      const missed = missReservedRichSeamOpportunity(this.state, {
+        reservedByStableId: recordId,
+        reservedByWorldRecordId: recordId,
+        reservedByActivityActorSlotId: CERES_SEAM_MINER_SLOT_ID,
+        reservedByJobId: `job:${recordId}`,
+        simTime: this.state.simTime,
+      });
+      if (missed && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_invalidated' });
+      }
+    }
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
     return typeof release === 'function' ? release(`job:${recordId}`) === true : false;
   },
@@ -3401,6 +3441,63 @@ export const traffic = {
     );
   },
 
+  _onContactHailResponse(response) {
+    if (!response || String(response.choice || '').toLowerCase() !== 'help') return false;
+    const target = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(response.targetId)
+      : null;
+    if (!target || target.alive === false || target.type !== 'ship') return false;
+    const rec = this.state.traffic && Array.isArray(this.state.traffic.freighters)
+      ? this.state.traffic.freighters.find((row) => row && row.id === target.id)
+      : null;
+    if (!rec || rec.activityActorSlotId !== CERES_SEAM_MINER_SLOT_ID || rec.role !== 'ore_carrier') return false;
+    const owner = ceresSeamMinerOwnerIdentity(target, rec);
+    const targetData = target.data || {};
+    if (!owner || targetData.homeSectorId !== CERES_ACTIVITY_SECTOR_ID
+      || targetData.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || (this.state.world && this.state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID) return false;
+    const candidates = [];
+    for (const entity of this.state.entities && this.state.entities.values
+      ? this.state.entities.values()
+      : []) {
+      if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+      const entityData = entity.data || {};
+      if (entityData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+        || entityData.sectorId !== CERES_ACTIVITY_SECTOR_ID
+        || entityData.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+      const opportunity = richSeamOpportunityForEntity(this.state, entity);
+      if (!opportunity || opportunity.state !== 'open' || opportunity.sectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+      const dx = Number(entity.pos && entity.pos.x) - Number(target.pos && target.pos.x);
+      const dz = Number(entity.pos && entity.pos.z) - Number(target.pos && target.pos.z);
+      candidates.push({ entity, opportunity, distance: dx * dx + dz * dz });
+    }
+    candidates.sort((a, b) => a.distance - b.distance || String(a.entity.id).localeCompare(String(b.entity.id)));
+    const seam = candidates[0];
+    if (!seam) return false;
+    const opportunity = seam.opportunity;
+    const seamData = seam.entity.data || {};
+    const reserved = reserveRichSeamOpportunity(this.state, {
+      fieldId: seamData.fieldId,
+      activityObjectSlotId: seamData.activityObjectSlotId,
+      reservationId: `rich-help:${opportunity.opportunityId}:${owner.stableId}`,
+      reservedByKind: 'npc',
+      reservedById: target.id,
+      reservedByStableId: owner.stableId,
+      reservedByWorldRecordId: owner.worldRecordId,
+      reservedByActivityActorSlotId: owner.activityActorSlotId,
+      reservedByJobId: owner.jobId,
+      simTime: this.state.simTime,
+    });
+    if (!reserved) return false;
+    this.bus.emit('traffic:richSeamHelpReserved', {
+      ...reserved,
+      targetId: target.id,
+      requestId: response.requestId || null,
+      source: 'contact_hail',
+    });
+    return true;
+  },
+
   /**
    * LOAD is the visible wrangle act. Value was claimed on WORK; this only re-affirms the taken
    * pool if WORK somehow missed (virtualized catch-up) and never invents commodities.
@@ -3454,12 +3551,19 @@ export const traffic = {
       const isCeresRichSeamWork = context.slot && context.slot.id === CERES_SEAM_MINER_SLOT_ID
         && asteroid.data && asteroid.data.activityObjectSlotId === CERES_RICH_SEAM_OBJECT_SLOT_ID;
       if (isCeresRichSeamWork && richSeamOpportunityForEntity(this.state, asteroid)?.state === 'open') {
+        const owner = ceresSeamMinerOwnerIdentity(context.entity, context.rec);
+        if (!owner) throw new Error('ceres_miner_stable_identity_missing');
         richClaim = claimRichSeamOpportunity(this.state, {
           fieldId,
           activityObjectSlotId: CERES_RICH_SEAM_OBJECT_SLOT_ID,
           claimId: workId,
           claimedByKind: 'npc',
           claimedById: context.entity.id,
+          claimedByStableId: owner.stableId,
+          claimedByWorldRecordId: owner.worldRecordId,
+          claimedByActivityActorSlotId: owner.activityActorSlotId,
+          claimedByJobId: owner.jobId,
+          resolution: richSeamOpportunityForEntity(this.state, asteroid)?.reservationId ? 'help' : 'work',
           simTime: this.state.simTime,
         });
       }
@@ -3482,6 +3586,8 @@ export const traffic = {
               sectorId: (this.state.world && this.state.world.currentSectorId) || null,
               richOpportunityId: richClaim && richClaim.opportunityId || null,
               richBonusU,
+              richResolution: richClaim && richClaim.resolution || null,
+              richReservationId: richClaim && richClaim.reservationId || null,
             }
           : null,
       );
@@ -4373,6 +4479,18 @@ export const traffic = {
     const ceresOreCarrier = role === 'ore_carrier'
       && ((ent && ent.data && ent.data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID)
         || (rec && rec.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID));
+    if (ceresOreCarrier) {
+      const owner = ceresSeamMinerOwnerIdentity(ent, rec);
+      if (owner) {
+        const missed = missReservedRichSeamOpportunity(this.state, {
+          ...owner,
+          simTime: this.state.simTime,
+        });
+        if (missed && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_lost' });
+        }
+      }
+    }
     if ((ent && ent.data && ent.data.ceresActivityCast === true)
       || (rec && rec.ceresActivityCast === true)) {
       // Cast identity is durable world state. Release its movement owner, but do not fabricate a

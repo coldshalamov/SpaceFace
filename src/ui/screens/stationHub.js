@@ -1488,6 +1488,13 @@ export const stationHub = {
 
       const items = cargo.items || {};
       const list = Object.entries(items).filter(([id, qty]) => Number(qty) > 0);
+      const richLots = Array.isArray(cargo.richLots)
+        ? cargo.richLots.filter((lot) => lot && lot.qty > 0)
+        : [];
+      if (richLots.length) {
+        html += '<div class="st-slotline" style="margin:10px 0 6px">RICH ORE LOTS · PROVENANCE</div>';
+        html += richLots.map(richLotReadoutHtml).join('');
+      }
 
       if (list.length === 0) {
         html += `<div class="st-empty">Cargo hold is currently empty.</div>`;
@@ -2839,6 +2846,18 @@ function prettyId(id) {
     .replace(/^(station|sector|cmdty|faction)_/, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Render one player cargo provenance row. Every save-derived value is escaped before it enters
+ * the Hold panel's innerHTML, including attribute text and fallback identifiers. */
+export function richLotReadoutHtml(lot = {}) {
+  const commodity = COMMODITY_BY_ID.get(lot.commodityId) || { name: prettyId(lot.commodityId) };
+  const commodityName = String(commodity.name || prettyId(lot.commodityId));
+  const qty = Math.max(0, Math.floor(Number(lot.qty) || 0));
+  const opportunityId = String(lot.richOpportunityId || '');
+  const lotLabel = String(lot.lotId || lot.richOpportunityId || 'LOT');
+  const resolution = lot.resolution ? ` · ${String(lot.resolution).toUpperCase()}` : '';
+  return `<div class="st-row st-row--rich-lot"><span class="c-name">${escapeHtml(`RICH ORE · ${commodityName}`)}</span><span class="c-num">${qty}</span><span class="c-num" title="${escapeHtml(opportunityId)}">${escapeHtml(lotLabel)}</span><span class="c-num">${escapeHtml(resolution)}</span><span></span></div>`;
 }
 
 function plural(count, singular, pluralForm) {

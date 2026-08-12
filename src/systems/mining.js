@@ -692,10 +692,20 @@ export const mining = {
         claimId: `player-rich-seam:${state.playerId}:${ast.id}:${state.tick | 0}`,
         claimedByKind: 'player',
         claimedById: state.playerId,
+        resolution: 'exploit',
         simTime: state.simTime,
       });
       if (richClaim) {
         d._oreCarry += richClaim.claimedBonusU;
+        d._richBonusPending = (d._richBonusPending || 0) + richClaim.claimedBonusU;
+        d._richLotSource = {
+          richOpportunityId: richClaim.opportunityId,
+          richBonusU: richClaim.claimedBonusU,
+          fieldId: d.fieldId,
+          activityObjectSlotId: d.activityObjectSlotId,
+          richResolution: richClaim.resolution || 'exploit',
+          sourceOwner: 'player',
+        };
         recordFieldExtraction(state, {
           fieldId: d.fieldId,
           sectorId: d.sectorId || (state.world && state.world.currentSectorId) || null,
@@ -733,7 +743,7 @@ export const mining = {
       d._oreCarry = 0;
     }
 
-    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner);
+    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d);
 
     if (destroyed) {
       if (!d.isChunk) {
@@ -749,7 +759,7 @@ export const mining = {
 
   // Release `units` of ore: roll each unit's commodity from the asteroid's weighted table
   // (tier-gated, renormalized), then either credit cargo directly or eject magnet pickups.
-  _releaseOre(ast, def, units, miner) {
+  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null) {
     const beam = miner ? this._beamRuntime(miner) : null;
     const direct = !!(beam && beam.directToCargo) && miner && miner.id === this.state.playerId;
     const buckets = new Map(); // collapse a burst of N units into a few pickups / yields
@@ -760,8 +770,39 @@ export const mining = {
     }
     for (const [commodityId, qty] of buckets) {
       this.bus.emit('mining:yield', { commodityId, qty, pos: { x: ast.pos.x, z: ast.pos.z }, minerId: miner ? miner.id : null });
-      if (direct) this._giveCargo(commodityId, qty, miner.id);
-      else this._spawnPickup(ast, commodityId, qty);
+      const richQty = richLotSource && asteroidData && asteroidData._richBonusPending > 0
+        ? Math.min(qty, asteroidData._richBonusPending)
+        : 0;
+      if (direct) {
+        if (qty > richQty) this._giveCargo(commodityId, qty - richQty, miner.id);
+        let materializedRich = 0;
+        if (richQty > 0) {
+          const acceptedRich = this._giveCargo(commodityId, richQty, miner.id, { ...richLotSource, richQty });
+          materializedRich += acceptedRich;
+          const rejectedRich = Math.max(0, richQty - acceptedRich);
+          if (rejectedRich > 0) {
+            materializedRich += this._spawnPickup(
+              ast,
+              commodityId,
+              rejectedRich,
+              { ...richLotSource, richQty: rejectedRich },
+            );
+          }
+        }
+        if (asteroidData && materializedRich > 0) {
+          asteroidData._richBonusPending = Math.max(0, asteroidData._richBonusPending - materializedRich);
+        }
+      } else {
+        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty);
+        if (richQty > 0) {
+          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty });
+          if (asteroidData && spawnedRich > 0) asteroidData._richBonusPending -= spawnedRich;
+        }
+      }
+    }
+    if (asteroidData && asteroidData._richBonusPending <= 0) {
+      asteroidData._richBonusPending = 0;
+      asteroidData._richLotSource = null;
     }
   },
 
@@ -784,7 +825,8 @@ export const mining = {
   },
 
   // ---- pickups: spawn + magnet pull + collection ----------------------------
-  _spawnPickup(srcEnt, commodityId, amount) {
+  _spawnPickup(srcEnt, commodityId, amount, lotSource = null) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function' || !(amount > 0)) return 0;
     const rng = this.state.rng;
     const ang = rng() * Math.PI * 2;
     const r = (srcEnt.radius || 6) + 2 + rng() * 4;
@@ -794,8 +836,12 @@ export const mining = {
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
       vel: { x: Math.cos(ang) * speed, z: Math.sin(ang) * speed },
       radius: PICKUP_RADIUS, mass: 0.1, collides: true,
-      data: { kind: 'ore', commodityId, amount, despawnAt: this.state.simTime + PICKUP_TTL },
+      data: {
+        kind: 'ore', commodityId, amount, despawnAt: this.state.simTime + PICKUP_TTL,
+        ...(lotSource ? { richLotSource: lotSource } : {}),
+      },
     });
+    return amount;
   },
 
   _updatePickups(dt, state) {
@@ -892,7 +938,7 @@ export const mining = {
       p.invalidAmount = true;
       return;
     }
-    const accepted = this._giveCargo(p.commodityId, requested, p.collectorId);
+    const accepted = this._giveCargo(p.commodityId, requested, p.collectorId, p.richLotSource);
     p.acceptedAmount = accepted;
     p.rejectedAmount = Math.max(0, requested - accepted);
     if (p.rejectedAmount > 0) {
@@ -1234,6 +1280,12 @@ export const mining = {
       amount: requested,
       commodityId: pickup.data.commodityId,
       pos: { x: pickup.pos.x, z: pickup.pos.z },
+      ...(pickup.data.richLotSource ? {
+        richLotSource: {
+          ...pickup.data.richLotSource,
+          richQty: Math.min(requested, Math.max(0, Math.floor(Number(pickup.data.richLotSource.richQty) || 0))),
+        },
+      } : {}),
     };
     this.bus.emit('pickup:collected', payload);
     const acceptance = resolvePickupAcceptance(payload, requested);
@@ -1257,18 +1309,18 @@ export const mining = {
   // ---- cargo bridge (single-writer aware) -----------------------------------
   // Prefer the cargo module's writer; fall back to a direct, conservative write while cargo is a
   // stub so the early loop (mine → fill hold) is demonstrable. When cargo becomes real it wins.
-  _giveCargo(commodityId, qty, collectorId) {
+  _giveCargo(commodityId, qty, collectorId, lotSource = null) {
     qty = finiteWholePickupAmount(qty);
     if (qty <= 0) return 0;
     const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
     if (cargoSys && typeof cargoSys.addCargo === 'function') {
-      return cargoSys.addCargo(commodityId, qty);
+      return cargoSys.addCargo(commodityId, qty, lotSource);
     }
     if (collectorId != null && collectorId !== this.state.playerId) return 0;
-    return this._directAddCargo(commodityId, qty);
+    return this._directAddCargo(commodityId, qty, lotSource);
   },
 
-  _directAddCargo(commodityId, qty) {
+  _directAddCargo(commodityId, qty, lotSource = null) {
     qty = finiteWholePickupAmount(qty);
     if (qty <= 0) return 0;
     const cargo = this.state.player.cargo;
@@ -1277,13 +1329,30 @@ export const mining = {
     const ore = ORE_BY_ID.get(commodityId);
     const vol = (ore && ore.vol) || 1;
     const mass = (ore && ore.mass) || 1;
-    const cap = cargo.capVolume || 40;
+    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 40;
     const free = cap - (cargo.usedVolume || 0);
     const accepted = Math.max(0, Math.min(qty, Math.floor(free / vol)));
     if (accepted <= 0) return 0;
     cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
     cargo.usedVolume = (cargo.usedVolume || 0) + accepted * vol;
     cargo.usedMass = (cargo.usedMass || 0) + accepted * mass;
+    if (lotSource && typeof lotSource.richOpportunityId === 'string') {
+      if (!Array.isArray(cargo.richLots)) cargo.richLots = [];
+      const lotId = lotSource.lotId || `rich-lot:${lotSource.richOpportunityId}`;
+      const existing = cargo.richLots.find((row) => row && row.lotId === lotId);
+      const lot = {
+        lotId,
+        commodityId,
+        qty: accepted,
+        richOpportunityId: lotSource.richOpportunityId,
+        richBonusU: Math.max(0, Math.floor(Number(lotSource.richBonusU) || 0)),
+        fieldId: lotSource.fieldId == null ? null : String(lotSource.fieldId),
+        activityObjectSlotId: lotSource.activityObjectSlotId == null ? null : String(lotSource.activityObjectSlotId),
+        resolution: lotSource.richResolution || lotSource.resolution || null,
+        sourceOwner: lotSource.sourceOwner || 'player',
+      };
+      if (existing) existing.qty += accepted; else cargo.richLots.push(lot);
+    }
     this.bus.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
     return accepted;
   },

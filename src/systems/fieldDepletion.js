@@ -76,6 +76,18 @@ function normalizeRichSeamOpportunity(input, key = null) {
   const openedAtT = finiteNonNegative(rec.openedAtT);
   const expiresAtT = Math.max(openedAtT, finiteNonNegative(rec.expiresAtT, openedAtT));
   const bonusU = Math.max(1, Math.floor(finiteNonNegative(rec.bonusU, RICH_SEAM_BONUS_U)));
+  const reservedByStableId = typeof rec.reservedByStableId === 'string' && rec.reservedByStableId
+    ? rec.reservedByStableId
+    : null;
+  const reservedByWorldRecordId = typeof rec.reservedByWorldRecordId === 'string' && rec.reservedByWorldRecordId
+    ? rec.reservedByWorldRecordId
+    : null;
+  const reservedByActivityActorSlotId = typeof rec.reservedByActivityActorSlotId === 'string'
+    && rec.reservedByActivityActorSlotId ? rec.reservedByActivityActorSlotId : null;
+  const reservedByJobId = typeof rec.reservedByJobId === 'string' && rec.reservedByJobId
+    ? rec.reservedByJobId : null;
+  const stableReservation = state === 'open' && reservedByStableId && reservedByWorldRecordId
+    && reservedByActivityActorSlotId && reservedByJobId;
   return {
     schema: RICH_SEAM_OPPORTUNITY_SCHEMA,
     opportunityId: typeof rec.opportunityId === 'string' && rec.opportunityId
@@ -99,6 +111,23 @@ function normalizeRichSeamOpportunity(input, key = null) {
       ? rec.claimedByKind
       : null,
     claimedById: state === 'worked' && rec.claimedById != null ? rec.claimedById : null,
+    resolution: state === 'missed'
+      ? 'miss'
+      : state === 'worked' && (rec.resolution === 'help' || rec.resolution === 'exploit' || rec.resolution === 'work')
+        ? rec.resolution
+        : null,
+    reservationId: stableReservation && typeof rec.reservationId === 'string' && rec.reservationId
+      ? rec.reservationId
+      : null,
+    reservedByKind: stableReservation && rec.reservedByKind === 'npc' ? 'npc' : null,
+    reservedById: stableReservation && rec.reservedById != null ? rec.reservedById : null,
+    reservedByStableId: stableReservation ? reservedByStableId : null,
+    reservedByWorldRecordId: stableReservation ? reservedByWorldRecordId : null,
+    reservedByActivityActorSlotId: stableReservation ? reservedByActivityActorSlotId : null,
+    reservedByJobId: stableReservation ? reservedByJobId : null,
+    reservedAtT: stableReservation && rec.reservationId
+      ? finiteNonNegative(rec.reservedAtT, openedAtT)
+      : null,
     resolvedAtT: state === 'open' ? null : finiteNonNegative(rec.resolvedAtT, openedAtT),
   };
 }
@@ -145,6 +174,52 @@ export function richSeamOpportunityForEntity(state, entity) {
   return richSeamOpportunityReadout(state, data.fieldId, data.activityObjectSlotId);
 }
 
+/**
+ * Cede an open rich seam to the exact NPC miner answering a HELP hail.  Reservation is a
+ * durable owner decision: a player exploit cannot claim the same pocket after HELP, while retries
+ * with the same request/actor are idempotent.  No ore or field state is changed until physical NPC
+ * work calls claimRichSeamOpportunity.
+ */
+export function reserveRichSeamOpportunity(state, payload = {}) {
+  const own = ensureFieldDepletionState(state);
+  const key = opportunityKey(payload.fieldId, payload.activityObjectSlotId);
+  const rec = key ? normalizeRichSeamOpportunity(own.opportunities[key], key) : null;
+  if (!rec || rec.state !== 'open' || payload.reservedByKind !== 'npc' || payload.reservedById == null
+    || typeof payload.reservedByStableId !== 'string' || !payload.reservedByStableId
+    || typeof payload.reservedByWorldRecordId !== 'string' || !payload.reservedByWorldRecordId
+    || typeof payload.reservedByActivityActorSlotId !== 'string' || !payload.reservedByActivityActorSlotId
+    || typeof payload.reservedByJobId !== 'string' || !payload.reservedByJobId) return null;
+  const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
+  if (now >= rec.expiresAtT) {
+    rec.state = 'missed';
+    rec.resolution = 'miss';
+    rec.resolvedAtT = now;
+    own.opportunities[key] = rec;
+    return null;
+  }
+  const reservationId = typeof payload.reservationId === 'string' && payload.reservationId
+    ? payload.reservationId
+    : `rich-help:${rec.opportunityId}:${payload.reservedByStableId}`;
+  if (rec.reservationId) {
+    if (rec.reservationId !== reservationId
+      || rec.reservedByStableId !== payload.reservedByStableId
+      || rec.reservedByWorldRecordId !== payload.reservedByWorldRecordId
+      || rec.reservedByActivityActorSlotId !== payload.reservedByActivityActorSlotId
+      || rec.reservedByJobId !== payload.reservedByJobId) return null;
+    return { ...rec };
+  }
+  rec.reservationId = reservationId;
+  rec.reservedByKind = 'npc';
+  rec.reservedById = payload.reservedById;
+  rec.reservedByStableId = payload.reservedByStableId;
+  rec.reservedByWorldRecordId = payload.reservedByWorldRecordId;
+  rec.reservedByActivityActorSlotId = payload.reservedByActivityActorSlotId;
+  rec.reservedByJobId = payload.reservedByJobId;
+  rec.reservedAtT = now;
+  own.opportunities[key] = rec;
+  return { ...rec };
+}
+
 export function claimRichSeamOpportunity(state, payload = {}) {
   const own = ensureFieldDepletionState(state);
   const key = opportunityKey(payload.fieldId, payload.activityObjectSlotId);
@@ -153,20 +228,50 @@ export function claimRichSeamOpportunity(state, payload = {}) {
   const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
   if (now >= rec.expiresAtT) {
     rec.state = 'missed';
+    rec.resolution = 'miss';
     rec.resolvedAtT = now;
     own.opportunities[key] = rec;
     return null;
   }
   if (typeof payload.claimId !== 'string' || !payload.claimId
     || (payload.claimedByKind !== 'npc' && payload.claimedByKind !== 'player')) return null;
+  if (rec.reservationId && (payload.claimedByKind !== rec.reservedByKind
+    || payload.claimedByStableId !== rec.reservedByStableId
+    || payload.claimedByWorldRecordId !== rec.reservedByWorldRecordId
+    || payload.claimedByActivityActorSlotId !== rec.reservedByActivityActorSlotId
+    || payload.claimedByJobId !== rec.reservedByJobId)) return null;
   rec.state = 'worked';
   rec.claimId = payload.claimId;
   rec.claimedByKind = payload.claimedByKind;
   rec.claimedById = payload.claimedById == null ? null : payload.claimedById;
   rec.claimedBonusU = rec.bonusU;
+  rec.resolution = payload.resolution === 'help' || payload.resolution === 'exploit' || payload.resolution === 'work'
+    ? payload.resolution
+    : rec.reservationId && payload.claimedByKind === 'npc' ? 'help' : 'work';
   rec.resolvedAtT = now;
   own.opportunities[key] = rec;
   return { ...rec };
+}
+
+/** Resolve a reserved HELP seam as a durable MISS when its exact owner dies or is invalidated. */
+export function missReservedRichSeamOpportunity(state, payload = {}) {
+  const own = ensureFieldDepletionState(state);
+  const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
+  for (const key of Object.keys(own.opportunities)) {
+    const rec = normalizeRichSeamOpportunity(own.opportunities[key], key);
+    if (!rec || rec.state !== 'open' || !rec.reservationId) continue;
+    if (payload.reservedByStableId && rec.reservedByStableId !== payload.reservedByStableId) continue;
+    if (payload.reservedByWorldRecordId && rec.reservedByWorldRecordId !== payload.reservedByWorldRecordId) continue;
+    if (payload.reservedByActivityActorSlotId
+      && rec.reservedByActivityActorSlotId !== payload.reservedByActivityActorSlotId) continue;
+    if (payload.reservedByJobId && rec.reservedByJobId !== payload.reservedByJobId) continue;
+    rec.state = 'missed';
+    rec.resolution = 'miss';
+    rec.resolvedAtT = now;
+    own.opportunities[key] = rec;
+    return { ...rec };
+  }
+  return null;
 }
 
 export function expireRichSeamOpportunities(state, simTime = state && state.simTime) {
@@ -181,6 +286,7 @@ export function expireRichSeamOpportunities(state, simTime = state && state.simT
     }
     if (rec.state === 'open' && now >= rec.expiresAtT) {
       rec.state = 'missed';
+      rec.resolution = 'miss';
       rec.resolvedAtT = now;
       expired.push({ ...rec });
     }

@@ -130,7 +130,9 @@ export function richSeamTargetReadout(target, state) {
     if (opportunity.state === 'open') {
       return Object.freeze({
         state: 'open',
-        text: `RICH SEAM · +${opportunity.bonusU}u · HOT CUT`,
+        text: opportunity.reservationId
+          ? `RICH SEAM · NPC HELP LOCK · +${opportunity.bonusU}u`
+          : `RICH SEAM · +${opportunity.bonusU}u · HOT CUT`,
         opportunityId: opportunity.opportunityId,
       });
     }

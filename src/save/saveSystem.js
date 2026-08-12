@@ -390,7 +390,9 @@ export const save = {
 
   _serializeCargo() {
     const c = this.state.player.cargo || {};
-    return { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
+    const out = { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
+    if (Array.isArray(c.richLots) && c.richLots.length) out.richLots = clonePlain(c.richLots);
+    return out;
   },
 
   _serializeMissions() {
@@ -2328,6 +2330,8 @@ export const save = {
     cargo.items = c.items || {};
     if (typeof c.capVolume === 'number') cargo.capVolume = c.capVolume;
     if (typeof c.capMass === 'number') cargo.capMass = c.capMass;
+    if (Array.isArray(c.richLots)) cargo.richLots = clonePlain(c.richLots);
+    else if (Object.hasOwn(cargo, 'richLots')) delete cargo.richLots;
   },
 
   _restoreFlight(flight) {
@@ -2739,6 +2743,13 @@ function normalizeCargoSaveRecord(cargo) {
   if (!out.items || typeof out.items !== 'object' || Array.isArray(out.items)) out.items = {};
   if (!Number.isFinite(out.capVolume) || out.capVolume <= 0) out.capVolume = NEW_GAME.cargoCapacity || 40;
   if (!Number.isFinite(out.capMass) || out.capMass <= 0) out.capMass = Math.max(60, out.capVolume);
+  if (Array.isArray(out.richLots)) {
+    out.richLots = out.richLots.filter((lot) => lot && typeof lot === 'object'
+      && typeof lot.commodityId === 'string' && Number(lot.qty) > 0
+      && (typeof lot.lotId === 'string' || typeof lot.richOpportunityId === 'string'))
+      .map((lot) => ({ ...lot, qty: Math.max(0, Math.floor(Number(lot.qty) || 0)) }))
+      .filter((lot) => lot.qty > 0);
+  }
   return out;
 }
 
