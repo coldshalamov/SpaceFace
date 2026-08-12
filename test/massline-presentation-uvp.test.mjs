@@ -272,6 +272,37 @@ test('_engineDriveFor applies deadThruster kill without throwing and near-zeros 
   assert.equal(live.boost, 1);
 });
 
+test('_engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero', () => {
+  // After boost / at speed ceiling the governor often publishes main=0 while moveZ is still held.
+  // That used to zero throttle, enter brake continuum, and blank thrusters until the player turned.
+  const host = {
+    state: { playerId: 1, input: { moveZ: 1, turnIntent: 0 } },
+    _driveScratch: {
+      drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+    },
+    _mainDriveDemandScratch: { main: 0, reverse: 0, retroOnly: false },
+    _actuatorsFor() { return { main: 0, reverse: 0, lateral: 0, yaw: 0 }; },
+    _rcsScaleFor() { return { main: 40, reverse: 10, lateral: 10, yaw: 5 }; },
+  };
+  const entity = {
+    id: 1,
+    vel: { x: 280, z: 0 },
+    rot: 0,
+    maxSpeed: 120,
+    flags: { boosting: false },
+    _flightFrame: { throttle: 0, maxSpeed: 120, forwardSpeed: 280 },
+  };
+  const out = vfx._engineDriveFor.call(host, entity);
+  assert.ok(out.throttle > 0.5, `pilot-held forward must keep throttle, got ${out.throttle}`);
+  assert.ok(out.drive > 0.5, `pilot-held forward must keep drive, got ${out.drive}`);
+  assert.ok(out.brake < 0.2, `must not enter brake continuum while holding W, got ${out.brake}`);
+
+  host.state.input = { moveZ: 0, turnIntent: 0 };
+  const coast = vfx._engineDriveFor.call(host, entity);
+  assert.ok(coast.throttle < 0.08, `coasting without input keeps throttle cold, got ${coast.throttle}`);
+});
+
 test('tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)', () => {
   // Drive the shipped vfx._presentationStyle path with a minimal this-binding.
   const host = {

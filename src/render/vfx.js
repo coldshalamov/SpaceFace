@@ -9105,8 +9105,15 @@ export const vfx = {
       const turn = this.state.input && Number.isFinite(this.state.input.turnIntent)
         ? Math.abs(this.state.input.turnIntent)
         : 0;
+      // Holding forward thrust must keep the nozzle path awake even when the speed governor has
+      // temporarily zeroed applied main force (common right after boost / at the speed ceiling).
+      const pilotForward = this.state.input && Number.isFinite(this.state.input.moveZ)
+        ? this.state.input.moveZ
+        : 0;
       const driveInfo = this._engineDriveFor(player);
-      if (driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2) return true;
+      if (driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2 || pilotForward > 0.05) {
+        return true;
+      }
     }
     // NPC fleet wake: any tracked candidate under thrust keeps production awake. The candidate
     // list is already refreshed by _emitTrails earlier in the frame, so this adds no spatial
@@ -9843,22 +9850,38 @@ export const vfx = {
     let throttle = 0;
     if (Number.isFinite(frame.throttle)) throttle = Math.max(0, Math.min(1.15, frame.throttle));
     else if (Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, Math.min(1.15, frame.commandedThrottle));
+    // Pilot forward command (player only). Kept separate from physics main so a speed governor
+    // that zeros applied force after boost cannot extinguish nozzle VFX while W is still held.
+    let pilotForward = 0;
     if (e.id === this.state.playerId) {
       const inp = this.state.input;
-      if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) throttle = Math.max(throttle, Math.min(1.15, inp.moveZ));
+      if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) {
+        pilotForward = Math.min(1.15, inp.moveZ);
+        throttle = Math.max(throttle, pilotForward);
+      }
     }
-    // Physics beats keys. When the flight computer has published signed demand, the plume follows
-    // the thrust the drive is ACTUALLY producing — which includes assist and autopilot thrust the
-    // pilot never commanded, and excludes the key the pilot is holding while the governor ignores it.
+    // Prefer actual main force when the drive is producing it (assist/autopilot included).
+    // When physics main is zero but the pilot still commands forward, keep pilot throttle so
+    // post-boost / at-ceiling coast does not blank the thruster until the player turns.
     const actuators = this._actuatorsFor(e);
     const md = mainDriveDemand(
       actuators,
       this._rcsScaleFor(frame),
       this._mainDriveDemandScratch,
     );
-    if (md) throttle = md.main;
     const reverse = md ? Math.max(0, md.reverse || 0) : Math.max(0, actuators && actuators.reverse || 0);
     const retroOnly = !!(md && md.retroOnly);
+    if (md) {
+      if (retroOnly || reverse > 0.05) {
+        throttle = md.main;
+      } else if (md.main > 0.001) {
+        throttle = md.main;
+      } else if (pilotForward > 0.05) {
+        throttle = Math.max(throttle, pilotForward);
+      } else {
+        throttle = md.main;
+      }
+    }
     const cf = Math.cos(e.rot || 0);
     const sf = Math.sin(e.rot || 0);
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
@@ -9876,10 +9899,19 @@ export const vfx = {
       && this.state.player.cruise.phase === 'cruising';
     const cruise = cruising ? 1 : 0;
     // Brake continuum: residual forward heat while reverse/no throttle at speed.
+    // Never mark brake while the pilot is still commanding forward thrust.
     let brake = 0;
     if (retroOnly || reverse > 0.05) brake = Math.min(1, 0.35 + speedDrive * 0.65);
-    else if (throttle < 0.08 && speedDrive > 0.2) brake = Math.min(1, speedDrive * 0.55);
+    else if (pilotForward <= 0.05 && throttle < 0.08 && speedDrive > 0.2) {
+      brake = Math.min(1, speedDrive * 0.55);
+    }
     let drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
+    // Floor: while the pilot is commanding forward thrust, never let residual drive fall into the
+    // idle/sleep band that blanks nozzle VFX (then only reappears when turning re-wakes the path).
+    if (pilotForward > 0.05 && !retroOnly) {
+      drive = Math.max(drive, Math.min(1.15, pilotForward * 0.9 + boost * 0.2));
+      brake = 0;
+    }
     // Dead thruster look when presentation marks drive-disabled / tumbling thrash fade-out.
     // boost must be `let` — deadThruster path multiplies it in place for the out.boost write.
     const tumblePres = e.presentation && e.presentation.tumble;
