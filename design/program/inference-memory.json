@@ -303,6 +303,19 @@
       "integration": "live",
       "commit": "bbd4ecd34e436dbbd6630b0e14761ea6eac7828e",
       "verification": "focused_green"
+    },
+    {
+      "id": "ceres-miner-service-hold",
+      "date": "2026-08-12",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The Ceres tender-service event now takes the exact miner physically offline, exposes the service hold on target and hail surfaces, and returns the same job hull to work after service.",
+      "fingerprint": "verb=service-hold-resume,subject=ceres-seam-miner,sector=sector_ceres_belt,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "b76bb637d56d890734f9089d2f5d051440b77767",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
