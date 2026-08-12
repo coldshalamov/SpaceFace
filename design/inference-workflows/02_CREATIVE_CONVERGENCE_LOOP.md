@@ -9,7 +9,7 @@ subagents, reviews, or acceptance gates.
 Inspect the ordinary behavior or current owner closely enough to state one concrete deficit. Do not
 survey the whole repository.
 
-Output in working notes only:
+If working notes are useful, keep them to:
 
 - current player-visible behavior;
 - desired player-visible change;
@@ -18,8 +18,8 @@ Output in working notes only:
 
 ## 2. Generate
 
-Produce one to three materially different candidates. References are optional. Do not create a
-candidate dossier or multiply ideas to satisfy a quota.
+Generate alternatives only when they could materially change the selected result. References are
+optional. Do not create a candidate dossier or multiply ideas to satisfy a quota.
 
 Choose the candidate with the best combination of player value, bounded implementation, and reuse of
 current owners.
@@ -31,21 +31,23 @@ test may accompany the source change; standalone infrastructure is not an implem
 
 ## 4. Verify
 
-Run existing owner-level checks first. Escalate only if the unit makes a broader route, visual,
-performance, save, or accessibility claim.
+Perform the smallest direct verification sufficient for the claim. Escalate only when the unit makes
+a broader route, visual, performance, save, or accessibility claim that the narrower evidence cannot
+support.
 
 A failed high-level harness is evidence about that claim, not an automatic new project.
 
 ## 5. Review
 
-The implementer performs one evidence-bound self-review:
+The implementer remains responsible for checking:
 
 - what changed for the player;
 - what could still be false;
 - whether the change is distinct and reachable;
 - the largest in-scope defect.
 
-Fix verified causal defects once. Do not restart discovery after the causal re-review.
+Fix verified causal defects. Additional investigation or review requires a remaining material risk;
+confidence-only repetition and unrelated discoveries do not reopen the unit.
 
 ## 6. Commit and continue
 

@@ -6,7 +6,7 @@ import test from 'node:test';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('active INFERENCE control surface remains production-first and bounded', () => {
+test('active INFERENCE control surface remains production-first without proof bureaucracy', () => {
   const result = spawnSync(process.execPath, ['scripts/check-inference-control.mjs'], {
     cwd: ROOT,
     encoding: 'utf8',

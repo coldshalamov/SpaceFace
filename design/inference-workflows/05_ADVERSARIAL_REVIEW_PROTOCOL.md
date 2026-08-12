@@ -6,7 +6,7 @@ a prerequisite to beginning production.
 
 ## Default review
 
-The implementer performs an evidence-bound self-review after the production change and focused checks.
+The implementer remains responsible for reviewing the production change and its direct verification.
 Self-review is disclosed, but it is valid.
 
 A separate cold reviewer is required only when:
@@ -44,14 +44,14 @@ behavioral, or a browser campaign when an owner-level regression proves the narr
 
 ## Finite review boundary
 
-Return no more than three findings. Repair validated P0/P1 and in-scope P2 findings once. Then perform
-one causal re-review limited to those repairs.
+Review continues only while a named unresolved finding could materially change the result, minimum
+fix, or significant risk. Verify a repair at the layer relevant to that finding; do not restart a
+general audit afterward. Unrelated discoveries are follow-ups unless they invalidate the current
+unit's core claim.
 
-Causal re-review returns a terminal verdict. It does not launch another general audit. Unrelated
-discoveries are follow-ups unless they invalidate the current unit's core claim.
-
-Two unsuccessful repairs of the same causal defect force `REBUILD` or `CUT`; they do not justify more
-tuning, more reviewers, or new acceptance infrastructure.
+Repeated unsuccessful repairs of the same causal defect require changing the implementation model,
+cutting the unit, or recording a blocker. They do not justify more reviewers or new acceptance
+infrastructure by themselves.
 
 ## Portfolio review
 

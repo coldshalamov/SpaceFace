@@ -9,16 +9,19 @@ The authoritative execution contract is
 
 ## Core rule
 
-An `INFERENCE N` request means up to `N` sequential, committed production units. Production changes
-runtime code, player-consumed data, shipped assets, or live integration. Plans, candidate matrices,
-tests, reviews, receipts, probes, and harnesses support production but never count as units.
+An `INFERENCE N` request means `N` sequential, committed production units unless the user stops the
+task or every remaining eligible unit is concretely blocked. Production changes runtime code,
+player-consumed data, shipped assets, or live integration. Plans, candidate matrices, tests, reviews,
+receipts, probes, and harnesses support production but never count as units.
 
 A unit may terminate as:
 
-- `implemented` with `unproven` or `focused_green` verification; or
+- `implemented` after sufficient direct verification of its implementation-level claim, with any
+  broader route claim labeled `unproven` or `focused_green`; or
 - `accepted` with current ordinary-route evidence.
 
-Separate review is optional unless the user or an active packet explicitly requires it.
+Separate review is optional unless the user or an active packet explicitly requires it, or a
+material high-risk boundary makes the independent perspective load-bearing.
 
 ## Reading order
 

@@ -34,6 +34,12 @@ const banned = [
   [/accepted live units require evidence \+ review/i, 'mandatory evidence-plus-review paperwork'],
   [/follow the selected workflow completely/i, 'mandatory whole-workflow ceremony'],
   [/inference-detect\.mjs[^\n]*--nx/i, 'passing production target into advisory detector'],
+  [/complete up to\s+`?n`?\s+independently useful production units/i,
+    'permission to stop an unblocked N-unit request early'],
+  [/support-only commits? (?:are capped|may not exceed)/i, 'rigid support-commit quota'],
+  [/never (?:perform|make) two support-only commits/i, 'rigid support-commit sequence'],
+  [/(?:self-review once|one evidence-bound self-review)/i, 'mandatory fixed review ritual'],
+  [/one repair pass and one causal re-review/i, 'mandatory fixed re-review ritual'],
 ];
 
 function read(relative) {
@@ -53,7 +59,7 @@ for (const relative of activeFiles) {
 }
 
 const lanes = read('design/program/INFERENCE_LANES.md');
-for (const marker of ['PRODUCTION-FIRST', 'SUPPORT-WORK CAP', 'TERMINATION']) {
+for (const marker of ['PRODUCTION-FIRST', 'SUPPORT-WORK BOUNDARY', 'TERMINATION']) {
   if (!lanes.includes(marker)) errors.push(`design/program/INFERENCE_LANES.md: missing ${marker}`);
 }
 for (const claim of [
@@ -61,6 +67,8 @@ for (const claim of [
   'route-unproven',
   'implemented',
   'production units',
+  'direct verification',
+  'material delta',
 ]) {
   if (!lanes.toLowerCase().includes(claim.toLowerCase())) {
     errors.push(`design/program/INFERENCE_LANES.md: missing required claim "${claim}"`);

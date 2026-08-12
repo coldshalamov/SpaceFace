@@ -3,8 +3,9 @@
 
 ## 1. `N` is a production target
 
-`INFERENCE N` accepts any positive integer. `N` means up to `N` independently useful production
-slices completed sequentially.
+`INFERENCE N` accepts any positive integer. `N` means `N` independently useful production slices
+completed sequentially, unless the user stops the task or every remaining eligible slice is
+concretely blocked.
 
 It does not mean:
 
@@ -36,21 +37,16 @@ be obtained later without reopening implementation.
 
 ## 3. Sequential dispatch
 
-Only one unit is active at a time:
-
-1. choose the smallest coherent player-facing slice;
-2. implement it through the live owner;
-3. run focused checks;
-4. self-review once;
-5. commit and record;
-6. choose the next.
+Only one unit is active at a time. Choose a coherent player-facing slice, implement it through the
+live owner, perform sufficient direct verification for its claim, commit and record it, then choose
+the next.
 
 Do not reserve all `N` units, generate a large candidate slate, or build shared acceptance machinery
 before unit one exists.
 
 ## 4. Candidate selection
 
-Compare at most three serious candidates for the current unit. Prefer:
+Compare alternatives only when the choice contains a material uncertainty. Prefer:
 
 - a visible player delta;
 - reuse of current owners;
@@ -68,25 +64,19 @@ aggregate smoke check. The batch does not require a portfolio report, reel, or f
 
 Diversity is judged after production exists. Do not build weak filler merely to span a taxonomy.
 
-## 6. Support budget
+## 6. Support boundary
 
-Absent an explicit infrastructure request:
-
-- the first commit contains production;
-- no two support-only commits occur consecutively;
-- support-only commits are capped at `max(1, ceil(production units / 5))`;
-- a harness repair must be directly necessary for the current claim and bounded to one causal fix;
-- an unchanged failed probe is never rerun.
+Support work beyond required direct verification needs a named load-bearing uncertainty and a
+possible material delta. A failed harness is not automatically in scope. Repair infrastructure only
+when explicitly requested or when the narrowest necessary repair is required to state the current
+production claim honestly. Support-only work never counts as a unit, and an unchanged failed probe is
+never rerun.
 
 ## 7. Stop conditions
 
-Terminate with an honest partial result when:
-
-- `N` units are complete;
-- the requested outcome is complete;
-- only filler remains;
-- the next action repeats an unchanged failure;
-- a concrete external dependency or exact live collision prevents further production.
+Terminate when `N` units are complete, the user stops or changes the task, the environment ends, or
+every remaining eligible unit has a concrete external dependency or exact live collision. Skip an
+individual blocked or filler candidate while useful eligible units remain.
 
 Do not substitute process completion for product completion.
 

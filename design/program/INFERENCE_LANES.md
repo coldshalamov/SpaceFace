@@ -8,7 +8,7 @@ NEXT
 Continue one existing admitted queue unit.
 
 INFERENCE <N> [optional scope]
-Complete up to N independently useful production units, sequentially.
+Complete N independently useful production units, sequentially.
 
 Examples:
 INFERENCE 1
@@ -40,8 +40,9 @@ executed as a sequence of small committed slices.
 
 ## 2. Two honest terminal states for a built unit
 
-- `implemented` — production is committed; focused verification is green or the exact remaining route
-  claim is recorded as `unproven` (`route-unproven`).
+- `implemented` — production is committed and the smallest direct verification needed for the
+  implementation-level claim has passed. A broader ordinary-route claim may remain explicitly
+  `unproven` (`route-unproven`).
 - `accepted` — production is committed and current ordinary-route evidence supports the claimed
   player-facing result.
 
@@ -50,52 +51,49 @@ manufacturing a route harness, a fresh reviewer, or a perfect acceptance record.
 
 ## 3. PRODUCTION-FIRST loop
 
-Run this loop once per unit:
+For each unit, choose one bounded player-facing result, implement it through the live production
+owner, perform sufficient direct verification for the claim being made, then commit and record it.
+Select the next unit only after the previous one has a terminal record.
 
-1. Read the user's scope, root `AGENTS.md`, the relevant live owner, and only the selected workflow
-   needed to understand the domain.
-2. Run `node scripts/inference-detect.mjs [--scope=SCOPE]` at most once at the beginning of the task.
-   The detector suggests a domain; it does not set `N`, dispatch work, or require a portfolio.
-3. Choose one small player-facing unit. At most three alternatives may be compared; a candidate
-   dossier is not required.
-4. Reproduce or characterize the relevant behavior at the owning seam.
-5. Make a production mutation. The first commit in the task must contain production paths. A focused
-   regression test may be included in the same commit.
-6. Run the cheapest existing checks that can falsify the change. Escalate only when the unit actually
-   makes the higher-level claim.
-7. Self-review the diff and evidence. Fix verified in-scope defects once.
-8. Commit the production unit and record it with `scripts/inference-record.mjs`.
-9. Select the next unit only after the previous one has a terminal record.
+Process is subordinate to fulfillment. Candidate comparison, reproduction, tests, review, and route
+evidence are available tools, not mandatory phases or deliverables. Use them when they can materially
+change the implementation, verdict, minimum fix, or significant risk. Use the narrowest adequate
+method rather than a universal sequence.
+
+`inference-detect.mjs` may suggest a domain once when selection is genuinely ambiguous. It does not
+set `N`, dispatch work, or require a portfolio. A unit cannot be recorded without its production
+commit; optional support work before production must not become a substitute project.
 
 Do not pre-plan, pre-review, or pre-validate all `N` units before implementing the first.
 
-## 4. SUPPORT-WORK CAP
+## 4. SUPPORT-WORK BOUNDARY
 
 Support work can unlock production; it cannot replace production.
 
-Unless the user explicitly requested tooling, tests, validation, or infrastructure:
+Before support work beyond the current unit's required direct verification, name the load-bearing
+uncertainty and the material delta the work could produce. Proceed only when the user or governing
+specification requires it, a relevant check failed or conflicts, a significant safety risk exists,
+or the claimed result cannot otherwise be stated honestly. Use the narrowest adequate process.
 
-- no support-only commit may occur before the first production commit;
-- never make two support-only commits in a row;
-- support-only commits may not exceed `max(1, ceil(completed production units / 5))`;
-- a new browser/Electron acceptance harness is forbidden when existing owner-level evidence can
-  establish the narrower claim;
-- a failed harness does not automatically become the task;
-- the same `(command, production digest, harness digest, environment, failure fingerprint)` may not
-  be run twice without a relevant change.
+A failed harness does not automatically become the task. Repair verification infrastructure only
+when it is explicitly requested or the smallest necessary repair for the current production claim.
+Otherwise retain the failure fingerprint, narrow or mark the broader route claim as unproven, and
+continue production. Never rerun the same `(command, production digest, harness digest, environment,
+failure fingerprint)` without a relevant change.
 
-When a harness fails, classify it once. Repair it only when the current unit genuinely requires that
-exact route claim and one bounded repair is likely to unlock it. Otherwise record the route claim as
-unproven, finish the production unit, and continue.
+Support-only commits never count as production units. Their number is a diagnostic signal, not a
+quota: repeated support-only work without a new production delta requires stopping that line of work
+and returning to an eligible production unit.
 
 ## 5. Review is evidence, not a recursive institution
 
-The implementer performs an evidence-bound self-review by default. A separate cold reviewer is useful,
-but is required only when the user explicitly requests one, an active packet explicitly requires one,
-or the change crosses a high-risk human-taste/architecture boundary.
+The implementer remains responsible for checking its work. A separate cold reviewer is required only
+when the user or governing specification requires one, or a material high-risk boundary makes the
+independent perspective load-bearing.
 
-A review returns at most three causal findings. One repair pass and one causal re-review are allowed.
-A new general audit does not begin after causal re-review. Unrelated discoveries become follow-ups.
+Review findings reopen work only when they can materially change the current result, minimum fix, or
+significant risk. Confidence-only corroboration, unrelated discoveries, and renewed general audits do
+not reopen a completed unit.
 
 No review file is required to record an `implemented` unit. A review file is optional metadata for an
 `accepted` unit; route evidence, not reviewer theater, supports acceptance.
@@ -106,24 +104,22 @@ For `N > 5`:
 
 - commit and record every unit independently;
 - preserve a running count of production units, not a speculative portfolio;
-- after each five production units, run one proportionate aggregate smoke check if it is already
-  available;
+- use an aggregate check only when the batch makes an aggregate claim that unit-level checks cannot
+  support;
 - do not stop production to create portfolio prose, reels, fresh graders, or acceptance infrastructure;
 - diversify naturally across the requested scope, but do not force a weak unit merely to fill a slot.
 
 ## 7. TERMINATION
 
-Stop the task and report immediately when any one condition is true:
+Stop the task when `N` production units are committed and recorded, when the user explicitly changes
+or stops the task, when the execution environment ends, or when every remaining eligible unit has a
+concrete external dependency or exact live-path collision. A blocked candidate, unchanged failure
+fingerprint, or weak filler is skipped while other eligible production units remain; it does not end
+the multi-unit request.
 
-1. `N` production units are committed and recorded;
-2. the user's declared product outcome is already satisfied;
-3. every remaining candidate has a concrete external dependency or exact live-path collision;
-4. the next action would repeat an unchanged failure fingerprint;
-5. the remaining candidates are filler or would regress the game;
-6. the execution environment ends before `N`.
-
-Condition 6 produces an honest partial result. Report completed production units and exact remaining
-work. Do not spend the remainder of the run polishing the report or repairing the referee.
+An interrupted or fully blocked run produces an honest partial result. Report completed production
+units and exact remaining blockers without spending the remainder polishing process artifacts or
+repairing the referee.
 
 Forbidden stopping conditions include “until perfect,” “until no faults remain,” “until every reviewer
 agrees,” and “until every acceptance cell is green.”

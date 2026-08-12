@@ -25,10 +25,11 @@ record it as `implemented` or `accepted`, then select the next. The one-unit rul
 means one unit at a time and one focused commit at a time; it does not truncate a user-requested
 multi-unit task after the first unit.
 
-Do not build new acceptance infrastructure unless the user explicitly asked for it or one bounded
-repair is the only way to observe the current production slice. Never perform two support-only commits
-in a row. A unit may terminate honestly as `implemented` with `unproven` or `focused_green` route
-status; route acceptance is a separate axis and may remain open.
+Do not build new acceptance infrastructure unless the user explicitly asked for it or it is the
+narrowest necessary way to verify the current production claim. Additional support work requires a
+named load-bearing uncertainty and a possible material delta. A unit may terminate honestly as
+`implemented` after sufficient direct verification, with a broader route claim remaining `unproven`
+or `focused_green`; route acceptance is a separate axis and may remain open.
 
 Lifecycle and acceptance are independent. `integrated` does not imply `route_accepted`; `implemented`
 does not imply wired; an asset may be source-complete while runtime-unproven. Use exact labels and
