@@ -5824,6 +5824,28 @@
       "brief": "Vesta's physical relay evidence enables a manual scan-led approximate ring, then a gated physical cache choice whose durable map, ledger, faction, cargo, and recovery consequences stay source-owned; it uses PQ-048.19's landed manual-investigation behavior without inventing a new ledger type."
     },
     {
+      "id": "PQ-048.15",
+      "parentId": "PQ-048",
+      "priority": 294,
+      "title": "Complete Lung of Charon rescue dispatch",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/systems/recoveryEncounter.js",
+        "test/lung-of-charon-rescue.test.mjs"
+      ],
+      "checks": [
+        "node --test test/lung-of-charon-rescue.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-15-lung-of-charon-rescue-dispatch-REPORT.md"
+      ],
+      "brief": "The existing Lung of Charon rescue closes into one durable case card for rescue, recovery, stripping, failure, or departure; ordinary abandonment settles at zero, continuous/death-recovery transitions stay resumable, and the existing reward table cannot pay twice."
+    },
+    {
       "id": "PQ-048.19",
       "parentId": "PQ-048",
       "priority": 298,
