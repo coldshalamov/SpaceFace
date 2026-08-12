@@ -53,11 +53,11 @@ export function samplePlasmaEnvelope(s, drive = 1, boost = 0, out = null) {
 }
 
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
-  // CONSTRUCTION FREEZE: soft-camera-facing-strips only. Param/shader look patches as v24.N.
-  id: 'player_liquid_plasma_v24.34',
+  // CONSTRUCTION: soft-camera-facing-strips. v25 layered-filament shader (ridged-FBM web).
+  id: 'player_liquid_plasma_v25.1',
   kind: 'unified_liquid_plasma',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'FROZEN soft-camera-facing-strips. v24.34 fix production axis (ContinuousPlume -ax exhaust) + continuous path-history wake (no synthetic near-jet fold). Soft body cross held.',
+  notes: 'v25: layered ridged-FBM filament web (coarse core / mid body / fine sheath) over transparent gaps — replaces solid fog wedge. Continuous flow (no scroll-wrap), eased boost envelope drives width+radiance+flow speed.',
   path: {
     capacity: 220,
     sampleSpacingWU: 0.22,
@@ -69,35 +69,41 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   layers: [
     {
       role: 'core',
-      widthScale: 1.05,
-      opacity: 0.96,
-      radiance: 1.9,
-      color: [0.55, 0.92, 1.0],
+      widthScale: 0.85,
+      opacity: 0.92,
+      radiance: 2.05,
+      color: [0.5, 0.9, 1.0],
       cross: false,
     },
     {
       role: 'body',
-      widthScale: 2.75,
-      opacity: 0.9,
-      radiance: 1.4,
-      color: [0.26, 0.78, 1.0],
+      widthScale: 1.95,
+      opacity: 0.8,
+      radiance: 1.42,
+      color: [0.24, 0.76, 1.0],
       // Soft cross REQUIRED — single plane goes edge-on invisible from rear¾.
       // Keep cross opacity low in system attach so dual-plane plates stay subordinate.
       cross: true,
     },
     {
       role: 'sheath',
-      widthScale: 4.1,
-      opacity: 0.58,
-      radiance: 0.78,
-      color: [0.1, 0.32, 0.88],
+      widthScale: 3.3,
+      opacity: 0.5,
+      radiance: 0.95,
+      color: [0.1, 0.34, 0.9],
       cross: false,
     },
   ],
   drive: {
     idleFloor: 0.04,
-    boostWidthMul: 1.35,
-    boostRadianceMul: 1.4,
+    boostWidthMul: 1.5,
+    boostRadianceMul: 1.45,
     boostLengthSegmentsBonus: 8,
+  },
+  // Nozzle-interior glow discs (one per socket): the lit engine core inside the bell.
+  throat: {
+    radiusWU: 1.45,
+    opacity: 0.9,
+    radiance: 2.4,
   },
 });

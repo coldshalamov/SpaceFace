@@ -33,6 +33,19 @@ Production sockets match ContinuousPlume: **jet extends along −ax**.
 
 ## Live system
 
-- `systems/plasmaStream.js` — player continuous liquid plasma
-- `recipes/plasmaStreamRecipe.js` — live recipe id `player_liquid_plasma_v24.*`
+- `systems/plasmaStream.js` - player continuous liquid plasma: layered ridged-FBM filament web
+  over transparent gaps (coarse core / mid body / fine sheath). Camera-facing ribbon strips built
+  from ship-path history (the wake traces the real snake path), per-socket nozzle throat glow
+  discs, eased boost envelope (width + radiance + flow rate), bounded minification lift at the
+  far chase camera.
+- `recipes/plasmaStreamRecipe.js` - live recipe id `player_liquid_plasma_v25.*`
 - Wired from `src/render/vfx.js` (player plasmaStream, not NPC card plume)
+
+Ribbon facing math: strip side vector is `axis × toCam` so the strip PLANE faces the camera.
+Pointing the WIDTH AXIS at the camera leaves the strip edge-on (a bright line) — that caused the
+wake to vanish at the top-down chase view. Keep the current math.
+
+Look-dev iteration: `scripts/capture-thruster-lookdev.mjs --iter <name> --views game,low,turn
+[--maneuver turn] [--speed WU/s] [--boost]` writes matched PNG crops, native-res crops, and an
+ASCII luminance map + bright-pixel bbox to stdout — judge the maps and crops, not thumbnails.
+Scenario views: `game` (real chase cam), `low` (reference-style broadside), `turn` (wake snake).

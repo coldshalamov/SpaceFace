@@ -19,13 +19,16 @@ const LIQUID_VERT = /* glsl */`
   }
 `;
 
-// Soft liquid plasma: packed longitudinal flow-ropes + soft volume fill.
-// No longChop/axisOpen holes (those printed segment plates). No accordion warp.
+// Layered filament plasma: a sparse web of glowing liquid filaments over black, not a solid fog
+// wedge. Ridged (abs-folded) FBM carves webbed energy tendrils; a slow domain warp makes the whole
+// web flow downstream as one liquid body. Per-layer spatial frequency separation (coarse core →
+// fine sheath) stops additive layers stacking into one white needle.
 const LIQUID_FRAG = /* glsl */`
   precision mediump float;
   varying vec2 vPathUv;
   uniform float uTime;
-  uniform float uScroll;
+  uniform float uFlowRate;
+  uniform float uTurbulence;
   uniform vec3 uColor;
   uniform float uOpacity;
   uniform float uRadiance;
@@ -51,139 +54,184 @@ const LIQUID_FRAG = /* glsl */`
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
       v += a * vnoise(p);
       p = p * 2.13 + vec2(19.1, 7.3);
       a *= 0.52;
     }
     return v;
   }
-  // Soft longitudinal liquid rope at lateral offset (flow-warped)
-  float rope(float side, float center, float tight, float flow) {
-    float c = center + 0.08 * sin(flow * 1.7 + center * 4.0)
-      + 0.05 * sin(flow * 3.1 - center * 2.5);
-    float d = (side - c) * tight;
-    return exp(-d * d);
+  // Ridged FBM: folds each octave so noise crests become bright filaments with dark veins.
+  // Axis-decoupled lacunarity: the flow (x) coordinate grows slowly per octave while the cross
+  // (y) coordinate grows fast — octaves refine strand TEXTURE without re-introducing
+  // cross-running crests that read as chevron arcs chained along the wake.
+  float ridged(vec2 p) {
+    float v = 0.0;
+    float a = 0.55;
+    for (int i = 0; i < 4; i++) {
+      float n = vnoise(p);
+      n = 1.0 - abs(2.0 * n - 1.0);
+      n = n * n;
+      v += a * n;
+      p = p * vec2(1.85, 2.35) + vec2(11.3, 5.7);
+      a *= 0.5;
+    }
+    return v; // ~0..1.1
   }
 
   void main() {
     float pathT = clamp(vPathUv.x, 0.0, 1.0);
     float side = vPathUv.y * 2.0 - 1.0;
 
-    float flow = pathT * 10.0 - uScroll * 4.2 - uTime * 1.05;
-    // Mild organic domain warp (low amp — high amp printed contour bands)
-    float w1 = fbm(vec2(flow * 0.75, side * 1.5)) - 0.5;
-    float w2 = fbm(vec2(flow * 1.5 + 2.0, side * 2.2 + 1.0)) - 0.5;
-    float sideW = side + w1 * 0.22 + w2 * 0.12;
-    float absSide = abs(sideW);
-    float fx = flow + w1 * 1.1 + w2 * 0.45;
-    float fy = sideW * 2.1 + w1 * 0.55;
+    // Downstream flow: filaments stream nozzle→tip; boost speeds the stream.
+    float flow = pathT * 6.0 - uTime * uFlowRate;
+    // Slow coherent domain warp — the whole web meanders like liquid, not twinkling noise.
+    float wx = fbm(vec2(flow * 0.32 + 3.1, side * 0.75)) - 0.5;
+    float wy = fbm(vec2(flow * 0.27 - 1.7, side * 0.62 + 5.2)) - 0.5;
+    vec2 dom = vec2(flow + wx * 1.1, side * 1.5 + wy * 1.15);
 
-    float n  = fbm(vec2(fx * 0.95, fy));
-    float n2 = fbm(vec2(fx * 2.1 + 2.0, fy * 1.5 + 1.0));
-    float n3 = fbm(vec2(fx * 4.2 + 7.0, fy * 2.2 + uTime * 0.28));
-    float n4 = vnoise(vec2(fx * 9.0, fy * 4.2 + uTime * 0.65));
+    // Filament webs STRETCHED ALONG THE FLOW (low axial frequency, high cross frequency) so
+    // strands run with the stream like real streamlines. Isotropic ridged noise printed as a
+    // chain of chevron arcs in the curved wake — repetition across the path, not flow with it.
+    float web = ridged(dom * vec2(0.30, 1.9));
+    float web2 = ridged(dom * vec2(0.85, 3.6) + vec2(7.7, 2.9));
 
-    // Soft torn limb — wide soft falloff so mesh quad rims do not print plates
-    float edgeStart = 0.12 + n * 0.22 + n2 * 0.1;
-    float edgeEnd = 1.15 + n3 * 0.12;
-    float softEdge = 1.0 - smoothstep(edgeStart, edgeEnd, absSide);
-    softEdge *= 0.72 + n * 0.18 + n2 * 0.12;
-    softEdge = max(softEdge, 0.0);
-
-    // Packed multi-rope liquid braid (REF anatomy) — many phase-offset longitudinal streams
-    float r0 = rope(sideW, 0.00, 9.5, flow);
-    float r1 = rope(sideW, 0.18, 8.5, flow + 1.3);
-    float r2 = rope(sideW, -0.16, 8.8, flow + 2.1);
-    float r3 = rope(sideW, 0.32, 7.2, flow + 0.7);
-    float r4 = rope(sideW, -0.30, 7.0, flow + 3.4);
-    float r5 = rope(sideW, 0.08, 11.0, flow * 1.15 + 4.0);
-    float r6 = rope(sideW, -0.08, 10.5, flow * 0.9 + 5.2);
-    float r7 = rope(sideW, 0.42, 6.0, flow + 1.9);
-    float r8 = rope(sideW, -0.40, 6.2, flow + 2.8);
-    float r9 = rope(sideW, 0.24 * (n2 - 0.5), 9.0, flow + n * 2.0);
-    float ropes = r0 * 1.15 + r1 + r2 + r3 * 0.95 + r4 * 0.95
-      + r5 * 1.05 + r6 * 1.05 + r7 * 0.75 + r8 * 0.75 + r9 * 0.9;
-    // High-freq micro-filaments packing gaps between major ropes
-    float micro = smoothstep(0.35, 0.75, n3) * smoothstep(0.3, 0.7, n4)
-      * exp(-absSide * absSide * 1.8);
-    float rootPack = 1.0 - smoothstep(0.05, 0.55, pathT);
-    float streamers = (ropes * 0.55 + micro * 1.4)
-      * (0.85 + rootPack * 0.55)
-      * (1.0 - smoothstep(0.55, 1.0, pathT) * 0.45);
-    // Soft mid-opacity plasma soup between ropes (shrinks black voids without chalk white)
-    float packFill = (0.62 + n * 0.28 + n2 * 0.35)
-      * exp(-absSide * absSide * 1.15)
-      * (0.75 + rootPack * 0.35);
-    streamers = min(streamers + packFill * 1.15, 4.2);
-
-    float tipFray = smoothstep(0.22, 0.78, pathT);
-    float tipFade = 1.0 - smoothstep(0.42, 0.98, pathT);
-    float lace = smoothstep(0.32, 0.9, n3) * smoothstep(0.28, 0.88, n4)
-      * (0.55 + n4 * 0.55);
-
-    // Soft volume body — continuous, no longitudinal chops (chops = segment plates)
-    // body/sheath BEFORE along (GLSL requires declare-before-use)
-    float body = exp(-absSide * absSide * 1.9)
-      * (0.5 + n * 0.25 + streamers * 0.55 + packFill * 0.4);
-    float sheath = exp(-absSide * absSide * 0.7)
-      * (0.35 + n2 * 0.4 + n3 * 0.25 + streamers * 0.2);
-
-    float head = (1.0 - smoothstep(0.0, 0.16, pathT)) * smoothstep(0.0, 0.02, pathT);
-    float mid = 1.0 - smoothstep(0.04, 0.6, pathT);
-    float belly = exp(-((pathT - 0.14) * (pathT - 0.14)) / 0.028);
-    float breakup = mix(1.0, 0.12 + n3 * 0.95 + lace * 0.9 + n4 * 0.35, tipFray);
-    float along = (head * 1.4 + mid * 0.85 + belly * 0.35 + tipFray * sheath * 0.8)
-      * breakup * tipFade * (0.82 + uDrive * 0.28 + uBoost * 0.12);
-
-    // Core is multi-rope hot near root, soft streamers mid (not single laser gaussian)
-    float core = streamers * (0.55 + head * 0.9 + (1.0 - smoothstep(0.0, 0.22, pathT)) * 0.45)
-      * exp(-absSide * absSide * 2.8);
-
-    float dens;
+    // Layer frequency separation: coarse hot core / mid body / fine fast sheath.
+    float fil = 0.0;
     if (uLayerRole < 0.5) {
-      dens = softEdge * (0.45 + core * 1.15 + streamers * 0.85 + packFill * 0.35);
+      fil = web;
     } else if (uLayerRole < 1.5) {
-      // No body-cross plane: body dens must carry full soft volume alone
-      dens = softEdge * (0.62 + body * 1.15 + streamers * 1.2 + sheath * 0.45 + packFill * 0.65);
+      fil = web * 0.62 + web2 * 0.55;
     } else {
-      dens = softEdge * (0.4 + sheath * 1.25 + body * 0.35 + streamers * 0.55 + packFill * 0.3);
+      float web3 = ridged(dom * vec2(1.7, 6.4) + vec2(3.3, 9.1) + vec2(-uTime * 0.6, 0.0));
+      fil = web2 * 0.35 + web3 * 0.85;
     }
 
-    float alpha = clamp(uOpacity * dens * along, 0.0, 1.0);
-    // Soft edge-only dither — never high-freq pathT ring that reprints plates
-    alpha *= 0.88 + 0.12 * fbm(vec2(sideW * 3.0 + flow * 0.15, n2));
-    // Tip electric lace dissolve (irregular, not hard cut)
-    alpha *= 1.0 - tipFray * (0.4 + n3 * 0.4 + n4 * 0.3);
-    alpha *= mix(1.0, 0.18 + lace * 1.1, tipFray);
-    // Extra edge tear at tip so end is not a flat mesh cut
-    alpha *= mix(1.0, softEdge * (0.4 + lace), tipFray * 0.85);
-    if (alpha < 0.01) discard;
+    // Noise-carved limb: torn, organic silhouette rather than a crisp quad rim.
+    float edgeN = fbm(vec2(flow * 1.25 + 9.0, side * 2.3));
+    float softEdge = 1.0 - smoothstep(0.30 + edgeN * 0.35, 0.95 + edgeN * 0.20, abs(side));
 
-    vec3 whiteHot = vec3(1.0, 0.99, 0.96);
-    vec3 midCyan = mix(uColor, vec3(0.38, 0.88, 1.0), 0.6);
-    vec3 deep = mix(uColor, vec3(0.04, 0.1, 0.5), 0.5);
-    // White-hot only in root multi-filament head — not solid chalk slab mid-body
-    float headWin = 1.0 - smoothstep(0.0, 0.12, pathT);
-    float ropeHot = clamp(streamers * 0.4 + r0 * 0.45 + r5 * 0.3 + r1 * 0.2, 0.0, 1.0);
-    float hot = clamp(head * 0.95 + ropeHot * 0.65 * headWin + uBoost * 0.06, 0.0, 1.0) * headWin;
+    // Longitudinal envelopes: tight hot nozzle → burning body → long dissipating tail.
+    float head = (1.0 - smoothstep(0.0, 0.13, pathT)) * smoothstep(0.0, 0.02, pathT);
+    float bodyWin = 1.0 - smoothstep(0.05, 0.82, pathT);
+    // Boost keeps the tail lit further downstream — visible wake lengthens, not just brightness.
+    float tailFade = 1.0 - smoothstep(0.62 + uBoost * 0.12, 1.0, pathT);
+    // Downstream fray: erode filaments INDIVIDUALLY by raising the web threshold with pathT
+    // (boost frays earlier — more energetic disruption). Multiplying aggregate density by a
+    // noise term printed full-width dark arcs chained along the wake (chevron banding).
+    float frayT = smoothstep(0.34, 0.95, pathT) * (0.55 + uTurbulence * 0.45);
 
-    vec3 col = mix(deep, midCyan, clamp(body * 0.7 + sheath * 0.4 + streamers * 0.6 + n * 0.25, 0.0, 1.0));
-    // Bright cyan-white ropes near root; mid stays electric cyan filaments (ban white mid bar)
-    col = mix(col, mix(midCyan, whiteHot, 0.8), hot * ropeHot);
-    col = mix(col, midCyan, (1.0 - headWin) * 0.72);
-    // Distinct filament highlights mid-body (cyan ropes, not chalk wash)
-    col = mix(col, vec3(0.55, 0.92, 1.0), clamp((r0 + r1 + r2 + r5 + r6) * 0.12 * (0.4 + headWin * 0.6), 0.0, 0.5));
-    col = mix(col, vec3(0.75, 0.96, 1.0), clamp(streamers * 0.18 * headWin, 0.0, 0.45));
+    // Density = filament web, contrast-shaped but widened so the bright body of each filament is
+    // fat enough to survive minification at the chase camera (thin peaks vanish at 6 px/WU).
+    // The nozzle head is modulated BY the web so the root is a bright bundle of threads,
+    // never a flat saturated teardrop.
+    float webDense = fil * fil;
+    float webFil = smoothstep(0.16 + frayT * 0.34, 0.78 + frayT * 0.5, webDense) * 1.05
+      + smoothstep(0.62 + frayT * 0.3, 1.05 + frayT * 0.45, webDense) * 0.35;
+    float headStruct = head * (0.55 + 0.65 * web);
+    float dens;
+    if (uLayerRole < 0.5) {
+      // Core: tight filament bundle around centerline, hot nozzle head.
+      float coreBundle = exp(-side * side * 2.9);
+      dens = softEdge * coreBundle * (headStruct * 0.85 + bodyWin * (0.14 + webFil * 1.6));
+    } else if (uLayerRole < 1.5) {
+      // Body: the main filament sheet, slightly broader.
+      float sheet = exp(-side * side * 1.7);
+      dens = softEdge * sheet * (headStruct * 0.45 + (0.26 + webFil * 1.7) * bodyWin);
+    } else {
+      // Sheath: broad fine haze of tiny filaments + faint deep glow — no solid fill.
+      float broad = exp(-side * side * 0.62);
+      dens = softEdge * broad * (webFil * 1.5 * bodyWin + 0.18 * bodyWin);
+    }
+    dens *= tailFade;
 
-    float glow = uRadiance * (0.32 + streamers * 0.24 + head * 0.4 + body * 0.1 + packFill * 0.08);
-    // Fall mid radiance so continuous white laser bar does not rebuild
-    glow *= mix(1.2, 0.62 + 0.2 * n2, smoothstep(0.08, 0.45, pathT));
-    col *= min(glow, mix(1.5, 1.05, smoothstep(0.08, 0.4, pathT)));
+    float alpha = clamp(uOpacity * dens, 0.0, 1.0);
+    if (alpha < 0.012) discard;
+
+    // Temperature ramp: white-hot nozzle → electric cyan filaments → deep blue dissipation.
+    float midWin = 1.0 - smoothstep(0.04, 0.5, pathT);
+    float hot = clamp(headStruct * 0.7 + webFil * 0.65 * midWin + uBoost * 0.15 * head, 0.0, 1.0);
+    vec3 whiteHot = vec3(1.0, 0.99, 0.97);
+    vec3 cyan = mix(uColor, vec3(0.38, 0.88, 1.0), 0.62);
+    vec3 deep = mix(uColor, vec3(0.07, 0.18, 0.68), 0.5);
+    vec3 col = mix(deep, cyan, clamp(webFil * 0.95 + bodyWin * 0.28, 0.0, 1.0));
+    col = mix(col, whiteHot, hot);
+
+    // Radiance: filaments bloom, background stays dark. Slight boost lift, capped (no chalk slab).
+    float rad = uRadiance * (0.38 + webFil * 1.25 + head * (0.4 + 0.35 * web))
+      * mix(1.0, 0.5 + 0.32 * web, smoothstep(0.06, 0.5, pathT));
+    col *= min(rad, 2.0);
 
     gl_FragColor = vec4(col, alpha);
   }
 `;
+
+// Nozzle-interior glow: the hot throat INSIDE the bell (reference: engine cores are lit from
+// within). One camera-facing disc per socket, depth-tested so the hull occludes it from the bow;
+// additive, tight HDR core + bell-lip ring + soft halo. Not a trail billboard — the nozzle lamp.
+const THROAT_VERT = /* glsl */`
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const THROAT_FRAG = /* glsl */`
+  precision mediump float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColor;
+  uniform float uDrive;
+  uniform float uBoost;
+  uniform float uOpacity;
+  uniform float uRadiance;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    // Concentric structure: searing core, bell-lip ring, breathing halo.
+    float core = exp(-r * r * 7.5);
+    float ring = exp(-pow(abs(r - 0.68) * 5.5, 2.0)) * 0.42;
+    float halo = exp(-r * 2.6) * 0.3;
+    // Micro-flicker kept small (no strobe); boost raises both brightness and size on CPU.
+    float fl = 0.94 + 0.04 * sin(uTime * 37.0) + 0.03 * sin(uTime * 91.0 + 1.7);
+    float energy = 0.32 + uDrive * 0.68 + uBoost * 0.85;
+    float i = (core * 1.6 + ring + halo) * energy * fl;
+    vec3 col = mix(uColor, vec3(1.0, 0.99, 0.97), clamp(core * 1.35, 0.0, 1.0));
+    col *= i * uRadiance;
+    float alpha = clamp(i * uOpacity, 0.0, 1.0);
+    if (alpha < 0.01) discard;
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
+function createThroatMesh(T, color) {
+  const geo = new T.PlaneGeometry(2, 2);
+  const mat = new T.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uColor: { value: new T.Color(color[0], color[1], color[2]) },
+      uDrive: { value: 0 },
+      uBoost: { value: 0 },
+      uOpacity: { value: 0.9 },
+      uRadiance: { value: 2.4 },
+    },
+    vertexShader: THROAT_VERT,
+    fragmentShader: THROAT_FRAG,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: T.AdditiveBlending,
+    side: T.DoubleSide,
+    toneMapped: false,
+  });
+  const mesh = new T.Mesh(geo, mat);
+  mesh.renderOrder = 11;
+  mesh.frustumCulled = false;
+  mesh.visible = false;
+  return mesh;
+}
 
 function createLayerMaterial(layer, THREE_NS) {
   const T = THREE_NS || THREE;
@@ -191,7 +239,8 @@ function createLayerMaterial(layer, THREE_NS) {
   return new T.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uScroll: { value: 0 },
+      uFlowRate: { value: 1.55 },
+      uTurbulence: { value: 0 },
       uColor: { value: new T.Color(c[0], c[1], c[2]) },
       uOpacity: { value: layer.opacity != null ? layer.opacity : 0.7 },
       uRadiance: { value: layer.radiance != null ? layer.radiance : 1.6 },
@@ -261,21 +310,28 @@ export class PlasmaStreamSystem {
     this._ay = new Float32Array(this.nSeg);
     this._az = new Float32Array(this.nSeg);
     this._widths = new Float32Array(this.nSeg);
+    this._widthS = new Float32Array(this.nSeg);
     this._latX = new Float32Array(this.nSeg);
     this._latY = new Float32Array(this.nSeg);
     this._latZ = new Float32Array(this.nSeg);
+    this._latSX = new Float32Array(this.nSeg);
+    this._latSY = new Float32Array(this.nSeg);
+    this._latSZ = new Float32Array(this.nSeg);
     this._env = {
       s: 0, width: 1, heat: 1, opacity: 1, density: 1,
       filament: 0, root: 0, jet: 0, wake: 0, rootWindow: 0, jetWindow: 0, wakeWindow: 0,
     };
     this._cam = { x: 0, y: 8, z: 12 };
+    this._camObj = null;
     this.group = null;
     this._layers = [];
+    this._throats = [];
     this._time = 0;
     this._disposed = false;
     this._active = false;
     this._lastDrive = 0;
     this._lastBoost = 0;
+    this._boostBlend = 0;
     this._pointCount = 0;
   }
 
@@ -284,12 +340,14 @@ export class PlasmaStreamSystem {
     this._cam.x = camera.position.x;
     this._cam.y = camera.position.y;
     this._cam.z = camera.position.z;
+    this._camObj = camera;
   }
 
   setCameraPosition(x, y, z) {
     this._cam.x = x;
     this._cam.y = y;
     this._cam.z = z;
+    this._camObj = null;
   }
 
   attach(scene) {
@@ -297,6 +355,17 @@ export class PlasmaStreamSystem {
     const T = this.THREE;
     this.group = new T.Group();
     this.group.name = 'sf-liquid-plasma-root';
+    // Nozzle throat glows FIRST so group traversals that take the last strip mesh (unit tests,
+    // look-dev gates) keep measuring the wake strips, not these quads.
+    const throatCfg = this.recipe.throat || {};
+    const throatColor = throatCfg.color || (this.recipe.layers && this.recipe.layers[0]
+      && this.recipe.layers[0].color) || [0.5, 0.9, 1];
+    for (let ti = 0; ti < 4; ti++) {
+      const throat = createThroatMesh(T, throatColor);
+      throat.name = `sf-plasma-throat-${ti}`;
+      this.group.add(throat);
+      this._throats.push(throat);
+    }
     const layers = this.recipe.layers || [];
     for (let li = 0; li < layers.length; li++) {
       const layer = layers[li];
@@ -338,6 +407,7 @@ export class PlasmaStreamSystem {
       this._layers[i].mesh.visible = false;
       this._layers[i].geo.setDrawRange(0, 0);
     }
+    for (let i = 0; i < this._throats.length; i++) this._throats[i].visible = false;
     if (this.group) this.group.visible = false;
   }
 
@@ -350,6 +420,11 @@ export class PlasmaStreamSystem {
       this._layers[i].geo.dispose();
       this._layers[i].mat.dispose();
     }
+    for (let i = 0; i < this._throats.length; i++) {
+      this._throats[i].geometry.dispose();
+      this._throats[i].material.dispose();
+    }
+    this._throats.length = 0;
     this._layers.length = 0;
     this.group = null;
   }
@@ -362,16 +437,15 @@ export class PlasmaStreamSystem {
    * Axis convention matches ContinuousPlume / production sockets:
    * jet extends along **-ax** (vfx writes ax = -exhaust so -ax = exhaust).
    */
-  _buildCenterline(nx, ny, nz, dirX, dirY, dirZ, pathN, activeDrive, boost, rootMul, boostW) {
+  _buildCenterline(nx, ny, nz, dirX, dirY, dirZ, pathN, activeDrive, boost, rootMul, boostW, speed = 0) {
     // Exhaust direction (matches ContinuousPlume: world = nozzle - axis * along)
     const ex = -dirX;
     const ey = -dirY;
     const ez = -dirZ;
     const nearLen = (this.recipe.path?.nearJetLengthWU != null)
       ? this.recipe.path.nearJetLengthWU
-      : 15;
+      : 12;
     let count = 0;
-    const swaySeed = this._time * 0.7;
 
     // Prefer real path history as the continuous trail (live head = nozzle).
     const useHistory = pathN >= 3;
@@ -395,24 +469,25 @@ export class PlasmaStreamSystem {
         let w = this._env.width * rootMul * boostW;
         if (i === 0) w *= 0.9;
         else if (i < 3) w *= 1.08;
-        w *= 0.96 + 0.08 * hash2(i, Math.floor(swaySeed * 10));
+        // Static per-index variation (time-varying width hash strobed under thrust).
+        w *= 0.96 + 0.08 * hash2(i, 7);
         this._widths[count] = w;
         count++;
       }
     } else {
-      // Hover / cold-start: short synthetic near-jet along exhaust only (no history yet).
-      const nearN = Math.min(this.nSeg, 48);
+      // Hover / cold-start: synthetic near-jet straight along the exhaust (no lateral sway —
+      // sideways wobble printed as an integer-station snake). Speed-stretched so the jet does not
+      // collapse into the nozzle when thrust starts before history accumulates.
+      const nearN = Math.min(this.nSeg, 56);
+      const speedStretch = 1 + Math.min(1.6, (Number.isFinite(speed) ? speed : 0) / 140);
       for (let j = 0; j < nearN && count < this.nSeg; j++) {
         const u = j / Math.max(1, nearN - 1);
-        const dist = u * nearLen * (0.75 + activeDrive * 0.2 + boost * 0.15);
-        const s = u * 0.55;
+        const dist = u * nearLen * (0.55 + activeDrive * 0.35 + boost * 0.4) * speedStretch;
+        const s = u * 0.62;
         samplePlasmaEnvelope(s, activeDrive, boost, this._env);
-        const sway = Math.sin(swaySeed + u * 3.2) * 0.03 * u;
-        const pxp = -ez;
-        const pzp = ex;
-        this._cx[count] = nx + ex * dist + pxp * sway;
+        this._cx[count] = nx + ex * dist;
         this._cy[count] = ny + ey * dist;
-        this._cz[count] = nz + ez * dist + pzp * sway;
+        this._cz[count] = nz + ez * dist;
         this._widths[count] = this._env.width * rootMul * boostW
           * (0.96 + 0.08 * hash2(j, 3));
         count++;
@@ -421,14 +496,14 @@ export class PlasmaStreamSystem {
 
     if (count > 2) {
       // Width smooth only — do NOT average positions (that collapsed the wake length).
-      const tmp = new Float32Array(count);
+      const tmp = this._widthS;
       for (let i = 0; i < count; i++) {
         const a = this._widths[Math.max(0, i - 1)];
         const b = this._widths[i];
         const c = this._widths[Math.min(count - 1, i + 1)];
         tmp[i] = a * 0.25 + b * 0.5 + c * 0.25;
       }
-      for (let i = 0; i < count; i++) this._widths[i] = tmp[i];
+      this._widths.set(tmp.subarray(0, count));
 
       // Tangents along path (live→oldest). Lateral uses this for billboard frame.
       for (let i = 0; i < count; i++) {
@@ -454,61 +529,73 @@ export class PlasmaStreamSystem {
   }
 
   _lateralFor(px, py, pz, ax, ay, az, plane) {
-    const camX = this._cam.x;
-    const camY = this._cam.y;
-    const camZ = this._cam.z;
-    let ux = 0;
-    let uy = 1;
-    let uz = 0;
-    if (Math.abs(ay) > 0.92) { ux = 1; uy = 0; uz = 0; }
-    let s0x = ay * uz - az * uy;
-    let s0y = az * ux - ax * uz;
-    let s0z = ax * uy - ay * ux;
-    let s0l = Math.hypot(s0x, s0y, s0z) || 1;
-    s0x /= s0l; s0y /= s0l; s0z /= s0l;
-
-    let tx = camX - px;
-    let ty = camY - py;
-    let tz = camZ - pz;
-    const ad = tx * ax + ty * ay + tz * az;
-    tx -= ax * ad; ty -= ay * ad; tz -= az * ad;
-    let sl = Math.hypot(tx, ty, tz);
-    let sx;
-    let sy;
-    let sz;
-    if (sl > 0.08) {
-      tx /= sl; ty /= sl; tz /= sl;
-      if (s0x * tx + s0y * ty + s0z * tz < 0) { s0x = -s0x; s0y = -s0y; s0z = -s0z; }
-      const blend = Math.min(1, sl * 2.5);
-      sx = s0x * (1 - blend) + tx * blend;
-      sy = s0y * (1 - blend) + ty * blend;
-      sz = s0z * (1 - blend) + tz * blend;
-      const bl = Math.hypot(sx, sy, sz) || 1;
-      sx /= bl; sy /= bl; sz /= bl;
-    } else {
-      sx = s0x; sy = s0y; sz = s0z;
+    // Camera-facing ribbon side vector: side = axis × toCam puts the strip PLANE facing the
+    // camera (maximum projected width). The old blend pointed the WIDTH at the camera, which
+    // left the strip edge-on — the whole plume foreshortened to a line at the chase camera.
+    const vx = this._cam.x - px;
+    const vy = this._cam.y - py;
+    const vz = this._cam.z - pz;
+    const vLen = Math.hypot(vx, vy, vz) || 1;
+    let sx = ay * vz - az * vy;
+    let sy = az * vx - ax * vz;
+    let sz = ax * vy - ay * vx;
+    const sLen = Math.hypot(sx, sy, sz);
+    // Stable fallback when the camera sits near the wake axis (sin ≈ 0): up-cross frame.
+    let fx = -az;
+    let fy = 0;
+    let fz = ax;
+    if (Math.abs(ay) > 0.92) { fx = 0; fy = az; fz = -ay; }
+    const fLen = Math.hypot(fx, fy, fz) || 1;
+    fx /= fLen; fy /= fLen; fz /= fLen;
+    if (sLen > 1e-5) {
+      sx /= sLen; sy /= sLen; sz /= sLen;
+      if (sx * fx + sy * fy + sz * fz < 0) { sx = -sx; sy = -sy; sz = -sz; }
+      // Blend in the stable frame only while degenerate (camera near the wake line).
+      const sinT = Math.min(1, sLen / vLen);
+      const k = sinT < 0.24 ? (sinT < 0.06 ? 0 : (sinT - 0.06) / 0.18) : 1;
+      let lx = fx * (1 - k) + sx * k;
+      let ly = fy * (1 - k) + sy * k;
+      let lz = fz * (1 - k) + sz * k;
+      const lLen = Math.hypot(lx, ly, lz) || 1;
+      lx /= lLen; ly /= lLen; lz /= lLen;
+      if (plane === 'cross') {
+        // Second plane: ~90° rolled around the axis for volumetric fill.
+        const cxs = ay * lz - az * ly;
+        const cys = az * lx - ax * lz;
+        const czs = ax * ly - ay * lx;
+        const cl = Math.hypot(cxs, cys, czs) || 1;
+        return { x: cxs / cl, y: cys / cl, z: czs / cl };
+      }
+      return { x: lx, y: ly, z: lz };
     }
-
     if (plane === 'cross') {
-      let cx = ay * sz - az * sy;
-      let cy = az * sx - ax * sz;
-      let cz = ax * sy - ay * sx;
-      const cl = Math.hypot(cx, cy, cz) || 1;
-      return { x: cx / cl, y: cy / cl, z: cz / cl };
+      const cxs = ay * fz - az * fy;
+      const cys = az * fx - ax * fz;
+      const czs = ax * fy - ay * fx;
+      const cl = Math.hypot(cxs, cys, czs) || 1;
+      return { x: cxs / cl, y: cys / cl, z: czs / cl };
     }
-    return { x: sx, y: sy, z: sz };
+    return { x: fx, y: fy, z: fz };
   }
 
   update(dt, sockets, driveInfo, a11y = null, owner = null) {
     if (this._disposed || !this.group) return { live: 0, pathPoints: 0, continuous: true };
+    const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
     const drive = Math.max(0, driveInfo && driveInfo.drive || 0);
     const throttle = Math.max(0, driveInfo && driveInfo.throttle || 0);
     const boost = Math.max(0, driveInfo && driveInfo.boost || 0);
     const speed = Math.max(0, driveInfo && driveInfo.speed || 0);
     const activeDrive = Math.max(drive, throttle, boost > 0 ? 0.55 : 0);
-    this._time += Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
+    this._time += frameDt;
     this._lastDrive = activeDrive;
-    this._lastBoost = boost;
+    // Boost is a binary flag in driveInfo; ease it so ignition has an attack and a settle instead
+    // of a pop. Fast attack (~90 ms) reads as a kick, slower release (~300 ms) as spool-down.
+    const boostTarget = Math.max(0, Math.min(1, boost));
+    const boostTau = boostTarget > this._boostBlend ? 0.09 : 0.3;
+    this._boostBlend += (boostTarget - this._boostBlend)
+      * (1 - Math.exp(-frameDt / Math.max(1e-3, boostTau)));
+    const boostSm = this._boostBlend;
+    this._lastBoost = boostSm;
 
     const idleFloor = this.recipe.drive?.idleFloor ?? 0.04;
     if (activeDrive < idleFloor && speed < 5) {
@@ -544,13 +631,13 @@ export class PlasmaStreamSystem {
     const nSock = list ? Math.min(list.length, 4) : 1;
     const rootMul = 1 + Math.min(0.4, (nSock - 1) * 0.1);
     const driveCfg = this.recipe.drive || {};
-    const boostW = 1 + (driveCfg.boostWidthMul != null ? driveCfg.boostWidthMul - 1 : 0.35) * boost;
-    const boostR = 1 + (driveCfg.boostRadianceMul != null ? driveCfg.boostRadianceMul - 1 : 0.4) * boost;
+    const boostW = 1 + (driveCfg.boostWidthMul != null ? driveCfg.boostWidthMul - 1 : 0.5) * boostSm;
+    const boostR = 1 + (driveCfg.boostRadianceMul != null ? driveCfg.boostRadianceMul - 1 : 0.4) * boostSm;
     const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
     const motionScroll = a11y && a11y.reducedMotion ? 0.12 : 1;
 
     const count = this._buildCenterline(
-      nx, ny, nz, dirX, dirY, dirZ, pathN, activeDrive, boost, rootMul, boostW,
+      nx, ny, nz, dirX, dirY, dirZ, pathN, activeDrive, boostSm, rootMul, boostW, speed,
     );
     if (count < 2) {
       for (let i = 0; i < this._layers.length; i++) {
@@ -561,9 +648,44 @@ export class PlasmaStreamSystem {
       return { live: 0, pathPoints: pathN, continuous: true };
     }
 
-    const scroll = (this._time * 0.7 * motionScroll) % 1;
+    // Continuous downstream flow: drive + boost push the stream; no modulo wrap (the old uScroll
+    // wrap teleported the noise field every cycle).
+    const flowRate = (0.45 + activeDrive * 1.55 + boostSm * 2.3) * motionScroll;
+    const turbulence = boostSm;
+    // Minification compensation: additive filaments average toward black at the far chase
+    // camera. Bounded LOD lift keeps the wake readable without touching close-range exposure.
+    const camD = Math.hypot(this._cam.x - nx, this._cam.y - ny, this._cam.z - nz);
+    const distRad = Math.max(1, Math.min(2.0, camD / 85));
+    const distOpa = Math.max(1, Math.min(1.45, camD / 110));
     this.group.visible = true;
     this._active = true;
+
+    // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
+    const throatCfg = this.recipe.throat || {};
+    const throatRadius = (throatCfg.radiusWU != null ? throatCfg.radiusWU : 1.45)
+      * (0.72 + activeDrive * 0.22 + boostSm * 0.5);
+    const throatOpacity = (throatCfg.opacity != null ? throatCfg.opacity : 0.9) * flashScale;
+    const throatRadiance = (throatCfg.radiance != null ? throatCfg.radiance : 2.4)
+      * (1 + boostSm * 0.35) * flashScale;
+    for (let ti = 0; ti < this._throats.length; ti++) {
+      const throat = this._throats[ti];
+      const sock = list && ti < nSock ? list[ti] : null;
+      if (!sock) { throat.visible = false; continue; }
+      throat.visible = true;
+      throat.position.set(sock.x || 0, sock.y || 0, sock.z || 0);
+      throat.scale.setScalar(throatRadius);
+      if (this._camObj && this._camObj.quaternion) {
+        throat.quaternion.copy(this._camObj.quaternion);
+      } else {
+        throat.rotation.set(0, 0, 0);
+      }
+      const tu = throat.material.uniforms;
+      tu.uTime.value = this._time;
+      tu.uDrive.value = activeDrive;
+      tu.uBoost.value = boostSm;
+      tu.uOpacity.value = throatOpacity;
+      tu.uRadiance.value = throatRadiance;
+    }
 
     for (let li = 0; li < this._layers.length; li++) {
       const L = this._layers[li];
@@ -584,10 +706,14 @@ export class PlasmaStreamSystem {
         this._latZ[i] = lat.z;
       }
       // Pass 2: smooth laterals so billboard orientation does not jump plate-to-plate
+      // (scratch buffers — no per-frame allocation)
       for (let pass = 0; pass < 2; pass++) {
-        const tx = this._latX.slice(0, count);
-        const ty = this._latY.slice(0, count);
-        const tz = this._latZ.slice(0, count);
+        this._latSX.set(this._latX.subarray(0, count));
+        this._latSY.set(this._latY.subarray(0, count));
+        this._latSZ.set(this._latZ.subarray(0, count));
+        const tx = this._latSX;
+        const ty = this._latSY;
+        const tz = this._latSZ;
         for (let i = 0; i < count; i++) {
           const i0 = Math.max(0, i - 1);
           const i1 = Math.min(count - 1, i + 1);
@@ -644,11 +770,12 @@ export class PlasmaStreamSystem {
       L.mesh.visible = count >= 2;
       const u = L.mat.uniforms;
       u.uTime.value = this._time;
-      u.uScroll.value = scroll;
+      u.uFlowRate.value = flowRate;
+      u.uTurbulence.value = turbulence;
       u.uDrive.value = activeDrive;
-      u.uBoost.value = boost;
-      u.uOpacity.value = Math.min(1.05, L.baseOpacity * flashScale * (0.95 + activeDrive * 0.25));
-      u.uRadiance.value = L.baseRadiance * boostR * flashScale * (0.95 + activeDrive * 0.25);
+      u.uBoost.value = boostSm;
+      u.uOpacity.value = Math.min(1.05, L.baseOpacity * flashScale * (0.92 + activeDrive * 0.28) * distOpa);
+      u.uRadiance.value = L.baseRadiance * boostR * flashScale * (0.95 + activeDrive * 0.25) * distRad;
     }
 
     return {

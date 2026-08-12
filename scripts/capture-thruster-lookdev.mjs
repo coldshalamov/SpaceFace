@@ -23,6 +23,11 @@ const OUT = path.resolve(arg('out', path.join(ROOT, '.devshots', 'graphics', 'th
 const ITER = arg('iter', '00');
 const FRAMES = Number(arg('frames', '100')) || 100;
 const BOOST = args.includes('--boost');
+// Optional scenario extensions (gate defaults unchanged): extra gameplay-camera and maneuver views.
+const VIEWS = arg('views', '').split(',').map((v) => v.trim()).filter(Boolean);
+const MANEUVER = arg('maneuver', 'straight');
+const SPEED = arg('speed', '110');
+const DRIVE = arg('drive', '');
 
 function findBrowser() {
   return [
@@ -55,7 +60,11 @@ function startStaticServer(root) {
         }
         const ext = path.extname(filePath).toLowerCase();
         const body = await readFile(filePath);
-        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+        res.writeHead(200, {
+          'Content-Type': MIME[ext] || 'application/octet-stream',
+          // Look-dev MUST serve current source; stale module caches fake "no visual change".
+          'Cache-Control': 'no-store',
+        });
         res.end(body);
       } catch (error) {
         res.writeHead(500); res.end(String(error));
@@ -68,7 +77,7 @@ function startStaticServer(root) {
   });
 }
 
-async function captureView(page, baseUrl, view, bloom) {
+async function captureView(page, baseUrl, view, bloom, maneuver = 'straight') {
   const q = new URLSearchParams({
     view,
     thrust: '1',
@@ -76,8 +85,10 @@ async function captureView(page, baseUrl, view, bloom) {
     bloom: bloom ? '1' : '0',
     frames: String(FRAMES),
     capture: '1',
-    speed: '200',
+    speed: SPEED,
+    maneuver,
   });
+  if (DRIVE !== '') q.set('drive', DRIVE);
   await page.goto(`${baseUrl}/scripts/thruster-lookdev-lab.html?${q}`, {
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
@@ -109,6 +120,13 @@ try {
   const rear = await captureView(page, baseUrl, 'rear', true);
   const rear34 = await captureView(page, baseUrl, 'rear34', true);
   const bloomOff = await captureView(page, baseUrl, 'rear34', false);
+  // Gameplay camera: the view players actually see (chase cam, game speed). Optional views from
+  // --views=a,b: 'game' (chase, default 110 WU/s), plus maneuver arcs when maneuver=turn|s.
+  const extra = {};
+  for (const v of VIEWS) {
+    if (v === 'rear' || v === 'rear34') continue; // already captured above
+    extra[v] = await captureView(page, baseUrl, v, true, MANEUVER);
+  }
 
   async function writePng(name, dataUrl) {
     const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
@@ -117,14 +135,36 @@ try {
   await writePng('rear.png', rear.dataUrl);
   await writePng('rear34.png', rear34.dataUrl);
   await writePng('rear34-bloom-off.png', bloomOff.dataUrl);
+  for (const v of Object.keys(extra)) {
+    await writePng(`${v}${MANEUVER !== 'straight' ? `-${MANEUVER}` : ''}.png`, extra[v].dataUrl);
+    if (extra[v].cropDataUrl) {
+      await writePng(`${v}${MANEUVER !== 'straight' ? `-${MANEUVER}` : ''}-crop.png`, extra[v].cropDataUrl);
+    }
+  }
+  const inspectExtra = {};
+  for (const v of Object.keys(extra)) inspectExtra[v] = extra[v].inspect;
+  const analysisExtra = {};
+  for (const v of Object.keys(extra)) analysisExtra[`${v}Analysis`] = extra[v].analysis || null;
+  analysisExtra.rear34Analysis = rear34.analysis || null;
   await writeFile(path.join(iterDir, 'capture.json'), JSON.stringify({
     iter: ITER,
     boost: BOOST,
+    maneuver: MANEUVER,
+    speed: Number(SPEED),
     rear: rear.inspect,
     rear34: rear34.inspect,
     bloomOff: bloomOff.inspect,
+    ...inspectExtra,
+    ...analysisExtra,
     issues,
   }, null, 2));
+  // ASCII luminance maps straight to stdout: the agent reads shape/direction without thumbnails.
+  for (const [label, payload] of Object.entries({ rear34, ...extra })) {
+    const a = payload.analysis;
+    if (!a) continue;
+    console.log(`\n=== ${label} luminance map (ship@${a.shipScreen} nozzle@${a.nozzleScreen} bbox=${JSON.stringify(a.bbox)} brightPx=${a.brightPx}) ===`);
+    for (const row of a.grid) console.log(row);
+  }
   console.log(`wrote ${iterDir}`);
 } finally {
   await browser.close();
