@@ -407,6 +407,19 @@
       "integration": "live",
       "commit": "9be6fb50",
       "verification": "focused_green"
+    },
+    {
+      "id": "authored-discovery-audio",
+      "date": "2026-08-12",
+      "wf": "WF-13",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Authored discoveries now land with a distinct finite wonder stinger and a brief music duck instead of a generic UI click alone.",
+      "fingerprint": "verb=hear-discovery,subject=authored-poi,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "fbd65428",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
