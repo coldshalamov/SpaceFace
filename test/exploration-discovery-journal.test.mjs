@@ -101,6 +101,10 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   t.state.world.activeSector = {
     id: 'sector_ashfall_reach',
     pois: [{ id: 100, poiId: 'poi_vault', type: 'cache', hidden: true }],
+    hazards: [{
+      id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 },
+      radius: 2000, intensity: 0.8, moving: true,
+    }],
     boss: { entityId: 99, poiId: 'poi_boss' },
   };
   t.state.entities.set(99, {
@@ -135,6 +139,18 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   assert.equal(record.defeated, true);
   assert.equal(record.defeatedAt, 90);
   assert.equal(t.state.world.activeSector.boss, undefined);
+  assert.equal(t.state.world.activeSector.hazards[0].intensity, 0.35,
+    'killing the Deep-Mother calms the live Ashfall radiation burn without removing it');
+  const hazardChange = t.events.find((event) => event.name === 'hazard:changed');
+  assert.deepEqual(hazardChange && hazardChange.payload, {
+    sectorId: 'sector_ashfall_reach',
+    poiId: 'poi_boss',
+    reason: 'boss_defeated',
+    hazardId: 'hazard_ashfall_burn',
+    type: 'radiation',
+    previousIntensity: 0.8,
+    intensity: 0.35,
+  });
   const vault = t.state.world.discovery.sector_ashfall_reach.pois.poi_vault;
   assert.equal(vault.discovered, true);
   assert.equal(vault.identified, false, 'coordinates reveal the destination without claiming the visit');
@@ -199,18 +215,22 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   );
   assert.equal(t.events.filter((event) => event.name === 'news:publish').length, 1,
     'duplicate kill receipts do not repeat the breaking-news item');
+  assert.equal(t.events.filter((event) => event.name === 'hazard:changed').length, 1,
+    'duplicate kill receipts do not repeat the radiation aftermath');
 });
 
 test('a recovered hidden POI rematerializes as a visible destination', () => {
   const t = harness();
   t.state.world.currentSectorId = 'sector_ashfall_reach';
-  const active = { id: 'sector_ashfall_reach', pois: [] };
+  const active = { id: 'sector_ashfall_reach', pois: [], hazards: [] };
   t.state.world.activeSector = active;
   const discovery = {
     pois: {
+      poi_boss: { discovered: true, identified: true, bossDefeated: true },
       poi_vault: { discovered: true, identified: false, revealedByBossDefeat: true },
     },
   };
+  t.state.world.discovery.sector_ashfall_reach = discovery;
   let nextId = 200;
   world.helpers = {
     spawnEntity(definition) {
@@ -225,10 +245,20 @@ test('a recovered hidden POI rematerializes as a visible destination', () => {
     worldRadius: 5500,
     pois: [{ id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true, pos: { x: -1480, z: 320 } }],
   }, active, discovery, () => 0.5);
+  world._spawnHazards({
+    id: 'sector_ashfall_reach',
+    hazards: [{
+      id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 },
+      radius: 2000, intensity: 0.8, moving: true,
+      afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
+    }],
+  }, active);
 
   assert.equal(active.pois.length, 1);
   assert.equal(active.pois[0].hidden, false);
   assert.equal(t.state.entities.get(active.pois[0].id).data.hidden, false);
+  assert.equal(active.hazards[0].intensity, 0.35,
+    'the calmer radiation intensity rematerializes from the durable boss record');
 });
 
 test('investigating the Ancient Vault unlocks its authored aftermath story', () => {

@@ -418,6 +418,14 @@ export const world = {
       delete this.state.world.activeSector.boss;
     }
     if (newlyDefeated) {
+      for (const change of this._applyBossHazardAftermath(sector, poiId)) {
+        this.bus.emit('hazard:changed', {
+          sectorId,
+          poiId,
+          reason: 'boss_defeated',
+          ...change,
+        });
+      }
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
       if (poi && poi.defeatNews && typeof poi.defeatNews.text === 'string') {
         this.bus.emit('news:publish', {
@@ -1792,13 +1800,41 @@ export const world = {
   // Hazard zones: pure data tags on activeSector (flight/combat/ai read these); no entity needed.
   // Centers are converted once from sector-local authorship into galactic-global.
   _spawnHazards(sector, active) {
+    const discovery = this._discoveryFor(sector.id);
     for (const hz of (sector.hazards || [])) {
       const center = this._toGlobal(hz.center, sector.id);
+      const aftermath = hz.afterBossDefeat;
+      const bossRecord = aftermath && discovery.pois && discovery.pois[aftermath.poiId];
+      const intensity = bossRecord && bossRecord.bossDefeated === true
+        ? aftermath.intensity
+        : hz.intensity;
       active.hazards.push({
+        id: hz.id || null,
         type: hz.type, center: { x: center.x, z: center.z },
-        radius: hz.radius, intensity: hz.intensity, moving: !!hz.moving,
+        radius: hz.radius, intensity, moving: !!hz.moving,
       });
     }
+  },
+
+  _applyBossHazardAftermath(sector, poiId) {
+    const active = this.state.world.activeSector;
+    if (!sector || !active || active.id !== sector.id) return [];
+    const changed = [];
+    for (const authored of (sector.hazards || [])) {
+      const aftermath = authored.afterBossDefeat;
+      if (!aftermath || aftermath.poiId !== poiId || !Number.isFinite(aftermath.intensity)) continue;
+      const live = (active.hazards || []).find((hazard) => hazard && hazard.id === authored.id);
+      if (!live || live.intensity === aftermath.intensity) continue;
+      const previousIntensity = live.intensity;
+      live.intensity = aftermath.intensity;
+      changed.push({
+        hazardId: authored.id,
+        type: authored.type,
+        previousIntensity,
+        intensity: live.intensity,
+      });
+    }
+    return changed;
   },
 
   // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).

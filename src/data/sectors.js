@@ -333,7 +333,11 @@ const CORE_SECTORS = [
       { id: 'f_ash_2', type: 'ast_rare_exotic', countWeight: 1.0 },
     ],
     hazards: [
-      { type: 'radiation', center: { x: 0,   z: 0   }, radius: 2000, intensity: 0.8, moving: true },
+      {
+        id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 2000,
+        intensity: 0.8, moving: true,
+        afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
+      },
       { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },
     ],
     pois: [
