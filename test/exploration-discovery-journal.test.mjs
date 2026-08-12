@@ -222,3 +222,39 @@ test('a recovered hidden POI rematerializes as a visible destination', () => {
   assert.equal(active.pois[0].hidden, false);
   assert.equal(t.state.entities.get(active.pois[0].id).data.hidden, false);
 });
+
+test('investigating the Ancient Vault unlocks its authored aftermath story', () => {
+  const t = harness();
+  t.state.simTime = 140;
+  t.state.world.currentSectorId = 'sector_ashfall_reach';
+  t.state.world.activeSector = { id: 'sector_ashfall_reach', pois: [] };
+  t.state.world.discovery.sector_ashfall_reach = {
+    discovered: true,
+    pois: {
+      poi_boss: { discovered: true, identified: true, defeated: true, defeatedAt: 90 },
+      poi_vault: { discovered: true, identified: false, revealedByBossDefeat: true, revealedAt: 90 },
+    },
+  };
+
+  assert.equal(world._onSignalInvestigated({
+    sectorId: 'sector_ashfall_reach',
+    sourceKind: 'salvage',
+    sourceId: 'poi_vault',
+    completedAt: 140,
+  }), true);
+
+  const vault = t.state.world.discovery.sector_ashfall_reach.pois.poi_vault;
+  assert.equal(vault.investigated, true);
+  assert.equal(vault.investigatedAt, 140);
+  const plate = explorationDiscoveryPlates(t.state)
+    .find((entry) => entry.poiId === 'poi_vault');
+  assert.ok(plate);
+  assert.equal(plate.title, 'The Deep-Mother Vault');
+  assert.match(plate.body, /growth archive/);
+  assert.match(plate.body, /empty cradle/);
+  assert.match(plate.note, /2\/3 authored sites found/);
+  assert.equal(
+    t.events.filter((event) => event.name === 'discovery:plateUnlocked' && event.payload.poiId === 'poi_vault').length,
+    1,
+  );
+});

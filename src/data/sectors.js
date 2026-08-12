@@ -347,6 +347,10 @@ const CORE_SECTORS = [
       {
         id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true,
         unlockAfterBossId: 'poi_boss',
+        discoveryPlate: {
+          title: 'The Deep-Mother Vault',
+          body: 'Behind the Iron Maw was no treasury, but a growth archive: hull-seed genealogies, failed warship molts, and one empty cradle still warm enough to register on the scanner.',
+        },
       },
     ],
   },
