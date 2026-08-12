@@ -72,25 +72,27 @@ const LIQUID_FRAG = /* glsl */`
     float n3 = fbm(vec2(flow * 5.0 + 7.0, ang * 0.8 + uTime * 0.3));
     float n4 = vnoise(vec2(flow * 12.0, ang * 1.5 + uTime));
 
-    // ---- Packed stream filaments as angular bright ropes along flow ----
+    // ---- Packed stream filaments as angular bright ropes (ref liquid plasma) ----
     float streamers = 0.0;
-    for (int k = 0; k < 12; k++) {
+    for (int k = 0; k < 14; k++) {
       float fk = float(k);
-      float laneAng = fk * 0.5236;
-      float wob = (vnoise(vec2(flow * 0.6 + fk, fk * 2.1)) - 0.5) * 0.5;
+      float laneAng = fk * 0.4488; // denser pack
+      float wob = (vnoise(vec2(flow * 0.7 + fk, fk * 2.1)) - 0.5) * 0.55;
+      wob += (vnoise(vec2(flow * 1.8 + fk * 0.5, pathT * 4.0)) - 0.5) * 0.25;
       float dAng = abs(mod(ang - laneAng - wob + 3.14159, 6.28318) - 3.14159);
-      float brightness = 0.4 + 0.6 * vnoise(vec2(flow * 2.5 + fk, fk * 4.0));
-      float tipFade = 1.0 - smoothstep(0.35, 0.95, pathT) * 0.65;
-      streamers += exp(-dAng * dAng * 12.0) * brightness * tipFade;
+      float brightness = 0.35 + 0.65 * vnoise(vec2(flow * 3.0 + fk, fk * 4.0));
+      float tipFade = 1.0 - smoothstep(0.3, 0.92, pathT) * 0.55;
+      // Sharp ropes: high contrast so structure survives bloom-off
+      streamers += pow(exp(-dAng * dAng * 18.0), 0.75) * brightness * tipFade;
     }
-    streamers = min(streamers, 2.8);
+    streamers = min(streamers, 3.0);
 
-    // Shell surface density: continuous soft plasma skin (no rectangular cards)
-    float shell = 0.55 + n * 0.35 + n2 * 0.25;
-    shell *= 0.75 + n4 * 0.35; // holes / liquid variation
-    float core = (0.35 + streamers * 0.7) * shell;
-    float body = (0.45 + streamers * 0.45 + n * 0.3) * shell;
-    float sheath = (0.4 + n2 * 0.5 + n3 * 0.25) * shell;
+    // Shell: base mass LOWER so streamers dominate (anti-milky wash)
+    float shell = 0.4 + n * 0.3 + n2 * 0.2;
+    shell *= 0.65 + n4 * 0.4; // liquid holes
+    float core = (0.25 + streamers * 0.9) * shell;
+    float body = (0.3 + streamers * 0.65 + n * 0.25) * shell;
+    float sheath = (0.35 + n2 * 0.45 + n3 * 0.3 + streamers * 0.2) * shell;
 
     float head = (1.0 - smoothstep(0.0, 0.15, pathT)) * smoothstep(0.0, 0.03, pathT);
     float mid = 1.0 - smoothstep(0.06, 0.55, pathT);
@@ -103,31 +105,33 @@ const LIQUID_FRAG = /* glsl */`
 
     float dens;
     if (uLayerRole < 0.5) {
-      dens = 0.2 + streamers * 1.35 + core * 0.7;
+      dens = 0.15 + streamers * 1.5 + core * 0.55;
     } else if (uLayerRole < 1.5) {
-      dens = 0.35 + body * 0.95 + streamers * 0.8 + core * 0.2;
+      dens = 0.28 + body * 0.75 + streamers * 1.05 + core * 0.15;
     } else {
-      dens = 0.3 + sheath * 1.1 + body * 0.3 + streamers * 0.25 + n3 * 0.25;
+      dens = 0.28 + sheath * 1.05 + body * 0.25 + streamers * 0.35 + n3 * 0.3;
     }
 
     float alpha = clamp(uOpacity * dens * along, 0.0, 1.0);
     if (alpha < 0.014) discard;
 
     vec3 whiteHot = vec3(1.0, 0.99, 0.96);
-    vec3 midCyan = mix(uColor, vec3(0.45, 0.88, 1.0), 0.5);
+    vec3 midCyan = mix(uColor, vec3(0.42, 0.86, 1.0), 0.55);
     vec3 deep = mix(uColor, vec3(0.05, 0.14, 0.58), 0.55);
+    // White only on hot root streamers — mid body stays cyan liquid strands
     float hot = clamp(
-      streamers * 0.32 * (1.0 - pathT * 0.75)
-      + head * 0.4
-      + core * 0.2 * (1.0 - pathT * 0.5)
+      streamers * 0.28 * (1.0 - pathT * 0.8)
+      + head * 0.35
+      + core * 0.15 * (1.0 - pathT * 0.55)
       + uBoost * 0.08,
       0.0, 1.0
     );
-    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.5 + n * 0.3 + streamers * 0.2, 0.0, 1.0));
-    col = mix(col, whiteHot, hot * (0.55 + (1.0 - step(0.5, uLayerRole)) * 0.4));
-    col = mix(col, mix(midCyan, whiteHot, 0.75), min(streamers, 1.6) * 0.48 * (1.0 - pathT * 0.3));
-    float glow = uRadiance * (0.4 + streamers * 0.25 + head * 0.18 + body * 0.08 + core * 0.12);
-    col *= min(glow, 1.8);
+    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.45 + n * 0.25 + streamers * 0.25, 0.0, 1.0));
+    col = mix(col, whiteHot, hot * (0.45 + (1.0 - step(0.5, uLayerRole)) * 0.4));
+    // Distinct filament highlights (readable bloom-off)
+    col = mix(col, mix(midCyan, whiteHot, 0.8), min(streamers, 1.8) * 0.55 * (1.0 - pathT * 0.25));
+    float glow = uRadiance * (0.36 + streamers * 0.3 + head * 0.15 + body * 0.06 + core * 0.1);
+    col *= min(glow, 1.55);
 
     gl_FragColor = vec4(col, alpha);
   }
