@@ -5764,6 +5764,41 @@
         "design/program/roadmap/receipts/PQ-048-11-tethys-black-market-discovery-REPORT.md"
       ],
       "brief": "A purchased approximate Tethys lead requires an active scan and tracked physical investigation of the existing black-market buoy, then remembers one idempotent Quiet contact with truthful live-heist access or absence and risk; this state is the prerequisite for PQ-048.19 guidance."
+    },
+    {
+      "id": "PQ-048.19",
+      "parentId": "PQ-048",
+      "priority": 298,
+      "title": "Complete rumor-to-route guidance",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.11"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/sectors.js",
+        "src/systems/scanner.js",
+        "src/systems/world.js",
+        "src/ui/frontierRumorMapLayer.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/signalInvestigationPrompt.js",
+        "src/ui/station/screens/bar.js",
+        "test/pq048-rumor-to-route-guidance.test.mjs",
+        "test/pq048-tethys-black-market-discovery.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-tethys-black-market-discovery.test.mjs test/pq048-rumor-to-route-guidance.test.mjs test/scanner-signal-investigation.test.mjs",
+        "npm run check:map-authority",
+        "npm run check:ui-a11y",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:player-facing-labels",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-19-rumor-to-route-guidance-REPORT.md"
+      ],
+      "brief": "The first purchased rumor gives an accessible Bar-to-map handoff, normal system focus and selectable approximate search ring, manual local scan and physical discovery, durable return guidance, and an expert M/N/C bypass without writing an exact course or navigation route."
     }
   ]
 }
