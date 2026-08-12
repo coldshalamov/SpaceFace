@@ -90,6 +90,11 @@ export const CERES_ORE_CYCLE_POST_CONTINUE_CHUNK = 'post_continue';
 export const CERES_TOOLKIT_ROUTE_RESERVE_TICKS = 7_200;
 export const CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS = 2_400;
 export const CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU = 2_600;
+export const CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES = Object.freeze([
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding',
+]);
 
 export const CERES_FIVE_MINUTE_ACTOR_SLOT_IDS = Object.freeze([
   'ceres_refinery_hauler',
@@ -6768,6 +6773,7 @@ async function launchCeresBrowserRuntime({ root, executablePath, resources }) {
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-extensions',
+      ...CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES,
       '--window-size=1440,900',
       '--force-device-scale-factor=1',
     ],

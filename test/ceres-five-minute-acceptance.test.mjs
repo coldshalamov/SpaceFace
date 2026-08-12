@@ -7,6 +7,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 
 import {
+  CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES,
   CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
   CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU,
   CERES_TOOLKIT_TRANSIT_HANDOFF_RESERVE_TICKS,
@@ -112,6 +113,28 @@ const COLLISION_ANCHOR_SLOT_IDS = Object.freeze([
 ]);
 
 const PLAYER_ENTITY_ID = 1;
+
+test('Browser route disables Chromium occlusion throttling for the fixed simulation horizon', () => {
+  assert.deepEqual(CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES, [
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+  ]);
+
+  const routeSource = readFileSync(
+    new URL('../scripts/lib/ceresFiveMinuteAcceptance.mjs', import.meta.url),
+    'utf8',
+  );
+  const launcherStart = routeSource.indexOf('async function launchCeresBrowserRuntime');
+  const launcherEnd = routeSource.indexOf('async function launchCeresElectronRuntime', launcherStart);
+  const launcherSource = routeSource.slice(launcherStart, launcherEnd);
+  assert.ok(launcherStart >= 0 && launcherEnd > launcherStart,
+    'source audit must isolate the Browser launcher');
+  assert.match(launcherSource,
+    /\.\.\.CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES/,
+    'the Browser launcher must apply the occlusion-safe fixed-horizon policy');
+});
+
 const TOOLKIT_HOSTILES = Object.freeze([
   Object.freeze({
     entityId: 701,
