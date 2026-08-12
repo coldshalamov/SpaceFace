@@ -96,6 +96,8 @@ import {
   FLEET_MAX_SHIPS,
   FLEET_SOCKETS_PER_SHIP,
 } from './thruster/systems/familyFleet.js';
+import { PlasmaStreamSystem } from './thruster/systems/plasmaStream.js';
+import { PLAYER_PLASMA_STREAM_RECIPE } from './thruster/recipes/plasmaStreamRecipe.js';
 import {
   KESTREL_MAIN_PLUME_RECIPE,
   KESTREL_RCS_RECIPE,
@@ -9345,6 +9347,11 @@ export const vfx = {
     const pack = resolveThrusterRecipes(profileId);
     this._productionEngineProfileId = pack.profileId;
 
+    // Unified plasma stream: player hero thruster (soft particles for root + history wake).
+    // Solid ribbon + continuous card plume remain for NPCs / fallback; player hero uses plasma.
+    const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+    plasmaStream.attach(this._scene);
+
     // Massline ribbon: a thin tube energy volume drawn between the player and a tethered target.
     // Reuses the energy shader (turbulent core + halo) rather than the dedicated ribbon shader so it
     // needs no per-vertex aAlong/aSide attributes (the tube geometry already provides them implicitly).
@@ -9366,6 +9373,7 @@ export const vfx = {
       fleet,
       plumeSystem: playerPlume,
       rcsSystem: playerRcs,
+      plasmaStream,
       thrusterTextures: textures,
       engineProfileId: pack.profileId,
       recipePack: pack,
@@ -9376,6 +9384,13 @@ export const vfx = {
       rcsCooldown: 0,
       fleetDiag: null,
     };
+    if (!this._plasmaIdleDrive) {
+      this._plasmaIdleDrive = {
+        drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
+        cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+      };
+    }
+    if (!this._plasmaEmptySockets) this._plasmaEmptySockets = [];
   },
 
   /**
@@ -9425,24 +9440,36 @@ export const vfx = {
       }
       const driveInfo = this._engineDriveFor(player);
       const socketCount = this._writeProductionPlumeSockets(player);
-      const opts = this._productionThrusterOpts;
-      opts.boost = driveInfo.boost;
-      opts.cruise = driveInfo.cruise;
-      opts.reverse = driveInfo.reverse;
-      opts.retroOnly = driveInfo.retroOnly;
-      opts.brake = driveInfo.brake;
-      opts.speedDrive = driveInfo.speedDrive;
-      opts.a11y = a11y;
-      if (energy.plumeSystem && typeof energy.plumeSystem.update === 'function') {
-        const result = energy.plumeSystem.update(
+      if (energy.plasmaStream) {
+        energy.plasmaStream.update(
           dt,
-          driveInfo.drive,
           socketCount > 0 ? this._productionPlumeSocketView : null,
-          opts,
+          driveInfo,
+          a11y,
+          player,
         );
-        energy.plumeDrive = result.drive;
-        energy.boostBlend = result.boostBlend;
-        energy.driveMode = result.mode;
+        energy.plumeDrive = driveInfo.drive;
+        energy.boostBlend = driveInfo.boost;
+      } else {
+        const opts = this._productionThrusterOpts;
+        opts.boost = driveInfo.boost;
+        opts.cruise = driveInfo.cruise;
+        opts.reverse = driveInfo.reverse;
+        opts.retroOnly = driveInfo.retroOnly;
+        opts.brake = driveInfo.brake;
+        opts.speedDrive = driveInfo.speedDrive;
+        opts.a11y = a11y;
+        if (energy.plumeSystem && typeof energy.plumeSystem.update === 'function') {
+          const result = energy.plumeSystem.update(
+            dt,
+            driveInfo.drive,
+            socketCount > 0 ? this._productionPlumeSocketView : null,
+            opts,
+          );
+          energy.plumeDrive = result.drive;
+          energy.boostBlend = result.boostBlend;
+          energy.driveMode = result.mode;
+        }
       }
       this._updateProductionRcs(player, dt, a11y);
       return;
@@ -9459,13 +9486,31 @@ export const vfx = {
     const rgb = this._factionRgbScratch;
 
     // Phase 1 — reclaim persistent slots only (no stale-slot reuse).
+    // Player hero exhaust is the unified plasma stream (not continuous card plume).
+    // Keep the fleet slot for RCS ownership, but write zero continuous-plume sockets/drive.
     if (player && player.alive && player.type === 'ship') {
       const profileId = this._engineProfileIdFor(player);
       const ship = fleet.retainShip(player.id, profileId, true);
       if (ship) {
         const socketCount = this._writeProductionPlumeSockets(player);
-        fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
-        fleet.setShipDrive(ship, this._engineDriveFor(player));
+        const driveInfo = this._engineDriveFor(player);
+        if (energy.plasmaStream) {
+          fleet.setShipSockets(ship, this._plasmaEmptySockets || [], 0);
+          fleet.setShipDrive(ship, this._plasmaIdleDrive || driveInfo);
+          const a11y = this._productionThrusterA11y || {};
+          energy.plasmaStream.update(
+            dt,
+            this._productionPlumeSocketView,
+            driveInfo,
+            a11y,
+            player,
+          );
+          energy.plumeDrive = Math.max(energy.plumeDrive || 0, driveInfo.drive);
+          energy.boostBlend = driveInfo.boost;
+        } else {
+          fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+          fleet.setShipDrive(ship, driveInfo);
+        }
         this._factionThrusterRgbInto(player, rgb);
         fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
         energy.engineProfileId = profileId;
@@ -9507,8 +9552,21 @@ export const vfx = {
       const ship = fleet.admitShip(player.id, profileId, true);
       if (ship) {
         const socketCount = this._writeProductionPlumeSockets(player);
-        fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
-        fleet.setShipDrive(ship, this._engineDriveFor(player));
+        const driveInfo = this._engineDriveFor(player);
+        if (energy.plasmaStream) {
+          fleet.setShipSockets(ship, this._plasmaEmptySockets || [], 0);
+          fleet.setShipDrive(ship, this._plasmaIdleDrive || driveInfo);
+          energy.plasmaStream.update(
+            dt,
+            this._productionPlumeSocketView,
+            driveInfo,
+            this._productionThrusterA11y || {},
+            player,
+          );
+        } else {
+          fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
+          fleet.setShipDrive(ship, driveInfo);
+        }
         this._factionThrusterRgbInto(player, rgb);
         fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
         energy.engineProfileId = profileId;
@@ -9708,6 +9766,7 @@ export const vfx = {
     this._releasePlayerPlumeEventLight();
     const energy = this._energy;
     if (!energy) return;
+    if (energy.plasmaStream) energy.plasmaStream.reset();
     if (energy.fleet) energy.fleet.reset();
     else {
       if (energy.plumeSystem) energy.plumeSystem.reset();
@@ -9786,6 +9845,10 @@ export const vfx = {
   _disposeEnergy() {
     this._releasePlayerPlumeEventLight();
     if (!this._energy) return;
+    if (this._energy.plasmaStream) {
+      this._energy.plasmaStream.dispose();
+      this._energy.plasmaStream = null;
+    }
     if (this._energy.fleet) {
       this._energy.fleet.dispose();
     } else {
@@ -10752,6 +10815,11 @@ export const vfx = {
       const e = this._ribbonCandidates[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       const isPlayer = e.id === state.playerId;
+      // Player history wake is the unified plasma stream — never the solid ribbon snake.
+      if (isPlayer) {
+        this._retireRibbonTrail(e.id, true);
+        continue;
+      }
       if (e.flags && e.flags.docked) {
         this._retireRibbonTrail(e.id, !isPlayer);
         continue;

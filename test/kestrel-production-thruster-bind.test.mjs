@@ -128,8 +128,8 @@ test('live Kestrel plume remains visible when the legacy HDR-energy toggle is of
 });
 
 test('production thruster pose tracks the nozzle every display frame at high speed', () => {
-  // Regression: a 30 Hz cadence left the continuous plume one frame behind the hull at high
-  // speed, which read as a doubled/flickering thruster. Pose must advance every update().
+  // Regression: a 30 Hz cadence left thruster VFX one frame behind the hull at high speed.
+  // Player hero is the unified plasma stream; path live head must advance every update().
   assert.doesNotMatch(vfxSource, /VFX_ENERGY_PLUME_HZ/,
     'production plume must not be cadence-gated behind a reduced-Hz constant');
   assert.doesNotMatch(vfxSource, /_cadenceEnergyPlume/,
@@ -173,10 +173,12 @@ test('production thruster pose tracks the nozzle every display frame at high spe
   const nozzleX = [];
   for (let i = 0; i < 4; i++) {
     player.pos.x = i * 255 * dt;
-    assert.equal(system._updateEnergy(dt), true, `frame ${i} must keep the production plume active`);
-    const batch = system._energy.plumeSystem.layerBatches.find((entry) => entry.writeCount > 0);
-    assert.ok(batch, `frame ${i} must write at least one plume instance`);
-    nozzleX.push(batch.offset[0]);
+    assert.equal(system._updateEnergy(dt), true, `frame ${i} must keep the production thruster active`);
+    const plasma = system._energy.plasmaStream;
+    assert.ok(plasma, `frame ${i} must own the unified plasma stream`);
+    const path = plasma.inspect().path;
+    assert.ok(path.hasLive, `frame ${i} plasma path must have a live nozzle head`);
+    nozzleX.push(path.liveX);
   }
 
   for (let i = 1; i < nozzleX.length; i++) {
