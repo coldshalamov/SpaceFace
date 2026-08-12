@@ -5791,6 +5791,39 @@
       "brief": "A purchased approximate Tethys lead requires an active scan and tracked physical investigation of the existing black-market buoy, then remembers one idempotent Quiet contact with truthful live-heist access or absence and risk; this state is the prerequisite for PQ-048.19 guidance."
     },
     {
+      "id": "PQ-048.12",
+      "parentId": "PQ-048",
+      "priority": 291,
+      "title": "Complete Vesta ore-cache discovery",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.19"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/sectors.js",
+        "src/data/vestaOreCache.js",
+        "src/systems/cargo.js",
+        "src/systems/scanner.js",
+        "src/systems/shipLedger.js",
+        "src/systems/world.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/recoveryEncounterPrompt.js",
+        "src/ui/vestaOreCacheMapLayer.js",
+        "test/pq048-vesta-ore-cache-discovery.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-vesta-ore-cache-discovery.test.mjs",
+        "node --test test/pq048-vesta-ore-cache-discovery.test.mjs test/pickup-partial-acceptance.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-12-vesta-ore-cache-discovery-REPORT.md"
+      ],
+      "brief": "Vesta's physical relay evidence enables a manual scan-led approximate ring, then a gated physical cache choice whose durable map, ledger, faction, cargo, and recovery consequences stay source-owned; it uses PQ-048.19's landed manual-investigation behavior without inventing a new ledger type."
+    },
+    {
       "id": "PQ-048.19",
       "parentId": "PQ-048",
       "priority": 298,
