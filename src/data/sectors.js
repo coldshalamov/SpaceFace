@@ -343,6 +343,10 @@ const CORE_SECTORS = [
           title: 'Iron Maw Defeated',
           body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',
         },
+        defeatNews: {
+          kind: 'combat-aftermath',
+          text: 'ASHFALL RELAY: the Iron Maw is dead. Salvagers are already racing for the vault coordinates released from its arena signal.',
+        },
       },
       {
         id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true,

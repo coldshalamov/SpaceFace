@@ -419,6 +419,16 @@ export const world = {
     }
     if (newlyDefeated) {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
+      if (poi && poi.defeatNews && typeof poi.defeatNews.text === 'string') {
+        this.bus.emit('news:publish', {
+          id: `boss-defeated:${sectorId}:${poiId}`,
+          text: poi.defeatNews.text,
+          kind: poi.defeatNews.kind || 'combat-aftermath',
+          sectorId,
+          poiId,
+          source: 'boss-defeated',
+        });
+      }
       for (const unlock of (sector && sector.pois || [])) {
         if (!unlock || unlock.unlockAfterBossId !== poiId) continue;
         const unlockRec = disc.pois[unlock.id]

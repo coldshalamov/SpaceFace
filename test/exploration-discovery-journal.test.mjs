@@ -166,6 +166,12 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   assert.equal(plate.title, 'Iron Maw Defeated');
   assert.match(plate.meta, /SITE RESOLVED/);
   assert.match(plate.body, /Vael-grown Deep-Mother/);
+  const headline = t.events.find((event) => event.name === 'news:publish');
+  assert.ok(headline);
+  assert.equal(headline.payload.id, 'boss-defeated:sector_ashfall_reach:poi_boss');
+  assert.equal(headline.payload.kind, 'combat-aftermath');
+  assert.match(headline.payload.text, /Iron Maw is dead/);
+  assert.match(headline.payload.text, /vault coordinates/);
   assert.match(plate.note, /1\/3 authored sites found · 33% sector exploration/);
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);
 
@@ -191,6 +197,8 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
     1,
     'duplicate kill receipts do not repeat the coordinate reveal',
   );
+  assert.equal(t.events.filter((event) => event.name === 'news:publish').length, 1,
+    'duplicate kill receipts do not repeat the breaking-news item');
 });
 
 test('a recovered hidden POI rematerializes as a visible destination', () => {
