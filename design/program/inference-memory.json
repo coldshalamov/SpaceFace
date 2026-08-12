@@ -446,6 +446,19 @@
       "integration": "live",
       "commit": "1282ac57",
       "verification": "focused_green"
+    },
+    {
+      "id": "quiessence-census-hud",
+      "date": "2026-08-12",
+      "wf": "WF-14",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The live Band HUD now shows deduplicated Quiessence hull-census progress and refreshes accessibly after each scan.",
+      "fingerprint": "verb=track-census,subject=quiessence-hulls,sector=sector_pallas_drift,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "2706a7cc",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
