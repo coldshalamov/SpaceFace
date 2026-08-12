@@ -4,6 +4,7 @@
 
 import { isUiInteractionFenced } from './input.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../data/frontierRumors.js';
+import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './screens/codex.js';
 
 const STYLE_ID = 'sf-signal-investigation-style';
 const RESULT_TTL_S = 8;
@@ -49,6 +50,15 @@ function safeRecord(payload) {
   };
 }
 
+export function tethysCodexTargetForCompletion(state, payload) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (!payload || payload.sectorId !== discovery.sectorId || payload.sourceId !== discovery.poiId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  if (!record || record.phase !== 'contacted' || record.contactId !== discovery.contactId) return null;
+  return { sectorId: discovery.sectorId, poiId: discovery.poiId };
+}
+
 export function createSignalInvestigationPrompt(ctx) {
   const { state, bus } = ctx;
   injectStyle();
@@ -80,6 +90,7 @@ export function createSignalInvestigationPrompt(ctx) {
   }
 
   function hide() {
+    if (active && active.codexTarget) clearCodexDiscoveryRequest();
     root.hidden = true;
     root.className = '';
     active = null;
@@ -93,6 +104,7 @@ export function createSignalInvestigationPrompt(ctx) {
     if (!canSurface()) return false;
     const record = safeRecord(payload);
     if (!record) return false;
+    if (active && active.codexTarget) clearCodexDiscoveryRequest();
     active = {
       mode: 'result',
       signalId: record.id,
@@ -114,6 +126,7 @@ export function createSignalInvestigationPrompt(ctx) {
       : 'MOVE LATERALLY · PULSE AGAIN');
     el.track.hidden = !record.trackable;
     el.track.disabled = !record.trackable;
+    el.track.removeAttribute('aria-keyshortcuts');
     text(el.track, record.manualInvestigation ? 'A  INVESTIGATE MANUALLY' : 'A  TRACK / INVESTIGATE');
     root.setAttribute('aria-label', record.trackable
       ? `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} ${record.manualInvestigation ? 'Investigate manually.' : 'Track or investigate.'}`
@@ -124,6 +137,7 @@ export function createSignalInvestigationPrompt(ctx) {
 
   function showTracked(payload) {
     if (!canSurface() || !payload || !payload.classification) return false;
+    if (active && active.codexTarget) clearCodexDiscoveryRequest();
     active = { mode: 'receipt', signalId: payload.id || payload.signalId, hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
     root.className = 'sf-signal--receipt';
     text(el.flag, 'NAV FIX ARMED');
@@ -133,6 +147,7 @@ export function createSignalInvestigationPrompt(ctx) {
     text(el.detail, 'Course plotted. Follow the primary objective marker to investigate.');
     text(el.more, 'OBJECTIVE + MAP UPDATED');
     el.track.hidden = true;
+    el.track.removeAttribute('aria-keyshortcuts');
     root.setAttribute('aria-label', `${payload.classification} tracked. Course plotted. Follow the primary objective marker to investigate.`);
     root.hidden = false;
     return true;
@@ -140,6 +155,7 @@ export function createSignalInvestigationPrompt(ctx) {
 
   function showInvestigating(payload) {
     if (!canSurface() || !payload || !payload.classification) return false;
+    if (active && active.codexTarget) clearCodexDiscoveryRequest();
     active = {
       mode: 'receipt', signalId: payload.id || payload.signalId,
       hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S,
@@ -152,32 +168,36 @@ export function createSignalInvestigationPrompt(ctx) {
     text(el.detail, 'Fly to the scanner return yourself. Close range records the source; no course was set.');
     text(el.more, 'NO WAYPOINT · NO AUTOPILOT');
     el.track.hidden = true;
+    el.track.removeAttribute('aria-keyshortcuts');
     root.setAttribute('aria-label', `${payload.classification} manual investigation armed. Fly to the scanner return yourself; no course was set.`);
     root.hidden = false;
     return true;
   }
 
-  function isTethysContactCompletion(payload) {
-    const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
-    if (!payload || payload.sectorId !== discovery.sectorId || payload.sourceId !== discovery.poiId) return false;
-    const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
-      && state.world.frontierRumors.byId[discovery.rumorId];
-    return !!(record && record.phase === 'contacted' && record.contactId === discovery.contactId);
-  }
-
   function showInvestigated(payload) {
     if (!canSurface() || !payload) return false;
-    active = { mode: 'receipt', signalId: payload.signalId, hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    if (active && active.codexTarget) clearCodexDiscoveryRequest();
+    const codexTarget = tethysCodexTargetForCompletion(state, payload);
+    active = {
+      mode: 'receipt',
+      signalId: payload.signalId,
+      codexTarget,
+      hideAt: Number(state.simTime || 0) + (codexTarget ? RESULT_TTL_S : RECEIPT_TTL_S),
+    };
     root.className = 'sf-signal--receipt sf-signal--complete';
-    if (isTethysContactCompletion(payload)) {
+    if (codexTarget) {
+      requestCodexDiscovery(codexTarget);
       text(el.flag, 'QUIET CONTACT REMEMBERED');
       text(el.confidence, 'SAVED');
       text(el.headline, 'TETHYS BLACK MARKET');
       text(el.meta, 'DISCOVERY RECEIPT · SAVED');
       text(el.detail, 'Return to Tethys Bar for the risky Capsule Run lead. Law attention can still leave you with no payout.');
       text(el.more, 'NO COURSE SET · NO DUPLICATE REWARD');
-      el.track.hidden = true;
-      root.setAttribute('aria-label', 'Quiet contact remembered and saved. Return to Tethys Bar for the risky Capsule Run lead.');
+      el.track.hidden = false;
+      el.track.disabled = false;
+      el.track.setAttribute('aria-keyshortcuts', 'K');
+      text(el.track, 'K / Y  VIEW CODEX');
+      root.setAttribute('aria-label', 'Quiet contact remembered and saved. View the saved Tethys Black Market discovery in Codex with K or controller Y. Return to Tethys Bar for the risky Capsule Run lead.');
       root.hidden = false;
       return true;
     }
@@ -188,6 +208,7 @@ export function createSignalInvestigationPrompt(ctx) {
     text(el.detail, 'Source reached and recorded. Local salvage, distress, or anomaly systems retain authority over any outcome.');
     text(el.more, 'NO DUPLICATE REWARD');
     el.track.hidden = true;
+    el.track.removeAttribute('aria-keyshortcuts');
     root.setAttribute('aria-label', `${payload.classification || 'Signal'} investigation complete and saved.`);
     root.hidden = false;
     return true;
@@ -199,6 +220,13 @@ export function createSignalInvestigationPrompt(ctx) {
     const signalId = active.signalId;
     el.track.disabled = true;
     bus.emit(active.manualInvestigation ? 'signal:investigate' : 'signal:track', { signalId, source });
+    return true;
+  }
+
+  function openCodex(source = 'click') {
+    if (isUiInteractionFenced(state) || !active || !active.codexTarget) return false;
+    requestCodexDiscovery(active.codexTarget);
+    bus.emit('ui:pushScreen', { id: 'codex', source: `signal-investigation:${source}` });
     return true;
   }
 
@@ -219,7 +247,8 @@ export function createSignalInvestigationPrompt(ctx) {
 
   function onTrackClick() {
     if (isUiInteractionFenced(state)) return;
-    track('click');
+    if (active && active.codexTarget) openCodex('click');
+    else track('click');
   }
   el.track.addEventListener('click', onTrackClick);
   bus.on('signal:scanResults', showResults);
@@ -232,7 +261,7 @@ export function createSignalInvestigationPrompt(ctx) {
   bus.on('game:new', hide);
   bus.on('game:load', hide);
 
-  return { el: root, tick, hide, destroy, showResults, showTracked, showInvestigated, track };
+  return { el: root, tick, hide, destroy, showResults, showTracked, showInvestigated, track, openCodex };
 }
 
 function injectStyle() {

@@ -9,7 +9,9 @@
 // state.story + the pure-data narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
 
 const STYLE_ID = 'sf-codex-style';
@@ -44,6 +46,8 @@ function injectStyle() {
   .sf-codex-entry .sf-codex-body { font-size:13.5px; line-height:1.5; color:var(--ink, #f1ede2); }
   .sf-codex-entry .sf-codex-note { font-size:11.5px; line-height:1.45; color:var(--ink-dim, #b3afa2);
     font-style:italic; margin-top:8px; border-top:1px dashed rgba(150,140,120,.18); padding-top:6px; }
+  .sf-codex-entry:focus { outline:2px solid var(--accent-3, #ffc064); outline-offset:2px;
+    border-color:var(--accent, #db9838); }
   .sf-codex-locked { opacity:.45; font-style:italic; color:var(--ink-mute, #8a877d); }
   .sf-codex-graffiti { font-family:var(--mono, monospace); letter-spacing:.08em; text-transform:uppercase;
     font-size:13px; color:var(--ink, #f1ede2); }
@@ -130,6 +134,67 @@ export const SIGNAL_ARCHIVE = Object.freeze([
 // Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.
 let _requestedTab = null;
 export function requestCodexTab(tab) { if (TABS.includes(tab)) _requestedTab = tab; }
+
+// A discovery completion can request one exact, already-projected plate. This is UI-local by
+// design: world discovery remains the durable record and Continue reconstructs the plate from it.
+let _requestedDiscovery = null;
+
+function normalizeDiscoveryTarget(target) {
+  const sectorId = target && typeof target.sectorId === 'string' ? target.sectorId.trim() : '';
+  const poiId = target && typeof target.poiId === 'string' ? target.poiId.trim() : '';
+  return sectorId && poiId ? { sectorId, poiId } : null;
+}
+
+export function requestCodexDiscovery(target) {
+  const normalized = normalizeDiscoveryTarget(target);
+  if (!normalized) return false;
+  _requestedDiscovery = normalized;
+  return true;
+}
+
+export function clearCodexDiscoveryRequest() {
+  _requestedDiscovery = null;
+}
+
+export function consumeCodexDiscoveryRequest(state) {
+  const target = _requestedDiscovery;
+  _requestedDiscovery = null;
+  if (!target) return null;
+  return explorationDiscoveryPlates(state).find((plate) => (
+    plate.sectorId === target.sectorId && plate.poiId === target.poiId
+  )) || null;
+}
+
+export function focusCodexDiscoveryEntry(entry) {
+  if (!entry || typeof entry.focus !== 'function') return false;
+  try {
+    entry.focus({ preventScroll: true });
+  } catch (_) {
+    try { entry.focus(); } catch (_) { return false; }
+  }
+  return true;
+}
+
+export function tethysCodexReturnIntent(state, plate) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (!plate || plate.id !== `${discovery.sectorId}:${discovery.poiId}`
+    || plate.sectorId !== discovery.sectorId || plate.poiId !== discovery.poiId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  if (!record || record.phase !== 'contacted' || record.contactId !== discovery.contactId) return null;
+  return {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: discovery.sectorId,
+    stationId: discovery.stationId,
+    label: 'Tethys Trade Hub',
+    source: 'codex:tethys-black-market-return',
+  };
+}
+
+export function openTethysCodexReturn(ctx, plate) {
+  const intent = tethysCodexReturnIntent(ctx && ctx.state, plate);
+  return intent ? openGalaxyMap(ctx, intent) : false;
+}
 const COMMS_CATEGORIES = [
   ['Ambient', 'ambient'], ['Traps', 'traps'], ['Personal', 'personal'],
   ['Late Game', 'late'], ['Story', 'story'],
@@ -316,8 +381,29 @@ export const codexScreen = {
   onShow(ctx) {
     this._ctx = ctx;
     this._visible = true;
-    // Honor a deep-link request (main menu "Signal Archive" opens straight to that tab).
-    if (_requestedTab) { this._activeTab = _requestedTab; _requestedTab = null; if (this._body) this._render(ctx); }
+    // Consume both requests once. A valid plate is more specific than a tab request; a stale plate
+    // fails closed and leaves the ordinary requested tab available.
+    const requestedTab = _requestedTab;
+    _requestedTab = null;
+    const requestedPlate = consumeCodexDiscoveryRequest(ctx && ctx.state);
+    this._requestedDiscoveryId = requestedPlate ? requestedPlate.id : null;
+    if (requestedPlate) {
+      this._activeTab = 'Discoveries';
+      this._query = '';
+    } else if (requestedTab) {
+      this._activeTab = requestedTab;
+    }
+    if ((requestedPlate || requestedTab) && this._body) this._render(ctx);
+    // screenManager refreshes immediately after onShow. Keep the requested identity through that
+    // pass so its explicit in-screen focus wins, then discard the UI-only request.
+    if (requestedPlate) {
+      const requestedId = requestedPlate.id;
+      const clearRequested = () => {
+        if (this._requestedDiscoveryId === requestedId) this._requestedDiscoveryId = null;
+      };
+      if (typeof queueMicrotask === 'function') queueMicrotask(clearRequested);
+      else Promise.resolve().then(clearRequested);
+    }
     // The Ledger panel owns local page-cursor/evidence-detail state; an explicit show may refresh it.
     if (this._activeTab === 'Ledger' && this._ledgerPanel) { try { this._ledgerPanel.onShow(); } catch (_) {} }
   },
@@ -420,12 +506,24 @@ export const codexScreen = {
       return;
     }
     for (const plate of plates) {
-      const entry = el('div', 'sf-codex-entry');
+      const entry = el('article', 'sf-codex-entry');
+      const isRequested = plate.id === this._requestedDiscoveryId;
+      entry.dataset.codexDiscoveryId = plate.id;
+      if (isRequested) entry.tabIndex = -1;
       entry.appendChild(el('h3', null, plate.title));
       entry.appendChild(el('div', 'sf-codex-meta', plate.meta));
       entry.appendChild(el('div', 'sf-codex-body', plate.body));
       entry.appendChild(el('div', 'sf-codex-note', plate.note));
+      if (tethysCodexReturnIntent(ctx && ctx.state, plate)) {
+        const returnToTethys = el('button', 'sf-btn', 'Show Tethys Trade Hub');
+        returnToTethys.type = 'button';
+        returnToTethys.style.marginTop = '10px';
+        returnToTethys.setAttribute('aria-label', 'Show Tethys Trade Hub on the map');
+        returnToTethys.addEventListener('click', () => openTethysCodexReturn(ctx, plate));
+        entry.appendChild(returnToTethys);
+      }
       this._body.appendChild(entry);
+      if (isRequested) focusCodexDiscoveryEntry(entry);
     }
   },
 
