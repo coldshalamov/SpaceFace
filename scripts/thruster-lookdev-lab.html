@@ -118,7 +118,8 @@
     let t = 0;
     let frame = 0;
     const owner = { id: 'lab' };
-    const socket = { x: -2.6, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
+    // ContinuousPlume / production axis: jet extends along -ax. Ship faces +X, exhaust -X ⇒ ax=+1.
+    const socket = { x: -2.6, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     let shipX = 0;
 
     function tick() {

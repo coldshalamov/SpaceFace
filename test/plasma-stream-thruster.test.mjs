@@ -59,6 +59,7 @@ test('PlasmaStreamSystem is continuous liquid strips, not point beads', () => {
   assert.equal(points, 0, 'must not use point-sprite bead medium');
   assert.ok(meshes >= 3, `expected multi-layer continuous meshes, got ${meshes}`);
 
+  // ContinuousPlume convention: ax opposite exhaust. Ship moves -X, exhaust +X (trail) ⇒ ax=-1.
   const sockets = [{ x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 }];
   const drive = { drive: 1, throttle: 1, boost: 0.25, speed: 140 };
   const owner = { id: 'player' };
@@ -90,4 +91,56 @@ test('player plasma recipe is continuous liquid not dual bead/cone stack', () =>
   assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'core'));
   assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'body'));
   assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'sheath'));
+});
+
+test('plasma stream trail extends along ContinuousPlume -ax exhaust and keeps history wake', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  // Ship moves +X (nose +X). Production ax = -exhaust = -(-X wait):
+  // exhaust aft = -X, ContinuousPlume ax = -exhaust = +X.
+  const sockets = [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+  const drive = { drive: 1, throttle: 1, boost: 0, speed: 160 };
+  const owner = { id: 'dir-test' };
+  for (let i = 0; i < 50; i++) {
+    sockets[0].x = i * 2.0;
+    stream.update(1 / 60, sockets, drive, { reducedMotion: false }, owner);
+  }
+  const info = stream.inspect();
+  assert.ok(info.active, 'stream active');
+  assert.ok(info.pointCount >= 8, `expected long trail samples, got ${info.pointCount}`);
+  // Strip mesh positions: root near live nozzle, tip further aft (lower X than nozzle)
+  let mesh = null;
+  stream.group.traverse((o) => {
+    if (o.isMesh && o.visible && o.geometry?.attributes?.position) mesh = o;
+  });
+  assert.ok(mesh, 'expected a visible strip mesh');
+  const pos = mesh.geometry.attributes.position.array;
+  const liveX = sockets[0].x;
+  // Sample a mid-strip vertex pair near the tip (high path UV stored in uvs)
+  const uvs = mesh.geometry.attributes.uv.array;
+  let tipX = liveX;
+  let rootX = liveX;
+  let tipN = 0;
+  let rootN = 0;
+  const vCount = pos.length / 3;
+  for (let i = 0; i < vCount; i++) {
+    const s = uvs[i * 2];
+    const x = pos[i * 3];
+    if (s < 0.08) { rootX += x; rootN += 1; }
+    if (s > 0.75) { tipX += x; tipN += 1; }
+  }
+  assert.ok(rootN > 0 && tipN > 0, 'need root and tip verts');
+  rootX /= rootN;
+  tipX /= tipN;
+  // Exhaust aft (-X): tip should be behind live nozzle (smaller X)
+  assert.ok(
+    tipX < liveX - 2.0,
+    `trail tip should be aft of nozzle: tipX=${tipX.toFixed(2)} liveX=${liveX.toFixed(2)}`,
+  );
+  assert.ok(
+    tipX < rootX - 1.0,
+    `tip should be further aft than root: tip=${tipX.toFixed(2)} root=${rootX.toFixed(2)}`,
+  );
+  stream.dispose();
 });

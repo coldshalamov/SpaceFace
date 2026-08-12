@@ -354,61 +354,73 @@ export class PlasmaStreamSystem {
     this.group = null;
   }
 
+  /**
+   * Build continuous centerline: path history is the wake (live nozzle → oldest).
+   * When history is thin (hover/start), pad a short synthetic near-jet along exhaust.
+   * Never append history after a long synthetic jet — that folded the trail back on itself.
+   *
+   * Axis convention matches ContinuousPlume / production sockets:
+   * jet extends along **-ax** (vfx writes ax = -exhaust so -ax = exhaust).
+   */
   _buildCenterline(nx, ny, nz, dirX, dirY, dirZ, pathN, activeDrive, boost, rootMul, boostW) {
+    // Exhaust direction (matches ContinuousPlume: world = nozzle - axis * along)
+    const ex = -dirX;
+    const ey = -dirY;
+    const ez = -dirZ;
     const nearLen = (this.recipe.path?.nearJetLengthWU != null)
       ? this.recipe.path.nearJetLengthWU
       : 15;
-    const nearN = Math.min(56, Math.floor(this.nSeg * 0.58));
-    const histBudget = this.nSeg - nearN;
-    const histUse = Math.min(Math.max(0, pathN - 1), histBudget);
     let count = 0;
     const swaySeed = this._time * 0.7;
 
-    for (let j = 0; j < nearN && count < this.nSeg; j++) {
-      const u = j / Math.max(1, nearN - 1);
-      const dist = u * nearLen * (0.88 + activeDrive * 0.22 + boost * 0.18);
-      const s = u * 0.48;
-      samplePlasmaEnvelope(s, activeDrive, boost, this._env);
-      // Mild sway only — strong sway folded billboards into visible plate edges
-      const sway = Math.sin(swaySeed + u * 3.2) * 0.045 * u
-        + Math.sin(swaySeed * 1.7 + u * 6.5) * 0.02 * u;
-      const pxp = -dirZ;
-      const pzp = dirX;
-      this._cx[count] = nx + dirX * dist + pxp * sway;
-      this._cy[count] = ny + dirY * dist + Math.sin(swaySeed * 0.9 + u * 4.0) * 0.015 * u;
-      this._cz[count] = nz + dirZ * dist + pzp * sway;
-      this._ax[count] = dirX;
-      this._ay[count] = dirY;
-      this._az[count] = dirZ;
-      let w = this._env.width * rootMul * boostW;
-      if (j === 0) w *= 0.88;
-      else if (j < 4) w *= 1.1;
-      w *= 0.92 + 0.14 * hash2(j, Math.floor(swaySeed * 10));
-      this._widths[count] = w;
-      count++;
-    }
-
-    for (let h = 1; h <= histUse && count < this.nSeg; h++) {
-      const sHist = 0.48 + (h / Math.max(1, histUse)) * 0.52;
-      samplePlasmaEnvelope(sHist, activeDrive, boost, this._env);
-      this._cx[count] = this._pathX[h];
-      this._cy[count] = ny;
-      this._cz[count] = this._pathZ[h];
-      const px = this._cx[count - 1];
-      const py = this._cy[count - 1];
-      const pz = this._cz[count - 1];
-      let tx = px - this._cx[count];
-      let ty = py - this._cy[count];
-      let tz = pz - this._cz[count];
-      const tl = Math.hypot(tx, ty, tz) || 1;
-      this._ax[count] = tx / tl;
-      this._ay[count] = ty / tl;
-      this._az[count] = tz / tl;
-      this._widths[count] = this._env.width * rootMul * boostW * (0.9 + 0.15 * hash2(h, 5));
-      count++;
+    // Prefer real path history as the continuous trail (live head = nozzle).
+    const useHistory = pathN >= 3;
+    if (useHistory) {
+      // Densify path samples into strip segments (preserve order live→oldest).
+      const target = Math.min(this.nSeg, Math.max(pathN, Math.floor(this.nSeg * 0.85)));
+      for (let i = 0; i < target && count < this.nSeg; i++) {
+        const t = target <= 1 ? 0 : i / (target - 1);
+        const src = t * (pathN - 1);
+        const i0 = Math.min(pathN - 2, Math.floor(src));
+        const i1 = i0 + 1;
+        const f = src - i0;
+        const px = this._pathX[i0] * (1 - f) + this._pathX[i1] * f;
+        const pz = this._pathZ[i0] * (1 - f) + this._pathZ[i1] * f;
+        // First sample is live nozzle — pin to exact socket so root stays in the bell.
+        this._cx[count] = i === 0 ? nx : px;
+        this._cy[count] = ny;
+        this._cz[count] = i === 0 ? nz : pz;
+        const s = t;
+        samplePlasmaEnvelope(s, activeDrive, boost, this._env);
+        let w = this._env.width * rootMul * boostW;
+        if (i === 0) w *= 0.9;
+        else if (i < 3) w *= 1.08;
+        w *= 0.96 + 0.08 * hash2(i, Math.floor(swaySeed * 10));
+        this._widths[count] = w;
+        count++;
+      }
+    } else {
+      // Hover / cold-start: short synthetic near-jet along exhaust only (no history yet).
+      const nearN = Math.min(this.nSeg, 48);
+      for (let j = 0; j < nearN && count < this.nSeg; j++) {
+        const u = j / Math.max(1, nearN - 1);
+        const dist = u * nearLen * (0.75 + activeDrive * 0.2 + boost * 0.15);
+        const s = u * 0.55;
+        samplePlasmaEnvelope(s, activeDrive, boost, this._env);
+        const sway = Math.sin(swaySeed + u * 3.2) * 0.03 * u;
+        const pxp = -ez;
+        const pzp = ex;
+        this._cx[count] = nx + ex * dist + pxp * sway;
+        this._cy[count] = ny + ey * dist;
+        this._cz[count] = nz + ez * dist + pzp * sway;
+        this._widths[count] = this._env.width * rootMul * boostW
+          * (0.96 + 0.08 * hash2(j, 3));
+        count++;
+      }
     }
 
     if (count > 2) {
+      // Width smooth only — do NOT average positions (that collapsed the wake length).
       const tmp = new Float32Array(count);
       for (let i = 0; i < count; i++) {
         const a = this._widths[Math.max(0, i - 1)];
@@ -417,42 +429,23 @@ export class PlasmaStreamSystem {
         tmp[i] = a * 0.25 + b * 0.5 + c * 0.25;
       }
       for (let i = 0; i < count; i++) this._widths[i] = tmp[i];
-      // Smooth centerline so consecutive billboard quads share nearly coplanar faces
-      const sx = new Float32Array(count);
-      const sy = new Float32Array(count);
-      const sz = new Float32Array(count);
-      for (let pass = 0; pass < 3; pass++) {
-        for (let i = 0; i < count; i++) {
-          const i0 = Math.max(0, i - 1);
-          const i1 = Math.min(count - 1, i + 1);
-          const i2 = Math.max(0, i - 2);
-          const i3 = Math.min(count - 1, i + 2);
-          sx[i] = this._cx[i] * 0.4 + this._cx[i0] * 0.22 + this._cx[i1] * 0.22
-            + this._cx[i2] * 0.08 + this._cx[i3] * 0.08;
-          sy[i] = this._cy[i] * 0.4 + this._cy[i0] * 0.22 + this._cy[i1] * 0.22
-            + this._cy[i2] * 0.08 + this._cy[i3] * 0.08;
-          sz[i] = this._cz[i] * 0.4 + this._cz[i0] * 0.22 + this._cz[i1] * 0.22
-            + this._cz[i2] * 0.08 + this._cz[i3] * 0.08;
-        }
-        // Keep nozzle root pinned so root heat stays at bell
-        sx[0] = this._cx[0]; sy[0] = this._cy[0]; sz[0] = this._cz[0];
-        for (let i = 0; i < count; i++) {
-          this._cx[i] = sx[i];
-          this._cy[i] = sy[i];
-          this._cz[i] = sz[i];
-        }
-      }
-      // Recompute tangents from smoothed path
+
+      // Tangents along path (live→oldest). Lateral uses this for billboard frame.
       for (let i = 0; i < count; i++) {
         const i0 = Math.max(0, i - 1);
         const i1 = Math.min(count - 1, i + 1);
-        let tx = this._cx[i0] - this._cx[i1];
-        let ty = this._cy[i0] - this._cy[i1];
-        let tz = this._cz[i0] - this._cz[i1];
+        // Point tangent toward older wake (from nozzle toward tip)
+        let tx = this._cx[i1] - this._cx[i0];
+        let ty = this._cy[i1] - this._cy[i0];
+        let tz = this._cz[i1] - this._cz[i0];
         const tl = Math.hypot(tx, ty, tz) || 1;
         this._ax[i] = tx / tl;
         this._ay[i] = ty / tl;
         this._az[i] = tz / tl;
+      }
+      // Root tangent = exhaust when path is degenerate
+      if (count >= 1 && Math.hypot(this._ax[0], this._ay[0], this._az[0]) < 1e-6) {
+        this._ax[0] = ex; this._ay[0] = ey; this._az[0] = ez;
       }
     }
 
@@ -524,8 +517,10 @@ export class PlasmaStreamSystem {
     }
 
     const list = sockets && sockets.length ? sockets : null;
-    const primary = list ? list[0] : { x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
-    let dirX = Number.isFinite(primary.ax) ? primary.ax : -1;
+    // Production sockets (ContinuousPlume convention): ax points opposite exhaust;
+    // jet extends along -ax. Default ax=+1 (ship +X) ⇒ exhaust -X.
+    const primary = list ? list[0] : { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    let dirX = Number.isFinite(primary.ax) ? primary.ax : 1;
     let dirY = Number.isFinite(primary.ay) ? primary.ay : 0;
     let dirZ = Number.isFinite(primary.az) ? primary.az : 0;
     const dLen = Math.hypot(dirX, dirY, dirZ) || 1;

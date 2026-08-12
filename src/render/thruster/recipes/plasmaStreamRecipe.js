@@ -33,8 +33,9 @@ export function samplePlasmaEnvelope(s, drive = 1, boost = 0, out = null) {
     * (0.82 + d * 0.35)
     * taper;
   const heat = Math.min(1.35, root * 1.15 + jet * 0.55 + b * 0.3 + d * 0.15 + belly * 0.2);
-  const opacity = (0.65 + root * 0.35 + jet * 0.25 + d * 0.15)
-    * (1.0 - smoothstep(0.5, 1.0, u) * 0.75);
+  // Keep wake readable as a continuous history trail (was fading to almost nothing by s=0.7)
+  const opacity = (0.7 + root * 0.35 + jet * 0.3 + d * 0.15)
+    * (1.0 - smoothstep(0.55, 1.0, u) * 0.55);
   const target = out || {};
   target.s = u;
   target.width = Math.max(0.14, width);
@@ -53,15 +54,15 @@ export function samplePlasmaEnvelope(s, drive = 1, boost = 0, out = null) {
 
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   // CONSTRUCTION FREEZE: soft-camera-facing-strips only. Param/shader look patches as v24.N.
-  id: 'player_liquid_plasma_v24.33',
+  id: 'player_liquid_plasma_v24.34',
   kind: 'unified_liquid_plasma',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'FROZEN soft-camera-facing-strips. v24.33 tip lace + mid white-bar kill + multi-rope cyan filament read; soft body cross held; path/lateral smooth.',
+  notes: 'FROZEN soft-camera-facing-strips. v24.34 fix production axis (ContinuousPlume -ax exhaust) + continuous path-history wake (no synthetic near-jet fold). Soft body cross held.',
   path: {
-    capacity: 200,
-    sampleSpacingWU: 0.14,
-    sampleHz: 200,
-    nearJetLengthWU: 17,
+    capacity: 220,
+    sampleSpacingWU: 0.22,
+    sampleHz: 120,
+    nearJetLengthWU: 12,
     discontinuityFloorWU: 160,
     discontinuityMaxWU: 640,
   },
