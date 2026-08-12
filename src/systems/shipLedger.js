@@ -426,6 +426,22 @@ function collectCandidates(state) {
     }
   }
 
+  const vestaCache = state && state.world && state.world.vestaOreCache;
+  const vestaReceipt = vestaCache && vestaCache.receipt;
+  if (vestaReceipt && vestaReceipt.id && vestaCache.recordId) {
+    add({
+      type: 'unique',
+      sourceId: vestaReceipt.id,
+      sourceKind: 'world.vestaOreCache',
+      at: vestaReceipt.resolvedAt,
+      tokens: {
+        wreck: 'Shift-End Ore Cache',
+        choice: humanizeId(vestaReceipt.choiceId, 'recorded'),
+        outcome: humanizeId(vestaReceipt.outcome, 'recorded'),
+      },
+    });
+  }
+
   const encounterHistory = sourceArray(state && state.story && state.story.depthProgramEncounters
     && state.story.depthProgramEncounters.history);
   for (const [index, record] of encounterHistory.entries()) {

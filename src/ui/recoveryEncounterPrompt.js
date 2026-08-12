@@ -157,6 +157,28 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   });
 }
 
+export function vestaOreCachePromptView(payload) {
+  if (!payload || !payload.recordId || !Array.isArray(payload.choices) || payload.choices.length !== 3) return null;
+  const controllerKeys = ['A', 'B', 'X'];
+  const choices = payload.choices.map((choice, index) => ({
+    id: String(choice.id || ''),
+    label: String(choice.label || '').trim(),
+    consequence: String(choice.consequence || '').trim(),
+    controllerKey: controllerKeys[index],
+    ariaLabel: `${String(choice.label || '').trim()}. Controller ${controllerKeys[index]}. ${String(choice.consequence || '').trim()}`.trim(),
+  }));
+  if (choices.some((choice) => !choice.id || !choice.label || !choice.consequence)) return null;
+  const headline = String(payload.headline || 'SHIFT-END ORE CACHE');
+  const prompt = String(payload.prompt || 'Choose the cache disposition.');
+  return Object.freeze({
+    ...payload,
+    choices,
+    headline,
+    prompt,
+    ariaLabel: `Vesta ore cache. ${headline}. ${prompt} ${choices.map((choice) => choice.ariaLabel).join(' ')}`,
+  });
+}
+
 export function createRecoveryEncounterPrompt(ctx) {
   const { state, bus } = ctx;
   injectStyle();
@@ -218,9 +240,9 @@ export function createRecoveryEncounterPrompt(ctx) {
 
   function renderActions(readout) {
     el.actions.replaceChildren();
-    if (readout.mode === 'unique-wreck') {
+    if (readout.mode === 'unique-wreck' || readout.mode === 'vesta-ore-cache') {
       for (const [index, choice] of (readout.choices || []).entries()) {
-        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : 'B', choice.label, false, choice.consequence));
+        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : index === 1 ? 'B' : 'X', choice.label, false, choice.consequence));
       }
       el.actions.hidden = !(readout.choices || []).length;
       return;
@@ -301,6 +323,26 @@ export function createRecoveryEncounterPrompt(ctx) {
     return true;
   }
 
+  function renderVestaOreCache(readout) {
+    const view = vestaOreCachePromptView(readout);
+    if (!canSurface() || !view) return false;
+    active = { ...view, mode: 'vesta-ore-cache', hideAt: Infinity };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
+    root.className = 'sf-recovery--unique';
+    text(el.flag, 'VESTA ORE CACHE');
+    text(el.status, 'SEAL INTACT · CHOOSE');
+    text(el.headline, view.headline);
+    text(el.meta, 'PRESERVE · REPORT · TAKE PHYSICAL LOT');
+    text(el.detail, view.prompt);
+    el.meter.hidden = true;
+    renderActions(active);
+    root.setAttribute('aria-label', view.ariaLabel);
+    root.hidden = false;
+    return true;
+  }
+
   function showReceipt(receipt) {
     if (!canSurface() || !receipt) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
@@ -333,6 +375,26 @@ export function createRecoveryEncounterPrompt(ctx) {
     text(el.headline, receipt.title || 'RECOVERY CLOSED');
     text(el.meta, `${String(receipt.outcome || 'resolved').replace(/_/g, ' ').toUpperCase()} · EXACT-ONCE CLAIM`);
     text(el.detail, receipt.detail || 'Outcome recorded. No duplicate settlement.');
+    el.meter.hidden = true;
+    el.actions.hidden = true;
+    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
+    root.hidden = false;
+    return true;
+  }
+
+  function showVestaOreCacheReceipt(payload) {
+    const receipt = payload && payload.receipt;
+    if (!canSurface() || !receipt) return false;
+    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
+    root.className = 'sf-recovery--receipt';
+    text(el.flag, 'VESTA CACHE RECEIPT');
+    text(el.status, 'SAVED');
+    text(el.headline, receipt.title || 'CACHE DISPOSITION RECORDED');
+    text(el.meta, `${String(receipt.choiceId || 'resolved').toUpperCase()} · EXACT-ONCE OUTCOME`);
+    text(el.detail, receipt.detail || 'Outcome recorded.');
     el.meter.hidden = true;
     el.actions.hidden = true;
     root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
@@ -378,6 +440,11 @@ export function createRecoveryEncounterPrompt(ctx) {
       bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
       return true;
     }
+    if (active.mode === 'vesta-ore-cache') {
+      if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
+      bus.emit('vestaOreCache:choose', { recordId: active.recordId, choiceId: choice, source });
+      return true;
+    }
     if (active.mode !== 'encounter') return false;
     if (choice === 'vent') bus.emit('recovery:vent', { recoveryId: active.recoveryId, source });
     else bus.emit('recovery:choose', { recoveryId: active.recoveryId, choice, source });
@@ -414,10 +481,11 @@ export function createRecoveryEncounterPrompt(ctx) {
     }
     const actions = ctx.gamepad && ctx.gamepad.actions || {};
     if (active.phase === 'hazard' && actions.accept && actions.accept.pressed) choose('vent', 'gamepad');
-    else if (active.mode === 'unique-wreck') {
+    else if (active.mode === 'unique-wreck' || active.mode === 'vesta-ore-cache') {
       const choices = active.choices || [];
       if (actions.accept && actions.accept.pressed && choices[0]) choose(choices[0].id, 'gamepad');
       else if (actions.cancel && actions.cancel.pressed && choices[1]) choose(choices[1].id, 'gamepad');
+      else if (actions.cycleTarget && actions.cycleTarget.pressed && choices[2]) choose(choices[2].id, 'gamepad');
     }
     else if (active.phase === 'decision') {
       if (actions.accept && actions.accept.pressed && active.hasSurvivor) choose('rescue', 'gamepad');
@@ -448,6 +516,8 @@ export function createRecoveryEncounterPrompt(ctx) {
   subscribe('recovery:completed', showReceipt);
   subscribe('uniqueWreck:decisionReady', renderUniqueWreck);
   subscribe('uniqueWreck:resolved', showUniqueReceipt);
+  subscribe('vestaOreCache:decisionReady', renderVestaOreCache);
+  subscribe('vestaOreCache:resolved', showVestaOreCacheReceipt);
   subscribe('pirateParley:demand', hide);
   subscribe('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
   subscribe('law:distressRaised', hide);
@@ -458,7 +528,10 @@ export function createRecoveryEncounterPrompt(ctx) {
     subscribe(event, renderCustody);
   }
   subscribe('encounter:receipt', (payload) => { if (isCustodyReceipt(payload)) renderCustody(payload); });
-  return { el: root, tick, hide, destroy, render, renderCustody, renderUniqueWreck, showReceipt, showUniqueReceipt, choose };
+  return {
+    el: root, tick, hide, destroy, render, renderCustody, renderUniqueWreck, renderVestaOreCache,
+    showReceipt, showUniqueReceipt, showVestaOreCacheReceipt, choose,
+  };
 }
 
 function injectStyle() {

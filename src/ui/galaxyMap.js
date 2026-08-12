@@ -37,6 +37,7 @@ import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { frontierRumorMapReadouts, frontierRumorMapTarget } from './frontierRumorMapLayer.js';
+import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
@@ -1153,6 +1154,7 @@ function discoveryBearingReadouts(state, sectorId = null) {
   return [
     ...uniqueWreckMapReadouts(state, sectorId),
     ...frontierRumorMapReadouts(state, sectorId),
+    ...vestaOreCacheMapReadouts(state, sectorId),
   ].sort((a, b) => String(a.wreckId || '').localeCompare(String(b.wreckId || '')));
 }
 
@@ -5061,6 +5063,23 @@ export const galaxyMapScreen = {
           if (marker) galaxyMapScreen._selectSearchTarget(marker);
           return;
         }
+        const vestaRow = target && typeof target.closest === 'function'
+          ? target.closest('[data-vesta-cache-id]') : null;
+        if (vestaRow) {
+          const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+          const sectorId = vestaRow.getAttribute('data-vesta-cache-sector') || currentSectorId(state);
+          const cacheId = vestaRow.getAttribute('data-vesta-cache-id');
+          const readout = vestaOreCacheMapReadouts(state, sectorId)
+            .find((entry) => entry && entry.cacheRecordId === cacheId);
+          const marker = vestaOreCacheMapTarget(readout) || readout && readout.courseTarget && {
+            ...readout.courseTarget,
+            sectorId: readout.sectorId,
+            phase: readout.phase,
+            detail: readout.detail,
+          };
+          if (marker) galaxyMapScreen._selectSearchTarget(marker);
+          return;
+        }
         const rumorRow = target && typeof target.closest === 'function'
           ? target.closest('[data-frontier-rumor-id]') : null;
         if (rumorRow) {
@@ -6385,6 +6404,7 @@ export const galaxyMapScreen = {
     const disc = discoveryForSector(state, sectorId);
     const exploration = sectorExplorationProgress(state, record || sectorId);
     const rumorCards = frontierRumorMapReadouts(state, sectorId);
+    const vestaCards = vestaOreCacheMapReadouts(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
       <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
@@ -6404,6 +6424,16 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(rumor.detail)}</span>
         <span class="gm-ins-note">${escapeMapHtml(rumor.objective)}</span>
       </button>`).join('');
+    const vestaRows = vestaCards.map((cache) => `
+      <button class="gm-site-row" type="button" data-vesta-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+        data-vesta-cache-sector="${escapeMapHtml(cache.sectorId)}"
+        aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
+        aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
+        <span class="gm-ins-kind">${escapeMapHtml(cache.statusLabel)}</span>
+        <span class="gm-ins-title">${escapeMapHtml(cache.name)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(cache.detail)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
+      </button>`).join('');
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6417,6 +6447,7 @@ export const galaxyMapScreen = {
         <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
       </div>
       ${rumorRows}
+      ${vestaRows}
       ${siteButtons ? `<div class="gm-ins-section"><div class="gm-ins-title">World Sites</div>${siteButtons}</div>` : ''}`;
   },
 
@@ -8317,9 +8348,10 @@ export const galaxyMapScreen = {
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
         const rumorTarget = frontierRumorMapTarget(bearing);
-        if (rumorTarget) {
+        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing);
+        if (manualTarget) {
           this._clickTargets.push({
-            ...rumorTarget,
+            ...manualTarget,
             sx: x,
             sy: y,
             radiusPx: 18,
@@ -8339,8 +8371,8 @@ export const galaxyMapScreen = {
         }
 
         const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
-        const phaseLabel = bearing.manualSearch ? 'RUMOR SEARCH'
-          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
+          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
@@ -8630,23 +8662,24 @@ export const galaxyMapScreen = {
         const x = sx(point.x), y = sz(point.z);
         const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
         const rumorTarget = frontierRumorMapTarget(bearing);
+        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing);
         if (offView(x, y)) {
           pushEdgeTick(x, y, INK.gold, 'bearing', {
-            ...(rumorTarget || bearing.courseTarget || {}),
+            ...(manualTarget || bearing.courseTarget || {}),
             kind: rumorTarget ? 'rumor' : 'bearing',
-            id: rumorTarget ? rumorTarget.id : bearing.wreckId,
+            id: manualTarget ? manualTarget.id : bearing.wreckId,
             name: bearing.name,
             sectorId: bearing.sectorId,
-            detail: rumorTarget ? bearing.detail : 'Read bearing · off-view survey fix',
+            detail: manualTarget ? bearing.detail : 'Read bearing · off-view survey fix',
           });
           continue;
         }
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
-        if (rumorTarget) {
+        if (manualTarget) {
           this._clickTargets.push({
-            ...rumorTarget,
+            ...manualTarget,
             sx: x,
             sy: y,
             radiusPx: 18,
@@ -8666,8 +8699,8 @@ export const galaxyMapScreen = {
         }
 
         const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
-        const phaseLabel = bearing.manualSearch ? 'RUMOR SEARCH'
-          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
+          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',

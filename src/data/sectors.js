@@ -181,8 +181,15 @@ const CORE_SECTORS = [
     hazards: [ { type: 'radiation', center: { x: -800, z: 500 }, radius: 600, intensity: 0.4 } ],
     pois: [
       { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' },
-      { id: 'poi_vesta_slag_relay', type: 'beacon', name: 'Slag-Choir Relay', factionId: 'faction_choir' },
-      { id: 'poi_vesta_ore_cache', type: 'cache', name: 'Shift-End Ore Cache', hidden: true, factionId: 'faction_dmc' },
+      {
+        id: 'poi_vesta_slag_relay', type: 'beacon', name: 'Slag-Choir Relay', factionId: 'faction_choir',
+        requiresActiveScan: true, scannerSignalKind: 'ore', manualInvestigation: true,
+      },
+      {
+        id: 'poi_vesta_ore_cache', type: 'cache', name: 'Shift-End Ore Cache', hidden: true,
+        factionId: 'faction_dmc', requiresActiveScan: true, scannerSignalKind: 'ore',
+        manualInvestigation: true,
+      },
     ],
   },
   {

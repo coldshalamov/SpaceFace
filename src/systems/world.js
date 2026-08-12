@@ -29,6 +29,13 @@ import {
   sensorPostRumorOffer,
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../data/frontierRumors.js';
+import {
+  VESTA_ORE_CACHE,
+  VESTA_ORE_CACHE_CHOICES,
+  freshVestaOreCacheState,
+  normalizeVestaOreCacheState,
+  vestaOreCacheChoice,
+} from '../data/vestaOreCache.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
@@ -250,6 +257,7 @@ export const world = {
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
     if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
+    state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
@@ -262,6 +270,8 @@ export const world = {
     this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
     this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
     this._nextCriticalSpawnTick = 0;
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = false;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
     // Floating-origin scratch (allocation-free no-shift path).
@@ -291,6 +301,15 @@ export const world = {
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
+    bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
+    bus.on('save:restoring', () => { this._vestaDecisionSignature = null; });
+    bus.on('save:loaded', () => {
+      if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
+      this._vestaDecisionNeedsRebind = false;
+      this._spawnVestaOreCachePickup(this.state.world.currentSectorId);
+      this._presentVestaOreCacheDecision('save-loaded');
+    });
     bus.on('landmark:artifactRecovered', (p) => this._onLandmarkArtifactRecovered(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
@@ -542,6 +561,8 @@ export const world = {
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
     state.world.activeSector = active;
     state.world.currentSectorId = sectorId;
+    this._spawnVestaOreCachePickup(sectorId);
+    this._presentVestaOreCacheDecision('sector-enter');
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
     this._hazardSet.clear();
@@ -3087,6 +3108,8 @@ export const world = {
     const sectorId = payload.sectorId || this.state.world.currentSectorId;
     const poiId = payload.sourceId;
     if (!sectorId || !poiId) return false;
+    if (sectorId === VESTA_ORE_CACHE.sectorId && poiId === VESTA_ORE_CACHE.cachePoiId
+      && this._vestaOreCacheState().phase === 'unfound') return false;
     const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
     if (!poi) return false;
@@ -3106,7 +3129,224 @@ export const world = {
     if (newlyFound) {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
     }
+    this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
+    return true;
+  },
+
+  _vestaOreCacheState() {
+    const own = normalizeVestaOreCacheState(this.state.world.vestaOreCache);
+    this.state.world.vestaOreCache = own;
+    return own;
+  },
+
+  _onVestaOreCacheSignalInvestigated(payload) {
+    if (payload.sectorId !== VESTA_ORE_CACHE.sectorId) return false;
+    const own = this._vestaOreCacheState();
+    const completedAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    if (payload.poiId === VESTA_ORE_CACHE.relayPoiId) {
+      if (own.phase !== 'unfound') return false;
+      own.phase = 'searching';
+      own.evidence = {
+        evidenceId: VESTA_ORE_CACHE.evidenceId,
+        sourcePoiId: VESTA_ORE_CACHE.relayPoiId,
+        signalId: VESTA_ORE_CACHE.relaySignalId,
+        foundAt: completedAt,
+        carrier: 'physical_relay_ore_residue',
+      };
+      own.search = {
+        center: sectorLocalToGlobalForSector(VESTA_ORE_CACHE.searchCenterLocal, VESTA_ORE_CACHE.sectorId),
+        radius: VESTA_ORE_CACHE.searchRadiusWu,
+        sourceEvidenceId: VESTA_ORE_CACHE.evidenceId,
+      };
+      this.bus.emit('vestaOreCache:clueRecovered', {
+        recordId: own.recordId,
+        sectorId: VESTA_ORE_CACHE.sectorId,
+        phase: own.phase,
+        evidence: { ...own.evidence },
+        search: { ...own.search, center: { ...own.search.center } },
+      });
+      return true;
+    }
+    if (payload.poiId !== VESTA_ORE_CACHE.cachePoiId || own.phase !== 'searching') return false;
+    own.phase = 'choice';
+    own.cache = {
+      poiId: VESTA_ORE_CACHE.cachePoiId,
+      fixedPos: payload.pos && Number.isFinite(Number(payload.pos.x)) && Number.isFinite(Number(payload.pos.z))
+        ? { x: Number(payload.pos.x), z: Number(payload.pos.z) }
+        : sectorLocalToGlobalForSector(VESTA_ORE_CACHE.cacheLocalPos, VESTA_ORE_CACHE.sectorId),
+      foundAt: completedAt,
+    };
+    this._presentVestaOreCacheDecision('physical-investigation');
+    return true;
+  },
+
+  _presentVestaOreCacheDecision(source = 'world') {
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'choice' || !own.cache) return false;
+    // Continue re-enters the sector before save:loaded announces that presentation state is ready.
+    // Hold this one transient edge so the usable post-load prompt is not consumed early.
+    if (source === 'sector-enter' && this._vestaDecisionNeedsRebind) return false;
+    const signature = `${own.recordId}:${own.cache.foundAt}`;
+    if (this._vestaDecisionSignature === signature) return false;
+    this._vestaDecisionSignature = signature;
+    this.bus.emit('vestaOreCache:decisionReady', {
+      recordId: own.recordId,
+      sectorId: VESTA_ORE_CACHE.sectorId,
+      phase: own.phase,
+      headline: 'SHIFT-END ORE CACHE',
+      prompt: 'The seal is intact. Choose what the ship records and what leaves this rock.',
+      source,
+      choices: VESTA_ORE_CACHE_CHOICES.map((choice) => ({ ...choice })),
+      fixedPos: { ...own.cache.fixedPos },
+    });
+    return true;
+  },
+
+  _onVestaOreCacheChoice(payload) {
+    const own = this._vestaOreCacheState();
+    const choice = vestaOreCacheChoice(String(payload.choiceId || payload.choice || ''));
+    if (own.phase !== 'choice' || !own.cache || own.receipt || !choice) return false;
+    if (payload.recordId && payload.recordId !== own.recordId) return false;
+    const resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+    own.phase = choice.id === 'preserve' ? 'preserved' : choice.id === 'report' ? 'reported' : 'taken';
+    own.choiceId = choice.id;
+    own.resolvedAt = resolvedAt;
+    const details = {
+      preserve: 'Seal left intact. The fixed cache remains in the ship chart for a later return.',
+      report: 'DMC dispatch acknowledged the sealed cache report.',
+      take: 'Seal opened. Six units of legal nickel ore remain a physical recovery, limited by hold space.',
+    };
+    own.receipt = {
+      id: 'vesta-ore-cache:resolution:v1',
+      recordId: own.recordId,
+      sectorId: VESTA_ORE_CACHE.sectorId,
+      cachePoiId: VESTA_ORE_CACHE.cachePoiId,
+      choiceId: choice.id,
+      outcome: own.phase,
+      title: `SHIFT-END CACHE ${choice.label}`,
+      detail: details[choice.id],
+      resolvedAt,
+      ...(choice.id === 'report' ? {
+        factionId: VESTA_ORE_CACHE.reportFactionId,
+        repDelta: VESTA_ORE_CACHE.reportRepDelta,
+      } : {}),
+      ...(choice.id === 'take' ? {
+        lotId: VESTA_ORE_CACHE.lotId,
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        totalQty: VESTA_ORE_CACHE.totalQty,
+      } : {}),
+    };
+    if (choice.id === 'take') {
+      own.cargoLot = {
+        lotId: VESTA_ORE_CACHE.lotId,
+        provenanceId: VESTA_ORE_CACHE.provenanceId,
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        totalQty: VESTA_ORE_CACHE.totalQty,
+        collectedQty: 0,
+        lostQty: 0,
+        remainingQty: VESTA_ORE_CACHE.totalQty,
+        collectionReceipts: [],
+      };
+    }
+    // Commit the durable receipt before delegating any consequence to its single writer.
+    if (choice.id === 'report') {
+      this.bus.emit('faction:repDelta', {
+        factionId: VESTA_ORE_CACHE.reportFactionId,
+        delta: VESTA_ORE_CACHE.reportRepDelta,
+        reason: 'vesta_ore_cache_report',
+      });
+    }
+    if (choice.id === 'take') this._spawnVestaOreCachePickup(VESTA_ORE_CACHE.sectorId);
+    this.bus.emit('vestaOreCache:resolved', {
+      recordId: own.recordId,
+      choiceId: choice.id,
+      receipt: { ...own.receipt },
+    });
+    return true;
+  },
+
+  _spawnVestaOreCachePickup(sectorId = this.state.world.currentSectorId) {
+    if (sectorId !== VESTA_ORE_CACHE.sectorId || this.state.world.currentSectorId !== sectorId) return null;
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'taken' || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
+    const live = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.data && entity.data.vestaOreCacheLotId === VESTA_ORE_CACHE.lotId);
+    if (live) return live;
+    const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { ...own.cache.fixedPos },
+      vel: { x: 0, z: 0 },
+      radius: 1.5,
+      mass: 0.1,
+      collides: true,
+      ttl: Infinity,
+      data: {
+        kind: 'ore',
+        commodityId: VESTA_ORE_CACHE.commodityId,
+        amount: own.cargoLot.remainingQty,
+        name: 'Shift-End Nickel Ore',
+        vestaOreCacheLotId: VESTA_ORE_CACHE.lotId,
+        vestaOreCacheRevision: revision,
+        richLotSource: {
+          lotId: VESTA_ORE_CACHE.lotId,
+          provenanceId: VESTA_ORE_CACHE.provenanceId,
+          sourceKind: 'vesta_ore_cache',
+          sourcePoiId: VESTA_ORE_CACHE.cachePoiId,
+          recordId: VESTA_ORE_CACHE.recordId,
+          choiceId: 'take',
+          lotQty: own.cargoLot.remainingQty,
+          sourceOwner: 'player',
+        },
+      },
+    });
+    this._stampHomeSector(entity, VESTA_ORE_CACHE.sectorId);
+    this.bus.emit('vestaOreCache:pickupReady', {
+      recordId: own.recordId,
+      pickupId: entity.id,
+      remainingQty: own.cargoLot.remainingQty,
+      pos: { ...entity.pos },
+    });
+    return entity;
+  },
+
+  _onVestaOreCachePickupCollected(payload) {
+    const own = this._vestaOreCacheState();
+    if (own.phase !== 'taken' || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return false;
+    const pickup = payload.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.pickupId) : null;
+    if (pickup && pickup.data && pickup.data.jettisonedCargo) return false;
+    const source = payload.lotSource || payload.richLotSource
+      || pickup && pickup.data && (pickup.data.lotSource || pickup.data.richLotSource);
+    if (!source || source.lotId !== VESTA_ORE_CACHE.lotId
+      || source.provenanceId !== VESTA_ORE_CACHE.provenanceId) return false;
+    const revision = Math.max(0, Math.floor(Number(pickup && pickup.data && pickup.data.vestaOreCacheRevision)
+      || own.cargoLot.collectedQty + own.cargoLot.lostQty));
+    const receiptId = `${VESTA_ORE_CACHE.lotId}:collection:${revision}`;
+    if (own.cargoLot.collectionReceipts.some((entry) => entry.id === receiptId)) return false;
+    const requested = Math.max(0, Math.floor(Number(payload.amount) || 0));
+    const playerPickup = payload.collectorId === this.state.playerId;
+    const acceptedQty = playerPickup
+      ? Math.max(0, Math.min(own.cargoLot.remainingQty, Math.floor(Number(payload.acceptedAmount) || 0)))
+      : 0;
+    const lostQty = playerPickup ? 0 : Math.max(0, Math.min(own.cargoLot.remainingQty, requested));
+    if (!(acceptedQty > 0) && !(lostQty > 0)) return false;
+    own.cargoLot.collectedQty += acceptedQty;
+    own.cargoLot.lostQty += lostQty;
+    own.cargoLot.remainingQty = Math.max(0,
+      own.cargoLot.totalQty - own.cargoLot.collectedQty - own.cargoLot.lostQty);
+    own.cargoLot.collectionReceipts.push({ id: receiptId, acceptedQty, lostQty });
+    if (own.cargoLot.collectionReceipts.length > 16) own.cargoLot.collectionReceipts.shift();
+    if (pickup && pickup.data) pickup.data.vestaOreCacheRevision = revision + acceptedQty + lostQty;
+    this.bus.emit('vestaOreCache:cargoChanged', {
+      recordId: own.recordId,
+      lotId: own.cargoLot.lotId,
+      acceptedQty,
+      lostQty,
+      collectedQty: own.cargoLot.collectedQty,
+      remainingQty: own.cargoLot.remainingQty,
+    });
     return true;
   },
 
@@ -3235,6 +3475,7 @@ export const world = {
       scanPings: cloneSaveTree(state.world.scanPings || {}),
       pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
+      vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
@@ -3271,6 +3512,9 @@ export const world = {
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
+    state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
@@ -3324,6 +3568,7 @@ export const world = {
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);
+    state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.records = createEmptyRecordsBag();
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
@@ -3331,6 +3576,8 @@ export const world = {
     state.world.activeSector = this._emptySectorBag();
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
+    this._vestaDecisionSignature = null;
+    this._vestaDecisionNeedsRebind = false;
     // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
     state.world.coordinateSchema = 'global_v1';
     if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {

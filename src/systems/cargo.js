@@ -81,21 +81,33 @@ function richLotSource(source, commodityId, qty) {
   const opportunityId = typeof source.richOpportunityId === 'string' && source.richOpportunityId
     ? source.richOpportunityId
     : typeof source.opportunityId === 'string' && source.opportunityId ? source.opportunityId : null;
-  if (!opportunityId) return null;
-  const amount = Math.max(0, Math.floor(Number(source.richQty != null ? source.richQty : qty) || 0));
+  const provenanceId = typeof source.provenanceId === 'string' && source.provenanceId
+    ? source.provenanceId : null;
+  const explicitLotId = typeof source.lotId === 'string' && source.lotId ? source.lotId : null;
+  if (!opportunityId && !provenanceId && !explicitLotId) return null;
+  const sourceQty = source.richQty != null ? source.richQty
+    : source.lotQty != null ? source.lotQty : qty;
+  const amount = Math.max(0, Math.floor(Number(sourceQty) || 0));
   if (amount <= 0) return null;
-  const lotId = typeof source.lotId === 'string' && source.lotId
-    ? source.lotId
-    : `rich-lot:${opportunityId}`;
+  const lotId = explicitLotId || `rich-lot:${opportunityId}`;
   return {
     lotId,
     commodityId,
     qty: amount,
-    richOpportunityId: opportunityId,
-    richBonusU: Math.max(0, Math.floor(Number(source.richBonusU) || 0)),
-    fieldId: source.fieldId == null ? null : String(source.fieldId),
-    activityObjectSlotId: source.activityObjectSlotId == null ? null : String(source.activityObjectSlotId),
-    resolution: source.richResolution || source.resolution || null,
+    ...(opportunityId ? {
+      richOpportunityId: opportunityId,
+      richBonusU: Math.max(0, Math.floor(Number(source.richBonusU) || 0)),
+    } : {}),
+    ...(provenanceId ? { provenanceId } : {}),
+    ...(source.sourceKind ? { sourceKind: String(source.sourceKind) } : {}),
+    ...(source.sourcePoiId ? { sourcePoiId: String(source.sourcePoiId) } : {}),
+    ...(source.recordId ? { recordId: String(source.recordId) } : {}),
+    ...(source.choiceId ? { choiceId: String(source.choiceId) } : {}),
+    ...(source.fieldId != null ? { fieldId: String(source.fieldId) } : {}),
+    ...(source.activityObjectSlotId != null ? { activityObjectSlotId: String(source.activityObjectSlotId) } : {}),
+    ...(source.richResolution || source.resolution
+      ? { resolution: source.richResolution || source.resolution }
+      : {}),
     sourceOwner: source.sourceOwner || (source.claimedByKind === 'npc' ? 'npc' : 'player'),
   };
 }
@@ -209,9 +221,19 @@ export const cargo = {
         // Synchronous acceptance is the collection commit point. Physics/mining emit one mutable
         // payload, cargo writes the exact accepted remainder, then the emitting owner decides
         // whether the physical pickup survives. Downstream observers see stable final fields.
-        const accepted = addCargo(state, commodityId, qty, payload.richLotSource || payload.lotSource);
+        const pickup = payload.pickupId != null && state.entities && state.entities.get
+          ? state.entities.get(payload.pickupId) : null;
+        const source = payload.richLotSource || payload.lotSource
+          || pickup && pickup.data && (pickup.data.richLotSource || pickup.data.lotSource)
+          || null;
+        const accepted = addCargo(state, commodityId, qty, source);
         payload.acceptedAmount = accepted;
         payload.rejectedAmount = Math.max(0, qty - accepted);
+        // Downstream outcome owners receive the finalized accepted provenance even when the core
+        // collision seam supplied only pickupId. The payload is the synchronous commit receipt.
+        if (source && source.provenanceId) {
+          payload.lotSource = { ...source, lotQty: accepted };
+        }
         if (qty <= 0) payload.invalidAmount = true;
         if (payload.rejectedAmount > 0) {
           payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;

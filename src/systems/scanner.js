@@ -16,6 +16,10 @@ import {
   resonanceObeliskResponse,
 } from '../data/resonanceObelisk.js';
 import {
+  vestaOreCacheSignalAvailable,
+  vestaOreCacheSignalCopy,
+} from '../data/vestaOreCache.js';
+import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
@@ -545,6 +549,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (!pos) continue;
     const sourceId = String(poi.poiId || poi.id || '');
     if (!sourceId) continue;
+    if (!vestaOreCacheSignalAvailable(state, sourceId)) continue;
     add({
       id: `signal:poi:${sourceId}`,
       kind,
@@ -881,6 +886,7 @@ export const scanner = {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+      if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
       const pos = entity && entity.pos || poi.pos;
       if (!pos || dist(origin, pos) > scanRadius) continue;
       upsertUnknownPing(state, sectorId, {
@@ -1003,6 +1009,11 @@ export const scanner = {
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
+      const vestaCopy = vestaOreCacheSignalCopy(candidate.sourceId);
+      if (vestaCopy) {
+        record.classification = vestaCopy.classification;
+        record.detail = vestaCopy.detail;
+      }
       if (resonanceSignal) {
         const response = resonanceObeliskResponse(scanCount);
         record.classification = 'RESONANCE OBELISK';
