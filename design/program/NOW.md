@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore-cycle candidate closure | /root | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Focused 50/50 and manifest 12/12 are green; independent review APPROVE; publish the exact repair and make one broker-authorized changed-candidate Browser attempt, then pause |
+| PQ-048.01 ore-cycle candidate closure | /root | ACCEPTING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Authored one-or-two-hostile acceptance is focused 50/50 green twice with frozen hashes and independent APPROVE; commit/push this exact candidate, make one broker-authorized Browser attempt, publish the receipt if green, then pause |
 
 ## Uncommitted work without a confirmed live thread
 

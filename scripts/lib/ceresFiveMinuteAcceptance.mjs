@@ -174,17 +174,21 @@ const CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS = 2;
 const CERES_TOOLKIT_RELEASE_ACTION_MIN_TICKS = 3;
 const CERES_TOOLKIT_FIRE_HOLD_TICKS = 18;
 const CERES_TOOLKIT_FIRE_NEUTRAL_TICKS = 8;
-// The fixed chase camera never follows hull yaw. First clear the collision lane at a point derived
-// from the canonical Throughline zone center, then stage north-west of the canonical hostile spring.
-// These authored offsets avoid binding the route to transient actor jitter while keeping a live
-// member of the exact adopted cohort pointable after the collision proof.
+// The fixed chase camera never follows hull yaw. First settle north of the required impact, cross
+// east on that empty shelf, then stage west on the same pursuit shelf. This dogleg keeps the
+// impact bounce away from the west convoy and the south-east collision body without binding the
+// route to transient actor jitter.
+const CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL = Object.freeze({
+  x: CERES_AMBUSH_ANCHOR_GLOBAL.x - 67,
+  z: CERES_AMBUSH_ANCHOR_GLOBAL.z + 183,
+});
 const CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL = Object.freeze({
-  x: CERES_AMBUSH_ANCHOR_GLOBAL.x - 27,
-  z: CERES_AMBUSH_ANCHOR_GLOBAL.z - 12,
+  x: CERES_AMBUSH_ANCHOR_GLOBAL.x + 183,
+  z: CERES_AMBUSH_ANCHOR_GLOBAL.z + 183,
 });
 const CERES_TOOLKIT_CAMERA_STAGE_GLOBAL = Object.freeze({
-  x: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.x - 40,
-  z: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.z + 20,
+  x: CERES_AMBUSH_ANCHOR_GLOBAL.x - 97,
+  z: CERES_AMBUSH_ANCHOR_GLOBAL.z + 173,
 });
 const CERES_PRE_CONTINUE_LEG_RESERVE_TICKS = Object.freeze({
   ceres_ambush_run: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
@@ -354,10 +358,14 @@ export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
   const authority = Array.isArray(baseline?.boundAuthority) ? baseline.boundAuthority : [];
   const director = baseline?.director;
   if (baseline?.playerEntityId == null || baseline.playerEntityId !== prebound?.playerEntityId
-      || initial.length !== 2 || bound.length !== 2 || authority.length !== 2
+      || initial.length < 1 || initial.length > 2
+      || bound.length !== initial.length || authority.length !== initial.length
       || director?.durablePhase !== 'revealed'
       || director?.live?.id !== 'ceres:activity:throughline-ambush'
       || director.live.phase !== 'conflict'
+      || !Number.isSafeInteger(director.live.initialCount)
+      || director.live.initialCount < 1 || director.live.initialCount > 2
+      || director.live.initialCount !== initial.length
       || !ceresHostileOpportunityPass(initial)) return false;
   const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
@@ -457,6 +465,9 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
           startedAt: Number.isFinite(Number(live.startedAt)) ? Number(live.startedAt) : null,
           springAt: Number.isFinite(Number(live.data?.springAt)) ? Number(live.data.springAt) : null,
           deadlineAt: Number.isFinite(Number(live.deadlineAt)) ? Number(live.deadlineAt) : null,
+          initialCount: Number.isSafeInteger(Number(live.data?.initialCount))
+            ? Number(live.data.initialCount)
+            : null,
           entityIds: (Array.isArray(live.ids) ? live.ids : []).slice(0, 8),
         } : null,
       },
@@ -469,8 +480,8 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     throw new TypeError('toolkit conflict wait requires a live page');
   }
   if (!prebound || prebound.playerEntityId == null || !Array.isArray(prebound.boundHostiles)
-      || prebound.boundHostiles.length !== 2) {
-    throw new TypeError('toolkit conflict wait requires the exact prebound hostile pair');
+      || prebound.boundHostiles.length < 1 || prebound.boundHostiles.length > 2) {
+    throw new TypeError('toolkit conflict wait requires the exact prebound hostile cohort');
   }
   if (!Number.isSafeInteger(endTick)) {
     throw new TypeError('toolkit conflict wait requires an integer route end tick');
@@ -523,7 +534,7 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     const terminalMissing = (baseline?.boundAuthority || [])
       .filter((row) => row?.terminalMissing === true);
     if (terminalMissing.length > 0) {
-      fail('toolkit conflict authority lost an exact prebound hostile pair');
+      fail('toolkit conflict authority lost an exact prebound hostile cohort member');
     }
     if (deadlineTick <= waitStartTick) {
       fail('toolkit hostile classification exhausted the exact route horizon');
@@ -3437,6 +3448,15 @@ export function planCeresThroughlineToolkitReposition({
     reason: 'fixed-camera-hostile-acquisition',
     waypoints: Object.freeze([
       Object.freeze({
+        targetId: 'ceres-throughline-toolkit-impact-settle',
+        targetName: 'Throughline toolkit impact settle',
+        targetPos: CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL,
+        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+        minRemainingTicks,
+        allowBoost: true,
+        controlClock: 'fixed-tick',
+      }),
+      Object.freeze({
         targetId: 'ceres-throughline-toolkit-camera-clearance',
         targetName: 'Throughline toolkit camera clearance',
         targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
@@ -3809,7 +3829,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   if (playerEntityId == null || anchorEntityId == null
       || !Number.isSafeInteger(anchorImpactSeq) || anchorImpactSeq < 1
       || !Number.isSafeInteger(anchorImpactTick) || !Array.isArray(boundHostiles)
-      || boundHostiles.length !== 2) {
+      || boundHostiles.length < 1 || boundHostiles.length > 2) {
     throw new Error('toolkit camera reposition requires the exact collision authority');
   }
   const normalizedBoundHostiles = boundHostiles.map((row) => ({
@@ -4061,6 +4081,10 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
   const failures = [];
   const expectedSurvivors = toolkitTransitIdentityRows(toolkitReceipt);
   const transientAuthority = toolkitTransitTransientAuthority(toolkitReceipt);
+  const toolkitResolutions = (toolkitReceipt.events || []).filter((event) => (
+    event?.event === 'encounter:resolved'
+      && event.encounterId === CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID
+  ));
   const toolkitMaxEventSeq = Math.max(...(toolkitReceipt.events || [])
     .map((event) => Number(event?.seq)).filter(Number.isSafeInteger));
   const expectedIdentity = stableJson(expectedSurvivors);
@@ -4069,6 +4093,10 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
     worldRecordId: row?.worldRecordId,
   })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
   const endSurvivors = (receipt?.end?.survivors || []).map((row) => ({
+    entityId: row?.entityId,
+    worldRecordId: row?.worldRecordId,
+  })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
+  const declaredSurvivors = (receipt?.survivingHostiles || []).map((row) => ({
     entityId: row?.entityId,
     worldRecordId: row?.worldRecordId,
   })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
@@ -4092,37 +4120,62 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
       || receipt?.start?.player?.alive !== true || receipt?.end?.player?.alive !== true) {
     failures.push('transit handoff loses the live player identity');
   }
-  if (expectedSurvivors.length < 1 || stableJson(startSurvivors) !== expectedIdentity
+  if (expectedSurvivors.length > 1 || stableJson(declaredSurvivors) !== expectedIdentity
+      || stableJson(startSurvivors) !== expectedIdentity
       || stableJson(endSurvivors) !== expectedIdentity
       || !(receipt?.start?.survivors || []).every((row) => row.alive === true
         && row.observedWorldRecordId === row.worldRecordId)
       || !(receipt?.end?.survivors || []).every((row) => row.alive === true
         && row.observedWorldRecordId === row.worldRecordId)) {
-    failures.push('transit handoff does not preserve the intentionally surviving hostile identity');
+    failures.push('transit handoff does not preserve the exact surviving-hostile identity set');
   }
-  const minimumSurvivorDistanceWU = Math.min(
-    ...(receipt?.end?.survivors || []).map((row) => Number(row?.distanceWU)),
-  );
-  if (!Number.isFinite(minimumSurvivorDistanceWU)
-      || minimumSurvivorDistanceWU < CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU) {
-    failures.push('transit handoff does not physically disengage from the surviving hostile');
-  }
+  const minimumSurvivorDistanceWU = expectedSurvivors.length > 0
+    ? Math.min(...(receipt?.end?.survivors || []).map((row) => Number(row?.distanceWU)))
+    : null;
   const encounterResolution = receipt?.encounterResolution;
-  if (encounterResolution?.event !== 'encounter:resolved'
-      || encounterResolution?.encounterId !== CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID
-      || encounterResolution?.outcome !== 'escaped'
-      || !Number.isSafeInteger(encounterResolution?.tick)
-      || encounterResolution.tick < receipt?.startTick
-      || encounterResolution.tick > receipt?.endTick
-      || encounterResolution.tick >= deadlineTick
-      || !Number.isSafeInteger(encounterResolution?.seq)
+  if (!Number.isSafeInteger(toolkitMaxEventSeq)
       || !Number.isSafeInteger(receipt?.start?.nextEventSeq)
       || !Number.isSafeInteger(receipt?.end?.nextEventSeq)
-      || !Number.isSafeInteger(toolkitMaxEventSeq)
       || receipt.start.nextEventSeq <= toolkitMaxEventSeq
-      || encounterResolution.seq < receipt.start.nextEventSeq
-      || encounterResolution.seq >= receipt.end.nextEventSeq) {
-    failures.push('transit handoff lacks the exact fresh Throughline escaped resolution');
+      || receipt.end.nextEventSeq < receipt.start.nextEventSeq) {
+    failures.push('transit handoff event cursors overlap the completed toolkit receipt');
+  }
+  if (expectedSurvivors.length > 0) {
+    if (!Number.isFinite(minimumSurvivorDistanceWU)
+        || minimumSurvivorDistanceWU < CERES_TOOLKIT_TRANSIT_ESCAPE_RADIUS_WU) {
+      failures.push('transit handoff does not physically disengage from the surviving hostile');
+    }
+    if (toolkitResolutions.length !== 0
+        || receipt?.resolutionSource !== 'handoff-fresh'
+        || encounterResolution?.event !== 'encounter:resolved'
+        || encounterResolution?.encounterId !== CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID
+        || encounterResolution?.outcome !== 'escaped'
+        || !Number.isSafeInteger(encounterResolution?.tick)
+        || encounterResolution.tick < receipt?.startTick
+        || encounterResolution.tick > receipt?.endTick
+        || encounterResolution.tick >= deadlineTick
+        || !Number.isSafeInteger(encounterResolution?.seq)
+        || !Number.isSafeInteger(receipt?.start?.nextEventSeq)
+        || !Number.isSafeInteger(receipt?.end?.nextEventSeq)
+        || !Number.isSafeInteger(toolkitMaxEventSeq)
+        || receipt.start.nextEventSeq <= toolkitMaxEventSeq
+        || encounterResolution.seq < receipt.start.nextEventSeq
+        || encounterResolution.seq >= receipt.end.nextEventSeq) {
+      failures.push('transit handoff lacks the exact fresh Throughline escaped resolution');
+    }
+  } else {
+    if (receipt?.resolutionSource !== 'toolkit-terminal'
+        || toolkitResolutions.length !== 1 || toolkitResolutions[0]?.outcome !== 'cleared'
+        || stableJson(encounterResolution) !== stableJson(toolkitResolutions[0])
+        || !Number.isSafeInteger(encounterResolution?.tick)
+        || encounterResolution.tick < toolkitReceipt.startTick
+        || encounterResolution.tick > toolkitReceipt.endTick
+        || !Number.isSafeInteger(encounterResolution?.seq)
+        || encounterResolution.seq > toolkitMaxEventSeq
+        || !Number.isSafeInteger(receipt?.start?.nextEventSeq)
+        || receipt.start.nextEventSeq <= encounterResolution?.seq) {
+      failures.push('singleton transit handoff lacks the exact toolkit-era cleared resolution');
+    }
   }
   const approaches = Array.isArray(receipt?.approaches) ? receipt.approaches : [];
   const approachReceiptPass = (approach) => {
@@ -4204,7 +4257,8 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
         || tetherCutAction.neutralTick > firstApproach?.startTick
         || tetherCutAction.minEventSeq < receipt.start.nextEventSeq
         || tetherCutAction.eventSeq < tetherCutAction.minEventSeq
-        || tetherCutAction.eventSeq >= encounterResolution?.seq
+        || (receipt?.resolutionSource === 'handoff-fresh'
+          && tetherCutAction.eventSeq >= encounterResolution?.seq)
         || tetherCutAction.eventSeq >= receipt.end.nextEventSeq
         || cutEvent?.event !== 'tether:broken'
         || cutEvent?.actorId !== toolkitReceipt.playerEntityId
@@ -4318,8 +4372,8 @@ export async function runCeresToolkitTransitHandoff(page, {
   }
   const survivingHostiles = toolkitTransitIdentityRows(toolkitReceipt);
   const transientAuthority = toolkitTransitTransientAuthority(toolkitReceipt);
-  if (survivingHostiles.length < 1) {
-    throw new Error('toolkit transit handoff requires an intentionally surviving hostile');
+  if (survivingHostiles.length > 1) {
+    throw new Error('toolkit transit handoff requires the exact post-kill survivor set');
   }
   if (!transientAuthority.exact) {
     throw new Error('toolkit transit handoff requires exact player Mass Seed and Repulsor receipts');
@@ -4372,13 +4426,29 @@ export async function runCeresToolkitTransitHandoff(page, {
 
   const firstApproach = await drivePublicToCeresPoint(page, waypoint, deadlineTick);
   await releasePublicInput(page);
-  const encounterResolution = await waitForCeresBusEvent(page, {
-    event: 'encounter:resolved',
-    encounterId: CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID,
-    outcome: 'escaped',
-    minTick: start.tick,
-    minSeq: start.nextEventSeq,
-  }, 20_000, { deadlineTick });
+  let resolutionSource;
+  let encounterResolution;
+  if (survivingHostiles.length > 0) {
+    resolutionSource = 'handoff-fresh';
+    encounterResolution = await waitForCeresBusEvent(page, {
+      event: 'encounter:resolved',
+      encounterId: CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID,
+      outcome: 'escaped',
+      minTick: start.tick,
+      minSeq: start.nextEventSeq,
+    }, 20_000, { deadlineTick });
+  } else {
+    const cleared = (toolkitReceipt.events || []).filter((event) => (
+      event?.event === 'encounter:resolved'
+        && event.encounterId === CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID
+        && event.outcome === 'cleared'
+    ));
+    if (cleared.length !== 1) {
+      throw new Error('singleton toolkit transit requires its exact toolkit-era cleared resolution');
+    }
+    resolutionSource = 'toolkit-terminal';
+    encounterResolution = { ...cleared[0] };
+  }
   await page.waitForFunction(({ fixedDeadlineTick, playerId, seedId, fieldIds }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(playerId);
@@ -4427,6 +4497,7 @@ export async function runCeresToolkitTransitHandoff(page, {
     repulsorFieldIds: transientAuthority.repulsorFieldIds,
     waypoint,
     tetherCutAction,
+    resolutionSource,
     encounterResolution,
     approaches: [firstApproach, finalApproach],
     transientClearTick: transientClear.tick,
@@ -5098,8 +5169,9 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
       boundHostiles,
     };
   });
-  if (prebound.playerEntityId == null || prebound.boundHostiles.length !== 2) {
-    throw new Error('toolkit exercise requires the live player and exact durable Throughline pair');
+  if (prebound.playerEntityId == null || prebound.boundHostiles.length < 1
+      || prebound.boundHostiles.length > 2) {
+    throw new Error('toolkit exercise requires the live player and exact durable Throughline cohort');
   }
 
   if (collisionProof?.schema !== 'spaceface.ceresAnchorCollisionReceipt.v1'
@@ -5282,6 +5354,28 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     });
   } finally {
     await releasePublicInput(page).catch(() => {});
+  }
+
+  if (baseline.initialHostiles.length === 1) {
+    const proofKills = (combat.receipt?.events || []).filter((event) => (
+      event?.event === 'entity:killed'
+        && event.killerId === baseline.playerEntityId
+        && event.entityId === combatTarget.id
+        && event.targetWorldRecordId === combatTarget.worldRecordId
+    ));
+    if (proofKills.length !== 1) {
+      throw new Error('singleton toolkit combat lacks its exact player-owned proof kill');
+    }
+    const proofKill = proofKills[0];
+    await waitForCeresBusEvent(page, {
+      event: 'encounter:resolved',
+      encounterId: CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID,
+      outcome: 'cleared',
+      minTick: proofKill.tick,
+      minSeq: proofKill.seq + 1,
+    }, 20_000, {
+      deadlineTick: Math.min(toolkitActionDeadlineTick, proofKill.tick + 60),
+    });
   }
 
   await triggerCeresPublicFlightAction(page, {
@@ -5832,6 +5926,10 @@ async function publicSaveAndContinue({
   const actorHostileIdentityOverlap = initialHostileWorldRecordIds
     .filter((recordId) => actorWorldRecordIds.has(recordId));
   const replacementSpawnCount = replacementWorldRecordIds.length;
+  const expectedAmbushResolution = {
+    phase: 'done',
+    outcome: initialHostileWorldRecordIds.length === 1 ? 'cleared' : 'escaped',
+  };
   return {
     pass: stableJson(beforeActorRecords) === stableJson(afterActorRecords)
       && stableJson(objectRecordsBefore) === stableJson(objectRecordsAfter)
@@ -5840,12 +5938,16 @@ async function publicSaveAndContinue({
       && stableJson(hostileTombstonesBefore) === stableJson(hostileTombstonesAfter)
       && expectedTombstones.length > 0
       && expectedTombstones.every((recordId) => hostileTombstonesAfter.includes(recordId))
-      && initialHostileWorldRecordIds.length > expectedTombstones.length
+      && initialHostileWorldRecordIds.length >= 1
+      && initialHostileWorldRecordIds.length <= 2
+      && expectedTombstones.length === 1
       && stableJson(liveHostileWorldRecordIdsAfter)
         === stableJson(expectedLiveHostileWorldRecordIdsAfter)
       && missingWorldRecordIds.length === 0
       && actorHostileIdentityOverlap.length === 0
       && replacementSpawnCount === 0
+      && stableJson(preReload.ambushResolution) === stableJson(expectedAmbushResolution)
+      && stableJson(after.ambushResolution) === stableJson(expectedAmbushResolution)
       && after.tick >= savedAtTick && after.seed === fixedSeed,
     source: 'public-save-continue',
     publicPath: ['F5', 'pause', 'reload', 'main_menu', 'continue'],
@@ -5871,6 +5973,8 @@ async function publicSaveAndContinue({
     missingWorldRecordIds,
     actorHostileIdentityOverlap,
     replacementSpawnCount,
+    ambushResolutionBefore: preReload.ambushResolution,
+    ambushResolutionAfter: after.ambushResolution,
     seedBefore: preReload.seed,
     seedAfter: after.seed,
     persistedOreCycleSave,
@@ -6100,6 +6204,10 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
       activeShipDefId: active?.defId || null,
       fittedItemIds: Array.isArray(active?.fittings) ? active.fittings.slice().sort() : [],
       cameraZoomWU: Number(state?.camera?.zoom),
+      ambushResolution: {
+        phase: state?.encounterDirector?.stats?.ceresActivityAmbush?.phase || null,
+        outcome: state?.encounterDirector?.stats?.ceresActivityAmbush?.outcome || null,
+      },
       census: { actors, objects, objectEntities, anchors, hostiles, hostileTombstones },
     };
   }, expectedHostileWorldRecordIds);
@@ -7924,8 +8032,8 @@ function validateContinueObservation(observations, route, failures) {
   const replacements = sortedStrings(receipt.replacementWorldRecordIds);
   const missing = sortedStrings(receipt.missingWorldRecordIds);
   const actorOverlap = sortedStrings(receipt.actorHostileIdentityOverlap);
-  if (initialHostiles.length < 1 || destroyedHostiles.length < 1
-      || destroyedHostiles.length >= initialHostiles.length
+  if (initialHostiles.length < 1 || initialHostiles.length > 2
+      || destroyedHostiles.length !== 1
       || destroyedHostiles.some((recordId) => !initialHostiles.includes(recordId))) {
     failures.push('Continue initial/destroyed hostile identity set is invalid');
   }
@@ -7938,6 +8046,16 @@ function validateContinueObservation(observations, route, failures) {
       || replacements.length > 0 || missing.length > 0 || actorOverlap.length > 0
       || receipt.replacementSpawnCount !== replacements.length) {
     failures.push('Continue replaced a tombstoned Throughline hostile');
+  }
+  if (initialHostiles.length >= 1 && initialHostiles.length <= 2) {
+    const expectedResolution = {
+      phase: 'done',
+      outcome: initialHostiles.length === 1 ? 'cleared' : 'escaped',
+    };
+    if (stableJson(receipt.ambushResolutionBefore) !== stableJson(expectedResolution)
+        || stableJson(receipt.ambushResolutionAfter) !== stableJson(expectedResolution)) {
+      failures.push('Continue did not preserve the Throughline terminal resolution');
+    }
   }
   const actorRecordIds = new Set(beforeActors.map((row) => row.worldRecordId));
   if (initialHostiles.some((recordId) => actorRecordIds.has(recordId))) {
@@ -8050,8 +8168,8 @@ function validateToolkitReceiptCore(receipt, route, failures, {
     initialByEntity.set(row.entityId, row.worldRecordId);
     initialRecordIds.add(row.worldRecordId);
   }
-  if (initial.length !== 2 || initialByEntity.size !== 2) {
-    failures.push('toolkit receipt lacks the unique durable initial Throughline pair');
+  if (initial.length < 1 || initial.length > 2 || initialByEntity.size !== initial.length) {
+    failures.push('toolkit receipt lacks a unique durable one-or-two-hostile Throughline cohort');
   }
   const exactCombatTarget = targetAuthority ? {
     entityId: targetAuthority.entityId ?? null,
@@ -8214,9 +8332,9 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   else lastCombatTick = Math.max(lastCombatTick, momentumFrame.tick);
 
   projection.destroyedRecordIds = sortedStrings(receipt.destroyedRecordIds);
-  if (projection.destroyedRecordIds.length < 1
+  if (projection.destroyedRecordIds.length !== 1
       || projection.destroyedRecordIds.some((recordId) => !initialRecordIds.has(recordId))) {
-    failures.push('toolkit tombstone is absent or does not belong to an initial Throughline hostile');
+    failures.push('toolkit must contain exactly one tombstone from the initial Throughline cohort');
   }
   if (exactCombatTarget
       && !projection.destroyedRecordIds.includes(exactCombatTarget.worldRecordId)) {
@@ -8231,6 +8349,10 @@ function validateToolkitReceiptCore(receipt, route, failures, {
   const playerOwnedKilledRecordIds = sortedStrings(
     playerOwnedKills.map(({ event }) => event.targetWorldRecordId),
   );
+  if (playerOwnedKills.length !== 1
+      || stableJson(playerOwnedKilledRecordIds) !== stableJson(projection.destroyedRecordIds)) {
+    failures.push('toolkit must contain exactly one player-owned kill for its exact tombstone');
+  }
   for (const recordId of projection.destroyedRecordIds) {
     if (!playerOwnedKilledRecordIds.includes(recordId)) {
       failures.push(`toolkit tombstone ${recordId} lacks an exact player-owned entity:killed receipt`);
@@ -8257,6 +8379,24 @@ function validateToolkitReceiptCore(receipt, route, failures, {
       : stage === 'full'
         ? 'toolkit lacks a player-owned tombstone after combat and before Repulsor'
         : 'toolkit lacks a player-owned tombstone after completed combat');
+  }
+  if (stage === 'full') {
+    const throughlineResolutions = events.filter((event) => (
+      event?.event === 'encounter:resolved'
+        && event.encounterId === CERES_THROUGHLINE_ACTIVITY_ENCOUNTER_ID
+    ));
+    if (initial.length === 1) {
+      const cleared = throughlineResolutions[0];
+      if (throughlineResolutions.length !== 1 || cleared?.outcome !== 'cleared' || !proofKill
+          || !Number.isSafeInteger(cleared?.tick) || !Number.isSafeInteger(cleared?.seq)
+          || cleared.tick < proofKill?.event?.tick
+          || cleared.tick > proofKill?.event?.tick + 59
+          || cleared.seq <= proofKill?.event?.seq) {
+        failures.push('singleton toolkit lacks its exact owner-issued cleared resolution after the kill');
+      }
+    } else if (throughlineResolutions.length !== 0) {
+      failures.push('paired toolkit receipt contains a terminal resolution before its fresh handoff');
+    }
   }
   const prematureCombatBreak = proofKill && events.findIndex((event, index) => (
     index > combatLatchedIndex && index < proofKill.index
