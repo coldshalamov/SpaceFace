@@ -10,6 +10,7 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../src/data/sectorActivityPockets.js';
 import {
   CIVILIAN_MANIFEST_PAYLOAD_TYPE,
@@ -18,6 +19,7 @@ import {
 } from '../src/systems/lootShards.js';
 import { NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
+import { economy } from '../src/systems/economy.js';
 import { save as saveSystem } from '../src/save/saveSystem.js';
 import {
   MAX_GENERAL_SALVORS_PER_SECTOR,
@@ -27,6 +29,9 @@ import {
 
 const SECTOR_ID = 'sector_test_salvor_aftermath';
 const YARD_ID = 'station_test_scrap_yard';
+const FORGE_SECTOR_ID = 'sector_vesta_forge';
+const FORGE_ID = 'station_forge';
+const SCRAP_ID = 'cmdty_scrap_metal';
 
 const FLAG_PRIOR = {
   enabled: MASSLINE2_FLAGS.enabled,
@@ -43,12 +48,17 @@ function restoreLootFlags() {
   MASSLINE2_FLAGS.lootShards = FLAG_PRIOR.lootShards;
 }
 
-function boot(seed = 47047) {
+function boot(seed = 47047, { forge = false } = {}) {
   enableLootFlags();
+  const systems = forge
+    ? [npcJobsRuntime, traffic, lootShards, economy, saveSystem]
+    : [npcJobsRuntime, traffic, lootShards, saveSystem];
   const sim = createSimulation({
     seed,
-    systems: [npcJobsRuntime, traffic, lootShards, saveSystem],
-    updateOrder: [npcJobsRuntime, traffic, lootShards],
+    systems,
+    updateOrder: forge
+      ? [npcJobsRuntime, traffic, lootShards, economy]
+      : [npcJobsRuntime, traffic, lootShards],
   });
   const events = [];
   for (const name of [
@@ -62,8 +72,13 @@ function boot(seed = 47047) {
     sim.bus.on(name, (payload) => events.push({ name, payload: structuredClone(payload) }));
   }
   sim.state.mode = 'flight';
-  sim.state.world.currentSectorId = SECTOR_ID;
+  sim.state.world.currentSectorId = forge ? FORGE_SECTOR_ID : SECTOR_ID;
+  if (forge) sim.state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, sector]));
   sim.state.player.credits = 9001;
+  sim.state.player.stats = {};
+  sim.state.player.cargo = {
+    items: {}, usedVolume: 0, usedMass: 0, capVolume: 100, capMass: 100,
+  };
 
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
@@ -76,16 +91,18 @@ function boot(seed = 47047) {
     pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
     radius: 40,
-    data: { stationId: YARD_ID },
+    data: { stationId: forge ? FORGE_ID : YARD_ID },
   });
 
   // createSimulation forks module singletons — always use the registry instance.
   const trafficSys = sim.registry.get('traffic');
+  const econ = forge ? sim.registry.get('economy') : null;
+  if (econ) econ.ensureMarket(FORGE_ID);
   const dispose = () => {
     sim.dispose();
     restoreLootFlags();
   };
-  return { sim, events, player, yard, trafficSys, dispose };
+  return { sim, events, player, yard, trafficSys, econ, dispose };
 }
 
 function spawnWreck(sim, {
@@ -173,9 +190,10 @@ test('ambient role mix never rolls general salvors (demand-driven only)', () => 
   assert.equal(mix.salvor, 0, 'salvor weight must stay zero so goldens cannot ambient-spawn cutters');
 });
 
-test('seeded wreck → salvor dispatched → works → departs with taken value', () => {
-  const { sim, events, yard, trafficSys, dispose } = boot(104);
+test('real Vesta salvor unload reaches Forge once, retries safely, and survives Continue', () => {
+  const { sim, events, yard, trafficSys, econ, dispose } = boot(104, { forge: true });
   try {
+    assert.equal(yard.data.stationId, FORGE_ID);
     const wreck = spawnWreck(sim, {
       pool: { cmdty_scrap_metal: 6, cmdty_salvage_electronics: 1 },
     });
@@ -186,6 +204,7 @@ test('seeded wreck → salvor dispatched → works → departs with taken value'
     const salvors = generalSalvors(sim);
     assert.equal(salvors.length, 1, 'exactly one general salvor dispatches to the wreck');
     const salvor = salvors[0];
+    const salvorWorldRecordId = salvor.data.worldRecordId;
     assert.ok(salvor.data.jobId, 'salvor receives an npc job (single intent writer)');
     const job = salvorJob(sim, salvor);
     assert.equal(job.kind, 'salvor');
@@ -210,15 +229,159 @@ test('seeded wreck → salvor dispatched → works → departs with taken value'
       'extraction receipt emitted',
     );
 
-    // Unload at the yard clears the hold without a freight market mint.
+    const carried = structuredClone(cargo);
+    const market = sim.state.economy.markets[FORGE_ID];
+    const scrapBefore = market[SCRAP_ID].stock;
+    const electronicsBefore = market.cmdty_salvage_electronics.stock;
+    const offerBefore = econ.quote(FORGE_ID, SCRAP_ID, 'sell', 3);
+
+    // The real cyclic route reaches the real Forge economy consumer.
     job.phase = NPC_JOB_PHASE.UNLOAD;
     job.routeIndex = 0;
     job.progress = 0.99;
     job.unloadS = 1;
     for (let i = 0; i < 6; i++) sim.step(0.5);
-    assert.equal(salvor.data.cargoManifest.totalQty, 0, 'yard unload empties the cradle');
-    assert.ok(events.some((e) => e.name === 'salvage:npcUnload'));
-    assert.equal(yard.data.stationId, YARD_ID);
+    assert.equal(salvor.data.cargoManifest.totalQty, 0, 'acknowledged Forge unload empties the cradle');
+    const firstUnload = events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload;
+    assert.equal(firstUnload.yardId, FORGE_ID);
+    assert.equal(firstUnload.stationId, FORGE_ID);
+    assert.equal(firstUnload.sectorId, FORGE_SECTOR_ID);
+    assert.equal(firstUnload.manifestId, carried.manifestId);
+    assert.equal(firstUnload.lotId, carried.lotId);
+    assert.deepEqual(firstUnload.lines, carried.lines);
+    assert.equal(
+      firstUnload.intakeId,
+      `salvage-intake:${salvorWorldRecordId}:${carried.salvageSeq}:${carried.manifestId}`,
+    );
+    assert.equal(firstUnload.intakeResult.ok, true);
+    assert.equal(market[SCRAP_ID].stock, scrapBefore + 6);
+    assert.equal(market.cmdty_salvage_electronics.stock, electronicsBefore);
+    assert.ok(econ.quote(FORGE_ID, SCRAP_ID, 'sell', 3).unitAvg < offerBefore.unitAvg);
+    assert.equal(sim.state.player.credits, 9001, 'NPC intake never pays the player');
+
+    // Simulate a local clear replay: the same real manifest is acknowledged as a duplicate and
+    // cannot move the Forge listing twice.
+    const rec = sim.state.traffic.freighters.find((row) => row && row.id === salvor.id);
+    trafficSys._setTrafficManifest(salvor, rec, structuredClone(carried));
+    const replayIntent = {
+      jobId: salvor.data.jobId,
+      kind: 'salvor',
+      completed: true,
+      destination: `yard:${FORGE_ID}`,
+      seq: firstUnload.seq,
+    };
+    const stockAfterFirst = market[SCRAP_ID].stock;
+    assert.equal(trafficSys._onNpcJobUnload(replayIntent), true);
+    assert.equal(events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload.intakeResult.duplicate, true);
+    assert.equal(market[SCRAP_ID].stock, stockAfterFirst);
+
+    // The ignored line is still part of the authenticated lot. Reusing the stable IDs while
+    // changing that non-market quantity must reject and leave custody on the cutter.
+    const conflictingLines = structuredClone(carried);
+    const ignoredLine = conflictingLines.lines.find(
+      (line) => line.commodityId === 'cmdty_salvage_electronics',
+    );
+    ignoredLine.qty += 1;
+    conflictingLines.totalQty += 1;
+    trafficSys._setTrafficManifest(salvor, rec, conflictingLines);
+    assert.equal(trafficSys._onNpcJobUnload({ ...replayIntent, seq: firstUnload.seq + 1 }), false);
+    assert.strictEqual(salvor.data.cargoManifest, conflictingLines);
+    assert.strictEqual(rec.manifest, conflictingLines);
+    assert.equal(
+      events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload.intakeResult.reason,
+      'salvage_intake_identity_conflict',
+    );
+    assert.equal(market[SCRAP_ID].stock, stockAfterFirst);
+
+    // A real but unsupported Vesta yard rejects the lot. Traffic keeps the exact object and the
+    // next WORK completion cannot overwrite it while custody remains unresolved.
+    const rejected = trafficSys._buildSalvorManifest(salvor, 901, {
+      [SCRAP_ID]: 2,
+      cmdty_salvage_electronics: 1,
+    });
+    trafficSys._setTrafficManifest(salvor, rec, rejected);
+    const rejectedIntent = {
+      ...replayIntent,
+      destination: 'yard:station_depot3',
+      seq: 902,
+    };
+    assert.equal(trafficSys._onNpcJobUnload(rejectedIntent), false);
+    assert.strictEqual(salvor.data.cargoManifest, rejected);
+    assert.strictEqual(rec.manifest, rejected);
+    assert.equal(events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload.intakeResult.ok, false);
+    assert.equal(trafficSys._onNpcJobWork({
+      jobId: salvor.data.jobId,
+      kind: 'salvor',
+      completed: true,
+      seq: 903,
+      field: `hulk:${wreck.id}`,
+    }), true);
+    assert.strictEqual(salvor.data.cargoManifest, rejected, 'rejected custody survives the next work cycle');
+
+    // Retrying that same lot at Forge accepts it under its original extraction identity.
+    assert.equal(trafficSys._onNpcJobUnload({
+      ...rejectedIntent,
+      destination: `yard:${FORGE_ID}`,
+      seq: 904,
+    }), true);
+    const acceptedRetry = structuredClone(
+      events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload,
+    );
+    delete acceptedRetry.intakeResult;
+    const stockBeforeContinue = market[SCRAP_ID].stock;
+    const saveSys = sim.registry.get('save');
+    const envelope = saveSys.serialize('salvor-forge-intake-roundtrip');
+    assert.equal(
+      saveSys.loadEnvelope(JSON.parse(JSON.stringify(envelope)), 'salvor-forge-intake-roundtrip'),
+      true,
+    );
+    const restoredMarket = sim.state.economy.markets[FORGE_ID];
+    assert.equal(restoredMarket[SCRAP_ID].stock, stockBeforeContinue, 'Continue does not replay applied intake');
+    sim.bus.emit('salvage:npcUnload', acceptedRetry);
+    assert.equal(
+      acceptedRetry.intakeResult.duplicate,
+      true,
+      'Continue preserves the applied identity for an exact traffic-payload replay',
+    );
+    assert.equal(restoredMarket[SCRAP_ID].stock, stockBeforeContinue);
+
+    // Player sales still use the canonical listing after the NPC route and Continue.
+    sim.state.player.cargo = {
+      items: { [SCRAP_ID]: 3 }, usedVolume: 3, usedMass: 2.7, capVolume: 100, capMass: 100,
+    };
+    const creditsBeforeSale = sim.state.player.credits;
+    const playerSale = econ.execute(FORGE_ID, SCRAP_ID, 'sell', 3);
+    assert.equal(playerSale.ok, true);
+    assert.equal(restoredMarket[SCRAP_ID].stock, stockBeforeContinue + 3);
+    assert.equal(sim.state.player.credits, creditsBeforeSale + playerSale.total);
+  } finally {
+    dispose();
+  }
+});
+
+test('missing intake consumer retains the exact salvor manifest', () => {
+  const { sim, events, trafficSys, dispose } = boot(105);
+  try {
+    const wreck = spawnWreck(sim, { pool: { [SCRAP_ID]: 4 } });
+    forceNoticeReady(wreck, 0);
+    trafficSys.update(0.25, sim.state);
+    const salvor = generalSalvors(sim)[0];
+    const carried = completeWorkOnce(sim, salvor);
+    const rec = sim.state.traffic.freighters.find((row) => row && row.id === salvor.id);
+    assert.ok(carried && carried.totalQty === 4);
+
+    assert.equal(trafficSys._onNpcJobUnload({
+      jobId: salvor.data.jobId,
+      kind: 'salvor',
+      completed: true,
+      destination: `yard:${YARD_ID}`,
+      seq: 700,
+    }), false);
+    assert.strictEqual(salvor.data.cargoManifest, carried);
+    assert.strictEqual(rec.manifest, carried);
+    const attempted = events.filter((event) => event.name === 'salvage:npcUnload').at(-1).payload;
+    assert.equal(attempted.intakeResult, undefined);
+    assert.deepEqual(attempted.lines, carried.lines);
   } finally {
     dispose();
   }

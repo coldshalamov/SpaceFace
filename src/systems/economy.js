@@ -75,6 +75,9 @@ const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const REP_HIT_LO = 2, REP_HIT_HI = 25;
 const BRIBE_FRAC = 0.30;
 export const TRADE_LEDGER_MAX = 10;
+const SALVAGE_INTAKE_RECEIPT_CAP = 256;
+const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
+const NPC_SALVAGE_INTAKE_STATION_TYPES = new Set(['refinery', 'fab']);
 const REGIONAL_PRESSURE_RECIPES = Object.freeze(
   Object.values(allRegionalPressureRecipes()).flat(),
 );
@@ -387,6 +390,154 @@ function ensurePlayerTradeState(player) {
   return { ledger: player.tradeLedger, lots: player.tradeLots };
 }
 
+function normalizeSalvageIntakeIds(raw) {
+  const ids = new Set();
+  const ordered = [];
+  for (const value of (Array.isArray(raw) ? raw : [])) {
+    if (typeof value !== 'string' || !value || ids.has(value)) continue;
+    ids.add(value);
+    ordered.push(value);
+  }
+  return ordered.length > SALVAGE_INTAKE_RECEIPT_CAP
+    ? ordered.slice(ordered.length - SALVAGE_INTAKE_RECEIPT_CAP)
+    : ordered;
+}
+
+function canonicalSalvageIntakeLines(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const lines = [];
+  for (const line of raw) {
+    if (!line || typeof line !== 'object' || Array.isArray(line)) return null;
+    const commodityId = typeof line.commodityId === 'string' && line.commodityId
+      ? line.commodityId
+      : null;
+    const qty = Number(line.qty);
+    if (!commodityId || !Number.isSafeInteger(qty) || qty <= 0) return null;
+    lines.push({ commodityId, qty });
+  }
+  lines.sort((a, b) => {
+    if (a.commodityId < b.commodityId) return -1;
+    if (a.commodityId > b.commodityId) return 1;
+    return a.qty - b.qty;
+  });
+  return lines;
+}
+
+function canonicalSalvageIntakeReceipt(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const intakeId = typeof value.intakeId === 'string' && value.intakeId ? value.intakeId : null;
+  const yardId = typeof value.yardId === 'string' && value.yardId ? value.yardId : null;
+  const manifestId = typeof value.manifestId === 'string' && value.manifestId ? value.manifestId : null;
+  const lotId = typeof value.lotId === 'string' && value.lotId ? value.lotId : null;
+  const scrapQty = Number(value.scrapQty);
+  const lines = canonicalSalvageIntakeLines(value.lines);
+  if (!intakeId || !yardId || !manifestId || !lotId || !lines
+    || !Number.isSafeInteger(scrapQty) || scrapQty <= 0) {
+    return null;
+  }
+  return { intakeId, yardId, manifestId, lotId, scrapQty, lines };
+}
+
+function sameSalvageIntakeReceipt(a, b) {
+  return !!a && !!b
+    && a.intakeId === b.intakeId
+    && a.yardId === b.yardId
+    && a.manifestId === b.manifestId
+    && a.lotId === b.lotId
+    && a.scrapQty === b.scrapQty
+    && Array.isArray(a.lines)
+    && Array.isArray(b.lines)
+    && a.lines.length === b.lines.length
+    && a.lines.every((line, index) => line.commodityId === b.lines[index].commodityId
+      && line.qty === b.lines[index].qty);
+}
+
+function normalizeSalvageIntakeReceipts(raw) {
+  const receipts = [];
+  const byId = new Map();
+  const blockedIds = new Set();
+  for (const value of (Array.isArray(raw) ? raw : [])) {
+    const intakeId = value && typeof value === 'object'
+      && typeof value.intakeId === 'string' && value.intakeId
+      ? value.intakeId
+      : null;
+    if (!intakeId) continue;
+    const receipt = canonicalSalvageIntakeReceipt(value);
+    const existing = byId.get(intakeId);
+    if (!receipt || (existing && !sameSalvageIntakeReceipt(existing, receipt))) {
+      blockedIds.add(intakeId);
+      byId.delete(intakeId);
+      continue;
+    }
+    if (!existing && !blockedIds.has(intakeId)) {
+      byId.set(intakeId, receipt);
+      receipts.push(receipt);
+    }
+  }
+  const valid = receipts.filter((receipt) => byId.has(receipt.intakeId));
+  return {
+    receipts: valid.length > SALVAGE_INTAKE_RECEIPT_CAP
+      ? valid.slice(valid.length - SALVAGE_INTAKE_RECEIPT_CAP)
+      : valid,
+    blockedIds: normalizeSalvageIntakeIds(Array.from(blockedIds)),
+  };
+}
+
+function ensureSalvageIntakeState(economyState) {
+  if (!economyState || typeof economyState !== 'object') return { receipts: [], blockedIds: [] };
+  const normalized = normalizeSalvageIntakeReceipts(economyState.appliedSalvageIntakeReceipts);
+  const blockedIds = normalizeSalvageIntakeIds([
+    ...(Array.isArray(economyState.blockedSalvageIntakeIds)
+      ? economyState.blockedSalvageIntakeIds
+      : []),
+    ...(Array.isArray(economyState.appliedSalvageIntakeIds)
+      ? economyState.appliedSalvageIntakeIds
+      : []),
+    ...normalized.blockedIds,
+  ]);
+  const receipts = normalized.receipts.filter(
+    (receipt) => !blockedIds.includes(receipt.intakeId),
+  );
+  if (receipts.length) economyState.appliedSalvageIntakeReceipts = receipts;
+  else delete economyState.appliedSalvageIntakeReceipts;
+  if (blockedIds.length) economyState.blockedSalvageIntakeIds = blockedIds;
+  else delete economyState.blockedSalvageIntakeIds;
+  delete economyState.appliedSalvageIntakeIds;
+  return { receipts, blockedIds };
+}
+
+function npcSalvageIntakeFrom(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const intakeId = typeof payload.intakeId === 'string' && payload.intakeId
+    ? payload.intakeId
+    : null;
+  const yardId = typeof payload.yardId === 'string' && payload.yardId
+    ? payload.yardId
+    : null;
+  const manifestId = typeof payload.manifestId === 'string' && payload.manifestId
+    ? payload.manifestId
+    : null;
+  const lotId = typeof payload.lotId === 'string' && payload.lotId
+    ? payload.lotId
+    : null;
+  const lines = canonicalSalvageIntakeLines(payload.lines);
+  if (!intakeId || !yardId || !manifestId || !lotId || !lines) return null;
+
+  let scrapQty = 0;
+  let scrapLines = 0;
+  const ignoredCommodityIds = [];
+  for (const line of lines) {
+    if (line.commodityId === NPC_SALVAGE_INTAKE_COMMODITY_ID) {
+      scrapLines++;
+      scrapQty += line.qty;
+    } else {
+      ignoredCommodityIds.push(line.commodityId);
+    }
+  }
+  if (scrapLines !== 1 || !Number.isSafeInteger(scrapQty) || scrapQty <= 0) return null;
+  return { intakeId, yardId, manifestId, lotId, scrapQty, lines, ignoredCommodityIds };
+}
+
 function nextTradeSequence(player, ledger) {
   const persisted = Number.isSafeInteger(player.tradeReceiptSeq) && player.tradeReceiptSeq > 0
     ? player.tradeReceiptSeq
@@ -425,6 +576,7 @@ export const economy = {
     if (!state.economy.econEvents) state.economy.econEvents = [];
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
+    ensureSalvageIntakeState(state.economy);
     ensurePlayerMarketMemory(state.player);
     ensurePlayerTradeState(state.player);
     if (!Number.isFinite(state.economy.rngSeed) || (state.economy.rngSeed >>> 0) === 0) state.economy.rngSeed = hash32(state.meta && state.meta.seed, 'economy');
@@ -468,6 +620,13 @@ export const economy = {
     bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));
+    });
+    // Traffic only delivers a stable manifest receipt. Economy validates the source station and
+    // writes the one eligible salvage listing, returning a synchronous acknowledgement so traffic
+    // can retain a rejected hold instead of silently deleting it.
+    bus.on('salvage:npcUnload', (p) => {
+      if (!p || typeof p !== 'object') return;
+      p.intakeResult = this.applyNpcSalvageIntake(p);
     });
 
     // ---- station markets populated on dock + sector entry ---------------------------------
@@ -1247,6 +1406,75 @@ export const economy = {
     this.recordLivePriceHistory(entry, def, stationId, commodityId);
   },
 
+  /**
+   * Admit one conserved NPC salvage lot into an eligible industrial yard. This intentionally has
+   * no player wallet/cargo path: player salvage continues through execute(..., 'sell', ...).
+   */
+  applyNpcSalvageIntake(payload) {
+    const intake = npcSalvageIntakeFrom(payload);
+    if (!intake) return { ok: false, reason: 'invalid_salvage_intake' };
+
+    const state = this.state;
+    const intakeState = ensureSalvageIntakeState(state.economy);
+    const receipt = canonicalSalvageIntakeReceipt(intake);
+    const applied = intakeState.receipts.find((candidate) => candidate.intakeId === intake.intakeId);
+    if (intakeState.blockedIds.includes(intake.intakeId)
+      || (applied && !sameSalvageIntakeReceipt(applied, receipt))) {
+      return {
+        ok: false,
+        reason: 'salvage_intake_identity_conflict',
+        intakeId: intake.intakeId,
+      };
+    }
+    if (applied) {
+      return {
+        ok: true,
+        duplicate: true,
+        intakeId: applied.intakeId,
+        yardId: applied.yardId,
+        manifestId: applied.manifestId,
+        lotId: applied.lotId,
+        commodityId: NPC_SALVAGE_INTAKE_COMMODITY_ID,
+        qty: applied.scrapQty,
+      };
+    }
+
+    const info = stationInfo(state, intake.yardId);
+    if (!info || !NPC_SALVAGE_INTAKE_STATION_TYPES.has(info.type)) {
+      return { ok: false, reason: 'unsupported_salvage_yard' };
+    }
+    const market = state.economy.markets[intake.yardId]
+      || this.ensureMarket(intake.yardId, info.type, info.size);
+    const entry = market && market[NPC_SALVAGE_INTAKE_COMMODITY_ID];
+    if (!entry || !commodityDef(state, NPC_SALVAGE_INTAKE_COMMODITY_ID)) {
+      return { ok: false, reason: 'salvage_listing_unavailable' };
+    }
+
+    this.applyStockPressure(
+      intake.yardId,
+      NPC_SALVAGE_INTAKE_COMMODITY_ID,
+      'sell',
+      intake.scrapQty,
+    );
+    state.economy.appliedSalvageIntakeReceipts = normalizeSalvageIntakeReceipts([
+      ...intakeState.receipts,
+      receipt,
+    ]).receipts;
+    this.snapshotIntel(intake.yardId);
+    const result = {
+      ok: true,
+      intakeId: intake.intakeId,
+      yardId: intake.yardId,
+      manifestId: intake.manifestId,
+      lotId: intake.lotId,
+      commodityId: NPC_SALVAGE_INTAKE_COMMODITY_ID,
+      qty: intake.scrapQty,
+      ignoredCommodityIds: intake.ignoredCommodityIds,
+    };
+    this.bus.emit('economy:salvageIntakeApplied', result);
+    return result;
+  },
+
   // -------------------------------------------------------------------------------------------
   // CREDITS — SOLE WRITER (§0.6). Everyone else emits economy:grant/chargeCredits.
   // -------------------------------------------------------------------------------------------
@@ -1707,6 +1935,9 @@ export const economy = {
     state.economy.econEvents = [];
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     state.economy.marketIntel = {};
+    delete state.economy.appliedSalvageIntakeReceipts;
+    delete state.economy.blockedSalvageIntakeIds;
+    delete state.economy.appliedSalvageIntakeIds;
     state.player.marketMemory = {};
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
@@ -1724,6 +1955,7 @@ export const economy = {
   /** Serialize stock, formula state, and bounded player-visible market history. */
   serialize() {
     const econ = this.state.economy;
+    const salvageIntakeState = ensureSalvageIntakeState(econ);
     const markets = {};
     // Price history is derived from the saved stock + cycle for stations the player has never
     // inspected. Preserve the exact lived trace only where it can be player knowledge. This keeps
@@ -1742,7 +1974,7 @@ export const economy = {
       }
       markets[sid] = out;
     }
-    return {
+    const data = {
       markets,
       cycles: serializeCycles(this.state),
       econEvents: (econ.econEvents || []).map((e) => ({
@@ -1755,6 +1987,16 @@ export const economy = {
       nextEventId: this._nextEventId,
       eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
     };
+    if (salvageIntakeState.receipts.length) {
+      data.appliedSalvageIntakeReceipts = salvageIntakeState.receipts.map((receipt) => ({
+        ...receipt,
+        lines: receipt.lines.map((line) => ({ ...line })),
+      }));
+    }
+    if (salvageIntakeState.blockedIds.length) {
+      data.blockedSalvageIntakeIds = salvageIntakeState.blockedIds.slice();
+    }
+    return data;
   },
 
   deserialize(data) {
@@ -1794,6 +2036,16 @@ export const economy = {
     econ.econEvents = (data.econEvents || []).map((e) => ({ ...e }));
     econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     econ.marketIntel = data.marketIntel || {};
+    if (Array.isArray(data.appliedSalvageIntakeReceipts)) {
+      econ.appliedSalvageIntakeReceipts = data.appliedSalvageIntakeReceipts;
+    } else delete econ.appliedSalvageIntakeReceipts;
+    if (Array.isArray(data.blockedSalvageIntakeIds)) {
+      econ.blockedSalvageIntakeIds = data.blockedSalvageIntakeIds;
+    } else delete econ.blockedSalvageIntakeIds;
+    if (Array.isArray(data.appliedSalvageIntakeIds)) {
+      econ.appliedSalvageIntakeIds = data.appliedSalvageIntakeIds;
+    } else delete econ.appliedSalvageIntakeIds;
+    ensureSalvageIntakeState(econ);
     econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');

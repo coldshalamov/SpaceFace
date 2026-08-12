@@ -2994,6 +2994,11 @@ export const traffic = {
     manifest.lines = lines;
     manifest.totalQty = totalQty;
     manifest.role = 'salvor';
+    // The cutter's extracted lot keeps one durable identity from wreck to yard. The source sequence
+    // is the WORK intent that created the manifest, not a later unload attempt, so a rejected hold
+    // can circle and retry without becoming a second market receipt.
+    manifest.lotId = manifest.manifestId;
+    manifest.salvageSeq = Math.max(0, seq | 0);
     return manifest;
   },
 
@@ -4663,6 +4668,11 @@ export const traffic = {
     if (intent.kind === 'salvor') {
       const context = this._jobTrafficContext(intent, 'salvor');
       if (!context) return false;
+      const carried = context.entity.data && context.entity.data.cargoManifest
+        || context.rec.manifest;
+      // A rejected yard keeps custody on the cutter. When the cyclic job reaches another wreck,
+      // do not overwrite that conserved lot; it must return to an eligible intake first.
+      if (carried && Array.isArray(carried.lines) && carried.totalQty > 0) return true;
       const waypointId = typeof intent.field === 'string' ? intent.field
         : (typeof intent.waypointId === 'string' ? intent.waypointId : '');
       const target = this._resolveSalvorTargetFromWaypoint(waypointId)
@@ -5686,24 +5696,59 @@ export const traffic = {
     }
     if (!intent || intent.completed !== true) return false;
 
-    // General salvor: scrap yard takes the cut. Salvor is not a FREIGHT_TRADING_ROLES market actor —
-    // clear the hold without minting an economy arrival. Value already existed as wreck/payload pool.
+    // General salvor: present the conserved hold to the economy owner. Traffic never writes a
+    // market; it clears custody only after the synchronous intake acknowledgement says the exact
+    // lot was accepted (including an idempotent duplicate acknowledgement).
     if (intent.kind === 'salvor') {
       const context = this._jobTrafficContext(intent, 'salvor');
       if (!context) return false;
       const destination = typeof intent.destination === 'string' ? intent.destination : '';
       if (!destination.startsWith('yard:') || destination.length <= 5) return false;
+      const manifest = context.entity.data && context.entity.data.cargoManifest
+        || context.rec.manifest;
+      if (!manifest || !Array.isArray(manifest.lines)) return false;
+      if (!(manifest.totalQty > 0)) return true; // already empty: no custody commit is required
+
+      const manifestId = typeof manifest.manifestId === 'string' && manifest.manifestId
+        ? manifest.manifestId
+        : null;
+      const lotId = typeof manifest.lotId === 'string' && manifest.lotId
+        ? manifest.lotId
+        : manifestId;
+      const sourceSeq = Number.isSafeInteger(manifest.salvageSeq) && manifest.salvageSeq >= 0
+        ? manifest.salvageSeq
+        : (Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : 0);
+      const lines = manifest.lines.map((line) => ({
+        commodityId: line && line.commodityId,
+        qty: line && line.qty,
+      }));
+      const copiedQty = lines.reduce(
+        (sum, line) => sum + (Number.isSafeInteger(line.qty) && line.qty > 0 ? line.qty : 0),
+        0,
+      );
+      if (!manifestId || !lotId || copiedQty !== manifest.totalQty
+        || lines.some((line) => typeof line.commodityId !== 'string' || !line.commodityId
+          || !Number.isSafeInteger(line.qty) || line.qty <= 0)) return false;
+      if (!this.bus || typeof this.bus.emit !== 'function') return false;
+
+      const yardId = destination.slice(5);
+      const payload = {
+        intakeId: `salvage-intake:${context.worldRecordId}:${sourceSeq}:${manifestId}`,
+        jobId: context.jobId,
+        salvorId: context.entity.id,
+        yardId,
+        stationId: yardId,
+        sectorId: (this.state.world && this.state.world.currentSectorId) || null,
+        seq: Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : 0,
+        manifestId,
+        lotId,
+        lines,
+      };
+      this.bus.emit('salvage:npcUnload', payload);
+      if (!payload.intakeResult || payload.intakeResult.ok !== true) return false;
+
       const emptied = this._emptySalvorManifest(context.entity, intent.seq | 0);
       this._setTrafficManifest(context.entity, context.rec, emptied);
-      if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('salvage:npcUnload', {
-          jobId: context.jobId,
-          salvorId: context.entity.id,
-          yardId: destination.slice(5),
-          sectorId: (this.state.world && this.state.world.currentSectorId) || null,
-          seq: intent.seq | 0,
-        });
-      }
       return true;
     }
 
