@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-12
-baseCommit: 8ace110b
+baseCommit: 503c4611e0fc8b6d352f438ce60c9ebf60983b10
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| `PQ-048.01` closure | `/root/pq048_01_close` | IMPLEMENTING | `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/PQ-048.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Commit and push the three closure files, then remove this row |
 
 ## Uncommitted work without a confirmed live thread
 
@@ -51,7 +50,6 @@ not active leases and do not prevent other tasks from proceeding.
 | Work | Exact paths | Plain next action |
 |---|---|---|
 | Paused Ceres acceptance repair | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs` | Preserve without further acceptance work; it does not count as an INFERENCE unit |
-| Thruster look-dev work | `scripts/capture-thruster-lookdev.mjs`, `scripts/thruster-lookdev-lab.html`, `src/render/thruster/recipes/plasmaStreamRecipe.js`, `src/render/thruster/systems/plasmaStream.js` | Preserve foreign work and avoid these exact paths |
 
 ## Start another task
 

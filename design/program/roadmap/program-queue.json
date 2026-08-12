@@ -5619,6 +5619,38 @@
         "design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md"
       ],
       "brief": "A seam produces an authoritative ore lot; a readable ore barge loads and transports it, can be protected or robbed, and delivery changes the Ceres refinery market exactly once without traffic becoming a cargo or economy writer."
+    },
+    {
+      "id": "PQ-048.02",
+      "parentId": "PQ-048",
+      "priority": 281,
+      "title": "Make the Ceres rich-seam opportunity player-legible",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.01"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/contactHail.js",
+        "src/save/saveSystem.js",
+        "src/systems/cargo.js",
+        "src/systems/fieldDepletion.js",
+        "src/systems/mining.js",
+        "src/systems/traffic.js",
+        "src/ui/screens/stationHub.js",
+        "src/ui/targetPanel.js",
+        "test/ceres-causal-chain.test.mjs",
+        "test/ceres-rich-seam-opportunity.test.mjs"
+      ],
+      "checks": [
+        "node --test test/ceres-rich-seam-opportunity.test.mjs test/ceres-causal-chain.test.mjs test/ceres-visible-job-actions.test.mjs test/contact-hail-contract.test.mjs",
+        "npm run check:baseline -- --jobs=7"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-02-rich-seam-opportunity-REPORT.md"
+      ],
+      "brief": "A miner identifies and works a readable rich seam; yield, heat, and depletion change; the player can help, exploit, or miss the opportunity; and altered-seam cargo provenance remains inspectable across Continue, death, jettison/recollect, and finite idempotent claim."
     }
   ]
 }
