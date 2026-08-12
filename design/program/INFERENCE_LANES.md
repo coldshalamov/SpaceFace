@@ -1,177 +1,192 @@
 <!-- LIFETIME: STABLE -->
-# SpaceFace inference lanes — the development entrypoint
+# SpaceFace INFERENCE — production-first, bounded execution
 
 ```
 SPACEFACE COMMANDS
 
 NEXT
-Continue the existing admitted program.
-Use the normal queue/dispatcher.
+Continue one existing admitted queue unit.
 
-INFERENCE <Nx> [optional scope]
-Spend creative/production inference making the game richer,
-better, more polished, and closer to the intended SpaceFace.
+INFERENCE <N> [optional scope]
+Complete up to N independently useful production units, sequentially.
 
 Examples:
-INFERENCE 1x
-INFERENCE 3x NPCS
-INFERENCE 5x WORLD
-INFERENCE 3x GRAPHICS
-INFERENCE 5x POLISH
-WF-01 3x
+INFERENCE 1
+INFERENCE 5 NPCS
+INFERENCE 20 WORLD
+INFERENCE 8 GRAPHICS
+WF-12 3
 ```
 
-**Default INFERENCE job (autonomous — not PQ):**
+This file is the authoritative execution contract for an `INFERENCE` request.
 
-1. `node scripts/inference-detect.mjs [--scope=X] [--nx=N]` — prints the **director board**:
-   repair / starved / opportunity / integration / recovery cells, plus blocked
-   fingerprints, failed-twice patterns, and overused references from memory.
-2. **Take the suggested mode unless you can state evidence for overriding it.**
-   A structural count is a *symptom*: before building against a repair gap,
-   verify the experiential reality on the ordinary route (what does the player
-   actually see repeat or go missing?). A gap that is real in the registry but
-   invisible in play is the wrong unit.
-3. **You invent** the unit inside the chosen cell — via the divergence protocol in
-   [`02_CREATIVE_CONVERGENCE_LOOP.md`](../inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md):
-   independent passes, one of them blind to the reference library, at least one
-   candidate justified purely from SpaceFace's own systems and fiction.
-   **Printed examples anywhere in the workflow docs are spent ideas — never candidates.**
-4. Implement via live owners + focused tests; prove on the ordinary route.
-5. Cold review per [`05_ADVERSARIAL_REVIEW_PROTOCOL.md`](../inference-workflows/05_ADVERSARIAL_REVIEW_PROTOCOL.md)
-   — a separate context, blinded evidence, never the creator grading itself.
-6. Record honestly — accepted, rejected, and cut alike:
-   `node scripts/inference-record.mjs` (see [`INFERENCE_LEDGER.md`](./INFERENCE_LEDGER.md)).
-   Accepted live units require an evidence artifact and a filled review record.
+## 1. What `N` means
 
-This is the door for agents to notice empty/samey/cheap **without** the owner playtesting and
-naming the unit. `NEXT`/PQ is the other door (pre-specified work). Do not collapse them.
+`N` is a positive integer target for **production units**, not an effort multiplier, candidate-pool
+size, review quota, document count, file count, or acceptance campaign.
 
-**Why a board and not a top score:** the previous detector ranked eleven registry
-counts and asked agents to raise them. That selected for whatever was easiest to
-count — rows, labels, files — and could never select economy, story, audio,
-exploration, UI, feel, or integration work at all. Fabricated vocabulary (a novel
-doctrine string the runtime silently discards) *raised* the old score while making
-combat worse. The board separates detection from choice, validates strings against
-what the runtime recognizes, counts only released assets as live, and schedules the
-unmeasured domains by staleness so no department starves silently.
+One production unit is one coherent, independently useful change to at least one production surface:
 
-This is the single obvious entrypoint when the request is to **expand, improve, deepen, diversify,
-populate, polish, or otherwise develop the actual game** using reusable creative-production workflows.
+- runtime code under `src/`;
+- player-consumed game data;
+- a shipped asset plus its live integration;
+- build/release code that materially changes the shipped game.
 
-Before entering any lane, internalize [`design/VISION.md`](../VISION.md) — the owner's statement of
-the fantasy and UVP — and [`00_SPACEFACE_TEAM_MINDSET.md`](../inference-workflows/00_SPACEFACE_TEAM_MINDSET.md).
-VISION.md outranks every other document's emphasis.
+A unit does **not** count when it changes only plans, candidate lists, ledgers, receipts, tests,
+screenshots, reviews, probes, manifests used only by validation, or harness/infrastructure code.
 
-## What these lanes are
+`N` may be larger than five. Large requests are not converted into one giant portfolio. They are
+executed as a sequence of small committed slices.
 
-The inference lanes are **reusable workflows for spending model inference to make the real game
-richer** — NPCs, enemies, sectors, economy, story, graphics, VFX, audio, gameplay feel, content depth,
-and whole playable slices. Each workflow turns a vague "make X better" into a disciplined loop:
-observe ordinary play → state the target experience → generate varied candidates → select and cut →
-implement through current owners → obtain cold adversarial review → revise/rebuild/cut → prove on the
-ordinary route → record what was learned.
+## 2. Two honest terminal states for a built unit
 
-They do **not** replace [`program-queue.json`](./roadmap/program-queue.json),
-`scripts/program-dispatch.mjs`, packets, or acceptance. They are supporting creative and production
-doctrine. The moment a lane produces concrete implementation work, **normal repo ownership, queue,
-packet, and testing rules apply** — stage owned files, run focused checks, and obtain the acceptance
-the active packet requires. An `Nx` request, a workflow label, or an agent review grants no priority,
-lease, path ownership, or acceptance of its own.
+- `implemented` — production is committed; focused verification is green or the exact remaining route
+  claim is recorded as `unproven` (`route-unproven`).
+- `accepted` — production is committed and current ordinary-route evidence supports the claimed
+  player-facing result.
 
-> Two doors, one building:
->
-> - **"What exact existing tasks can I finish?"** → existing queue / dispatcher (see
->   [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) §1).
-> - **"Where do I go to spend inference making the game richer?"** → you are here.
+`implemented` is a legitimate terminal outcome. Do not hold completed production hostage while
+manufacturing a route harness, a fresh reviewer, or a perfect acceptance record.
 
-## The workflows
+## 3. PRODUCTION-FIRST loop
 
-Full workflow library and supporting doctrine live in
-[`design/inference-workflows/`](../inference-workflows/README.md). Start at that README, then open the
-specific workflow. The symptom-to-workflow router is
-[`07_WORKFLOW_ROUTER.md`](../inference-workflows/07_WORKFLOW_ROUTER.md) when the request is a symptom
-("the world feels empty", "combat is hold-fire-until-dead", "graphics look generic") rather than a
-named domain.
+Run this loop once per unit:
 
-| ID | Workflow | Best for | File |
-|---|---|---|---|
-| WF-01 | NPC Occupations & Living World | deepening traffic into readable working people, jobs, incidents, and ecology | [`workflows/WF-01_NPC_LIVING_WORLD.md`](../inference-workflows/workflows/WF-01_NPC_LIVING_WORLD.md) |
-| WF-02 | Enemy Roster & Encounters | distinct combat roles and encounter variety using existing AI/combat/physics | [`workflows/WF-02_ENEMY_ROSTER_AND_ENCOUNTERS.md`](../inference-workflows/workflows/WF-02_ENEMY_ROSTER_AND_ENCOUNTERS.md) |
-| WF-03 | Sector & World Composition | making a sector/pocket more distinct, populated, and activity-dense | [`workflows/WF-03_SECTOR_WORLD_COMPOSITION.md`](../inference-workflows/workflows/WF-03_SECTOR_WORLD_COMPOSITION.md) |
-| WF-04 | Stations, Planets & World Sites | turning fixtures/menu-entrances into embodied destination operations | [`workflows/WF-04_STATIONS_PLANETS_WORLD_SITES.md`](../inference-workflows/workflows/WF-04_STATIONS_PLANETS_WORLD_SITES.md) |
-| WF-05 | Weapons, Physics Tools & Modules | mechanically distinct physical tools with multiple uses | [`workflows/WF-05_WEAPONS_PHYSICS_TOOLS_AND_MODULES.md`](../inference-workflows/workflows/WF-05_WEAPONS_PHYSICS_TOOLS_AND_MODULES.md) |
-| WF-06 | Economy, Industry & Logistics | visible value-flow chains that give work and crime a reason to exist | [`workflows/WF-06_ECONOMY_INDUSTRY_AND_LOGISTICS.md`](../inference-workflows/workflows/WF-06_ECONOMY_INDUSTRY_AND_LOGISTICS.md) |
-| WF-07 | Progression, Ships & Infrastructure | capability milestones, builds, and player-grown infrastructure | [`workflows/WF-07_PROGRESSION_SHIPS_BUILDS_AND_INFRASTRUCTURE.md`](../inference-workflows/workflows/WF-07_PROGRESSION_SHIPS_BUILDS_AND_INFRASTRUCTURE.md) |
-| WF-08 | Missions, Heists & Activities | playable, player-interruptible activity packages | [`workflows/WF-08_MISSIONS_HEISTS_CONTRACTS_AND_WORLD_ACTIVITIES.md`](../inference-workflows/workflows/WF-08_MISSIONS_HEISTS_CONTRACTS_AND_WORLD_ACTIVITIES.md) |
-| WF-09 | Narrative, Characters & Ledger | open narrative threads and characters worth remembering | [`workflows/WF-09_NARRATIVE_CHARACTERS_AND_LEDGER.md`](../inference-workflows/workflows/WF-09_NARRATIVE_CHARACTERS_AND_LEDGER.md) |
-| WF-10 | Exploration & Discovery | curiosity and discovery chains, not checklist reveals | [`workflows/WF-10_EXPLORATION_DISCOVERY_AND_MYSTERY.md`](../inference-workflows/workflows/WF-10_EXPLORATION_DISCOVERY_AND_MYSTERY.md) |
-| WF-11 | Graphics Asset Families & World Dressing | production asset families toward the intended professional visual standard | [`workflows/WF-11_GRAPHICS_ASSET_FAMILIES_AND_WORLD_DRESSING.md`](../inference-workflows/workflows/WF-11_GRAPHICS_ASSET_FAMILIES_AND_WORLD_DRESSING.md) |
-| WF-12 | VFX, Camera, Lighting & Visual Feel | kinetic visual presentation — impact, motion, energy | [`workflows/WF-12_VFX_CAMERA_LIGHTING_AND_VISUAL_FEEL.md`](../inference-workflows/workflows/WF-12_VFX_CAMERA_LIGHTING_AND_VISUAL_FEEL.md) |
-| WF-13 | Audio, Music & World Sound | semantic audio identity for traffic, work, combat, place | [`workflows/WF-13_AUDIO_MUSIC_AND_WORLD_SOUND.md`](../inference-workflows/workflows/WF-13_AUDIO_MUSIC_AND_WORLD_SOUND.md) |
-| WF-14 | UI, UX & Onboarding | complete player-task/information packages, not more panels | [`workflows/WF-14_UI_UX_ONBOARDING_AND_INFORMATION.md`](../inference-workflows/workflows/WF-14_UI_UX_ONBOARDING_AND_INFORMATION.md) |
-| WF-15 | Gameplay Feel, Controls & Balance | resolving the largest player-facing feel/control/combat defects | [`workflows/WF-15_GAMEPLAY_FEEL_CONTROLS_AND_BALANCE.md`](../inference-workflows/workflows/WF-15_GAMEPLAY_FEEL_CONTROLS_AND_BALANCE.md) |
-| WF-16 | Variants, States & Aftermath | multiplying accepted content through meaningful siblings/states/incidents | [`workflows/WF-16_CONTENT_VARIANTS_STATES_AND_AFTERMATH.md`](../inference-workflows/workflows/WF-16_CONTENT_VARIANTS_STATES_AND_AFTERMATH.md) |
-| WF-17 | Vertical Slice & Portfolio Integration | composing accepted systems/assets into one production-quality playable slice | [`workflows/WF-17_VERTICAL_SLICE_AND_PORTFOLIO_INTEGRATION.md`](../inference-workflows/workflows/WF-17_VERTICAL_SLICE_AND_PORTFOLIO_INTEGRATION.md) |
-| WF-18 | Design Recovery & Simplification | recovering where the implementation drifted from the intended game | [`workflows/WF-18_DESIGN_RECOVERY_AND_SIMPLIFICATION.md`](../inference-workflows/workflows/WF-18_DESIGN_RECOVERY_AND_SIMPLIFICATION.md) |
-| WF-19 | Technical Production & Scaling | quality-enabling performance/scaling improvements (no quality cuts) | [`workflows/WF-19_TECHNICAL_PRODUCTION_AND_PERFORMANCE_SCALING.md`](../inference-workflows/workflows/WF-19_TECHNICAL_PRODUCTION_AND_PERFORMANCE_SCALING.md) |
+1. Read the user's scope, root `AGENTS.md`, the relevant live owner, and only the selected workflow
+   needed to understand the domain.
+2. Run `node scripts/inference-detect.mjs [--scope=SCOPE]` at most once at the beginning of the task.
+   The detector suggests a domain; it does not set `N`, dispatch work, or require a portfolio.
+3. Choose one small player-facing unit. At most three alternatives may be compared; a candidate
+   dossier is not required.
+4. Reproduce or characterize the relevant behavior at the owning seam.
+5. Make a production mutation. The first commit in the task must contain production paths. A focused
+   regression test may be included in the same commit.
+6. Run the cheapest existing checks that can falsify the change. Escalate only when the unit actually
+   makes the higher-level claim.
+7. Self-review the diff and evidence. Fix verified in-scope defects once.
+8. Commit the production unit and record it with `scripts/inference-record.mjs`.
+9. Select the next unit only after the previous one has a terminal record.
 
-One-line example invocations (copy-ready):
+Do not pre-plan, pre-review, or pre-validate all `N` units before implementing the first.
+
+## 4. SUPPORT-WORK CAP
+
+Support work can unlock production; it cannot replace production.
+
+Unless the user explicitly requested tooling, tests, validation, or infrastructure:
+
+- no support-only commit may occur before the first production commit;
+- never make two support-only commits in a row;
+- support-only commits may not exceed `max(1, ceil(completed production units / 5))`;
+- a new browser/Electron acceptance harness is forbidden when existing owner-level evidence can
+  establish the narrower claim;
+- a failed harness does not automatically become the task;
+- the same `(command, production digest, harness digest, environment, failure fingerprint)` may not
+  be run twice without a relevant change.
+
+When a harness fails, classify it once. Repair it only when the current unit genuinely requires that
+exact route claim and one bounded repair is likely to unlock it. Otherwise record the route claim as
+unproven, finish the production unit, and continue.
+
+## 5. Review is evidence, not a recursive institution
+
+The implementer performs an evidence-bound self-review by default. A separate cold reviewer is useful,
+but is required only when the user explicitly requests one, an active packet explicitly requires one,
+or the change crosses a high-risk human-taste/architecture boundary.
+
+A review returns at most three causal findings. One repair pass and one causal re-review are allowed.
+A new general audit does not begin after causal re-review. Unrelated discoveries become follow-ups.
+
+No review file is required to record an `implemented` unit. A review file is optional metadata for an
+`accepted` unit; route evidence, not reviewer theater, supports acceptance.
+
+## 6. Batches larger than five
+
+For `N > 5`:
+
+- commit and record every unit independently;
+- preserve a running count of production units, not a speculative portfolio;
+- after each five production units, run one proportionate aggregate smoke check if it is already
+  available;
+- do not stop production to create portfolio prose, reels, fresh graders, or acceptance infrastructure;
+- diversify naturally across the requested scope, but do not force a weak unit merely to fill a slot.
+
+## 7. TERMINATION
+
+Stop the task and report immediately when any one condition is true:
+
+1. `N` production units are committed and recorded;
+2. the user's declared product outcome is already satisfied;
+3. every remaining candidate has a concrete external dependency or exact live-path collision;
+4. the next action would repeat an unchanged failure fingerprint;
+5. the remaining candidates are filler or would regress the game;
+6. the execution environment ends before `N`.
+
+Condition 6 produces an honest partial result. Report completed production units and exact remaining
+work. Do not spend the remainder of the run polishing the report or repairing the referee.
+
+Forbidden stopping conditions include “until perfect,” “until no faults remain,” “until every reviewer
+agrees,” and “until every acceptance cell is green.”
+
+## 8. Workflow router
+
+The workflow files are domain checklists, not mandatory ceremonies:
+
+| ID | Domain |
+|---|---|
+| WF-01 | NPC occupations and living world |
+| WF-02 | enemy roster and encounters |
+| WF-03 | sector/world composition |
+| WF-04 | stations, planets, and world sites |
+| WF-05 | weapons, physics tools, and modules |
+| WF-06 | economy, industry, and logistics |
+| WF-07 | progression, ships, and infrastructure |
+| WF-08 | missions, heists, and activities |
+| WF-09 | narrative, characters, and ledger |
+| WF-10 | exploration and discovery |
+| WF-11 | graphics asset families and world dressing |
+| WF-12 | VFX, camera, lighting, and visual feel |
+| WF-13 | audio, music, and world sound |
+| WF-14 | UI, UX, onboarding, and information |
+| WF-15 | gameplay feel, controls, and balance |
+| WF-16 | variants, states, and aftermath |
+| WF-17 | vertical-slice integration |
+| WF-18 | design recovery and simplification |
+| WF-19 | technical production and scaling |
+
+Use `design/inference-workflows/07_WORKFLOW_ROUTER.md` only when the scope is ambiguous.
+
+## 9. Recording
+
+After committing a production slice:
+
+```bash
+node scripts/inference-record.mjs unit \
+  --id <slug> --wf WF-XX --mode <mode> \
+  --verdict implemented --verification focused_green \
+  --commit <sha> --reason "<player-facing change>" \
+  --fp "verb=...,subject=...,sector=...,domain=wf-xx"
+```
+
+Use `--verdict accepted --verification route_accepted --evidence <path>` only when current route
+evidence genuinely supports that stronger claim. `--review` is optional.
+
+## 10. Final report
+
+Return a compact production ledger:
 
 ```text
-WF-01 3x — deepen NPC occupations and lived-world activity in Ceres.
-WF-02 3x — expand enemy roles and encounter variety using the existing combat/physics systems.
-WF-03 3x — make three existing sectors more distinct, populated, and activity-dense.
-WF-11 5x — improve asset families/world dressing toward the intended professional visual standard.
-WF-12 3x — improve VFX, camera, lighting, motion, and kinetic visual presentation.
-WF-15 3x — identify and fix the largest gameplay-feel/control/combat problems in ordinary play.
-WF-16 5x — multiply existing content through meaningful states, incidents, variants, and aftermath.
-WF-17 5x — compose multiple existing systems/assets into a production-quality playable slice.
-WF-18 3x — identify where the current implementation drifted from the intended game and simplify/recover it.
+Requested production units:
+Completed production units:
+Accepted:
+Implemented / focused green:
+Implemented / route unproven:
+Support-only commits:
+Production commits and player-facing changes:
+Checks run once:
+Remaining blockers or next units:
 ```
 
-## Scale shorthand (`Nx`)
+The governing sentence is simple:
 
-`Nx` is an **effort and ambition target, not a shipping quota.** It sets the size of
-the candidate pool, the diversity bar, and the review depth — it never obligates
-shipping N units. A 5x run that finds one transformative unit, two strong supports,
-and cuts twelve weak ideas beat a 5x run that shipped five acceptable ones.
-
-- **`1x`** — one substantial, reviewed improvement.
-- **`3x`** — up to three related/diverse reviewed improvements.
-- **`5x`** — a larger coherent production tranche, honestly sized.
-
-`Nx` counts **independently reviewable accepted production units** — never files, commits, candidates,
-recolors, or test cases — and **accepted may be lower than requested**; the report
-states what was cut and why, which is a health signal, not a failure. Full
-candidate-budget, diversity, slate-slot, and stop-rule detail is in
-[`01_SCALE_AND_DISPATCH.md`](../inference-workflows/01_SCALE_AND_DISPATCH.md).
-
-## Generic activation prompt
-
-```text
-Run <WF-ID> at <1x/3x/5x> for <scope>.
-
-Read the workflow, current product authority, current repo state, and relevant live owners first.
-
-Use the workflow to generate, compare, implement, review, and iterate real player-facing improvements.
-
-Do not stop at planning, candidate files, source-only assets, tests, or technical existence.
-
-Use the existing SpaceFace coordination/ownership/packet/acceptance system for any concrete
-implementation work the lane produces.
-```
-
-For the longer-form invocation template, see
-[`templates/INVOCATION_TEMPLATE.md`](../inference-workflows/templates/INVOCATION_TEMPLATE.md).
-
-## How this relates to the rest of the program
-
-- **Existing exact tasks** (queue units, packets, dispatcher): unchanged and just as accessible. For a
-  known exact task, use [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) and `program-dispatch`.
-- **Cross-system product direction** (thirty portfolio axes, launch-coherence stories):
-  [`design/vision/GAME_DIRECTION_EXPANSION.md`](../vision/GAME_DIRECTION_EXPANSION.md).
-- **The retained inference-to-convergence method** (diagnose / diverge / select / review / revise,
-  advisory dispositions `KEEP`/`REVISE`/`REBUILD`/`CUT`):
-  [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](../vision/INFERENCE_CONVERGENCE_METHOD.md). The
-  workflows above are the concrete domain instances of that method; the method is the reasoning, the
-  workflows are where you spend it.
+> Build the game, prove only the claim actually made, commit the slice, and move on.

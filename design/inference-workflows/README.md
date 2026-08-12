@@ -1,156 +1,75 @@
-# SpaceFace Inference-to-Convergence Production Workflows
+<!-- LIFETIME: STABLE -->
+# SpaceFace production inference workflows
 
-**Purpose:** convert additional model inference into accepted, player-visible progress toward the intended professional version of SpaceFace.
+These workflows help an agent choose and build useful game improvements. They are domain checklists,
+not a mandatory multi-agent ceremony and not an acceptance system.
 
-These workflows exist because ordinary feature prompts repeatedly optimized for the wrong unit: code or data that technically contains the requested noun but does not create enough breadth, depth, density, craft or pleasure in ordinary play.
+The authoritative execution contract is
+[`../program/INFERENCE_LANES.md`](../program/INFERENCE_LANES.md).
 
-The workflows change the unit of work from **“feature exists”** to **“accepted production unit improves the game.”**
+## Core rule
 
-## The invocation
+An `INFERENCE N` request means up to `N` sequential, committed production units. Production changes
+runtime code, player-consumed data, shipped assets, or live integration. Plans, candidate matrices,
+tests, reviews, receipts, probes, and harnesses support production but never count as units.
 
-A user should be able to issue:
+A unit may terminate as:
 
-```text
-Execute WF-01 NPC & Living World at 1x in the Ceres refinery pocket.
-Goal: make repair and freight activity readable without HUD labels.
-Use a separate adversarial reviewer. Implement, review, revise, and prove the result in ordinary play.
-```
+- `implemented` with `unproven` or `focused_green` verification; or
+- `accepted` with current ordinary-route evidence.
 
-or:
+Separate review is optional unless the user or an active packet explicitly requires it.
 
-```text
-WF-02 5x — a physics-combat ecology for one sector: roles YOU derive from the current
-deficit, spanning expendable/control/heavy/specialist functions. Use current
-AI/combat/physics owners.
-```
+## Reading order
 
-The workflow supplies the creative and production reasoning that a one-line task
-omits. (An earlier version of this example named the exact roster — and agents
-shipped that roster nearly verbatim. Examples name shapes now; the content is
-yours to invent.)
+For an ordinary INFERENCE unit, read only:
 
-## What `1x`, `3x`, and `5x` mean
+1. root `AGENTS.md`;
+2. `design/program/INFERENCE_LANES.md`;
+3. the relevant architecture/GDD slice;
+4. the selected workflow file;
+5. the live owner and focused checks.
 
-`Nx` is an **effort and ambition target, not a shipping quota**. `x` counts **accepted production units**, not generated candidates, files, rows, recolors, commits or attempts — and accepted may honestly be fewer than requested.
-
-- **1x** — one complete unit; at least four candidates considered; one cold adversarial review; one revision or replacement; one ordinary-route proof.
-- **3x** — up to three accepted units; at least ten candidates; at least two distinct subtypes; per-unit review plus a cohesion review.
-- **5x** — up to five accepted units or one explicit five-unit vertical tranche; at least sixteen candidates; at least three subtypes; two review lenses; portfolio integration; a 5–10 minute route; a propagation recipe.
-
-A run that ships one transformative unit, two strong supports, and cuts twelve weak ideas beat a run that shipped five acceptable ones. The report states what was cut and why — a healthy cut list is evidence the bar exists.
-
-## Required reading order
-
-Before executing any workflow:
-
-1. `CANONICAL_BUILD_MAP.md`
-2. root `AGENTS.md`
-3. relevant `ARCHITECTURE.md`
-4. relevant `design/GDD_2_0.md`
-5. current `design/program/NOW.md`
-6. current dispatched active packet
-7. `00_SPACEFACE_TEAM_MINDSET.md`
-8. `01_SCALE_AND_DISPATCH.md`
-9. `02_CREATIVE_CONVERGENCE_LOOP.md`
-10. `03_REFERENCE_GAME_PATTERN_LIBRARY.md`
-11. `04_REPO_SEAM_AND_AUTHORITY_MAP.md`
-12. selected workflow under `workflows/`
-13. `05_ADVERSARIAL_REVIEW_PROTOCOL.md`
-14. `06_PORTFOLIO_INTEGRATION_AND_LEARNING.md`
-
-These documents are supporting production doctrine, not permission to bypass queue, leases, owners, G0–G7 visual acceptance, performance budgets or ordinary-route evidence.
-
-## Non-negotiable execution rule
-
-A workflow invocation is not a request for another plan. The executing agent must:
-
-- inspect current player-facing truth;
-- generate and select candidates;
-- implement selected units;
-- obtain cold adversarial review;
-- revise, replace or cut weak work;
-- integrate through current owners;
-- prove the result through ordinary play;
-- record the accepted pattern so later inference can multiply it.
-
-## The convergence target
-
-Every accepted unit should move at least three vectors forward — **except an
-explicitly declared texture unit** (see `01_SCALE_AND_DISPATCH.md` §6), which may
-move one vector well when its value is atmosphere, humor, beauty, quiet, dread,
-or place identity. A world that is wall-to-wall legible causal machinery has no
-awe in it; the slice workflows demand quiet beats, so the unit pipeline must be
-allowed to produce them.
-
-1. **Physical expression** — more is done through motion, force, position, timing, geometry or embodied operation.
-2. **Living-world causality** — actors/places operate as a universe rather than props waiting for the player.
-3. **Player opportunity** — something interesting can be noticed, followed, exploited, helped, stolen, fought, built or transformed.
-4. **Visual identity and energy** — cleaner, brighter, more distinctive and kinetic; less muted generic browser sci-fi.
-5. **Systemic connection** — addition multiplies existing systems rather than living alone.
-6. **Persistence and memory** — outcomes leave visible/systemic aftermath where appropriate.
-7. **Readability and usability** — intent, cause, threat, state and opportunity become easier to understand.
+Do not read the entire workflow library, reference library, portfolio protocol, queue, or acceptance
+archive before beginning production.
 
 ## Workflow catalog
 
-| ID | Workflow | One unit means |
+| ID | Workflow | One production unit usually means |
 |---|---|---|
-| WF-01 | NPC Occupations & Living World | one complete occupation/response package |
-| WF-02 | Enemy Roster & Encounters | one combat-role package plus encounter proof |
-| WF-03 | Sector & World Composition | one accepted activity pocket |
+| WF-01 | NPC Occupations & Living World | one live occupation/response behavior |
+| WF-02 | Enemy Roster & Encounters | one distinct combat role on a reachable encounter |
+| WF-03 | Sector & World Composition | one player-visible activity pocket improvement |
 | WF-04 | Stations, Planets & World Sites | one embodied destination operation |
-| WF-05 | Weapons, Physics Tools & Modules | one mechanically distinct tool package |
-| WF-06 | Economy, Industry & Logistics | one complete visible value-flow chain |
-| WF-07 | Progression, Ships & Infrastructure | one capability milestone package |
-| WF-08 | Missions, Heists & Activities | one playable activity package |
-| WF-09 | Narrative, Characters & Ledger | one open narrative thread |
-| WF-10 | Exploration & Discovery | one curiosity/discovery chain |
-| WF-11 | Graphics Asset Families | one production asset-family seed |
-| WF-12 | VFX, Camera & Visual Feel | one semantic presentation family |
-| WF-13 | Audio & World Sound | one semantic audio family |
-| WF-14 | UI, UX & Onboarding | one complete player task/information package |
+| WF-05 | Weapons, Physics Tools & Modules | one mechanically distinct live tool |
+| WF-06 | Economy, Industry & Logistics | one visible value-flow behavior |
+| WF-07 | Progression, Ships & Infrastructure | one live capability milestone |
+| WF-08 | Missions, Heists & Activities | one reachable activity package |
+| WF-09 | Narrative, Characters & Ledger | one live narrative consequence or thread |
+| WF-10 | Exploration & Discovery | one reachable discovery chain |
+| WF-11 | Graphics Asset Families | one shipped/integrated asset-family slice |
+| WF-12 | VFX, Camera & Visual Feel | one semantic presentation improvement |
+| WF-13 | Audio & World Sound | one live semantic audio family |
+| WF-14 | UI, UX & Onboarding | one complete player task/information improvement |
 | WF-15 | Gameplay Feel & Balance | one resolved player-facing feel defect |
-| WF-16 | Variants, States & Aftermath | one meaningful accepted sibling/state package |
-| WF-17 | Vertical Slice Integration | one complete playable beat/pocket |
-| WF-18 | Design Recovery & Simplification | one recovered intended experience contract |
-| WF-19 | Technical Production & Scaling | one quality-enabling production improvement |
+| WF-16 | Variants, States & Aftermath | one meaningful live state/aftermath package |
+| WF-17 | Vertical Slice Integration | one coherent playable beat |
+| WF-18 | Design Recovery & Simplification | one recovered intended behavior |
+| WF-19 | Technical Production & Scaling | one measured quality-enabling production change |
 
-Use `07_WORKFLOW_ROUTER.md` to choose workflows from symptoms.
+Use `07_WORKFLOW_ROUTER.md` only when the symptom does not identify a domain.
 
-## Directory map
+## Optional supporting files
 
-- `00_SPACEFACE_TEAM_MINDSET.md` — intended game and developer mental model.
-- `01_SCALE_AND_DISPATCH.md` — Nx, candidate budgets, diversity and stop rules.
-- `02_CREATIVE_CONVERGENCE_LOOP.md` — observe/diverge/select/build/review/revise loop.
-- `03_REFERENCE_GAME_PATTERN_LIBRARY.md` — mechanisms to learn without copying surfaces.
-- `04_REPO_SEAM_AND_AUTHORITY_MAP.md` — current owner map and anti-duplication rules.
-- `05_ADVERSARIAL_REVIEW_PROTOCOL.md` — cold review and verdicts.
-- `06_PORTFOLIO_INTEGRATION_AND_LEARNING.md` — units → families → pockets → sectors.
-- `07_WORKFLOW_ROUTER.md` — symptom-to-workflow and multi-workflow sequences.
-- `MASTER_AGENT_PROMPT.md` — wrapper for a repository-capable agent.
-- `RESEARCH_SOURCES.md` — primary-source production talks and bounded lessons.
-- `WORKFLOW_INDEX.json` — machine-readable registry.
-- `workflows/` — nineteen category-specific workflows.
-- `templates/` — invocation, unit, review and portfolio records.
-
-## Recommended first uses for current SpaceFace
-
-Run `node scripts/inference-detect.mjs` and take the board's suggested mode. The
-invocations below name SHAPES of work, deliberately not content — every concrete
-example previously printed here has shipped or is spent (see 02, Phase 4 rule
-zero: printed examples are tombstones, not templates):
-
-```text
-WF-18 3x — recover the largest gaps between intended and actual physics-game feel (you find them).
-```
-
-```text
-WF-17 1x — wire one authored-but-unwired family from the integration-debt cell into ordinary play.
-```
-
-```text
-<starved-domain WF> 1x — take the top starved domain from the board and produce its first recorded unit.
-```
+- `00_SPACEFACE_TEAM_MINDSET.md` — product lens.
+- `01_SCALE_AND_DISPATCH.md` — bounded `N` semantics.
+- `02_CREATIVE_CONVERGENCE_LOOP.md` — optional per-unit thinking loop.
+- `03_REFERENCE_GAME_PATTERN_LIBRARY.md` — references, read only when needed.
+- `04_REPO_SEAM_AND_AUTHORITY_MAP.md` — owner hints; verify against live code.
+- `05_ADVERSARIAL_REVIEW_PROTOCOL.md` — bounded review when review is justified.
+- `06_PORTFOLIO_INTEGRATION_AND_LEARNING.md` — optional portfolio work after production exists.
+- `MASTER_AGENT_PROMPT.md` — copy-ready production prompt.
 
 ## Governing sentence
 
-**Inference converges only when it repeatedly confronts the actual game, receives cold criticism, removes weak ideas, and leaves accepted patterns that later inference can multiply.**
+> Production first; proportionate proof second; recursive process never.
