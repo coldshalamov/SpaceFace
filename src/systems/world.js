@@ -394,9 +394,18 @@ export const world = {
     const disc = this._discoveryFor(sectorId);
     if (!disc.pois) disc.pois = {};
     const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: true, identified: true });
+    const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
+    const newlyDefeated = rec.defeated !== true;
     rec.bossDefeated = true;
     rec.discovered = true;
     rec.identified = true;
+    rec.defeated = true;
+    rec.type = poi && poi.type || rec.type || 'anomaly';
+    rec.name = poi && poi.name || rec.name || poiId;
+    if (newlyDefeated) {
+      rec.defeatedAt = Math.max(0, Number(this.state.simTime) || 0);
+    }
     // Durable outcome: boss identity stays defeated across demote/promote/Continue.
     if (d.worldRecordId) {
       this.markWorldRecordDestroyed(d.worldRecordId, {
@@ -407,6 +416,9 @@ export const world = {
     // Clear the live boss handle so the active sector knows it's gone.
     if (this.state.world.activeSector && this.state.world.activeSector.boss) {
       delete this.state.world.activeSector.boss;
+    }
+    if (newlyDefeated) {
+      this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
     }
     this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
   },

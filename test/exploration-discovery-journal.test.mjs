@@ -67,7 +67,7 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
 
   const plates = explorationDiscoveryPlates(t.state);
   assert.equal(plates.length, 1);
-  assert.equal(plates[0].title, 'Anomaly Signal');
+  assert.equal(plates[0].title, 'The Resonance Obelisk');
   assert.match(plates[0].body, /Veil Nebula/);
   assert.match(plates[0].body, /3 distinct bearings/);
   assert.match(plates[0].body, /nebula and radiation interference/);
@@ -91,4 +91,66 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
   });
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1,
     'duplicate receipts do not unlock duplicate plates');
+});
+
+test('defeating Iron Maw records a durable exploration trophy', () => {
+  const t = harness();
+  t.state.simTime = 90;
+  t.state.world.currentSectorId = 'sector_ashfall_reach';
+  t.state.world.activeSector = {
+    id: 'sector_ashfall_reach',
+    pois: [],
+    boss: { entityId: 99, poiId: 'poi_boss' },
+  };
+  t.state.entities.set(99, {
+    id: 99,
+    type: 'ship',
+    alive: false,
+    pos: { x: 240, z: 1180 },
+    data: {
+      isBoss: true,
+      bossSectorId: 'sector_ashfall_reach',
+      bossPoiId: 'poi_boss',
+    },
+  });
+
+  world._onBossKilled({ id: 99, killerId: 1 });
+
+  const record = t.state.world.discovery.sector_ashfall_reach.pois.poi_boss;
+  assert.equal(record.bossDefeated, true);
+  assert.equal(record.defeated, true);
+  assert.equal(record.defeatedAt, 90);
+  assert.equal(t.state.world.activeSector.boss, undefined);
+
+  const progress = sectorExplorationProgress(t.state, 'sector_ashfall_reach');
+  assert.equal(progress.found, 1);
+  assert.equal(progress.total, 3);
+  assert.equal(progress.percent, 33);
+
+  const plate = explorationDiscoveryPlates(t.state)
+    .find((entry) => entry.poiId === 'poi_boss');
+  assert.ok(plate);
+  assert.equal(plate.title, 'Iron Maw Defeated');
+  assert.match(plate.meta, /SITE RESOLVED/);
+  assert.match(plate.body, /Vael-grown Deep-Mother/);
+  assert.match(plate.note, /1\/3 authored sites found · 33% sector exploration/);
+  assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);
+
+  const restored = {
+    ...t.state,
+    world: {
+      ...t.state.world,
+      discovery: JSON.parse(JSON.stringify(t.state.world.discovery)),
+    },
+  };
+  assert.deepEqual(
+    explorationDiscoveryPlates(restored).find((entry) => entry.poiId === 'poi_boss'),
+    plate,
+  );
+
+  t.state.simTime = 120;
+  world._onBossKilled({ id: 99, killerId: 1 });
+  assert.equal(record.defeatedAt, 90, 'the first defeat remains the durable completion time');
+  assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1,
+    'duplicate kill receipts do not unlock duplicate plates');
 });

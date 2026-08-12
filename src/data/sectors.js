@@ -337,7 +337,13 @@ const CORE_SECTORS = [
       { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },
     ],
     pois: [
-      { id: 'poi_boss',  type: 'anomaly', name: 'Boss Arena Signal' },
+      {
+        id: 'poi_boss', type: 'anomaly', name: 'Boss Arena Signal',
+        discoveryPlate: {
+          title: 'Iron Maw Defeated',
+          body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',
+        },
+      },
       { id: 'poi_vault', type: 'cache',   name: 'Ancient Vault', hidden: true },
     ],
   },
