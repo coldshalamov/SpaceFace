@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-08-11
-baseCommit: 55650166e5cc3d84c693b5c5dce66eaf7de72f0b
+refreshed: 2026-08-12
+baseCommit: 51a3602cf42825b93919f6bbedf57c881b07dcc7
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore-cycle candidate closure | /root | ACCEPTING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Authored one-or-two-hostile acceptance is focused 50/50 green twice with frozen hashes and independent APPROVE; commit/push this exact candidate, make one broker-authorized Browser attempt, publish the receipt if green, then pause |
+| INFERENCE 20 sequential production | /root | MUTATING | `design/program/inference-memory.json`, `design/program/NOW.md` | Record the completed field-anchor production unit, then select and implement the next eligible player-facing unit |
 
 ## Uncommitted work without a confirmed live thread
 
@@ -50,7 +50,8 @@ not active leases and do not prevent other tasks from proceeding.
 
 | Work | Exact paths | Plain next action |
 |---|---|---|
-| _(none)_ | — | — |
+| Paused Ceres acceptance repair | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs` | Preserve without further acceptance work; it does not count as an INFERENCE unit |
+| Thruster look-dev work | `scripts/capture-thruster-lookdev.mjs`, `scripts/thruster-lookdev-lab.html`, `src/render/thruster/recipes/plasmaStreamRecipe.js`, `src/render/thruster/systems/plasmaStream.js` | Preserve foreign work and avoid these exact paths |
 
 ## Start another task
 

@@ -264,6 +264,19 @@
       "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
       "review": "design/inference-workflows/records/inference-5x-2026-08-11/U5_REVIEW.md",
       "sector": "ceres"
+    },
+    {
+      "id": "field-anchor-fire-window",
+      "date": "2026-08-12",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "field anchor now fires during its authored anchor-hold window",
+      "fingerprint": "verb=hold,subject=field-anchor,sector=any,layer=combat,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "60fdde59",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
