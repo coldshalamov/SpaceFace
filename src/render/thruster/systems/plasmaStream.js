@@ -1,7 +1,7 @@
 /**
- * Continuous liquid plasma thruster — soft path TUBE (not flat strip cards).
- * Hot wide root + continuous thinner wake. Dense stream filaments in shader.
- * Atlas: continuous body, soft edges, liquid stream structure — not beads/cards/cone.
+ * Continuous liquid plasma thruster — soft path tube with torn rim + organic filaments.
+ * Hot wide root + continuous thinner wake. Soft edges (not hard low-poly cylinder).
+ * Not beads, not cards, not solid cone primitive.
  */
 import * as THREE from 'three';
 import { createPathSampler } from './pathSampler.js';
@@ -10,12 +10,11 @@ import {
   samplePlasmaEnvelope,
 } from '../recipes/plasmaStreamRecipe.js';
 
-// Radial segments around exhaust axis — soft tube, not dual flat cards
-// 18 sides keeps silhouette smooth without looking low-poly faceted.
-const RADIAL = 18;
+// High angular count so mild tear hides faceting without jagged crystal look.
+const RADIAL = 36;
 
 const LIQUID_VERT = /* glsl */`
-  varying vec2 vPathUv; // x=path age, y=radial 0..1
+  varying vec2 vPathUv;
   void main() {
     vPathUv = uv;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -54,7 +53,7 @@ const LIQUID_FRAG = /* glsl */`
     float a = 0.5;
     for (int i = 0; i < 5; i++) {
       v += a * vnoise(p);
-      p = p * 2.11 + vec2(17.3, 5.7);
+      p = p * 2.13 + vec2(19.1, 7.3);
       a *= 0.52;
     }
     return v;
@@ -62,76 +61,77 @@ const LIQUID_FRAG = /* glsl */`
 
   void main() {
     float pathT = clamp(vPathUv.x, 0.0, 1.0);
-    // Angle around tube 0..1 (vertices sit on soft shell; layers give radial depth)
     float ang01 = clamp(vPathUv.y, 0.0, 1.0);
     float ang = ang01 * 6.28318;
 
-    float flow = pathT * 9.0 - uScroll * 3.8 - uTime * 0.9;
-    float n  = fbm(vec2(flow * 1.0, ang01 * 3.0));
-    float n2 = fbm(vec2(flow * 2.4 + 2.0, ang01 * 4.0 + 1.0));
-    float n3 = fbm(vec2(flow * 5.0 + 7.0, ang * 0.8 + uTime * 0.3));
-    float n4 = vnoise(vec2(flow * 12.0, ang * 1.5 + uTime));
+    float flow = pathT * 8.5 - uScroll * 3.5 - uTime * 0.85;
+    // Domain warp for organic liquid weave (not regular angular stripes)
+    float w1 = fbm(vec2(flow * 0.85, ang01 * 2.8)) - 0.5;
+    float w2 = fbm(vec2(flow * 1.7 + 2.5, ang01 * 3.5 + 1.0)) - 0.5;
+    float fx = flow + w1 * 1.5 + w2 * 0.7;
+    float fy = ang01 * 3.5 + w1 * 0.9 + pathT * 1.2;
 
-    // ---- Packed stream filaments as angular bright ropes (ref liquid plasma) ----
-    float streamers = 0.0;
-    for (int k = 0; k < 14; k++) {
-      float fk = float(k);
-      float laneAng = fk * 0.4488; // denser pack
-      float wob = (vnoise(vec2(flow * 0.7 + fk, fk * 2.1)) - 0.5) * 0.55;
-      wob += (vnoise(vec2(flow * 1.8 + fk * 0.5, pathT * 4.0)) - 0.5) * 0.25;
-      float dAng = abs(mod(ang - laneAng - wob + 3.14159, 6.28318) - 3.14159);
-      float brightness = 0.35 + 0.65 * vnoise(vec2(flow * 3.0 + fk, fk * 4.0));
-      float tipFade = 1.0 - smoothstep(0.3, 0.92, pathT) * 0.55;
-      // Sharp ropes: high contrast so structure survives bloom-off
-      streamers += pow(exp(-dAng * dAng * 18.0), 0.75) * brightness * tipFade;
-    }
-    streamers = min(streamers, 3.0);
+    float n  = fbm(vec2(fx * 1.05, fy));
+    float n2 = fbm(vec2(fx * 2.4 + 2.0, fy * 1.5 + 1.1));
+    float n3 = fbm(vec2(fx * 5.0 + 7.0, fy * 2.2 + uTime * 0.35));
+    float n4 = vnoise(vec2(fx * 10.0, fy * 4.0 + uTime * 0.7));
 
-    // Shell: base mass LOWER so streamers dominate (anti-milky wash)
-    float shell = 0.4 + n * 0.3 + n2 * 0.2;
-    shell *= 0.65 + n4 * 0.4; // liquid holes
-    float core = (0.25 + streamers * 0.9) * shell;
-    float body = (0.3 + streamers * 0.65 + n * 0.25) * shell;
-    float sheath = (0.35 + n2 * 0.45 + n3 * 0.3 + streamers * 0.2) * shell;
+    // Soft surface density with lace holes (rim not hard glass)
+    float shell = 0.5 + n * 0.3 + n2 * 0.25;
+    shell *= 0.7 + n4 * 0.35;
 
-    float head = (1.0 - smoothstep(0.0, 0.15, pathT)) * smoothstep(0.0, 0.03, pathT);
-    float mid = 1.0 - smoothstep(0.06, 0.55, pathT);
+    // Organic filaments from domain-warped noise
+    float filA = smoothstep(0.4, 0.78, n2) * smoothstep(0.35, 0.8, n);
+    float filB = smoothstep(0.48, 0.85, n3) * (0.5 + 0.5 * sin(ang * 3.0 + flow * 2.0 + w1 * 4.0));
+    float filC = pow(max(0.0, n4 - 0.4), 1.3);
+    float streamers = (filA * 1.15 + filB * 0.85 + filC * 0.65)
+      * (1.0 - smoothstep(0.32, 0.95, pathT) * 0.5);
+    streamers = min(streamers * 1.7, 2.5);
+
+    float core = (0.3 + streamers * 0.85) * shell;
+    float body = (0.35 + streamers * 0.55 + n * 0.3) * shell;
+    float sheath = (0.4 + n2 * 0.45 + n3 * 0.3 + streamers * 0.2) * shell;
+
+    float head = (1.0 - smoothstep(0.0, 0.14, pathT)) * smoothstep(0.0, 0.025, pathT);
+    float mid = 1.0 - smoothstep(0.05, 0.55, pathT);
     float tipFray = smoothstep(0.28, 0.9, pathT);
-    float tipFade = 1.0 - smoothstep(0.65, 1.0, pathT);
-    float breakup = mix(1.0, 0.3 + n3 * 0.7 + n2 * 0.35, tipFray);
-    float belly = exp(-((pathT - 0.18) * (pathT - 0.18)) / 0.03);
-    float along = (head * 1.25 + mid * 1.0 + belly * 0.3 + tipFray * sheath * 1.15)
+    float tipFade = 1.0 - smoothstep(0.6, 1.0, pathT);
+    float breakup = mix(1.0, 0.28 + n3 * 0.75 + n2 * 0.4 + n4 * 0.25, tipFray);
+    float belly = exp(-((pathT - 0.16) * (pathT - 0.16)) / 0.03);
+    float along = (head * 1.25 + mid * 1.0 + belly * 0.32 + tipFray * sheath * 1.25)
       * breakup * tipFade * (0.8 + uDrive * 0.3 + uBoost * 0.12);
 
     float dens;
     if (uLayerRole < 0.5) {
-      dens = 0.15 + streamers * 1.5 + core * 0.55;
+      dens = 0.18 + streamers * 1.4 + core * 0.65;
     } else if (uLayerRole < 1.5) {
-      dens = 0.28 + body * 0.75 + streamers * 1.05 + core * 0.15;
+      dens = 0.32 + body * 0.85 + streamers * 0.95 + core * 0.18;
     } else {
-      dens = 0.28 + sheath * 1.05 + body * 0.25 + streamers * 0.35 + n3 * 0.3;
+      dens = 0.32 + sheath * 1.1 + body * 0.28 + streamers * 0.3 + n3 * 0.3;
     }
 
     float alpha = clamp(uOpacity * dens * along, 0.0, 1.0);
+    // Soft lace holes without destroying mass
+    alpha *= 0.75 + n * 0.2 + n2 * 0.15;
+    // Tip dissolve
+    alpha *= 1.0 - tipFray * (0.25 + n3 * 0.3);
     if (alpha < 0.014) discard;
 
     vec3 whiteHot = vec3(1.0, 0.99, 0.96);
     vec3 midCyan = mix(uColor, vec3(0.42, 0.86, 1.0), 0.55);
-    vec3 deep = mix(uColor, vec3(0.05, 0.14, 0.58), 0.55);
-    // White only on hot root streamers — mid body stays cyan liquid strands
+    vec3 deep = mix(uColor, vec3(0.04, 0.12, 0.55), 0.55);
     float hot = clamp(
-      streamers * 0.28 * (1.0 - pathT * 0.8)
-      + head * 0.35
-      + core * 0.15 * (1.0 - pathT * 0.55)
+      streamers * 0.3 * (1.0 - pathT * 0.78)
+      + head * 0.38
+      + core * 0.18 * (1.0 - pathT * 0.5)
       + uBoost * 0.08,
       0.0, 1.0
     );
-    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.45 + n * 0.25 + streamers * 0.25, 0.0, 1.0));
-    col = mix(col, whiteHot, hot * (0.45 + (1.0 - step(0.5, uLayerRole)) * 0.4));
-    // Distinct filament highlights (readable bloom-off)
-    col = mix(col, mix(midCyan, whiteHot, 0.8), min(streamers, 1.8) * 0.55 * (1.0 - pathT * 0.25));
-    float glow = uRadiance * (0.36 + streamers * 0.3 + head * 0.15 + body * 0.06 + core * 0.1);
-    col *= min(glow, 1.55);
+    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.5 + n * 0.3 + streamers * 0.25, 0.0, 1.0));
+    col = mix(col, whiteHot, hot * (0.5 + (1.0 - step(0.5, uLayerRole)) * 0.4));
+    col = mix(col, mix(midCyan, whiteHot, 0.78), min(streamers, 1.8) * 0.52 * (1.0 - pathT * 0.28));
+    float glow = uRadiance * (0.38 + streamers * 0.28 + head * 0.16 + body * 0.07 + core * 0.1);
+    col *= min(glow, 1.5);
 
     gl_FragColor = vec4(col, alpha);
   }
@@ -165,7 +165,6 @@ function createLayerMaterial(layer, THREE_NS) {
 }
 
 function makeTubeMesh(T, nSeg, radial, layer) {
-  // (nSeg) rings × (radial) verts per ring
   const nR = radial;
   const verts = nSeg * nR;
   const pos = new Float32Array(verts * 3);
@@ -177,7 +176,6 @@ function makeTubeMesh(T, nSeg, radial, layer) {
   const uvAttr = new T.BufferAttribute(uvs, 2);
   uvAttr.usage = T.DynamicDrawUsage;
   geo.setAttribute('uv', uvAttr);
-  // Quads between rings
   const idx = [];
   for (let i = 0; i < nSeg - 1; i++) {
     for (let r = 0; r < nR; r++) {
@@ -198,6 +196,11 @@ function makeTubeMesh(T, nSeg, radial, layer) {
   mesh.name = `sf-liquid-plasma-tube-${layer.role || 'body'}`;
   mesh.visible = false;
   return { mesh, geo, pos, uvs, posAttr, uvAttr, mat, radial: nR };
+}
+
+function hash2(i, j) {
+  const x = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 export class PlasmaStreamSystem {
@@ -296,7 +299,7 @@ export class PlasmaStreamSystem {
     const nearLen = (this.recipe.path?.nearJetLengthWU != null)
       ? this.recipe.path.nearJetLengthWU
       : 15;
-    const nearN = Math.min(58, Math.floor(this.nSeg * 0.58));
+    const nearN = Math.min(56, Math.floor(this.nSeg * 0.58));
     const histBudget = this.nSeg - nearN;
     const histUse = Math.min(Math.max(0, pathN - 1), histBudget);
     let count = 0;
@@ -320,7 +323,7 @@ export class PlasmaStreamSystem {
       let w = this._env.width * rootMul * boostW;
       if (j === 0) w *= 0.9;
       else if (j < 4) w *= 1.08;
-      w *= 0.94 + 0.12 * (0.5 + 0.5 * Math.sin(swaySeed * 2.0 + u * 10.0));
+      w *= 0.94 + 0.1 * hash2(j, Math.floor(swaySeed * 8));
       this._widths[count] = w;
       count++;
     }
@@ -341,7 +344,7 @@ export class PlasmaStreamSystem {
       this._ax[count] = tx / tl;
       this._ay[count] = ty / tl;
       this._az[count] = tz / tl;
-      this._widths[count] = this._env.width * rootMul * boostW * 0.94;
+      this._widths[count] = this._env.width * rootMul * boostW * (0.9 + 0.12 * hash2(h, 5));
       count++;
     }
 
@@ -360,18 +363,14 @@ export class PlasmaStreamSystem {
     return count;
   }
 
-  /** Build orthonormal frame (tangent, normal, binormal) for tube rings. */
   _frame(ax, ay, az, prevN) {
-    // Prefer continuity with previous normal
     let nx = prevN.x;
     let ny = prevN.y;
     let nz = prevN.z;
-    // Project previous normal off axis
     const d = nx * ax + ny * ay + nz * az;
     nx -= ax * d; ny -= ay * d; nz -= az * d;
     let nl = Math.hypot(nx, ny, nz);
     if (nl < 0.08) {
-      // Pick stable up
       let ux = 0; let uy = 1; let uz = 0;
       if (Math.abs(ay) > 0.9) { ux = 1; uy = 0; uz = 0; }
       nx = ay * uz - az * uy;
@@ -380,7 +379,6 @@ export class PlasmaStreamSystem {
       nl = Math.hypot(nx, ny, nz) || 1;
     }
     nx /= nl; ny /= nl; nz /= nl;
-    // Binormal = axis × normal
     let bx = ay * nz - az * ny;
     let by = az * nx - ax * nz;
     let bz = ax * ny - ay * nx;
@@ -453,6 +451,7 @@ export class PlasmaStreamSystem {
     this.group.visible = true;
     this._active = true;
     const nR = this.radial;
+    const tSeed = this._time * 2.2;
 
     for (let li = 0; li < this._layers.length; li++) {
       const L = this._layers[li];
@@ -473,34 +472,33 @@ export class PlasmaStreamSystem {
         let w0 = this._widths[i];
         if (i > 0) w0 = w0 * 0.65 + this._widths[i - 1] * 0.35;
         if (i + 1 < count) w0 = w0 * 0.75 + this._widths[i + 1] * 0.25;
-        const radius = w0 * L.widthScale * 0.5;
+        const baseR = w0 * L.widthScale * 0.5;
         const s = count <= 1 ? 0 : i / (count - 1);
+        // Mild tear only — strong enough to hide polygon, not crystal jagged
+        const tipW = s > 0.55 ? 1.0 + (s - 0.55) * 0.5 * (hash2(i, 3) - 0.35) : 1.0;
+
         for (let r = 0; r < nR; r++) {
           const theta = (r / nR) * Math.PI * 2;
+          const tear = 0.9 + 0.14 * hash2(i * 19 + r, 2)
+            + 0.06 * Math.sin(tSeed + s * 11.0 + theta * 2.0)
+            + 0.04 * Math.sin(tSeed * 1.7 + theta * 4.0 + s * 18.0);
+          const rad = baseR * tear * tipW;
           const ct = Math.cos(theta);
           const st = Math.sin(theta);
-          // Position on ring: center + radius * (n*cos + b*sin)
           const ox = fr.nx * ct + fr.bx * st;
           const oy = fr.ny * ct + fr.by * st;
           const oz = fr.nz * ct + fr.bz * st;
           const vi = (i * nR + r) * 3;
-          pos[vi] = px + ox * radius;
-          pos[vi + 1] = py + oy * radius;
-          pos[vi + 2] = pz + oz * radius;
+          pos[vi] = px + ox * rad;
+          pos[vi + 1] = py + oy * rad;
+          pos[vi + 2] = pz + oz * rad;
           const ui = (i * nR + r) * 2;
           uvs[ui] = s;
-          // radial UV 0..1 for soft cylinder falloff (distance from axis = full radius)
-          uvs[ui + 1] = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(theta * 3.0 + s * 8.0)); // vary slightly
-          // Actually use constant outer shell UV so softEdge does radial falloff in shader:
-          // We put vertices AT the radius shell; radial falloff is in shader via vPathUv.y.
-          // Map y to represent "surface radial coord" ~ 0.65-1.0 for shell, and rely on
-          // density profiles. Better: store angle in y for filament lanes.
-          uvs[ui + 1] = r / nR; // 0..1 around ring → ang in shader
+          uvs[ui + 1] = r / nR;
         }
       }
       L.posAttr.needsUpdate = true;
       L.uvAttr.needsUpdate = true;
-      // Full tube draw: (count-1) rings of nR quads × 6 indices
       L.geo.setDrawRange(0, Math.max(0, (count - 1) * nR * 6));
       L.mesh.visible = count >= 2;
       const u = L.mat.uniforms;
@@ -509,7 +507,7 @@ export class PlasmaStreamSystem {
       u.uDrive.value = activeDrive;
       u.uBoost.value = boost;
       u.uOpacity.value = Math.min(1.05, L.baseOpacity * flashScale * (0.95 + activeDrive * 0.25));
-      u.uRadiance.value = L.baseRadiance * boostR * flashScale * (0.95 + activeDrive * 0.28);
+      u.uRadiance.value = L.baseRadiance * boostR * flashScale * (0.95 + activeDrive * 0.25);
     }
 
     return {
@@ -518,6 +516,7 @@ export class PlasmaStreamSystem {
       continuous: true,
       medium: 'liquid-billboard-layers',
       pointCount: count,
+      construction: 'soft-path-tube',
     };
   }
 
