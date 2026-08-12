@@ -5651,6 +5651,34 @@
         "design/program/roadmap/receipts/PQ-048-02-rich-seam-opportunity-REPORT.md"
       ],
       "brief": "A miner identifies and works a readable rich seam; yield, heat, and depletion change; the player can help, exploit, or miss the opportunity; and altered-seam cargo provenance remains inspectable across Continue, death, jettison/recollect, and finite idempotent claim."
+    },
+    {
+      "id": "PQ-048.03",
+      "parentId": "PQ-048",
+      "priority": 282,
+      "title": "Make the Ceres miner-to-hauler handoff complete",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.02"
+      ],
+      "mutexes": [],
+      "paths": [
+        "SAVE_SCHEMA.md",
+        "src/data/contactHail.js",
+        "src/save/saveSystem.js",
+        "src/systems/traffic.js",
+        "test/ceres-activity-traffic-cast.test.mjs",
+        "test/ceres-causal-chain.test.mjs"
+      ],
+      "checks": [
+        "node --test test/ceres-causal-chain.test.mjs test/ceres-activity-traffic-cast.test.mjs test/contact-hail-contract.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-03-miner-hauler-handoff-REPORT.md"
+      ],
+      "brief": "A full miner requests a hauler, transfers its cargo physically through authoritative custody, resumes work, and sends the same lot toward a real sink without duplicating custody across Continue."
     }
   ]
 }
