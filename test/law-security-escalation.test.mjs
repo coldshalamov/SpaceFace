@@ -981,3 +981,86 @@ test('12. an armed raider crossing into Helios sanctuary disarms and withdraws i
     assert.match(voices[0].text, /Station guns own this lane/);
   });
 });
+
+test('13. a lawful jump gate does not disarm the live Ceres Throughline conflict, while a real station does', () => {
+  withForbiddenNondeterminism(() => {
+    function runCase({ isGate }) {
+      const t = boot({
+        sectorId: 'sector_ceres_belt',
+        security: 0.9,
+        playerPos: { x: 40, z: 0 },
+        station: false,
+      });
+      t.sim.spawn({
+        type: 'station',
+        team: 2,
+        factionId: 'faction_dmc',
+        pos: { x: 0, z: 0 },
+        radius: isGate ? 32 : 42,
+        data: {
+          stationId: isGate ? null : 'station_ceres',
+          isGate,
+          dockRadius: isGate ? 70 : 72,
+          factionId: 'faction_dmc',
+        },
+      });
+      const raider = spawnPirate(t.sim, {
+        pos: { x: 160, z: 0 },
+        spawnContext: 'zone_hostile',
+        extras: {
+          ceresActivityAmbushPhase: 'conflict',
+          motive: 'activity:throughline:ambush',
+          engagementTrigger: 'ambush_sprung',
+          zoneId: 'zone_ceres_ambush',
+          roe: RulesOfEngagement.WEAPONS_FREE,
+          passive: false,
+          forcePlayerTarget: true,
+          huntPlayer: true,
+          activity: {
+            kind: ActivityKind.ATTACK_RUN,
+            reason: 'ceres_activity:throughline:conflict',
+            anchor: { x: 160, z: 0 },
+            leashRadius: 2200,
+            startedTick: t.state.tick | 0,
+            targetId: t.player.id,
+          },
+        },
+      });
+      raider.data.combat.targetId = t.player.id;
+      raider.data.combat.lockTarget = t.player.id;
+      raider.data.intent.fire = true;
+      raider.data.intent.fireGroup = 'primary';
+      const withdrawals = [];
+      t.bus.on('law:sanctuaryWithdrawal', (payload) => withdrawals.push(clone(payload)));
+      t.state.lawSecurity.nextAmbientScanTick = (t.state.tick | 0) + 60;
+
+      t.sim.step(SIM_DT);
+      return { ...t, raider, withdrawals };
+    }
+
+    const gateCase = runCase({ isGate: true });
+    const stationCase = runCase({ isGate: false });
+
+    assert.equal(gateCase.withdrawals.length, 0,
+      'a gate proxy is transit infrastructure and emits no sanctuary withdrawal');
+    assert.equal(gateCase.raider.data.ai.passive, false,
+      'the live Throughline conflict actor remains active beside a gate');
+    assert.equal(gateCase.raider.data.ai.roe, RulesOfEngagement.WEAPONS_FREE,
+      'the live Throughline conflict actor remains weapons-free beside a gate');
+    assert.equal(gateCase.raider.data.combat.targetId, gateCase.player.id,
+      'the live Throughline conflict actor remains player-bound beside a gate');
+
+    assert.equal(stationCase.withdrawals.length, 1,
+      'a real lawful station still emits the sanctuary withdrawal');
+    assert.equal(stationCase.withdrawals[0].stationId, 'station_ceres');
+    assert.equal(stationCase.raider.data.ai.passive, true,
+      'the real-station control disarms the same actor');
+    assert.equal(stationCase.raider.data.ai.roe, RulesOfEngagement.HOLD_FIRE,
+      'the real-station control remains weapons-safe');
+    assert.equal(stationCase.raider.data.combat.targetId, null,
+      'the real-station control clears the player target');
+
+    gateCase.sim.dispose();
+    stationCase.sim.dispose();
+  });
+});

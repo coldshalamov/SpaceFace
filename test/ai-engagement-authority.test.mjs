@@ -150,6 +150,36 @@ test('station protection uses the live station index without scanning unrelated 
   assert.equal(protectedStationAt(state, state.entities.get(state.playerId))?.entityId, station.id);
 });
 
+test('lawful jump-gate proxies do not grant station protection', () => {
+  const gate = {
+    id: 3,
+    type: 'station',
+    alive: true,
+    factionId: 'faction_dmc',
+    pos: { x: 0, z: 0 },
+    radius: 32,
+    data: { stationId: null, isGate: true, dockRadius: 70 },
+  };
+  const station = {
+    id: 4,
+    type: 'station',
+    alive: true,
+    factionId: 'faction_dmc',
+    pos: { x: 2000, z: 0 },
+    radius: 42,
+    data: { stationId: 'station_ceres', dockRadius: 72 },
+  };
+  const state = {
+    world: { currentSectorId: 'sector_ceres_belt' },
+    entityList: [gate, station],
+  };
+
+  assert.equal(protectedStationAt(state, { pos: { x: 20, z: 0 } }), null,
+    'a lawful gate without an authored station identity is transit infrastructure, not a sanctuary');
+  assert.equal(protectedStationAt(state, { pos: { x: 2020, z: 0 } })?.stationId, 'station_ceres',
+    'an authored DMC station must retain its protection volume');
+});
+
 test('sub-second response windows fail closed at the production engagement seam', () => {
   const state = stateWith(authorizedAI({ noFireResponseWindowS: 0.5 }), {
     tick: 160,
