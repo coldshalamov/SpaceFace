@@ -5877,6 +5877,38 @@
       "brief": "The existing Lung of Charon rescue closes into one durable case card for rescue, recovery, stripping, failure, or departure; ordinary abandonment settles at zero, continuous/death-recovery transitions stay resumable, and the existing reward table cannot pay twice."
     },
     {
+      "id": "PQ-048.16",
+      "parentId": "PQ-048",
+      "priority": 295,
+      "title": "Complete Doss archive thread",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.12",
+        "PQ-048.15"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/dossArchive.js",
+        "src/systems/stationContacts.js",
+        "src/ui/screens/bar.js",
+        "src/ui/station/screens/bar.js",
+        "test/pq048-doss-archive-thread.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-doss-archive-thread.test.mjs",
+        "npm run check:map-authority",
+        "npm run check:ui-a11y",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:player-facing-labels",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-16-doss-archive-thread-REPORT.md"
+      ],
+      "brief": "Doss derives three source-specific archive entries from the Vesta terminal cache receipt, the existing physical Resonance Obelisk investigation, and the Lung's terminal case artifact including abandonment; save reconciliation rebuilds the flags/count from raw owner state, and all three unlock only a revalidated Candle Fleet map focus with no course, navigation, mission, or reward."
+    },
+    {
       "id": "PQ-048.19",
       "parentId": "PQ-048",
       "priority": 298,
