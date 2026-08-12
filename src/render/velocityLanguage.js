@@ -107,10 +107,10 @@ export const VL_BAND3_COUNT_FLOOR = 40;
  * physical speed render differently depending on an input bit and introduced a visible band jump.
  *
  * The bands are keyed on SPEED alone. Boost earns its language by accelerating you
- * across the band edges, which it does within a second. The moment of ignition is already carried by
- * `BOOST_FOV_PUNCH` and `BOOST_TRAUMA` in feel.js — camera response, not particles, which is the
- * complementary ignition beat. `boosting` is still accepted by the drive so the seam signature
- * matches the legacy branch, and is deliberately unused.
+ * across the band edges, which it does within a second. Camera framing owns a separate, slow boost
+ * state cue in camera.js; it is deliberately not an ignition punch, so repeated Shift taps do not
+ * make the projection strobe. `boosting` is still accepted by the drive so the seam signature
+ * matches the legacy branch, and is deliberately unused here.
  */
 export const VL_BOOST_BIAS = 0;
 

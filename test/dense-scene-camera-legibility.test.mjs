@@ -13,10 +13,12 @@ import { test } from 'node:test';
 
 import {
   ACTIVE_ATTACKER_LOOKAHEAD_SCALE,
+  BOOST_CAMERA_ZOOM_TARGET,
   COMPOSITION_THREAT_STICK_S,
   createChaseCamera,
   playerHasActiveAttackerFraming,
   resolveChaseComposition,
+  stepBoostZoomFactor,
 } from '../src/render/camera.js';
 import {
   addFovPunch,
@@ -100,6 +102,23 @@ test('H1: dense recoil+hit stacking never exceeds FOV_PUNCH_RISE_RATE on the cam
   assert.ok(maxRate <= FOV_PUNCH_RISE_RATE + 1e-6,
     `applied FOV rate ${maxRate.toFixed(2)} deg/s must stay ≤ rise rate ${FOV_PUNCH_RISE_RATE}`);
   assert.ok(app > 0 || env >= 0, 'integrator remains well-defined under dense fire');
+});
+
+test('H1b: boost framing ignores a tap and eases back after a held boost', () => {
+  let factor = 1;
+  for (let i = 0; i < 6; i++) factor = stepBoostZoomFactor(factor, true, DT);
+  assert.ok(factor - 1 < 0.005, `a 100ms boost tap should barely move zoom (factor=${factor.toFixed(4)})`);
+
+  for (let i = 0; i < 120; i++) factor = stepBoostZoomFactor(factor, true, DT);
+  assert.ok(factor > 1.015 && factor < BOOST_CAMERA_ZOOM_TARGET,
+    `held boost should ease toward the small framing target (factor=${factor.toFixed(4)})`);
+  const held = factor;
+
+  for (let i = 0; i < 6; i++) factor = stepBoostZoomFactor(factor, false, DT);
+  assert.ok(factor < held && factor > 1,
+    `release should ease out instead of reversing into a second pulse (factor=${factor.toFixed(4)})`);
+  for (let i = 0; i < 180; i++) factor = stepBoostZoomFactor(factor, false, DT);
+  assert.ok(Math.abs(factor - 1) < 0.005, `camera should settle back to neutral (factor=${factor.toFixed(4)})`);
 });
 
 // ── H2 / H4: composition FOV + conservative minZoom ───────────────────────────

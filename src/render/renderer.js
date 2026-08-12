@@ -2581,8 +2581,9 @@ export const render = {
     });
     bus.on('camera:kill', () => cam.killCam && cam.killCam());
     // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
-    // (cruise-drop settle stays owned by spec2/02 §1). Boost-release also gets a gentle zoom tighten.
-    bus.on('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); if (cam.pushZoom) cam.pushZoom(-0.03, 0.4); });
+    // (cruise-drop settle stays owned by spec2/02 §1). Boost distance is state-smoothed in camera.js;
+    // do not schedule a separate release pulse here, or Shift tapping becomes an in/out camera cut.
+    bus.on('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); });
     bus.on('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
     bus.on('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     bus.on('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));

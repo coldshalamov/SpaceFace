@@ -79,9 +79,6 @@ export const FOV_PUNCH_CAP = FOV_PUNCH_DEATH + 1;
 const RECOIL_FOV_MAX = 1.5;    // deg additive per shot (scaled down by recoilWeight)
 const RECOIL_FOV_MIN = 0.4;    // floor so even the lightest weapon nudges the fov a touch
 
-const BOOST_FOV_PUNCH = 2.8;   // deg additive on boost ignition (top-down speed kick)
-const BOOST_TRAUMA = 0.18;     // camera shake on boost ignition
-
 const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
 const VIG_DECAY = 4.0;    // vignette fade rate
@@ -786,19 +783,6 @@ export const feel = {
       this._fovPunch = addFovPunch(this._fovPunch, fov);
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(Math.min(0.08, 0.03 + qty * 0.005));
-    });
-
-    // Boost ignition punch. The engine trail VFX already flares, but the camera is inert, so the
-    // moment of boost feels soft. A small FOV kick + trauma sells the afterburners lighting up.
-    // Gated the same way as other feel effects: flight, no modal, motion-reduce suppresses.
-    bus.on('ship:boostStart', (p) => {
-      if (!p || p.shipId !== state.playerId) return;
-      if (this.state.mode !== 'flight' || !this._modalClear()) return;
-      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-      if (mr) return;
-      this._fovPunch = addFovPunch(this._fovPunch, BOOST_FOV_PUNCH);
-      const ctrl = this.state.render && this.state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(BOOST_TRAUMA);
     });
 
     // Tether snap: 0.25 trauma (spec2/02 §3).

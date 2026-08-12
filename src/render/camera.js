@@ -71,6 +71,10 @@ export const SPEED_ZOOM_MAX = 1.18;  // ordinary hull-max factor
 export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 1.55;
 export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
+// Boost framing is a sustained state cue, not an ignition impulse. A short Shift tap should barely
+// move the view; held boost can still earn a small amount of extra breathing room.
+export const BOOST_CAMERA_ZOOM_TARGET = 1.025;
+export const BOOST_CAMERA_ZOOM_LERP = 0.8; // /s — deliberately slower than ordinary speed zoom
 // U13: single-frame outward zoom cap. The Focus-lease continuity contract forbids a cut larger
 // than 6 wu/frame; stay under that while still letting active-attacker minZoom open the frame.
 const ZOOM_OUT_STEP_MAX_WU = 5.5;
@@ -282,6 +286,20 @@ export function resolveExceptionalSpeedZoomFactor(exceptionalSpeed, ordinaryFact
   const base = Number.isFinite(ordinaryFactor) ? ordinaryFactor : SPEED_ZOOM_MAX;
   const intensity = clamp01(exceptionalSpeed);
   return base + (PHYSICS_EARNED_SPEED_ZOOM_MAX - base) * intensity;
+}
+
+/**
+ * Smooth the small camera-distance cue owned by sustained player boost.
+ *
+ * Keeping this separate from `pushZoom` prevents boost taps from scheduling a fresh in/out pulse
+ * on every release. The helper is pure so the tap-vs-hold continuity contract can be tested without
+ * booting Three.js.
+ */
+export function stepBoostZoomFactor(current, boosting, dt, motionReduced = false) {
+  const value = Number.isFinite(current) ? current : 1;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const target = boosting && !motionReduced ? BOOST_CAMERA_ZOOM_TARGET : 1;
+  return damp(value, target, BOOST_CAMERA_ZOOM_LERP, step);
 }
 
 export function resolveInitialChaseZoom(zoom) {
@@ -650,6 +668,7 @@ export function createChaseCamera(state) {
   let _dynamicZoom = resolveBaseZoom();
   let _speedZoomFactor = SPEED_ZOOM_MIN;
   let _speedZoomSampleT = 0;
+  let _boostZoomFactor = 1;
 
   // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
   // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
@@ -972,6 +991,13 @@ export function createChaseCamera(state) {
           targetZoom = Math.max(targetZoom, baseZoom * (1 + _contextZoomBias));
         }
       }
+      _boostZoomFactor = stepBoostZoomFactor(
+        _boostZoomFactor,
+        !!(p && p.flags && p.flags.boosting),
+        frameDt,
+        isMotionReduced(state),
+      );
+      if (!directorOwnsComposition) targetZoom *= _boostZoomFactor;
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the
       // same _dynamicZoom damping as everything else.
