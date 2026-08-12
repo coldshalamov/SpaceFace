@@ -12,12 +12,21 @@ export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 export const CONTACT_HAIL_ACTION_HELP = 'help';
 export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
+export const CONTACT_HAIL_ACTION_RECOVER = 'recover';
+export const CONTACT_HAIL_ACTION_STEAL = 'steal';
+export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
 const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
 const CERES_TENDER_SERVICE_INCIDENT_SCHEMA = 'spaceface.ceresTenderServiceIncident.v1';
 const CERES_TENDER_SERVICE_ACTIVE_STATES = new Set(['impair', 'approach', 'holding', 'repair']);
+const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
+const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
+const CERES_DISABLED_HAULER_INCIDENT_SCHEMA = 'spaceface.ceresDisabledHaulerRecovery.v1';
+const CERES_DISABLED_HAULER_ACTIVE_STATES = new Set([
+  'impair', 'distress', 'player_recovery', 'responder_approach', 'responder_repair',
+]);
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
 // Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
@@ -132,6 +141,7 @@ function contactKind(state, entity) {
   // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
   // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
   const hasLivingStamp = !!(data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
+    || data.ceresDisabledHauler
     || data.ceresHandoffStatus || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
   if (hasLivingStamp && entity && entity.team === 2
     && role !== 'pirate' && role !== 'patrol' && role !== 'escort'
@@ -179,6 +189,124 @@ function richSeamHelpAvailable(state, entity, kind) {
     if (opportunity && opportunity.state === 'open' && !opportunity.reservationId) return true;
   }
   return false;
+}
+
+function canonicalDisabledHaulerManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
+    || typeof manifest.manifestId !== 'string' || !manifest.manifestId
+    || typeof manifest.freighterKey !== 'string' || !manifest.freighterKey
+    || manifest.role !== 'hauler'
+    || typeof manifest.lotId !== 'string' || !manifest.lotId
+    || !Number.isSafeInteger(manifest.totalQty) || manifest.totalQty <= 0
+    || !Array.isArray(manifest.lines) || manifest.lines.length === 0) return null;
+  const lines = [];
+  let totalQty = 0;
+  for (const line of manifest.lines) {
+    if (!line || typeof line.commodityId !== 'string' || !/^[a-z][a-z0-9_.-]*$/.test(line.commodityId)
+      || !Number.isSafeInteger(line.qty) || line.qty <= 0) return null;
+    totalQty += line.qty;
+    if (!Number.isSafeInteger(totalQty)) return null;
+    lines.push({ commodityId: line.commodityId, qty: line.qty });
+  }
+  if (totalQty !== manifest.totalQty) return null;
+  const source = manifest.lotSource;
+  const custody = manifest.custody;
+  if (!source || typeof source !== 'object' || Array.isArray(source)
+    || typeof source.rootLotId !== 'string' || !source.rootLotId
+    || typeof source.handoffId !== 'string' || !source.handoffId
+    || !Number.isSafeInteger(source.transferSeq) || source.transferSeq <= 0
+    || !custody || typeof custody !== 'object' || Array.isArray(custody)
+    || custody.holderKind !== 'traffic'
+    || typeof custody.holderId !== 'string' || !custody.holderId
+    || custody.acquiredBy !== 'traffic:ceresMinerHaulerHandoff'
+    || typeof custody.handoffId !== 'string' || !custody.handoffId
+    || !Number.isSafeInteger(custody.transferSeq) || custody.transferSeq <= 0
+    || typeof custody.rootLotId !== 'string' || !custody.rootLotId) return null;
+  return {
+    manifestId: manifest.manifestId,
+    freighterKey: manifest.freighterKey,
+    role: manifest.role,
+    totalQty: manifest.totalQty,
+    lines,
+    lotId: manifest.lotId,
+    lotSource: {
+      rootLotId: source.rootLotId,
+      handoffId: source.handoffId,
+      transferSeq: source.transferSeq,
+    },
+    custody: {
+      holderKind: custody.holderKind,
+      holderId: custody.holderId,
+      acquiredBy: custody.acquiredBy,
+      handoffId: custody.handoffId,
+      transferSeq: custody.transferSeq,
+      rootLotId: custody.rootLotId,
+    },
+  };
+}
+
+function sameDisabledHaulerManifest(left, right) {
+  const a = canonicalDisabledHaulerManifest(left);
+  const b = canonicalDisabledHaulerManifest(right);
+  return !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** One fail-closed identity check shared by traffic actions and every recovery readout. */
+export function ceresDisabledHaulerManifestTruth(state, entity, incident = null, recordManifest = null) {
+  const active = incident || state && state.traffic && state.traffic.ceresDisabledHaulerIncident;
+  const data = entity && entity.data || {};
+  const manifest = data.cargoManifest;
+  const handoff = state && state.traffic && state.traffic.ceresMinerHaulerHandoff;
+  if (!active || active.schema !== CERES_DISABLED_HAULER_INCIDENT_SCHEMA
+    || !entity || entity.alive === false || entity.type !== 'ship'
+    || data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID
+    || data.worldRecordId !== active.haulerWorldRecordId
+    || data.jobId !== `job:${active.haulerWorldRecordId}`
+    || !handoff || handoff.schema !== CERES_MINER_HAULER_HANDOFF_SCHEMA
+    || handoff.state !== 'in_transit'
+    || handoff.handoffId !== active.handoffId
+    || handoff.haulerWorldRecordId !== active.haulerWorldRecordId
+    || handoff.rootLotId !== active.rootLotId
+    || manifest && manifest.manifestId !== active.manifestId
+    || !sameDisabledHaulerManifest(active.manifest, manifest)
+    || recordManifest != null && !sameDisabledHaulerManifest(recordManifest, manifest)) return null;
+  const canonical = canonicalDisabledHaulerManifest(manifest);
+  const outstandingQty = handoff.transferredQty - handoff.deliveredQty;
+  if (!canonical || canonical.manifestId !== active.manifestId
+    || canonical.freighterKey !== active.haulerWorldRecordId
+    || canonical.totalQty !== outstandingQty
+    || canonical.lotSource.rootLotId !== active.rootLotId
+    || canonical.lotSource.handoffId !== active.handoffId
+    || canonical.lotSource.transferSeq !== handoff.transferSeq
+    || canonical.custody.holderId !== active.haulerWorldRecordId
+    || canonical.custody.handoffId !== active.handoffId
+    || canonical.custody.transferSeq !== handoff.transferSeq
+    || canonical.custody.rootLotId !== active.rootLotId) return null;
+  return { incident: active, handoff, manifest, canonical };
+}
+
+export function ceresDisabledHaulerTruth(state, entity) {
+  const incident = state && state.traffic && state.traffic.ceresDisabledHaulerIncident;
+  const data = entity && entity.data || {};
+  const annotation = data.ceresDisabledHauler;
+  if (!incident || incident.schema !== CERES_DISABLED_HAULER_INCIDENT_SCHEMA
+    || !CERES_DISABLED_HAULER_ACTIVE_STATES.has(incident.state)
+    || !state.world || state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || !entity || entity.alive === false || entity.type !== 'ship' || entity.team !== 2
+    || data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID
+    || data.worldRecordId !== incident.haulerWorldRecordId
+    || data.jobId !== `job:${incident.haulerWorldRecordId}`
+    || !annotation || annotation.incidentId !== incident.incidentId
+    || annotation.manifestId !== incident.manifestId
+    || !ceresDisabledHaulerManifestTruth(state, entity, incident)
+    || !combatDriveDisabled(state, entity)) return null;
+  return Object.freeze({
+    incidentId: incident.incidentId,
+    state: incident.state,
+    choice: incident.choice || null,
+    manifestId: incident.manifestId,
+    responseAtSimT: incident.responseAtSimT,
+  });
 }
 
 function callsign(entity) {
@@ -243,6 +371,7 @@ export function contactHailAvailability(state) {
     richSeamHelpAvailable: richSeamHelpAvailable(state, target, classification.kind),
     priorityCourierItinerary: priorityCourierItinerary(state, target),
     priorityCourierEscortAvailable: priorityCourierEscortAvailable(state, target),
+    disabledHauler: ceresDisabledHaulerTruth(state, target),
   };
 }
 
@@ -259,6 +388,17 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     };
   }
   if (availability.kind === 'worker') {
+    if (availability.disabledHauler) {
+      return {
+        requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+        lines: [`${name} · DISABLED ORE HAULER`, 'DISTRESS · DRIVE DEAD · MANIFEST ABOARD.'],
+        actions: [
+          { id: CONTACT_HAIL_ACTION_RECOVER, label: 'RECOVER' },
+          { id: CONTACT_HAIL_ACTION_STEAL, label: 'STEAL' },
+          { id: CONTACT_HAIL_ACTION_ABANDON, label: 'ABANDON' },
+        ],
+      };
+    }
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
     if (availability.richSeamHelpAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HELP, label: 'HELP' });
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
@@ -456,10 +596,15 @@ export function livingWorkStatusText(entity, opts = {}) {
     opts.depth || 'full',
   );
   if (serviceStatus) return serviceStatus;
-  if (data.ceresCausalDisabled === true) {
+  const disabledHauler = ceresDisabledHaulerTruth(opts.state || null, entity);
+  if (disabledHauler) {
     return opts.depth === 'lock'
-      ? 'WORK · DRIVE DISABLED'
-      : 'WORK · DRIVE DISABLED · RECOVERY REQUIRED';
+      ? 'DISTRESS · DRIVE DISABLED'
+      : disabledHauler.choice === CONTACT_HAIL_ACTION_RECOVER
+        ? 'DISTRESS · PLAYER RECOVERY CLAIMED'
+        : disabledHauler.state === 'responder_approach' || disabledHauler.state === 'responder_repair'
+          ? 'DISTRESS · TENDER RESPONDING'
+          : 'DISTRESS · RECOVER · STEAL · ABANDON';
   }
   // targetIntelReadout's existing call has no game state. A bare timer stamp must not claim a
   // service outcome there; Hail passes state and can present the combat-backed result above.
@@ -507,8 +652,12 @@ function workerStatusText(target, state = null) {
   const data = target && target.data || {};
   const serviceStatus = tenderServiceHailStatus(ceresTenderServiceTruth(state, target));
   if (serviceStatus) return serviceStatus;
-  if (data.ceresCausalDisabled === true) {
-    return 'STATUS · DRIVE DISABLED · RECOVERY REQUIRED';
+  const disabledHauler = ceresDisabledHaulerTruth(state, target);
+  if (disabledHauler) {
+    if (disabledHauler.choice === CONTACT_HAIL_ACTION_RECOVER) return 'STATUS · PLAYER RECOVERY CLAIMED · MASSLINE READY';
+    if (disabledHauler.state === 'responder_approach') return 'STATUS · DRIVE DISABLED · TENDER INBOUND';
+    if (disabledHauler.state === 'responder_repair') return 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS';
+    return 'STATUS · DRIVE DISABLED · MANIFEST ABOARD';
   }
   if (data.ceresCausalEventId === 'ev_tender_services_miner') {
     const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
@@ -605,6 +754,13 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
     line = opportunity ? `HELP · RICH SEAM +${opportunity.bonusU}u · MINER TAKING THE HOT CUT` : 'HELP · NO OPEN SEAM';
+  } else if (offer.kind === 'worker'
+    && [CONTACT_HAIL_ACTION_RECOVER, CONTACT_HAIL_ACTION_STEAL, CONTACT_HAIL_ACTION_ABANDON].includes(id)) {
+    const disabled = ceresDisabledHaulerTruth(state, target);
+    if (!disabled) line = `${id.toUpperCase()} · RECOVERY WINDOW CLOSED.`;
+    else if (id === CONTACT_HAIL_ACTION_RECOVER) line = 'RECOVER · MASSLINE THE HULL TO LAWFUL COVER.';
+    else if (id === CONTACT_HAIL_ACTION_STEAL) line = 'STEAL · MANIFEST JETTISON REQUESTED.';
+    else line = 'ABANDON · DISTRESS RELAY CLOSED.';
   } else if (offer.kind === 'trader' && id === 'status') {
     line = priorityCourierStatusText(state, target);
   } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ESCORT) {

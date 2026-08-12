@@ -185,7 +185,9 @@ function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = fa
 
   if (withTenderCombat) {
     const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
     prepareCombatShip(miner);
+    prepareCombatShip(hauler);
   }
 
   for (const service of CERES_ACTIVITY_SERVICE_SLOTS) {
@@ -421,6 +423,11 @@ test('full chain reaches a believable terminal outcome after authored miner work
     const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
     const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
     hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
     const incident = state.traffic.ceresTenderServiceIncident;
     if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
       const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
@@ -1047,7 +1054,10 @@ test('save mid-recovery clears ceresCausal stamps from a persistent civilian', (
   assert.ok(entered != null, 'recovery link should open under zero input');
   const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
   const hauler = state.entities.get(haulerRec.id);
-  assert.equal(hauler.data.ceresCausalDisabled, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(hauler.data, 'ceresCausalDisabled'), false,
+    'the real incident never uses a decorative disabled flag');
+  assert.equal(state.traffic.ceresDisabledHaulerIncident.manifestId,
+    hauler.data.cargoManifest.manifestId);
   assert.ok(hauler.data.ceresCausalEventId);
 
   // Surrender/recovery path marks disabled civilians persistent — the leak surface.

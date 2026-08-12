@@ -288,25 +288,77 @@ test('the late Kess priority run exposes a saved status and one escort request w
 
 test('a disabled Ceres hauler hails its exact recovery need without mutating gameplay', () => {
   const target = trader('disabled-hauler');
+  const handoffId = 'ceres-handoff:disabled-hauler';
+  const rootLotId = 'ceres-root:disabled-hauler';
   Object.assign(target.data, {
+    worldRecordId: 'wr_convoy_disabled_hauler',
+    jobId: 'job:wr_convoy_disabled_hauler',
+    activityActorSlotId: 'ceres_refinery_hauler',
+    ceresActivityCast: true,
+    ceresActivityJobOwned: true,
     ceresCausalEventId: 'ev_disabled_hauler_recovery',
     ceresCausalPhase: 'distress',
     ceresCausalCue: 'breaking_the_pattern',
-    ceresCausalDisabled: true,
+    cargoManifest: {
+      manifestId: 'fm_disabled_hauler',
+      freighterKey: 'wr_convoy_disabled_hauler',
+      role: 'hauler',
+      lines: [{ commodityId: 'cmdty_ore_iron', qty: 8 }],
+      totalQty: 8,
+      lotId: 'lot_disabled_hauler',
+      lotSource: { rootLotId, handoffId, transferSeq: 1 },
+      custody: {
+        holderKind: 'traffic', holderId: 'wr_convoy_disabled_hauler',
+        acquiredBy: 'traffic:ceresMinerHaulerHandoff', handoffId, transferSeq: 1, rootLotId,
+      },
+    },
+    ceresDisabledHauler: {
+      schema: 'spaceface.ceresDisabledHaulerRecovery.v1',
+      incidentId: 'ceres-disabled-hauler:test',
+      manifestId: 'fm_disabled_hauler',
+    },
   });
   const state = baseState(target);
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.traffic.ceresMinerHaulerHandoff = {
+    schema: 'spaceface.ceresMinerHaulerHandoff.v1',
+    handoffId,
+    rootLotId,
+    state: 'in_transit',
+    haulerWorldRecordId: target.data.worldRecordId,
+    transferredQty: 8,
+    deliveredQty: 0,
+    transferSeq: 1,
+  };
+  state.traffic.ceresDisabledHaulerIncident = {
+    schema: 'spaceface.ceresDisabledHaulerRecovery.v1',
+    incidentId: 'ceres-disabled-hauler:test',
+    handoffId,
+    rootLotId,
+    state: 'distress',
+    choice: null,
+    haulerWorldRecordId: target.data.worldRecordId,
+    manifestId: target.data.cargoManifest.manifestId,
+    manifest: structuredClone(target.data.cargoManifest),
+    responseAtSimT: 30,
+  };
+  state.combat = { entities: { [target.id]: {
+    capabilities: { drive: false },
+    subsystems: { subsystem_drive: { effectiveDisabled: true } },
+  } } };
   const before = authoritySnapshot(state);
   const { bus } = mount(state);
   bus.emit('contactHail:request', { targetId: target.id });
   const offer = emitted(bus, 'contactHail:offer').at(-1);
   assert.equal(offer.kind, 'worker');
+  assert.deepEqual(offer.actions.map((row) => row.id), ['recover', 'steal', 'abandon']);
   bus.emit('contactHail:choice', {
     requestId: offer.requestId,
     targetId: offer.targetId,
-    choice: 'status',
+    choice: 'recover',
   });
   assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '),
-    /DRIVE DISABLED · RECOVERY REQUIRED/i);
+    /MASSLINE THE HULL TO LAWFUL COVER/i);
   assert.deepEqual(authoritySnapshot(state), before);
 });
 

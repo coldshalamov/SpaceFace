@@ -75,19 +75,75 @@ test('U5: salvage stack phase is readable on lock-on', () => {
 
 test('disabled Ceres hauler advertises recovery need on the ordinary target panel', () => {
   const player = entity('player', { team: 1, data: {} });
+  const worldRecordId = 'wr_convoy_disabled_hauler';
+  const manifestId = 'fm_disabled_hauler';
+  const handoffId = 'ceres-handoff:disabled-hauler';
+  const rootLotId = 'ceres-root:disabled-hauler';
   const hauler = entity('hauler', {
     team: 2,
     data: {
       trafficRole: 'hauler',
+      worldRecordId,
+      jobId: `job:${worldRecordId}`,
+      activityActorSlotId: 'ceres_refinery_hauler',
+      ceresActivityCast: true,
+      ceresActivityJobOwned: true,
       ceresCausalEventId: 'ev_disabled_hauler_recovery',
       ceresCausalPhase: 'distress',
       ceresCausalCue: 'breaking_the_pattern',
-      ceresCausalDisabled: true,
+      cargoManifest: {
+        manifestId,
+        freighterKey: worldRecordId,
+        role: 'hauler',
+        lines: [{ commodityId: 'cmdty_ore_iron', qty: 8 }],
+        totalQty: 8,
+        lotId: 'lot_disabled_hauler',
+        lotSource: { rootLotId, handoffId, transferSeq: 1 },
+        custody: {
+          holderKind: 'traffic', holderId: worldRecordId,
+          acquiredBy: 'traffic:ceresMinerHaulerHandoff', handoffId, transferSeq: 1, rootLotId,
+        },
+      },
+      ceresDisabledHauler: {
+        schema: 'spaceface.ceresDisabledHaulerRecovery.v1',
+        incidentId: 'ceres-disabled-hauler:test',
+        manifestId,
+      },
       ai: { passive: true },
     },
   });
-  const intel = targetIntelReadout(hauler, player, { playerId: 'player' }, 350);
-  assert.equal(intel.workStatus, 'WORK · DRIVE DISABLED');
+  const state = {
+    playerId: 'player',
+    world: { currentSectorId: 'sector_ceres_belt' },
+    traffic: { ceresMinerHaulerHandoff: {
+      schema: 'spaceface.ceresMinerHaulerHandoff.v1',
+      handoffId,
+      rootLotId,
+      state: 'in_transit',
+      haulerWorldRecordId: worldRecordId,
+      transferredQty: 8,
+      deliveredQty: 0,
+      transferSeq: 1,
+    }, ceresDisabledHaulerIncident: {
+      schema: 'spaceface.ceresDisabledHaulerRecovery.v1',
+      incidentId: 'ceres-disabled-hauler:test',
+      handoffId,
+      rootLotId,
+      state: 'distress',
+      choice: null,
+      haulerWorldRecordId: worldRecordId,
+      manifestId,
+      manifest: structuredClone(hauler.data.cargoManifest),
+      responseAtSimT: 30,
+    } },
+    combat: { entities: { [hauler.id]: {
+      capabilities: { drive: false },
+      subsystems: { subsystem_drive: { effectiveDisabled: true } },
+    } } },
+  };
+  const intel = targetIntelReadout(hauler, player, state, 350);
+  assert.equal(intel.workStatus, 'DISTRESS · DRIVE DISABLED');
+  assert.equal(intel.recoveryPrompt, 'HAIL · RECOVER / STEAL / ABANDON');
   assert.equal(intel.motive, 'NONCOMBATANT');
 });
 

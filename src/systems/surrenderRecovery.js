@@ -47,6 +47,7 @@ export const surrenderRecovery = {
     this._onEntityKilled = (payload) => this._rememberCivilianKiller(payload || {});
     this._onManifestRemaining = (payload) => this._manifestRemaining(payload || {});
     this._onSectorExit = () => this._resolveCivilianBoundary('sector_exit');
+    this._onPlayerDeath = () => this._resolveCivilianBoundary('player_death');
     this._onSaveRestoring = () => {
       // NPC entities rematerialize after load. Drop only this transient coordinator; a valid saved
       // entity annotation re-adopts below with its durable manifest identity and original deadline.
@@ -66,6 +67,7 @@ export const surrenderRecovery = {
       this.bus.on('entity:killed', this._onEntityKilled);
       this.bus.on('freight:manifestRemaining', this._onManifestRemaining);
       this.bus.on('sector:exit', this._onSectorExit);
+      this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('save:restoring', this._onSaveRestoring);
       // The canonical New Game route emits game:new and later game:started. It does not emit the
       // legacy game:newGame signal, and resetRunState deliberately does not know this additive tree.
@@ -235,6 +237,8 @@ export const surrenderRecovery = {
     const restoredPhase = recoveryKind === RECOVERY_CIVILIAN_DISABLED
       ? restoredCivilianPhase(state, entity.id)
       : 'awaiting_tether';
+    const worldOwnsPersistence = recoveryKind === RECOVERY_CIVILIAN_DISABLED
+      && durableWorldEntity(state, entity);
     const record = {
       id,
       entityId: entity.id,
@@ -259,10 +263,12 @@ export const surrenderRecovery = {
         : custodyReward(entity),
       manifest,
       ownedPersistent: recoveryKind === RECOVERY_CIVILIAN_DISABLED
-        ? (saved ? saved.ownedPersistent === true : !(entity.flags && entity.flags.persistent === true))
+        ? (worldOwnsPersistence
+            ? false
+            : (saved ? saved.ownedPersistent === true : !(entity.flags && entity.flags.persistent === true)))
         : false,
     };
-    if (recoveryKind === RECOVERY_CIVILIAN_DISABLED) {
+    if (recoveryKind === RECOVERY_CIVILIAN_DISABLED && !worldOwnsPersistence) {
       entity.flags = entity.flags || {};
       entity.flags.persistent = true;
     }
@@ -688,13 +694,15 @@ export const surrenderRecovery = {
       if (this._onEntityKilled) this.bus.off('entity:killed', this._onEntityKilled);
       if (this._onManifestRemaining) this.bus.off('freight:manifestRemaining', this._onManifestRemaining);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
+      if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
       if (this._onGameNew) this.bus.off('game:new', this._onGameNew);
       if (this._onGameStarted) this.bus.off('game:started', this._onGameStarted);
     }
     this._onSurrendered = this._onDriveDisabled = this._onDriveEnabled = null;
     this._onLatched = this._onReel = this._onReleased = this._onBroke = null;
-    this._onEntityKilled = this._onManifestRemaining = this._onSectorExit = this._onSaveRestoring = null;
+    this._onEntityKilled = this._onManifestRemaining = this._onSectorExit = this._onPlayerDeath = null;
+    this._onSaveRestoring = null;
     this._onGameNew = this._onGameStarted = null;
   },
 };
@@ -749,6 +757,17 @@ function recordForDurableId(own, durableId) {
 
 function recordKeyForEntity(entityId) {
   return `surrender:${entityId}`;
+}
+
+function durableWorldEntity(state, entity) {
+  const data = entity && entity.data;
+  const worldRecordId = data && data.worldRecordId;
+  if (typeof worldRecordId === 'string' && worldRecordId
+    && data.ceresActivityCast === true && data.ceresActivityJobOwned === true) return true;
+  const byId = state && state.world && state.world.records && state.world.records.byId;
+  const record = typeof worldRecordId === 'string' && worldRecordId && byId && byId[worldRecordId];
+  return !!(record && record.recordId === worldRecordId && record.alive !== false
+    && record.sectorId === (data.homeSectorId || data.sectorId || state.world.currentSectorId));
 }
 
 function rejectDuplicateCivilianIdentity(entity, durableId) {

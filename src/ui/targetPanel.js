@@ -21,7 +21,7 @@
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
-import { livingWorkStatusText } from '../data/contactHail.js';
+import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
@@ -277,12 +277,19 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   const threatTier = contactThreatTier(target, hostile);
   // Lock surface stays thin (phase only); hail STATUS carries tactical means (U3/U5 hierarchy).
   const workStatus = livingWorkStatusText(target, { depth: 'lock', state });
+  const disabledHauler = ceresDisabledHaulerTruth(state, target);
+  const recoveryPrompt = disabledHauler && !disabledHauler.choice
+    ? 'HAIL · RECOVER / STEAL / ABANDON'
+    : disabledHauler && disabledHauler.choice === 'recover'
+      ? 'MASSLINE RECOVERY CLAIMED'
+      : null;
   return Object.freeze({
     hostile,
     allied,
     intent,
     motive,
     workStatus: workStatus || null,
+    recoveryPrompt,
     threatTier,
     threatPips: tierPips(threatTier),
     rangeBand: targetRangeBand(distance, player),
@@ -551,15 +558,16 @@ export function createTargetPanel(ctx) {
       const tacticalTarget = t.type === 'ship' || t.type === 'drone';
       const intel = tacticalTarget ? targetIntelReadout(t, p, state, dist) : null;
       const intelKey = intel
-        ? `${tid}:${intel.intent}:${intel.motive}:${intel.workStatus || ''}:${intel.threatTier}:${intel.rangeBand}`
+        ? `${tid}:${intel.intent}:${intel.motive}:${intel.workStatus || ''}:${intel.recoveryPrompt || ''}:${intel.threatTier}:${intel.rangeBand}`
         : '';
       if (intel && intelKey !== lastIntelKey) {
         lastIntelKey = intelKey;
         const workBit = intel.workStatus ? ` · ${intel.workStatus}` : '';
-        setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}${workBit}`);
+        const recoveryBit = intel.recoveryPrompt ? ` · ${intel.recoveryPrompt}` : '';
+        setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}${workBit}${recoveryBit}`);
         setText(elRange, intel.rangeBand);
         if (elIntent.style.display !== 'block') elIntent.style.display = 'block';
-        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}`;
+        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}${intel.recoveryPrompt ? `, ${intel.recoveryPrompt}` : ''}`;
         if (el._sfAriaLabel !== aria) {
           el._sfAriaLabel = aria;
           el.setAttribute('aria-label', aria);
