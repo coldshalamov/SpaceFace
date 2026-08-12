@@ -1,9 +1,10 @@
 <!-- LIFETIME: STABLE -->
 # REC-GROK-KES-SALVAGE — Corrupt Grok clone forensic ledger
 
-> **Phase: Ledger only (steps 1–2 of the route).** This phase never deletes anything and never
-> mutates the source clone. Preservation copies (route step 4) and the destructive close (route step 5)
-> are a separate controller-gated action — see **PHASE 2 (not executed)** below.
+> **Phase 2 closeout (2026-08-12): classified DROP. No donors copied. Clone not deleted in this
+> pass.** The August 10 hash ledger (sections 1–4) remains the forensic record. The mechanistic
+> `PRESERVE`/`ADAPT` labels in that ledger meant “hash differs from master,” not “this is better
+> art.” Human inspection against current same-path owners overturns those labels. See **§5**.
 
 - **Authority:** `CANONICAL_BUILD_MAP.md` § REC-GROK-KES-SALVAGE; `design/program/WORKTREE_RECOVERY.md`.
 - **Source (frozen, read-only):** `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`
@@ -5218,27 +5219,53 @@ tracked files with the identical SHA-256. `near-name` lists up to 2 current-repo
 | 2550 | md | 472 B | `be1708990f541041190d4fedbb9e236b7aa0ffbaa770d3dd94b118b9b91c31e9` |
 | 2551 | md | 0 B | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
-## 5. PHASE 2 (not executed): preservation copies + deletion gate
+## 5. PHASE 2 closeout — 2026-08-12 human classification
 
-> **This ledger phase does not perform Phase 2.** The following is the exact, pre-staged plan for a future
-> controller-gated action. No copies have been made. No deletion has occurred or is recommended by this report
-> beyond listing the gate conditions below.
+Inspected the frozen clone as read-only. Did not run repair, checkout, clean, Blender save, or merge
+inside it. Did not copy donors. Did not delete the clone.
 
-Phase 2 of the route (CANONICAL_BUILD_MAP steps 4–5) may, only after separate authorization:
+### What this directory actually is
 
-1. **Preservation copies.** Copy only selected non-runtime donors from ADAPT/PRESERVE families into a stable
-  `assets/ships/<new-family>/reference/recovered_grok/` path with provenance and frozen current-asset hashes.
-  Any actual Kestrel/player-ship replacement or reauthor becomes its own G0–G7 packet.
-2. **Deletion gate.** Delete only the exact clone path, and only when **all** of the following hold:
-   - every unique family has a recorded disposition (`DROP`/`ADAPT`/`PRESERVE`);
-   - every `ADAPT`/`PRESERVE` family whose bytes are to survive has a tracked, hash-verified copy;
-   - the complete decision matrix is committed and pushed in this report; and
-   - the exact clone path is re-resolved and confirmed to have no live writer/process.
+Not a registered Git worktree (those live under `C:\sf-agents\`). It is a Grok CLI isolated clone
+created 2026-07-11 at
+`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`.
+HEAD points at `refs/heads/master` with no ref, no packfiles, and an incomplete object store, so Git
+cannot merge it. The leftover brief is a Kestrel “missing body” export diagnosis; a leftover plan is
+commodity flavor text. Both already landed on master by other routes.
 
-**ADAPT/PRESERVE families that would need preservation copies before any deletion**
-(sorted by kind then bytes descending; the highest-salvage-value rows are at the top):
+### Product comparison (current master vs clone)
 
-Total ADAPT/PRESERVE families: **512** (142 ADAPT, 370 PRESERVE).
+| Family | Clone (2026-07-11) | Current master | Decision |
+|---|---|---|---|
+| Ashline Dart/Lode/Rig blends | 431–530 KiB first-pass production files | Same paths, 811 KiB–1.1 MiB, plus later `m4_ashline_v2` | DROP — superseded |
+| Helios Lark/Cradle/Span blends | 451–527 KiB first-pass production files | Same paths, 3.2–3.6 MiB | DROP — superseded |
+| Kestrel production blend | 21.0 MiB `954fddc14348405e…` | Same path 22.1 MiB `67604ffa8bde0ca2…`, plus v2/v3/v4 and m5 upgrade sources | DROP — superseded |
+| Place stations, rocks, hulk, debris, gate | 163–410 KiB authored blends | Same paths, typically 4–21 MiB remasters | DROP — superseded |
+| Nav buoy authored blend | 595,607 B `d82ad8797f93194d…` (larger) | 236,824 B `dd102ac960195010…`; PQ-022 material-truth KEEP | DROP — pre-reauthor, not a donor |
+| Billboard authored blend | 253,158 B `1b4b97b6fdfc4b4a…` (larger) | 207,381 B `dc8fa2c9a6233345…` **byte-identical** to the PQ-022 KEEP blender | DROP — pre-reauthor, not a donor |
+| Unique blend/GLB missing from master | **none** | — | nothing to copy |
+| Unique JS/MJS missing from master | 10 probe/tmp scripts | Live replacement is `check-sg06-live-tether-resilience.mjs`; commodity flavor already shipped | DROP |
+| Mechanistic ledger `PRESERVE` markdown/JSON/PNG | hash-different docs and evidence | later master copies of the same names | DROP — not unique art |
+
+The two clone-larger place blends are the only same-path authored sources where the clone file is
+bigger. Both were deliberately replaced by PQ-022 `KEEP` material-truth-v2 (billboard blender hash on
+master matches the KEEP receipt exactly). Larger is not better here.
+
+Old hull release GLBs in the clone are also larger than current release GLBs; current files are the
+optimized live releases, not missing geometry.
+
+**Selected donors: none.** No `assets/ships/<family>/reference/recovered_grok/` copy is justified.
+
+### Deletion gate (not executed)
+
+The exact clone path may be deleted once this closeout is tracked and the path is re-checked for no
+live writer. Until then it stays read-only. Do not merge it. Do not promote from it.
+
+**ADAPT/PRESERVE families from the August 10 mechanistic ledger, all overturned to DROP**
+(sorted by kind then bytes descending; kept as the forensic index):
+
+Total ADAPT/PRESERVE families in the August 10 ledger: **512** (142 ADAPT, 370 PRESERVE). Human
+closeout: **512 DROP**, **0 ADAPT**, **0 PRESERVE**, **0 donors copied**.
 
 | # | kind | bytes | disp | SHA-256 (16) | clone members (sample) | relation / evidence |
 |---:|---|---:|---|---|---|---|
@@ -5755,15 +5782,12 @@ Total ADAPT/PRESERVE families: **512** (142 ADAPT, 370 PRESERVE).
 | 511 | md | 580 B | PRESERVE | `1725a5077bb57563` | `mining_spec.md` | orphan md (580B); may correspond to a deleted index row (unknown) |
 | 512 | md | 472 B | PRESERVE | `be1708990f541041` | `assets/ships/revamp-evidence/_k0_inspect/revamp/S…` | orphan md (472B); may correspond to a deleted index row (unknown) |
 
-If Phase 2 is later authorized, the integrator must: copy each chosen donor, commit and push the donor with
-provenance, re-verify the clone path is still the exact frozen path with no live writer, delete only that
-clone path, then update this report and the worktree-recovery catalog. **Stop without deletion if any ledger
-row lacks a disposition or any selected bytes are not durably tracked.**
+The August 10 table above is the forensic index only. Human closeout overturns every row to DROP.
+No donor copy is required before deletion. Delete only the exact clone path after this closeout is
+tracked and the path is confirmed to have no live writer.
 
 ## 6. Tool run + idempotency
 
-- Command: `node tools/recovery/audit-corrupt-asset-clone.mjs`
-- Writes only this report (`C:/sf-agents/fable-orm-repack/design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md`). Writes nothing to the clone. No JSON sidecar.
-- Deterministic: file walk, `git ls-tree` output, and SHA-256 are all order-stable, so re-running
-  regenerates a byte-identical ledger (modulo the `Generated` timestamp).
-- This phase changed no product code; `npm run check:baseline` is expected to remain untouched-green.
+- Command: `node tools/recovery/audit-corrupt-asset-clone.mjs` (August 10 ledger only).
+- Phase 2 closeout (2026-08-12) writes only this report. Writes nothing to the clone. No JSON sidecar.
+- Re-running the audit tool would regenerate the mechanistic ledger and must not overwrite §5.

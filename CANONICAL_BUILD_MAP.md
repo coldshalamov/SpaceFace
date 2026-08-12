@@ -172,7 +172,7 @@ executable route:
 | Stable route | Size | Required outcome |
 |---|---:|---|
 | `GFX-MASSLINE-EXPRESS-LINER` | `XL`, about 4-8 focused artist-engineer days plus independent review | Adapt the tracked stopped-Lark donor into a **separate** express-only ship: new fiction/construction/material zones, DCC source, LOD/release/manifests/render package, express runtime maps, Browser/Electron route/tether/save proof, performance, and exact-hash G7. Never replace accepted courier Lark or fold it into the Massline presentation showcase. |
-| `REC-GROK-KES-SALVAGE` | `XL`, about 1-3 working days for safe source classification | Build a bounded Blender/GLB/evidence hash ledger for the corrupt independent Grok clone, inspect only genuinely distinct Kestrel/asset families, preserve named non-runtime donors with provenance, then delete the exact clone. Its incomplete object store is not merge authority. |
+| `REC-GROK-KES-SALVAGE` | `XS` remaining: delete the exact classified-DROP clone | Classification is complete in [`REC-GROK-KES-SALVAGE-REPORT.md`](./design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md): no unique authored source is missing from master, and no donor copy is justified. Delete only `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` after that closeout is tracked. Do not merge or promote from it. |
 | `PQ-018.cathedral-reauthor` | existing multi-day active packet | Use the current packet for Cathedral DCC/release and exact route/art acceptance. Recovered Cathedral GLBs are rebuild variants, not alternative art, and no standalone PQ-018 broker harness should return. |
 
 `GFX-MASSLINE-EXPRESS-LINER` executes in this order:
@@ -200,27 +200,14 @@ executable route:
    and tether-close performance comparison; finish with independent exact-hash G7 and whole-asset
    G1/G2/G4. Any missing gate leaves the asset non-runtime.
 
-`REC-GROK-KES-SALVAGE` executes in this order:
+`REC-GROK-KES-SALVAGE` remaining action:
 
-1. **Freeze the source.** Treat
-   `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`
-   as read-only; record path, file count/bytes, index fingerprint, and the known incomplete HEAD/object
-   state. Never run repair, checkout, clean, Blender save, or normal merge inside it.
-2. **Build the ledger.** A new isolated `tools/recovery/audit-corrupt-asset-clone.mjs` may read only
-   Blender, GLB, image, and build/evidence families and write
-   `design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md`. Each row records relative path,
-   kind, bytes, SHA-256, current tracked matches/candidates, and one of `DROP`, `ADAPT`, or
-   evidence-bound `PRESERVE`; deleted index rows are recorded but never reconstructed by guesswork.
-3. **Reduce before viewing.** Group byte-identical rows and compare exact hashes/manifest identities.
-   Inspect or render only genuinely distinct source/candidate families; do not review hundreds of
-   duplicates as separate assets.
-4. **Preserve named value.** Copy only selected non-runtime donors into a stable
-   `assets/ships/<new-family>/reference/recovered_grok/` path with provenance and frozen current-asset
-   hashes. Any actual Kestrel/player-ship replacement or reauthor becomes a separate G0-G7 packet.
-5. **Close destructively.** Commit and push the complete ledger and every selected donor, verify no
-   unresolved unique family remains, resolve the exact clone path again, delete only that clone, and
-   update the report/catalog. Stop without deletion if any ledger row lacks a disposition or any
-   selected bytes are not durably tracked.
+1. Confirm the Phase 2 DROP closeout in
+   [`design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md`](./design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md)
+   is tracked and the exact path still has no live writer.
+2. Delete only
+   `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`.
+   Do not merge, promote, or copy from it. No donor path is required.
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, the massline presentation UVP packet when that is the explicit task, or the tracked worktree-recovery playbook when leftover agent work is the explicit task.
 
