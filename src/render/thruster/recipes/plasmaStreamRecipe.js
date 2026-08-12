@@ -52,14 +52,15 @@ export function samplePlasmaEnvelope(s, drive = 1, boost = 0, out = null) {
 }
 
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
-  id: 'player_liquid_plasma_v24',
+  // CONSTRUCTION FREEZE: soft-camera-facing-strips only. Param/shader look patches as v24.N.
+  id: 'player_liquid_plasma_v24.21',
   kind: 'unified_liquid_plasma',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'Soft camera-facing strips + organic filaments. Soft edges, hot fat root, soft body cross volume.',
+  notes: 'FROZEN soft-camera-facing-strips. v24.21 final recovery: roll back v24.20 accordion/contour mesh; restore soft continuous limb + mild seamBreak; soft body cross held; dens path retained.',
   path: {
-    capacity: 100,
-    sampleSpacingWU: 0.45,
-    sampleHz: 90,
+    capacity: 160,
+    sampleSpacingWU: 0.2,
+    sampleHz: 150,
     nearJetLengthWU: 16,
     discontinuityFloorWU: 160,
     discontinuityMaxWU: 640,
@@ -67,25 +68,25 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   layers: [
     {
       role: 'core',
-      widthScale: 0.7,
-      opacity: 0.95,
-      radiance: 2.1,
-      color: [0.98, 0.995, 1.0],
+      widthScale: 0.72,
+      opacity: 0.92,
+      radiance: 1.8,
+      color: [0.55, 0.9, 1.0],
       cross: false,
     },
     {
       role: 'body',
-      widthScale: 1.95,
-      opacity: 0.78,
-      radiance: 1.35,
-      color: [0.3, 0.82, 1.0],
+      widthScale: 2.3,
+      opacity: 0.86,
+      radiance: 1.4,
+      color: [0.28, 0.8, 1.0],
       cross: true,
     },
     {
       role: 'sheath',
-      widthScale: 3.1,
-      opacity: 0.52,
-      radiance: 0.7,
+      widthScale: 3.55,
+      opacity: 0.6,
+      radiance: 0.8,
       color: [0.12, 0.35, 0.9],
       cross: false,
     },

@@ -64,7 +64,7 @@ const LIQUID_FRAG = /* glsl */`
     float side = vPathUv.y * 2.0 - 1.0; // -1..1 across soft strip
 
     float flow = pathT * 8.5 - uScroll * 3.5 - uTime * 0.85;
-    // Domain warp for organic liquid (not regular stripes)
+    // Domain warp for organic liquid (not regular stripes) — mild only (v24.20 accordion ban)
     float w1 = fbm(vec2(flow * 0.9, side * 1.8)) - 0.5;
     float w2 = fbm(vec2(flow * 1.8 + 2.0, side * 2.6 + 1.0)) - 0.5;
     float fx = flow + w1 * 1.6 + w2 * 0.7;
@@ -75,64 +75,110 @@ const LIQUID_FRAG = /* glsl */`
     float n3 = fbm(vec2(fx * 5.0 + 7.0, fy * 2.5 + uTime * 0.35));
     float n4 = vnoise(vec2(fx * 11.0, fy * 5.0 + uTime * 0.8));
 
-    // Soft torn edge (not hard cylinder rim)
+    // Soft torn edge (not hard cylinder rim; not high-freq path jagged accordion)
     float sideW = side + w1 * 0.35 + w2 * 0.18;
     float absSide = abs(sideW);
-    float edgeStart = 0.28 + n * 0.28 + n2 * 0.12;
-    float edgeEnd = 1.05 + n3 * 0.18;
+    // Soft envelope with enough mass to stay visible (v24.2 over-softened to a needle)
+    float edgeStart = 0.22 + n * 0.28 + n2 * 0.12;
+    float edgeEnd = 1.08 + n3 * 0.18;
     float softEdge = 1.0 - smoothstep(edgeStart, edgeEnd, absSide);
-    softEdge *= 0.55 + n * 0.3 + n2 * 0.2 + n4 * 0.15;
+    softEdge *= 0.6 + n * 0.28 + n2 * 0.2 + n4 * 0.15;
     softEdge = max(softEdge, 0.0);
 
-    // Organic liquid filaments
-    float filA = smoothstep(0.38, 0.78, n2) * smoothstep(0.32, 0.75, n);
-    float filB = smoothstep(0.45, 0.85, n3) * exp(-absSide * 1.8);
-    float filC = pow(max(0.0, n4 - 0.42), 1.35) * exp(-absSide * 1.2);
-    float streamers = (filA * 1.2 + filB * 0.9 + filC * 0.7)
-      * (1.0 - smoothstep(0.3, 0.95, pathT) * 0.5);
-    streamers = min(streamers * 1.75, 2.6);
+    // Dense liquid filament pack: peaks + FILL between lanes (not sparse streaks)
+    float filA = smoothstep(0.28, 0.68, n2) * smoothstep(0.25, 0.65, n);
+    float filB = smoothstep(0.32, 0.75, n3) * exp(-absSide * 1.3);
+    float filC = pow(max(0.0, n4 - 0.28), 1.1) * exp(-absSide * 0.9);
+    float filD = smoothstep(0.35, 0.72, fbm(vec2(fx * 3.6 + 1.5, fy * 2.2)))
+      * exp(-absSide * absSide * 2.8);
+    float filE = smoothstep(0.3, 0.7, fbm(vec2(fx * 5.5 + 4.0, fy * 3.0 + 2.0)))
+      * exp(-absSide * 1.6);
+    // Pack near root; mid/far streamers become broken (not continuous laser bar)
+    float rootPack = 1.0 - smoothstep(0.08, 0.45, pathT);
+    float streamers = (filA * 1.35 + filB * 1.15 + filC * 1.0 + filD * 1.05 + filE * 0.95)
+      * (0.65 + rootPack * 0.65)
+      * (1.0 - smoothstep(0.35, 0.95, pathT) * 0.3);
+    // Dense mid-opacity pack fill — shrink voids without white peaks
+    float packFill = (0.55 + n * 0.3 + n2 * 0.45 + n3 * 0.3)
+      * exp(-absSide * absSide * 1.4)
+      * (0.65 + rootPack * 0.4);
+    streamers = min(streamers * 2.2 + packFill * 1.35, 3.6);
+    // Tip electric lace dissolve (residual #4) — define before gapClose
+    float tipFray = smoothstep(0.22, 0.82, pathT);
+    float tipFade = 1.0 - smoothstep(0.5, 1.0, pathT);
+    float lace = smoothstep(0.35, 0.85, n3) * smoothstep(0.3, 0.8, n4);
+    // Force minimum mid dens so black gaps shrink
+    float gapClose = (0.25 + n2 * 0.2) * exp(-absSide * absSide * 1.2) * (1.0 - tipFray * 0.5);
+    // Break continuous mid-axis: force holes in dens along path mid
+    float midBreak = 0.7 + 0.3 * n3 + 0.2 * n4;
+    midBreak = mix(1.0, midBreak, smoothstep(0.15, 0.5, pathT));
 
-    float core = exp(-absSide * absSide * 10.0) * (0.3 + streamers * 0.75);
-    float body = exp(-absSide * absSide * 2.4) * (0.32 + n * 0.4 + streamers * 0.5);
-    float sheath = exp(-absSide * absSide * 0.85) * (0.28 + n2 * 0.5 + n3 * 0.3);
+    // Mid/far: NO tight centerline core gaussian (that rebuilds the laser bar)
+    float midPath = smoothstep(0.12, 0.4, pathT);
+    float coreGauss = exp(-absSide * absSide * mix(11.0, 3.5, midPath));
+    float core = coreGauss * (0.4 + streamers * 0.7) * (1.0 - midPath * 0.85);
+    float body = exp(-absSide * absSide * mix(2.4, 1.6, midPath))
+      * (0.45 + n * 0.35 + streamers * 0.6 + packFill * 0.3);
+    float sheath = exp(-absSide * absSide * 0.75) * (0.32 + n2 * 0.5 + n3 * 0.3);
 
     float head = (1.0 - smoothstep(0.0, 0.14, pathT)) * smoothstep(0.0, 0.025, pathT);
     float mid = 1.0 - smoothstep(0.05, 0.55, pathT);
-    float tipFray = smoothstep(0.28, 0.88, pathT);
-    float tipFade = 1.0 - smoothstep(0.58, 1.0, pathT);
-    float breakup = mix(1.0, 0.25 + n3 * 0.8 + n2 * 0.4 + n4 * 0.3, tipFray);
+    float breakup = mix(1.0, 0.15 + n3 * 0.9 + n2 * 0.45 + lace * 0.6, tipFray);
     float belly = exp(-((pathT - 0.16) * (pathT - 0.16)) / 0.03);
-    float along = (head * 1.25 + mid * 1.0 + belly * 0.32 + tipFray * sheath * 1.3)
-      * breakup * tipFade * (0.8 + uDrive * 0.3 + uBoost * 0.12);
+    // Fall faster mid-path so dens×color cannot rebuild a continuous bright bar
+    float along = (head * 1.35 + mid * 0.75 + belly * 0.28 + tipFray * sheath * 1.15)
+      * breakup * tipFade * (0.8 + uDrive * 0.3 + uBoost * 0.12)
+      * mix(1.0, 0.65 + 0.35 * n3, midPath);
 
-    // Core keeps mass so rear view is not a laser needle
+    // ALL-layer mid/far: break continuous axis with longitudinal holes + off-axis bias
+    float coreAlong = 1.0 - smoothstep(0.03, 0.18, pathT);
+    float axisOpen = mix(1.0, smoothstep(0.05, 0.3, absSide) * 0.9 + 0.25, midPath);
+    // Longitudinal chop: dens not continuous along path mid (kills laser bar identity)
+    float longChop = 0.55 + 0.45 * smoothstep(0.25, 0.75, n3);
+    longChop = mix(1.0, longChop, midPath);
     float dens;
     if (uLayerRole < 0.5) {
-      dens = softEdge * (0.35 + streamers * 1.2 + core * 0.95 + body * 0.45);
+      dens = softEdge * midBreak * axisOpen * longChop * (
+        (0.35 + core * 1.0 + streamers * 0.75) * coreAlong
+        + streamers * 0.7 * (1.0 - coreAlong)
+      );
     } else if (uLayerRole < 1.5) {
-      dens = softEdge * (0.4 + body * 0.95 + streamers * 0.9 + core * 0.3 + sheath * 0.3);
+      dens = softEdge * midBreak * axisOpen * longChop
+        * (0.4 + body * 0.85 + streamers * 1.1 + sheath * 0.28 + gapClose);
     } else {
-      dens = softEdge * (0.32 + sheath * 1.2 + body * 0.35 + streamers * 0.35 + n3 * 0.35);
+      dens = softEdge * longChop * (0.4 + sheath * 1.3 + body * 0.3 + streamers * 0.55 + n3 * 0.45 + gapClose * 0.5);
     }
 
     float alpha = clamp(uOpacity * dens * along, 0.0, 1.0);
+    // Mild residual seam dissolve (v24.20 accordion overshoot rolled back; keep soft dither)
+    float seamBreak = 0.78 + 0.22 * vnoise(vec2(pathT * 96.0 + flow * 0.4, side * 5.0));
+    seamBreak *= 0.85 + 0.15 * vnoise(vec2(pathT * 48.0, n2 * 4.0 + flow));
+    seamBreak *= 0.9 + 0.1 * fbm(vec2(pathT * 28.0, side * 2.5 + flow));
+    alpha *= seamBreak;
+    // Tip electric lace dissolve
+    alpha *= 1.0 - tipFray * (0.35 + n3 * 0.4 + n4 * 0.25);
+    alpha *= mix(1.0, 0.35 + lace * 0.9, tipFray);
     if (alpha < 0.014) discard;
 
     vec3 whiteHot = vec3(1.0, 0.99, 0.96);
     vec3 midCyan = mix(uColor, vec3(0.42, 0.86, 1.0), 0.55);
     vec3 deep = mix(uColor, vec3(0.04, 0.12, 0.55), 0.55);
-    float hot = clamp(
-      streamers * 0.3 * (1.0 - pathT * 0.78)
-      + head * 0.4
-      + core * 0.2 * (1.0 - pathT * 0.5)
-      + uBoost * 0.08,
-      0.0, 1.0
-    );
-    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.5 + n * 0.3 + streamers * 0.25, 0.0, 1.0));
-    col = mix(col, whiteHot, hot * (0.5 + (1.0 - step(0.5, uLayerRole)) * 0.4));
-    col = mix(col, mix(midCyan, whiteHot, 0.78), min(streamers, 1.8) * 0.52 * (1.0 - pathT * 0.28));
-    float glow = uRadiance * (0.38 + streamers * 0.28 + head * 0.16 + body * 0.07 + core * 0.1);
-    col *= min(glow, 1.55);
+    // Pure white ONLY at nozzle face — mid/far ban white mix entirely
+    float headWin = 1.0 - smoothstep(0.02, 0.1, pathT);
+    float hot = clamp(head * 0.85 + core * 0.12 * headWin + uBoost * 0.05, 0.0, 1.0) * headWin;
+    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.55 + n * 0.35 + streamers * 0.45, 0.0, 1.0));
+    // Core layer mid-path: force cyan streamers, no white
+    if (uLayerRole < 0.5) {
+      col = mix(midCyan, whiteHot, hot * 0.9);
+      col = mix(col, midCyan, (1.0 - headWin) * 0.85);
+    } else {
+      col = mix(col, whiteHot, hot * 0.5);
+    }
+    col = mix(col, midCyan, min(streamers, 1.8) * 0.4 * (1.0 - headWin));
+    float glow = uRadiance * (0.3 + streamers * 0.26 + head * 0.28 + body * 0.1);
+    // Hard radiance fall mid/far — dens holes alone failed to kill axis peak
+    glow *= mix(1.0, 0.45 + 0.25 * n2, midPath);
+    col *= min(glow, mix(1.35, 1.05, midPath));
 
     gl_FragColor = vec4(col, alpha);
   }
@@ -267,9 +313,10 @@ export class PlasmaStreamSystem {
         this.group.add(cross.mesh);
         this._layers.push({
           role: layer.role || 'body',
-          widthScale: (layer.widthScale != null ? layer.widthScale : 1) * 0.8,
-          baseOpacity: (layer.opacity != null ? layer.opacity : 0.7) * 0.42,
-          baseRadiance: (layer.radiance != null ? layer.radiance : 1.6) * 0.7,
+          // Soft volume only — dual-plane cards appear if opacity too high
+          widthScale: (layer.widthScale != null ? layer.widthScale : 1) * 0.7,
+          baseOpacity: (layer.opacity != null ? layer.opacity : 0.7) * 0.3,
+          baseRadiance: (layer.radiance != null ? layer.radiance : 1.6) * 0.65,
           plane: 'cross',
           ...cross,
         });
@@ -495,9 +542,14 @@ export class PlasmaStreamSystem {
         const al = Math.hypot(ax, ay, az) || 1;
         ax /= al; ay /= al; az /= al;
         const lat = this._lateralFor(px, py, pz, ax, ay, az, L.plane);
+        // 3-tap + 5-tap width smooth (no discrete per-seg hash — that printed accordion stairs)
         let w0 = this._widths[i];
-        if (i > 0) w0 = w0 * 0.65 + this._widths[i - 1] * 0.35;
-        if (i + 1 < count) w0 = w0 * 0.75 + this._widths[i + 1] * 0.25;
+        if (i > 0) w0 = w0 * 0.5 + this._widths[i - 1] * 0.5;
+        if (i + 1 < count) w0 = w0 * 0.55 + this._widths[i + 1] * 0.45;
+        if (i > 1) w0 = w0 * 0.85 + this._widths[i - 2] * 0.15;
+        if (i + 2 < count) w0 = w0 * 0.85 + this._widths[i + 2] * 0.15;
+        // Gentle continuous limb only (hash amp capped low so silhouette stays soft)
+        w0 *= 0.96 + 0.08 * hash2(i, 11);
         const half = w0 * L.widthScale * 0.5;
         const s = count <= 1 ? 0 : i / (count - 1);
         const i0 = i * 2;
