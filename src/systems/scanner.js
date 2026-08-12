@@ -478,7 +478,10 @@ function signalKindForEntity(entity) {
   return null;
 }
 
-function signalKindForPoi(poi) {
+function signalKindForPoi(poi, entityData = null) {
+  const explicitKind = String((poi && poi.scannerSignalKind)
+    || (entityData && entityData.scannerSignalKind) || '').trim().toLowerCase();
+  if (Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind)) return explicitKind;
   const type = String(poi && (poi.type || poi.poiType || poi.kind) || '').toLowerCase();
   const label = String(poi && (poi.name || poi.label || poi.poiId) || '').toLowerCase();
   if (type.includes('anomal')) return 'anomaly';
@@ -509,8 +512,12 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (!previous || row.distance < previous.distance) byId.set(row.id, row);
   };
 
+  const active = state.world && state.world.activeSector;
   for (const entity of nearby || []) {
     if (!entity || !entity.alive || entity.id === state.playerId || !entity.pos) continue;
+    // POI identities must flow through the POI loop below so scanner completion carries the stable
+    // authored sourceId rather than a transient numeric entity id.
+    if (entity.data && entity.data.poi) continue;
     if (entity.data && entity.data.requiresTriangulation) continue;
     const kind = signalKindForEntity(entity);
     if (!kind) continue;
@@ -525,16 +532,19 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     });
   }
 
-  const active = state.world && state.world.activeSector;
   for (const poi of active && active.pois || []) {
-    if (!poi || !(poi.hidden || String(poi.type || '').toLowerCase() === 'anomaly')) continue;
-    const kind = signalKindForPoi(poi);
-    if (!kind) continue;
+    if (!poi) continue;
     const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    const entityData = entity && entity.data || {};
+    const explicitKind = String(poi.scannerSignalKind || entityData.scannerSignalKind || '').trim().toLowerCase();
+    if (!(poi.hidden || String(poi.type || '').toLowerCase() === 'anomaly'
+      || Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind))) continue;
+    const kind = signalKindForPoi(poi, entityData);
+    if (!kind) continue;
     const pos = entity && entity.pos || poi.pos;
     if (!pos) continue;
-    const sourceId = poi.poiId || poi.id;
-    const entityData = entity && entity.data || {};
+    const sourceId = String(poi.poiId || poi.id || '');
+    if (!sourceId) continue;
     add({
       id: `signal:poi:${sourceId}`,
       kind,

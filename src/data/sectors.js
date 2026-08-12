@@ -153,7 +153,10 @@ const CORE_SECTORS = [
     fields: [ { id: 'f_tethys_1', type: 'ast_common_rock', countWeight: 1.0 } ],
     hazards: [],
     pois: [
-      { id: 'poi_blackmkt', type: 'cache', name: 'Black Market Contact', hidden: true, factionId: 'faction_quiet' },
+      {
+        id: 'poi_blackmkt', type: 'cache', name: 'Black Market Contact', hidden: true,
+        factionId: 'faction_quiet', requiresActiveScan: true, scannerSignalKind: 'ambush',
+      },
       { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
       { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
     ],

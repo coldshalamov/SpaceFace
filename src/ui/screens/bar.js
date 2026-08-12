@@ -19,7 +19,11 @@ import {
   stationContactStanding,
 } from '../../data/stationContacts.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
-import { frontierRumorOffer, frontierRumorOwned } from '../../data/frontierRumors.js';
+import {
+  frontierRumorOffer,
+  frontierRumorOwned,
+  TETHYS_BLACK_MARKET_DISCOVERY,
+} from '../../data/frontierRumors.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
@@ -520,6 +524,18 @@ export function missionBoardSlots(state, stationId) {
   return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
 }
 
+function tethysBlackMarketContact(state, stationId) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (stationId !== discovery.stationId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  return record && record.phase === 'contacted' ? record : null;
+}
+
+function tethysCapsuleRunOffer(state, stationId) {
+  return missionBoardSlots(state, stationId).find((offer) => offer && offer.type === 'heist_intercept') || null;
+}
+
 function localEconEvent(state, stationId) {
   const events = getEconEvents(state);
   return events.find((ev) => ev && ev.stationId === stationId) || events[0] || null;
@@ -691,6 +707,19 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     /* ── BARKEEP ───────────────────────────────────────── */
     case 'barkeep': {
       if (choiceId === 'rumors') {
+        const quietContact = tethysBlackMarketContact(state, stationId);
+        if (quietContact) {
+          const capsuleRun = tethysCapsuleRunOffer(state, stationId);
+          if (capsuleRun) {
+            return {
+              text: 'Your Quiet contact confirms the Capsule Run is real: intercept a lawful cargo capsule and carry it to their fence. Law response, confiscation, heat, or a lost capsule can leave you with no payout. The contact does not make it safe.',
+              missionOffer: capsuleRun,
+            };
+          }
+          return {
+            text: 'Your Quiet contact is remembered, but no Capsule Run packet is live on the Tethys board. There is no off-book promise to accept today.',
+          };
+        }
         const rumor = frontierRumorOffer(state, stationId);
         if (rumor) {
           return {

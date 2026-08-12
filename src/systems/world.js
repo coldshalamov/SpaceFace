@@ -27,6 +27,7 @@ import {
   frontierRumorOffer,
   normalizeFrontierRumorState,
   sensorPostRumorOffer,
+  TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../data/frontierRumors.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
@@ -1525,6 +1526,7 @@ export const world = {
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden, claimable: !!poi.claimable,
+        ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
         requiresActiveScan: poi.requiresActiveScan === true,
         requiresTriangulation: !!triangulation,
         triangulation,
@@ -2302,6 +2304,7 @@ export const world = {
     const sectorId = payload.sectorId || this.state.world.currentSectorId;
     return this._resolveFrontierRumors(
       (record) => (record.kind === 'anomaly' || record.kind === 'cache')
+        && record.id !== TETHYS_BLACK_MARKET_DISCOVERY.rumorId
         && record.targetId === poiId
         && (!sectorId || record.sectorId === sectorId),
       'poi_found',
@@ -3088,15 +3091,47 @@ export const world = {
     const disc = this._discoveryFor(sectorId);
     const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: false, identified: false });
     const newlyFound = !rec.investigated && !rec.identified && !rec.defeated;
+    const newlyDiscovered = !rec.discovered;
+    const newlyIdentified = !rec.identified;
     rec.discovered = true;
     rec.identified = true;
     rec.investigated = true;
     rec.investigatedAt = Number(payload.completedAt) || Number(this.state.simTime) || 0;
     rec.type = poi.type || payload.sourceKind || rec.type || null;
     rec.name = poi.name || rec.name || poiId;
+    if (newlyDiscovered) this.bus.emit('poi:discovered', { poiId, type: rec.type, sectorId });
+    if (newlyIdentified) this.bus.emit('poi:identified', { poiId, type: rec.type, sectorId });
     if (newlyFound) {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
     }
+    this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
+    return true;
+  },
+
+  _contactTethysBlackMarket({ poiId, sectorId, completedAt }) {
+    const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+    if (poiId !== discovery.poiId || sectorId !== discovery.sectorId) return false;
+    const own = this._frontierRumorState();
+    const record = own.byId[discovery.rumorId];
+    if (!record || record.phase !== 'rumored') return false;
+    const contactedAt = Math.max(0, Number(completedAt) || Number(this.state.simTime) || 0);
+    record.phase = 'contacted';
+    record.contactedAt = contactedAt;
+    record.contactId = discovery.contactId;
+    record.opportunity = {
+      type: discovery.opportunityType,
+      stationId: discovery.stationId,
+      status: 'available',
+    };
+    record.risk = 'Quiet capsule work can draw law attention; loss means no payout.';
+    const receipt = {
+      type: 'contacted', rumorId: record.id, contactId: record.contactId,
+      sectorId, poiId, opportunityType: discovery.opportunityType, t: contactedAt,
+    };
+    own.receipts.push(receipt);
+    while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
+    this.bus.emit('frontierRumor:contacted', { ...receipt, opportunity: { ...record.opportunity } });
+    this.bus.emit('toast', { text: 'Quiet contact remembered · Tethys has a risky capsule lead', kind: 'good', ttl: 4 });
     return true;
   },
 

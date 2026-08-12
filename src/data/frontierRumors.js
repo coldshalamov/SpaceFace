@@ -12,6 +12,17 @@ export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
 export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
 
+// PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.
+// World owns its acquired -> contacted transition after scanner investigation of the existing buoy.
+export const TETHYS_BLACK_MARKET_DISCOVERY = Object.freeze({
+  rumorId: 'frontier-rumor:station_tethys:tethys-black-market',
+  stationId: 'station_tethys',
+  sectorId: 'sector_tethys_junction',
+  poiId: 'poi_blackmkt',
+  contactId: 'quiet:tethys-black-market',
+  opportunityType: 'heist_intercept',
+});
+
 export const FRONTIER_RUMOR_KINDS = Object.freeze([
   Object.freeze({ id: 'hunter', label: 'Hunter Location', price: 260 }),
   Object.freeze({ id: 'vein', label: 'Vein Whisper', price: 220 }),
@@ -190,7 +201,7 @@ export function normalizeFrontierRumorState(value) {
       sectorId,
       bearingCenter: center,
       radius,
-      phase: row.phase === 'resolved' ? 'resolved' : 'rumored',
+      phase: row.phase === 'resolved' || row.phase === 'contacted' ? row.phase : 'rumored',
     };
   }
   if (Array.isArray(input.receipts)) {
@@ -275,6 +286,49 @@ function buildRumorOffer(state, source) {
   };
 }
 
+function tethysBlackMarketOffer(state, stationSource) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (!stationSource || stationSource.station.id !== discovery.stationId) return null;
+  if (frontierRumorOwned(state, discovery.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(discovery.sectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === discovery.poiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: 'cache', sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const offsetAngle = (hash32(seed, discovery.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 360 + (hash32(seed, discovery.rumorId, 'bearing-offset-distance') % 241);
+  const radius = 880;
+  return {
+    id: discovery.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: discovery.stationId,
+    sourceBodyId: null,
+    sourceSectorId: discovery.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Quiet Traffic Lead',
+    targetId: discovery.poiId,
+    targetName: 'unresolved drive echoes',
+    sectorId: discovery.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+      z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+    },
+    radius,
+    price: KIND_BY_ID.get('cache').price + Math.max(0, finite(sector.tier, 0)) * 35,
+    phase: 'rumored',
+    text: 'A sealed Tethys tally catches unresolved drive echoes inside a broad amber search. It is not a transponder or a waypoint; pulse from inside the ring and decide what the traffic return really is.',
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -282,6 +336,8 @@ function buildRumorOffer(state, source) {
 export function frontierRumorOffer(state, stationId) {
   const stationSource = sourceForStation(stationId);
   if (!stationSource) return null;
+  const blackMarket = tethysBlackMarketOffer(state, stationSource);
+  if (blackMarket) return blackMarket;
   return buildRumorOffer(state, {
     source: 'bar',
     sourceKey: stationSource.station.id,
