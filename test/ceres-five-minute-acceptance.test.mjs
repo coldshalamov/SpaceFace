@@ -1804,9 +1804,9 @@ test('toolkit transit handoff is exact, Cathedralward, and fails closed at every
     ['manual tether key-up precedes held sample', (candidate) => {
       candidate.tetherCutAction.keyUpTick = candidate.tetherCutAction.heldTick - 1;
     }],
-    ['manual tether event precedes key-up', (candidate) => {
-      candidate.tetherCutAction.eventTick = candidate.tetherCutAction.keyUpTick;
-      candidate.tetherCutAction.event.tick = candidate.tetherCutAction.keyUpTick;
+    ['manual tether event does not follow held sample', (candidate) => {
+      candidate.tetherCutAction.eventTick = candidate.tetherCutAction.heldTick;
+      candidate.tetherCutAction.event.tick = candidate.tetherCutAction.heldTick;
     }],
     ['manual tether cut reordered after approach', (candidate) => {
       candidate.tetherCutAction.neutralTick = candidate.approaches[0].startTick + 1;
@@ -2834,6 +2834,34 @@ test('public toolkit actions cross fixed ticks and reject stale observer events'
     ['massSeed:deployed', ['Digit4']],
     ['fields:deployed', ['Digit6']],
   ], 'press-trigger actions stay held through their event; cut fires only after release');
+
+  const sameTickRelease = fixedTickToolkitActionPage({ emitReleaseEventDuringKeyUp: true });
+  await triggerCeresPublicFlightAction(sameTickRelease.page, {
+    key: 'Space',
+    deadlineTick: 710,
+    expectedEvent: {
+      event: 'tether:attached',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+    },
+  });
+  const sameTickCut = await triggerCeresPublicFlightAction(sameTickRelease.page, {
+    key: 'Space',
+    trigger: 'release',
+    deadlineTick: 710,
+    expectedEvent: {
+      event: 'tether:broken',
+      actorId: PLAYER_ENTITY_ID,
+      targetId: TOOLKIT_HOSTILES[0].entityId,
+      reason: 'tether_cut',
+    },
+  });
+  assert.equal(sameTickCut.receipt.eventTick, sameTickCut.receipt.keyUpTick,
+    'a release sampled while Playwright awaits key-up is valid on the post-key-up read tick');
+  assert.ok(sameTickCut.receipt.eventTick > sameTickCut.receipt.heldTick,
+    'the release event must still follow the last fixed tick proven held');
+  assert.ok(sameTickCut.receipt.eventSeq >= sameTickCut.receipt.minEventSeq,
+    'same-tick release authority remains fenced by the fresh event cursor');
 
   await assert.rejects(triggerCeresPublicFlightAction(harness.page, {
     key: 'Digit4',
@@ -5724,10 +5752,12 @@ function publicInputReceipt() {
 function fixedTickToolkitActionPage({
   emitCombatFireOwnerId = null,
   deferPressEventUntilObserver = false,
+  emitReleaseEventDuringKeyUp = false,
 } = {}) {
   const heldKeys = new Set();
   const log = [];
   let mouseHeld = false;
+  let spaceUpCount = 0;
   const state = {
     tick: 700,
     simTime: 700 / 60,
@@ -5768,6 +5798,20 @@ function fixedTickToolkitActionPage({
       async up(key) {
         heldKeys.delete(key);
         log.push({ kind: 'up', key, tick: state.tick });
+        if (key === 'Space') spaceUpCount += 1;
+        if (emitReleaseEventDuringKeyUp && key === 'Space' && spaceUpCount === 2) {
+          state.tick += 1;
+          state.simTime = state.tick / 60;
+          trace.events.push({
+            seq: trace.nextEventSeq++,
+            event: 'tether:broken',
+            tick: state.tick,
+            actorId: PLAYER_ENTITY_ID,
+            targetId: TOOLKIT_HOSTILES[0].entityId,
+            reason: 'tether_cut',
+          });
+          log.push({ kind: 'event', event: 'tether:broken', tick: state.tick, held: [] });
+        }
       },
     },
     mouse: {

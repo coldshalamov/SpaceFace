@@ -1245,7 +1245,7 @@ export async function triggerCeresPublicFlightAction(page, {
     ...expectedEvent,
     minTick: Math.max(
       Number(expectedEvent.minTick) || 0,
-      trigger === 'release' ? keyUpTick + 1 : pressTick + 1,
+      trigger === 'release' ? heldTick + 1 : pressTick + 1,
     ),
     minSeq: Math.max(Number(expectedEvent.minSeq) || 0, cursor.nextEventSeq),
   };
@@ -1255,7 +1255,7 @@ export async function triggerCeresPublicFlightAction(page, {
   const eventSeq = Number(event?.seq);
   if (!Number.isSafeInteger(eventTick) || eventTick <= pressTick
       || (trigger === 'press' && eventTick > keyUpTick)
-      || (trigger === 'release' && eventTick <= keyUpTick)
+      || (trigger === 'release' && eventTick <= heldTick)
       || !Number.isSafeInteger(eventSeq) || eventSeq < cursor.nextEventSeq
       || !Number.isSafeInteger(heldTick) || heldTick <= pressTick
       || !Number.isSafeInteger(keyUpTick) || keyUpTick < heldTick
@@ -4276,7 +4276,7 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
         || tetherCutAction.pressTick < receipt.startTick
         || tetherCutAction.heldTick <= tetherCutAction.pressTick
         || tetherCutAction.keyUpTick < tetherCutAction.heldTick
-        || tetherCutAction.eventTick <= tetherCutAction.keyUpTick
+        || tetherCutAction.eventTick <= tetherCutAction.heldTick
         || tetherCutAction.neutralTick <= Math.max(
           tetherCutAction.eventTick,
           tetherCutAction.keyUpTick,
