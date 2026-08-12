@@ -19,8 +19,8 @@ const LIQUID_VERT = /* glsl */`
   }
 `;
 
-// Soft liquid plasma strip: soft radial falloff kills hard silhouette;
-// domain-warped noise filaments = organic weave, not regular lanes.
+// Soft liquid plasma: packed longitudinal flow-ropes + soft volume fill.
+// No longChop/axisOpen holes (those printed segment plates). No accordion warp.
 const LIQUID_FRAG = /* glsl */`
   precision mediump float;
   varying vec2 vPathUv;
@@ -58,127 +58,128 @@ const LIQUID_FRAG = /* glsl */`
     }
     return v;
   }
+  // Soft longitudinal liquid rope at lateral offset (flow-warped)
+  float rope(float side, float center, float tight, float flow) {
+    float c = center + 0.08 * sin(flow * 1.7 + center * 4.0)
+      + 0.05 * sin(flow * 3.1 - center * 2.5);
+    float d = (side - c) * tight;
+    return exp(-d * d);
+  }
 
   void main() {
     float pathT = clamp(vPathUv.x, 0.0, 1.0);
-    float side = vPathUv.y * 2.0 - 1.0; // -1..1 across soft strip
+    float side = vPathUv.y * 2.0 - 1.0;
 
-    float flow = pathT * 8.5 - uScroll * 3.5 - uTime * 0.85;
-    // Domain warp for organic liquid (not regular stripes) — mild only (v24.20 accordion ban)
-    float w1 = fbm(vec2(flow * 0.9, side * 1.8)) - 0.5;
-    float w2 = fbm(vec2(flow * 1.8 + 2.0, side * 2.6 + 1.0)) - 0.5;
-    float fx = flow + w1 * 1.6 + w2 * 0.7;
-    float fy = side * 2.4 + w1 * 0.9;
-
-    float n  = fbm(vec2(fx * 1.05, fy));
-    float n2 = fbm(vec2(fx * 2.4 + 2.0, fy * 1.6 + 1.0));
-    float n3 = fbm(vec2(fx * 5.0 + 7.0, fy * 2.5 + uTime * 0.35));
-    float n4 = vnoise(vec2(fx * 11.0, fy * 5.0 + uTime * 0.8));
-
-    // Soft torn edge (not hard cylinder rim; not high-freq path jagged accordion)
-    float sideW = side + w1 * 0.35 + w2 * 0.18;
+    float flow = pathT * 10.0 - uScroll * 4.2 - uTime * 1.05;
+    // Mild organic domain warp (low amp — high amp printed contour bands)
+    float w1 = fbm(vec2(flow * 0.75, side * 1.5)) - 0.5;
+    float w2 = fbm(vec2(flow * 1.5 + 2.0, side * 2.2 + 1.0)) - 0.5;
+    float sideW = side + w1 * 0.22 + w2 * 0.12;
     float absSide = abs(sideW);
-    // Soft envelope with enough mass to stay visible (v24.2 over-softened to a needle)
-    float edgeStart = 0.22 + n * 0.28 + n2 * 0.12;
-    float edgeEnd = 1.08 + n3 * 0.18;
+    float fx = flow + w1 * 1.1 + w2 * 0.45;
+    float fy = sideW * 2.1 + w1 * 0.55;
+
+    float n  = fbm(vec2(fx * 0.95, fy));
+    float n2 = fbm(vec2(fx * 2.1 + 2.0, fy * 1.5 + 1.0));
+    float n3 = fbm(vec2(fx * 4.2 + 7.0, fy * 2.2 + uTime * 0.28));
+    float n4 = vnoise(vec2(fx * 9.0, fy * 4.2 + uTime * 0.65));
+
+    // Soft torn limb — wide soft falloff so mesh quad rims do not print plates
+    float edgeStart = 0.12 + n * 0.22 + n2 * 0.1;
+    float edgeEnd = 1.15 + n3 * 0.12;
     float softEdge = 1.0 - smoothstep(edgeStart, edgeEnd, absSide);
-    softEdge *= 0.6 + n * 0.28 + n2 * 0.2 + n4 * 0.15;
+    softEdge *= 0.72 + n * 0.18 + n2 * 0.12;
     softEdge = max(softEdge, 0.0);
 
-    // Dense liquid filament pack: peaks + FILL between lanes (not sparse streaks)
-    float filA = smoothstep(0.28, 0.68, n2) * smoothstep(0.25, 0.65, n);
-    float filB = smoothstep(0.32, 0.75, n3) * exp(-absSide * 1.3);
-    float filC = pow(max(0.0, n4 - 0.28), 1.1) * exp(-absSide * 0.9);
-    float filD = smoothstep(0.35, 0.72, fbm(vec2(fx * 3.6 + 1.5, fy * 2.2)))
+    // Packed multi-rope liquid braid (REF anatomy) — many phase-offset longitudinal streams
+    float r0 = rope(sideW, 0.00, 9.5, flow);
+    float r1 = rope(sideW, 0.18, 8.5, flow + 1.3);
+    float r2 = rope(sideW, -0.16, 8.8, flow + 2.1);
+    float r3 = rope(sideW, 0.32, 7.2, flow + 0.7);
+    float r4 = rope(sideW, -0.30, 7.0, flow + 3.4);
+    float r5 = rope(sideW, 0.08, 11.0, flow * 1.15 + 4.0);
+    float r6 = rope(sideW, -0.08, 10.5, flow * 0.9 + 5.2);
+    float r7 = rope(sideW, 0.42, 6.0, flow + 1.9);
+    float r8 = rope(sideW, -0.40, 6.2, flow + 2.8);
+    float r9 = rope(sideW, 0.24 * (n2 - 0.5), 9.0, flow + n * 2.0);
+    float ropes = r0 * 1.15 + r1 + r2 + r3 * 0.95 + r4 * 0.95
+      + r5 * 1.05 + r6 * 1.05 + r7 * 0.75 + r8 * 0.75 + r9 * 0.9;
+    // High-freq micro-filaments packing gaps between major ropes
+    float micro = smoothstep(0.35, 0.75, n3) * smoothstep(0.3, 0.7, n4)
+      * exp(-absSide * absSide * 1.8);
+    float rootPack = 1.0 - smoothstep(0.05, 0.55, pathT);
+    float streamers = (ropes * 0.55 + micro * 1.4)
+      * (0.85 + rootPack * 0.55)
+      * (1.0 - smoothstep(0.55, 1.0, pathT) * 0.45);
+    // Soft mid-opacity plasma soup between ropes (shrinks black voids without chalk white)
+    float packFill = (0.62 + n * 0.28 + n2 * 0.35)
+      * exp(-absSide * absSide * 1.15)
+      * (0.75 + rootPack * 0.35);
+    streamers = min(streamers + packFill * 1.15, 4.2);
+
+    float tipFray = smoothstep(0.22, 0.78, pathT);
+    float tipFade = 1.0 - smoothstep(0.42, 0.98, pathT);
+    float lace = smoothstep(0.32, 0.9, n3) * smoothstep(0.28, 0.88, n4)
+      * (0.55 + n4 * 0.55);
+
+    // Soft volume body — continuous, no longitudinal chops (chops = segment plates)
+    // body/sheath BEFORE along (GLSL requires declare-before-use)
+    float body = exp(-absSide * absSide * 1.9)
+      * (0.5 + n * 0.25 + streamers * 0.55 + packFill * 0.4);
+    float sheath = exp(-absSide * absSide * 0.7)
+      * (0.35 + n2 * 0.4 + n3 * 0.25 + streamers * 0.2);
+
+    float head = (1.0 - smoothstep(0.0, 0.16, pathT)) * smoothstep(0.0, 0.02, pathT);
+    float mid = 1.0 - smoothstep(0.04, 0.6, pathT);
+    float belly = exp(-((pathT - 0.14) * (pathT - 0.14)) / 0.028);
+    float breakup = mix(1.0, 0.12 + n3 * 0.95 + lace * 0.9 + n4 * 0.35, tipFray);
+    float along = (head * 1.4 + mid * 0.85 + belly * 0.35 + tipFray * sheath * 0.8)
+      * breakup * tipFade * (0.82 + uDrive * 0.28 + uBoost * 0.12);
+
+    // Core is multi-rope hot near root, soft streamers mid (not single laser gaussian)
+    float core = streamers * (0.55 + head * 0.9 + (1.0 - smoothstep(0.0, 0.22, pathT)) * 0.45)
       * exp(-absSide * absSide * 2.8);
-    float filE = smoothstep(0.3, 0.7, fbm(vec2(fx * 5.5 + 4.0, fy * 3.0 + 2.0)))
-      * exp(-absSide * 1.6);
-    // Pack near root; mid/far streamers become broken (not continuous laser bar)
-    float rootPack = 1.0 - smoothstep(0.08, 0.45, pathT);
-    float streamers = (filA * 1.35 + filB * 1.15 + filC * 1.0 + filD * 1.05 + filE * 0.95)
-      * (0.65 + rootPack * 0.65)
-      * (1.0 - smoothstep(0.35, 0.95, pathT) * 0.3);
-    // Dense mid-opacity pack fill — shrink voids without white peaks
-    float packFill = (0.55 + n * 0.3 + n2 * 0.45 + n3 * 0.3)
-      * exp(-absSide * absSide * 1.4)
-      * (0.65 + rootPack * 0.4);
-    streamers = min(streamers * 2.2 + packFill * 1.35, 3.6);
-    // Tip electric lace dissolve (residual #4) — define before gapClose
-    float tipFray = smoothstep(0.22, 0.82, pathT);
-    float tipFade = 1.0 - smoothstep(0.5, 1.0, pathT);
-    float lace = smoothstep(0.35, 0.85, n3) * smoothstep(0.3, 0.8, n4);
-    // Force minimum mid dens so black gaps shrink
-    float gapClose = (0.25 + n2 * 0.2) * exp(-absSide * absSide * 1.2) * (1.0 - tipFray * 0.5);
-    // Break continuous mid-axis: force holes in dens along path mid
-    float midBreak = 0.7 + 0.3 * n3 + 0.2 * n4;
-    midBreak = mix(1.0, midBreak, smoothstep(0.15, 0.5, pathT));
 
-    // Mid/far: NO tight centerline core gaussian (that rebuilds the laser bar)
-    float midPath = smoothstep(0.12, 0.4, pathT);
-    float coreGauss = exp(-absSide * absSide * mix(11.0, 3.5, midPath));
-    float core = coreGauss * (0.4 + streamers * 0.7) * (1.0 - midPath * 0.85);
-    float body = exp(-absSide * absSide * mix(2.4, 1.6, midPath))
-      * (0.45 + n * 0.35 + streamers * 0.6 + packFill * 0.3);
-    float sheath = exp(-absSide * absSide * 0.75) * (0.32 + n2 * 0.5 + n3 * 0.3);
-
-    float head = (1.0 - smoothstep(0.0, 0.14, pathT)) * smoothstep(0.0, 0.025, pathT);
-    float mid = 1.0 - smoothstep(0.05, 0.55, pathT);
-    float breakup = mix(1.0, 0.15 + n3 * 0.9 + n2 * 0.45 + lace * 0.6, tipFray);
-    float belly = exp(-((pathT - 0.16) * (pathT - 0.16)) / 0.03);
-    // Fall faster mid-path so dens×color cannot rebuild a continuous bright bar
-    float along = (head * 1.35 + mid * 0.75 + belly * 0.28 + tipFray * sheath * 1.15)
-      * breakup * tipFade * (0.8 + uDrive * 0.3 + uBoost * 0.12)
-      * mix(1.0, 0.65 + 0.35 * n3, midPath);
-
-    // ALL-layer mid/far: break continuous axis with longitudinal holes + off-axis bias
-    float coreAlong = 1.0 - smoothstep(0.03, 0.18, pathT);
-    float axisOpen = mix(1.0, smoothstep(0.05, 0.3, absSide) * 0.9 + 0.25, midPath);
-    // Longitudinal chop: dens not continuous along path mid (kills laser bar identity)
-    float longChop = 0.55 + 0.45 * smoothstep(0.25, 0.75, n3);
-    longChop = mix(1.0, longChop, midPath);
     float dens;
     if (uLayerRole < 0.5) {
-      dens = softEdge * midBreak * axisOpen * longChop * (
-        (0.35 + core * 1.0 + streamers * 0.75) * coreAlong
-        + streamers * 0.7 * (1.0 - coreAlong)
-      );
+      dens = softEdge * (0.45 + core * 1.15 + streamers * 0.85 + packFill * 0.35);
     } else if (uLayerRole < 1.5) {
-      dens = softEdge * midBreak * axisOpen * longChop
-        * (0.4 + body * 0.85 + streamers * 1.1 + sheath * 0.28 + gapClose);
+      // No body-cross plane: body dens must carry full soft volume alone
+      dens = softEdge * (0.62 + body * 1.15 + streamers * 1.2 + sheath * 0.45 + packFill * 0.65);
     } else {
-      dens = softEdge * longChop * (0.4 + sheath * 1.3 + body * 0.3 + streamers * 0.55 + n3 * 0.45 + gapClose * 0.5);
+      dens = softEdge * (0.4 + sheath * 1.25 + body * 0.35 + streamers * 0.55 + packFill * 0.3);
     }
 
     float alpha = clamp(uOpacity * dens * along, 0.0, 1.0);
-    // Mild residual seam dissolve (v24.20 accordion overshoot rolled back; keep soft dither)
-    float seamBreak = 0.78 + 0.22 * vnoise(vec2(pathT * 96.0 + flow * 0.4, side * 5.0));
-    seamBreak *= 0.85 + 0.15 * vnoise(vec2(pathT * 48.0, n2 * 4.0 + flow));
-    seamBreak *= 0.9 + 0.1 * fbm(vec2(pathT * 28.0, side * 2.5 + flow));
-    alpha *= seamBreak;
-    // Tip electric lace dissolve
-    alpha *= 1.0 - tipFray * (0.35 + n3 * 0.4 + n4 * 0.25);
-    alpha *= mix(1.0, 0.35 + lace * 0.9, tipFray);
-    if (alpha < 0.014) discard;
+    // Soft edge-only dither — never high-freq pathT ring that reprints plates
+    alpha *= 0.88 + 0.12 * fbm(vec2(sideW * 3.0 + flow * 0.15, n2));
+    // Tip electric lace dissolve (irregular, not hard cut)
+    alpha *= 1.0 - tipFray * (0.4 + n3 * 0.4 + n4 * 0.3);
+    alpha *= mix(1.0, 0.18 + lace * 1.1, tipFray);
+    // Extra edge tear at tip so end is not a flat mesh cut
+    alpha *= mix(1.0, softEdge * (0.4 + lace), tipFray * 0.85);
+    if (alpha < 0.01) discard;
 
     vec3 whiteHot = vec3(1.0, 0.99, 0.96);
-    vec3 midCyan = mix(uColor, vec3(0.42, 0.86, 1.0), 0.55);
-    vec3 deep = mix(uColor, vec3(0.04, 0.12, 0.55), 0.55);
-    // Pure white ONLY at nozzle face — mid/far ban white mix entirely
-    float headWin = 1.0 - smoothstep(0.02, 0.1, pathT);
-    float hot = clamp(head * 0.85 + core * 0.12 * headWin + uBoost * 0.05, 0.0, 1.0) * headWin;
-    vec3 col = mix(deep, midCyan, clamp(body + sheath * 0.55 + n * 0.35 + streamers * 0.45, 0.0, 1.0));
-    // Core layer mid-path: force cyan streamers, no white
-    if (uLayerRole < 0.5) {
-      col = mix(midCyan, whiteHot, hot * 0.9);
-      col = mix(col, midCyan, (1.0 - headWin) * 0.85);
-    } else {
-      col = mix(col, whiteHot, hot * 0.5);
-    }
-    col = mix(col, midCyan, min(streamers, 1.8) * 0.4 * (1.0 - headWin));
-    float glow = uRadiance * (0.3 + streamers * 0.26 + head * 0.28 + body * 0.1);
-    // Hard radiance fall mid/far — dens holes alone failed to kill axis peak
-    glow *= mix(1.0, 0.45 + 0.25 * n2, midPath);
-    col *= min(glow, mix(1.35, 1.05, midPath));
+    vec3 midCyan = mix(uColor, vec3(0.38, 0.88, 1.0), 0.6);
+    vec3 deep = mix(uColor, vec3(0.04, 0.1, 0.5), 0.5);
+    // White-hot only in root multi-filament head — not solid chalk slab mid-body
+    float headWin = 1.0 - smoothstep(0.0, 0.12, pathT);
+    float ropeHot = clamp(streamers * 0.4 + r0 * 0.45 + r5 * 0.3 + r1 * 0.2, 0.0, 1.0);
+    float hot = clamp(head * 0.95 + ropeHot * 0.65 * headWin + uBoost * 0.06, 0.0, 1.0) * headWin;
+
+    vec3 col = mix(deep, midCyan, clamp(body * 0.7 + sheath * 0.4 + streamers * 0.6 + n * 0.25, 0.0, 1.0));
+    // Bright cyan-white ropes near root; mid stays electric cyan filaments (ban white mid bar)
+    col = mix(col, mix(midCyan, whiteHot, 0.8), hot * ropeHot);
+    col = mix(col, midCyan, (1.0 - headWin) * 0.72);
+    // Distinct filament highlights mid-body (cyan ropes, not chalk wash)
+    col = mix(col, vec3(0.55, 0.92, 1.0), clamp((r0 + r1 + r2 + r5 + r6) * 0.12 * (0.4 + headWin * 0.6), 0.0, 0.5));
+    col = mix(col, vec3(0.75, 0.96, 1.0), clamp(streamers * 0.18 * headWin, 0.0, 0.45));
+
+    float glow = uRadiance * (0.32 + streamers * 0.24 + head * 0.4 + body * 0.1 + packFill * 0.08);
+    // Fall mid radiance so continuous white laser bar does not rebuild
+    glow *= mix(1.2, 0.62 + 0.2 * n2, smoothstep(0.08, 0.45, pathT));
+    col *= min(glow, mix(1.5, 1.05, smoothstep(0.08, 0.4, pathT)));
 
     gl_FragColor = vec4(col, alpha);
   }
@@ -260,6 +261,9 @@ export class PlasmaStreamSystem {
     this._ay = new Float32Array(this.nSeg);
     this._az = new Float32Array(this.nSeg);
     this._widths = new Float32Array(this.nSeg);
+    this._latX = new Float32Array(this.nSeg);
+    this._latY = new Float32Array(this.nSeg);
+    this._latZ = new Float32Array(this.nSeg);
     this._env = {
       s: 0, width: 1, heat: 1, opacity: 1, density: 1,
       filament: 0, root: 0, jet: 0, wake: 0, rootWindow: 0, jetWindow: 0, wakeWindow: 0,
@@ -313,10 +317,10 @@ export class PlasmaStreamSystem {
         this.group.add(cross.mesh);
         this._layers.push({
           role: layer.role || 'body',
-          // Soft volume only — dual-plane cards appear if opacity too high
-          widthScale: (layer.widthScale != null ? layer.widthScale : 1) * 0.7,
-          baseOpacity: (layer.opacity != null ? layer.opacity : 0.7) * 0.3,
-          baseRadiance: (layer.radiance != null ? layer.radiance : 1.6) * 0.65,
+          // Soft volume fill so single-plane never goes edge-on invisible; keep dim
+          widthScale: (layer.widthScale != null ? layer.widthScale : 1) * 0.85,
+          baseOpacity: (layer.opacity != null ? layer.opacity : 0.7) * 0.28,
+          baseRadiance: (layer.radiance != null ? layer.radiance : 1.6) * 0.6,
           plane: 'cross',
           ...cross,
         });
@@ -365,12 +369,13 @@ export class PlasmaStreamSystem {
       const dist = u * nearLen * (0.88 + activeDrive * 0.22 + boost * 0.18);
       const s = u * 0.48;
       samplePlasmaEnvelope(s, activeDrive, boost, this._env);
-      const sway = Math.sin(swaySeed + u * 4.2) * 0.12 * u
-        + Math.sin(swaySeed * 1.7 + u * 9.0) * 0.05 * u;
+      // Mild sway only — strong sway folded billboards into visible plate edges
+      const sway = Math.sin(swaySeed + u * 3.2) * 0.045 * u
+        + Math.sin(swaySeed * 1.7 + u * 6.5) * 0.02 * u;
       const pxp = -dirZ;
       const pzp = dirX;
       this._cx[count] = nx + dirX * dist + pxp * sway;
-      this._cy[count] = ny + dirY * dist + Math.sin(swaySeed * 0.9 + u * 5.5) * 0.04 * u;
+      this._cy[count] = ny + dirY * dist + Math.sin(swaySeed * 0.9 + u * 4.0) * 0.015 * u;
       this._cz[count] = nz + dirZ * dist + pzp * sway;
       this._ax[count] = dirX;
       this._ay[count] = dirY;
@@ -412,6 +417,43 @@ export class PlasmaStreamSystem {
         tmp[i] = a * 0.25 + b * 0.5 + c * 0.25;
       }
       for (let i = 0; i < count; i++) this._widths[i] = tmp[i];
+      // Smooth centerline so consecutive billboard quads share nearly coplanar faces
+      const sx = new Float32Array(count);
+      const sy = new Float32Array(count);
+      const sz = new Float32Array(count);
+      for (let pass = 0; pass < 3; pass++) {
+        for (let i = 0; i < count; i++) {
+          const i0 = Math.max(0, i - 1);
+          const i1 = Math.min(count - 1, i + 1);
+          const i2 = Math.max(0, i - 2);
+          const i3 = Math.min(count - 1, i + 2);
+          sx[i] = this._cx[i] * 0.4 + this._cx[i0] * 0.22 + this._cx[i1] * 0.22
+            + this._cx[i2] * 0.08 + this._cx[i3] * 0.08;
+          sy[i] = this._cy[i] * 0.4 + this._cy[i0] * 0.22 + this._cy[i1] * 0.22
+            + this._cy[i2] * 0.08 + this._cy[i3] * 0.08;
+          sz[i] = this._cz[i] * 0.4 + this._cz[i0] * 0.22 + this._cz[i1] * 0.22
+            + this._cz[i2] * 0.08 + this._cz[i3] * 0.08;
+        }
+        // Keep nozzle root pinned so root heat stays at bell
+        sx[0] = this._cx[0]; sy[0] = this._cy[0]; sz[0] = this._cz[0];
+        for (let i = 0; i < count; i++) {
+          this._cx[i] = sx[i];
+          this._cy[i] = sy[i];
+          this._cz[i] = sz[i];
+        }
+      }
+      // Recompute tangents from smoothed path
+      for (let i = 0; i < count; i++) {
+        const i0 = Math.max(0, i - 1);
+        const i1 = Math.min(count - 1, i + 1);
+        let tx = this._cx[i0] - this._cx[i1];
+        let ty = this._cy[i0] - this._cy[i1];
+        let tz = this._cz[i0] - this._cz[i1];
+        const tl = Math.hypot(tx, ty, tz) || 1;
+        this._ax[i] = tx / tl;
+        this._ay[i] = ty / tl;
+        this._az[i] = tz / tl;
+      }
     }
 
     this._pointCount = count;
@@ -532,34 +574,70 @@ export class PlasmaStreamSystem {
       const L = this._layers[li];
       const pos = L.pos;
       const uvs = L.uvs;
+      // Pass 1: raw laterals for every path sample
       for (let i = 0; i < count; i++) {
-        const px = this._cx[i];
-        const py = this._cy[i];
-        const pz = this._cz[i];
         let ax = this._ax[i];
         let ay = this._ay[i];
         let az = this._az[i];
         const al = Math.hypot(ax, ay, az) || 1;
         ax /= al; ay /= al; az /= al;
-        const lat = this._lateralFor(px, py, pz, ax, ay, az, L.plane);
-        // 3-tap + 5-tap width smooth (no discrete per-seg hash — that printed accordion stairs)
+        const lat = this._lateralFor(
+          this._cx[i], this._cy[i], this._cz[i], ax, ay, az, L.plane,
+        );
+        this._latX[i] = lat.x;
+        this._latY[i] = lat.y;
+        this._latZ[i] = lat.z;
+      }
+      // Pass 2: smooth laterals so billboard orientation does not jump plate-to-plate
+      for (let pass = 0; pass < 2; pass++) {
+        const tx = this._latX.slice(0, count);
+        const ty = this._latY.slice(0, count);
+        const tz = this._latZ.slice(0, count);
+        for (let i = 0; i < count; i++) {
+          const i0 = Math.max(0, i - 1);
+          const i1 = Math.min(count - 1, i + 1);
+          const i2 = Math.max(0, i - 2);
+          const i3 = Math.min(count - 1, i + 2);
+          let lx = tx[i] * 0.4 + tx[i0] * 0.25 + tx[i1] * 0.25 + tx[i2] * 0.05 + tx[i3] * 0.05;
+          let ly = ty[i] * 0.4 + ty[i0] * 0.25 + ty[i1] * 0.25 + ty[i2] * 0.05 + ty[i3] * 0.05;
+          let lz = tz[i] * 0.4 + tz[i0] * 0.25 + tz[i1] * 0.25 + tz[i2] * 0.05 + tz[i3] * 0.05;
+          // Flip if neighbor smoothed into opposite hemisphere (prevents fold-over)
+          if (lx * tx[i] + ly * ty[i] + lz * tz[i] < 0) {
+            lx = -lx; ly = -ly; lz = -lz;
+          }
+          const ll = Math.hypot(lx, ly, lz) || 1;
+          this._latX[i] = lx / ll;
+          this._latY[i] = ly / ll;
+          this._latZ[i] = lz / ll;
+        }
+      }
+      // Pass 3: heavy width smooth + write verts
+      for (let i = 0; i < count; i++) {
+        const px = this._cx[i];
+        const py = this._cy[i];
+        const pz = this._cz[i];
         let w0 = this._widths[i];
-        if (i > 0) w0 = w0 * 0.5 + this._widths[i - 1] * 0.5;
-        if (i + 1 < count) w0 = w0 * 0.55 + this._widths[i + 1] * 0.45;
-        if (i > 1) w0 = w0 * 0.85 + this._widths[i - 2] * 0.15;
-        if (i + 2 < count) w0 = w0 * 0.85 + this._widths[i + 2] * 0.15;
-        // Gentle continuous limb only (hash amp capped low so silhouette stays soft)
-        w0 *= 0.96 + 0.08 * hash2(i, 11);
+        if (i > 0) w0 = w0 * 0.45 + this._widths[i - 1] * 0.55;
+        if (i + 1 < count) w0 = w0 * 0.5 + this._widths[i + 1] * 0.5;
+        if (i > 1) w0 = w0 * 0.8 + this._widths[i - 2] * 0.2;
+        if (i + 2 < count) w0 = w0 * 0.8 + this._widths[i + 2] * 0.2;
+        if (i > 2) w0 = w0 * 0.9 + this._widths[i - 3] * 0.1;
+        if (i + 3 < count) w0 = w0 * 0.9 + this._widths[i + 3] * 0.1;
+        // Tiny continuous limb variation only (no staircase hash)
+        w0 *= 0.98 + 0.04 * hash2(i, 11);
         const half = w0 * L.widthScale * 0.5;
         const s = count <= 1 ? 0 : i / (count - 1);
+        const lx = this._latX[i];
+        const ly = this._latY[i];
+        const lz = this._latZ[i];
         const i0 = i * 2;
         const i1 = i0 + 1;
-        pos[i0 * 3] = px + lat.x * half;
-        pos[i0 * 3 + 1] = py + lat.y * half;
-        pos[i0 * 3 + 2] = pz + lat.z * half;
-        pos[i1 * 3] = px - lat.x * half;
-        pos[i1 * 3 + 1] = py - lat.y * half;
-        pos[i1 * 3 + 2] = pz - lat.z * half;
+        pos[i0 * 3] = px + lx * half;
+        pos[i0 * 3 + 1] = py + ly * half;
+        pos[i0 * 3 + 2] = pz + lz * half;
+        pos[i1 * 3] = px - lx * half;
+        pos[i1 * 3 + 1] = py - ly * half;
+        pos[i1 * 3 + 2] = pz - lz * half;
         uvs[i0 * 2] = s;
         uvs[i0 * 2 + 1] = 0;
         uvs[i1 * 2] = s;
