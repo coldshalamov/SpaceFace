@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-10",
+  "updatedAt": "2026-08-12",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -5679,6 +5679,37 @@
         "design/program/roadmap/receipts/PQ-048-03-miner-hauler-handoff-REPORT.md"
       ],
       "brief": "A full miner requests a hauler, transfers its cargo physically through authoritative custody, resumes work, and sends the same lot toward a real sink without duplicating custody across Continue."
+    },
+    {
+      "id": "PQ-048.04",
+      "parentId": "PQ-048",
+      "priority": 283,
+      "title": "Make the Ceres tender-service occupation complete",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.03"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/contactHail.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/traffic.js",
+        "src/ui/targetPanel.js",
+        "test/ceres-causal-chain.test.mjs",
+        "test/contact-hail-contract.test.mjs",
+        "test/inference-5x-target-work-readout.test.mjs",
+        "test/npc-jobs-runtime-wiring.test.mjs",
+        "test/pq048-tender-service-occupation.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-tender-service-occupation.test.mjs test/ceres-causal-chain.test.mjs test/contact-hail-contract.test.mjs test/inference-5x-target-work-readout.test.mjs test/npc-jobs-runtime-wiring.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-04-tender-service-occupation-REPORT.md"
+      ],
+      "brief": "The existing Ceres tender physically approaches and holds beside the exact combat-disabled seam miner, repairs the drive through combat authority, and releases the original jobs to resume without adding actors, traffic cargo/economy writes, or a normal-success wreck aftermath."
     },
     {
       "id": "PQ-048.09",
