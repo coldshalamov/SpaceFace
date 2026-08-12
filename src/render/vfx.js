@@ -429,7 +429,9 @@ const VFX_SEAM_MARKERS_HZ = 20;
 // like a small drifting rock, so the single most repeated reward in the game read as nothing. This
 // draws it as light. Cadence-gated and fully asleep when nothing is homing.
 const VFX_LOOT_MAGNET_HZ = 24;
-const LOOT_MAGNET_DRAW_RANGE = 460;      // wu; slightly beyond MAGNET_RANGE so entry is not a pop
+// Slightly beyond bare MAGNET_RANGE (420); fitted tractors (560/780) still get trails in the
+// inner band. Outer-band pull beyond this is real but dim — avoid a permanent huge draw budget.
+const LOOT_MAGNET_DRAW_RANGE = 580;
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;

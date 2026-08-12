@@ -1,0 +1,74 @@
+/**
+ * U5 — target panel living-work readout on ordinary Tab-lock path.
+ * Drives targetIntelReadout (shipped pure function consumed by createTargetPanel).
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { targetIntelReadout } from '../src/ui/targetPanel.js';
+
+function entity(id, overrides = {}) {
+  return {
+    id,
+    type: 'ship',
+    alive: true,
+    team: 2,
+    pos: { x: 100, z: 0 },
+    vel: { x: 0, z: 0 },
+    hull: 100,
+    hullMax: 100,
+    shield: 0,
+    shieldMax: 0,
+    armorHp: 0,
+    armorMax: 0,
+    ...overrides,
+    data: { ...(overrides.data || {}) },
+  };
+}
+
+test('U5: targetIntelReadout includes workStatus from causal stamps', () => {
+  const player = entity('player', { team: 1, data: {} });
+  const target = entity('miner', {
+    team: 2,
+    data: {
+      trafficRole: 'miner',
+      ceresCausalEventId: 'ev_rich_seam_strike',
+      ceresCausalPhase: 'strike',
+      ceresCausalCue: 'blind_cone',
+      ai: { passive: true },
+    },
+  });
+  const state = { playerId: 'player', player: { team: 1 }, entities: new Map() };
+  const intel = targetIntelReadout(target, player, state, 400);
+  assert.ok(intel);
+  // Lock surface is phase-only; hail STATUS carries tactical means.
+  assert.equal(intel.workStatus, 'WORK · RICH STRIKE');
+  assert.ok(intel.intent);
+  assert.ok(intel.motive);
+});
+
+test('U5: no work stamp → workStatus null (no false WORK line)', () => {
+  const player = entity('player', { team: 1, data: {} });
+  const target = entity('raider', {
+    team: 0,
+    data: { ai: { huntPlayer: true } },
+  });
+  const intel = targetIntelReadout(target, player, { playerId: 'player' }, 200);
+  assert.equal(intel.workStatus, null);
+});
+
+test('U5: salvage stack phase is readable on lock-on', () => {
+  const player = entity('player', { team: 1, data: {} });
+  const salvor = entity('salvor', {
+    team: 2,
+    data: {
+      trafficRole: 'salvor',
+      ceresCausalPhase: 'stack',
+      ceresCausalCue: 'spilling_the_count',
+      ceresCausalEventId: 'ev_cutter_strips_wreck',
+      ai: { passive: true },
+    },
+  });
+  const intel = targetIntelReadout(salvor, player, { playerId: 'player' }, 800);
+  assert.equal(intel.workStatus, 'WORK · STACKING SALVAGE');
+});

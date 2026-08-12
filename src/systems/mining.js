@@ -754,7 +754,9 @@ export const mining = {
   _updatePickups(dt, state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
-    const magnet = Math.max(MAGNET_RANGE, state.player.magnetRange || 0);
+    // Fitted tractor modules publish magnetRange through derived (ships.getDerivedStats);
+    // fall back to the legacy player.magnetRange knobs so labs/tests without fittings still work.
+    const magnet = playerPickupMagnetRange(state, player);
     // Generous scoop so scrap doesn't require golf-putting the nose onto a gem.
     const collectRadius = (player.radius || 6) + PICKUP_COLLECT_PAD;
     const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
@@ -1593,4 +1595,35 @@ function playerModSum(state, key) {
     if (Number.isFinite(value)) sum += value;
   }
   return sum;
+}
+
+/**
+ * Ore-pickup magnet radius for the ordinary freeflight scoop.
+ * Single resolve path: max(MAGNET_RANGE floor, ships-owned derived.magnetRange).
+ * If derived is missing (lab fixtures), re-scan fittings once so the scoop still works.
+ * Exported for focused characterization tests (not a new runtime policy layer).
+ */
+export function playerPickupMagnetRange(state, playerEntity = null) {
+  const player = playerEntity
+    || (state && state.entities && state.entities.get && state.entities.get(state.playerId))
+    || null;
+  const derived = player && player.data && player.data.derived;
+  let fromDerived = derived && Number(derived.magnetRange);
+  if (!(Number.isFinite(fromDerived) && fromDerived > 0)) {
+    fromDerived = maxFittedMagnetRange(player);
+  }
+  if (Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE) return fromDerived;
+  return MAGNET_RANGE;
+}
+
+function maxFittedMagnetRange(player) {
+  if (!player || !player.data) return 0;
+  const fittings = Array.isArray(player.data.fittings) ? player.data.fittings : [];
+  let max = 0;
+  for (const id of fittings) {
+    const mod = id && MODULE_BY_ID.get(id);
+    const value = mod && mod.mods && Number(mod.mods.magnetRange);
+    if (Number.isFinite(value) && value > max) max = value;
+  }
+  return max;
 }

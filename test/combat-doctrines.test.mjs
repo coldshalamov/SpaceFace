@@ -33,6 +33,7 @@ const {
 
 assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable typed vocabulary');
 assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
+  'brawler_commit',
   'field_anchor_controller',
   'interceptor_flyby',
   'ranged_disengager',

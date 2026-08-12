@@ -313,6 +313,8 @@ export const uniqueLootAbilities = {
 
   _updateTideline(dt, state, player) {
     if (!hasFittedModule(state, TIDELINE_ID)) return;
+    // Wreck-only unique: ordinary ore pickups are owned by mining.playerPickupMagnetRange once
+    // the fitted tractor scoop outranges this unique's old pickup annulus.
     const nearby = queryNearbyEntities(
       state,
       player.pos,
@@ -320,18 +322,14 @@ export const uniqueLootAbilities = {
       this._nearbyScratch,
       state.entityList,
     );
-    const basePickupRange = Math.max(BASE_PICKUP_MAGNET_RANGE, finite(state.player?.magnetRange));
     for (const entity of nearby) {
       if (!entity || entity.alive === false || entity.id === player.id) continue;
+      if (entity.type === 'pickup') continue;
+      if (!isTidelineWholeWreckEligible(entity)) continue;
       const dx = finite(player.pos?.x) - finite(entity.pos?.x);
       const dz = finite(player.pos?.z) - finite(entity.pos?.z);
       const distance = Math.hypot(dx, dz);
       if (!(distance > 1e-6 && distance <= TIDELINE_MAGNET_RANGE)) continue;
-      if (entity.type === 'pickup') {
-        if (distance <= basePickupRange) continue;
-      } else if (!isTidelineWholeWreckEligible(entity)) {
-        continue;
-      }
       queueTractorImpulse(entity, dx / distance, dz / distance, dt);
     }
   },

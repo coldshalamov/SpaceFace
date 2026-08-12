@@ -90,6 +90,10 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.INTERCEPTOR_FLYBY]: Object.freeze({
     recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
   }),
+  [CombatDoctrineId.BRAWLER_COMMIT]: Object.freeze({
+    // Heavier, slower commit stamp — distinct from the light flyby pass.
+    recipeId: 'sfx_doctrine_flyby', fireRate: 0.82, fireGain: 0.96, fireDetune: -14,
+  }),
   [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
     recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
   }),
@@ -445,6 +449,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.interceptor_flyby.setup': 'sfx_doctrine_flyby',
   'presentation.combat.interceptor_flyby.break': 'sfx_doctrine_flyby_break',
   'presentation.combat.interceptor_flyby.withdraw': 'sfx_doctrine_flyby_withdraw',
+  'presentation.combat.brawler_commit.setup': 'sfx_doctrine_flyby',
+  'presentation.combat.brawler_commit.break': 'sfx_doctrine_flyby_break',
+  'presentation.combat.brawler_commit.withdraw': 'sfx_doctrine_flyby_withdraw',
   'presentation.combat.tether_control_raider.setup': 'sfx_doctrine_tether_spool',
   'presentation.combat.tether_control_raider.break': 'sfx_doctrine_tether_break',
   'presentation.combat.tether_control_raider.withdraw': 'sfx_doctrine_tether_withdraw',

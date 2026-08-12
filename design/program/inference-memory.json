@@ -1,23 +1,270 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-08-10",
-  "runs": [],
+  "updated": "2026-08-12",
+  "runs": [
+    {
+      "date": "2026-08-12",
+      "mode": "integration",
+      "domains": [
+        "WF-05",
+        "WF-02",
+        "WF-01",
+        "WF-06",
+        "WF-14"
+      ],
+      "scope": "FREELIGHT",
+      "nx": 5,
+      "note": "5x magnet brawler work-hail manifest target-work"
+    }
+  ],
   "units": [
-    { "id": "seed-feel-1", "date": "2026-08-08", "wf": "WF-15", "mode": "repair", "verdict": "accepted", "reason": "feel/combat constants tuning", "fingerprint": "domain=wf-15,subject=combat-constants", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-feel-2", "date": "2026-08-09", "wf": "WF-15", "mode": "repair", "verdict": "accepted", "reason": "feel/combat constants tuning", "fingerprint": "domain=wf-15,subject=combat-constants", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-feel-3", "date": "2026-08-09", "wf": "WF-15", "mode": "repair", "verdict": "accepted", "reason": "feel/combat constants tuning", "fingerprint": "domain=wf-15,subject=combat-constants", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-feel-4", "date": "2026-08-10", "wf": "WF-15", "mode": "repair", "verdict": "accepted", "reason": "feel/combat constants tuning", "fingerprint": "domain=wf-15,subject=combat-constants", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-feel-5", "date": "2026-08-10", "wf": "WF-15", "mode": "repair", "verdict": "accepted", "reason": "feel/combat constants tuning", "fingerprint": "domain=wf-15,subject=combat-constants", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-juice-1", "date": "2026-08-08", "wf": "WF-12", "mode": "repair", "verdict": "accepted", "reason": "presentation juice", "fingerprint": "domain=wf-12,subject=presentation-juice", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-juice-2", "date": "2026-08-09", "wf": "WF-12", "mode": "repair", "verdict": "accepted", "reason": "presentation juice", "fingerprint": "domain=wf-12,subject=presentation-juice", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-juice-3", "date": "2026-08-09", "wf": "WF-12", "mode": "repair", "verdict": "accepted", "reason": "presentation juice", "fingerprint": "domain=wf-12,subject=presentation-juice", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-juice-4", "date": "2026-08-10", "wf": "WF-12", "mode": "repair", "verdict": "accepted", "reason": "presentation juice", "fingerprint": "domain=wf-12,subject=presentation-juice", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-npc-1", "date": "2026-08-07", "wf": "WF-01", "mode": "repair", "verdict": "accepted", "reason": "Ceres cast jobs", "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-npc-2", "date": "2026-08-08", "wf": "WF-01", "mode": "repair", "verdict": "accepted", "reason": "Ceres cast jobs", "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-npc-3", "date": "2026-08-09", "wf": "WF-01", "mode": "repair", "verdict": "accepted", "reason": "Ceres cast jobs", "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-craft-1", "date": "2026-08-08", "wf": "WF-11", "mode": "repair", "verdict": "accepted", "reason": "hull material craft", "fingerprint": "domain=wf-11,subject=hull-materials", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-craft-2", "date": "2026-08-10", "wf": "WF-11", "mode": "repair", "verdict": "accepted", "reason": "hull material craft", "fingerprint": "domain=wf-11,subject=hull-materials", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" },
-    { "id": "seed-station-1", "date": "2026-08-06", "wf": "WF-04", "mode": "repair", "verdict": "accepted", "reason": "station identity", "fingerprint": "domain=wf-04,subject=station-identity", "references": [], "integration": "live", "provenance": "seeded-from-ledger-v1" }
+    {
+      "id": "seed-feel-1",
+      "date": "2026-08-08",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "feel/combat constants tuning",
+      "fingerprint": "domain=wf-15,subject=combat-constants",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-feel-2",
+      "date": "2026-08-09",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "feel/combat constants tuning",
+      "fingerprint": "domain=wf-15,subject=combat-constants",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-feel-3",
+      "date": "2026-08-09",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "feel/combat constants tuning",
+      "fingerprint": "domain=wf-15,subject=combat-constants",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-feel-4",
+      "date": "2026-08-10",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "feel/combat constants tuning",
+      "fingerprint": "domain=wf-15,subject=combat-constants",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-feel-5",
+      "date": "2026-08-10",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "feel/combat constants tuning",
+      "fingerprint": "domain=wf-15,subject=combat-constants",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-juice-1",
+      "date": "2026-08-08",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "presentation juice",
+      "fingerprint": "domain=wf-12,subject=presentation-juice",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-juice-2",
+      "date": "2026-08-09",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "presentation juice",
+      "fingerprint": "domain=wf-12,subject=presentation-juice",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-juice-3",
+      "date": "2026-08-09",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "presentation juice",
+      "fingerprint": "domain=wf-12,subject=presentation-juice",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-juice-4",
+      "date": "2026-08-10",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "presentation juice",
+      "fingerprint": "domain=wf-12,subject=presentation-juice",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-npc-1",
+      "date": "2026-08-07",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "Ceres cast jobs",
+      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-npc-2",
+      "date": "2026-08-08",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "Ceres cast jobs",
+      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-npc-3",
+      "date": "2026-08-09",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "Ceres cast jobs",
+      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-craft-1",
+      "date": "2026-08-08",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "hull material craft",
+      "fingerprint": "domain=wf-11,subject=hull-materials",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-craft-2",
+      "date": "2026-08-10",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "hull material craft",
+      "fingerprint": "domain=wf-11,subject=hull-materials",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "seed-station-1",
+      "date": "2026-08-06",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "station identity",
+      "fingerprint": "domain=wf-04,subject=station-identity",
+      "references": [],
+      "integration": "live",
+      "provenance": "seeded-from-ledger-v1"
+    },
+    {
+      "id": "fitted-tractor-magnet-range",
+      "date": "2026-08-12",
+      "wf": "WF-05",
+      "mode": "integration",
+      "verdict": "accepted",
+      "reason": "fitted tractor scoop magnet is real",
+      "fingerprint": "verb=scoop,subject=ore,sector=any,layer=foreground,tempo=ambient,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
+      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U1_REVIEW.md"
+    },
+    {
+      "id": "brawler-commit-doctrine",
+      "date": "2026-08-12",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "accepted",
+      "reason": "bruiser sticky orbit commit fight",
+      "fingerprint": "verb=fight,subject=bruiser,sector=any,layer=foreground,tempo=burst,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
+      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U2_REVIEW.md"
+    },
+    {
+      "id": "causal-work-hail",
+      "date": "2026-08-12",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "accepted",
+      "reason": "stamp-gated work hail with means",
+      "fingerprint": "verb=hail,subject=worker,sector=ceres,layer=midground,tempo=burst,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
+      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U3_REVIEW.md",
+      "sector": "ceres"
+    },
+    {
+      "id": "manifest-cargo-value",
+      "date": "2026-08-12",
+      "wf": "WF-06",
+      "mode": "starved",
+      "verdict": "accepted",
+      "reason": "manifest shows catalog cargo value",
+      "fingerprint": "verb=appraise,subject=hauler,sector=any,layer=midground,tempo=burst,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
+      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U4_REVIEW.md"
+    },
+    {
+      "id": "target-living-work-readout",
+      "date": "2026-08-12",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "accepted",
+      "reason": "lock shows work phase literacy",
+      "fingerprint": "verb=read,subject=worker,sector=ceres,layer=foreground,tempo=ambient,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
+      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U5_REVIEW.md",
+      "sector": "ceres"
+    }
   ],
   "knownDefects": [
     {
@@ -39,6 +286,9 @@
   ],
   "referenceUse": {},
   "notes": [
-    { "date": "2026-08-10", "note": "Memory seeded from INFERENCE_LEDGER.md v1 surface counts (feel 5, juice 4, npc 3, craft 2, stations 1). Seed entries carry provenance seeded-from-ledger-v1 and decay like normal units." }
+    {
+      "date": "2026-08-10",
+      "note": "Memory seeded from INFERENCE_LEDGER.md v1 surface counts (feel 5, juice 4, npc 3, craft 2, stations 1). Seed entries carry provenance seeded-from-ledger-v1 and decay like normal units."
+    }
   ]
 }

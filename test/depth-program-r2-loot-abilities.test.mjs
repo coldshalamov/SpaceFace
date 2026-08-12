@@ -357,7 +357,9 @@ test('Nestbreaker inventory ownership leaves a unique-rack projectile unsplit', 
   }
 });
 
-test('Tideline extends pickup pull to 720 and tractors only explicitly small ordinary wrecks', () => {
+test('Tideline tractors only explicitly small ordinary wrecks (ore pickups owned by mining scoop)', () => {
+  // After magnet-range wiring, fitted Tideline scoop (derived.magnetRange) owns ordinary ore
+  // pickups. Unique Tideline impulses are wreck-only so the two systems do not double-force.
   const t = bootAbilities(['unique_tideline_tractor']);
   try {
     const pickup = t.sim.spawn({
@@ -365,12 +367,6 @@ test('Tideline extends pickup pull to 720 and tractors only explicitly small ord
     });
     const boundaryPickup = t.sim.spawn({
       type: 'pickup', pos: { x: TIDELINE_MAGNET_RANGE, z: 0 }, vel: { x: 0, z: 0 }, radius: 1.3, mass: 0.1,
-    });
-    const innerPickup = t.sim.spawn({
-      type: 'pickup', pos: { x: 300, z: 0 }, vel: { x: 0, z: 0 }, radius: 1.3, mass: 0.1,
-    });
-    const outsidePickup = t.sim.spawn({
-      type: 'pickup', pos: { x: TIDELINE_MAGNET_RANGE + 0.01, z: 0 }, vel: { x: 0, z: 0 }, radius: 1.3, mass: 0.1,
     });
     const smallOrdinary = t.sim.spawn({
       type: 'wreck', pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 }, radius: 9, mass: 100,
@@ -386,18 +382,13 @@ test('Tideline extends pickup pull to 720 and tractors only explicitly small ord
     });
 
     t.sim.step(0.5);
-    const pickupCommand = consumePhysicsCommand(pickup);
-    const boundaryCommand = consumePhysicsCommand(boundaryPickup);
+    assert.equal(consumePhysicsCommand(pickup), null,
+      'ordinary pickups are not double-impulsed by unique Tideline');
+    assert.equal(consumePhysicsCommand(boundaryPickup), null,
+      'ordinary pickups are not double-impulsed at the unique range boundary');
     const wreckCommand = consumePhysicsCommand(smallOrdinary);
-    closeTo(pickupCommand.impulses[0].x, -TIDELINE_MAGNET_ACCEL * pickup.mass * 0.5,
-      'extended pickup impulse');
-    closeTo(boundaryCommand.impulses[0].x, -TIDELINE_MAGNET_ACCEL * boundaryPickup.mass * 0.5,
-      'the authored 720-unit boundary is inclusive');
     closeTo(wreckCommand.impulses[0].x, -TIDELINE_MAGNET_ACCEL * smallOrdinary.mass * 0.5,
       'whole-wreck pull uses the physics seam');
-    assert.equal(consumePhysicsCommand(innerPickup), null,
-      'the extension does not double-apply inside the base mining magnet radius');
-    assert.equal(consumePhysicsCommand(outsidePickup), null);
     assert.equal(consumePhysicsCommand(uniqueSmall), null, 'unique wrecks are never dragged whole');
     assert.equal(consumePhysicsCommand(largeOrdinary), null, 'large wrecks are never dragged whole');
   } finally {

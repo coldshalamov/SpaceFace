@@ -55,7 +55,7 @@ export const ENEMY_TYPES = [
     id: 'bruiser_brawler', name: 'Bruiser Brawler', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [3, 7],
-    combatDoctrineId: 'interceptor_flyby',
+    combatDoctrineId: 'brawler_commit',
     hull: 280, armor: 80, armorFlat: 3, shield: 90, shieldRegen: 12, shieldRegenCapable: true, cap: 180, capRegen: 24,
     maxSpeed: 112, accel: 91, turnRate: 1.65, collisionRadius: 20, mass: 70,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],

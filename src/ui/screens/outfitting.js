@@ -301,7 +301,7 @@ export function statSnippet(def) {
     if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
     if (m.ramDamageDealtMult) parts.push('+' + Math.round((m.ramDamageDealtMult - 1) * 100) + '% ram dmg');
     if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
-    // magnetRange module stats are not applied by mining yet — do not advertise a dead number.
+    if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) parts.push(Math.round(m.magnetRange) + ' wu ore magnet');
     if (m.masslineHeadId === 'tractor') parts.push('tractor head');
     if (m.masslineHeadId === 'elastic_whip') parts.push('spring-energy head');
     if (m.masslineHeadId === 'frame_coupler') parts.push('separation-damping head');

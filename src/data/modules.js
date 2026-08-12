@@ -111,14 +111,13 @@ export const MODULES = [
   },
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
-    energyDraw: 3, mods: { magnetRange: 400, masslineHeadId: 'tractor' },
-    // magnetRange is catalogued for a future mining hook; outfitting no longer advertises it
-    // until playerModSum('magnetRange') is wired. masslineHeadId IS live.
+    // magnetRange must beat mining.MAGNET_RANGE floor (420) so the fitted tractor is player-felt.
+    energyDraw: 3, mods: { magnetRange: 560, masslineHeadId: 'tractor' },
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
-    mods: { magnetRange: 720, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
+    mods: { magnetRange: 780, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {

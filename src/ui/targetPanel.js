@@ -21,6 +21,7 @@
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
+import { livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
@@ -227,11 +228,14 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   if (!motive && ai.passive) motive = 'NONCOMBATANT';
   if (!motive) motive = 'UNRESOLVED';
   const threatTier = contactThreatTier(target, hostile);
+  // Lock surface stays thin (phase only); hail STATUS carries tactical means (U3/U5 hierarchy).
+  const workStatus = livingWorkStatusText(target, { depth: 'lock' });
   return Object.freeze({
     hostile,
     allied,
     intent,
     motive,
+    workStatus: workStatus || null,
     threatTier,
     threatPips: tierPips(threatTier),
     rangeBand: targetRangeBand(distance, player),
@@ -499,14 +503,15 @@ export function createTargetPanel(ctx) {
       const tacticalTarget = t.type === 'ship' || t.type === 'drone';
       const intel = tacticalTarget ? targetIntelReadout(t, p, state, dist) : null;
       const intelKey = intel
-        ? `${tid}:${intel.intent}:${intel.motive}:${intel.threatTier}:${intel.rangeBand}`
+        ? `${tid}:${intel.intent}:${intel.motive}:${intel.workStatus || ''}:${intel.threatTier}:${intel.rangeBand}`
         : '';
       if (intel && intelKey !== lastIntelKey) {
         lastIntelKey = intelKey;
-        setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}`);
+        const workBit = intel.workStatus ? ` · ${intel.workStatus}` : '';
+        setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}${workBit}`);
         setText(elRange, intel.rangeBand);
         if (elIntent.style.display !== 'block') elIntent.style.display = 'block';
-        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}`;
+        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}`;
         if (el._sfAriaLabel !== aria) {
           el._sfAriaLabel = aria;
           el.setAttribute('aria-label', aria);

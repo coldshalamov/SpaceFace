@@ -10,6 +10,8 @@ export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
+// Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
+const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'ore_carrier', 'rescue']);
 const HEAVE_TO_ROLES = new Set([
   'hauler',
   'courier',
@@ -24,7 +26,49 @@ const HEAVE_TO_ROLES = new Set([
   'patrol',
   'escort',
 ]);
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((row) => [row.id, row]));
 const COMMODITY_LABEL = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+
+// Player-language labels for Ceres causal-chain phases and cues (traffic stamps only).
+const CAUSAL_PHASE_LABEL = Object.freeze({
+  cutting: 'CUTTING SEAM',
+  strike: 'RICH STRIKE',
+  greed: 'LOADING HOLD',
+  haul_out: 'HAULING OUT',
+  call: 'CALLING HAULER',
+  answer: 'HAULER ANSWERING',
+  transfer: 'ORE TRANSFER',
+  split: 'SPLITTING ROUTE',
+  shadow: 'SHADOWING CONTACT',
+  lock: 'SCAN LOCK',
+  read: 'READING MANIFEST',
+  release: 'RELEASING CONTACT',
+  failure: 'SYSTEM FAILURE',
+  distress: 'DISTRESS',
+  response: 'SERVICE RESPONSE',
+  work: 'SERVICE WORK',
+  resolve: 'RECOVERY BURN',
+  callout: 'SERVICE CALLOUT',
+  hard_stand: 'HARD STAND',
+  first_light: 'FIRST LIGHT',
+  survey_cut: 'SURVEYING WRECK',
+  sever: 'SEVERING HULL',
+  wrangle: 'WRANGLING MASS',
+  stack: 'STACKING SALVAGE',
+});
+const CAUSAL_CUE_LABEL = Object.freeze({
+  blind_cone: 'BLIND CONE',
+  home_under_rock: 'HOME UNDER ROCK',
+  heavy_burn: 'HEAVY BURN',
+  clean_burn: 'CLEAN BURN',
+  mouth_open: 'MOUTH OPEN',
+  on_the_pin: 'ON THE PIN',
+  breaking_the_pattern: 'BREAKING PATTERN',
+  spine_wake: 'SPINE WAKE',
+  hull_open: 'HULL OPEN',
+  picking_the_bones: 'PICKING BONES',
+  spilling_the_count: 'SPILLING COUNT',
+});
 
 function entityById(state, id) {
   if (id == null || !state) return null;
@@ -75,6 +119,15 @@ function contactKind(state, entity) {
   const lawfulPatrol = ai.lawful === true
     && (ai.spawnContext === 'patrol' || role === 'patrol' || role === 'escort');
   if (lawfulPatrol) return { kind: 'patrol', parley: null };
+  // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
+  // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
+  const hasLivingStamp = !!(data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
+    || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
+  if (hasLivingStamp && entity && entity.team === 2
+    && role !== 'pirate' && role !== 'patrol' && role !== 'escort'
+    && (WORK_ROLES.has(role) || TRADER_ROLES.has(role) || ai.passive === true || ai.passive == null)) {
+    return { kind: 'worker', parley: null };
+  }
   const neutralTrader = entity && entity.team === 2 && ai.passive === true
     && (TRADER_ROLES.has(role) || ai.archetype === 'fleeing_trader')
     && role !== 'pirate' && role !== 'patrol' && role !== 'escort';
@@ -138,6 +191,15 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
       actions,
     };
   }
+  if (availability.kind === 'worker') {
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
+    if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    return {
+      requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+      lines: [`${name} · WORKING TRAFFIC`, 'CHANNEL OPEN.'],
+      actions,
+    };
+  }
   const actions = [{ id: 'route', label: 'ROUTE' }, { id: 'manifest', label: 'MANIFEST' }];
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   return {
@@ -164,13 +226,129 @@ function commodityLabel(id) {
     .replace(/^cmdty_/i, '').replace(/_/g, ' ').trim().toUpperCase();
 }
 
+/**
+ * Estimate declared cargo value from commodity basePrice (equilibrium catalog).
+ * Pure read — does not touch economy credits or station markets.
+ * Returns { totalCredits, totalQty, lineCount } or null when empty.
+ */
+export function estimateManifestBaseValue(manifest) {
+  const lines = manifest && Array.isArray(manifest.lines) ? manifest.lines : [];
+  let totalCredits = 0;
+  let totalQty = 0;
+  let lineCount = 0;
+  for (const row of lines) {
+    if (!row) continue;
+    const qty = Math.floor(Number(row.qty) || 0);
+    if (qty <= 0) continue;
+    const id = row.commodityId || row.id;
+    const def = COMMODITY_BY_ID.get(id);
+    const unit = def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+    totalCredits += unit * qty;
+    totalQty += qty;
+    lineCount += 1;
+  }
+  if (lineCount === 0) return null;
+  return Object.freeze({
+    totalCredits: Math.round(totalCredits),
+    totalQty,
+    lineCount,
+  });
+}
+
 function manifestText(state, target) {
   const record = traderRecord(state, target.id);
   const manifest = target.data && target.data.cargoManifest || record && record.manifest;
-  const lines = manifest && Array.isArray(manifest.lines) ? manifest.lines : [];
-  const cargo = lines.filter((row) => row && Number(row.qty) > 0).slice(0, 2)
-    .map((row) => `${Math.floor(Number(row.qty))} ${commodityLabel(row.commodityId || row.id)}`);
-  return cargo.length ? `MANIFEST · ${cargo.join(' · ')}` : 'MANIFEST · NO DECLARED CARGO';
+  const lines = (manifest && Array.isArray(manifest.lines) ? manifest.lines : [])
+    .filter((row) => row && Math.floor(Number(row.qty) || 0) > 0);
+  if (!lines.length) return 'MANIFEST · NO DECLARED CARGO';
+  // Rank by catalog value so the two named lines match the ~CR story.
+  const ranked = lines.map((row) => {
+    const qty = Math.floor(Number(row.qty) || 0);
+    const id = row.commodityId || row.id;
+    const def = COMMODITY_BY_ID.get(id);
+    const unit = def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+    return { qty, id, value: unit * qty };
+  }).sort((a, b) => b.value - a.value || String(a.id).localeCompare(String(b.id)));
+  const shown = ranked.slice(0, 2);
+  const cargo = shown.map((row) => `${row.qty} ${commodityLabel(row.id)}`);
+  const more = ranked.length - shown.length;
+  const moreBit = more > 0 ? ` · +${more} MORE` : '';
+  const value = estimateManifestBaseValue(manifest);
+  const valueBit = value && value.totalCredits > 0
+    ? ` · ~${value.totalCredits.toLocaleString('en-US')} CR`
+    : '';
+  return `MANIFEST · ${cargo.join(' · ')}${moreBit}${valueBit}`;
+}
+
+/**
+ * Human-readable living-work status from Ceres causal stamps / job phase.
+ * Pure; safe for hail and target panel.
+ * @param {object} entity
+ * @param {{ depth?: 'lock'|'full' }} [opts] lock = phase-only (always-on panel); full = phase+cue
+ */
+export function livingWorkStatusText(entity, opts = {}) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
+  const phase = data.ceresCausalPhase || data.jobPhase || null;
+  const cue = data.ceresCausalCue || null;
+  const eventId = data.ceresCausalEventId || null;
+  if (!phase && !cue && !eventId) return null;
+  const phaseLabel = phase
+    ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
+    : null;
+  const depth = opts.depth || 'full';
+  if (depth === 'lock') {
+    if (phaseLabel) return `WORK · ${phaseLabel}`;
+    return eventId ? 'WORK · ACTIVE' : null;
+  }
+  const cueLabel = cue
+    ? (CAUSAL_CUE_LABEL[cue] || String(cue).replace(/_/g, ' ').toUpperCase())
+    : null;
+  if (phaseLabel && cueLabel) return `WORK · ${phaseLabel} · ${cueLabel}`;
+  if (phaseLabel) return `WORK · ${phaseLabel}`;
+  if (cueLabel) return `WORK · ${cueLabel}`;
+  return 'WORK · ACTIVE';
+}
+
+// Short tactical means for hail STATUS (opt-in goes deeper than free panel phase-only).
+const CAUSAL_MEANS = Object.freeze({
+  blind_cone: 'SENSORS HALF-BLIND · DO NOT ENTER CUT ARC',
+  home_under_rock: 'HAULING UNDER COVER · HOLD OFF BURN',
+  heavy_burn: 'HARD ACCEL · WIDE WAKE',
+  clean_burn: 'CLEAN TRANSIT BURN',
+  mouth_open: 'HOLD OPEN · TRANSFER WINDOW',
+  on_the_pin: 'LAW LOCK · FLY CLEAN',
+  breaking_the_pattern: 'DRIVE FAILING · SOFT TARGET',
+  spine_wake: 'TENDER INBOUND',
+  hull_open: 'HULL OPEN · SERVICE IN PROGRESS',
+  picking_the_bones: 'SALVAGE CUT HOT · STAND OFF',
+  spilling_the_count: 'STACKING LOOT · HOLD FAT',
+});
+
+function workerStatusText(target) {
+  const data = target && target.data || {};
+  const phase = data.ceresCausalPhase || data.jobPhase || null;
+  const cue = data.ceresCausalCue || null;
+  const phaseLabel = phase
+    ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
+    : null;
+  const means = cue ? CAUSAL_MEANS[cue] : null;
+  if (phaseLabel && means) return `STATUS · ${phaseLabel} · ${means}`;
+  if (means) return `STATUS · ${means}`;
+  if (phaseLabel) return `STATUS · ${phaseLabel}`;
+  const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+  return `STATUS · ${role} ON TASK`;
+}
+
+function workerIdentifyText(target) {
+  const data = target && target.data || {};
+  const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+  const eventId = data.ceresCausalEventId
+    ? String(data.ceresCausalEventId).replace(/^ev_/, '').replace(/_/g, ' ').toUpperCase()
+    : null;
+  const eventBit = eventId ? ` · CHAIN ${eventId}` : '';
+  return `${callsign(target)} · ${role}${eventBit}`;
 }
 
 function routeText(state, target) {
@@ -181,7 +359,9 @@ function routeText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
-  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader')) return null;
+  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker')) {
+    return null;
+  }
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
@@ -192,6 +372,10 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
     line = `${callsign(target)} · LAWFUL PATROL · ACTIVE BEAT`;
+  } else if (offer.kind === 'worker' && id === 'status') {
+    line = workerStatusText(target);
+  } else if (offer.kind === 'worker' && id === 'identify') {
+    line = workerIdentifyText(target);
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
   } else if (offer.kind === 'trader' && id === 'manifest') {

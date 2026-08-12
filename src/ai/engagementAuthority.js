@@ -28,6 +28,7 @@ const LAWFUL_STATION_FACTIONS = new Set([
 ]);
 const DOCTRINE_FIRE_PHASES = Object.freeze({
   interceptor_flyby: new Set(['strike', 'commit']),
+  brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
   tether_control_raider: new Set(),
 });
@@ -416,6 +417,7 @@ export function protectedStationAt(state, entity) {
   }
   for (const station of stations) {
     if (!station || station.alive === false || !station.pos) continue;
+    if (station.isGate === true || station.data?.isGate === true) continue;
     const stationId = station.data && station.data.stationId || station.stationId || station.id;
     const factionId = station.factionId || station.data && station.data.factionId || null;
     if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;

@@ -353,6 +353,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let ramDamageDealtMult = 0;
+  let magnetRange = 0;
   let masslineHeadId = null;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
@@ -375,6 +376,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     }
     if (Number.isFinite(mods.ramDamageDealtMult) && mods.ramDamageDealtMult > 0) {
       ramDamageDealtMult = Math.max(ramDamageDealtMult, mods.ramDamageDealtMult);
+    }
+    // Tractor magnet radius is a capability rating (max wins) — mining scoop reads derived.magnetRange.
+    if (Number.isFinite(mods.magnetRange) && mods.magnetRange > 0) {
+      magnetRange = Math.max(magnetRange, mods.magnetRange);
     }
     // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
     // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
@@ -480,7 +485,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     dryMass, cargoMass, operationalMass: totalMass,
     operationalFeelMass: feelMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
-    tetherSpoolMult, tetherReelRateMult, masslineHeadId,
+    tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
     cargoCap,
     boost: {
       max: bdef.max || 0,

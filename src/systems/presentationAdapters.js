@@ -638,7 +638,7 @@ function miningAudioRate(cue) {
 
 function doctrineAudioId(cue, fallback) {
   if (!cue || !String(cue.id || '').startsWith('combat.doctrine.')) return fallback;
-  const doctrineId = ['interceptor_flyby', 'tether_control_raider', 'ranged_disengager']
+  const doctrineId = ['interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager']
     .find((id) => Array.isArray(cue.tags) && cue.tags.includes(id));
   if (!doctrineId) return fallback;
   const stage = cue.id.endsWith('.setup') ? 'setup'

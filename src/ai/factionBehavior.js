@@ -3,7 +3,13 @@
 // or doctrine values for a faction presence that omitted them.
 
 const LIVE_FORMATIONS = new Set(['line', 'ring', 'wedge']);
-const COMBAT_DOCTRINES = new Set(['interceptor_flyby', 'tether_control_raider', 'ranged_disengager']);
+const COMBAT_DOCTRINES = new Set([
+  'interceptor_flyby',
+  'brawler_commit',
+  'tether_control_raider',
+  'ranged_disengager',
+  'field_anchor_controller',
+]);
 const NORMALIZED_PROFILES = new WeakSet();
 const FROZEN_INPUT_CACHE = new WeakMap();
 
