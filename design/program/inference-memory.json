@@ -368,6 +368,19 @@
       "integration": "live",
       "commit": "5d08f8fc",
       "verification": "focused_green"
+    },
+    {
+      "id": "ancient-vault-aftermath-story",
+      "date": "2026-08-12",
+      "wf": "WF-10",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Physically investigating the recovered Ancient Vault now unlocks a unique durable Ashfall discovery story and advances authored sector exploration.",
+      "fingerprint": "verb=investigate-and-record,subject=ancient-vault,sector=sector_ashfall_reach,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "35910181",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
