@@ -5879,6 +5879,34 @@
         "design/program/roadmap/receipts/PQ-048-19-rumor-to-route-guidance-REPORT.md"
       ],
       "brief": "The first purchased rumor gives an accessible Bar-to-map handoff, normal system focus and selectable approximate search ring, manual local scan and physical discovery, durable return guidance, and an expert M/N/C bypass without writing an exact course or navigation route."
+    },
+    {
+      "id": "PQ-048.20",
+      "parentId": "PQ-048",
+      "priority": 299,
+      "title": "Complete discovery-to-Codex return",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.19"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/ui/screens/codex.js",
+        "src/ui/signalInvestigationPrompt.js",
+        "test/pq048-discovery-to-codex-return.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-discovery-to-codex-return.test.mjs test/pq048-tethys-black-market-discovery.test.mjs test/pq048-rumor-to-route-guidance.test.mjs",
+        "npm run check:ui-a11y",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:player-facing-labels",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-20-discovery-to-codex-return-REPORT.md"
+      ],
+      "brief": "A landed Tethys discovery exposes one nonpersisted UI request to focus its exact durable Codex plate, then offers a normal map-only return to the live hub without creating a navigation route, course, or offer."
     }
   ]
 }
