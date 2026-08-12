@@ -6,6 +6,7 @@ import {
   explorationDiscoveryPlates,
   sectorExplorationProgress,
 } from '../src/world/explorationJournal.js';
+import { buildSystemModel } from '../src/ui/galaxyMap.js';
 
 function harness() {
   const events = [];
@@ -99,7 +100,7 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   t.state.world.currentSectorId = 'sector_ashfall_reach';
   t.state.world.activeSector = {
     id: 'sector_ashfall_reach',
-    pois: [],
+    pois: [{ id: 100, poiId: 'poi_vault', type: 'cache', hidden: true }],
     boss: { entityId: 99, poiId: 'poi_boss' },
   };
   t.state.entities.set(99, {
@@ -113,6 +114,19 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
       bossPoiId: 'poi_boss',
     },
   });
+  t.state.entities.set(100, {
+    id: 100,
+    type: 'fx',
+    alive: true,
+    pos: { x: -1480, z: 320 },
+    data: { poi: true, poiId: 'poi_vault', hidden: true, name: 'Ancient Vault' },
+  });
+
+  assert.equal(
+    buildSystemModel(t.state, 'sector_ashfall_reach').points.some((point) => point.id === 'poi_vault'),
+    false,
+    'the hidden vault is not a navigable map point before the boss falls',
+  );
 
   world._onBossKilled({ id: 99, killerId: 1 });
 
@@ -121,6 +135,25 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   assert.equal(record.defeated, true);
   assert.equal(record.defeatedAt, 90);
   assert.equal(t.state.world.activeSector.boss, undefined);
+  const vault = t.state.world.discovery.sector_ashfall_reach.pois.poi_vault;
+  assert.equal(vault.discovered, true);
+  assert.equal(vault.identified, false, 'coordinates reveal the destination without claiming the visit');
+  assert.equal(vault.revealedByBossDefeat, true);
+  assert.equal(vault.revealedAt, 90);
+  assert.equal(t.state.world.activeSector.pois[0].hidden, false);
+  assert.equal(t.state.entities.get(100).data.hidden, false);
+  const vaultPoint = buildSystemModel(t.state, 'sector_ashfall_reach').points
+    .find((point) => point.id === 'poi_vault');
+  assert.ok(vaultPoint, 'the recovered coordinates become a navigable system-map point');
+  assert.deepEqual(vaultPoint.drawPos, { x: -1480, z: 320 });
+  assert.equal(
+    t.events.filter((event) => event.name === 'poi:discovered' && event.payload.poiId === 'poi_vault').length,
+    1,
+  );
+  assert.equal(
+    t.events.filter((event) => event.name === 'toast' && /Ancient Vault coordinates recovered/.test(event.payload.text)).length,
+    1,
+  );
 
   const progress = sectorExplorationProgress(t.state, 'sector_ashfall_reach');
   assert.equal(progress.found, 1);
@@ -153,4 +186,39 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   assert.equal(record.defeatedAt, 90, 'the first defeat remains the durable completion time');
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1,
     'duplicate kill receipts do not unlock duplicate plates');
+  assert.equal(
+    t.events.filter((event) => event.name === 'poi:discovered' && event.payload.poiId === 'poi_vault').length,
+    1,
+    'duplicate kill receipts do not repeat the coordinate reveal',
+  );
+});
+
+test('a recovered hidden POI rematerializes as a visible destination', () => {
+  const t = harness();
+  t.state.world.currentSectorId = 'sector_ashfall_reach';
+  const active = { id: 'sector_ashfall_reach', pois: [] };
+  t.state.world.activeSector = active;
+  const discovery = {
+    pois: {
+      poi_vault: { discovered: true, identified: false, revealedByBossDefeat: true },
+    },
+  };
+  let nextId = 200;
+  world.helpers = {
+    spawnEntity(definition) {
+      const entity = { id: nextId++, alive: true, ...definition };
+      t.state.entities.set(entity.id, entity);
+      return entity;
+    },
+  };
+
+  world._spawnPOIs({
+    id: 'sector_ashfall_reach',
+    worldRadius: 5500,
+    pois: [{ id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true, pos: { x: -1480, z: 320 } }],
+  }, active, discovery, () => 0.5);
+
+  assert.equal(active.pois.length, 1);
+  assert.equal(active.pois[0].hidden, false);
+  assert.equal(t.state.entities.get(active.pois[0].id).data.hidden, false);
 });

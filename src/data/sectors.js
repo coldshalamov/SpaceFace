@@ -344,7 +344,10 @@ const CORE_SECTORS = [
           body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',
         },
       },
-      { id: 'poi_vault', type: 'cache',   name: 'Ancient Vault', hidden: true },
+      {
+        id: 'poi_vault', type: 'cache', name: 'Ancient Vault', hidden: true,
+        unlockAfterBossId: 'poi_boss',
+      },
     ],
   },
 ];

@@ -1530,9 +1530,12 @@ export function buildSystemModel(state, sectorId, options = {}) {
   }
   // POIs (beacons/derelicts/etc.) — labels only unless an anchor position is merged in.
   if (record && Array.isArray(record.pois)) {
+    const discoveredPois = discoveryForSector(state, sid);
+    const discoveredById = discoveredPois && discoveredPois.pois || {};
     for (const poi of record.pois) {
       if (!poi || !poi.id) continue;
-      const anchor = poi.anchor || poi.center || poi.position || null;
+      if (poi.hidden && !(discoveredById[poi.id] && discoveredById[poi.id].discovered)) continue;
+      const anchor = poi.pos || poi.anchor || poi.center || poi.position || null;
       const frames = anchorFrames(anchor, sid, anchor ? (Number(anchor.z) || 0) : 0);
       points.push({
         id: poi.id,

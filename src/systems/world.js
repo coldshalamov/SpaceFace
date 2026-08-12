@@ -419,6 +419,39 @@ export const world = {
     }
     if (newlyDefeated) {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
+      for (const unlock of (sector && sector.pois || [])) {
+        if (!unlock || unlock.unlockAfterBossId !== poiId) continue;
+        const unlockRec = disc.pois[unlock.id]
+          || (disc.pois[unlock.id] = { discovered: false, identified: false });
+        if (unlockRec.discovered) continue;
+        unlockRec.discovered = true;
+        unlockRec.revealedByBossDefeat = true;
+        unlockRec.revealedAt = rec.defeatedAt;
+        unlockRec.type = unlock.type || unlockRec.type || null;
+        unlockRec.name = unlock.name || unlockRec.name || unlock.id;
+
+        const active = this.state.world.activeSector;
+        if (active && active.id === sectorId) {
+          const activePoi = (active.pois || []).find((row) => row && row.poiId === unlock.id);
+          if (activePoi) {
+            activePoi.hidden = false;
+            const entity = this.state.entities.get(activePoi.id);
+            if (entity && entity.data) entity.data.hidden = false;
+          }
+        }
+        this.bus.emit('poi:discovered', {
+          sectorId,
+          poiId: unlock.id,
+          type: unlockRec.type,
+          sourcePoiId: poiId,
+          reason: 'boss_defeated',
+        });
+        this.bus.emit('toast', {
+          text: `${unlockRec.name} coordinates recovered`,
+          kind: 'success',
+          ttl: 5,
+        });
+      }
     }
     this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
   },
@@ -1435,12 +1468,13 @@ export const world = {
         ? { ...poi.triangulation }
         : null;
       const anomalyTriangulated = disc.pois[poi.id] && disc.pois[poi.id].triangulated === true;
+      const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
       const ent = this.helpers.spawnEntity({
         type: 'fx', factionId: poi.factionId || null, pos,
         radius: visualRadius, mass: 0, collides: false, ttl: Infinity,
         data: {
           poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
-          hidden: !!poi.hidden, gatedBy: poi.gatedBy || null,
+          hidden, gatedBy: poi.gatedBy || null,
           requiresTriangulation: !!triangulation,
           triangulation,
           anomalyTriangulated,
@@ -1472,7 +1506,7 @@ export const world = {
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
-        hidden: !!poi.hidden, claimable: !!poi.claimable,
+        hidden, claimable: !!poi.claimable,
         requiresActiveScan: poi.requiresActiveScan === true,
         requiresTriangulation: !!triangulation,
         triangulation,
