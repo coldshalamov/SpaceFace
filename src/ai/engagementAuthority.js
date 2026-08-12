@@ -28,9 +28,13 @@ const LAWFUL_STATION_FACTIONS = new Set([
 ]);
 const DOCTRINE_FIRE_PHASES = Object.freeze({
   interceptor_flyby: new Set(['strike', 'commit']),
-  brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
   tether_control_raider: new Set(),
+  // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
+  // hull carries a non-defensive autocannon and roe weapons_free; without this entry the label
+  // resolved like a passive hauler and the whole fight fell to the escorts. The 30-tick
+  // field_spool telegraph always precedes this phase.
+  field_anchor_controller: new Set(['anchor_hold']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const SCENARIO_47A_SCAVENGERS = new Map([
@@ -417,7 +421,6 @@ export function protectedStationAt(state, entity) {
   }
   for (const station of stations) {
     if (!station || station.alive === false || !station.pos) continue;
-    if (station.isGate === true || station.data?.isGate === true) continue;
     const stationId = station.data && station.data.stationId || station.stationId || station.id;
     const factionId = station.factionId || station.data && station.data.factionId || null;
     if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;

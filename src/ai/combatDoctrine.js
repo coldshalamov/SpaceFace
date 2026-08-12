@@ -13,7 +13,6 @@ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
-  BRAWLER_COMMIT: 'brawler_commit',
   TETHER_CONTROL_RAIDER: 'tether_control_raider',
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
@@ -110,17 +109,14 @@ export class CombatDoctrineRuntime {
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
     if (factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
       && target.disabled === true) {
-      const egressPhase = (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY
-        || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) ? 'breakaway'
+      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
           : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
           : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior);
     }
-    if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
-      updateBrawler(record, tick, self, target, distance);
-    } else if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
+    if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
       updateInterceptor(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
       updateTetherRaider(record, tick, entityId, perception, self, target, distance);
@@ -156,7 +152,13 @@ export function overrideDirectiveForCombatDoctrine(directive, doctrine) {
       ? ObjectiveKind.ENGAGE
       : ObjectiveKind.TUG;
   } else if (doctrine.doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
-    kind = doctrine.phase === 'recover' ? ObjectiveKind.ENGAGE : ObjectiveKind.SCREEN;
+    // anchor_hold must be ENGAGE, not SCREEN: canFireByDoctrine and the fire-intent adapter only
+    // pass FOCUS/ENGAGE objectives, so a SCREEN hold silently discarded the anchor_hold burst
+    // window this doctrine advertises. Approach/field_spool/reform stay SCREEN so the anchor
+    // reads as area control until its telegraph completes.
+    kind = doctrine.phase === 'recover' || doctrine.phase === 'anchor_hold'
+      ? ObjectiveKind.ENGAGE
+      : ObjectiveKind.SCREEN;
   }
   const targetId = doctrine.actionTargetId != null ? doctrine.actionTargetId : doctrine.targetId;
   return Object.freeze({
@@ -230,17 +232,12 @@ function updateBrawler(record, tick, self, target, distance) {
     record.closestDistance = distance;
     enter(record, 'commit', tick, null);
   } else if (record.phase === 'commit') {
-    // Sticky knife-fight: stay on the target for the full commit window. Do NOT exit on
-    // flyby "passed" geometry — that is what made bruisers read as longer interceptors.
     record.closestDistance = Math.min(record.closestDistance, distance);
-    record.ramAuthorized = true;
-    if (age >= BRAWLER_COMMIT_MAX_TICKS) {
+    const passed = runHasPassed(record, self, target, distance);
+    if ((age >= BRAWLER_COMMIT_MIN_TICKS && passed) || age >= BRAWLER_COMMIT_MAX_TICKS) {
       beginEgress(record, 'breakaway', tick, self, target, 'brawler_commit_complete');
-    } else if (age >= BRAWLER_COMMIT_MIN_TICKS && distance > 520) {
-      // Only break early if the fight opened up badly (target escaped far).
-      beginEgress(record, 'breakaway', tick, self, target, 'brawler_target_escaped');
     }
-  } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS && distance >= 480) {
+  } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS && distance >= 600) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= BRAWLER_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
@@ -376,32 +373,19 @@ function snapshot(record, target, directive, factionBehavior = null) {
   let maneuverTargetId = target ? target.id : record.targetId;
   let lateralSign = record.side;
   let faceTarget = false;
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY
-    || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
-    const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT
-      || record.flightProfile === 'brawler_commit';
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
+    const brawler = record.flightProfile === 'brawler_commit';
     formationLocked = phase === 'ingress' || phase === 'reform';
     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
-    if (brawler && phase === 'commit') {
-      // Sticky knife-fight: orbit at knife range, face target, burst authorized.
-      maneuverKind = ManeuverKind.ORBIT;
-      preferredRange = 140;
-      faceTarget = true;
-      allowedActionId = 'action_burst';
-    } else if (phase === 'extend' || phase === 'breakaway') {
+    if (phase === 'extend' || phase === 'breakaway') {
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;
-      preferredRange = brawler ? 520 : 620;
     } else if (phase === 'reform') {
-      maneuverKind = ManeuverKind.HOLD;
+      maneuverKind = ManeuverKind.FORMATION;
       maneuverTargetId = null;
-      preferredRange = brawler ? 280 : 180;
-    } else {
-      maneuverKind = ManeuverKind.INTERCEPT;
-      preferredRange = brawler ? 180 : 150;
-      faceTarget = brawler && phase === 'engine_flare';
-      if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
-    }
+    } else maneuverKind = ManeuverKind.INTERCEPT;
+    preferredRange = phase === 'extend' || phase === 'breakaway' ? 620 : (brawler ? 190 : 150);
+    if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     formationLocked = phase === 'reform';
     if (phase === 'escape') {
@@ -477,11 +461,6 @@ function snapshot(record, target, directive, factionBehavior = null) {
 
 function targetScore(doctrineId, contact) {
   const threat = finite(contact.threat, 0);
-  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
-    // Prefer the nearest hot fight: low-mobility prey and high threat over kiting targets.
-    return threat * 6 + (3 - bandScore(contact.mobilityBand, ['low', 'medium', 'high'])) * 3
-      + bandScore(contact.operationalMassBand, ['light', 'medium', 'heavy', 'capital']);
-  }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
   }
@@ -543,8 +522,6 @@ function initialPhase(doctrineId) {
 }
 
 function flightProfileFor(doctrineId, self) {
-  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
-  // Legacy mass-band bridge: heavy interceptors still get the commit profile without a data retag.
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
     return 'brawler_commit';
