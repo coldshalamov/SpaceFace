@@ -1,25 +1,19 @@
-Build SpaceFace to A-list 2026 parity — graphics, animation, VFX, and above all VARIETY and world density. The game is sparse and repetitive; it needs population, depth and soul, not more shader tuning.
+<!-- LIFETIME: HISTORICAL -->
+# INACTIVE LEGACY PROMPT
 
-FIRST read design/program/EXPANSION_PROGRAM.md in full and follow it — that is the standing brief. Then design/graphics-sprints/MODERN_PARITY_LOOP.md (evidence) and design/program/NOW.md (coordination).
+This root prompt is retired and MUST NOT be executed, resumed, or treated as standing policy.
 
-Critical prior result: twelve single-lever experiments (shader, lighting, camera, AO bake, repaint, roughness, deep-field geometry) ALL left the reviewer at exactly 2.25/5; a real EVE Online frame through the same grader scores 3.63. Do not re-run single-lever tuning. Parity comes from accumulated authored detail, effect craft, population and art direction together. Proof is in-game: asteroids read as convincing rock while the ship beside them reads as flat plastic — same renderer, same frame. The engine is not the limit; the rocks are better authored.
+It previously contained an unbounded autonomous loop and an impossible “no substantive faults remain”
+stopping condition. Those instructions caused agents to spend production budgets on recursive review,
+validation-harness repair, acceptance paperwork, and repeated proof attempts instead of building the
+game.
 
-YOUR LOOP, run continuously for days:
-1. grok (terminal) researches reference shots of modern space games + Blender/three.js technique guides. Use the techniques, not just the art.
-2. a second grok thread writes Wookieepedia-depth fiction for each thing BEFORE you build it: who made it, why it's worn where it's worn, what the markings mean, who crews it. Depth CREATES variety — detailed things diverge, vague things converge into "same".
-3. codex image-gen turns that into concept art.
-4. you build it — Blender for models/materials/animation, code for VFX, behaviour, encounters.
-5. codex (gpt-5.6-sol, effort max) adversarially reviews it against the concept art AND the pro references.
-6. iterate until no substantive faults remain, commit, next thing.
+Current authority:
 
-BUILD, in rough priority: NPCs visibly doing jobs (haul, mine, survey, patrol, repair, dock, scavenge, escort) instead of holding station; more professions/factions, each with its own silhouette, loadout, paint and routine; encounters that interrupt each other; more classes of station, wreck, buoy, platform, habitat, rig; reactions — flinch, scatter, hail, flee, investigate; animation — moving parts, deploy/stow, docking. Variety multiplies: 10 ships x 6 professions x 8 events is a different game from 3 x 1 x 2.
+1. `AGENTS.md`
+2. `CANONICAL_BUILD_MAP.md`
+3. `design/program/INFERENCE_LANES.md` for `INFERENCE N ...`
+4. the exact user request and live production owners
 
-Stay consistent with the existing story and tone — invent DOWNWARD into supporting detail, never sideways into a different game. Write the fiction down and commit it.
-
-CONSTRAINTS:
-- Hold p95 16.80 ms (Intel iGPU) via scripts/capture-gameplay.mjs --width 1920 --height 1080. No quality reduction to buy perf.
-- Follow §5 measurement discipline in the brief; those traps already cost hours.
-- Calibrate any grader by scoring a known-good reference through it first — the old pass condition was unreachable.
-- codex://threads/019fd2c0-a9f5-7c20-9a7f-2de49dbc5578 works this repo concurrently. Have grok check it occasionally; register leases in NOW.md.
-
-Work autonomously commit often, and prefer a hundred things at clearly-good over three at perfect.
+The historical text is preserved at
+`docs/historical/GOAL_PROMPT_2026-08-12.txt` for archaeology only.

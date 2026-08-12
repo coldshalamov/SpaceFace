@@ -3,73 +3,80 @@
 
 **Two doors**
 
-| Door | Who decides the unit | How |
+| Door | Who decides the unit | Execution |
 |---|---|---|
-| `NEXT` / PQ | Program already named it | `program-dispatch` |
-| `INFERENCE` | **Agent invents it** after reading the director board | detect → pick ONE cell → invent → implement → record |
+| `NEXT` / PQ | the admitted program | dispatch one packet unit |
+| `INFERENCE N` | the agent, inside user scope | build N sequential production slices |
 
-**INFERENCE is not PQ.** Do not wait for a human "concrete next unit." Run the board,
-pick a cell, verify its reality on the ordinary route, and improve the actual game.
+`INFERENCE` is not a request to create a queue, acceptance campaign, review portfolio, or candidate
+archive. Follow [`INFERENCE_LANES.md`](./INFERENCE_LANES.md).
+
+The detector is advisory and is run at most once at task entry:
 
 ```bash
 node scripts/inference-detect.mjs
-node scripts/inference-detect.mjs --scope=NPCS --nx=3
+node scripts/inference-detect.mjs --scope=NPCS
 node scripts/inference-detect.mjs --out=design/program/INFERENCE_DETECT_LAST.json
 ```
 
-## The memory is `design/program/inference-memory.json`
+Do not pass the user's requested production-unit count to the detector. The user's `N` is the task
+termination target; the detector only suggests a domain/mode.
 
-The old hand-ticked surface table is retired. It could be raced, faked, and reset;
-it forgot rejections, failed patterns, references, and every domain it had no row
-for. The machine memory replaces it and is what the detector actually reads for:
+## Memory
 
-- **anti-pile-on** — accepted units decay with a 21-day half-life; a saturated
-  domain gets flagged on the board instead of relying on an agent's restraint;
-- **anti-resurrection** — rejected/cut fingerprints block matching candidates
-  for 45 days unless new evidence is recorded;
-- **starvation scheduling** — domains with no structural metric (economy, story,
-  audio, exploration, UI, feel, integration…) surface by staleness, so repeated
-  default runs cannot ignore them forever;
-- **failed-twice patterns** — two cuts with the same root reason ban a third
-  attempt on the same premise;
-- **reference rotation** — a reference game used 3+ times in 30 days is flagged
-  for rotation.
+The machine memory at `design/program/inference-memory.json` preserves recent runs, shipped or
+implemented units, rejected ideas, fingerprints, and reference use. Never hand-edit it.
 
-**Never hand-edit the JSON.** Record through the validating writer:
+Record the run once:
 
 ```bash
-# after finishing a run (always, even when nothing shipped):
-node scripts/inference-record.mjs run --mode starved --domains WF-13 --scope AUDIO --nx 1
+node scripts/inference-record.mjs run \
+  --mode starved --domains WF-13 --scope AUDIO --nx 20 \
+  --note "20-unit production target; sequential execution"
+```
 
-# per unit — accepted units REQUIRE evidence + review files:
-node scripts/inference-record.mjs unit --id refinery-shift-whistle --wf WF-13 \
-  --mode starved --verdict accepted --reason "refinery gains shift-change audio identity" \
-  --fp "verb=hear,subject=refinery,sector=ceres,layer=midground,tempo=ambient,domain=wf-13" \
-  --evidence <route-proof path> --review <filled review-record path>
+Record every completed production unit after its commit:
 
-# rejected/cut units need the causal root so failed-twice detection works:
-node scripts/inference-record.mjs unit --id gravity-toll --wf WF-05 --mode repair \
+```bash
+node scripts/inference-record.mjs unit \
+  --id refinery-shift-whistle --wf WF-13 --mode starved \
+  --verdict implemented --verification focused_green \
+  --commit abc1234 \
+  --reason "refinery gains a live shift-change audio identity" \
+  --fp "verb=hear,subject=refinery,sector=ceres,layer=midground,tempo=ambient,domain=wf-13"
+```
+
+Promote to `accepted` only with current route evidence:
+
+```bash
+node scripts/inference-record.mjs unit \
+  --id refinery-shift-whistle --wf WF-13 --mode starved \
+  --verdict accepted --verification route_accepted \
+  --commit abc1234 --evidence design/program/receipts/refinery-shift-route.md \
+  --reason "ordinary Ceres route exposes the authored shift-change cue" \
+  --fp "verb=hear,subject=refinery,sector=ceres,layer=midground,tempo=ambient,domain=wf-13"
+```
+
+A separate review file is optional. It never gates recording an implemented unit.
+
+Rejected/cut units still need a causal root reason so future runs do not resurrect the same premise:
+
+```bash
+node scripts/inference-record.mjs unit \
+  --id gravity-toll --wf WF-05 --mode repair \
   --verdict cut --reason "redundant with mass seed" \
   --root-reason "no new tactic; overlaps existing tool" \
   --fp "verb=push,subject=chokepoint,sector=any,domain=wf-05"
 ```
 
-Recording rejected and cut work is **as mandatory as recording accepted work** —
-the memory's value is mostly in what it refuses to let future runs repeat.
-
-Fingerprint axes: `verb, subject, sector, layer, tempo, domain`. Fill at least
-three, honestly. The fingerprint is how a future agent's "new" idea gets compared
-against everything already tried — vague fingerprints defeat the comparison.
+Fingerprint axes are `verb, subject, sector, layer, tempo, domain`; provide at least three.
 
 ## Concurrency
 
-The memory file follows normal exact-path rules: commit it in the same pathspec-
-scoped commit as the unit it records. On a git conflict, re-read and re-run the
-record command — entries are append-shaped, so merges are cheap. Never resolve a
-conflict by discarding the other side's entries.
+Commit the memory update with the production slice when practical. On conflict, re-read and rerun the
+record command. Never discard another unit's entries.
 
 ## Current status
 
-Run `node scripts/inference-detect.mjs` — the board (repair / starved /
-opportunity / integration / recovery, plus blocked fingerprints and overused
-references) IS the status view. This file intentionally repeats none of it.
+Run `node scripts/inference-detect.mjs`. This file intentionally carries no queue snapshot or
+completion history.

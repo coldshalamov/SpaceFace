@@ -1,70 +1,40 @@
-# SpaceFace Inference Workflow Invocation
-
-Paste this wrapper to an agent that can read the repository.
+<!-- LIFETIME: STABLE -->
+# SpaceFace bounded INFERENCE invocation
 
 ```text
-Execute [WF-ID / workflow name] at [1x|2x|3x|5x].
-
-Scope:
-[sector, pocket, system, route, family, progression band, or player loop]
+INFERENCE [N] [SCOPE or WF-ID]
 
 Current player-facing deficit:
-[describe what ordinary play currently feels or looks like]
+[what ordinary play lacks]
 
 Desired player outcome:
-[describe what the player should perceive, decide, do, and cause]
+[what the player should perceive, decide, do, or cause]
 
-Reference emphasis:
-[optional mechanisms from 03_REFERENCE_GAME_PATTERN_LIBRARY.md]
+Protected exact paths:
+[only current live collisions, if any]
 
-Protected work / known boundaries:
-[list current active agents, paths or systems that must not be touched]
+Read root AGENTS.md, design/program/INFERENCE_LANES.md, the relevant workflow, and the live owner.
 
-Review requirement:
-Use [one/two] fresh adversarial reviewer contexts. Review normal-route evidence without implementation justification.
+N means sequential committed production units. Plans, tests, reviews, receipts, probes, harnesses,
+and acceptance infrastructure do not count.
 
-Read before work:
-- CANONICAL_BUILD_MAP.md
-- root AGENTS.md
-- relevant ARCHITECTURE.md and design/GDD_2_0.md sections
-- current design/program/NOW.md
-- current dispatched active packet
-- design/inference-workflows/README.md
-- design/inference-workflows/00_SPACEFACE_TEAM_MINDSET.md
-- design/inference-workflows/01_SCALE_AND_DISPATCH.md
-- design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md
-- selected workflow
-- design/inference-workflows/05_ADVERSARIAL_REVIEW_PROTOCOL.md
-- design/inference-workflows/06_PORTFOLIO_INTEGRATION_AND_LEARNING.md
+For each unit: choose one bounded slice, implement production, perform sufficient direct verification
+for the claim, commit, record as implemented or accepted, then continue.
 
-This is an implementation-and-convergence task, not a request for another speculative plan.
+Do not create a candidate portfolio before unit one. Additional support work requires a named
+load-bearing uncertainty and a possible material delta. Do not repair a high-level harness unless it
+is explicitly requested or is the narrowest necessary repair for the claim this unit actually makes.
+Route-unproven is an honest terminal state for the broader claim, not permission to skip direct
+verification of the production change.
 
-Follow the selected workflow completely:
-1. establish current player-facing truth;
-2. reconstruct the target experience;
-3. audit current owners and reusable content;
-4. research mechanisms, not surfaces;
-5. generate the required diverse candidate pool;
-6. select a coherent accepted slate and replacements;
-7. implement through current owners;
-8. prove each unit through ordinary play;
-9. submit cold evidence to the reviewer(s);
-10. revise, rebuild, replace, or cut;
-11. integrate the portfolio at requested scale;
-12. return exact receipts and the production recipe learned.
-
-Nx counts accepted production units, not files, attempts, rows, recolors, or commits. Do not pad the result. Return a lower accepted scale honestly if remaining candidates are weak or blocked.
-
-Do not create parallel physics, traffic, AI, economy, mission, VFX, UI, save, asset, or event authorities. Do not bulk-promote incubator content. Do not call a source-only candidate a game improvement. Do not call green tests a good experience. Do not lower visual quality or world density to pass performance.
-
-The goal is more, better, and closer to the intended SpaceFace: a bright, kinetic, readable top-down living space universe where momentum is the toy, ordinary systems operate without the player, the player can physically improvise and interfere, industry expands agency, and consequences remain visible.
+Stop at N production units, when the user stops or changes the task, when the environment ends, or
+when every remaining eligible unit has a concrete external blocker. Skip an individually blocked
+candidate while eligible production remains.
 ```
 
-## Compact form
+Compact form:
 
 ```text
-[WF-ID] [Nx] — [scope].
-Deficit: [current experience].
-Outcome: [desired experience].
-Use current owners, cold adversarial review, ordinary-route proof, and revision until KEEP or honest cut.
+INFERENCE 20 WORLD — build twenty sequential player-visible world units. Production first; focused
+proof; one commit and record per unit; no acceptance-infrastructure detour.
 ```

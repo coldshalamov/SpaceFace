@@ -48,6 +48,8 @@ jobs:
         run: |
           node scripts/check-program-docs.mjs
           node --test test/program-control-tools.test.mjs
+          node scripts/check-inference-control.mjs
+          node --test test/inference-control.test.mjs
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
