@@ -9,6 +9,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation } from '../src/core/sim.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -72,13 +73,29 @@ function makeEntity(id, type, data = {}, pos = { x: 0, z: 0 }) {
   };
 }
 
+function prepareCombatShip(entity) {
+  Object.assign(entity, {
+    radius: 18,
+    hull: 140,
+    hullMax: 140,
+    shield: 60,
+    shieldMax: 60,
+    armorHp: 0,
+    armorMax: 0,
+    armorFlat: 0,
+    cap: 100,
+    capMax: 100,
+  });
+  return entity;
+}
+
 function pocketActorRows() {
   return CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots
     .filter((slot) => slot.id !== TENDER_SLOT_ID)
     .map((slot) => ({ pocket, slot })));
 }
 
-function bootCausalHarness({ simTime = 10, npcJobs = null } = {}) {
+function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = false } = {}) {
   const station = makeEntity(10, 'station', { stationId: 'station_ceres' }, { x: 100, z: 100 });
   const asteroid = makeEntity(38, 'asteroid', {
     activityObjectSlotId: 'ceres_seam_ore_clast',
@@ -156,12 +173,20 @@ function bootCausalHarness({ simTime = 10, npcJobs = null } = {}) {
   }, CERES_ACTIVITY_SECTOR_ID);
   const tender = makeEntity(nextId++, 'ship', {
     worldRecordId: tenderWorldRecordId,
+    jobId: `job:${tenderWorldRecordId}`,
     activityActorSlotId: TENDER_SLOT_ID,
     trafficRole: 'tender',
-    yardTender: true,
+    durable: true,
+    factionPresence: { yardTender: true },
   }, tenderPos);
+  if (withTenderCombat) prepareCombatShip(tender);
   state.entities.set(tender.id, tender);
   state.entityList.push(tender);
+
+  if (withTenderCombat) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    prepareCombatShip(miner);
+  }
 
   for (const service of CERES_ACTIVITY_SERVICE_SLOTS) {
     const worldRecordId = slotWorldRecordId(service);
@@ -204,6 +229,25 @@ function bootCausalHarness({ simTime = 10, npcJobs = null } = {}) {
       return { released: true };
     };
   }
+  const helpers = {
+    spawnEntity() { return null; },
+    npcJobs: jobs,
+  };
+  let registry = null;
+  let combatKernel = null;
+  const combat = {
+    ensureKernel() {
+      if (!combatKernel) combatKernel = getCombatKernel({ state, bus, helpers, registry });
+      return combatKernel;
+    },
+  };
+  if (withTenderCombat) {
+    registry = {
+      get(systemId) {
+        return systemId === 'combat' ? combat : null;
+      },
+    };
+  }
   const traffic = {
     ...trafficBase,
     state: null,
@@ -227,17 +271,24 @@ function bootCausalHarness({ simTime = 10, npcJobs = null } = {}) {
   traffic.init({
     state,
     bus,
-    helpers: {
-      spawnEntity() { return null; },
-      npcJobs: jobs,
-    },
-    registry: null,
+    helpers,
+    registry,
   });
   // init binds listeners but does not auto-arm the chain without sector:enter.
   traffic._active = state.traffic.freighters.map((rec) => rec.id);
   traffic._ensureCeresCausalChain('test_boot');
 
-  return { state, traffic, bus, receipts, tender, station, asteroid, controlClaims };
+  return {
+    state,
+    traffic,
+    bus,
+    receipts,
+    tender,
+    station,
+    asteroid,
+    controlClaims,
+    combatKernel: withTenderCombat ? combat.ensureKernel() : null,
+  };
 }
 
 function actorBySlot(state, slotId) {
@@ -346,7 +397,15 @@ test('concurrency never exceeds two authored events', () => {
 });
 
 test('full chain reaches a believable terminal outcome after authored miner work', () => {
-  const { traffic, state, receipts, asteroid } = bootCausalHarness({ simTime: 0 });
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  assert.ok(combatKernel, 'the tender link uses the live combat-kernel registry seam');
   stepTo(traffic, state, 0);
   stepTo(traffic, state, 24);
   assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
@@ -354,13 +413,25 @@ test('full chain reaches a believable terminal outcome after authored miner work
   // Cycle re-arms clear the seed bag in the same step as the final complete, so the terminal
   // proof is the cycle counter plus per-event completion receipts — not a lingering seed.
   let doneAt = null;
+  let sawDriveDisabled = false;
+  let sawRepair = false;
   for (let t = 24; t <= 924; t += 3) {
     // This timer-only harness has no flight integrator; keep the actual pair together after the
     // rendezvous-specific test above has already proven the hauler drives there under its intent.
     const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
     const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
     hauler.pos = { ...miner.pos };
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
     stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    const drive = state.combat.entities[String(miner.id)]?.subsystems?.subsystem_drive;
+    sawDriveDisabled ||= drive?.destroyed === true || drive?.effectiveDisabled === true;
+    sawRepair ||= state.traffic.ceresTenderServiceIncident?.state === 'repair';
     if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) {
       doneAt = t;
       break;
@@ -368,8 +439,11 @@ test('full chain reaches a believable terminal outcome after authored miner work
   }
   assert.ok(doneAt != null, 'chain should complete inside ten minutes of sim time');
   assert.ok(doneAt <= 600, `expected a sub-ten-minute zero-input resolve, got t=${doneAt}`);
+  assert.equal(sawDriveDisabled, true, 'the real combat drive transitions to disabled before repair');
+  assert.equal(sawRepair, true, 'tender service waits at standoff before requesting combat repair');
+  assert.equal(state.traffic.ceresTenderServiceIncident.state, 'succeeded');
 
-  for (const id of EXPECTED_CHAIN) {
+  for (const id of EXPECTED_CHAIN.filter((id) => id !== 'ev_cutter_strips_wreck')) {
     assert.ok(
       receipts.some((r) => r.eventId === id && r.kind === 'event_complete'),
       `missing event_complete for ${id}`,
@@ -379,19 +453,28 @@ test('full chain reaches a believable terminal outcome after authored miner work
       `no visible phase path for ${id}`,
     );
   }
+  assert.ok(receipts.some((r) => r.eventId === 'ev_cutter_strips_wreck'
+    && r.kind === 'event_interrupt' && r.outcome === 'skip_service_success'),
+  'a successful repair skips wreck aftermath instead of manufacturing it');
+  assert.ok(receipts.some((r) => r.eventId === 'ev_cutter_strips_wreck'
+    && r.kind === 'event_interrupt' && r.outcome === 'skip_service_success'
+    && Array.isArray(r.seeded) && r.seeded.includes('chain_complete')),
+  'the skipped aftermath still closes the causal cycle');
   assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
 
   // Intermediate seeds must have been observed on the bus before the re-arm wipe.
   const seedKinds = receipts.filter((r) => r.kind === 'seed');
   for (const key of [
     'rich_seam', 'miner_loaded', 'scan_complete',
-    'miner_wear', 'aftermath_open', 'wreck_stripped', 'chain_complete',
+    'miner_wear', 'miner_serviced',
   ]) {
     assert.ok(
       seedKinds.some((r) => r.seeds && r.seeds[key] === true),
       `seed ${key} never observed`,
     );
   }
+  assert.equal(seedKinds.some((r) => r.seeds && r.seeds.aftermath_open === true), false,
+    'the repaired miner does not open aftermath');
 });
 
 test('real miner work opens the hauler-call link while rich seam may still be active', () => {

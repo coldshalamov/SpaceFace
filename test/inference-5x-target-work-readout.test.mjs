@@ -91,19 +91,45 @@ test('disabled Ceres hauler advertises recovery need on the ordinary target pane
   assert.equal(intel.motive, 'NONCOMBATANT');
 });
 
-test('serviced Ceres miner is visibly offline on the ordinary target panel', () => {
+test('serviced Ceres miner reads from the persisted incident plus combat truth on the ordinary target panel', () => {
   const player = entity('player', { team: 1, data: {} });
   const miner = entity('miner-service', {
     team: 2,
     data: {
-      trafficRole: 'miner',
+      trafficRole: 'ore_carrier',
+      worldRecordId: 'wr_convoy_service_miner',
+      jobId: 'job:wr_convoy_service_miner',
+      activityActorSlotId: 'ceres_seam_miner',
+      ceresActivityCast: true,
+      ceresActivityJobOwned: true,
       ceresCausalEventId: 'ev_tender_services_miner',
       ceresCausalPhase: 'work',
       ceresCausalCue: 'hull_open',
-      ceresCausalServiceHold: true,
       ai: { passive: true },
     },
   });
-  const intel = targetIntelReadout(miner, player, { playerId: 'player' }, 350);
+  const state = {
+    playerId: 'player',
+    world: { currentSectorId: 'sector_ceres_belt' },
+    traffic: {
+      ceresTenderServiceIncident: {
+        schema: 'spaceface.ceresTenderServiceIncident.v1',
+        incidentId: 'ceres-tender-service:wr_npc_service_tender:wr_convoy_service_miner:1',
+        sequence: 1,
+        tenderWorldRecordId: 'wr_npc_service_tender',
+        minerWorldRecordId: miner.data.worldRecordId,
+        state: 'holding',
+      },
+    },
+    combat: {
+      entities: {
+        [miner.id]: {
+          subsystems: { subsystem_drive: { destroyed: true, effectiveDisabled: true } },
+        },
+      },
+    },
+    entities: new Map([[miner.id, miner]]),
+  };
+  const intel = targetIntelReadout(miner, player, state, 350);
   assert.equal(intel.workStatus, 'WORK · SERVICE HOLD');
 });

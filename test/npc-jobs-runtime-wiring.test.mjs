@@ -145,7 +145,7 @@ test('Ceres disabled-hauler condition physically brakes the job hull until recov
   assert.equal(e.data.intent.brake, false);
 });
 
-test('Ceres tender-service hold stops the miner job hull and returns it to work after service', () => {
+test('Ceres tender-service presentation stamp is not a job-control seam', () => {
   const sim = boot();
   const e = hull(sim, 'rec-serviced-miner');
   sim.helpers.npcJobs.assign(e, minerSpec());
@@ -157,17 +157,8 @@ test('Ceres tender-service hold stops the miner job hull and returns it to work 
 
   e.data.ceresCausalServiceHold = true;
   jobs._drive(entry, e);
-  assert.deepEqual({
-    moveX: e.data.intent.moveX,
-    moveZ: e.data.intent.moveZ,
-    boost: e.data.intent.boost,
-    brake: e.data.intent.brake,
-  }, { moveX: 0, moveZ: 0, boost: false, brake: true },
-  'service takes the material miner offline instead of leaving a moving label');
-
-  delete e.data.ceresCausalServiceHold;
-  jobs._drive(entry, e);
-  assert.ok(e.data.intent.moveZ > 0, 'the same miner resumes its existing field route');
+  assert.ok(e.data.intent.moveZ > 0,
+    'a decorative service stamp cannot steal movement from the job controller');
   assert.equal(e.data.intent.brake, false);
 });
 

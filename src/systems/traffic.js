@@ -302,6 +302,22 @@ const CERES_REFINERY_HAULER_CAPACITY_U = 28;
 const CERES_MINER_HAULER_HANDOFF_STATES = new Set([
   'requested', 'rendezvous', 'in_transit', 'delivered', 'interrupted',
 ]);
+// PQ-048.04 is deliberately one bounded service incident, not another ambient controller. The
+// save record names durable actors only; numeric entity ids are always re-bound from the live cast.
+const CERES_TENDER_SERVICE_INCIDENT_SCHEMA = 'spaceface.ceresTenderServiceIncident.v1';
+const CERES_TENDER_SERVICE_STATES = new Set([
+  'impair', 'approach', 'holding', 'repair', 'succeeded', 'failed',
+]);
+const CERES_TENDER_SERVICE_TERMINAL_STATES = new Set(['succeeded', 'failed']);
+const CERES_TENDER_SERVICE_STANDOFF_WU = 56;
+const CERES_TENDER_SERVICE_CLEARANCE_WU = 12;
+const CERES_TENDER_SERVICE_HOLD_S = 3;
+const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
+// Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
+// then lands exactly on its remaining health. Keeping this here means the incident never spills
+// overflow into the miner's hull merely to make the service call look dramatic.
+const CERES_TENDER_SERVICE_DRIVE_ARMOR_FLAT = 2;
+const CERES_TENDER_SERVICE_DRIVE_ION_MULTIPLIER = 1.1;
 // Scratch return for _ceresCausalActorBySlot — never retain across a second call.
 const _CERES_CAUSAL_ACTOR_SCRATCH = { entity: null, rec: null, slotId: null };
 const CERES_CAUSAL_STAMP_KEYS = Object.freeze([
@@ -406,19 +422,15 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     id: 'ev_tender_services_miner',
     actorSlots: Object.freeze([CERES_TENDER_SLOT_ID, CERES_SEAM_MINER_SLOT_ID]),
     requires: Object.freeze(['miner_wear']),
-    // Early aftermath seed lets the grave salvor open while the miner is still dark for service.
-    seedAtPhase: 'callout',
-    seeds: Object.freeze(['aftermath_open', 'miner_serviced']),
+    // A successful repair returns a real miner to work; it is explicitly not wreck aftermath.
+    // The persisted incident below plants this only after combat has re-enabled the drive.
+    seedAtPhase: 'first_light',
+    seeds: Object.freeze(['miner_serviced']),
     // Service interrupted: miner is not returned to duty; aftermath stays open for the salvor.
     interruptSeeds: Object.freeze(['aftermath_open']),
-    // Tender job ownership is factionPresence — stamp-only from traffic.
-    jobHints: Object.freeze([
-      Object.freeze({
-        actorSlotId: CERES_SEAM_MINER_SLOT_ID,
-        reaffirm: true,
-        phases: Object.freeze(['first_light']),
-      }),
-    ]),
+    // Both existing jobs are leased only while the incident owns the two hulls. Releasing the
+    // leases restores their original route controllers without a replacement job.
+    jobHints: Object.freeze([]),
     phases: Object.freeze([
       Object.freeze({ name: 'callout', durationS: 20, cue: 'spine_wake' }),
       Object.freeze({ name: 'hard_stand', durationS: 10, cue: 'hull_open' }),
@@ -429,7 +441,7 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
   Object.freeze({
     id: 'ev_cutter_strips_wreck',
     actorSlots: Object.freeze([CERES_CATHEDRAL_SALVOR_SLOT_ID]),
-    // Opens once the service callout seeds aftermath — concurrent with tender_services_miner.
+    // Opens only when the service actually fails; a completed repair never manufactures a wreck.
     requires: Object.freeze(['aftermath_open']),
     seedAtPhase: 'stack',
     seeds: Object.freeze(['wreck_stripped', 'chain_complete']),
@@ -548,6 +560,43 @@ function normalizeCeresMinerHaulerHandoff(value, copy = true) {
     deliveredTransferSeq,
   };
   return normalized;
+}
+
+function normalizeCeresTenderServiceIncident(value, copy = true) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || value.schema !== CERES_TENDER_SERVICE_INCIDENT_SCHEMA
+    || typeof value.incidentId !== 'string' || !value.incidentId
+    || !Number.isSafeInteger(value.sequence) || value.sequence < 1
+    || typeof value.tenderWorldRecordId !== 'string' || !value.tenderWorldRecordId
+    || typeof value.minerWorldRecordId !== 'string' || !value.minerWorldRecordId
+    || value.tenderWorldRecordId === value.minerWorldRecordId
+    || !CERES_TENDER_SERVICE_STATES.has(value.state)) return null;
+  const startedAtSimT = Number(value.startedAtSimT);
+  const holdStartedAtSimT = value.holdStartedAtSimT == null ? null : Number(value.holdStartedAtSimT);
+  const terminalAtSimT = value.terminalAtSimT == null ? null : Number(value.terminalAtSimT);
+  if (!Number.isFinite(startedAtSimT) || startedAtSimT < 0
+    || (holdStartedAtSimT != null && (!Number.isFinite(holdStartedAtSimT) || holdStartedAtSimT < startedAtSimT))
+    || (terminalAtSimT != null && (!Number.isFinite(terminalAtSimT) || terminalAtSimT < startedAtSimT))) return null;
+  const terminal = CERES_TENDER_SERVICE_TERMINAL_STATES.has(value.state);
+  if (terminal !== (terminalAtSimT != null)) return null;
+  if ((value.state === 'impair' || value.state === 'approach') && holdStartedAtSimT != null) return null;
+  if ((value.state === 'holding' || value.state === 'repair') && holdStartedAtSimT == null) return null;
+  const failureReason = value.failureReason == null ? null : String(value.failureReason);
+  if (value.state === 'failed' && !failureReason) return null;
+  if (value.state !== 'failed' && failureReason != null) return null;
+  if (!copy) return value;
+  return {
+    schema: CERES_TENDER_SERVICE_INCIDENT_SCHEMA,
+    incidentId: value.incidentId,
+    sequence: value.sequence,
+    tenderWorldRecordId: value.tenderWorldRecordId,
+    minerWorldRecordId: value.minerWorldRecordId,
+    state: value.state,
+    startedAtSimT,
+    holdStartedAtSimT,
+    terminalAtSimT,
+    failureReason,
+  };
 }
 
 function ceresActivityJobSpec(entry) {
@@ -763,6 +812,10 @@ export const traffic = {
     this._heaveToHold = null;
     // PQ-045.causal-chain: instance-only ledger (never written into state.traffic / save).
     this._ceresCausal = null;
+    // Entity references are deliberately transient. A Continue can reuse neither numeric ids nor
+    // object identity, so only the compact stable-id incident crosses that boundary.
+    this._ceresTenderServiceImpairmentActor = null;
+    this._ceresTenderServiceRepairActor = null;
 
     if (this.helpers) {
       this.helpers.traffic = {
@@ -801,6 +854,10 @@ export const traffic = {
       this._releaseCeresMinerHaulerHandoffControls(
         this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff,
       );
+      this._releaseCeresTenderServiceControls(
+        this.state.traffic && this.state.traffic.ceresTenderServiceIncident,
+      );
+      this._resetCeresTenderServiceRuntime();
       // Traffic causality ledgers are intentionally transient rather than part of the save envelope.
       // The incoming envelope is authoritative: a Continue to an earlier completion boundary must
       // be able to surface that legitimate action again.
@@ -2341,6 +2398,8 @@ export const traffic = {
     this._invalidateCausalRunEpoch();
     this._ensureState();
     this._releaseCeresMinerHaulerHandoffControls(this.state.traffic.ceresMinerHaulerHandoff);
+    this._releaseCeresTenderServiceControls(this.state.traffic.ceresTenderServiceIncident);
+    this._resetCeresTenderServiceRuntime();
     // Hard exit drops the view and every view-scoped causality ledger while the freighter ledger
     // still names persistent bodies that need stamp cleanup.
     this._resetTransientCausalLedgers(true);
@@ -2387,6 +2446,9 @@ export const traffic = {
     // Timer-cadence only: one chain step per traffic update, not a freighter scan.
     if (state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._stepCeresCausalChain(dt);
+      // A save may restore the compact service incident before its transient choreography link.
+      // Let that exact orphan rebind once; an active link drives its own incident in the chain step.
+      if (!this._hasActiveCeresTenderServiceLink()) this._stepCeresTenderServiceIncident(dt);
       this._stepCeresMinerHaulerHandoffs(dt);
     }
 
@@ -4262,6 +4324,331 @@ export const traffic = {
     void dt;
   },
 
+  // ── PQ-048.04 tender service occupation ──────────────────────────────────────────────────────
+  // The tender and miner keep their own owner-authored jobs. Traffic borrows both hulls only for
+  // this bounded incident, writes ordinary flight intent while it holds the leases, and returns
+  // them through npcJobsRuntime after combat truth says the drive is back.
+
+  _resetCeresTenderServiceRuntime() {
+    this._ceresTenderServiceImpairmentActor = null;
+    this._ceresTenderServiceRepairActor = null;
+  },
+
+  _hasActiveCeresTenderServiceLink() {
+    const active = this._ceresCausal && this._ceresCausal.active;
+    return Array.isArray(active) && active.some((live) => live
+      && live.eventId === 'ev_tender_services_miner');
+  },
+
+  _activeCeresTenderServiceIncident() {
+    this._ensureState();
+    const incident = this.state.traffic.ceresTenderServiceIncident;
+    return incident && !CERES_TENDER_SERVICE_TERMINAL_STATES.has(incident.state) ? incident : null;
+  },
+
+  _ceresTenderServiceActor(incident, role) {
+    if (!incident || (role !== 'tender' && role !== 'miner')) return null;
+    const worldRecordId = role === 'tender'
+      ? incident.tenderWorldRecordId
+      : incident.minerWorldRecordId;
+    const expectedSlotId = role === 'tender' ? CERES_TENDER_SLOT_ID : CERES_SEAM_MINER_SLOT_ID;
+    const entity = entityWithWorldRecord(this.state, worldRecordId);
+    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.data
+      || entity.data.worldRecordId !== worldRecordId
+      || entity.data.activityActorSlotId !== expectedSlotId
+      || entity.data.jobId !== `job:${worldRecordId}`
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return null;
+    if (role === 'tender') {
+      const presence = entity.data.factionPresence;
+      if (entity.data.durable !== true || !presence || presence.yardTender !== true
+        || entity.data.ceresActivityCast !== undefined || entity.data.ceresActivityJobOwned !== undefined) return null;
+      return { entity, rec: null, jobId: entity.data.jobId, worldRecordId };
+    }
+    const rec = (this.state.traffic.freighters || []).find((candidate) => candidate
+      && candidate.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID
+      && (candidate.worldRecordId === worldRecordId || candidate.id === entity.id));
+    if (!rec || entity.data.ceresActivityCast !== true || entity.data.ceresActivityJobOwned !== true) return null;
+    return { entity, rec, jobId: entity.data.jobId, worldRecordId };
+  },
+
+  _beginCeresTenderServiceIncident() {
+    this._ensureState();
+    const current = this._activeCeresTenderServiceIncident();
+    if (current) return current;
+    const tenderBound = this._ceresCausalActorBySlot(CERES_TENDER_SLOT_ID);
+    const tender = tenderBound && tenderBound.entity;
+    const minerBound = this._ceresCausalActorBySlot(CERES_SEAM_MINER_SLOT_ID);
+    const miner = minerBound && minerBound.entity;
+    const tenderWorldRecordId = tender && tender.data && tender.data.worldRecordId;
+    const minerWorldRecordId = miner && miner.data && miner.data.worldRecordId;
+    if (typeof tenderWorldRecordId !== 'string' || !tenderWorldRecordId
+      || typeof minerWorldRecordId !== 'string' || !minerWorldRecordId
+      || tenderWorldRecordId === minerWorldRecordId) return null;
+    const currentSequence = this.state.traffic.ceresTenderServiceSequence;
+    if (!Number.isSafeInteger(currentSequence) || currentSequence < 0
+      || currentSequence >= Number.MAX_SAFE_INTEGER) return null;
+    const sequence = currentSequence + 1;
+    const incident = {
+      schema: CERES_TENDER_SERVICE_INCIDENT_SCHEMA,
+      incidentId: `ceres-tender-service:${tenderWorldRecordId}:${minerWorldRecordId}:${sequence}`,
+      sequence,
+      tenderWorldRecordId,
+      minerWorldRecordId,
+      state: 'impair',
+      startedAtSimT: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      holdStartedAtSimT: null,
+      terminalAtSimT: null,
+      failureReason: null,
+    };
+    // Verify both exact owner contracts before publishing an incident. A same-looking foreign hull
+    // must never be adopted into this closed pair merely because its numeric id is nearby.
+    if (!this._ceresTenderServiceActor(incident, 'tender')
+      || !this._ceresTenderServiceActor(incident, 'miner')) return null;
+    this.state.traffic.ceresTenderServiceSequence = sequence;
+    this.state.traffic.ceresTenderServiceIncident = incident;
+    return incident;
+  },
+
+  _ceresTenderServiceClaimId(incident, role) {
+    return `ceres-tender-service:${incident.incidentId}:${role}`;
+  },
+
+  _claimCeresTenderServiceControl(incident, pair, role) {
+    if (!incident || !pair || !pair.entity || !pair.jobId) return false;
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (!jobs || typeof jobs.claimControl !== 'function') return false;
+    const result = jobs.claimControl(pair.jobId, {
+      claimId: this._ceresTenderServiceClaimId(incident, role),
+      holder: 'traffic:ceresTenderService',
+    });
+    return !!(result && result.granted === true);
+  },
+
+  _releaseCeresTenderServiceControl(incident, role) {
+    if (!incident || (role !== 'tender' && role !== 'miner')) return;
+    const worldRecordId = role === 'tender' ? incident.tenderWorldRecordId : incident.minerWorldRecordId;
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (jobs && typeof jobs.releaseControl === 'function') {
+      jobs.releaseControl(`job:${worldRecordId}`, this._ceresTenderServiceClaimId(incident, role));
+    }
+  },
+
+  _releaseCeresTenderServiceControls(incident) {
+    this._releaseCeresTenderServiceControl(incident, 'miner');
+    this._releaseCeresTenderServiceControl(incident, 'tender');
+  },
+
+  _ceresTenderServiceCombatKernel() {
+    const combat = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('combat')
+      : null;
+    if (!combat) return null;
+    return typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : combat.kernel || null;
+  },
+
+  _ceresTenderServiceDriveDisabled(entity) {
+    const combat = this.state && this.state.combat;
+    const runtime = combat && combat.entities && combat.entities[String(entity && entity.id)];
+    const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+    return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
+  },
+
+  _ceresTenderServiceDriveRuntime(entity, kernel = null) {
+    const combat = this.state && this.state.combat;
+    const runtime = combat && combat.entities && combat.entities[String(entity && entity.id)];
+    const liveDrive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+    if (liveDrive) return liveDrive;
+    // The kernel owns initialization. Asking its existing inspector for the component is the
+    // narrowest way to obtain the live health before a first impairment, without inventing traffic
+    // combat state or assuming a numeric entity id survives Continue.
+    if (!kernel || typeof kernel.inspect !== 'function' || !entity) return null;
+    const inspection = kernel.inspect({ entityId: entity.id });
+    return inspection && inspection.entity && inspection.entity.combat
+      && inspection.entity.combat.subsystems
+      && inspection.entity.combat.subsystems.subsystem_drive || null;
+  },
+
+  _requestCeresTenderServiceImpairment(incident, miner) {
+    const alreadyRequested = this._ceresTenderServiceImpairmentActor
+      && this._ceresTenderServiceImpairmentActor.incidentId === incident.incidentId
+      && this._ceresTenderServiceImpairmentActor.entity === miner;
+    if (alreadyRequested) return true;
+    const kernel = this._ceresTenderServiceCombatKernel();
+    if (!kernel || typeof kernel.routeDamage !== 'function') return false;
+    const drive = this._ceresTenderServiceDriveRuntime(miner, kernel);
+    if (!drive || !Number.isFinite(drive.health) || drive.health < 0) return false;
+    if (drive.health <= 0) {
+      // A save can land between routeDamage and combat's next prePhysics transition. Do not inject
+      // a second packet into that already-zero component; wait for combat to make it truly disabled.
+      if (drive.pendingTransition && drive.pendingTransition.destroyed === true) {
+        this._ceresTenderServiceImpairmentActor = { incidentId: incident.incidentId, entity: miner };
+        return true;
+      }
+      return false;
+    }
+    const hullBefore = Number(miner.hull);
+    if (!Number.isFinite(hullBefore)) return false;
+    const ionDamage = CERES_TENDER_SERVICE_DRIVE_ARMOR_FLAT
+      + drive.health / CERES_TENDER_SERVICE_DRIVE_ION_MULTIPLIER;
+    if (!Number.isFinite(ionDamage) || ionDamage <= 0) return false;
+    const result = kernel.routeDamage({
+      attackerId: null,
+      targetId: miner.id,
+      packet: {
+        channels: { ion: ionDamage },
+        penetration: 0,
+        shieldBypass: 1,
+        subsystemShare: 1,
+        hit: { subsystemId: 'subsystem_drive' },
+        source: { kind: 'traffic_service', id: incident.incidentId },
+      },
+      origin: { kind: 'traffic_service', id: incident.incidentId },
+    });
+    if (!result || result.ok !== true || result.hullDamage !== 0 || result.attackerId !== null
+      || miner.hull !== hullBefore) return false;
+    this._ceresTenderServiceImpairmentActor = { incidentId: incident.incidentId, entity: miner };
+    return true;
+  },
+
+  _requestCeresTenderServiceRepair(incident, miner) {
+    const alreadyRequested = this._ceresTenderServiceRepairActor
+      && this._ceresTenderServiceRepairActor.incidentId === incident.incidentId
+      && this._ceresTenderServiceRepairActor.entity === miner;
+    if (alreadyRequested) return true;
+    const kernel = this._ceresTenderServiceCombatKernel();
+    if (!kernel || typeof kernel.repair !== 'function') return false;
+    const result = kernel.repair(
+      miner.id,
+      'subsystem_drive',
+      CERES_TENDER_SERVICE_REPAIR_AMOUNT,
+      'traffic_tender_service',
+    );
+    if (!result || result.ok !== true) return false;
+    this._ceresTenderServiceRepairActor = { incidentId: incident.incidentId, entity: miner };
+    return true;
+  },
+
+  _ceresTenderServiceStandoff(tender, miner) {
+    const tenderRadius = Number.isFinite(tender && tender.radius) ? Math.max(0, tender.radius) : 0;
+    const minerRadius = Number.isFinite(miner && miner.radius) ? Math.max(0, miner.radius) : 0;
+    return Math.max(CERES_TENDER_SERVICE_STANDOFF_WU,
+      tenderRadius + minerRadius + CERES_TENDER_SERVICE_CLEARANCE_WU);
+  },
+
+  _driveCeresTenderServiceStandoff(incident, tender, miner) {
+    const dx = tender.pos.x - miner.pos.x;
+    const dz = tender.pos.z - miner.pos.z;
+    const currentDistance = Math.hypot(dx, dz);
+    if (!Number.isFinite(currentDistance)) return { ok: false, holding: false };
+    let nx = currentDistance > 0.0001 ? dx / currentDistance : 0;
+    let nz = currentDistance > 0.0001 ? dz / currentDistance : 0;
+    if (currentDistance <= 0.0001) {
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const angle = (hash32(seed, incident.incidentId) % 6284) / 1000;
+      nx = Math.cos(angle);
+      nz = Math.sin(angle);
+    }
+    const standoff = this._ceresTenderServiceStandoff(tender, miner);
+    const targetX = miner.pos.x + nx * standoff;
+    const targetZ = miner.pos.z + nz * standoff;
+    const targetDx = targetX - tender.pos.x;
+    const targetDz = targetZ - tender.pos.z;
+    const targetDistance = Math.hypot(targetDx, targetDz);
+    const aim = targetDistance > 0.0001 ? Math.atan2(targetDz, targetDx) : tender.rot || 0;
+    if (!Number.isFinite(targetDistance)) return { ok: false, holding: false };
+    if (targetDistance <= 3) {
+      setIntent(tender, 0, 0, false, false, null, aim);
+      tender.data.intent.brake = true;
+      setIntent(miner, 0, 0, false, false, null, miner.rot || 0);
+      miner.data.intent.brake = true;
+      return { ok: true, holding: true, standoff, distance: currentDistance };
+    }
+    setIntent(tender, 0, 1, false, false, null, aim);
+    tender.data.intent.brake = false;
+    setIntent(miner, 0, 0, false, false, null, miner.rot || 0);
+    miner.data.intent.brake = true;
+    return { ok: true, holding: false, standoff, distance: currentDistance };
+  },
+
+  _failCeresTenderServiceIncident(incident, reason) {
+    if (!incident || CERES_TENDER_SERVICE_TERMINAL_STATES.has(incident.state)) return false;
+    incident.state = 'failed';
+    incident.failureReason = String(reason || 'service_failed');
+    incident.terminalAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    incident.holdStartedAtSimT = null;
+    this._releaseCeresTenderServiceControls(incident);
+    this._resetCeresTenderServiceRuntime();
+    return true;
+  },
+
+  _completeCeresTenderServiceIncident(incident) {
+    if (!incident || CERES_TENDER_SERVICE_TERMINAL_STATES.has(incident.state)) return false;
+    incident.state = 'succeeded';
+    incident.failureReason = null;
+    incident.terminalAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._releaseCeresTenderServiceControls(incident);
+    this._resetCeresTenderServiceRuntime();
+    return true;
+  },
+
+  _stepCeresTenderServiceIncident(dt) {
+    const incident = this._activeCeresTenderServiceIncident();
+    if (!incident || this.state.world && this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return incident;
+    const tender = this._ceresTenderServiceActor(incident, 'tender');
+    const miner = this._ceresTenderServiceActor(incident, 'miner');
+    if (!tender || !miner) {
+      this._failCeresTenderServiceIncident(incident, 'actor_absent');
+      return incident;
+    }
+    const driveDisabled = this._ceresTenderServiceDriveDisabled(miner.entity);
+    if (incident.state === 'repair' && !driveDisabled) {
+      this._completeCeresTenderServiceIncident(incident);
+      return incident;
+    }
+    if (!driveDisabled) {
+      // A rematerialized actor can have a fresh combat runtime even while the compact incident is
+      // still active. Reapply the exact non-lethal drive impairment to that new body only.
+      this._releaseCeresTenderServiceControls(incident);
+      incident.state = 'impair';
+      incident.holdStartedAtSimT = null;
+      this._ceresTenderServiceRepairActor = null;
+      if (!this._requestCeresTenderServiceImpairment(incident, miner.entity)) {
+        this._failCeresTenderServiceIncident(incident, 'drive_impairment_refused');
+      }
+      return incident;
+    }
+    const minerClaimed = this._claimCeresTenderServiceControl(incident, miner, 'miner');
+    const tenderClaimed = this._claimCeresTenderServiceControl(incident, tender, 'tender');
+    if (!minerClaimed || !tenderClaimed) {
+      if (minerClaimed) this._releaseCeresTenderServiceControl(incident, 'miner');
+      if (tenderClaimed) this._releaseCeresTenderServiceControl(incident, 'tender');
+      this._failCeresTenderServiceIncident(incident, 'job_control_refused');
+      return incident;
+    }
+    if (incident.state === 'impair') incident.state = 'approach';
+    const motion = this._driveCeresTenderServiceStandoff(incident, tender.entity, miner.entity);
+    if (!motion.ok) {
+      this._failCeresTenderServiceIncident(incident, 'invalid_service_geometry');
+      return incident;
+    }
+    if (!motion.holding) return incident;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (incident.state === 'approach') {
+      incident.state = 'holding';
+      incident.holdStartedAtSimT = now;
+      return incident;
+    }
+    if (incident.state === 'holding'
+      && now >= incident.holdStartedAtSimT + CERES_TENDER_SERVICE_HOLD_S) {
+      incident.state = 'repair';
+    }
+    if (incident.state === 'repair' && !this._requestCeresTenderServiceRepair(incident, miner.entity)) {
+      this._failCeresTenderServiceIncident(incident, 'drive_repair_refused');
+    }
+    void dt;
+    return incident;
+  },
+
   _onNpcJobWork(intent) {
     const ceresOwned = this._ceresActivityIntentClaimsOwnership(intent);
     const actorContext = this._ceresActivityActorContext(intent);
@@ -4860,6 +5247,7 @@ export const traffic = {
       actorSlotIds: def.actorSlots.slice(),
       seeded: false,
       redirectedSlots: null,
+      serviceIncidentId: null,
     };
     this._ceresCausal.active.push(live);
     // Stamp a transient presentation cue on the primary actor (not a movement intent).
@@ -4868,7 +5256,8 @@ export const traffic = {
       this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, true);
     }
     if (def.id === 'ev_tender_services_miner') {
-      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, true);
+      const incident = this._beginCeresTenderServiceIncident();
+      live.serviceIncidentId = incident && incident.incidentId || null;
     }
     this._applyCeresCausalJobHints(def, live, live.phase);
     this._emitCeresCausalReceipt(live, 'event_start');
@@ -4898,13 +5287,6 @@ export const traffic = {
     if (disabled === true) bound.entity.data.ceresCausalDisabled = true;
     else delete bound.entity.data.ceresCausalDisabled;
     // Do not write rec.ceresCausalDisabled — nothing reads it; save-envelope hygiene.
-  },
-
-  _setCeresCausalServiceHold(slotId, hold) {
-    const bound = this._ceresCausalActorBySlot(slotId);
-    if (!bound || !bound.entity || !bound.entity.data) return;
-    if (hold === true) bound.entity.data.ceresCausalServiceHold = true;
-    else delete bound.entity.data.ceresCausalServiceHold;
   },
 
   /**
@@ -5049,9 +5431,6 @@ export const traffic = {
     if (def.id === 'ev_disabled_hauler_recovery' && phaseName === 'resolve') {
       this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, false);
     }
-    if (def.id === 'ev_tender_services_miner' && phaseName === 'first_light') {
-      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, false);
-    }
   },
 
   _seedCeresCausalEvent(def, live) {
@@ -5087,9 +5466,6 @@ export const traffic = {
     if (def && def.id === 'ev_disabled_hauler_recovery') {
       this._setCeresCausalDisabled(CERES_REFINERY_HAULER_SLOT_ID, false);
     }
-    if (def && def.id === 'ev_tender_services_miner') {
-      this._setCeresCausalServiceHold(CERES_SEAM_MINER_SLOT_ID, false);
-    }
     // Belt-and-suspenders: wipe all stamp keys on participants even if actors are briefly absent.
     if (live.actorSlotIds) {
       for (let i = 0; i < live.actorSlotIds.length; i++) {
@@ -5124,6 +5500,37 @@ export const traffic = {
     const def = CERES_CAUSAL_CHAIN_BY_ID.get(live.eventId);
     if (!def) {
       this._completeCeresCausalEvent(live, 'abort');
+      return;
+    }
+    if (def.id === 'ev_tender_services_miner') {
+      const incident = this._activeCeresTenderServiceIncident();
+      if (!incident || (live.serviceIncidentId && incident.incidentId !== live.serviceIncidentId)) {
+        this._completeCeresCausalEvent(live, 'fallback');
+        return;
+      }
+      this._stepCeresTenderServiceIncident(0);
+      if (incident.state === 'succeeded') {
+        live.phaseIndex = 3;
+        live.phase = 'first_light';
+        live.cue = 'blind_cone';
+        this._stampCeresCausalCue(live, true);
+        this._completeCeresCausalEvent(live, 'complete');
+      } else if (incident.state === 'failed') {
+        this._completeCeresCausalEvent(live, 'fallback');
+      } else {
+        const phaseIndex = incident.state === 'impair' ? 0
+          : incident.state === 'approach' ? 1
+            : incident.state === 'holding' || incident.state === 'repair' ? 2
+              : 0;
+        const phase = def.phases[phaseIndex];
+        if (live.phaseIndex !== phaseIndex) {
+          live.phaseIndex = phaseIndex;
+          live.phase = phase.name;
+          live.cue = phase.cue || null;
+          this._stampCeresCausalCue(live, true);
+          this._emitCeresCausalReceipt(live, 'phase', { incidentId: incident.incidentId });
+        }
+      }
       return;
     }
     // Primary-actor death is the catalog interruption path; fall back and free the concurrency slot.
@@ -5169,11 +5576,15 @@ export const traffic = {
         const supersededByAftermath = chain.seeds
           && chain.seeds.aftermath_open === true
           && def.id !== 'ev_cutter_strips_wreck';
-        if (this._ceresCausalRequiredActorsTerminallyGone(def) || supersededByAftermath) {
+        const successfulService = def.id === 'ev_cutter_strips_wreck'
+          && chain.seeds && chain.seeds.miner_serviced === true;
+        if (this._ceresCausalRequiredActorsTerminallyGone(def) || supersededByAftermath || successfulService) {
           const seeded = this._plantCeresCausalOutcomeSeeds(def, 'skip_terminal_cast');
           if (!chain.completed.includes(def.id)) chain.completed.push(def.id);
           this._emitCeresCausalReceipt(null, 'event_interrupt', {
-            outcome: supersededByAftermath && !this._ceresCausalRequiredActorsTerminallyGone(def)
+            outcome: successfulService
+              ? 'skip_service_success'
+              : supersededByAftermath && !this._ceresCausalRequiredActorsTerminallyGone(def)
               ? 'skip_superseded'
               : 'skip_terminal_cast',
             eventId: def.id,
@@ -5384,6 +5795,14 @@ export const traffic = {
       || handoff.haulerWorldRecordId === killedWorldRecordId)) {
       this._interruptCeresMinerHaulerHandoff(handoff, 'participant_destroyed', ent);
     }
+    // The service incident owns only its two temporary job-control leases. Death, wreck creation,
+    // freight loss, and any durable world outcome remain with their existing owners below; this
+    // branch just guarantees neither job remains borrowed after either exact participant dies.
+    const serviceIncident = this._activeCeresTenderServiceIncident();
+    if (serviceIncident && (serviceIncident.minerWorldRecordId === killedWorldRecordId
+      || serviceIncident.tenderWorldRecordId === killedWorldRecordId)) {
+      this._failCeresTenderServiceIncident(serviceIncident, 'participant_destroyed');
+    }
     // Release any wreck/payload reservation so another cutter (or the player) can take it.
     if (ent && ent.data && ent.data.worldRecordId) {
       const claimId = ent.data.worldRecordId;
@@ -5555,6 +5974,16 @@ export const traffic = {
     } else if (handoff.terminalizedQty == null) {
       handoff.terminalizedQty = normalizedHandoff.terminalizedQty;
     }
+    const serviceIncident = this.state.traffic.ceresTenderServiceIncident;
+    const normalizedServiceIncident = normalizeCeresTenderServiceIncident(serviceIncident, false);
+    if (!normalizedServiceIncident) {
+      this.state.traffic.ceresTenderServiceIncident = null;
+    }
+    const serviceSequence = this.state.traffic.ceresTenderServiceSequence;
+    const minimumServiceSequence = normalizedServiceIncident ? normalizedServiceIncident.sequence : 0;
+    if (!Number.isSafeInteger(serviceSequence) || serviceSequence < minimumServiceSequence || serviceSequence < 0) {
+      this.state.traffic.ceresTenderServiceSequence = minimumServiceSequence;
+    }
     if (!Number.isFinite(this.state.traffic.rngSeed) || (this.state.traffic.rngSeed >>> 0) === 0) {
       this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', this.state.world && this.state.world.currentSectorId);
     }
@@ -5642,25 +6071,47 @@ export const traffic = {
       ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
         this.state.traffic.ceresMinerHaulerHandoff,
       ),
+      ceresTenderServiceIncident: normalizeCeresTenderServiceIncident(
+        this.state.traffic.ceresTenderServiceIncident,
+      ),
+      ceresTenderServiceSequence: this.state.traffic.ceresTenderServiceSequence,
     };
   },
 
   deserialize(data) {
-    const previous = this.state && this.state.traffic
-      && this.state.traffic.ceresMinerHaulerHandoff;
-    this._releaseCeresMinerHaulerHandoffControls(previous);
+    const previousTraffic = this.state && this.state.traffic;
+    this._releaseCeresMinerHaulerHandoffControls(previousTraffic && previousTraffic.ceresMinerHaulerHandoff);
+    this._releaseCeresTenderServiceControls(previousTraffic && previousTraffic.ceresTenderServiceIncident);
+    this._resetCeresTenderServiceRuntime();
     this._ensureState();
     this.state.traffic.ceresMinerHaulerHandoff = data
       && !Array.isArray(data)
       && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
       ? normalizeCeresMinerHaulerHandoff(data.ceresMinerHaulerHandoff)
       : null;
+    this.state.traffic.ceresTenderServiceIncident = data
+      && !Array.isArray(data)
+      && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
+      ? normalizeCeresTenderServiceIncident(data.ceresTenderServiceIncident)
+      : null;
+    const incident = this.state.traffic.ceresTenderServiceIncident;
+    const requestedSequence = data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
+      ? data.ceresTenderServiceSequence
+      : 0;
+    this.state.traffic.ceresTenderServiceSequence = Number.isSafeInteger(requestedSequence)
+      && requestedSequence >= (incident ? incident.sequence : 0)
+      ? requestedSequence
+      : (incident ? incident.sequence : 0);
   },
 
   newGame() {
     this._releaseCeresMinerHaulerHandoffControls(
       this.state && this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff,
     );
+    this._releaseCeresTenderServiceControls(
+      this.state && this.state.traffic && this.state.traffic.ceresTenderServiceIncident,
+    );
+    this._resetCeresTenderServiceRuntime();
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._active = [];
@@ -5683,6 +6134,8 @@ export const traffic = {
       appliedJobActionIds: [],
       appliedSalvorWorkIds: [],
       ceresMinerHaulerHandoff: null,
+      ceresTenderServiceIncident: null,
+      ceresTenderServiceSequence: 0,
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },

@@ -2257,11 +2257,10 @@ export const npcJobsRuntime = {
     if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
     const phase = job.phase;
 
-    // The Ceres recovery chain marks its exact hauler/miner while disabled or under tender service.
-    // Keep the pure job clock advancing for offscreen/onscreen convergence, but make the
-    // materialized hull genuinely powerless until traffic clears the owner-authored condition.
-    if (entity.data && (entity.data.ceresCausalDisabled === true
-      || entity.data.ceresCausalServiceHold === true)) {
+    // The recovery link disables its exact hauler through the authored combat/status condition.
+    // Tender service instead uses a temporary control lease; a decorative service stamp must never
+    // become a second movement owner or stop a route after the lease has been released.
+    if (entity.data && entity.data.ceresCausalDisabled === true) {
       this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
       return;
     }

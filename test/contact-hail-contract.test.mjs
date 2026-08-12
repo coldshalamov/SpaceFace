@@ -310,19 +310,43 @@ test('a disabled Ceres hauler hails its exact recovery need without mutating gam
   assert.deepEqual(authoritySnapshot(state), before);
 });
 
-test('a serviced Ceres miner reports that it is offline without mutating gameplay', () => {
+test('a serviced Ceres miner reports only the persisted incident plus actual disabled drive', () => {
   const target = entity('serviced-miner', {
     data: {
-      trafficRole: 'miner',
+      trafficRole: 'ore_carrier',
       callsign: 'SLUICE THREE',
+      worldRecordId: 'wr_convoy_service_miner',
+      jobId: 'job:wr_convoy_service_miner',
+      activityActorSlotId: 'ceres_seam_miner',
+      ceresActivityCast: true,
+      ceresActivityJobOwned: true,
       ceresCausalEventId: 'ev_tender_services_miner',
       ceresCausalPhase: 'work',
       ceresCausalCue: 'hull_open',
-      ceresCausalServiceHold: true,
       ai: { passive: true },
     },
   });
   const state = baseState(target);
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.traffic.ceresTenderServiceIncident = {
+    schema: 'spaceface.ceresTenderServiceIncident.v1',
+    incidentId: 'ceres-tender-service:wr_npc_service_tender:wr_convoy_service_miner:1',
+    sequence: 1,
+    tenderWorldRecordId: 'wr_npc_service_tender',
+    minerWorldRecordId: target.data.worldRecordId,
+    state: 'approach',
+    startedAtSimT: 8,
+    holdStartedAtSimT: null,
+    terminalAtSimT: null,
+    failureReason: null,
+  };
+  state.combat = {
+    entities: {
+      [target.id]: {
+        subsystems: { subsystem_drive: { destroyed: true, effectiveDisabled: true } },
+      },
+    },
+  };
   const before = authoritySnapshot(state);
   const { bus } = mount(state);
   bus.emit('contactHail:request', { targetId: target.id });
@@ -334,7 +358,7 @@ test('a serviced Ceres miner reports that it is offline without mutating gamepla
     choice: 'status',
   });
   assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '),
-    /SERVICE HOLD · MINER OFFLINE/i);
+    /DRIVE DISABLED · TENDER INBOUND/i);
   assert.deepEqual(authoritySnapshot(state), before);
 });
 

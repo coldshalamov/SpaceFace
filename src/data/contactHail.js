@@ -13,8 +13,11 @@ export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 export const CONTACT_HAIL_ACTION_HELP = 'help';
 export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
+const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
 const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
+const CERES_TENDER_SERVICE_INCIDENT_SCHEMA = 'spaceface.ceresTenderServiceIncident.v1';
+const CERES_TENDER_SERVICE_ACTIVE_STATES = new Set(['impair', 'approach', 'holding', 'repair']);
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
 // Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
@@ -360,25 +363,107 @@ function manifestText(state, target) {
   return `MANIFEST · ${cargo.join(' · ')}${moreBit}${valueBit}`;
 }
 
+function liveEntityForWorldRecord(state, worldRecordId) {
+  if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const entities = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : state.entityList || [];
+  let found = null;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || !entity.data || entity.data.worldRecordId !== worldRecordId) continue;
+    // Ambiguous live identity is not service truth. Traffic's controller fails closed on this same
+    // condition, so readout must not choose one candidate merely because it was encountered first.
+    if (found && found !== entity) return null;
+    found = entity;
+  }
+  return found;
+}
+
+function combatDriveDisabled(state, entity) {
+  const runtime = state && state.combat && state.combat.entities
+    && state.combat.entities[String(entity && entity.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
+}
+
+// The tender call is real only when the compact traffic incident agrees with the combat-owned drive
+// state on the one live miner. Causal stamps are presentation candidates, never proof; this keeps a
+// stale stamp after Continue from claiming an inbound tender that no longer exists.
+function ceresTenderServiceTruth(state, target) {
+  const incident = state && state.traffic && state.traffic.ceresTenderServiceIncident;
+  const data = target && target.data || {};
+  if (!incident || incident.schema !== CERES_TENDER_SERVICE_INCIDENT_SCHEMA
+    || !state.world || state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+    || !CERES_TENDER_SERVICE_ACTIVE_STATES.has(incident.state)
+    || typeof incident.minerWorldRecordId !== 'string' || !incident.minerWorldRecordId
+    || typeof incident.tenderWorldRecordId !== 'string' || !incident.tenderWorldRecordId
+    || incident.minerWorldRecordId === incident.tenderWorldRecordId) return null;
+  const isMiner = data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID
+    && data.worldRecordId === incident.minerWorldRecordId
+    && data.jobId === `job:${incident.minerWorldRecordId}`
+    && data.ceresActivityCast === true
+    && data.ceresActivityJobOwned === true;
+  const isTender = data.activityActorSlotId === CERES_TENDER_SLOT_ID
+    && data.worldRecordId === incident.tenderWorldRecordId
+    && data.jobId === `job:${incident.tenderWorldRecordId}`
+    && data.durable === true
+    && !!(data.factionPresence && data.factionPresence.yardTender === true);
+  if (!isMiner && !isTender) return null;
+  const miner = isMiner ? target : liveEntityForWorldRecord(state, incident.minerWorldRecordId);
+  if (!miner || miner.alive === false || !combatDriveDisabled(state, miner)) return null;
+  return {
+    role: isMiner ? 'miner' : 'tender',
+    holding: incident.state === 'holding' || incident.state === 'repair',
+  };
+}
+
+function tenderServiceWorkStatus(truth, depth) {
+  if (!truth) return null;
+  if (depth === 'lock') return truth.holding ? 'WORK · SERVICE HOLD' : 'WORK · TENDER INBOUND';
+  if (truth.role === 'miner') {
+    return truth.holding
+      ? 'WORK · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+      : 'WORK · DRIVE DISABLED · TENDER INBOUND';
+  }
+  return truth.holding
+    ? 'WORK · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+    : 'WORK · TENDER INBOUND · MINER DRIVE DISABLED';
+}
+
+function tenderServiceHailStatus(truth) {
+  if (!truth) return null;
+  if (truth.role === 'miner') {
+    return truth.holding
+      ? 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+      : 'STATUS · DRIVE DISABLED · TENDER INBOUND';
+  }
+  return truth.holding
+    ? 'STATUS · SERVICE HOLD · DRIVE REPAIR IN PROGRESS'
+    : 'STATUS · TENDER INBOUND · MINER DRIVE DISABLED';
+}
+
 /**
  * Human-readable living-work status from Ceres causal stamps / job phase.
  * Pure; safe for hail and target panel.
  * @param {object} entity
- * @param {{ depth?: 'lock'|'full' }} [opts] lock = phase-only (always-on panel); full = phase+cue
+ * @param {{ depth?: 'lock'|'full', state?: object }} [opts] lock = phase-only (always-on panel); full = phase+cue
  */
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
   const data = entity.data || {};
+  const serviceStatus = tenderServiceWorkStatus(
+    ceresTenderServiceTruth(opts.state || null, entity),
+    opts.depth || 'full',
+  );
+  if (serviceStatus) return serviceStatus;
   if (data.ceresCausalDisabled === true) {
     return opts.depth === 'lock'
       ? 'WORK · DRIVE DISABLED'
       : 'WORK · DRIVE DISABLED · RECOVERY REQUIRED';
   }
-  if (data.ceresCausalServiceHold === true) {
-    return opts.depth === 'lock'
-      ? 'WORK · SERVICE HOLD'
-      : 'WORK · SERVICE HOLD · MINER OFFLINE';
-  }
+  // targetIntelReadout's existing call has no game state. A bare timer stamp must not claim a
+  // service outcome there; Hail passes state and can present the combat-backed result above.
+  if (data.ceresCausalEventId === 'ev_tender_services_miner') return null;
   const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
   if (handoffStatus) return `WORK · ${handoffStatus}`;
   // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
@@ -420,11 +505,14 @@ const CAUSAL_MEANS = Object.freeze({
 
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
+  const serviceStatus = tenderServiceHailStatus(ceresTenderServiceTruth(state, target));
+  if (serviceStatus) return serviceStatus;
   if (data.ceresCausalDisabled === true) {
     return 'STATUS · DRIVE DISABLED · RECOVERY REQUIRED';
   }
-  if (data.ceresCausalServiceHold === true) {
-    return 'STATUS · SERVICE HOLD · MINER OFFLINE';
+  if (data.ceresCausalEventId === 'ev_tender_services_miner') {
+    const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
+    return `STATUS · ${role} ON TASK`;
   }
   const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
   if (handoffStatus) return `STATUS · ${handoffStatus}`;

@@ -276,7 +276,7 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   if (!motive) motive = 'UNRESOLVED';
   const threatTier = contactThreatTier(target, hostile);
   // Lock surface stays thin (phase only); hail STATUS carries tactical means (U3/U5 hierarchy).
-  const workStatus = livingWorkStatusText(target, { depth: 'lock' });
+  const workStatus = livingWorkStatusText(target, { depth: 'lock', state });
   return Object.freeze({
     hostile,
     allied,
