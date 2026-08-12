@@ -316,6 +316,19 @@
       "integration": "live",
       "commit": "b76bb637d56d890734f9089d2f5d051440b77767",
       "verification": "focused_green"
+    },
+    {
+      "id": "iron-maw-discovery-aftermath",
+      "date": "2026-08-12",
+      "wf": "WF-10",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Defeating Iron Maw now resolves its authored Ashfall site into a durable Codex trophy and exploration progress.",
+      "fingerprint": "verb=defeat-and-record,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "51a220b9edf11f693b7cbc106de0c0e40eb867a6",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
