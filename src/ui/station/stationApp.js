@@ -40,15 +40,31 @@ const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const CMDTY_REC = new Map(COMMODITIES.map((c) => [c.id, c]));
 function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 
-// Legacy handoff/departure targets → the new destinations. 'services' is now the dock actions.
+// Legacy handoff/departure targets → the new destinations.
 const TARGET_MAP = {
   market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
 };
 
+// `services` legitimately maps to no destination — services are verbs on the fascia now, not a
+// screen. Resolving it through `TARGET_MAP[tab] || 'market'` silently converted that deliberate
+// null into "open the Market", which is why the "Launch · safe to undock" handoff step opened the
+// commodity list. A target that is a verb resolves to the verb.
+const TARGET_ACTION = { services: 'undock' };
+function resolveTarget(tab) {
+  const destination = TARGET_MAP[tab] || null;
+  if (destination) return { destination };
+  const action = TARGET_ACTION[tab] || null;
+  return action ? { action } : {};
+}
+
+// Order matters. station-berth.css must load LAST: it re-points the --ink-/--line-/--surface-
+// tokens the older sheets read, and it restores grid placement for panels that later override
+// blocks in station-workbench.css had lifted into absolute overlays.
 const STATION_STYLES = [
   { id: 'sx-station-css', href: '/styles/station.css' },
   { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
+  { id: 'sx-station-berth-css', href: '/styles/station-berth.css' },
 ];
 function ensureStylesheet() {
   if (typeof document === 'undefined') return;
@@ -73,13 +89,9 @@ const DESTINATIONS = [
   { id: 'ledger', label: 'Ledger', icon: 'ledger', tagline: "The Tessera's record · evidence", create: createLedgerScreen },
 ];
 
-const ACTIONS = [
-  { id: 'repair', label: 'Repair', icon: 'repair', title: 'Repair hull' },
-  { id: 'refuel', label: 'Refuel', icon: 'refuel', title: 'Refuel to full' },
-  { id: 'resupply', label: 'Resupply', icon: 'resupply', title: 'Rearm munitions' },
-  { id: 'wash', label: 'Wash', icon: 'spark', title: 'Clear hull grime; preserve its history' },
-  { id: 'undock', label: 'Undock', icon: 'undock', title: 'Leave the station' },
-];
+// The service verbs used to be dock tiles declared here. They now live on the vital they change
+// (Repair on Hull, Refuel on Fuel, Sell on Hold), so each verb is named at its own meter and the
+// dock is destinations only. `runAction` still owns the id → service-type mapping.
 
 // ---- state readers ----
 function playerEntity(state) {
@@ -91,12 +103,8 @@ function hullFrac(state) { const s = playerEntity(state); return (s && s.hullMax
 function fuelFrac(state) { const f = state && state.fuel; return (f && f.max > 0) ? Math.max(0, Math.min(1, (f.current || 0) / f.max)) : 1; }
 function cargoFrac(state) { const c = state && state.player && state.player.cargo; return (c && c.capVolume > 0) ? Math.max(0, Math.min(1, (c.usedVolume || 0) / c.capVolume)) : 0; }
 function fmtCr(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
-function meterTone(frac, kind) {
-  if (kind === 'cargo') return frac >= 0.85 ? '#f2b04a' : '#5fd0c0';
-  if (frac > 0.6) return '#3fd07f';
-  if (frac > 0.3) return '#f2b04a';
-  return '#ff6a72';
-}
+// Meter colour is no longer chosen here. A vital carries a data-tone and the sheet owns the hue,
+// so the "gain / caution / loss" contract lives in one place instead of being re-picked per meter.
 
 function resolveStation(ctx) {
   if (ctx && ctx.station) {
@@ -153,27 +161,39 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       `<span class="sx-backplane__rail sx-backplane__rail--b"></span>` +
       `<span class="sx-backplane__stamp">ORBITAL OPERATIONS / LOCAL AUTHORITY</span>` +
     `</div>` +
-    `<header class="sx-topbar">` +
-      `<div class="sx-crest">` +
-        `<span class="sx-crest__mark">${icon('factions', 30)}</span>` +
-        `<span class="sx-crest__text"><span class="sx-crest__name"></span><span class="sx-crest__meta"></span></span>` +
+    // One seated instrument panel bolted to the very top. Previously identity/status sat in a
+    // header and the command dock floated as a centred island ~120px below it, with dead space
+    // above — which is why it never read as an encapsulating HUD.
+    `<header class="sxb-fascia">` +
+      `<div class="sxb-crown">` +
+        `<div class="sxb-berth">` +
+          `<span class="sxb-berth__crest">${icon('factions', 26)}</span>` +
+          `<span class="sxb-berth__text">` +
+            `<span class="sxb-berth__name"></span><span class="sxb-berth__meta"></span>` +
+          `</span>` +
+        `</div>` +
+        `<div class="sxb-vitals"></div>` +
+        `<div class="sxb-purse">` +
+          `<span class="sxb-purse__label">Credits</span>` +
+          `<span class="sxb-purse__value">0</span>` +
+        `</div>` +
+        `<button type="button" class="sxb-launch" data-act="undock" data-pop-owner>` +
+          `<span class="sxb-launch__label">Undock</span>` +
+          `<span class="sxb-launch__state"></span>` +
+        `</button>` +
       `</div>` +
-      `<div class="sx-status">` +
-        `<div class="sx-readouts"></div>` +
-        `<div class="sx-credits"><span class="sx-credits__ico">${icon('credits', 20)}</span><span class="sx-credits__v">0</span><span class="sx-credits__u">cr</span></div>` +
+      `<div class="sxb-ops">` +
+        `<div class="sxb-ops__dock"></div>` +
+        `<button type="button" class="sxb-help" aria-expanded="false" aria-label="Explain the active station operation" title="Context help">?</button>` +
       `</div>` +
+      `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
-    `<div class="sx-dockzone">` +
-      `<div class="sx-dockwrap"></div>` +
-      `<div class="sx-handoff" hidden></div>` +
-    `</div>` +
     `<main class="sx-workspace">` +
       `<div class="sx-operation-rail" aria-hidden="true"><span class="sx-operation-rail__index">01</span><span class="sx-operation-rail__track"></span><span class="sx-operation-rail__mode">MARKET</span></div>` +
       `<section class="sx-screen">` +
         `<header class="sx-screen__head">` +
           `<span class="sx-screen__sigil" aria-hidden="true"></span>` +
           `<div class="sx-screen__id"><h1 class="sx-screen__title"></h1><p class="sx-screen__sub"></p></div>` +
-          `<button type="button" class="sx-context-help" aria-label="Explain the active station operation" title="Context help">?</button>` +
         `</header>` +
         `<div class="sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
       `</section>` +
@@ -191,17 +211,19 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     `</aside>`;
   rootEl.appendChild(app);
 
-  const crestName = app.querySelector('.sx-crest__name');
-  const crestMeta = app.querySelector('.sx-crest__meta');
-  const readoutsEl = app.querySelector('.sx-readouts');
-  const creditsEl = app.querySelector('.sx-credits__v');
+  const crestName = app.querySelector('.sxb-berth__name');
+  const crestMeta = app.querySelector('.sxb-berth__meta');
+  const vitalsEl = app.querySelector('.sxb-vitals');
+  const creditsEl = app.querySelector('.sxb-purse__value');
+  const launchEl = app.querySelector('.sxb-launch');
+  const launchStateEl = app.querySelector('.sxb-launch__state');
   const titleEl = app.querySelector('.sx-screen__title');
   const subEl = app.querySelector('.sx-screen__sub');
   const bodyEl = app.querySelector('.sx-screen__body');
-  const handoffEl = app.querySelector('.sx-handoff');
+  const handoffEl = app.querySelector('.sxb-handoff');
   const popEl = app.querySelector('.sx-pop');
   const screenSigil = app.querySelector('.sx-screen__sigil');
-  const helpEl = app.querySelector('.sx-context-help');
+  const helpEl = app.querySelector('.sxb-help');
   const operationIndexEl = app.querySelector('.sx-operation-rail__index');
   const operationModeEl = app.querySelector('.sx-operation-rail__mode');
   const commsEl = app.querySelector('.sx-comms');
@@ -210,18 +232,25 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const commsHistoryEl = app.querySelector('.sx-comms__history');
   const receiptEl = app.querySelector('.sx-receipt');
 
+  // Destinations only. Repair/Refuel/Resupply/Wash used to sit here as tiles carrying their own
+  // cost labels, ~600px from the Hull/Fuel/Hold meters that justify them — the same fact stated
+  // twice, with the verb detached from its number. They are now attached to their vital, so the
+  // dock is a clean tab strip and keeps its ARIA tablist semantics undiluted by toolbar buttons.
   const dock = createCommandDock({
     destinations: DESTINATIONS,
-    actions: ACTIONS,
+    actions: [],
     onNavigate: (id) => navigate(id),
     onAction: (id) => runAction(id),
   });
-  app.querySelector('.sx-dockwrap').appendChild(dock.el);
+  app.querySelector('.sxb-ops__dock').appendChild(dock.el);
 
   const screenCache = new Map();
   let activeId = null;
   let stopPopPositioning = null;
   let popCloseTimer = 0;
+  /** Whatever opened the live popover. Exempt from close-on-outside-click by construction. */
+  let popAnchor = null;
+  let popKind = '';
   let receiptTimer = 0;
   let commsOpen = false;
   let commsUnread = 0;
@@ -266,6 +295,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   function openPop(html, anchorEl, cls) {
     if (popCloseTimer) clearTimeout(popCloseTimer);
     stopFloating();
+    popAnchor = anchorEl || null;
+    popKind = cls || '';
     popEl.className = 'sx-pop' + (cls ? ' ' + cls : '');
     popEl.innerHTML = html;
     popEl.hidden = false;
@@ -281,6 +312,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   function closePop() {
     if (popEl.hidden) return;
     stopFloating();
+    popAnchor = null;
+    popKind = '';
+    if (helpEl) helpEl.setAttribute('aria-expanded', 'false');
     popEl.classList.remove('is-open');
     // reset the variant class too, or the popover stays "findable" (and styled) while hidden
     popCloseTimer = setTimeout(() => {
@@ -290,10 +324,20 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       popCloseTimer = 0;
     }, 150);
   }
+  // Close-on-outside-click, defined as a contract rather than a list.
+  //
+  // This used to carry a hand-written exemption list — [data-act="undock"] and [data-hold] — and
+  // anything not on it was closed. A trigger's own handler runs during the same click that then
+  // bubbles to here, so any NEW trigger opened a popover and this handler immediately shut it.
+  // The help button was exactly that: it opened and closed on one click, which is why the card was
+  // unreadable. Two entries on the list meant two people had already hit this and patched only
+  // their own trigger.
+  //
+  // The element that opened the popover is now exempt by construction, whatever it is.
   app.addEventListener('click', (ev) => {
     if (popEl.hidden) return;
     if (popEl.contains(ev.target)) return;
-    if (ev.target.closest('[data-act="undock"]') || ev.target.closest('[data-hold]')) return;
+    if (popAnchor && popAnchor.contains(ev.target)) return;
     closePop();
   });
   // Esc closes an open popover and must NOT fall through to the game's exit handler (which would
@@ -327,11 +371,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   function openDeparturePop() {
     const dep = departureNow();
-    const anchor = dock.el.querySelector('[data-act="undock"]');
+    const anchor = launchEl;
     if (!anchor) return;
     const rows = dep.chips.map((c) => {
       const cls = c.kind === 'bad' ? 'is-bad' : (c.kind === 'warn' ? 'is-warn' : 'is-ok');
-      const dest = c.targetTab ? TARGET_MAP[c.targetTab] : null;
+      const dest = c.targetTab ? resolveTarget(c.targetTab).destination : null;
       const attr = c.targetScreen ? ` data-pop-screen="${escapeHtml(c.targetScreen)}"`
         : (dest ? ` data-pop-nav="${escapeHtml(dest)}"` : '');
       const aria = escapeHtml((c.actionLabel || (c.label + ' ' + c.text)));
@@ -397,7 +441,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         return;
       }
       if (intent && intent.surface === 'hold') {
-        openHoldPop(readoutsEl.querySelector('[data-hold]'));
+        openHoldPop(vitalsEl.querySelector('[data-hold]'));
         return;
       }
       if (intent && intent.navigate) {
@@ -433,16 +477,22 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       return;
     }
     const html =
-      `<span class="sx-handoff__k">First Dock Handoff</span>` +
-      steps.map((st) => {
-        const dest = TARGET_MAP[st.targetTab] || 'market';
+      `<span class="sxb-handoff__k">Getting started</span>` +
+      steps.map((st, i) => {
+        // A step whose target is a verb (`services` → undock) carries the verb. It previously fell
+        // through `TARGET_MAP[tab] || 'market'`, so "Launch · safe to undock" opened the Market.
+        const target = resolveTarget(st.targetTab);
         const cls = st.done ? 'is-done' : (st.kind === 'bad' ? 'is-bad' : (st.kind === 'warn' ? 'is-warn' : 'is-ok'));
         const mode = st.tradeMode === 'sell' || st.tradeMode === 'buy' ? st.tradeMode : '';
-        return `<button type="button" class="sx-hstep ${cls}" data-handoff="${escapeHtml(dest)}"` +
+        const attr = target.destination
+          ? ` data-handoff="${escapeHtml(target.destination)}"`
+          : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : '');
+        if (!attr) return '';
+        return `<button type="button" class="sxb-hstep ${cls}"${attr}` +
           (mode ? ` data-handoff-mode="${mode}"` : '') +
           ` title="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
-          `<span class="sx-hstep__n">${escapeHtml(st.label)}</span>` +
-          `<span class="sx-hstep__t">${escapeHtml(st.title)}</span></button>`;
+          `<span class="sxb-hstep__n">${i + 1}</span>` +
+          `<span class="sxb-hstep__t">${escapeHtml(st.title)}</span></button>`;
       }).join('');
     if (handoffEl.hidden) handoffEl.hidden = false;
     if (html !== handoffSignature) {
@@ -451,6 +501,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
   }
   handoffEl.addEventListener('click', (ev) => {
+    const verb = ev.target.closest('[data-handoff-act]');
+    if (verb) { runAction(verb.getAttribute('data-handoff-act')); return; }
     const b = ev.target.closest('[data-handoff]');
     if (b) navigate(b.getAttribute('data-handoff'), { tradeMode: b.getAttribute('data-handoff-mode') || undefined });
   });
@@ -513,7 +565,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Physically recovered evidence pages open to their forensic detail.'],
   };
   helpEl.addEventListener('click', () => {
-    const help = HELP[activeId] || ['Station operation', 'Select an operation from the command dock.'];
+    // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press
+    // would otherwise re-render the same card forever with no way to dismiss it by the same button.
+    if (!popEl.hidden && popKind === 'sx-pop--help') { closePop(); return; }
+    const help = HELP[activeId] || ['Station operation', 'Pick an operation from the strip above.'];
+    helpEl.setAttribute('aria-expanded', 'true');
     openPop(`<div class="sx-pop__head">${escapeHtml(help[0])}</div><p class="sx-context-copy">${escapeHtml(help[1])}</p>`, helpEl, 'sx-pop--help');
   });
 
@@ -692,46 +748,133 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return true;
   }
 
-  // ---------- status strip ----------
+  // ---------- vitals ----------
+  // A vital is a resource and the verb that changes it, as one object. The verb is only rendered
+  // when it is worth offering: a full tank shows "Full", not a Refuel button you cannot use.
+
+  function vitalTone(frac, kind) {
+    if (kind === 'hold') return 'live';
+    if (frac > 0.6) return 'ok';
+    if (frac > 0.3) return 'warn';
+    return 'bad';
+  }
+
+  /** cost → the trailing element of a vital: an amber verb, or a quiet fact. */
+  function vitalActHtml(id, cost, label, ghost = false) {
+    if (!cost) return '';
+    const text = String(cost.text == null ? '' : cost.text);
+    if (cost.disabled) {
+      return ghost ? '' : `<span class="sxb-vital__ok">${escapeHtml(text)}</span>`;
+    }
+    const cls = 'sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
+    const title = cost.title ? ` title="${escapeHtml(cost.title)}"` : '';
+    const copy = ghost ? label : `${label} · ${text}`;
+    return `<button type="button" class="${cls}" data-vital-act="${id}"${title}` +
+      ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
+  }
+
+  function vitalHtml(v) {
+    const pct = Math.max(0, Math.min(100, Math.round(v.frac * 100)));
+    const head =
+      `<span class="sxb-vital__label">${escapeHtml(v.label)}</span>` +
+      `<span class="sxb-vital__value">${escapeHtml(v.value)}</span>`;
+    const headEl = v.openHold
+      ? `<button type="button" class="sxb-vital__head" data-hold data-pop-owner` +
+          ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${head}</button>`
+      : `<span class="sxb-vital__head">${head}</span>`;
+    const track = v.track === false ? ''
+      : `<span class="sxb-vital__track" role="img" aria-label="${escapeHtml(v.aria)}">` +
+        `<span class="sxb-vital__fill" style="width:${pct}%"></span></span>`;
+    const acts = v.acts.filter(Boolean);
+    const actsEl = acts.length
+      ? (acts.length > 1 ? `<span class="sxb-vital__acts">${acts.join('')}</span>` : acts[0])
+      : '';
+    return `<div class="sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${headEl}${track}${actsEl}</div>`;
+  }
+
   function renderStatus() {
     const s = state();
     setTextIfChanged(creditsEl, fmtCr(credits(s)));
     const ship = playerEntity(s);
-    const fuel = s && s.fuel || {};
-    const cargo = s && s.player && s.player.cargo || {};
-    const meters = [
-      { k: 'hull', ic: 'hull', label: 'Hull', frac: hullFrac(s), value: `${(hullFrac(s) * 100).toFixed(0)}%`, detail: `${fmtCr(ship && ship.hull)} / ${fmtCr(ship && ship.hullMax)}` },
-      { k: 'fuel', ic: 'fuel', label: 'Fuel', frac: fuelFrac(s), value: `${(fuelFrac(s) * 100).toFixed(0)}%`, detail: `${fmtCr(fuel.current)} / ${fmtCr(fuel.max)}` },
-      { k: 'cargo', ic: 'cargo', label: 'Hold', frac: cargoFrac(s), value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`, detail: `${(cargoFrac(s) * 100).toFixed(0)}% occupied` },
+    const fuel = (s && s.fuel) || {};
+    const cargo = (s && s.player && s.player.cargo) || {};
+    const costs = actionCosts();
+
+    const hullF = hullFrac(s);
+    const fuelF = fuelFrac(s);
+    const holdF = cargoFrac(s);
+    const carrying = Number(cargo.usedVolume) > 0;
+
+    const vitals = [
+      {
+        k: 'hull', label: 'Hull', frac: hullF, tone: vitalTone(hullF, 'hull'),
+        value: `${fmtCr(ship && ship.hull)} / ${fmtCr(ship && ship.hullMax)}`,
+        aria: `Hull ${(hullF * 100).toFixed(0)} percent`,
+        acts: [vitalActHtml('repair', costs.repair, 'Repair'),
+               vitalActHtml('wash', costs.wash, 'Wash', true)],
+      },
+      {
+        k: 'fuel', label: 'Fuel', frac: fuelF, tone: vitalTone(fuelF, 'fuel'),
+        value: `${fmtCr(fuel.current)} / ${fmtCr(fuel.max)}`,
+        aria: `Fuel ${(fuelF * 100).toFixed(0)} percent`,
+        acts: [vitalActHtml('refuel', costs.refuel, 'Refuel')],
+      },
+      {
+        k: 'hold', label: 'Hold', frac: holdF, tone: vitalTone(holdF, 'hold'), openHold: true,
+        value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
+        aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
+        acts: [carrying
+          ? `<button type="button" class="sxb-vital__act" data-vital-act="sell"` +
+            ` aria-label="Sell cargo at this station">Sell</button>`
+          : ''],
+      },
     ];
-    const readoutsHtml = meters.map((m) => {
-      const pct = (m.frac * 100).toFixed(0);
-      const inner =
-        `<span class="sx-readout__ico">${icon(m.ic, 16)}</span>` +
-        `<span class="sx-readout__body"><span class="sx-readout__label">${m.label}</span>` +
-          `<span class="sx-readout__track"><span class="sx-readout__fill" style="width:${pct}%;background:${meterTone(m.frac, m.k)}"></span><span class="sx-readout__ticks" aria-hidden="true"></span></span>` +
-          `<span class="sx-readout__v">${m.value}</span><span class="sx-readout__detail">${m.detail}</span></span>`;
-      return m.k === 'cargo'
-        ? `<button type="button" class="sx-readout sx-readout--cargo sx-readout--btn" data-hold title="Cargo hold ${pct}% — open manifest" aria-label="Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units, ${pct} percent. Open manifest.">${inner}</button>`
-        : `<div class="sx-readout sx-readout--${m.k}" title="${m.label} ${pct}%" aria-label="${m.label} ${m.value}, ${m.detail}">${inner}</div>`;
-    }).join('');
-    if (readoutsHtml !== readoutsSignature) {
-      readoutsEl.innerHTML = readoutsHtml;
-      readoutsSignature = readoutsHtml;
+    // Munitions has no meter in state, so it appears only when there is something to load — an
+    // action-only unit rather than a permanently-present tile reading "Rearm".
+    if (costs.resupply && !costs.resupply.disabled) {
+      vitals.push({
+        k: 'muni', label: 'Munitions', frac: 0, tone: 'warn', track: false,
+        value: 'Low', aria: 'Munitions low',
+        acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
+      });
     }
+
+    const vitalsHtml = vitals.map(vitalHtml).join('');
+    if (vitalsHtml !== readoutsSignature) {
+      vitalsEl.innerHTML = vitalsHtml;
+      readoutsSignature = vitalsHtml;
+    }
+
+    const dep = costs.undock || {};
+    const depState = dep.tone === 'gain' ? 'ready' : (dep.tone === 'warn' ? 'check' : 'risk');
+    launchEl.setAttribute('data-state', depState);
+    if (dep.title) {
+      launchEl.setAttribute('title', dep.title);
+      launchEl.setAttribute('aria-label', `Undock. ${dep.title}`);
+    }
+    setTextIfChanged(launchStateEl, titleCaseWords(String(dep.text || '').toLowerCase()));
+
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
     setTextIfChanged(crestMeta, [st.typeLabel, st.factionName].filter(Boolean).join(' · '));
-    const costs = actionCosts();
-    for (const a of ACTIONS) dock.setActionCost(a.id, costs[a.id]);
     renderHandoff();
   }
-  readoutsEl.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-hold]');
-    if (!b) return;
-    if (!popEl.hidden && popEl.classList.contains('sx-pop--hold')) { closePop(); return; }
-    openHoldPop(b);
+
+  vitalsEl.addEventListener('click', (ev) => {
+    const hold = ev.target.closest('[data-hold]');
+    if (hold) {
+      if (!popEl.hidden && popKind === 'sx-pop--hold') { closePop(); return; }
+      openHoldPop(hold);
+      return;
+    }
+    const act = ev.target.closest('[data-vital-act]');
+    if (!act) return;
+    const id = act.getAttribute('data-vital-act');
+    if (id === 'sell') { navigate('market', { tradeMode: 'sell' }); return; }
+    runAction(id);
   });
+
+  launchEl.addEventListener('click', () => runAction('undock'));
 
   function applyDockAttention({ allowAutoOpen = false, refreshActive = true } = {}) {
     const s = state();

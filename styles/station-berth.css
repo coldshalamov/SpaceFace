@@ -1,0 +1,539 @@
+/* ============================================================================
+   station-berth.css — "Berth Authority"
+
+   Loaded LAST on the station route, on purpose.
+
+   This sheet does two jobs:
+
+     1. It defines the station's design system — a real type scale, a semantic
+        colour contract, and elevation rules — and re-points the *existing*
+        --ink-/--line-/--surface- tokens at it. Roughly 330 places in the older
+        station sheets already read those tokens, so they inherit the new
+        contrast discipline without being touched.
+
+     2. It owns the top fascia (.sxb-*), which is new markup in a new namespace.
+        That is deliberate: styles/station-workbench.css redefines 202 of its
+        1036 selectors at top level (.sx-dock five times, .sx-mkt__console four),
+        so anything reusing those class names has to win a cascade fight it
+        cannot win cleanly. New names sidestep the fight entirely.
+
+   THE COLOUR CONTRACT — this is the whole reason the old screens read as noise.
+
+     amber  = you can press this. Nothing else is amber, ever.
+     cyan   = live measured data (prices, meters, telemetry). Never structural.
+     green  = gain / nominal.   red = loss / blocked.   amber-yellow = caution.
+     everything else is graphite and ink.
+
+   Previously cyan was the field, the border, the label, the value AND the
+   button, so colour carried no information at all. One accent reserved for
+   "actionable" is what makes a button look like a button.
+   ============================================================================ */
+
+.sx-app {
+  /* ---- type scale. Seven steps. 12px floor. --------------------------------
+     The old sheets carry 37 distinct font sizes across 246 declarations, 112 of
+     them below 12px (down to 6.5px). That is the "harsh tiny wiry font" — not
+     the typefaces, which are good. Saira SemiCondensed is handsome at 20px+ and
+     illegible at 8px with 0.06em tracking. */
+  --sxb-t-label: 12px;   /* smallest permitted. Labels, units, meta.       */
+  --sxb-t-sm:    13px;
+  --sxb-t-body:  14px;   /* default reading size                           */
+  --sxb-t-md:    16px;
+  --sxb-t-lg:    20px;
+  --sxb-t-xl:    26px;
+  --sxb-t-2xl:   34px;
+
+  /* ---- field: warm graphite, not blue-black -------------------------------
+     A blue-black field makes a cyan UI disappear into it. Neutral graphite lets
+     semantic colour actually register as colour. */
+  --sxb-void:     #0c0e0f;
+  --sxb-panel:    #14171a;
+  --sxb-panel-up: #1b1f23;
+  --sxb-panel-hi: #232a2f;
+
+  /* ---- ink: four steps with real separation ------------------------------- */
+  --sxb-ink:    #eef1f3;
+  --sxb-ink-2:  #aab4bb;
+  --sxb-ink-3:  #78838a;
+  --sxb-ink-4:  #59636a;
+
+  /* ---- lines: hairline / structural / emphasis ----------------------------- */
+  --sxb-line:    rgba(255,255,255,.075);
+  --sxb-line-2:  rgba(255,255,255,.14);
+  --sxb-line-3:  rgba(255,255,255,.24);
+
+  /* ---- semantic ------------------------------------------------------------ */
+  --sxb-act:      #f2a03c;   /* actionable. reserved.                        */
+  --sxb-act-hi:   #ffb75c;
+  --sxb-act-ink:  #1b1206;
+  --sxb-live:     #62cfe0;   /* live measured data                           */
+  --sxb-gain:     #52d08c;
+  --sxb-warn:     #f2c94a;
+  --sxb-loss:     #ff6d75;
+
+  --sxb-r:    3px;
+  --sxb-r-lg: 5px;
+  --sxb-ease: cubic-bezier(.2,.7,.3,1);
+
+  /* ---- re-point the legacy tokens -----------------------------------------
+     Custom properties resolve at use time, so redefining them here lifts every
+     existing var() reference in the older sheets. Raw rgba() literals (407 of
+     them) are untouched and still win where they are used — those come out in
+     the flatten pass, not here. */
+  --ink-0: var(--sxb-ink);
+  --ink-1: var(--sxb-ink-2);
+  --ink-2: var(--sxb-ink-3);
+  --ink-3: var(--sxb-ink-4);
+  --line-1: var(--sxb-line);
+  --line-2: var(--sxb-line-2);
+  --line-3: var(--sxb-line-3);
+  --surface-1: var(--sxb-panel);
+  --surface-2: var(--sxb-panel-up);
+  --surface-3: var(--sxb-panel-hi);
+  --void-0: var(--sxb-void);
+  --void-1: #101315;
+  --void-2: #151a1d;
+  --gain: var(--sxb-gain);
+  --warn: var(--sxb-warn);
+  --loss: var(--sxb-loss);
+
+  grid-template-rows: auto minmax(0,1fr);
+  background:
+    radial-gradient(120% 78% at 18% -12%, rgba(242,160,60,.055), transparent 58%),
+    radial-gradient(90% 60% at 88% 4%, rgba(98,207,224,.035), transparent 62%),
+    linear-gradient(180deg, #101315 0%, var(--sxb-void) 46%, #090b0c 100%);
+}
+
+/* Fine machined grain. Atmosphere without noise — 2px repeating rules at very
+   low alpha read as brushed metal, not as a "scanline effect". */
+.sx-app::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+/* The old decorative backplane competed with real content for attention. */
+.sx-app .sx-backplane { display: none; }
+
+/* ============================================================================
+   THE FASCIA — one seated instrument panel bolted to the very top.
+
+   Replaces a floating centred dock island that sat ~120px below the top edge
+   with a gap above it, which is why it never read as an encapsulating HUD.
+   ============================================================================ */
+
+.sxb-fascia {
+  position: relative; z-index: 20;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #191d21 0%, #131719 62%, #101314 100%);
+  border-bottom: 1px solid var(--sxb-line-3);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 10px 30px -12px rgba(0,0,0,.85);
+  font-family: var(--sx-ui);
+}
+
+/* ---- row 1: who you are, what shape you're in, what you have -------------- */
+.sxb-crown {
+  display: flex; align-items: stretch; gap: 20px;
+  padding: 10px 20px 9px;
+  border-bottom: 1px solid var(--sxb-line);
+}
+
+/* ---- berth identity ------------------------------------------------------- */
+.sxb-berth { display: flex; align-items: center; gap: 13px; min-width: 0; flex: 0 0 auto; }
+.sxb-berth__crest {
+  display: grid; place-items: center;
+  width: 46px; height: 46px; flex: 0 0 46px;
+  border: 1px solid var(--sxb-line-2); border-radius: var(--sxb-r);
+  background: linear-gradient(160deg, var(--sxb-panel-hi), var(--sxb-panel));
+  color: var(--sxb-ink-2);
+}
+.sxb-berth__crest svg { width: 26px; height: 26px; }
+.sxb-berth__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sxb-berth__name {
+  font-family: var(--sx-display); font-weight: 700;
+  font-size: var(--sxb-t-xl); line-height: 1; letter-spacing: .015em;
+  color: var(--sxb-ink); text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sxb-berth__meta {
+  font-size: var(--sxb-t-label); line-height: 1.25; color: var(--sxb-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   VITALS — state and its service action are ONE object.
+
+   The old shell showed "Fuel 100%" in the top bar and "REFUEL · FULL" in the
+   dock ~600px away: the same fact twice, with the action detached from the
+   number that justifies it. A vital carries its own verb, and only when that
+   verb is worth offering.
+   ============================================================================ */
+.sxb-vitals { display: flex; align-items: stretch; gap: 8px; flex: 1 1 auto; min-width: 0; }
+
+.sxb-vital {
+  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  flex: 1 1 0; min-width: 0; max-width: 260px;
+  padding: 7px 11px 8px;
+  border: 1px solid var(--sxb-line); border-radius: var(--sxb-r);
+  background: var(--sxb-panel);
+}
+.sxb-vital__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.sxb-vital__label {
+  font-size: var(--sxb-t-label); font-weight: 500; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--sxb-ink-3); white-space: nowrap;
+}
+.sxb-vital__value {
+  font-family: var(--sx-mono); font-size: var(--sxb-t-body); font-weight: 500;
+  font-variant-numeric: tabular-nums; color: var(--sxb-ink); white-space: nowrap;
+}
+
+/* The meter reads as a machined slot, not a glowing bar. */
+.sxb-vital__track {
+  position: relative; height: 5px; border-radius: 1px;
+  background: #0a0c0d; box-shadow: inset 0 1px 1px rgba(0,0,0,.7);
+  overflow: hidden;
+}
+.sxb-vital__fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: var(--sxb-gain);
+  transition: width 420ms var(--sxb-ease), background-color 260ms linear;
+}
+.sxb-vital[data-tone="warn"] .sxb-vital__fill { background: var(--sxb-warn); }
+.sxb-vital[data-tone="bad"]  .sxb-vital__fill { background: var(--sxb-loss); }
+.sxb-vital[data-tone="live"] .sxb-vital__fill { background: var(--sxb-live); }
+
+/* Nominal state: no button, no amber, no invitation. Just a quiet fact. */
+.sxb-vital__ok {
+  font-size: var(--sxb-t-label); color: var(--sxb-ink-4);
+  letter-spacing: .04em; white-space: nowrap;
+}
+
+/* The service verb. Amber, because amber means pressable. */
+.sxb-vital__act {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 26px; padding: 0 10px;
+  font-family: var(--sx-ui); font-size: var(--sxb-t-label); font-weight: 600;
+  letter-spacing: .035em; white-space: nowrap;
+  color: var(--sxb-act-ink); background: var(--sxb-act);
+  border: 1px solid #c9812c; border-radius: 2px; cursor: pointer;
+  transition: background-color 140ms linear, box-shadow 140ms linear;
+}
+.sxb-vital__act:hover { background: var(--sxb-act-hi); box-shadow: 0 0 0 1px rgba(242,160,60,.34); }
+.sxb-vital__act:focus-visible { outline: 2px solid var(--sxb-act-hi); outline-offset: 2px; }
+.sxb-vital__act[aria-disabled="true"] { opacity: .42; cursor: default; }
+.sxb-vital__act--ghost {
+  color: var(--sxb-ink-2); background: transparent; border-color: var(--sxb-line-2);
+}
+.sxb-vital__act--ghost:hover { color: var(--sxb-ink); border-color: var(--sxb-line-3); background: rgba(255,255,255,.04); }
+
+.sxb-vital__acts { display: flex; gap: 6px; }
+.sxb-vital__acts .sxb-vital__act { flex: 1 1 auto; }
+.sxb-vital__acts .sxb-vital__act--ghost { flex: 0 0 auto; padding: 0 8px; }
+
+/* The hold is also a door: its head opens the manifest. */
+.sxb-vital--hold .sxb-vital__head {
+  cursor: pointer; background: none; border: 0; padding: 0; width: 100%;
+  font: inherit; text-align: left;
+}
+.sxb-vital--hold .sxb-vital__head:hover .sxb-vital__value { color: var(--sxb-act); }
+.sxb-vital--hold .sxb-vital__head:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: 3px; }
+
+/* ---- purse ---------------------------------------------------------------- */
+.sxb-purse {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  flex: 0 0 auto; padding: 0 4px 0 14px; border-left: 1px solid var(--sxb-line);
+}
+.sxb-purse__label {
+  font-size: var(--sxb-t-label); letter-spacing: .09em; text-transform: uppercase;
+  color: var(--sxb-ink-3);
+}
+.sxb-purse__value {
+  font-family: var(--sx-mono); font-weight: 500; font-size: var(--sxb-t-lg);
+  font-variant-numeric: tabular-nums; color: var(--sxb-ink); line-height: 1.05;
+}
+.sxb-purse__value::after { content: " cr"; font-size: var(--sxb-t-label); color: var(--sxb-ink-3); }
+
+/* ---- launch: the one terminal action, so it sits apart -------------------- */
+.sxb-launch {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  flex: 0 0 auto; min-width: 104px; padding: 8px 16px;
+  border: 1px solid var(--sxb-line-2); border-radius: var(--sxb-r);
+  background: linear-gradient(180deg, var(--sxb-panel-hi), var(--sxb-panel));
+  color: var(--sxb-ink); cursor: pointer; font-family: var(--sx-ui);
+  transition: border-color 160ms linear, background-color 160ms linear;
+}
+.sxb-launch:hover { border-color: var(--sxb-line-3); }
+.sxb-launch:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: 2px; }
+.sxb-launch__label {
+  font-family: var(--sx-display); font-weight: 700; font-size: var(--sxb-t-md);
+  letter-spacing: .09em; text-transform: uppercase; line-height: 1;
+}
+.sxb-launch__state {
+  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .07em; line-height: 1;
+}
+.sxb-launch[data-state="ready"] .sxb-launch__state { color: var(--sxb-gain); }
+.sxb-launch[data-state="check"] .sxb-launch__state { color: var(--sxb-warn); }
+.sxb-launch[data-state="risk"]  .sxb-launch__state { color: var(--sxb-loss); }
+.sxb-launch[data-state="check"], .sxb-launch[data-state="risk"] { border-color: rgba(242,201,74,.4); }
+
+/* ============================================================================
+   row 2: operations. A real tab strip seated in the fascia.
+   ============================================================================ */
+.sxb-ops { display: flex; align-items: center; gap: 12px; padding: 0 20px; min-height: 46px; }
+.sxb-ops__dock { flex: 1 1 auto; min-width: 0; }
+
+.sxb-help {
+  flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center;
+  border: 1px solid var(--sxb-line-2); border-radius: 50%;
+  background: transparent; color: var(--sxb-ink-3);
+  font-family: var(--sx-ui); font-size: var(--sxb-t-sm); font-weight: 600;
+  line-height: 1; cursor: pointer; padding: 0;
+  transition: color 140ms linear, border-color 140ms linear;
+}
+.sxb-help:hover { color: var(--sxb-ink); border-color: var(--sxb-line-3); }
+.sxb-help:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: 2px; }
+.sxb-help[aria-expanded="true"] { color: var(--sxb-act); border-color: var(--sxb-act); }
+
+/* ---- the dock, re-seated -------------------------------------------------
+   dock.js keeps its ARIA tablist, roving tabindex, arrow-key handling, pointer
+   proximity field and reduced-motion guard. Only its skin changes, and it now
+   carries destinations ONLY — the service verbs moved onto the vitals they
+   describe. */
+.sx-app .sxb-ops .sx-dock {
+  display: flex; align-items: stretch; gap: 2px;
+  padding: 0; margin: 0; border: 0; border-radius: 0;
+  background: none; box-shadow: none; backdrop-filter: none;
+}
+.sx-app .sxb-ops .sx-dock::after,
+.sx-app .sxb-ops .sx-dock::before { display: none; }
+.sx-app .sxb-ops .sx-dock__rule { display: none; }
+.sx-app .sxb-ops .sx-dock__group { display: flex; align-items: stretch; gap: 2px; }
+
+.sx-app .sxb-ops .sx-tile {
+  position: relative;
+  /* The older sheets set `flex-direction:column` and a fixed `width:68px` on tiles, for a dock of
+     stacked icon-over-label pucks. Both must be restated: an inherited column direction plus a
+     68px cap is what makes horizontal labels collide into "MARKETSHIPWORKSINDUSTRY". */
+  display: flex; flex-direction: row; align-items: center; gap: 8px;
+  width: auto; min-width: 0; min-height: 46px; padding: 0 15px;
+  border: 0; border-radius: 0; background: transparent;
+  color: var(--sxb-ink-3); cursor: pointer;
+  font-family: var(--sx-ui); text-align: left; white-space: nowrap;
+  /* The proximity field's scale/lift is disabled here: a tab strip that swells
+     under the cursor makes targets move while you aim at them. The field stays
+     available to dock.js for any future free-floating rail. */
+  transform: none !important;
+  transition: color 150ms linear, background-color 150ms linear;
+}
+.sx-app .sxb-ops .sx-tile .sx-tile__seat { display: none; }
+.sx-app .sxb-ops .sx-tile .sx-tile__icon { display: flex; opacity: .85; }
+.sx-app .sxb-ops .sx-tile .sx-tile__icon svg { width: 18px; height: 18px; }
+.sx-app .sxb-ops .sx-tile .sx-tile__label {
+  font-size: var(--sxb-t-sm); font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; line-height: 1;
+}
+.sx-app .sxb-ops .sx-tile:hover { color: var(--sxb-ink-2); background: rgba(255,255,255,.035); }
+.sx-app .sxb-ops .sx-tile:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: -2px; }
+
+/* The active tab is the only place a glow is spent. */
+.sx-app .sxb-ops .sx-tile.is-active { color: var(--sxb-ink); background: rgba(255,255,255,.055); }
+.sx-app .sxb-ops .sx-tile.is-active::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--sxb-live); box-shadow: 0 0 10px rgba(98,207,224,.5);
+}
+.sx-app .sxb-ops .sx-tile.is-active .sx-tile__icon { opacity: 1; color: var(--sxb-live); }
+
+/* Attention badge: amber, because it is asking you to act.
+   Inline rather than absolutely positioned — in a horizontal strip an absolute badge floats free of
+   the tab it belongs to and reads as unrelated chrome. As a third flex child it is unambiguously
+   part of that tab.
+   `display:grid` overrides the [hidden] attribute's UA `display:none`, so the empty badge every
+   tile carries would otherwise render on ALL of them. The attribute selector restores the hide. */
+.sx-app .sxb-ops .sx-tile__badge {
+  position: static; flex: 0 0 auto; order: 3;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  display: grid; place-items: center;
+  border-radius: 8px; background: var(--sxb-act); color: var(--sxb-act-ink);
+  font-family: var(--sx-mono); font-size: 11px; font-weight: 600; line-height: 1;
+}
+.sx-app .sxb-ops .sx-tile__badge[hidden] { display: none; }
+
+/* The old attention treatment drew a full outlined box around the tab, which made one tab a
+   different kind of object from its six neighbours. In a tab strip the badge already carries the
+   signal; attention only needs to raise the tab to full ink. */
+.sx-app .sxb-ops .sx-tile.is-attention {
+  color: var(--sxb-ink); border: 0; box-shadow: none; background: rgba(242,160,60,.07);
+}
+.sx-app .sxb-ops .sx-tile.is-attention .sx-tile__icon { color: var(--sxb-act); opacity: 1; }
+
+/* ============================================================================
+   First-dock handoff — three steps, said once.
+
+   Was: "CARGO / SELL WHAT YOU HAULED", "JOBS / JOB ON THE BOARD",
+        "LAUNCH / SAFE TO UNDOCK" — a header word plus a restatement of the tab
+   it points at. The label is now the tab's own name and the step says only what
+   is left to do.
+   ============================================================================ */
+.sxb-handoff {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 20px; border-top: 1px solid var(--sxb-line);
+  background: rgba(242,160,60,.045);
+}
+.sxb-handoff__k {
+  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--sxb-act); white-space: nowrap;
+}
+.sxb-hstep {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 11px; border: 1px solid var(--sxb-line-2); border-radius: 2px;
+  background: var(--sxb-panel); color: var(--sxb-ink-2);
+  font-family: var(--sx-ui); font-size: var(--sxb-t-sm); cursor: pointer;
+  transition: border-color 150ms linear, color 150ms linear;
+}
+.sxb-hstep:hover { color: var(--sxb-ink); border-color: var(--sxb-line-3); }
+.sxb-hstep:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: 2px; }
+.sxb-hstep__n {
+  font-family: var(--sx-mono); font-size: var(--sxb-t-label); color: var(--sxb-ink-4);
+}
+.sxb-hstep.is-done { opacity: .5; }
+.sxb-hstep.is-done .sxb-hstep__n { color: var(--sxb-gain); }
+.sxb-hstep.is-warn { border-color: rgba(242,201,74,.34); }
+.sxb-hstep.is-bad  { border-color: rgba(255,109,117,.4); }
+
+/* ============================================================================
+   Chrome that the fascia made redundant.
+
+   .sx-screen__head was absolutely positioned into the top-left of every
+   workspace as a 174px floating title card ("Market / Live prices · demand ·
+   trade"). The active tab already names the operation, so the card was a second
+   label for the same thing — and it sat ON TOP of the first row of content.
+
+   The heading survives for screen readers; only its box is withdrawn.
+   ============================================================================ */
+.sx-app .sx-screen__head {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; border: 0; overflow: hidden; clip-path: inset(50%);
+}
+.sx-app .sx-operation-rail { display: none; }
+
+/* Station comms was pinned at top:104px, under the old header height. It now
+   clears the fascia and stops colliding with the tab strip. */
+.sx-app .sx-comms { top: auto; bottom: 16px; right: 16px; }
+
+/* ============================================================================
+   MARKET — put the transaction console back in the grid.
+
+   .sx-mkt__console is defined four times in station-workbench.css: as a real
+   grid cell (497), then lifted out into `position:absolute` (1093), then nudged
+   `inset:152px` (1577), then `inset:168px` (1956). That is the confirm card that
+   floats over the commodity carousel and the buy/sell/avg row. It was never a
+   dialog — it is a column that stopped being a column, so it has no close
+   button and nothing can be done about the overlap from inside it.
+   ============================================================================ */
+.sx-app .sx-mkt {
+  position: relative;
+  grid-template-columns: minmax(0,1fr) clamp(290px, 24vw, 340px);
+  grid-template-rows: auto minmax(0,1fr);
+  gap: 12px 14px;
+}
+.sx-app .sx-mkt__list { grid-column: 1; grid-row: 1; position: relative; inset: auto; }
+.sx-app .sx-mkt__stage { grid-column: 1; grid-row: 2; min-height: 0; padding: 16px 20px 18px; }
+.sx-app .sx-mkt__console {
+  position: relative; inset: auto; z-index: 1;
+  grid-column: 2; grid-row: 1 / span 2;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 0; padding: 0; overflow-y: auto; overflow-x: hidden;
+  pointer-events: auto;
+}
+.sx-app .sx-mkt__trade,
+.sx-app .sx-mkt__routes {
+  position: relative; inset: auto; right: auto; bottom: auto; left: auto;
+  width: auto; pointer-events: auto;
+}
+
+/* ============================================================================
+   Reachability: an action that is clipped by the viewport does not exist.
+
+   Industry's commit button ("Requires refinery") sits below the fold at 1080p
+   because the console had no scroll boundary of its own. 64 `overflow:hidden`
+   declarations across the station sheets hide the fact that content does not
+   fit; these are the two that were costing a primary action.
+   ============================================================================ */
+.sx-app .sx-ind__console { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.sx-app .sx-screen__body { min-height: 0; }
+
+/* ============================================================================
+   Legibility floor — 12px, named target by named target.
+
+   The station sheets carry 112 font-size declarations below 12px, down to
+   6.5px. These are not decorative micro-marks; they are primary content. A
+   commodity's PRICE renders at 8px. A contract title renders at 9px. A recipe
+   name renders at 8px. That is the "harsh tiny font I can't read".
+
+   Listing the offenders explicitly rather than casting a wide attribute-selector
+   net is deliberate: a blanket rule here would be another unconditional override
+   of unknown reach, which is the exact habit that produced 202 duplicated
+   selectors in the first place. Each line below is a decision, and each one
+   disappears when the flatten pass fixes it at source.
+   ============================================================================ */
+
+/* Market — the number the whole card exists to communicate. */
+.sx-app .sx-mkt-row__price     { font-size: var(--sxb-t-md); }
+.sx-app .sx-mkt-row__price i,
+.sx-app .sx-mkt__list .sx-mkt-row__price i { font-size: var(--sxb-t-label); font-style: normal; }
+.sx-app .sx-mkt-row__tr        { font-size: var(--sxb-t-label); letter-spacing: .02em; }
+.sx-app .sx-mkt-row__held      { font-size: var(--sxb-t-label); }
+/* The demand drivers (ROLE · DEMAND, CORE · TIGHT, CONFLICT · NONE, CYCLE) are the actual market
+   intelligence on a commodity card. They were the smallest thing on it. */
+.sx-app .sx-mkt-row__drivers i { font-size: var(--sxb-t-label); font-style: normal; letter-spacing: .01em; }
+.sx-app .sx-mkt-filter b,
+.sx-app .sx-mkt-filter b       { font-size: var(--sxb-t-label); }
+.sx-app .sx-mkt-browser__mode b { font-size: var(--sxb-t-label); }
+
+/* Missions — a job's title and terms. */
+.sx-app .sx-ct-row__title      { font-size: var(--sxb-t-body); }
+.sx-app .sx-ct-row__meta       { font-size: var(--sxb-t-label); }
+.sx-app .sx-ct-row__rew i      { font-size: var(--sxb-t-label); font-style: normal; }
+.sx-app .sx-job__meta          { font-size: var(--sxb-t-label); }
+.sx-app .sx-route__jumps       { font-size: var(--sxb-t-label); }
+
+/* Industry — what the recipe is called. */
+.sx-app .sx-ind-row__name      { font-size: var(--sxb-t-sm); }
+
+/* Bar — the intel and leads text the player is meant to actually read. */
+.sx-app .sx-bar__log           { font-size: var(--sxb-t-sm); line-height: 1.5; }
+.sx-app .sx-intel              { font-size: var(--sxb-t-sm); line-height: 1.5; }
+.sx-app .sx-lead__s            { font-size: var(--sxb-t-label); }
+.sx-app .sx-lead__go           { font-size: var(--sxb-t-label); }
+.sx-app .sx-brief__k           { font-size: var(--sxb-t-label); }
+.sx-app .sx-brief__sub         { font-size: var(--sxb-t-label); }
+.sx-app .sx-bar__leads .sx-muted,
+.sx-app .sx-bar__leads .sx-panel__head { font-size: var(--sxb-t-label); }
+
+/* Hold manifest. */
+.sx-app .sx-holdrow b i        { font-size: var(--sxb-t-label); font-style: normal; }
+
+/* ---- motion ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sxb-vital__fill { transition: none; }
+  .sxb-fascia *, .sxb-fascia { animation: none !important; }
+}
+
+/* ---- narrow desks ----------------------------------------------------------
+   The vitals shed their meters before they shed their verbs: the number and the
+   action survive, the decoration goes. */
+@media (max-width: 1320px) {
+  .sxb-berth__name { font-size: var(--sxb-t-lg); }
+  .sxb-berth__crest { width: 40px; height: 40px; flex-basis: 40px; }
+  .sxb-vital { max-width: 210px; padding: 6px 9px 7px; }
+  .sx-app .sxb-ops .sx-tile { padding: 0 11px; }
+}
+@media (max-width: 1120px) {
+  .sxb-vital__track { display: none; }
+  .sxb-berth__meta { display: none; }
+  .sx-app .sxb-ops .sx-tile .sx-tile__label { display: none; }
+  .sx-app .sxb-ops .sx-tile { padding: 0 13px; }
+  .sx-app .sx-mkt { grid-template-columns: minmax(0,1fr); grid-template-rows: auto auto minmax(0,1fr); }
+  .sx-app .sx-mkt__console { grid-column: 1; grid-row: 2; }
+  .sx-app .sx-mkt__stage { grid-row: 3; }
+}

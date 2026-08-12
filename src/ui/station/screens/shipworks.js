@@ -478,12 +478,21 @@ export function createShipworksScreen(ctx) {
       const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
       const anchor = localSlotAnchor(def, slots, i);
       spatialAnchors.set(i, anchor);
-      const label = fitted ? fitted.name : `Empty ${SLOT_LABEL[slot.type] || slot.type}`;
+      // An unfitted slot is named for the SLOT, not for a part called "Empty Cargo". The old label
+      // ("Empty " + type) read as installed hardware whose name happened to start with "Empty",
+      // which is why an open bay looked like a component of the ship. Name the mount, then state
+      // that it is open.
+      const slotName = SLOT_LABEL[slot.type] || slot.type;
+      const label = fitted ? fitted.name : slotName;
       const selected = i === selectedSlot ? ' is-selected' : '';
       const kind = anchor.authored ? 'PHYSICAL' : 'SYSTEM';
-      return `<button type="button" class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(`${SLOT_LABEL[slot.type] || slot.type} ${i + 1}: ${label}. Open compatible modules.`)}">` +
+      const sub = fitted ? `${kind} / ${slot.size || ''}` : `OPEN / ${slot.size || ''}`;
+      const aria = fitted
+        ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
+        : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
+      return `<button type="button" class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted ? '' : ' is-empty'}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
         `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
-        `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${kind} / ${escapeHtml(slot.size || '')}</em></span>` +
+        `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
       `</button>`;
     }).join('');
     scheduleSpatialProjection();
@@ -920,7 +929,7 @@ export function createShipworksScreen(ctx) {
         `<header class="sx-chooser__head">` +
           `<div><span class="sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · Size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</span>` +
           `<h3>Compatible Modules</h3></div>` +
-          `<button type="button" class="sx-chooser__x" data-close aria-label="Close">${icon('undock', 18)}</button>` +
+          `<button type="button" class="sx-chooser__x" data-close aria-label="Close">${icon('close', 18)}</button>` +
         `</header>` +
         (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}">Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}</button>` : '') +
         `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +

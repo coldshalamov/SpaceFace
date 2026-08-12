@@ -79,6 +79,10 @@ The same mechanism produces the rest of the visual complaints:
 
 This one is a single line, and it is the whole "shipworks targets are broken" complaint.
 
+> **Measured on the live element, 2026-08-12.** The hardpoint's computed transform is
+> `matrix(1,0,0,1,-17,-17)`. Under the old press rule it moved **+17px right, +18px down**; under
+> the fix it moves **+1px down**. The displacement is exactly the "lower-right" jig described.
+
 `styles/ui.css:171` says, for every button in the entire game:
 
 ```
@@ -241,9 +245,11 @@ Three things in it don't survive checking:
   the *same panel the Codex uses*. Its layout problems are inherited from a shared component. Fixing
   them inside station CSS either won't reach it or will break the Codex — this needs to be fixed at
   the shared panel, once.
-- **"Empty Cargo" as a fake installed ship part** — that string does not exist anywhere in `src/`.
-  Either it's generated from data at runtime or the observation is stale. Unverified; don't act on
-  it without reproducing it first.
+- ~~**"Empty Cargo" as a fake installed ship part** — that string does not exist anywhere in
+  `src/`.~~ **Retracted — the pack was right and my grep was too literal.** The label is built at
+  `shipworks.js:481` as `` `Empty ${SLOT_LABEL[slot.type]}` ``, so it never appears as a literal
+  and only exists at runtime. Confirmed on screen. Fixed: an unfitted mount is now named for the
+  slot with an `OPEN` state, instead of a part whose name happens to start with "Empty".
 - **The pressed-hardpoint diagnosis was aimed at the wrong file.** The pack attributes it to
   Shipworks' own styles. It's the global `button:active` rule in `ui.css`, which means the same bug
   is latent everywhere else in the game that positions a button with `transform`.
@@ -257,3 +263,27 @@ design direction — object-centred workspaces per page — is the right Stage 2
 
 Stage 0. It's about a dozen lines, it's unarguable, and it turns four of your loudest complaints
 off. Then Stage 1, which is unglamorous and is the whole ballgame.
+
+---
+
+## Implementation status — 2026-08-12
+
+**Stage 0 is done and verified.** M2 and M3 are fixed at their owning files: the press rule now
+uses the individual `translate` property (which composes with `transform` rather than replacing it),
+the popover's exemption allowlist is replaced by "whatever opened it is exempt", the icon set has a
+real `close` glyph, and `services` resolves to the undock verb instead of falling through to Market.
+
+**Stage 1 is partially done.** `styles/station-berth.css` establishes the type scale, the colour
+contract (amber = actionable, cyan = live data, nothing else earns colour) and re-points the legacy
+`--ink-`/`--line-`/`--surface-` tokens, which lifts ~330 existing references at once. The worst
+sub-12px offenders are raised by name. **The 202 duplicated selectors and 407 raw colour literals in
+`station-workbench.css` are NOT yet collapsed** — that is the remaining flatten pass, and it is
+still the highest-value unglamorous work in this area.
+
+**Stage 2 is done for the shell only.** The top fascia merges each resource with its service verb,
+the dock is destinations-only and seated at the very top, and Market/Industry consoles are back in
+the grid. **The interiors of the seven screens are untouched** — Shipworks still wastes its lateral
+space, the Market chart is still an unlabelled 400px block, Factions still needs emblems, the Bar
+still has two contacts without portraits. Those are the next Stage 2 items.
+
+Evidence: `.devshots/station-restore/berth-final/` (1920×1080, all seven tabs, zero page errors).

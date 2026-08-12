@@ -168,7 +168,13 @@ button:hover, .btn:hover {
   color: #fff;
   box-shadow: 0 0 12px rgba(57,208,255,0.3);
 }
-button:active { transform: translateY(1px); }
+/* Press feedback uses the INDIVIDUAL `translate` property, not `transform`.
+   `transform` is a single value: a press rule written as `transform:translateY(1px)` REPLACES any
+   transform the element uses for positioning. Station hardpoints are centred on their hull anchor
+   with `transform:translate(-50%,-50%)`, so the old rule made a 34px reticle jump ~17px right and
+   ~16px down while held — it fled the cursor and read as a dead control. `translate` composes with
+   `transform` instead of overwriting it, so positioning survives the press. */
+button:active { translate: 0 1px; }
 
 .hud-bar {
   background: rgba(5,7,13,0.86);
