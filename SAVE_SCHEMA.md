@@ -23,6 +23,7 @@ Current save version: `12`
 - `crafting`
 - `sectorSim`
 - `npcJobs`
+- `traffic`
 - `claims`
 - `sites`
 - `formations`
@@ -348,5 +349,6 @@ Current save version: `12`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.traffic` | object | {} |
 | `$.v2Flavor` | object | {} |
 | `$.world` | object | {} |

@@ -202,6 +202,7 @@ export const save = {
       ['crafting', () => this._callSerialize('crafting') || this._serializeCrafting()],
       ['sectorSim', () => this._callSerialize('sectorSim') || {}],
       ['npcJobs', () => this._callSerialize('npcJobsRuntime') || {}], // PQ-014 live NPC job bag (v12)
+      ['traffic', () => this._callSerialize('traffic') || {}],
       ['claims', () => this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] })],
       ['sites', () => this._callSerialize('asteroidSites') || clonePlain(state.sites || {})],
       ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
@@ -244,6 +245,7 @@ export const save = {
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};
     data.npcJobs = this._callSerialize('npcJobsRuntime') || {}; // PQ-014 live NPC job bag (v12)
+    data.traffic = this._callSerialize('traffic') || {};
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
@@ -2191,6 +2193,9 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       this._callDeserialize('npcJobsRuntime', data.npcJobs);
+      // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
+      // clears the compact record instead of retaining a same-process handoff.
+      this._callDeserialize('traffic', data.traffic);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
       this._callDeserialize('asteroidSites', data.sites);

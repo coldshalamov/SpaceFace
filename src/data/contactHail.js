@@ -127,7 +127,7 @@ function contactKind(state, entity) {
   // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
   // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
   const hasLivingStamp = !!(data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
-    || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
+    || data.ceresHandoffStatus || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
   if (hasLivingStamp && entity && entity.team === 2
     && role !== 'pirate' && role !== 'patrol' && role !== 'escort'
     && (WORK_ROLES.has(role) || TRADER_ROLES.has(role) || ai.passive === true || ai.passive == null)) {
@@ -332,6 +332,8 @@ export function livingWorkStatusText(entity, opts = {}) {
       ? 'WORK · SERVICE HOLD'
       : 'WORK · SERVICE HOLD · MINER OFFLINE';
   }
+  const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
+  if (handoffStatus) return `WORK · ${handoffStatus}`;
   // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
@@ -377,6 +379,8 @@ function workerStatusText(target, state = null) {
   if (data.ceresCausalServiceHold === true) {
     return 'STATUS · SERVICE HOLD · MINER OFFLINE';
   }
+  const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
+  if (handoffStatus) return `STATUS · ${handoffStatus}`;
   if (state && richSeamHelpAvailable(state, target, 'worker')) {
     const entities = state.entities && typeof state.entities.values === 'function'
       ? state.entities.values() : [];

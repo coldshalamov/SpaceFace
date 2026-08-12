@@ -271,6 +271,13 @@ const CERES_CAUSAL_CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
 const CERES_CAUSAL_CHAIN_EVENT = 'traffic:ceresCausalChain';
 const CERES_CAUSAL_CHAIN_MAX_CONCURRENT = 2;
 const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
+const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
+const CERES_MINER_HAULER_SAVE_SCHEMA = 'spaceface.traffic.ceresMinerHaulerSave.v1';
+const CERES_MINER_HAULER_HANDOFF_RANGE_WU = 72;
+const CERES_REFINERY_HAULER_CAPACITY_U = 28;
+const CERES_MINER_HAULER_HANDOFF_STATES = new Set([
+  'requested', 'rendezvous', 'in_transit', 'delivered', 'interrupted',
+]);
 // Scratch return for _ceresCausalActorBySlot — never retain across a second call.
 const _CERES_CAUSAL_ACTOR_SCRATCH = { entity: null, rec: null, slotId: null };
 const CERES_CAUSAL_STAMP_KEYS = Object.freeze([
@@ -314,11 +321,12 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     actorSlots: Object.freeze([CERES_SEAM_MINER_SLOT_ID, CERES_REFINERY_HAULER_SLOT_ID]),
     requires: Object.freeze(['miner_loaded']),
     seedAtPhase: 'transfer',
-    seeds: Object.freeze(['ore_handoff', 'hauler_ore_manifest']),
-    // Transfer interrupted: something left a hold, but no clean hauler manifest for the patrol —
-    // spilled mass / fresh wreck opens the salvor path.
-    interruptSeeds: Object.freeze(['ore_handoff', 'aftermath_open']),
-    // Hauler is a retained real-target actor; this link is stamp-only and never writes cargo.
+    // The physical custody transfer, not this choreography timer, plants downstream cargo facts.
+    // A phase stamp must never claim a hauler holds ore before its live manifest does.
+    seeds: Object.freeze([]),
+    // A dead/absent participant opens the aftermath branch instead of leaving a held cargo claim.
+    interruptSeeds: Object.freeze(['aftermath_open']),
+    // Hauler is a retained real-target actor; traffic leases its existing job only for the rendezvous.
     jobHints: Object.freeze([]),
     phases: Object.freeze([
       Object.freeze({ name: 'call', durationS: 12, cue: 'heavy_burn' }),
@@ -468,6 +476,54 @@ function validCausalManifest(manifest) {
     if (!Number.isSafeInteger(totalQty)) return false;
   }
   return totalQty === manifest.totalQty;
+}
+
+function normalizeCeresMinerHaulerHandoff(value, copy = true) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || value.schema !== CERES_MINER_HAULER_HANDOFF_SCHEMA
+    || typeof value.handoffId !== 'string' || !value.handoffId
+    || typeof value.rootLotId !== 'string' || !value.rootLotId
+    || typeof value.minerWorldRecordId !== 'string' || !value.minerWorldRecordId
+    || typeof value.haulerWorldRecordId !== 'string' || !value.haulerWorldRecordId
+    || value.minerWorldRecordId === value.haulerWorldRecordId
+    || !CERES_MINER_HAULER_HANDOFF_STATES.has(value.state)) return null;
+  const requestedQty = value.requestedQty;
+  const transferredQty = value.transferredQty;
+  const deliveredQty = value.deliveredQty;
+  const remainingQty = value.remainingQty;
+  const terminalizedQty = value.terminalizedQty == null ? 0 : value.terminalizedQty;
+  const transferSeq = value.transferSeq;
+  const deliveredTransferSeq = value.deliveredTransferSeq;
+  if (!Number.isSafeInteger(requestedQty) || requestedQty <= 0
+    || !Number.isSafeInteger(transferredQty) || transferredQty < 0
+    || !Number.isSafeInteger(deliveredQty) || deliveredQty < 0 || deliveredQty > transferredQty
+    || !Number.isSafeInteger(remainingQty) || remainingQty < 0
+    || !Number.isSafeInteger(terminalizedQty) || terminalizedQty < 0
+    || transferredQty + remainingQty + terminalizedQty !== requestedQty
+    || !Number.isSafeInteger(transferSeq) || transferSeq < 0
+    || !Number.isSafeInteger(deliveredTransferSeq) || deliveredTransferSeq < 0
+    || deliveredTransferSeq > transferSeq) return null;
+  if (value.state === 'in_transit'
+    && (transferredQty <= deliveredQty || transferSeq <= deliveredTransferSeq)) return null;
+  if (value.state === 'delivered'
+    && (remainingQty !== 0 || deliveredQty + terminalizedQty !== requestedQty)) return null;
+  if (!copy) return value;
+  const normalized = {
+    schema: CERES_MINER_HAULER_HANDOFF_SCHEMA,
+    handoffId: value.handoffId,
+    rootLotId: value.rootLotId,
+    minerWorldRecordId: value.minerWorldRecordId,
+    haulerWorldRecordId: value.haulerWorldRecordId,
+    state: value.state,
+    requestedQty,
+    transferredQty,
+    deliveredQty,
+    remainingQty,
+    terminalizedQty,
+    transferSeq,
+    deliveredTransferSeq,
+  };
+  return normalized;
 }
 
 function ceresActivityJobSpec(entry) {
@@ -718,6 +774,9 @@ export const traffic = {
       // form an authoritative boundary, so fail closed once without double-invalidating a real load.
       if (this._restoreEpochPending === true) this._restoreEpochPending = false;
       else this._invalidateCausalRunEpoch();
+      this._releaseCeresMinerHaulerHandoffControls(
+        this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff,
+      );
       // Traffic causality ledgers are intentionally transient rather than part of the save envelope.
       // The incoming envelope is authoritative: a Continue to an earlier completion boundary must
       // be able to surface that legitimate action again.
@@ -996,6 +1055,16 @@ export const traffic = {
     return typeof release === 'function' ? release(`job:${recordId}`) === true : false;
   },
 
+  _recommissionCeresRefineryHauler(pair) {
+    if (!pair || !pair.entity || !pair.entity.data
+      || pair.entity.data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID) return false;
+    const recordId = pair.worldRecordId || pair.entity.data.worldRecordId;
+    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(CERES_REFINERY_HAULER_SLOT_ID);
+    if (typeof recordId !== 'string' || !recordId || !entry) return false;
+    this._releaseCeresActivityJob(recordId);
+    return !!this._assignCeresActivityJob(pair.entity, entry);
+  },
+
   _adoptLegacyCeresActivityTargetRefs() {
     // R5 saves contain these exact authored routes without targetRef because the old kernel
     // normalizer discarded that optional field. Migrate only the seven stable Ceres job identities
@@ -1095,13 +1164,19 @@ export const traffic = {
       entity.data.freightDockSeq = runSeq;
       spec.payload = { activityRunSeq: runSeq };
       if (entry.slot.id === CERES_REFINERY_HAULER_SLOT_ID) {
+        const rec = this.state.traffic && Array.isArray(this.state.traffic.freighters)
+          ? this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id)
+          : null;
         let manifest = entity.data.cargoManifest;
-        if (!manifest || !Array.isArray(manifest.lines) || manifest.lines.length === 0) {
-          const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === 'station_ceres');
-          if (station) manifest = this._assignManifest(entity, 'hauler', station, CERES_ACTIVITY_SECTOR_ID);
+        // The dedicated refinery hauler is empty until the seam hands it a real mined lot. It must
+        // never regenerate an unrelated market manifest between the request and the refinery sink.
+        if (!validCausalManifest(manifest) || !(manifest.custody && manifest.custody.handoffId)) {
+          manifest = this._buildMinerManifest(entity, runSeq, null, 0, 'hauler');
+          this._setTrafficManifest(entity, rec, manifest);
         }
-        if (manifest && Array.isArray(manifest.lines) && manifest.lines.length > 0) {
+        if (validCausalManifest(manifest)) {
           spec.payload.manifest = manifest;
+          spec.payload.handoffId = manifest.custody && manifest.custody.handoffId || null;
         }
       }
     }
@@ -1901,6 +1976,7 @@ export const traffic = {
   _cleanup() {
     this._invalidateCausalRunEpoch();
     this._ensureState();
+    this._releaseCeresMinerHaulerHandoffControls(this.state.traffic.ceresMinerHaulerHandoff);
     // Hard exit drops the view and every view-scoped causality ledger while the freighter ledger
     // still names persistent bodies that need stamp cleanup.
     this._resetTransientCausalLedgers(true);
@@ -1947,6 +2023,7 @@ export const traffic = {
     // Timer-cadence only: one chain step per traffic update, not a freighter scan.
     if (state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._stepCeresCausalChain(dt);
+      this._stepCeresMinerHaulerHandoffs(dt);
     }
 
     let lostWorldSiteRoute = false;
@@ -3057,6 +3134,7 @@ export const traffic = {
         || runSeq !== (rec.dockSeq | 0) || runSeq !== (entityRunSeq | 0)) return null;
       sequence = runSeq;
       if (slot.id === CERES_REFINERY_HAULER_SLOT_ID
+        && jobPayload.manifest != null
         && !validCausalManifest(jobPayload.manifest)) return null;
     }
     const receiptId = `ceres-job-action:${jobId}:${action}:${sequence}:${targetRef}`;
@@ -3272,40 +3350,75 @@ export const traffic = {
         );
         if (!effectApplied) throw new Error('ceres_miner_effect_rejected');
       } else if (context.slot.id === CERES_SEAM_MINER_SLOT_ID && context.action === 'unload') {
-        effectType = 'freight:arrival';
         const deliveredManifest = context.rec.manifest
           || (context.entity.data && context.entity.data.cargoManifest)
           || null;
         if (!validCausalManifest(deliveredManifest) || deliveredManifest.role !== 'ore_carrier') {
           throw new Error('ceres_ore_barge_manifest_rejected');
         }
-        effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
-          dockSeq: context.sequence,
-          manifest: deliveredManifest,
-          ceresAction: true,
-          causalGuard,
-        });
-        if (!effectApplied) throw new Error('ceres_ore_barge_arrival_rejected');
-        this._setTrafficManifest(
-          context.entity,
-          context.rec,
-          this._buildMinerManifest(
+        const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+        if (handoff && handoff.state !== 'delivered' && handoff.state !== 'interrupted'
+          && handoff.minerWorldRecordId === context.worldRecordId
+          && handoff.rootLotId === this._ceresHandoffRootLotId(deliveredManifest)) {
+          effectType = 'traffic:ceresMinerHaulerHold';
+          effectApplied = true;
+          this._stampCeresHandoffStatus(context.entity, handoff, 'HOLDING FOR HAULER');
+        } else {
+          effectType = 'freight:arrival';
+          effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
+            dockSeq: context.sequence,
+            manifest: deliveredManifest,
+            ceresAction: true,
+            causalGuard,
+          });
+          if (!effectApplied) throw new Error('ceres_ore_barge_arrival_rejected');
+          this._setTrafficManifest(
             context.entity,
-            context.sequence,
-            null,
-            0,
-            'ore_carrier',
-          ),
-        );
+            context.rec,
+            this._buildMinerManifest(context.entity, context.sequence, null, 0, 'ore_carrier'),
+          );
+        }
       } else if (context.slot.id === CERES_REFINERY_HAULER_SLOT_ID) {
-        effectType = 'freight:arrival';
-        effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
-          dockSeq: context.sequence,
-          manifest: context.jobPayload && context.jobPayload.manifest,
-          ceresAction: true,
-          causalGuard,
-        });
-        if (!effectApplied) throw new Error('ceres_freight_effect_rejected');
+        const deliveredManifest = context.rec.manifest
+          || (context.entity.data && context.entity.data.cargoManifest)
+          || null;
+        if (!validCausalManifest(deliveredManifest)
+          || !deliveredManifest.custody || !deliveredManifest.custody.handoffId) {
+          effectType = 'traffic:emptyHauler';
+          effectApplied = true;
+          context.rec.dockSeq = context.sequence + 1;
+          context.entity.data.freightDockSeq = context.rec.dockSeq;
+        } else {
+          effectType = 'freight:arrival';
+          const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+          if (!this._ceresHandoffDeliveryIsCurrent(handoff, deliveredManifest)) {
+            throw new Error('ceres_handoff_delivery_rejected');
+          }
+          if (!this._ceresRefinerySettlementInRange(context.entity, context.target.entity)) {
+            this._stampCeresHandoffStatus(
+              context.entity,
+              handoff,
+              'REFINERY APPROACH — DOCKING',
+              context.target.entity,
+            );
+            this._recommissionCeresRefineryHauler(context);
+            throw new Error('ceres_refinery_out_of_range');
+          }
+          effectApplied = this._emitArrival(context.entity, context.rec, context.target.entity, {
+            dockSeq: context.sequence,
+            manifest: deliveredManifest,
+            ceresAction: true,
+            causalGuard,
+          });
+          if (!effectApplied || !this._markCeresHandoffDelivered(deliveredManifest, context)) {
+            throw new Error('ceres_freight_effect_rejected');
+          }
+          this._setTrafficManifest(
+            context.entity,
+            context.rec,
+            this._buildMinerManifest(context.entity, context.sequence + 1, null, 0, 'hauler'),
+          );
+        }
       } else if (context.slot.id === CERES_AMBUSH_HAULER_SLOT_ID) {
         // No freight/economy claim: this receipt-only crossing still advances its durable run token so
         // the next one-shot recommission cannot collide with the prior unload identity.
@@ -3382,6 +3495,403 @@ export const traffic = {
     if (rec) rec.manifest = manifest;
     if (entity && entity.data) entity.data.cargoManifest = manifest;
     return true;
+  },
+
+  // PQ-048.03 — one exact Ceres custody relay. The durable record deliberately keeps only stable
+  // world-record identities and JSON cargo facts; numeric entity ids are re-resolved every tick.
+  _ceresHandoffRootLotId(manifest) {
+    const source = manifest && manifest.lotSource;
+    return source && typeof source.rootLotId === 'string' && source.rootLotId
+      || manifest && manifest.lotId
+      || manifest && manifest.manifestId
+      || null;
+  },
+
+  _ceresHandoffActor(handoff, role) {
+    const worldRecordId = role === 'miner'
+      ? handoff && handoff.minerWorldRecordId
+      : handoff && handoff.haulerWorldRecordId;
+    const expectedSlot = role === 'miner'
+      ? CERES_SEAM_MINER_SLOT_ID
+      : CERES_REFINERY_HAULER_SLOT_ID;
+    if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
+    const entity = entityWithWorldRecord(this.state, worldRecordId);
+    if (!entity || entity.alive === false || !entity.data
+      || entity.data.activityActorSlotId !== expectedSlot) return null;
+    const rec = (this.state.traffic.freighters || []).find((candidate) => candidate
+      && (candidate.worldRecordId === worldRecordId || candidate.id === entity.id)
+      && candidate.activityActorSlotId === expectedSlot);
+    return rec ? { entity, rec, worldRecordId } : null;
+  },
+
+  _stampCeresHandoffStatus(entity, handoff, status, target = null) {
+    if (!entity || !entity.data || !handoff) return;
+    const data = entity.data;
+    data.ceresHandoffId = handoff.handoffId;
+    data.ceresHandoffState = handoff.state;
+    data.ceresHandoffStatus = String(status || 'RENDEZVOUS');
+    const targetWorldRecordId = target && target.data && target.data.worldRecordId || null;
+    if (target && target.id != null) data.ceresHandoffTargetId = target.id;
+    else delete data.ceresHandoffTargetId;
+    if (targetWorldRecordId) data.ceresHandoffTargetWorldRecordId = targetWorldRecordId;
+    else delete data.ceresHandoffTargetWorldRecordId;
+  },
+
+  _requestCeresMinerHaulerHandoff(context, manifest) {
+    if (!context || !context.entity || !context.rec || !context.slot
+      || context.slot.id !== CERES_SEAM_MINER_SLOT_ID
+      || !validCausalManifest(manifest) || manifest.role !== 'ore_carrier') return null;
+    const minerWorldRecordId = context.worldRecordId || context.entity.data && context.entity.data.worldRecordId;
+    const lotId = manifest.lotId || manifest.manifestId;
+    if (typeof minerWorldRecordId !== 'string' || !minerWorldRecordId
+      || typeof lotId !== 'string' || !lotId) return null;
+    this._ensureState();
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const haulerWorldRecordId = stableRecordId(
+      seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      'ceres:activity:ceres_refinery_hauler',
+    );
+    const handoffId = `ceres-miner-hauler:${minerWorldRecordId}:${lotId}`;
+    const current = this.state.traffic.ceresMinerHaulerHandoff;
+    if (current && current.state !== 'delivered' && current.state !== 'interrupted') {
+      return current.handoffId === handoffId ? current : null;
+    }
+    const qty = manifest.totalQty;
+    const handoff = {
+      schema: CERES_MINER_HAULER_HANDOFF_SCHEMA,
+      handoffId,
+      rootLotId: this._ceresHandoffRootLotId(manifest),
+      minerWorldRecordId,
+      haulerWorldRecordId,
+      state: 'requested',
+      requestedAtSimT: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      requestedQty: qty,
+      transferredQty: 0,
+      deliveredQty: 0,
+      remainingQty: qty,
+      terminalizedQty: 0,
+      transferSeq: 0,
+      deliveredTransferSeq: 0,
+    };
+    this.state.traffic.ceresMinerHaulerHandoff = handoff;
+    const hauler = this._ceresHandoffActor(handoff, 'hauler');
+    this._stampCeresHandoffStatus(context.entity, handoff, 'HAULER REQUESTED', hauler && hauler.entity);
+    if (hauler) this._stampCeresHandoffStatus(hauler.entity, handoff, 'MINER ORE REQUEST', context.entity);
+    return handoff;
+  },
+
+  _ceresHandoffClaimId(handoff, role) {
+    return `ceres-handoff:${handoff.handoffId}:${role}`;
+  },
+
+  _claimCeresMinerHaulerHandoffControl(handoff, pair, role) {
+    if (!handoff || !pair || !pair.entity || !pair.entity.data) return false;
+    const jobId = pair.entity.data.jobId;
+    const claimId = this._ceresHandoffClaimId(handoff, role);
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (!jobs || typeof jobs.claimControl !== 'function' || typeof jobId !== 'string') return false;
+    const result = jobs.claimControl(jobId, { claimId, holder: 'traffic:ceresMinerHaulerHandoff' });
+    return !!(result && result.granted === true);
+  },
+
+  _releaseCeresMinerHaulerHandoffControl(handoff, role) {
+    if (!handoff) return;
+    const worldRecordId = role === 'miner' ? handoff.minerWorldRecordId : handoff.haulerWorldRecordId;
+    if (typeof worldRecordId !== 'string' || !worldRecordId) return;
+    const jobId = `job:${worldRecordId}`;
+    const claimId = this._ceresHandoffClaimId(handoff, role);
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (jobs && typeof jobs.releaseControl === 'function') jobs.releaseControl(jobId, claimId);
+  },
+
+  _releaseCeresMinerHaulerHandoffControls(handoff) {
+    this._releaseCeresMinerHaulerHandoffControl(handoff, 'miner');
+    this._releaseCeresMinerHaulerHandoffControl(handoff, 'hauler');
+  },
+
+  _ceresHandoffCapacity(pair) {
+    const configured = pair && pair.entity && pair.entity.data && pair.entity.data.ceresHandoffCapacityU;
+    const recordCapacity = pair && pair.rec && pair.rec.ceresHandoffCapacityU;
+    const value = Number.isFinite(configured) ? configured : recordCapacity;
+    return Number.isFinite(value)
+      ? Math.max(0, Math.floor(value))
+      : CERES_REFINERY_HAULER_CAPACITY_U;
+  },
+
+  _ceresRefinerySettlementInRange(entity, station) {
+    if (!entity || !entity.pos || !station || !station.pos) return false;
+    const dx = station.pos.x - entity.pos.x;
+    const dz = station.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const dockRange = Math.max(
+      DOCK_RANGE,
+      CERES_MINER_HAULER_HANDOFF_RANGE_WU,
+      Number.isFinite(station.data && station.data.dockRadius) ? station.data.dockRadius : 0,
+      (Number.isFinite(entity.radius) ? entity.radius : 0)
+        + (Number.isFinite(station.radius) ? station.radius : 0) + 12,
+    ) + 6;
+    return Number.isFinite(distance) && distance <= dockRange;
+  },
+
+  _splitCeresHandoffManifest(manifest, transferQty) {
+    const requested = Math.max(0, Math.floor(Number(transferQty) || 0));
+    let remaining = requested;
+    const movedLines = [];
+    const remainderLines = [];
+    for (const line of manifest.lines) {
+      const take = Math.min(line.qty, remaining);
+      if (take > 0) movedLines.push({ commodityId: line.commodityId, qty: take });
+      const left = line.qty - take;
+      if (left > 0) remainderLines.push({ commodityId: line.commodityId, qty: left });
+      remaining -= take;
+    }
+    const movedQty = movedLines.reduce((sum, line) => sum + line.qty, 0);
+    const remainderQty = remainderLines.reduce((sum, line) => sum + line.qty, 0);
+    return { movedLines, movedQty, remainderLines, remainderQty };
+  },
+
+  _markCeresHandoffCausalTransfer(handoff) {
+    const chain = this._ceresCausal;
+    if (!chain || !chain.seeds) return;
+    chain.seeds.ore_handoff = true;
+    chain.seeds.hauler_ore_manifest = true;
+  },
+
+  _transferCeresMinerHaulerHandoff(handoff, minerPair, haulerPair, distance) {
+    const source = minerPair.entity.data && minerPair.entity.data.cargoManifest || minerPair.rec.manifest;
+    if (!validCausalManifest(source) || source.role !== 'ore_carrier'
+      || this._ceresHandoffRootLotId(source) !== handoff.rootLotId) return false;
+    const held = haulerPair.entity.data && haulerPair.entity.data.cargoManifest || haulerPair.rec.manifest;
+    if (validCausalManifest(held)) return false;
+    const capacity = this._ceresHandoffCapacity(haulerPair);
+    const transferQty = Math.min(source.totalQty, capacity);
+    if (transferQty <= 0) {
+      this._stampCeresHandoffStatus(minerPair.entity, handoff, 'HAULER HOLD FULL', haulerPair.entity);
+      this._stampCeresHandoffStatus(haulerPair.entity, handoff, 'NO FREE ORE CAPACITY', minerPair.entity);
+      return false;
+    }
+    const split = this._splitCeresHandoffManifest(source, transferQty);
+    if (split.movedQty !== transferQty || split.remainderQty + split.movedQty !== source.totalQty) return false;
+    const transferSeq = (handoff.transferSeq | 0) + 1;
+    const wholeLot = split.movedQty === source.totalQty;
+    const lotSource = source.lotSource && typeof source.lotSource === 'object' ? source.lotSource : {};
+    const transferred = {
+      ...source,
+      manifestId: wholeLot ? source.manifestId : `${source.manifestId}:handoff:${transferSeq}`,
+      freighterKey: handoff.haulerWorldRecordId,
+      role: 'hauler',
+      lines: split.movedLines,
+      totalQty: split.movedQty,
+      lotId: wholeLot ? source.lotId : `${source.lotId}:handoff:${transferSeq}`,
+      lotSource: { ...lotSource, rootLotId: handoff.rootLotId, handoffId: handoff.handoffId, transferSeq },
+      custody: {
+        holderKind: 'traffic', holderId: handoff.haulerWorldRecordId,
+        acquiredBy: 'traffic:ceresMinerHaulerHandoff', handoffId: handoff.handoffId,
+        transferSeq, rootLotId: handoff.rootLotId,
+      },
+    };
+    if (!this._setTrafficManifest(haulerPair.entity, haulerPair.rec, transferred)) return false;
+    handoff.transferSeq = transferSeq;
+    handoff.transferredQty += split.movedQty;
+    handoff.remainingQty = split.remainderQty;
+    handoff.transferredAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    handoff.lastTransferDistanceWU = Math.round(distance * 1000) / 1000;
+    this._markCeresHandoffCausalTransfer(handoff);
+    this._releaseCeresMinerHaulerHandoffControl(handoff, 'hauler');
+    if (split.remainderQty > 0) {
+      handoff.state = 'in_transit';
+      const remainder = {
+        ...source,
+        lines: split.remainderLines,
+        totalQty: split.remainderQty,
+        lotSource: { ...lotSource, rootLotId: handoff.rootLotId, handoffId: handoff.handoffId },
+        custody: {
+          ...(source.custody && typeof source.custody === 'object' ? source.custody : {}),
+          holderKind: 'traffic', holderId: handoff.minerWorldRecordId, acquiredBy: 'mining:npcExtraction',
+        },
+      };
+      this._setTrafficManifest(minerPair.entity, minerPair.rec, remainder);
+      this._stampCeresHandoffStatus(minerPair.entity, handoff, 'HOLDING REMAINDER', haulerPair.entity);
+    } else {
+      handoff.state = 'in_transit';
+      handoff.resumedAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+      this._setTrafficManifest(
+        minerPair.entity,
+        minerPair.rec,
+        this._buildMinerManifest(minerPair.entity, handoff.transferSeq, null, 0, 'ore_carrier'),
+      );
+      this._releaseCeresMinerHaulerHandoffControl(handoff, 'miner');
+      this._stampCeresHandoffStatus(minerPair.entity, handoff, 'SEAM WORK RESUMED');
+    }
+    const recommissioned = this._recommissionCeresRefineryHauler(haulerPair);
+    this._stampCeresHandoffStatus(
+      haulerPair.entity,
+      handoff,
+      recommissioned ? 'ORE TRANSFERRED — REFINERY BOUND' : 'REFINERY ROUTE PENDING',
+    );
+    return true;
+  },
+
+  _markCeresHandoffDelivered(manifest, context) {
+    const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+    if (!this._ceresHandoffDeliveryIsCurrent(handoff, manifest)) return false;
+    const transferSeq = manifest.custody.transferSeq | 0;
+    handoff.deliveredTransferSeq = transferSeq;
+    handoff.deliveredQty = Math.min(handoff.requestedQty, handoff.deliveredQty + manifest.totalQty);
+    handoff.lastSinkReceiptId = context.receiptId;
+    handoff.deliveredAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const miner = this._ceresHandoffActor(handoff, 'miner');
+    if (handoff.remainingQty <= 0
+      && handoff.deliveredQty + (handoff.terminalizedQty | 0) >= handoff.requestedQty) {
+      handoff.state = 'delivered';
+      this._releaseCeresMinerHaulerHandoffControl(handoff, 'miner');
+      if (miner) this._stampCeresHandoffStatus(miner.entity, handoff, 'ORE HANDOFF COMPLETE');
+    } else {
+      handoff.state = 'requested';
+      if (miner) this._stampCeresHandoffStatus(miner.entity, handoff, 'HAULER RETURNING');
+    }
+    this._stampCeresHandoffStatus(context.entity, handoff, 'ORE DELIVERED');
+    return true;
+  },
+
+  _ceresHandoffDeliveryIsCurrent(handoff, manifest) {
+    const custody = manifest && manifest.custody;
+    const transferSeq = custody ? (custody.transferSeq | 0) : 0;
+    const outstandingQty = handoff && handoff.transferredQty - handoff.deliveredQty;
+    return !!(handoff && custody && handoff.state !== 'interrupted' && handoff.state !== 'delivered'
+      && custody.handoffId === handoff.handoffId
+      && transferSeq > (handoff.deliveredTransferSeq | 0)
+      && transferSeq === (handoff.transferSeq | 0)
+      && Number.isSafeInteger(manifest.totalQty) && manifest.totalQty > 0
+      && manifest.totalQty === outstandingQty);
+  },
+
+  _interruptCeresMinerHaulerHandoff(handoff, reason, entity = null) {
+    if (!handoff || handoff.state === 'interrupted' || handoff.state === 'delivered') return false;
+    handoff.state = 'interrupted';
+    handoff.interruptedAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    handoff.interruption = String(reason || 'interrupted');
+    this._releaseCeresMinerHaulerHandoffControls(handoff);
+    const miner = this._ceresHandoffActor(handoff, 'miner');
+    const hauler = this._ceresHandoffActor(handoff, 'hauler');
+    if (miner) this._stampCeresHandoffStatus(miner.entity, handoff, 'HANDOFF INTERRUPTED', hauler && hauler.entity);
+    if (hauler) this._stampCeresHandoffStatus(hauler.entity, handoff, 'HANDOFF INTERRUPTED', miner && miner.entity);
+    if (entity && entity.data) this._stampCeresHandoffStatus(entity, handoff, 'HANDOFF INTERRUPTED');
+    if (this._ceresCausal && this._ceresCausal.seeds) {
+      this._ceresCausal.seeds.aftermath_open = true;
+    }
+    return true;
+  },
+
+  _preserveCeresHandoffAfterMinerLoss(handoff) {
+    if (!handoff || handoff.state !== 'in_transit') return false;
+    const hauler = this._ceresHandoffActor(handoff, 'hauler');
+    const manifest = hauler && (hauler.entity.data && hauler.entity.data.cargoManifest
+      || hauler.rec.manifest);
+    if (!hauler || !this._ceresHandoffDeliveryIsCurrent(handoff, manifest)) return false;
+    handoff.terminalizedQty = (handoff.terminalizedQty | 0) + handoff.remainingQty;
+    handoff.remainingQty = 0;
+    handoff.interruption = 'miner_destroyed_after_transfer';
+    handoff.interruptedAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._releaseCeresMinerHaulerHandoffControl(handoff, 'miner');
+    this._stampCeresHandoffStatus(hauler.entity, handoff, 'ORE IN TRANSIT — MINER LOST');
+    return true;
+  },
+
+  _rehydrateCeresCausalHandoffSeeds() {
+    const chain = this._ceresCausal;
+    const handoff = this.state && this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff;
+    if (!chain || !chain.seeds || !handoff || handoff.state === 'interrupted') return;
+    if (handoff.state !== 'delivered') chain.seeds.miner_loaded = true;
+    if (handoff.transferSeq > 0) {
+      chain.seeds.ore_handoff = true;
+      chain.seeds.hauler_ore_manifest = true;
+    }
+  },
+
+  _ceresHandoffTransferWindow() {
+    const chain = this._ceresCausal;
+    if (!chain) return true;
+    const live = (chain.active || []).find((candidate) => candidate
+      && candidate.eventId === 'ev_miner_calls_hauler');
+    if (live) return live.phase === 'transfer' || live.phase === 'split';
+    return Array.isArray(chain.completed) && chain.completed.includes('ev_miner_calls_hauler');
+  },
+
+  _stepCeresMinerHaulerHandoffs(dt) {
+    this._ensureState();
+    const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+    if (!handoff || handoff.schema !== CERES_MINER_HAULER_HANDOFF_SCHEMA
+      || handoff.state === 'delivered' || handoff.state === 'interrupted'
+      || this.state.world && this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return;
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    const minerRecord = records && records[handoff.minerWorldRecordId];
+    const haulerRecord = records && records[handoff.haulerWorldRecordId];
+    const miner = this._ceresHandoffActor(handoff, 'miner');
+    const hauler = this._ceresHandoffActor(handoff, 'hauler');
+    if (terminalWorldRecord(haulerRecord)) {
+      this._interruptCeresMinerHaulerHandoff(handoff, 'participant_destroyed');
+      return;
+    }
+    if (terminalWorldRecord(minerRecord)
+      && !this._preserveCeresHandoffAfterMinerLoss(handoff)) {
+      this._interruptCeresMinerHaulerHandoff(handoff, 'participant_destroyed');
+      return;
+    }
+    if (!miner || !hauler) {
+      this._releaseCeresMinerHaulerHandoffControls(handoff);
+      return; // world-record identities let a later materialization resume this exact handoff.
+    }
+    const held = hauler.entity.data && hauler.entity.data.cargoManifest || hauler.rec.manifest;
+    if (handoff.state === 'in_transit') {
+      if (!validCausalManifest(held) || !held.custody || held.custody.handoffId !== handoff.handoffId) {
+        this._interruptCeresMinerHaulerHandoff(handoff, 'transferred_manifest_missing', hauler.entity);
+      } else {
+        this._stampCeresHandoffStatus(hauler.entity, handoff, 'ORE TRANSFERRED — REFINERY BOUND');
+      }
+      return;
+    }
+    const source = miner.entity.data && miner.entity.data.cargoManifest || miner.rec.manifest;
+    if (!validCausalManifest(source) || source.role !== 'ore_carrier'
+      || this._ceresHandoffRootLotId(source) !== handoff.rootLotId) {
+      this._interruptCeresMinerHaulerHandoff(handoff, 'source_manifest_missing', miner.entity);
+      return;
+    }
+    if (validCausalManifest(held)) {
+      this._stampCeresHandoffStatus(miner.entity, handoff, 'HAULER HOLD BUSY', hauler.entity);
+      this._stampCeresHandoffStatus(hauler.entity, handoff, 'ORE TRANSFERRED — REFINERY BOUND', miner.entity);
+      return;
+    }
+    const minerClaimed = this._claimCeresMinerHaulerHandoffControl(handoff, miner, 'miner');
+    const haulerClaimed = this._claimCeresMinerHaulerHandoffControl(handoff, hauler, 'hauler');
+    if (!minerClaimed || !haulerClaimed) {
+      if (minerClaimed) this._releaseCeresMinerHaulerHandoffControl(handoff, 'miner');
+      if (haulerClaimed) this._releaseCeresMinerHaulerHandoffControl(handoff, 'hauler');
+      this._stampCeresHandoffStatus(miner.entity, handoff, 'HAULER REQUESTED', hauler.entity);
+      this._stampCeresHandoffStatus(hauler.entity, handoff, 'RENDEZVOUS PENDING', miner.entity);
+      return;
+    }
+    const dx = miner.entity.pos.x - hauler.entity.pos.x;
+    const dz = miner.entity.pos.z - hauler.entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const aim = Number.isFinite(distance) && distance > 0.0001 ? Math.atan2(dz, dx) : hauler.entity.rot || 0;
+    setIntent(miner.entity, 0, 0, false, false, null, miner.entity.rot || 0);
+    if (!Number.isFinite(distance) || distance > CERES_MINER_HAULER_HANDOFF_RANGE_WU) {
+      handoff.state = 'rendezvous';
+      setIntent(hauler.entity, 0, 1, false, false, null, aim);
+      this._stampCeresHandoffStatus(miner.entity, handoff, 'HOLDING FOR HAULER', hauler.entity);
+      this._stampCeresHandoffStatus(hauler.entity, handoff, 'RENDEZVOUS INBOUND', miner.entity);
+      return;
+    }
+    setIntent(hauler.entity, 0, 0, false, false, null, aim);
+    this._stampCeresHandoffStatus(miner.entity, handoff,
+      this._ceresHandoffTransferWindow() ? 'TRANSFER WINDOW OPEN' : 'TRANSFER WINDOW PENDING', hauler.entity);
+    this._stampCeresHandoffStatus(hauler.entity, handoff,
+      this._ceresHandoffTransferWindow() ? 'TRANSFER WINDOW OPEN' : 'TRANSFER WINDOW PENDING', miner.entity);
+    if (this._ceresHandoffTransferWindow()) this._transferCeresMinerHaulerHandoff(handoff, miner, hauler, distance);
+    void dt;
   },
 
   _onNpcJobWork(intent) {
@@ -3550,6 +4060,12 @@ export const traffic = {
       const authoredYield = Math.max(1, Math.floor(Number(asteroid.data && asteroid.data.yieldU) || NPC_MINER_WORK_BATCH_U));
       const isCeresRichSeamWork = context.slot && context.slot.id === CERES_SEAM_MINER_SLOT_ID
         && asteroid.data && asteroid.data.activityObjectSlotId === CERES_RICH_SEAM_OBJECT_SLOT_ID;
+      const activeHandoff = this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff;
+      if (isCeresRichSeamWork && activeHandoff
+        && activeHandoff.state !== 'delivered' && activeHandoff.state !== 'interrupted'
+        && activeHandoff.minerWorldRecordId === context.worldRecordId) {
+        throw new Error('ceres_miner_handoff_pending');
+      }
       if (isCeresRichSeamWork && richSeamOpportunityForEntity(this.state, asteroid)?.state === 'open') {
         const owner = ceresSeamMinerOwnerIdentity(context.entity, context.rec);
         if (!owner) throw new Error('ceres_miner_stable_identity_missing');
@@ -3592,6 +4108,9 @@ export const traffic = {
           : null,
       );
       if (!this._setTrafficManifest(context.entity, context.rec, manifest)) throw new Error('miner_manifest_rejected');
+      if (isCeresRichSeamWork && !this._requestCeresMinerHaulerHandoff(context, manifest)) {
+        throw new Error('ceres_miner_handoff_request_rejected');
+      }
       this.bus.emit('mining:npcExtraction', {
         jobId: context.jobId,
         workId,
@@ -4338,6 +4857,7 @@ export const traffic = {
   _stepCeresCausalChain(dt) {
     const chain = this._ensureCeresCausalChain('step');
     if (!chain) return;
+    this._rehydrateCeresCausalHandoffSeeds();
     const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     // Advance active links first so a finishing seed can admit the next link in the same step.
     if (Array.isArray(chain.active) && chain.active.length) {
@@ -4466,6 +4986,18 @@ export const traffic = {
     const role = (rec && rec.role)
       || (ent && ent.data && ent.data.trafficRole)
       || null;
+    const killedWorldRecordId = (ent && ent.data && ent.data.worldRecordId)
+      || (rec && rec.worldRecordId)
+      || null;
+    const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+    if (handoff && handoff.minerWorldRecordId === killedWorldRecordId
+      && this._preserveCeresHandoffAfterMinerLoss(handoff)) {
+      // The miner-held remainder falls through to the ordinary loss owner below. The live hauler's
+      // already-transferred fragment remains an independently conserved delivery obligation.
+    } else if (handoff && (handoff.minerWorldRecordId === killedWorldRecordId
+      || handoff.haulerWorldRecordId === killedWorldRecordId)) {
+      this._interruptCeresMinerHaulerHandoff(handoff, 'participant_destroyed', ent);
+    }
     // Release any wreck/payload reservation so another cutter (or the player) can take it.
     if (ent && ent.data && ent.data.worldRecordId) {
       const claimId = ent.data.worldRecordId;
@@ -4500,7 +5032,13 @@ export const traffic = {
         || (rec && rec.worldRecordId)
         || null;
       this._releaseCeresActivityJob(recordId);
-      if (!ceresOreCarrier) {
+      const carriedManifest = (rec && rec.manifest)
+        || (ent && ent.data && ent.data.cargoManifest)
+        || null;
+      const ceresHandoffHauler = !!(handoff && handoff.haulerWorldRecordId === recordId
+        && carriedManifest && carriedManifest.custody
+        && carriedManifest.custody.handoffId === handoff.handoffId);
+      if (!ceresOreCarrier && !ceresHandoffHauler) {
         if (idx >= 0) list.splice(idx, 1);
         const activeIdx = this._active.indexOf(p.id);
         if (activeIdx >= 0) this._active.splice(activeIdx, 1);
@@ -4509,9 +5047,8 @@ export const traffic = {
         }
         return;
       }
-      // PQ-048.01: unlike presentation-only cast, the Ore Barge owns a conserved manifest. Fall
-      // through to the ordinary freight-loss path so robbery/destruction moves that same lot into
-      // the existing scarcity/news/physical-cargo custody route exactly once.
+      // The Ore Barge and this exact transferred hauler lot both fall through to the ordinary
+      // freight-loss path, which is the existing custody sink for a destroyed live manifest.
     }
     const lawLoss = role === 'patrol' || role === 'escort';
     if (role && !lawLoss && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
@@ -4625,6 +5162,13 @@ export const traffic = {
     if (!Array.isArray(this.state.traffic.appliedMinerWorkIds)) this.state.traffic.appliedMinerWorkIds = [];
     if (!Array.isArray(this.state.traffic.appliedJobActionIds)) this.state.traffic.appliedJobActionIds = [];
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) this.state.traffic.appliedSalvorWorkIds = [];
+    const handoff = this.state.traffic.ceresMinerHaulerHandoff;
+    const normalizedHandoff = normalizeCeresMinerHaulerHandoff(handoff, false);
+    if (!normalizedHandoff) {
+      this.state.traffic.ceresMinerHaulerHandoff = null;
+    } else if (handoff.terminalizedQty == null) {
+      handoff.terminalizedQty = normalizedHandoff.terminalizedQty;
+    }
     if (!Number.isFinite(this.state.traffic.rngSeed) || (this.state.traffic.rngSeed >>> 0) === 0) {
       this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', this.state.world && this.state.world.currentSectorId);
     }
@@ -4705,7 +5249,32 @@ export const traffic = {
     return drawSeeded(this.state.traffic, 'rngSeed', hash32(this.state.meta && this.state.meta.seed, 'traffic'));
   },
 
+  serialize() {
+    this._ensureState();
+    return {
+      schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
+        this.state.traffic.ceresMinerHaulerHandoff,
+      ),
+    };
+  },
+
+  deserialize(data) {
+    const previous = this.state && this.state.traffic
+      && this.state.traffic.ceresMinerHaulerHandoff;
+    this._releaseCeresMinerHaulerHandoffControls(previous);
+    this._ensureState();
+    this.state.traffic.ceresMinerHaulerHandoff = data
+      && !Array.isArray(data)
+      && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
+      ? normalizeCeresMinerHaulerHandoff(data.ceresMinerHaulerHandoff)
+      : null;
+  },
+
   newGame() {
+    this._releaseCeresMinerHaulerHandoffControls(
+      this.state && this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff,
+    );
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._active = [];
@@ -4727,6 +5296,7 @@ export const traffic = {
       appliedMinerWorkIds: [],
       appliedJobActionIds: [],
       appliedSalvorWorkIds: [],
+      ceresMinerHaulerHandoff: null,
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },

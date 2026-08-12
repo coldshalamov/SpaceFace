@@ -375,8 +375,8 @@ function assertExactAuthoredJobs(harness) {
       assert.equal(call.spec.payload && call.spec.payload.activityRunSeq, 0,
         'one-shot Ceres haulers capture their durable run sequence at commission');
       if (slot.id === 'ceres_refinery_hauler') {
-        assert.ok(call.spec.payload.manifest,
-          'the refinery hauler carries the deterministic live manifest into its one-shot job');
+        assert.equal(Object.hasOwn(call.spec.payload, 'manifest'), false,
+          'the refinery hauler starts empty until the physical miner handoff');
       } else {
         assert.equal(Object.hasOwn(call.spec.payload, 'manifest'), false,
           'the Throughline hauler emits a typed action but never invents freight cargo');
@@ -721,7 +721,7 @@ test('a completed authored hauler recommissions the same stable job before ambie
   assert.equal(harness.emitted.length, 0, 'recommissioning claims no freight or mining receipt');
 });
 
-test('a one-shot refinery hauler delivers on two recommissions without replaying either run', () => {
+test('a transferred refinery lot rejects early unload and settles once inside physical dock range', () => {
   const harness = boot();
   enterCeres(harness);
   const slot = castSlot('ceres_refinery_hauler');
@@ -751,40 +751,45 @@ test('a one-shot refinery hauler delivers on two recommissions without replaying
     };
   };
 
-  const firstEntry = harness.npcJobs.get(jobId);
-  assert.equal(firstEntry.job.payload.activityRunSeq, 0);
-  const first = unloadIntent(firstEntry);
-  harness.bus.emit('npcjobs:unload', first);
+  const minerSlot = castSlot('ceres_seam_miner');
+  const miner = authoredEntities(harness.state)
+    .find((entity) => entity.data.activityActorSlotId === minerSlot.id);
+  const minerRec = harness.state.traffic.freighters.find((row) => row.id === miner.id);
+  const manifest = harness.system._buildMinerManifest(
+    miner, 1, 'cmdty_ore_iron', 8, 'ore_carrier', { rootLotId: 'cast-route-lot' },
+  );
+  harness.system._setTrafficManifest(miner, minerRec, manifest);
+  const handoff = harness.system._requestCeresMinerHaulerHandoff({
+    entity: miner,
+    rec: minerRec,
+    slot: minerSlot,
+    worldRecordId: miner.data.worldRecordId,
+  }, manifest);
+  hauler.pos = { ...miner.pos };
+  harness.system._transferCeresMinerHaulerHandoff(handoff,
+    { entity: miner, rec: minerRec, worldRecordId: miner.data.worldRecordId },
+    { entity: hauler, rec, worldRecordId: hauler.data.worldRecordId }, 0);
+
+  let entry = harness.npcJobs.get(jobId);
+  assert.equal(entry.job.payload.manifest.totalQty, 8,
+    'post-transfer recommission carries the authoritative lot');
+  const station = harness.state.entityIndex.byStationId.get('station_ceres');
+  hauler.pos = { x: station.pos.x + 500, z: station.pos.z };
+  harness.bus.emit('npcjobs:unload', unloadIntent(entry));
+  assert.equal(arrivals().length, 0, 'logical unload at rendezvous cannot settle cargo');
+  assert.equal(receipts().length, 0);
+  entry = harness.npcJobs.get(jobId);
+  assert.equal(entry.job.phase, NPC_JOB_PHASE.COMMISSION,
+    'early unload recommissions the physical route instead of dropping the delivery');
+
+  hauler.pos = { x: station.pos.x + 72, z: station.pos.z };
+  harness.bus.emit('npcjobs:unload', unloadIntent(entry, 8));
   assert.equal(arrivals().length, 1);
   assert.equal(receipts().length, 1);
-  assert.equal(receipts()[0].payload.sequence, 0);
-  assert.equal(receipts()[0].payload.kernelSequence, 7);
-  assert.equal(rec.dockSeq, 1);
-  assert.equal(hauler.data.freightDockSeq, 1);
-
-  harness.bus.emit('npcjobs:unload', first);
-  assert.equal(arrivals().length, 1, 'duplicate delivery in the same run is owner-idempotent');
-  assert.equal(receipts().length, 1);
-
-  assert.equal(harness.npcJobs.release(jobId), true);
-  harness.system.update(1 / 60, harness.state);
-  const secondEntry = harness.npcJobs.get(jobId);
-  assert.ok(secondEntry);
-  assert.equal(secondEntry.job.payload.activityRunSeq, 1,
-    'recommission captures the durable generation advanced by the first delivery');
-  const second = unloadIntent(secondEntry);
-  harness.bus.emit('npcjobs:unload', second);
-  assert.equal(arrivals().length, 2, 'the reset kernel sequence does not suppress the next real trip');
-  assert.equal(receipts().length, 2);
-  assert.equal(receipts()[1].payload.sequence, 1);
-  assert.equal(receipts()[1].payload.kernelSequence, 7);
-  assert.equal(rec.dockSeq, 2);
-  assert.equal(hauler.data.freightDockSeq, 2);
-
-  harness.bus.emit('npcjobs:unload', first);
-  harness.bus.emit('npcjobs:unload', second);
-  assert.equal(arrivals().length, 2, 'stale and duplicate intents remain inert after the next trip');
-  assert.equal(receipts().length, 2);
+  assert.equal(handoff.state, 'delivered');
+  const replay = unloadIntent(entry, 8);
+  harness.bus.emit('npcjobs:unload', replay);
+  assert.equal(arrivals().length, 1, 'duplicate settlement remains idempotent');
 });
 
 test('malformed authored route timing and geometry fail closed without ambient fallback', () => {
