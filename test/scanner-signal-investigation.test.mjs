@@ -12,6 +12,7 @@ import {
 } from '../src/systems/scanner.js';
 import { world } from '../src/systems/world.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { PALLAS_HIDDEN_CACHE } from '../src/data/pallasHiddenCache.js';
 import { signalMetaText } from '../src/ui/signalInvestigationPrompt.js';
 
 function boot(seed = 4701) {
@@ -55,6 +56,39 @@ function pulse(t) {
 
 function clearCooldown(t) {
   t.sim.runTicks(Math.ceil(8.1 / SIM_DT));
+}
+
+function addPoiSignal(t, {
+  poiId,
+  kind,
+  type = kind === 'anomaly' ? 'anomaly' : 'wreck',
+  distance,
+  manualInvestigation = false,
+  signalPriority = 0,
+}) {
+  const entity = t.sim.spawn({
+    type: 'fx', team: 2, pos: { x: distance, z: 0 }, radius: 10, mass: 0, collides: false,
+    data: {
+      poi: true,
+      poiId,
+      poiType: type,
+      hidden: true,
+      scannerSignalKind: kind,
+      manualInvestigation,
+      scannerSignalPriority: signalPriority,
+    },
+  });
+  t.state.world.activeSector.pois.push({
+    id: entity.id,
+    poiId,
+    type,
+    pos: { ...entity.pos },
+    hidden: true,
+    scannerSignalKind: kind,
+    manualInvestigation,
+    scannerSignalPriority: signalPriority,
+  });
+  return entity;
 }
 
 function bootAnomaly(seed = 4702) {
@@ -107,6 +141,70 @@ test('signal helpers improve by proximity or repeated scans and remain bounded',
   assert.equal(signalStrengthFor(0, 1200), 1);
   assert.equal(signalStrengthFor(1200, 1200), 0);
   assert.equal(signalStrengthFor(600, 1200), 0.5);
+});
+
+test('built-in distress priority outranks authored Pallas salvage priority', () => {
+  const t = boot(4813);
+  t.state.ambushSignatures.tells = {};
+  addPoiSignal(t, {
+    poiId: PALLAS_HIDDEN_CACHE.cluePoiId,
+    kind: 'salvage',
+    distance: 40,
+    manualInvestigation: true,
+    signalPriority: 96,
+  });
+  const communicator = t.sim.spawn({
+    type: 'wreck', team: 2, pos: { x: 140, z: 0 }, radius: 10, mass: 0, collides: false,
+    data: { isCommunicator: true, name: 'Emergency Communicator' },
+  });
+
+  pulse(t);
+  const signals = t.events.results[0].signals;
+  assert.deepEqual(signals.map((signal) => signal.sourceKind), ['distress', 'salvage']);
+  assert.equal(signals[0].entityId, communicator.id);
+  assert.equal(signals[1].sourceId, PALLAS_HIDDEN_CACHE.cluePoiId);
+});
+
+test('six-result cap reserves only the closest eligible manual signal and keeps kind-first order', () => {
+  const t = boot(4814);
+  t.state.ambushSignatures.tells = {};
+  for (let index = 0; index < 7; index += 1) {
+    addPoiSignal(t, { poiId: `crowded-anomaly-${index}`, kind: 'anomaly', distance: 260 + index * 10 });
+  }
+  addPoiSignal(t, {
+    poiId: 'manual-salvage-farther', kind: 'salvage', distance: 80, manualInvestigation: true,
+    signalPriority: 95,
+  });
+  addPoiSignal(t, {
+    poiId: PALLAS_HIDDEN_CACHE.cluePoiId, kind: 'salvage', distance: 20, manualInvestigation: true,
+    signalPriority: 96,
+  });
+
+  pulse(t);
+  const signals = t.events.results[0].signals;
+  assert.equal(signals.length, 6);
+  assert.equal(signals[0].sourceKind, 'anomaly');
+  assert.deepEqual(signals.filter((signal) => signal.manualInvestigation).map((signal) => signal.sourceId),
+    [PALLAS_HIDDEN_CACHE.cluePoiId]);
+  assert.equal(signals.at(-1).sourceKind, 'salvage', 'reserved manual salvage cannot outrank anomaly');
+});
+
+test('six-result cap adds no manual slot when no manual signal is close enough to investigate', () => {
+  const t = boot(4815);
+  t.state.ambushSignatures.tells = {};
+  for (let index = 0; index < 7; index += 1) {
+    addPoiSignal(t, { poiId: `distant-anomaly-${index}`, kind: 'anomaly', distance: 260 + index * 10 });
+  }
+  addPoiSignal(t, {
+    poiId: PALLAS_HIDDEN_CACHE.cluePoiId, kind: 'salvage', distance: 180, manualInvestigation: true,
+    signalPriority: 96,
+  });
+
+  pulse(t);
+  const signals = t.events.results[0].signals;
+  assert.equal(signals.length, 6);
+  assert.equal(signals.every((signal) => signal.sourceKind === 'anomaly'), true);
+  assert.equal(signals.some((signal) => signal.manualInvestigation), false);
 });
 
 test('anomaly bearing admission requires movement and a changed bearing', () => {

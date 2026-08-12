@@ -20,6 +20,10 @@ import {
   vestaOreCacheSignalCopy,
 } from '../data/vestaOreCache.js';
 import {
+  pallasHiddenCacheSignalAvailable,
+  pallasHiddenCacheSignalCopy,
+} from '../data/pallasHiddenCache.js';
+import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
@@ -494,6 +498,14 @@ function signalKindForPoi(poi, entityData = null) {
   return null;
 }
 
+function scannerSignalPriorityFor(poi, entityData = null) {
+  const configured = poi && poi.scannerSignalPriority != null
+    ? poi.scannerSignalPriority
+    : entityData && entityData.scannerSignalPriority;
+  const priority = Number(configured);
+  return Number.isFinite(priority) ? Math.max(0, priority) : 0;
+}
+
 function signalKindForLivingPoi(row) {
   if (!row) return null;
   if (row.familyId === 'anomaly_research') return 'anomaly';
@@ -549,7 +561,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (!pos) continue;
     const sourceId = String(poi.poiId || poi.id || '');
     if (!sourceId) continue;
-    if (!vestaOreCacheSignalAvailable(state, sourceId)) continue;
+    if (!vestaOreCacheSignalAvailable(state, sourceId)
+      || !pallasHiddenCacheSignalAvailable(state, sourceId)) continue;
     add({
       id: `signal:poi:${sourceId}`,
       kind,
@@ -563,6 +576,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       resonanceScanResponse: entityData.resonanceScanResponse === true,
       repeatableScannerSignal: entityData.repeatableScannerSignal === true,
       manualInvestigation: poi.manualInvestigation === true || entityData.manualInvestigation === true,
+      signalPriority: scannerSignalPriorityFor(poi, entityData),
     });
   }
 
@@ -604,9 +618,26 @@ function compareSignalRows(a, b) {
   const priority = (SIGNAL_KIND_PRIORITY[b && (b.sourceKind || b.kind)] || 0)
     - (SIGNAL_KIND_PRIORITY[a && (a.sourceKind || a.kind)] || 0);
   if (priority) return priority;
+  const explicitPriority = (Number(b && b.signalPriority) || 0) - (Number(a && a.signalPriority) || 0);
+  if (explicitPriority) return explicitPriority;
   const distance = (Number(a && a.distance) || 0) - (Number(b && b.distance) || 0);
   if (distance) return distance;
   return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+}
+
+function visibleSignalRows(rows, limit = 6) {
+  const visible = rows.slice(0, limit);
+  if (rows.length <= limit) return visible;
+  const visibleIds = new Set(visible.map((row) => row.id));
+  const closeManual = rows
+    .filter((row) => row.manualInvestigation === true
+      && Number(row.distance) <= SIGNAL_INVESTIGATE_RADIUS
+      && !visibleIds.has(row.id))
+    .sort((a, b) => (Number(a.distance) || 0) - (Number(b.distance) || 0)
+      || compareSignalRows(a, b))[0];
+  if (!closeManual) return visible;
+  visible[visible.length - 1] = closeManual;
+  return visible.sort(compareSignalRows);
 }
 
 function pruneSignalRecords(own) {
@@ -886,7 +917,8 @@ export const scanner = {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
-      if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+      if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+        || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
       const pos = entity && entity.pos || poi.pos;
       if (!pos || dist(origin, pos) > scanRadius) continue;
       upsertUnknownPing(state, sectorId, {
@@ -952,6 +984,7 @@ export const scanner = {
             sourceKind: candidate.kind,
             sourceId: candidate.sourceId || null,
             entityId: candidate.entityId || null,
+            signalPriority: candidate.signalPriority || 0,
             // Before the fix, this is the pilot's sample origin—not the hidden target position.
             pos: pos2(origin),
             classification: 'ANOMALY BEARING',
@@ -991,6 +1024,7 @@ export const scanner = {
         sourceKind: candidate.kind,
         sourceId: candidate.sourceId || null,
         entityId: candidate.entityId || null,
+        signalPriority: candidate.signalPriority || 0,
         pos: pos2(candidate.pos),
         classification: signalClassLabel(candidate.kind, stage),
         detail: signalDetail(candidate.kind, stage),
@@ -1009,10 +1043,11 @@ export const scanner = {
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
-      const vestaCopy = vestaOreCacheSignalCopy(candidate.sourceId);
-      if (vestaCopy) {
-        record.classification = vestaCopy.classification;
-        record.detail = vestaCopy.detail;
+      const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
+        || pallasHiddenCacheSignalCopy(candidate.sourceId);
+      if (discoveryCopy) {
+        record.classification = discoveryCopy.classification;
+        record.detail = discoveryCopy.detail;
       }
       if (resonanceSignal) {
         const response = resonanceObeliskResponse(scanCount);
@@ -1046,7 +1081,7 @@ export const scanner = {
     }
     rows.sort(compareSignalRows);
     pruneSignalRecords(own);
-    return rows.slice(0, 6);
+    return visibleSignalRows(rows, 6);
   },
 
   _trackSignal(payload) {

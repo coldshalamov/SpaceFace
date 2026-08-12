@@ -442,6 +442,22 @@ function collectCandidates(state) {
     });
   }
 
+  const pallasCache = state && state.world && state.world.pallasHiddenCache;
+  const pallasReceipt = pallasCache && pallasCache.receipt;
+  if (pallasReceipt && pallasReceipt.id && pallasCache.recordId) {
+    add({
+      type: 'unique',
+      sourceId: pallasReceipt.id,
+      sourceKind: 'world.pallasHiddenCache',
+      at: pallasReceipt.resolvedAt,
+      tokens: {
+        wreck: 'Black-Wake Weapons Cache',
+        choice: humanizeId(pallasReceipt.choiceId, 'recorded'),
+        outcome: humanizeId(pallasReceipt.outcome, 'recorded'),
+      },
+    });
+  }
+
   const encounterHistory = sourceArray(state && state.story && state.story.depthProgramEncounters
     && state.story.depthProgramEncounters.history);
   for (const [index, record] of encounterHistory.entries()) {

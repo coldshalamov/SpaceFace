@@ -179,6 +179,35 @@ export function vestaOreCachePromptView(payload) {
   });
 }
 
+export function pallasHiddenCachePromptView(payload) {
+  if (!payload || !payload.recordId || !Array.isArray(payload.choices) || payload.choices.length !== 3) return null;
+  const controllerKeys = ['A', 'B', 'X'];
+  const choices = payload.choices.map((choice, index) => {
+    const available = choice.available !== false;
+    const unavailableReason = String(choice.unavailableReason || '').trim();
+    const consequence = String(choice.consequence || '').trim();
+    return {
+      id: String(choice.id || ''),
+      label: String(choice.label || '').trim(),
+      consequence,
+      available,
+      unavailableReason,
+      controllerKey: controllerKeys[index],
+      ariaLabel: `${String(choice.label || '').trim()}. Controller ${controllerKeys[index]}. ${available ? consequence : unavailableReason || 'Unavailable.'}`.trim(),
+    };
+  });
+  if (choices.some((choice) => !choice.id || !choice.label || !choice.consequence)) return null;
+  const headline = String(payload.headline || 'BLACK-WAKE WEAPONS CACHE');
+  const prompt = String(payload.prompt || 'Choose the cache disposition.');
+  return Object.freeze({
+    ...payload,
+    choices,
+    headline,
+    prompt,
+    ariaLabel: `Pallas hidden cache. ${headline}. ${prompt} ${choices.map((choice) => choice.ariaLabel).join(' ')}`,
+  });
+}
+
 export function createRecoveryEncounterPrompt(ctx) {
   const { state, bus } = ctx;
   injectStyle();
@@ -213,6 +242,13 @@ export function createRecoveryEncounterPrompt(ctx) {
     return state && state.mode === 'flight' && !(state.ui && state.ui.docked);
   }
 
+  function canSurfacePallas(readout) {
+    if (!state || state.mode !== 'flight') return false;
+    if (!(state.ui && state.ui.docked)) return true;
+    return readout && readout.reportAvailable === true
+      && state.ui.dockedStationId === readout.reportStationId;
+  }
+
   function hide() {
     root.hidden = true;
     root.className = '';
@@ -234,15 +270,23 @@ export function createRecoveryEncounterPrompt(ctx) {
     button.disabled = disabled;
     button.title = title || label;
     button.setAttribute('aria-label', `${label}. ${key === 'A' ? 'Controller A' : key === 'B' ? 'Controller B' : 'Controller X'}. ${title}`.trim());
-    button.innerHTML = `<b>${key}</b><span>${label}</span>`;
+    const keyEl = document.createElement('b');
+    keyEl.textContent = key;
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    button.replaceChildren(keyEl, labelEl);
     return button;
   }
 
   function renderActions(readout) {
     el.actions.replaceChildren();
-    if (readout.mode === 'unique-wreck' || readout.mode === 'vesta-ore-cache') {
+    if (readout.mode === 'unique-wreck' || readout.mode === 'vesta-ore-cache' || readout.mode === 'pallas-hidden-cache') {
       for (const [index, choice] of (readout.choices || []).entries()) {
-        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : index === 1 ? 'B' : 'X', choice.label, false, choice.consequence));
+        const title = choice.available === false
+          ? choice.unavailableReason || choice.consequence
+          : choice.consequence;
+        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : index === 1 ? 'B' : 'X', choice.label,
+          choice.available === false, title));
       }
       el.actions.hidden = !(readout.choices || []).length;
       return;
@@ -343,6 +387,28 @@ export function createRecoveryEncounterPrompt(ctx) {
     return true;
   }
 
+  function renderPallasHiddenCache(readout) {
+    const view = pallasHiddenCachePromptView(readout);
+    if (!canSurfacePallas(view) || !view) return false;
+    active = { ...view, mode: 'pallas-hidden-cache', hideAt: Infinity };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
+    root.className = 'sf-recovery--unique';
+    text(el.flag, 'PALLAS HIDDEN CACHE');
+    text(el.status, view.reportAvailable ? 'DRIFT MARKET · FILE OR ACT' : 'CACHE FIXED · CHOOSE');
+    text(el.headline, view.headline);
+    text(el.meta, view.reportAvailable
+      ? 'REPORT AVAILABLE HERE · OTHER OPTIONS LEAVE PHYSICAL LOTS'
+      : 'RECOVER · REPORT AT DRIFT MARKET · CRIMINAL USE');
+    text(el.detail, view.prompt);
+    el.meter.hidden = true;
+    renderActions(active);
+    root.setAttribute('aria-label', view.ariaLabel);
+    root.hidden = false;
+    return true;
+  }
+
   function showReceipt(receipt) {
     if (!canSurface() || !receipt) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
@@ -402,6 +468,32 @@ export function createRecoveryEncounterPrompt(ctx) {
     return true;
   }
 
+  function showPallasHiddenCacheReceipt(payload) {
+    const receipt = payload && payload.receipt;
+    const dockedReport = receipt && receipt.choiceId === 'report'
+      && state && state.mode === 'flight' && state.ui && state.ui.docked === true
+      && state.ui.dockedStationId === receipt.stationId;
+    if ((!canSurface() && !dockedReport) || !receipt) return false;
+    active = {
+      mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S,
+      ...(dockedReport ? { dockedReportStationId: receipt.stationId } : {}),
+    };
+    lastAnnouncementKey = '';
+    syncMotionPreference();
+    el.status.removeAttribute('aria-hidden');
+    root.className = 'sf-recovery--receipt';
+    text(el.flag, 'PALLAS CACHE RECEIPT');
+    text(el.status, 'SAVED');
+    text(el.headline, receipt.title || 'CACHE DISPOSITION RECORDED');
+    text(el.meta, `${String(receipt.choiceId || 'resolved').replace(/_/g, ' ').toUpperCase()} · EXACT-ONCE OUTCOME`);
+    text(el.detail, receipt.detail || 'Outcome recorded.');
+    el.meter.hidden = true;
+    el.actions.hidden = true;
+    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
+    root.hidden = false;
+    return true;
+  }
+
   function renderCustody(payload) {
     const view = recoveryCustodyView(payload, state, state && state.simTime || 0);
     if (destroyed || !canSurface() || !view) return false;
@@ -445,6 +537,12 @@ export function createRecoveryEncounterPrompt(ctx) {
       bus.emit('vestaOreCache:choose', { recordId: active.recordId, choiceId: choice, source });
       return true;
     }
+    if (active.mode === 'pallas-hidden-cache') {
+      const selected = (active.choices || []).find((entry) => entry.id === choice);
+      if (!selected || selected.available === false) return false;
+      bus.emit('pallasHiddenCache:choose', { recordId: active.recordId, choiceId: choice, source });
+      return true;
+    }
     if (active.mode !== 'encounter') return false;
     if (choice === 'vent') bus.emit('recovery:vent', { recoveryId: active.recoveryId, source });
     else bus.emit('recovery:choose', { recoveryId: active.recoveryId, choice, source });
@@ -460,7 +558,12 @@ export function createRecoveryEncounterPrompt(ctx) {
 
   function tick() {
     if (destroyed || !active || isUiInteractionFenced(state)) return;
-    if (!canSurface()) { hide(); return; }
+    if (active.mode === 'pallas-hidden-cache') {
+      if (!canSurfacePallas(active)) { hide(); return; }
+    } else if (active.mode === 'receipt' && active.dockedReportStationId) {
+      if (!(state && state.mode === 'flight' && state.ui && state.ui.docked === true
+        && state.ui.dockedStationId === active.dockedReportStationId)) { hide(); return; }
+    } else if (!canSurface()) { hide(); return; }
     syncMotionPreference();
     if (active.mode === 'receipt') {
       if (Number(state.simTime || 0) >= active.hideAt) hide();
@@ -481,11 +584,11 @@ export function createRecoveryEncounterPrompt(ctx) {
     }
     const actions = ctx.gamepad && ctx.gamepad.actions || {};
     if (active.phase === 'hazard' && actions.accept && actions.accept.pressed) choose('vent', 'gamepad');
-    else if (active.mode === 'unique-wreck' || active.mode === 'vesta-ore-cache') {
+    else if (active.mode === 'unique-wreck' || active.mode === 'vesta-ore-cache' || active.mode === 'pallas-hidden-cache') {
       const choices = active.choices || [];
-      if (actions.accept && actions.accept.pressed && choices[0]) choose(choices[0].id, 'gamepad');
-      else if (actions.cancel && actions.cancel.pressed && choices[1]) choose(choices[1].id, 'gamepad');
-      else if (actions.cycleTarget && actions.cycleTarget.pressed && choices[2]) choose(choices[2].id, 'gamepad');
+      if (actions.accept && actions.accept.pressed && choices[0] && choices[0].available !== false) choose(choices[0].id, 'gamepad');
+      else if (actions.cancel && actions.cancel.pressed && choices[1] && choices[1].available !== false) choose(choices[1].id, 'gamepad');
+      else if (actions.cycleTarget && actions.cycleTarget.pressed && choices[2] && choices[2].available !== false) choose(choices[2].id, 'gamepad');
     }
     else if (active.phase === 'decision') {
       if (actions.accept && actions.accept.pressed && active.hasSurvivor) choose('rescue', 'gamepad');
@@ -518,6 +621,8 @@ export function createRecoveryEncounterPrompt(ctx) {
   subscribe('uniqueWreck:resolved', showUniqueReceipt);
   subscribe('vestaOreCache:decisionReady', renderVestaOreCache);
   subscribe('vestaOreCache:resolved', showVestaOreCacheReceipt);
+  subscribe('pallasHiddenCache:decisionReady', renderPallasHiddenCache);
+  subscribe('pallasHiddenCache:resolved', showPallasHiddenCacheReceipt);
   subscribe('pirateParley:demand', hide);
   subscribe('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
   subscribe('law:distressRaised', hide);
@@ -530,7 +635,8 @@ export function createRecoveryEncounterPrompt(ctx) {
   subscribe('encounter:receipt', (payload) => { if (isCustodyReceipt(payload)) renderCustody(payload); });
   return {
     el: root, tick, hide, destroy, render, renderCustody, renderUniqueWreck, renderVestaOreCache,
-    showReceipt, showUniqueReceipt, showVestaOreCacheReceipt, choose,
+    renderPallasHiddenCache, showReceipt, showUniqueReceipt, showVestaOreCacheReceipt,
+    showPallasHiddenCacheReceipt, choose,
   };
 }
 

@@ -38,6 +38,7 @@ import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { frontierRumorMapReadouts, frontierRumorMapTarget } from './frontierRumorMapLayer.js';
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
+import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
@@ -1155,6 +1156,7 @@ function discoveryBearingReadouts(state, sectorId = null) {
     ...uniqueWreckMapReadouts(state, sectorId),
     ...frontierRumorMapReadouts(state, sectorId),
     ...vestaOreCacheMapReadouts(state, sectorId),
+    ...pallasHiddenCacheMapReadouts(state, sectorId),
   ].sort((a, b) => String(a.wreckId || '').localeCompare(String(b.wreckId || '')));
 }
 
@@ -5080,6 +5082,23 @@ export const galaxyMapScreen = {
           if (marker) galaxyMapScreen._selectSearchTarget(marker);
           return;
         }
+        const pallasRow = target && typeof target.closest === 'function'
+          ? target.closest('[data-pallas-cache-id]') : null;
+        if (pallasRow) {
+          const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+          const sectorId = pallasRow.getAttribute('data-pallas-cache-sector') || currentSectorId(state);
+          const cacheId = pallasRow.getAttribute('data-pallas-cache-id');
+          const readout = pallasHiddenCacheMapReadouts(state, sectorId)
+            .find((entry) => entry && entry.cacheRecordId === cacheId);
+          const marker = pallasHiddenCacheMapTarget(readout) || readout && readout.courseTarget && {
+            ...readout.courseTarget,
+            sectorId: readout.sectorId,
+            phase: readout.phase,
+            detail: readout.detail,
+          };
+          if (marker) galaxyMapScreen._selectSearchTarget(marker);
+          return;
+        }
         const rumorRow = target && typeof target.closest === 'function'
           ? target.closest('[data-frontier-rumor-id]') : null;
         if (rumorRow) {
@@ -6405,6 +6424,7 @@ export const galaxyMapScreen = {
     const exploration = sectorExplorationProgress(state, record || sectorId);
     const rumorCards = frontierRumorMapReadouts(state, sectorId);
     const vestaCards = vestaOreCacheMapReadouts(state, sectorId);
+    const pallasCards = pallasHiddenCacheMapReadouts(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
       <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
@@ -6434,6 +6454,16 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(cache.detail)}</span>
         <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
       </button>`).join('');
+    const pallasRows = pallasCards.map((cache) => `
+      <button class="gm-site-row" type="button" data-pallas-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+        data-pallas-cache-sector="${escapeMapHtml(cache.sectorId)}"
+        aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
+        aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
+        <span class="gm-ins-kind">${escapeMapHtml(cache.statusLabel)}</span>
+        <span class="gm-ins-title">${escapeMapHtml(cache.name)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(cache.detail)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
+      </button>`).join('');
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6448,6 +6478,7 @@ export const galaxyMapScreen = {
       </div>
       ${rumorRows}
       ${vestaRows}
+      ${pallasRows}
       ${siteButtons ? `<div class="gm-ins-section"><div class="gm-ins-title">World Sites</div>${siteButtons}</div>` : ''}`;
   },
 
@@ -8348,7 +8379,7 @@ export const galaxyMapScreen = {
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
         const rumorTarget = frontierRumorMapTarget(bearing);
-        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing);
+        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing) || pallasHiddenCacheMapTarget(bearing);
         if (manualTarget) {
           this._clickTargets.push({
             ...manualTarget,
@@ -8662,7 +8693,7 @@ export const galaxyMapScreen = {
         const x = sx(point.x), y = sz(point.z);
         const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
         const rumorTarget = frontierRumorMapTarget(bearing);
-        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing);
+        const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing) || pallasHiddenCacheMapTarget(bearing);
         if (offView(x, y)) {
           pushEdgeTick(x, y, INK.gold, 'bearing', {
             ...(manualTarget || bearing.courseTarget || {}),

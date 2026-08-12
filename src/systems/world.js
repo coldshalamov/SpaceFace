@@ -36,6 +36,15 @@ import {
   normalizeVestaOreCacheState,
   vestaOreCacheChoice,
 } from '../data/vestaOreCache.js';
+import {
+  PALLAS_HIDDEN_CACHE,
+  PALLAS_HIDDEN_CACHE_CHOICES,
+  PALLAS_HIDDEN_CACHE_RESOLUTION_ID,
+  freshPallasHiddenCacheState,
+  normalizePallasHiddenCacheState,
+  pallasHiddenCacheChoice,
+  pallasHiddenCacheLot,
+} from '../data/pallasHiddenCache.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
@@ -258,6 +267,7 @@ export const world = {
     if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
+    state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
@@ -272,6 +282,8 @@ export const world = {
     this._nextCriticalSpawnTick = 0;
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = false;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
     // Floating-origin scratch (allocation-free no-shift path).
@@ -302,14 +314,25 @@ export const world = {
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
     bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
+    bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
-    bus.on('save:restoring', () => { this._vestaDecisionSignature = null; });
+    bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    bus.on('save:restoring', () => {
+      this._vestaDecisionSignature = null;
+      this._pallasDecisionSignature = null;
+    });
     bus.on('save:loaded', () => {
       if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
       this._vestaDecisionNeedsRebind = false;
+      if (this._pallasDecisionNeedsRebind) this._pallasDecisionSignature = null;
+      this._pallasDecisionNeedsRebind = false;
       this._spawnVestaOreCachePickup(this.state.world.currentSectorId);
       this._presentVestaOreCacheDecision('save-loaded');
+      this._spawnPallasHiddenCachePickup(this.state.world.currentSectorId);
+      this._presentPallasHiddenCacheDecision('save-loaded');
     });
+    bus.on('dock:docked', (p) => this._presentPallasHiddenCacheDecision('dock:docked', p && p.stationId));
+    bus.on('dock:undocked', () => { this._pallasDecisionSignature = null; });
     bus.on('landmark:artifactRecovered', (p) => this._onLandmarkArtifactRecovered(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
@@ -563,6 +586,8 @@ export const world = {
     state.world.currentSectorId = sectorId;
     this._spawnVestaOreCachePickup(sectorId);
     this._presentVestaOreCacheDecision('sector-enter');
+    this._spawnPallasHiddenCachePickup(sectorId);
+    this._presentPallasHiddenCacheDecision('sector-enter');
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
     this._hazardSet.clear();
@@ -1530,6 +1555,9 @@ export const world = {
           ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+          ...(finitePositive(poi.scannerSignalPriority)
+            ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
+            : {}),
           ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
           ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
           ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
@@ -1549,6 +1577,9 @@ export const world = {
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden, claimable: !!poi.claimable,
         ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+        ...(finitePositive(poi.scannerSignalPriority)
+          ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
+          : {}),
         manualInvestigation: poi.manualInvestigation === true,
         requiresActiveScan: poi.requiresActiveScan === true,
         requiresTriangulation: !!triangulation,
@@ -3110,6 +3141,8 @@ export const world = {
     if (!sectorId || !poiId) return false;
     if (sectorId === VESTA_ORE_CACHE.sectorId && poiId === VESTA_ORE_CACHE.cachePoiId
       && this._vestaOreCacheState().phase === 'unfound') return false;
+    if (sectorId === PALLAS_HIDDEN_CACHE.sectorId && poiId === PALLAS_HIDDEN_CACHE.cachePoiId
+      && this._pallasHiddenCacheState().phase === 'unfound') return false;
     const sector = this.state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     const poi = sector && (sector.pois || []).find((row) => row && row.id === poiId);
     if (!poi) return false;
@@ -3130,6 +3163,7 @@ export const world = {
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
     }
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     return true;
   },
@@ -3350,6 +3384,247 @@ export const world = {
     return true;
   },
 
+  _pallasHiddenCacheState() {
+    const own = normalizePallasHiddenCacheState(this.state.world.pallasHiddenCache);
+    this.state.world.pallasHiddenCache = own;
+    return own;
+  },
+
+  _onPallasHiddenCacheSignalInvestigated(payload) {
+    if (payload.sectorId !== PALLAS_HIDDEN_CACHE.sectorId) return false;
+    const own = this._pallasHiddenCacheState();
+    const completedAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    if (payload.poiId === PALLAS_HIDDEN_CACHE.cluePoiId) {
+      if (own.phase !== 'unfound') return false;
+      own.phase = 'searching';
+      own.evidence = {
+        evidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
+        sourcePoiId: PALLAS_HIDDEN_CACHE.cluePoiId,
+        signalId: PALLAS_HIDDEN_CACHE.clueSignalId,
+        foundAt: completedAt,
+        carrier: 'physical_pirate_wreck_manifest',
+      };
+      own.search = {
+        center: sectorLocalToGlobalForSector(PALLAS_HIDDEN_CACHE.searchCenterLocal, PALLAS_HIDDEN_CACHE.sectorId),
+        radius: PALLAS_HIDDEN_CACHE.searchRadiusWu,
+        sourceEvidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
+      };
+      this.bus.emit('pallasHiddenCache:clueRecovered', {
+        recordId: own.recordId,
+        sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+        phase: own.phase,
+        evidence: { ...own.evidence },
+        search: { ...own.search, center: { ...own.search.center } },
+      });
+      return true;
+    }
+    if (payload.poiId !== PALLAS_HIDDEN_CACHE.cachePoiId || own.phase !== 'searching') return false;
+    own.phase = 'choice';
+    own.cache = {
+      poiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+      fixedPos: payload.pos && Number.isFinite(Number(payload.pos.x)) && Number.isFinite(Number(payload.pos.z))
+        ? { x: Number(payload.pos.x), z: Number(payload.pos.z) }
+        : sectorLocalToGlobalForSector(PALLAS_HIDDEN_CACHE.cacheLocalPos, PALLAS_HIDDEN_CACHE.sectorId),
+      foundAt: completedAt,
+    };
+    this._presentPallasHiddenCacheDecision('physical-investigation');
+    return true;
+  },
+
+  _canReportPallasHiddenCache() {
+    const ui = this.state && this.state.ui;
+    return !!(ui && ui.docked === true && ui.dockedStationId === PALLAS_HIDDEN_CACHE.reportStationId);
+  },
+
+  _presentPallasHiddenCacheDecision(source = 'world', stationId = null) {
+    const own = this._pallasHiddenCacheState();
+    if (own.phase !== 'choice' || !own.cache) return false;
+    if (source === 'sector-enter' && this._pallasDecisionNeedsRebind) return false;
+    const reportAvailable = stationId === PALLAS_HIDDEN_CACHE.reportStationId || this._canReportPallasHiddenCache();
+    const signature = `${own.recordId}:${own.cache.foundAt}:${reportAvailable ? 'drift-report' : 'field'}`;
+    if (this._pallasDecisionSignature === signature) return false;
+    this._pallasDecisionSignature = signature;
+    this.bus.emit('pallasHiddenCache:decisionReady', {
+      recordId: own.recordId,
+      sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+      phase: own.phase,
+      headline: 'BLACK-WAKE WEAPONS CACHE',
+      prompt: reportAvailable
+        ? 'Drift Market can file the cache report. Other dispositions leave a physical lot at the fixed cache.'
+        : 'The cache is fixed. Recover or criminal use leaves a physical lot at the cache; report only from Drift Market.',
+      source,
+      reportAvailable,
+      reportStationId: PALLAS_HIDDEN_CACHE.reportStationId,
+      choices: PALLAS_HIDDEN_CACHE_CHOICES.map((choice) => ({
+        ...choice,
+        available: choice.id !== 'report' || reportAvailable,
+        ...(choice.id === 'report' && !reportAvailable
+          ? { unavailableReason: 'Dock at Drift Market to file this report.' }
+          : {}),
+      })),
+      fixedPos: { ...own.cache.fixedPos },
+    });
+    return true;
+  },
+
+  _onPallasHiddenCacheChoice(payload) {
+    const own = this._pallasHiddenCacheState();
+    const choice = pallasHiddenCacheChoice(String(payload.choiceId || payload.choice || ''));
+    if (own.phase !== 'choice' || !own.cache || own.receipt || !choice) return false;
+    if (payload.recordId && payload.recordId !== own.recordId) return false;
+    if (choice.id === 'report' && !this._canReportPallasHiddenCache()) return false;
+
+    const resolvedAt = Math.max(0, Number(this.state.simTime) || 0);
+    const phaseByChoice = { recover: 'recovered', report: 'reported', criminal_use: 'criminal_used' };
+    own.phase = phaseByChoice[choice.id];
+    own.choiceId = choice.id;
+    own.resolvedAt = resolvedAt;
+    const lot = pallasHiddenCacheLot(choice.id);
+    const details = {
+      recover: 'Weapons case secured. The finite restricted lot remains a physical pickup at the cache.',
+      report: 'Drift Market logged the Pallas cache report through its own station desk.',
+      criminal_use: 'Custody tags burned. The finite stolen-goods lot remains a physical pickup at the cache.',
+    };
+    own.receipt = {
+      id: PALLAS_HIDDEN_CACHE_RESOLUTION_ID,
+      recordId: own.recordId,
+      sectorId: PALLAS_HIDDEN_CACHE.sectorId,
+      cachePoiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+      choiceId: choice.id,
+      outcome: own.phase,
+      title: `BLACK-WAKE CACHE ${choice.label}`,
+      detail: details[choice.id],
+      resolvedAt,
+      ...(choice.id === 'report' ? {
+        stationId: PALLAS_HIDDEN_CACHE.reportStationId,
+        factionId: PALLAS_HIDDEN_CACHE.reportFactionId,
+        repDelta: PALLAS_HIDDEN_CACHE.reportRepDelta,
+      } : {}),
+      ...(lot ? {
+        lotId: lot.lotId,
+        commodityId: lot.commodityId,
+        totalQty: lot.totalQty,
+      } : {}),
+    };
+    if (lot) {
+      own.cargoLot = {
+        lotId: lot.lotId,
+        provenanceId: lot.provenanceId,
+        commodityId: lot.commodityId,
+        totalQty: lot.totalQty,
+        collectedQty: 0,
+        lostQty: 0,
+        remainingQty: lot.totalQty,
+        collectionReceipts: [],
+      };
+    }
+    // Commit the durable receipt before delegating any consequence to its single writer.
+    if (choice.id === 'report') {
+      this.bus.emit('faction:repDelta', {
+        factionId: PALLAS_HIDDEN_CACHE.reportFactionId,
+        delta: PALLAS_HIDDEN_CACHE.reportRepDelta,
+        reason: 'pallas_hidden_cache_report',
+      });
+    }
+    if (lot) this._spawnPallasHiddenCachePickup(PALLAS_HIDDEN_CACHE.sectorId);
+    this.bus.emit('pallasHiddenCache:resolved', {
+      recordId: own.recordId,
+      choiceId: choice.id,
+      receipt: { ...own.receipt },
+    });
+    return true;
+  },
+
+  _spawnPallasHiddenCachePickup(sectorId = this.state.world.currentSectorId) {
+    if (sectorId !== PALLAS_HIDDEN_CACHE.sectorId || this.state.world.currentSectorId !== sectorId) return null;
+    const own = this._pallasHiddenCacheState();
+    const lot = pallasHiddenCacheLot(own.choiceId);
+    if (!lot || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
+    if (own.cargoLot.lotId !== lot.lotId || own.cargoLot.provenanceId !== lot.provenanceId
+      || own.cargoLot.commodityId !== lot.commodityId) return null;
+    const live = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.data && entity.data.pallasHiddenCacheLotId === lot.lotId);
+    if (live) return live;
+    const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { ...own.cache.fixedPos },
+      vel: { x: 0, z: 0 },
+      radius: 1.5,
+      mass: 0.1,
+      collides: true,
+      ttl: Infinity,
+      data: {
+        kind: 'cargo',
+        commodityId: lot.commodityId,
+        amount: own.cargoLot.remainingQty,
+        name: lot.pickupName,
+        pallasHiddenCacheLotId: lot.lotId,
+        pallasHiddenCacheRevision: revision,
+        richLotSource: {
+          lotId: lot.lotId,
+          provenanceId: lot.provenanceId,
+          sourceKind: 'pallas_hidden_cache',
+          sourcePoiId: PALLAS_HIDDEN_CACHE.cachePoiId,
+          recordId: PALLAS_HIDDEN_CACHE.recordId,
+          choiceId: own.choiceId,
+          lotQty: own.cargoLot.remainingQty,
+          sourceOwner: 'player',
+        },
+      },
+    });
+    this._stampHomeSector(entity, PALLAS_HIDDEN_CACHE.sectorId);
+    this.bus.emit('pallasHiddenCache:pickupReady', {
+      recordId: own.recordId,
+      pickupId: entity.id,
+      lotId: lot.lotId,
+      remainingQty: own.cargoLot.remainingQty,
+      pos: { ...entity.pos },
+    });
+    return entity;
+  },
+
+  _onPallasHiddenCachePickupCollected(payload) {
+    const own = this._pallasHiddenCacheState();
+    const lot = pallasHiddenCacheLot(own.choiceId);
+    if (!lot || !own.cargoLot || !(own.cargoLot.remainingQty > 0)
+      || !Array.isArray(own.cargoLot.collectionReceipts)) return false;
+    const pickup = payload.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.pickupId) : null;
+    if (pickup && pickup.data && pickup.data.jettisonedCargo) return false;
+    const source = payload.lotSource || payload.richLotSource
+      || pickup && pickup.data && (pickup.data.lotSource || pickup.data.richLotSource);
+    if (!source || source.lotId !== lot.lotId || source.provenanceId !== lot.provenanceId
+      || source.commodityId && source.commodityId !== lot.commodityId) return false;
+    const revision = Math.max(0, Math.floor(Number(pickup && pickup.data && pickup.data.pallasHiddenCacheRevision)
+      || own.cargoLot.collectedQty + own.cargoLot.lostQty));
+    const receiptId = `${lot.lotId}:collection:${revision}`;
+    if (own.cargoLot.collectionReceipts.some((entry) => entry.id === receiptId)) return false;
+    const requested = Math.max(0, Math.floor(Number(payload.amount) || 0));
+    const playerPickup = payload.collectorId === this.state.playerId;
+    const acceptedQty = playerPickup
+      ? Math.max(0, Math.min(own.cargoLot.remainingQty, Math.floor(Number(payload.acceptedAmount) || 0)))
+      : 0;
+    const lostQty = playerPickup ? 0 : Math.max(0, Math.min(own.cargoLot.remainingQty, requested));
+    if (!(acceptedQty > 0) && !(lostQty > 0)) return false;
+    own.cargoLot.collectedQty += acceptedQty;
+    own.cargoLot.lostQty += lostQty;
+    own.cargoLot.remainingQty = Math.max(0,
+      own.cargoLot.totalQty - own.cargoLot.collectedQty - own.cargoLot.lostQty);
+    own.cargoLot.collectionReceipts.push({ id: receiptId, acceptedQty, lostQty });
+    if (own.cargoLot.collectionReceipts.length > 16) own.cargoLot.collectionReceipts.shift();
+    if (pickup && pickup.data) pickup.data.pallasHiddenCacheRevision = revision + acceptedQty + lostQty;
+    this.bus.emit('pallasHiddenCache:cargoChanged', {
+      recordId: own.recordId,
+      lotId: own.cargoLot.lotId,
+      acceptedQty,
+      lostQty,
+      collectedQty: own.cargoLot.collectedQty,
+      remainingQty: own.cargoLot.remainingQty,
+    });
+    return true;
+  },
+
   _contactTethysBlackMarket({ poiId, sectorId, completedAt }) {
     const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
     if (poiId !== discovery.poiId || sectorId !== discovery.sectorId) return false;
@@ -3476,6 +3751,7 @@ export const world = {
       pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
       vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
+      pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
@@ -3513,8 +3789,11 @@ export const world = {
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
+    state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = true;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
@@ -3569,6 +3848,7 @@ export const world = {
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);
     state.world.vestaOreCache = freshVestaOreCacheState();
+    state.world.pallasHiddenCache = freshPallasHiddenCacheState();
     state.world.records = createEmptyRecordsBag();
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
@@ -3578,6 +3858,8 @@ export const world = {
     this._nextCriticalSpawnTick = 0;
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
+    this._pallasDecisionSignature = null;
+    this._pallasDecisionNeedsRebind = false;
     // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
     state.world.coordinateSchema = 'global_v1';
     if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {

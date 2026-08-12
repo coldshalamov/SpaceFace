@@ -211,8 +211,16 @@ const CORE_SECTORS = [
     ],
     hazards: [ { type: 'nebula', center: { x: 400, z: 600 }, radius: 800, intensity: 0.4 } ],
     pois: [
-      { id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage' },
-      { id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true },
+      {
+        id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage',
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+      },
+      {
+        id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true,
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true,
+      },
       {
         id: 'poi_quiessence',
         type: 'anomaly',
