@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-048.01 ore-cycle candidate closure | /root/fix_fixed_tick_press_hold | REVIEWING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Fixed-tick press ordering, production-shaped latch authority, and independent loss preflight are 45/45 focused-green; independently re-review and publish this exact repair, then make one broker Browser attempt |
+| PQ-048.01 ore-cycle candidate closure | /root | PUBLISHING | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs`, `design/program/NOW.md` | Focused 50/50 and manifest 12/12 are green; independent review APPROVE; publish the exact repair and make one broker-authorized changed-candidate Browser attempt, then pause |
 
 ## Uncommitted work without a confirmed live thread
 

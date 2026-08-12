@@ -163,8 +163,7 @@ const CERES_POCKET_TARGETS = Object.freeze(Object.fromEntries(
     })];
   }),
 ));
-const CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU = 8;
-const CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU = 20;
+const CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU = 23;
 const CERES_TOOLKIT_CONFLICT_WAIT_TICKS = 50 * CERES_FIVE_MINUTE_TICK_RATE_HZ;
 const CERES_TOOLKIT_CONFLICT_POLL_MS = 150;
 // This is an infrastructure watchdog, not the simulation deadline. Software/browser execution can
@@ -175,14 +174,17 @@ const CERES_TOOLKIT_PRESS_ACTION_MIN_TICKS = 2;
 const CERES_TOOLKIT_RELEASE_ACTION_MIN_TICKS = 3;
 const CERES_TOOLKIT_FIRE_HOLD_TICKS = 18;
 const CERES_TOOLKIT_FIRE_NEUTRAL_TICKS = 8;
-// The fixed chase camera never follows hull yaw. After the collision receipt, first back out to the
-// authored Throughline beacon, then move along the seed-47 corridor to a point 65 WU south of the
-// authored hostile-presence center. The two collision-anchor centerlines retain >44 WU of physical
-// clearance for the Hornet in the bound world fixture, while the exact hostile cohort is brought
-// close enough for a real render projection instead of a fabricated yaw-to-frustum coupling.
+// The fixed chase camera never follows hull yaw. First clear the collision lane at a point derived
+// from the canonical Throughline zone center, then stage north-west of the canonical hostile spring.
+// These authored offsets avoid binding the route to transient actor jitter while keeping a live
+// member of the exact adopted cohort pointable after the collision proof.
+const CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL = Object.freeze({
+  x: CERES_AMBUSH_ANCHOR_GLOBAL.x - 27,
+  z: CERES_AMBUSH_ANCHOR_GLOBAL.z - 12,
+});
 const CERES_TOOLKIT_CAMERA_STAGE_GLOBAL = Object.freeze({
-  x: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.x,
-  z: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.z - 65,
+  x: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.x - 40,
+  z: CERES_AMBUSH_HOSTILE_SPAWN_GLOBAL.z + 20,
 });
 const CERES_PRE_CONTINUE_LEG_RESERVE_TICKS = Object.freeze({
   ceres_ambush_run: CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
@@ -349,11 +351,26 @@ export function ceresHostileOpportunityPass(rows) {
 export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
   const initial = Array.isArray(baseline?.initialHostiles) ? baseline.initialHostiles : [];
   const bound = Array.isArray(prebound?.boundHostiles) ? prebound.boundHostiles : [];
+  const authority = Array.isArray(baseline?.boundAuthority) ? baseline.boundAuthority : [];
+  const director = baseline?.director;
   if (baseline?.playerEntityId == null || baseline.playerEntityId !== prebound?.playerEntityId
-      || initial.length !== bound.length || !ceresHostileOpportunityPass(initial)) return false;
+      || initial.length !== 2 || bound.length !== 2 || authority.length !== 2
+      || director?.durablePhase !== 'revealed'
+      || director?.live?.id !== 'ceres:activity:throughline-ambush'
+      || director.live.phase !== 'conflict'
+      || !ceresHostileOpportunityPass(initial)) return false;
   const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
-  return stableJson(initialPairs) === stableJson(boundPairs);
+  const authorityPairs = authority.filter((row) => (
+    row?.exactPairAlive === true && row?.terminalMissing !== true
+  )).map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
+  const liveIds = [...new Set((director.live.entityIds || []).map((entityId) => entityId))]
+    .sort((left, right) => String(left).localeCompare(String(right)));
+  const boundIds = bound.map((row) => row.entityId)
+    .sort((left, right) => String(left).localeCompare(String(right)));
+  return stableJson(initialPairs) === stableJson(boundPairs)
+    && stableJson(authorityPairs) === stableJson(boundPairs)
+    && stableJson(liveIds) === stableJson(boundIds);
 }
 
 async function readCeresToolkitConflictBaseline(page, prebound) {
@@ -363,6 +380,25 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
     const director = state?.encounterDirector || {};
     const encounterId = 'ceres:activity:throughline-ambush';
     const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
+    const records = state?.world?.records?.byId || {};
+    const boundAuthority = authority.boundHostiles.map((expected) => {
+      const entity = state?.entities?.get(expected.entityId);
+      const record = records instanceof Map
+        ? records.get(expected.worldRecordId)
+        : records[expected.worldRecordId];
+      const exactPairAlive = entity?.alive !== false && entity?.type === 'ship'
+        && entity?.data?.worldRecordId === expected.worldRecordId;
+      return {
+        entityId: expected.entityId,
+        worldRecordId: expected.worldRecordId,
+        exactPairAlive,
+        entityAlive: entity != null && entity.alive !== false,
+        observedWorldRecordId: entity?.data?.worldRecordId || null,
+        durableAlive: record?.alive ?? null,
+        durableOutcome: record?.outcome || null,
+        terminalMissing: !exactPairAlive,
+      };
+    });
     const initialHostiles = (state?.entityList || []).filter((entity) => (
       entity?.alive !== false && entity?.type === 'ship'
       && bound.get(entity.id) === entity.data?.worldRecordId
@@ -397,12 +433,14 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
       playerEntityId: player?.id ?? null,
       combatTraceStartSeq: Number(state?.combat?.trace?.nextSeq) || 1,
       initialHostiles,
+      boundAuthority,
       director: {
         tutorialHints: state?.settings?.gameplay?.tutorialHints ?? null,
         onboardingActive: state?.onboarding?.active === true,
         onboardingFinished: state?.onboarding?.finished === true,
         simTime: Number.isFinite(Number(state?.simTime)) ? Number(state.simTime) : null,
         durablePhase: String(director.stats?.ceresActivityAmbush?.phase || ''),
+        durableOutcome: director.stats?.ceresActivityAmbush?.outcome || null,
         pressureCombat: Number.isFinite(Number(director.pressure?.combat))
           ? Number(director.pressure.combat)
           : null,
@@ -431,8 +469,8 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     throw new TypeError('toolkit conflict wait requires a live page');
   }
   if (!prebound || prebound.playerEntityId == null || !Array.isArray(prebound.boundHostiles)
-      || prebound.boundHostiles.length < 1) {
-    throw new TypeError('toolkit conflict wait requires exact prebound hostile authority');
+      || prebound.boundHostiles.length !== 2) {
+    throw new TypeError('toolkit conflict wait requires the exact prebound hostile pair');
   }
   if (!Number.isSafeInteger(endTick)) {
     throw new TypeError('toolkit conflict wait requires an integer route end tick');
@@ -475,12 +513,20 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     if (waitStartTick == null) {
       waitStartTick = tick;
       deadlineTick = Math.min(fixedDeadlineTick, waitStartTick + maxWaitTicks);
-      if (deadlineTick <= waitStartTick) {
-        fail('toolkit hostile classification exhausted the exact route horizon');
-      }
     }
     if (tick < waitStartTick) {
       fail('toolkit conflict authority simulation tick moved backwards');
+    }
+    if (baseline?.director?.durablePhase === 'done') {
+      fail(`toolkit conflict authority already reached durable done (${baseline.director.durableOutcome || 'unknown'})`);
+    }
+    const terminalMissing = (baseline?.boundAuthority || [])
+      .filter((row) => row?.terminalMissing === true);
+    if (terminalMissing.length > 0) {
+      fail('toolkit conflict authority lost an exact prebound hostile pair');
+    }
+    if (deadlineTick <= waitStartTick) {
+      fail('toolkit hostile classification exhausted the exact route horizon');
     }
     if (tick >= deadlineTick) {
       fail('toolkit hostile classification exhausted its bounded simulation window');
@@ -3386,21 +3432,18 @@ export function planCeresThroughlineToolkitReposition({
       || minRemainingTicks >= CERES_FIVE_MINUTE_FIXED_TICKS) {
     throw new Error('toolkit camera reposition requires a valid fixed-tick reserve');
   }
-  const throughlineBeacon = CERES_POCKET_TARGETS.ceres_ambush_run.targetPos;
   return Object.freeze({
     source: 'public-flight-controls',
     reason: 'fixed-camera-hostile-acquisition',
     waypoints: Object.freeze([
       Object.freeze({
-        targetId: 'ceres-throughline-toolkit-backout',
-        targetName: 'Throughline toolkit backout',
-        targetPos: Object.freeze({
-          x: throughlineBeacon.x,
-          z: throughlineBeacon.z,
-        }),
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_BACKOUT_RADIUS_WU,
+        targetId: 'ceres-throughline-toolkit-camera-clearance',
+        targetName: 'Throughline toolkit camera clearance',
+        targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
+        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
         minRemainingTicks,
-        allowBoost: false,
+        allowBoost: true,
+        controlClock: 'fixed-tick',
       }),
       Object.freeze({
         targetId: 'ceres-throughline-toolkit-camera-stage',
@@ -3408,7 +3451,8 @@ export function planCeresThroughlineToolkitReposition({
         targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
         arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
         minRemainingTicks,
-        allowBoost: false,
+        allowBoost: true,
+        controlClock: 'fixed-tick',
       }),
     ]),
   });
@@ -3737,6 +3781,12 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
           await page.keyboard.up('Shift').catch(() => {});
           await page.keyboard.up(action.key).catch(() => {});
         }
+        // A fixed-tick dash is edge-triggered on public Shift release. Sample one wholly neutral
+        // simulation tick after both key-up edges so completion cannot be credited to the held
+        // frame. Non-boost steering retains its existing cadence.
+        if (action.boost && target.controlClock === 'fixed-tick') {
+          await waitForCeresFixedTicks(page, 1, 20_000);
+        }
       }
     }
     throw new Error(`public controls did not enter ${target.targetName}`);
@@ -3752,12 +3802,14 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
 export async function repositionPublicForCeresToolkit(page, endTick, {
   playerEntityId,
   anchorEntityId,
+  anchorImpactSeq,
   anchorImpactTick,
   boundHostiles,
 } = {}) {
   if (playerEntityId == null || anchorEntityId == null
+      || !Number.isSafeInteger(anchorImpactSeq) || anchorImpactSeq < 1
       || !Number.isSafeInteger(anchorImpactTick) || !Array.isArray(boundHostiles)
-      || boundHostiles.length < 1) {
+      || boundHostiles.length !== 2) {
     throw new Error('toolkit camera reposition requires the exact collision authority');
   }
   const normalizedBoundHostiles = boundHostiles.map((row) => ({
@@ -3803,6 +3855,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   });
   if (!Number.isSafeInteger(start.tick) || !Number.isSafeInteger(start.nextEventSeq)
       || start.nextEventSeq < 1 || start.tick < anchorImpactTick
+      || start.nextEventSeq <= anchorImpactSeq
       || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId
       || stableJson(start.boundHostiles) !== stableJson(normalizedBoundHostiles)) {
     throw new Error('toolkit camera reposition lost the exact collision authority');
@@ -3824,6 +3877,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     movementEndTick: completedAtTick,
     playerEntityId,
     anchorEntityId,
+    anchorImpactSeq,
     anchorImpactTick,
     boundHostiles: Object.freeze(normalizedBoundHostiles.map((row) => Object.freeze({ ...row }))),
     impactCaptureStartSeq: start.nextEventSeq,
@@ -4522,7 +4576,7 @@ function physicalArrivalReceipt({
   };
 }
 
-async function drivePublicAnchorCollision(page, endTick, {
+export async function drivePublicAnchorCollision(page, endTick, {
   minRemainingTicks = 120,
 } = {}) {
   if (!Number.isSafeInteger(endTick) || !Number.isSafeInteger(minRemainingTicks)
@@ -4535,6 +4589,7 @@ async function drivePublicAnchorCollision(page, endTick, {
   await canvas.focus();
   const setup = await page.evaluate((targetSlotId) => {
     const state = window.SF?.state;
+    const trace = window.__SF_CERES_FIVE_MINUTE_TRACE__;
     const player = state?.entities?.get(state.playerId);
     const anchor = (state?.entityList || []).find((entity) => (
       entity?.alive !== false && entity.data?.activityCollisionAnchorSlotId === targetSlotId
@@ -4543,13 +4598,49 @@ async function drivePublicAnchorCollision(page, endTick, {
       playerId: player.id,
       anchorEntityId: anchor.id,
       collides: anchor.collides !== false && Number(anchor.mass) > 0,
+      startTick: Number(state?.tick),
+      startSeq: Number(trace?.nextEventSeq),
     } : null;
   }, slotId);
-  if (!setup || setup.collides !== true) throw new Error('Throughline collision anchor is not a live collider');
+  if (!setup || setup.collides !== true || !Number.isSafeInteger(setup.startTick)
+      || !Number.isSafeInteger(setup.startSeq) || setup.startSeq < 1) {
+    throw new Error('Throughline collision anchor lacks a live collider and fresh event cursor');
+  }
+  const collisionDeadlineTick = endTick - minRemainingTicks;
+  if (setup.startTick >= collisionDeadlineTick) {
+    throw new Error('Throughline collision attempt exhausted the five-minute horizon before input');
+  }
+
+  let pulses = 0;
+  let boostPulses = 0;
+  const fixedPulseTicks = (durationMs) => Math.max(1, Math.round(
+    Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
+  ));
+  const preflightFixedPulse = async (ticks, neutralTicks = 0) => {
+    const pulseStartTick = await readTick(page);
+    if (!Number.isSafeInteger(pulseStartTick)
+        || pulseStartTick + ticks + neutralTicks >= collisionDeadlineTick) {
+      throw new Error('Throughline collision attempt exhausted the five-minute horizon before input');
+    }
+    return pulseStartTick;
+  };
+  const holdFixedPulse = async (ticks) => {
+    const completedTick = await waitForCeresFixedTicks(page, ticks, 20_000);
+    if (!Number.isSafeInteger(completedTick) || completedTick >= collisionDeadlineTick) {
+      throw new Error('Throughline collision attempt exhausted the five-minute horizon');
+    }
+    return completedTick;
+  };
 
   try {
     for (let attempt = 0; attempt < 220; attempt += 1) {
-      const status = await page.evaluate(({ targetSlotId, playerId, anchorEntityId }) => {
+      const status = await page.evaluate(({
+        targetSlotId,
+        playerId,
+        anchorEntityId,
+        startTick,
+        startSeq,
+      }) => {
         const state = window.SF?.state;
         const player = state?.entities?.get(playerId);
         const anchor = (state?.entityList || []).find((entity) => (
@@ -4557,16 +4648,38 @@ async function drivePublicAnchorCollision(page, endTick, {
             && entity.id === anchorEntityId
             && entity.data?.activityCollisionAnchorSlotId === targetSlotId
         ));
-        const impact = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => (
-          event.event === 'physics:impact'
-            && ((event.aId === playerId && event.bId === anchorEntityId)
-              || (event.bId === playerId && event.aId === anchorEntityId))
-        ));
+        const impact = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => {
+          const playerIsA = event.aId === playerId && event.bId === anchorEntityId;
+          const playerIsB = event.bId === playerId && event.aId === anchorEntityId;
+          if (event.event !== 'physics:impact'
+              || Number(event.seq) < startSeq || Number(event.tick) < startTick
+              || playerIsA === playerIsB) return false;
+          const playerSide = playerIsA ? 'a' : 'b';
+          const anchorSide = playerIsA ? 'b' : 'a';
+          return event[`${playerSide}Type`] === 'ship'
+            && event[`${playerSide}AnchorSlotId`] == null
+            && event[`${anchorSide}Type`] === 'asteroid'
+            && event[`${anchorSide}WorldRecordId`] == null
+            && event[`${anchorSide}AnchorSlotId`] === targetSlotId;
+        });
         if (!player || !anchor) return { missing: true, tick: Number(state?.tick) };
-        const dx = Number(anchor.pos?.x) - Number(player.pos?.x);
-        const dz = Number(anchor.pos?.z) - Number(player.pos?.z);
+        const telemetry = [
+          Number(player.pos?.x),
+          Number(player.pos?.z),
+          Number(player.vel?.x),
+          Number(player.vel?.z),
+          Number(player.rot),
+          Number(anchor.pos?.x),
+          Number(anchor.pos?.z),
+        ];
+        if (telemetry.some((value) => !Number.isFinite(value))) {
+          return { invalidTelemetry: true, tick: Number(state?.tick), impact };
+        }
+        const [playerX, playerZ, velocityX, velocityZ, playerRot, anchorX, anchorZ] = telemetry;
+        const dx = anchorX - playerX;
+        const dz = anchorZ - playerZ;
         const desired = Math.atan2(dz, dx);
-        let headingError = desired - Number(player.rot || 0);
+        let headingError = desired - playerRot;
         while (headingError > Math.PI) headingError -= Math.PI * 2;
         while (headingError < -Math.PI) headingError += Math.PI * 2;
         return {
@@ -4574,34 +4687,77 @@ async function drivePublicAnchorCollision(page, endTick, {
           impact,
           distanceWU: Math.hypot(dx, dz),
           headingError,
-          speed: Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0),
+          speed: Math.hypot(velocityX, velocityZ),
         };
       }, { targetSlotId: slotId, ...setup });
+      if (!Number.isSafeInteger(status.tick) || status.tick >= collisionDeadlineTick) {
+        throw new Error('Throughline collision attempt exhausted the five-minute horizon');
+      }
+      if (status.invalidTelemetry) {
+        throw new Error('Throughline collision target returned nonfinite motion telemetry');
+      }
       if (status.impact) {
+        const selectedImpactSeq = Number(status.impact.seq);
+        const selectedImpactTick = Number(status.impact.tick);
+        if (selectedImpactTick >= collisionDeadlineTick) {
+          throw new Error('Throughline collision attempt exhausted the five-minute horizon');
+        }
+        if (!Number.isSafeInteger(selectedImpactSeq) || selectedImpactSeq < setup.startSeq
+            || !Number.isSafeInteger(selectedImpactTick)
+            || selectedImpactTick < setup.startTick || selectedImpactTick > status.tick) {
+          throw new Error('Throughline collision selected an invalid post-cursor impact');
+        }
         return {
+          schema: 'spaceface.ceresAnchorCollisionReceipt.v1',
           pass: true,
-          inputSource: 'public-keyboard-mouse',
+          source: 'public-keyboard-fixed-tick',
+          inputSource: 'public-keyboard-fixed-tick',
+          controlClock: 'fixed-tick',
           slotId,
           playerEntityId: setup.playerId,
           anchorEntityId: setup.anchorEntityId,
+          startTick: setup.startTick,
+          startSeq: setup.startSeq,
+          completionTick: status.tick,
+          pulses,
+          boostPulses,
+          selectedImpactSeq,
+          selectedImpactTick,
           impact: status.impact,
         };
       }
       if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
-        throw new Error('Throughline collision attempt exhausted the five-minute horizon');
-      }
       if (Math.abs(status.headingError) > 0.09) {
         const key = status.headingError > 0 ? 'KeyD' : 'KeyA';
+        const ticks = fixedPulseTicks(90);
+        await preflightFixedPulse(ticks);
+        pulses += 1;
         await page.keyboard.down(key);
-        await page.waitForTimeout(90);
-        await page.keyboard.up(key);
+        try {
+          await holdFixedPulse(ticks);
+        } finally {
+          await page.keyboard.up(key).catch(() => {});
+        }
       } else {
+        const boost = status.distanceWU > 45 && status.speed < 90;
+        const ticks = fixedPulseTicks(status.distanceWU > 30 ? 180 : 80);
+        await preflightFixedPulse(ticks, boost ? 1 : 0);
+        pulses += 1;
+        if (boost) boostPulses += 1;
         await page.keyboard.down('KeyW');
-        if (status.distanceWU > 45 && status.speed < 90) await page.keyboard.down('Shift');
-        await page.waitForTimeout(status.distanceWU > 30 ? 180 : 80);
-        await page.keyboard.up('Shift').catch(() => {});
-        await page.keyboard.up('KeyW');
+        try {
+          if (boost) await page.keyboard.down('Shift');
+          await holdFixedPulse(ticks);
+        } finally {
+          await page.keyboard.up('Shift').catch(() => {});
+          await page.keyboard.up('KeyW').catch(() => {});
+        }
+        if (boost) {
+          const neutralTick = await waitForCeresFixedTicks(page, 1, 20_000);
+          if (!Number.isSafeInteger(neutralTick) || neutralTick >= collisionDeadlineTick) {
+            throw new Error('Throughline collision attempt exhausted the five-minute horizon');
+          }
+        }
       }
     }
   } finally {
@@ -4942,19 +5098,32 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
       boundHostiles,
     };
   });
-  if (prebound.playerEntityId == null || prebound.boundHostiles.length < 1) {
-    throw new Error('toolkit exercise requires the live player and durable Throughline hostiles');
+  if (prebound.playerEntityId == null || prebound.boundHostiles.length !== 2) {
+    throw new Error('toolkit exercise requires the live player and exact durable Throughline pair');
   }
 
-  if (collisionProof?.pass !== true || collisionProof.playerEntityId == null
-      || collisionProof.anchorEntityId == null
-      || !Number.isSafeInteger(collisionProof.impact?.tick)) {
+  if (collisionProof?.schema !== 'spaceface.ceresAnchorCollisionReceipt.v1'
+      || collisionProof?.pass !== true
+      || collisionProof.source !== 'public-keyboard-fixed-tick'
+      || collisionProof.controlClock !== 'fixed-tick'
+      || collisionProof.playerEntityId == null || collisionProof.anchorEntityId == null
+      || !Number.isSafeInteger(collisionProof.startTick)
+      || !Number.isSafeInteger(collisionProof.startSeq) || collisionProof.startSeq < 1
+      || !Number.isSafeInteger(collisionProof.completionTick)
+      || !Number.isSafeInteger(collisionProof.selectedImpactSeq)
+      || !Number.isSafeInteger(collisionProof.selectedImpactTick)
+      || collisionProof.selectedImpactSeq < collisionProof.startSeq
+      || collisionProof.selectedImpactTick < collisionProof.startTick
+      || collisionProof.completionTick < collisionProof.selectedImpactTick
+      || collisionProof.selectedImpactSeq !== Number(collisionProof.impact?.seq)
+      || collisionProof.selectedImpactTick !== Number(collisionProof.impact?.tick)) {
     throw new Error('toolkit exercise requires the exact preceding collision receipt');
   }
   const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
     playerEntityId: collisionProof.playerEntityId,
     anchorEntityId: collisionProof.anchorEntityId,
-    anchorImpactTick: collisionProof.impact.tick,
+    anchorImpactSeq: collisionProof.selectedImpactSeq,
+    anchorImpactTick: collisionProof.selectedImpactTick,
     boundHostiles: prebound.boundHostiles,
   });
   const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick, {
@@ -6123,9 +6292,15 @@ function summarizeCeresRouteObservations({
     && Number.isSafeInteger(event.tick)
     && event.tick >= trace.bounds.startTick && event.tick <= trace.bounds.endTick
     && (playerEntityIdSet.has(event.aId) || playerEntityIdSet.has(event.bId)));
+  const selectedCollisionIdentity = collisionProof?.impact
+    ? ceresImpactIdentity(collisionProof.impact) : null;
   const anchorImpacts = trace.events.filter((event) => event.event === 'physics:impact'
     && (event.aId === targetAnchorId || event.bId === targetAnchorId)
     && (event.aId === setup.playerId || event.bId === setup.playerId));
+  const selectedAnchorImpactCount = selectedCollisionIdentity == null ? 0
+    : anchorImpacts.filter((event) => (
+      ceresImpactIdentity(event) === selectedCollisionIdentity
+    )).length;
   const ambushEvents = trace.events.filter((event) => (
     ['encounter:telegraph', 'encounter:spawned'].includes(event.event)
       && event.encounterId === 'ceres:activity:throughline-ambush'
@@ -6213,8 +6388,20 @@ function summarizeCeresRouteObservations({
       impacts: playerImpacts,
     },
     anchorCollision: {
-      pass: anchorImpacts.length > 0 && collisionProof?.pass === true,
+      pass: selectedAnchorImpactCount === 1 && collisionProof?.pass === true,
       impacts: anchorImpacts,
+      action: collisionProof ? {
+        schema: collisionProof.schema,
+        source: collisionProof.source,
+        controlClock: collisionProof.controlClock,
+        startTick: collisionProof.startTick,
+        startSeq: collisionProof.startSeq,
+        completionTick: collisionProof.completionTick,
+        pulses: collisionProof.pulses,
+        boostPulses: collisionProof.boostPulses,
+        selectedImpactSeq: collisionProof.selectedImpactSeq,
+        selectedImpactTick: collisionProof.selectedImpactTick,
+      } : null,
       slotId: 'ceres_throughline_collision_anchor',
       anchorEntityId: targetAnchorId ?? null,
       playerEntityId: setup.playerId,
@@ -7473,9 +7660,12 @@ function validateThroughlineAmbushObservation(observations, route, failures) {
 
 function validateAnchorCollisionObservation(observations, route, failures) {
   const collision = observations.anchorCollision;
+  const action = collision?.action;
   const projection = {
     slotId: collision?.slotId || null,
     anchorEntityId: collision?.anchorEntityId ?? null,
+    selectedImpactSeq: action?.selectedImpactSeq ?? null,
+    selectedImpactTick: action?.selectedImpactTick ?? null,
   };
   if (!collision || collision.pass !== true
       || collision.slotId !== 'ceres_throughline_collision_anchor'
@@ -7497,13 +7687,52 @@ function validateAnchorCollisionObservation(observations, route, failures) {
       failures.push(`${label} collision-anchor identity changed`);
     }
   }
+  if (!action || action.schema !== 'spaceface.ceresAnchorCollisionReceipt.v1'
+      || action.source !== 'public-keyboard-fixed-tick'
+      || action.controlClock !== 'fixed-tick'
+      || !Number.isSafeInteger(action.startTick)
+      || action.startTick < route.startTick || action.startTick > route.endTick
+      || !Number.isSafeInteger(action.startSeq) || action.startSeq < 1
+      || !Number.isSafeInteger(action.completionTick)
+      || action.completionTick < action.startTick || action.completionTick > route.endTick
+      || !Number.isSafeInteger(action.pulses) || action.pulses < 1 || action.pulses > 220
+      || !Number.isSafeInteger(action.boostPulses) || action.boostPulses < 0
+      || action.boostPulses > action.pulses
+      || !Number.isSafeInteger(action.selectedImpactSeq)
+      || action.selectedImpactSeq < action.startSeq
+      || !Number.isSafeInteger(action.selectedImpactTick)
+      || action.selectedImpactTick < action.startTick
+      || action.selectedImpactTick > action.completionTick) {
+    failures.push('Throughline collision lacks a bounded fresh fixed-tick action receipt');
+  }
   const impacts = Array.isArray(collision.impacts) ? collision.impacts : [];
-  const matched = impacts.some((impact) => impact?.event === 'physics:impact'
+  const matched = impacts.find((impact) => impact?.event === 'physics:impact'
+    && impact.seq === action?.selectedImpactSeq
+    && impact.tick === action?.selectedImpactTick
     && Number.isSafeInteger(impact.tick)
     && impact.tick >= route.startTick && impact.tick <= route.endTick
     && ((impact.aId === collision.playerEntityId && impact.bId === collision.anchorEntityId)
       || (impact.bId === collision.playerEntityId && impact.aId === collision.anchorEntityId)));
-  if (!matched) failures.push('player never physically impacted the exact Throughline anchor');
+  const matchedIdentityCount = matched ? impacts.filter((impact) => (
+    ceresImpactIdentity(impact) === ceresImpactIdentity(matched)
+  )).length : 0;
+  const matchedClassification = matched ? classifyCeresAuthorizedPlayerImpact(matched, {
+    playerEntityId: collision.playerEntityId,
+    anchorEntityId: collision.anchorEntityId,
+    anchorStartTick: action?.startTick,
+    anchorEndTick: observations.toolkit?.cameraReposition?.movementEndTick,
+  }) : null;
+  if (!matched || matchedIdentityCount !== 1
+      || matchedClassification?.kind !== 'throughline-anchor') {
+    failures.push('player never physically impacted the exact fresh Throughline anchor');
+  } else {
+    const captured = Array.isArray(observations.playerImpactCapture?.impacts)
+      ? observations.playerImpactCapture.impacts : [];
+    const selectedIdentity = ceresImpactIdentity(matched);
+    if (captured.filter((impact) => ceresImpactIdentity(impact) === selectedIdentity).length !== 1) {
+      failures.push('fresh Throughline anchor impact is missing from whole-route capture');
+    }
+  }
   return projection;
 }
 
@@ -7537,6 +7766,8 @@ function ceresImpactParticipant(impact, side) {
 function classifyCeresAuthorizedPlayerImpact(impact, {
   playerEntityId,
   anchorEntityId,
+  anchorStartTick,
+  anchorEndTick,
   boundHostiles,
   cameraStartTick,
   cameraMovementEndTick,
@@ -7551,7 +7782,9 @@ function classifyCeresAuthorizedPlayerImpact(impact, {
       || player.anchorSlotId != null) return null;
 
   if (other.entityId === anchorEntityId) {
-    if (other.type !== 'asteroid' || other.worldRecordId != null
+    if (!Number.isSafeInteger(anchorStartTick) || !Number.isSafeInteger(anchorEndTick)
+        || impact.tick < anchorStartTick || impact.tick > anchorEndTick
+        || other.type !== 'asteroid' || other.worldRecordId != null
         || other.anchorSlotId !== 'ceres_throughline_collision_anchor') return null;
     return Object.freeze({ kind: 'throughline-anchor', player, other });
   }
@@ -7603,6 +7836,8 @@ function validatePlayerImpactObservation(observations, route, failures) {
   const impactAuthority = {
     playerEntityId: collision?.playerEntityId,
     anchorEntityId: collision?.anchorEntityId,
+    anchorStartTick: collision?.action?.startTick,
+    anchorEndTick: camera?.movementEndTick,
     boundHostiles,
     cameraStartTick: camera?.startTick,
     cameraMovementEndTick: camera?.movementEndTick,
@@ -7766,12 +8001,17 @@ function validateToolkitObservation(observations, route, continueProjection, fai
   const camera = projection.cameraReposition;
   const boundAnchorImpact = (Array.isArray(collision?.impacts) ? collision.impacts : [])
     .some((impact) => impact?.event === 'physics:impact'
+      && impact.seq === camera.anchorImpactSeq
       && impact.tick === camera.anchorImpactTick
       && ((impact.aId === camera.playerEntityId && impact.bId === camera.anchorEntityId)
         || (impact.bId === camera.playerEntityId && impact.aId === camera.anchorEntityId)));
   if (camera.playerEntityId !== collision?.playerEntityId
       || camera.anchorEntityId !== collision?.anchorEntityId || !boundAnchorImpact) {
     failures.push('toolkit camera reposition is not bound to the exact preceding anchor impact');
+  }
+  if (!Number.isSafeInteger(collision?.action?.completionTick)
+      || collision.action.completionTick > camera.startTick) {
+    failures.push('toolkit camera movement begins before the exact collision action completes');
   }
   for (const recordId of projection.destroyedRecordIds) {
     if (!continueProjection.tombstones.includes(recordId)) {
@@ -7810,8 +8050,8 @@ function validateToolkitReceiptCore(receipt, route, failures, {
     initialByEntity.set(row.entityId, row.worldRecordId);
     initialRecordIds.add(row.worldRecordId);
   }
-  if (initialByEntity.size < 1 || initialByEntity.size !== initial.length) {
-    failures.push('toolkit receipt lacks unique durable initial Throughline hostiles');
+  if (initial.length !== 2 || initialByEntity.size !== 2) {
+    failures.push('toolkit receipt lacks the unique durable initial Throughline pair');
   }
   const exactCombatTarget = targetAuthority ? {
     entityId: targetAuthority.entityId ?? null,
@@ -8041,12 +8281,15 @@ function validateToolkitCameraReposition(receipt, route, failures) {
   const projection = {
     playerEntityId: camera?.playerEntityId ?? null,
     anchorEntityId: camera?.anchorEntityId ?? null,
+    anchorImpactSeq: camera?.anchorImpactSeq ?? null,
     anchorImpactTick: camera?.anchorImpactTick ?? null,
+    startTick: camera?.startTick ?? null,
     boundHostiles: boundHostiles?.pairs || [],
   };
   if (!camera || camera.pass !== true || camera.source !== 'public-flight-controls'
       || camera.reason !== 'fixed-camera-hostile-acquisition'
       || camera.playerEntityId !== receipt.playerEntityId || camera.anchorEntityId == null
+      || !Number.isSafeInteger(camera.anchorImpactSeq) || camera.anchorImpactSeq < 1
       || !Number.isSafeInteger(camera.anchorImpactTick)
       || !Number.isSafeInteger(camera.startTick) || !Number.isSafeInteger(camera.movementEndTick)
       || !Number.isSafeInteger(camera.endTick)
@@ -8068,6 +8311,7 @@ function validateToolkitCameraReposition(receipt, route, failures) {
     arrivalRadiusWU: waypoint.arrivalRadiusWU,
     minRemainingTicks: waypoint.minRemainingTicks,
     allowBoost: waypoint.allowBoost,
+    controlClock: waypoint.controlClock,
   }));
   const actualWaypoints = (Array.isArray(camera.waypoints) ? camera.waypoints : []).map((waypoint) => ({
     targetId: waypoint?.targetId,
@@ -8076,6 +8320,7 @@ function validateToolkitCameraReposition(receipt, route, failures) {
     arrivalRadiusWU: waypoint?.arrivalRadiusWU,
     minRemainingTicks: waypoint?.minRemainingTicks,
     allowBoost: waypoint?.allowBoost,
+    controlClock: waypoint?.controlClock,
   }));
   if (stableJson(actualWaypoints) !== stableJson(expectedWaypoints)) {
     failures.push('toolkit camera reposition changed its exact public waypoint contract');
@@ -8098,6 +8343,7 @@ function validateToolkitCameraReposition(receipt, route, failures) {
       || !Number.isSafeInteger(capture.startTick) || capture.startTick !== camera.startTick
       || !Number.isSafeInteger(capture.endTick) || capture.endTick !== camera.endTick
       || !Number.isSafeInteger(capture.startSeq) || capture.startSeq < 1
+      || capture.startSeq <= camera.anchorImpactSeq
       || capture.startSeq !== camera.impactCaptureStartSeq
       || !Number.isSafeInteger(capture.endSeq) || capture.endSeq < capture.startSeq - 1) {
     failures.push('toolkit camera reposition lacks bounded player-impact capture authority');
@@ -8106,6 +8352,8 @@ function validateToolkitCameraReposition(receipt, route, failures) {
   const impactAuthority = {
     playerEntityId: camera.playerEntityId,
     anchorEntityId: camera.anchorEntityId,
+    anchorStartTick: camera.anchorImpactTick,
+    anchorEndTick: camera.movementEndTick,
     boundHostiles,
     cameraStartTick: camera.startTick,
     cameraMovementEndTick: camera.movementEndTick,
