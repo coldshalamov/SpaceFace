@@ -329,6 +329,19 @@
       "integration": "live",
       "commit": "51a220b9edf11f693b7cbc106de0c0e40eb867a6",
       "verification": "focused_green"
+    },
+    {
+      "id": "iron-maw-screen-wave",
+      "date": "2026-08-12",
+      "wf": "WF-02",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Iron Maw now calls one deterministic Vael Wasp screen through the live Tactical AI reinforcement owner below half hull.",
+      "fingerprint": "verb=call-screen,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "1c7c503cd92599bd45caa0add62d7705ee90c21c",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

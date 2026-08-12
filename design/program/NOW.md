@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-12
-baseCommit: 51a220b9
+baseCommit: 1c7c503c
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| `PQ-048.01` closure | `/root/pq048_01_close` | IMPLEMENTING | `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/PQ-048.md`, `design/program/roadmap/receipts/PQ-048-01-ceres-ore-cycle-REPORT.md` | Commit and push the three closure files, then remove this row |
 
 ## Uncommitted work without a confirmed live thread
 
