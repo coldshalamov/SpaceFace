@@ -381,6 +381,19 @@
       "integration": "live",
       "commit": "35910181",
       "verification": "focused_green"
+    },
+    {
+      "id": "iron-maw-defeat-news",
+      "date": "2026-08-12",
+      "wf": "WF-09",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Defeating Iron Maw now publishes one authored Ashfall breaking-news item through the live market-news surface.",
+      "fingerprint": "verb=publish-aftermath,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "856e8c67",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
