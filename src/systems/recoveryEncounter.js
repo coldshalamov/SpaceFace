@@ -26,6 +26,21 @@ const CHOICE = Object.freeze({
   blackbox: Object.freeze({ credits: 360, rep: 4, cargo: Object.freeze({ cmdty_salvage_electronics: 1 }) }),
   strip: Object.freeze({ credits: 120, rep: 0, cargo: Object.freeze({ cmdty_salvage_electronics: 2, cmdty_scrap_metal: 2 }) }),
 });
+const LUNG_OF_CHARON_CASE = Object.freeze({
+  sectorId: 'sector_charon_expanse',
+  salvagePointId: 'poi_charon_tether_wreck',
+  recoveryId: 'recovery:poi_charon_tether_wreck',
+  targetRef: 'landmark_c7_lung_of_charon',
+  artifactId: 'case:lung-of-charon:recovery:poi_charon_tether_wreck',
+  title: 'The Lung of Charon',
+  bodyByOutcome: Object.freeze({
+    rescue: 'The hab-pod survivors were recovered alive. The snapped tether is logged as a completed rescue.',
+    blackbox: 'The hab-pod black box was secured. The snapped tether incident is closed without a second claim.',
+    strip: 'The snapped hab-pod was stripped for components. The survivor signal is closed in the case record.',
+    abandoned: 'The incident was abandoned on departure from Charon Expanse. No recovery settlement was issued.',
+    failed: 'The Lung of Charon recovery closed without a settlement.',
+  }),
+});
 
 function freshState() {
   return { schemaVersion: STATE_VERSION, records: {}, outcomes: {}, receipts: [], activeId: null };
@@ -160,6 +175,25 @@ function sectorFaction(sectorId) {
   return sector && sector.factionId || null;
 }
 
+function isLungOfCharonRecord(record) {
+  return !!(record
+    && record.id === LUNG_OF_CHARON_CASE.recoveryId
+    && record.sectorId === LUNG_OF_CHARON_CASE.sectorId
+    && record.salvagePointId === LUNG_OF_CHARON_CASE.salvagePointId);
+}
+
+function lungCaseArtifact(record, receipt) {
+  if (!isLungOfCharonRecord(record)) return null;
+  const outcome = String(receipt && receipt.outcome || record.outcome || 'closed');
+  const body = LUNG_OF_CHARON_CASE.bodyByOutcome[outcome]
+    || `The Lung of Charon recovery closed as ${outcome.replace(/_/g, ' ')}.`;
+  return {
+    id: LUNG_OF_CHARON_CASE.artifactId,
+    title: LUNG_OF_CHARON_CASE.title,
+    body,
+  };
+}
+
 export function recoveryPowerSurprise(seed, recoveryId) {
   const powered = hash32(seed || 1, recoveryId, 'recovery-powered-surprise') % 10 === 0;
   if (!powered) return null;
@@ -215,6 +249,7 @@ export const recoveryEncounter = {
     this._listen('salvage:reactorTowedClear', (payload) => this._hazardCleared(payload || {}, 'towed_clear'));
     this._listen('salvage:reactorBurst', (payload) => this._hazardBurst(payload || {}));
     this._listen('salvage:placed', (payload) => this._rebindSector(payload && payload.sectorId));
+    this._listen('sector:exit', (payload) => this._onSectorExit(payload || {}));
     this._listen('sector:enter', (payload) => this._rebindSector(payload && payload.sectorId));
     this._listen('entity:spawned', (payload) => this._onEntitySpawned(payload && payload.entity));
   },
@@ -344,6 +379,24 @@ export const recoveryEncounter = {
     this._applyRecordToWreck(record, wreck);
     this._emit('recovery:identified', publicReadout(record, state));
     return true;
+  },
+
+  _onSectorExit(payload) {
+    const own = ensureState(this.state);
+    const record = own.activeId && own.records[own.activeId];
+    if (!isLungOfCharonRecord(record) || own.outcomes[record.id]) return false;
+    if (String(payload.sectorId || '') !== record.sectorId) return false;
+    // Continuous membership handoffs do not mean the player left the operation. Likewise,
+    // recovery respawn calls world.enterSector while combat's durable defeat receipt is still
+    // present; that transition must keep the Lung resumable instead of filing an abandonment.
+    if (payload.continuous || payload.noTeleport) return false;
+    if (this.state.combat && this.state.combat.lastPlayerDefeat) return false;
+    return this._complete(record, 'abandoned', {
+      failure: 'sector_exit',
+      credits: 0,
+      repDelta: 0,
+      cargo: {},
+    });
   },
 
   _triggerDefense(record, wreck) {
@@ -487,6 +540,22 @@ export const recoveryEncounter = {
     if (wreck) this._applyRecordToWreck(record, wreck);
     this._emit('recovery:completed', receiptClone(receipt));
     this._emit('recovery:receipt', receiptClone(receipt));
+    this._publishLungCase(record, receipt);
+    return true;
+  },
+
+  _publishLungCase(record, receipt) {
+    const artifact = lungCaseArtifact(record, receipt);
+    if (!artifact) return false;
+    const completedAt = Number(receipt && receipt.completedAt);
+    this._emit('landmark:artifactRecovered', {
+      sectorId: LUNG_OF_CHARON_CASE.sectorId,
+      poiId: LUNG_OF_CHARON_CASE.salvagePointId,
+      targetRef: LUNG_OF_CHARON_CASE.targetRef,
+      signalId: record.signalId || null,
+      artifact,
+      returnedAt: Number.isFinite(completedAt) ? Math.max(0, completedAt) : Number(this.state.simTime) || 0,
+    });
     return true;
   },
 
@@ -607,6 +676,11 @@ export const recoveryEncounter = {
 
   deserialize(data) {
     this.state.recoveryEncounters = normalizeState(data);
+    const own = ensureState(this.state);
+    for (const record of Object.values(own.records)) {
+      const receipt = record && own.outcomes[record.id];
+      if (receipt) this._publishLungCase(record, receipt);
+    }
   },
 
   destroy() {

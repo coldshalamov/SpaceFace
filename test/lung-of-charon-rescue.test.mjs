@@ -6,6 +6,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { recoveryEncounter } from '../src/systems/recoveryEncounter.js';
 import { scanner } from '../src/systems/scanner.js';
 import { world } from '../src/systems/world.js';
+import { explorationDiscoveryPlates } from '../src/world/explorationJournal.js';
 
 const SECTOR_ID = 'sector_charon_expanse';
 const POI_ID = 'poi_charon_tether_wreck';
@@ -20,6 +21,7 @@ function boot(seed = 7007) {
   const { state, bus } = sim;
   state.mode = 'flight';
   state.input.actions = state.input.actions || {};
+  state.world.sectors = state.world.sectors || {};
   state.world.currentSectorId = SECTOR_ID;
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: -1680, z: 360 }, vel: { x: 0, z: 0 },
@@ -45,13 +47,20 @@ function boot(seed = 7007) {
     id: SECTOR_ID,
     pois: [{ id: wreck.id, poiId: POI_ID, type: 'wreck', pos: { ...wreck.pos } }],
   };
-  const events = { scans: [], started: [], identified: [], completed: [], credits: [], rep: [] };
+  const events = { scans: [], started: [], identified: [], completed: [], credits: [], rep: [], caseCards: [] };
+  const discoveryWriter = Object.create(world);
+  discoveryWriter.state = state;
+  discoveryWriter.bus = bus;
   bus.on('signal:scanResults', (payload) => events.scans.push(payload));
   bus.on('recovery:started', (payload) => events.started.push(payload));
   bus.on('recovery:identified', (payload) => events.identified.push(payload));
   bus.on('recovery:completed', (payload) => events.completed.push(payload));
   bus.on('economy:grantCredits', (payload) => events.credits.push(payload));
   bus.on('faction:repDelta', (payload) => events.rep.push(payload));
+  bus.on('landmark:artifactRecovered', (payload) => {
+    events.caseCards.push(payload);
+    discoveryWriter._onLandmarkArtifactRecovered(payload);
+  });
   return { sim, state, bus, player, wreck, events };
 }
 
@@ -123,6 +132,132 @@ test('ordinary scanner play reaches guaranteed life support and the existing res
   assert.deepEqual(h.events.rep[0], {
     factionId: 'faction_dmc', delta: 12, reason: 'recovery:rescue', recoveryId: record.id,
   });
+  assert.equal(h.events.caseCards.length, 1);
+  assert.equal(h.events.caseCards[0].targetRef, 'landmark_c7_lung_of_charon');
+  assert.equal(h.events.caseCards[0].artifact.id, 'case:lung-of-charon:recovery:poi_charon_tether_wreck');
+  const plate = explorationDiscoveryPlates(h.state)
+    .find((entry) => entry.sectorId === SECTOR_ID && entry.poiId === POI_ID);
+  assert.equal(plate?.title, 'Snapped-Tether Hab-Pod');
+  assert.match(plate?.body || '', /The Lung of Charon.*survivors were recovered alive/i);
+
+  h.bus.emit('recovery:choose', { recoveryId: record.id, choice: 'rescue' });
+  assert.equal(h.events.credits.length, 1, 'a settled Lung record cannot pay twice');
+  assert.equal(h.events.rep.length, 1, 'a settled Lung record cannot grant reputation twice');
+  assert.equal(h.events.caseCards.length, 1, 'the case card is one stable outcome');
+});
+
+test('continuous and no-teleport membership exits keep an active Lung recovery resumable', () => {
+  const h = boot(7010);
+  h.bus.emit('signal:investigated', {
+    signalId: 'signal:charon-tether',
+    sourceKind: 'distress',
+    sourceId: POI_ID,
+    entityId: h.wreck.id,
+    sectorId: SECTOR_ID,
+    pos: { ...h.wreck.pos },
+    classification: 'DISTRESS COMMUNICATOR',
+  });
+  const record = h.state.recoveryEncounters.records['recovery:poi_charon_tether_wreck'];
+  assert.ok(record);
+
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID, continuous: true, noTeleport: true });
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID, noTeleport: true });
+
+  assert.equal(h.state.recoveryEncounters.outcomes[record.id], undefined);
+  assert.equal(h.state.recoveryEncounters.activeId, record.id);
+  assert.equal(h.events.completed.length, 0);
+  const saved = h.sim.registry.get('recoveryEncounter').serialize();
+  assert.equal(saved.activeId, record.id, 'membership handoffs retain a Continue-resumable operation');
+});
+
+test('death-recovery sector exit stays resumable, then an explicit departure abandons exactly once', () => {
+  const h = boot(7011);
+  h.bus.emit('signal:investigated', {
+    signalId: 'signal:charon-tether',
+    sourceKind: 'distress',
+    sourceId: POI_ID,
+    entityId: h.wreck.id,
+    sectorId: SECTOR_ID,
+    pos: { ...h.wreck.pos },
+    classification: 'DISTRESS COMMUNICATOR',
+  });
+  const record = h.state.recoveryEncounters.records['recovery:poi_charon_tether_wreck'];
+  assert.ok(record);
+
+  h.state.combat.lastPlayerDefeat = {
+    id: 'defeat:lung-regression',
+    recovery: { sectorId: 'sector_helios_prime', stationId: 'station_helios' },
+  };
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  assert.equal(h.state.recoveryEncounters.outcomes[record.id], undefined,
+    'the recovery-dock transition cannot be misfiled as voluntary abandonment');
+  assert.equal(h.state.recoveryEncounters.activeId, record.id);
+  assert.equal(h.events.completed.length, 0);
+
+  h.state.combat.lastPlayerDefeat = null;
+  h.bus.emit('player:respawn', { stationId: 'station_helios' });
+  h.bus.emit('sector:enter', { sectorId: SECTOR_ID });
+  assert.equal(h.state.recoveryEncounters.activeId, record.id, 'the Lung operation remains resumable after respawn');
+
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  assert.equal(h.state.recoveryEncounters.outcomes[record.id].outcome, 'abandoned');
+  assert.equal(h.state.recoveryEncounters.outcomes[record.id].failure, 'sector_exit');
+  assert.equal(h.events.completed.length, 1, 'an explicit ordinary departure still settles once');
+  assert.equal(h.events.credits.length, 0);
+  assert.equal(h.events.rep.length, 0);
+});
+
+test('departing an active Lung recovery records one zero-settlement abandonment and reprojects it after Continue', () => {
+  const first = boot(7009);
+  first.bus.emit('signal:investigated', {
+    signalId: 'signal:charon-tether',
+    sourceKind: 'distress',
+    sourceId: POI_ID,
+    entityId: first.wreck.id,
+    sectorId: SECTOR_ID,
+    pos: { ...first.wreck.pos },
+    classification: 'DISTRESS COMMUNICATOR',
+  });
+  const record = first.state.recoveryEncounters.records['recovery:poi_charon_tether_wreck'];
+  assert.ok(record);
+
+  first.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  first.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  const receipt = first.state.recoveryEncounters.outcomes[record.id];
+  assert.equal(receipt.outcome, 'abandoned');
+  assert.equal(receipt.failure, 'sector_exit');
+  assert.equal(receipt.credits, 0);
+  assert.equal(receipt.repDelta, 0);
+  assert.deepEqual(receipt.cargo, {});
+  assert.equal(first.events.completed.length, 1);
+  assert.equal(first.events.credits.length, 0);
+  assert.equal(first.events.rep.length, 0);
+  assert.equal(first.events.caseCards.length, 1);
+  const firstPlate = explorationDiscoveryPlates(first.state)
+    .find((entry) => entry.sectorId === SECTOR_ID && entry.poiId === POI_ID);
+  assert.match(firstPlate?.body || '', /abandoned on departure/i);
+
+  first.bus.emit('signal:investigated', {
+    signalId: 'signal:charon-tether', sourceKind: 'distress', sourceId: POI_ID,
+    entityId: first.wreck.id, sectorId: SECTOR_ID, pos: { ...first.wreck.pos },
+  });
+  assert.equal(first.events.completed.length, 1, 're-entry returns the saved receipt instead of reopening the case');
+  assert.equal(first.events.credits.length, 0);
+  assert.equal(first.events.caseCards.length, 1);
+
+  const saved = first.sim.registry.get('recoveryEncounter').serialize();
+  const restored = boot(7009);
+  restored.sim.registry.get('recoveryEncounter').deserialize(saved);
+  const restoredReceipt = restored.state.recoveryEncounters.outcomes[record.id];
+  assert.equal(restoredReceipt.outcome, 'abandoned');
+  assert.equal(restored.events.credits.length, 0, 'case projection cannot settle the recovery again');
+  assert.equal(restored.events.rep.length, 0);
+  assert.equal(restored.events.caseCards.length, 1, 'Continue replays the same stable case-card identity once');
+  assert.equal(restored.events.caseCards[0].artifact.id, 'case:lung-of-charon:recovery:poi_charon_tether_wreck');
+  const restoredPlate = explorationDiscoveryPlates(restored.state)
+    .find((entry) => entry.sectorId === SECTOR_ID && entry.poiId === POI_ID);
+  assert.match(restoredPlate?.body || '', /abandoned on departure/i);
 });
 
 test('Continue rebinds the saved recovery to the static hull instead of spawning a duplicate', () => {
