@@ -18,7 +18,12 @@ import { escapeHtml } from '../../comms.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import { icon } from '../icons.js';
-import { frontierRumorOffer, frontierRumorOwned } from '../../../data/frontierRumors.js';
+import {
+  frontierRumorOffer,
+  frontierRumorOwned,
+  TETHYS_BLACK_MARKET_DISCOVERY,
+} from '../../../data/frontierRumors.js';
+import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const roleLabel = (r) => String(r || 'contact').replace(/_/g, ' ');
@@ -26,6 +31,31 @@ const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const rewardOf = (m) => Math.max(0, Math.round(Number(
   m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
 ) || 0));
+
+/** Durable, optional station handoff for the authored first purchased Tethys rumor. */
+export function tethysRumorGuidance(state, stationId) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (stationId !== discovery.stationId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  if (!record || record.phase !== 'rumored') return null;
+  return {
+    rumorId: discovery.rumorId,
+    sectorId: discovery.sectorId,
+    label: 'Quiet Traffic Lead',
+  };
+}
+
+export function openTethysRumorGuidanceMap(ctx, stationId) {
+  const guidance = tethysRumorGuidance(ctx && ctx.state, stationId);
+  if (!guidance) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: guidance.sectorId,
+    label: guidance.label,
+    source: 'station-bar:tethys-rumor-guidance',
+  });
+}
 
 export function createBarScreen(ctx) {
   const el = document.createElement('div');
@@ -109,6 +139,15 @@ export function createBarScreen(ctx) {
     `</section>`;
   }
 
+  function tethysRumorGuidanceHtml(state) {
+    const guidance = tethysRumorGuidance(state, sid());
+    if (!guidance) return '';
+    return `<section class="sx-bar-offer" aria-label="Quiet Traffic Lead guidance">` +
+      `<div class="sx-bar-offer__state"><b>QUIET TRAFFIC LEAD ADDED</b><span>Tethys holds a broad amber search area. Select the ring, fly it manually, and pulse the scanner.</span></div>` +
+      `<button type="button" class="sx-btn-primary" data-open-tethys-rumor-map aria-label="Open Tethys search map for the Quiet Traffic Lead">OPEN TETHYS SEARCH MAP</button>` +
+    `</section>`;
+  }
+
   // ---------- rail ----------
   function renderRail(state) {
     const list = contacts(state);
@@ -160,7 +199,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
             : `<p class="sx-muted">They have nothing to say.</p>`) +
-        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() +
+        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) +
       `</div>`;
 
     const big = stageEl.querySelector('[data-bigpic]');
@@ -220,6 +259,10 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-open-tethys-rumor-map]')) {
+      if (openTethysRumorGuidanceMap(ctx, sid()) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     const rumorButton = ev.target.closest('[data-buy-frontier-rumor]');
     if (rumorButton && !rumorButton.disabled) {
       const rumorId = rumorButton.getAttribute('data-buy-frontier-rumor');

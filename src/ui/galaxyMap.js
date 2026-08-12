@@ -36,7 +36,7 @@ import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
-import { frontierRumorMapReadouts } from './frontierRumorMapLayer.js';
+import { frontierRumorMapReadouts, frontierRumorMapTarget } from './frontierRumorMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
@@ -409,12 +409,27 @@ export function mapFocusButtonSelector(intent) {
   return `.gm-scale-btn[data-focus="${focus}"]`;
 }
 
+/**
+ * Preserve keyboard focus after selecting a map result whose source row may be replaced by refresh.
+ * Course-bearing targets hand off to their visible primary action; read-only/manual targets return
+ * to the persistent screen-manager dialog root (role=dialog, tabindex=-1) without inventing a verb.
+ */
+export function focusMapSelectionHandoff({ action, primaryControl, mapRoot } = {}) {
+  const canFocusPrimary = !!(action && action.coursePayload && primaryControl
+    && primaryControl.hidden !== true && primaryControl.disabled !== true
+    && typeof primaryControl.focus === 'function');
+  const focusTarget = canFocusPrimary ? primaryControl : mapRoot;
+  if (!focusTarget || typeof focusTarget.focus !== 'function') return false;
+  try { focusTarget.focus({ preventScroll: true }); } catch (_) { focusTarget.focus(); }
+  return true;
+}
+
 /** Stable semantic priority for overlapping click targets. Active objectives always win. */
 export function mapTargetPriority(target) {
   if (!target) return -1;
   if (target.objective === true || target.kind === 'waypoint' || target.markerKind === 'mission-objective') return 100;
   if (target.missionId) return 90;
-  if (target.kind === 'bearing') return 60;
+  if (target.kind === 'bearing' || target.kind === 'rumor') return 60;
   return 10;
 }
 
@@ -647,7 +662,11 @@ export function pickMapTargetAt(targets, x, y) {
     const dy = y - target.sy;
     const d2 = dx * dx + dy * dy;
     const radius = target.radiusPx || 14;
-    if (d2 > radius * radius) continue;
+    const ringRadius = Number(target.ringRadiusPx) || 0;
+    const ringBand = ringRadius > 0 ? Math.max(10, Math.min(20, ringRadius * 0.16)) : 0;
+    const insideCenter = d2 <= radius * radius;
+    const onRing = ringRadius > 0 && Math.abs(Math.sqrt(d2) - ringRadius) <= ringBand;
+    if (!insideCenter && !onRing) continue;
     const priority = mapTargetPriority(target);
     if (priority > bestPriority || (priority === bestPriority && d2 < bestD2)) {
       best = target;
@@ -1737,6 +1756,10 @@ export function buildMapModel(state, zoom, opts) {
 export function resolveCourseTarget(target) {
   if (!target) return null;
 
+  // A rumor ring is a selectable/readable uncertainty region, not a coordinate the map may turn
+  // into navigation. Keep this guard before every positional and sector fallback below.
+  if (target.courseDisabled === true || target.kind === 'rumor') return null;
+
   // Sector graph node -> route. A galaxy node has no world (x,z) position — only a graph position
   // and a sector id — so it is always resolved as an inter-sector route, never a local waypoint.
   if (target.kind === 'sector') {
@@ -1914,6 +1937,9 @@ export function resolveGalaxyMapPlotAction(state, target) {
   });
 
   if (!target) return unavailable('Select a sector on the chart to plot a course to it');
+  if (target.courseDisabled === true || target.kind === 'rumor') {
+    return unavailable('This is an approximate search area — fly the ring manually and pulse the scanner');
+  }
 
   const primary = resolveGalaxyMapPrimaryAction(state, target);
   const coursePayload = resolveCourseTarget(target);
@@ -5035,6 +5061,18 @@ export const galaxyMapScreen = {
           if (marker) galaxyMapScreen._selectSearchTarget(marker);
           return;
         }
+        const rumorRow = target && typeof target.closest === 'function'
+          ? target.closest('[data-frontier-rumor-id]') : null;
+        if (rumorRow) {
+          const state = galaxyMapScreen._ctx && galaxyMapScreen._ctx.state;
+          const sectorId = rumorRow.getAttribute('data-frontier-rumor-sector') || currentSectorId(state);
+          const rumorId = rumorRow.getAttribute('data-frontier-rumor-id');
+          const readout = frontierRumorMapReadouts(state, sectorId)
+            .find((entry) => entry && entry.rumorId === rumorId);
+          const marker = frontierRumorMapTarget(readout);
+          if (marker) galaxyMapScreen._selectSearchTarget(marker);
+          return;
+        }
         const row = target && typeof target.closest === 'function' ? target.closest('[data-gm-lane]') : null;
         if (!row) return;
         galaxyMapScreen._activateTradeLane(row.getAttribute('data-gm-lane'));
@@ -6022,6 +6060,21 @@ export const galaxyMapScreen = {
     } else if (t.kind === 'claim') {
       html += claimInspectorHtml(t);
       buttonLabel = 'Set Base Waypoint';
+    } else if (t.kind === 'rumor') {
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-ins-kind" style="color:${INK.gold};">${escapeMapHtml(t.statusLabel || 'RUMOR SEARCH')}</div>
+          <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Manual search area</div>
+          <div class="gm-ins-row"><span>Range</span><span class="gm-ins-row-val">±${Math.round(Math.max(0, Number(t.radius) || 0))} u</span></div>
+          <div class="gm-ins-note">${escapeMapHtml(t.detail || 'Approximate frontier intelligence.')}</div>
+          <div class="gm-ins-note">${escapeMapHtml(t.objective || 'Fly the area manually and pulse the scanner. No waypoint is set.')}</div>
+        </div>
+      `;
+      buttonLabel = 'Manual Search Area';
     } else if (t.kind === 'zone') {
       html += `
         <div class="gm-ins-section">
@@ -6100,9 +6153,15 @@ export const galaxyMapScreen = {
       detailsEl.innerHTML = tabbed;
       this._inspectorDetailsHtml = tabbed;
     }
+    const primary = resolveGalaxyMapPrimaryAction(state, t);
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
-    if (btn.hidden) btn.hidden = false;
-    if (btn.disabled) btn.disabled = false;
+    if (primary && primary.coursePayload) {
+      if (btn.hidden) btn.hidden = false;
+      if (btn.disabled) btn.disabled = false;
+    } else {
+      if (!btn.hidden) btn.hidden = true;
+      if (!btn.disabled) btn.disabled = true;
+    }
   },
 
   // ═══ SLICE C — tab bodies ══════════════════════════════════════════════════════════════════
@@ -6336,12 +6395,15 @@ export const galaxyMapScreen = {
         <span class="gm-ins-row-val">${escapeMapHtml(marker.stageLabel)}</span>
       </button>`).join('');
     const rumorRows = rumorCards.map((rumor) => `
-      <div class="gm-ins-section">
-        <div class="gm-ins-kind">${escapeMapHtml(rumor.statusLabel)}</div>
-        <div class="gm-ins-title">${escapeMapHtml(rumor.name)}</div>
-        <div class="gm-ins-note">${escapeMapHtml(rumor.detail)}</div>
-        <div class="gm-ins-note">${escapeMapHtml(rumor.objective)}</div>
-      </div>`).join('');
+      <button class="gm-site-row" type="button" data-frontier-rumor-id="${escapeMapHtml(rumor.rumorId)}"
+        data-frontier-rumor-sector="${escapeMapHtml(rumor.sectorId)}"
+        aria-label="Inspect ${escapeMapHtml(rumor.name)} search area"
+        aria-pressed="${!!(t && t.id === rumor.rumorId)}">
+        <span class="gm-ins-kind">${escapeMapHtml(rumor.statusLabel)}</span>
+        <span class="gm-ins-title">${escapeMapHtml(rumor.name)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(rumor.detail)}</span>
+        <span class="gm-ins-note">${escapeMapHtml(rumor.objective)}</span>
+      </button>`).join('');
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6401,14 +6463,16 @@ export const galaxyMapScreen = {
     // `plot` reports availability from the PLOT-ONLY resolver, so its reason describes what the
     // button will actually do. It used to key off the primary action, which meant the row claimed
     // "Lay a course to this mark" for a neighbour and then committed a jump.
-    const plot = resolveGalaxyMapPlotAction(state, t);
     const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
     const acts = [
-      { id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason },
       { id: 'frame', label: 'Frame', available: true, reason: 'Centre the chart on this mark' },
       { id: 'open-system', label: 'Open system', available: !!sectorId, reason: sectorId ? 'Zoom to this mark\'s own sector' : 'This mark has no parent sector' },
       { id: 'bookmark', label: 'Bookmark', available: true, reason: 'Save this view to the left rail' },
     ];
+    if (t.kind !== 'rumor' && t.courseDisabled !== true) {
+      const plot = resolveGalaxyMapPlotAction(state, t);
+      acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
+    }
     const html = acts.map((a) => `<button class="gm-place-btn" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'disabled'} aria-disabled="${!a.available}" title="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
@@ -7140,7 +7204,7 @@ export const galaxyMapScreen = {
       this._syncLegacyFromCamera();
       this._cams.galaxy.cx = target.x;
       this._cams.galaxy.cy = target.y;
-    } else if (target.kind === 'station' || target.kind === 'gate' || target.kind === 'poi' || target.kind === 'zone') {
+    } else if (target.kind === 'station' || target.kind === 'gate' || target.kind === 'poi' || target.kind === 'zone' || target.kind === 'rumor') {
       // The SYSTEM camera lives in the sector-local draw frame, but a search target carries the
       // GLOBAL nav frame so the same object can arm a course. Centering on the raw nav position
       // parks the camera a whole sector origin away from the thing you just picked.
@@ -7169,14 +7233,12 @@ export const galaxyMapScreen = {
 
     this.refresh();
 
-    // Search Enter is a complete keyboard handoff: once a result is selected, move focus out of
-    // the text field and onto the visible primary action. A second Enter then follows the native
-    // button path instead of re-selecting the same search row indefinitely.
+    // Selection refresh can replace the activated Discovery/search row. Keep focus in the map:
+    // navigable targets move to their visible primary action; manual/read-only targets return to
+    // the persistent dialog root so M/N/Escape and the screen-manager focus trap still work.
     const action = resolveGalaxyMapPrimaryAction(state, target);
     const primary = this._setCourseButton || (this._root && this._root.querySelector('#gm-set-course-btn'));
-    if (action && primary && typeof primary.focus === 'function') {
-      try { primary.focus({ preventScroll: true }); } catch (_) { primary.focus(); }
-    }
+    focusMapSelectionHandoff({ action, primaryControl: primary, mapRoot: this._root });
 
     // Trigger ring at target center
     const w = this._canvas.width / this._dpr;
@@ -8242,8 +8304,8 @@ export const galaxyMapScreen = {
       }
     }
 
-    // Unique-wreck read layer. Rumors are non-interactive uncertainty regions; only a scan-fixed
-    // point carries the global course target even though this system view paints sector-local XZ.
+    // Unique-wreck and rumor read layer. A rumor ring is selectable for its manual-search text,
+    // but it never carries a navigable course target.
     if (this._layers.discovery) {
       for (const bearing of model.bearings) {
         const fixed = !!bearing.drawFixedPos;
@@ -8254,7 +8316,17 @@ export const galaxyMapScreen = {
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
-        if (fixed && bearing.courseTarget) {
+        const rumorTarget = frontierRumorMapTarget(bearing);
+        if (rumorTarget) {
+          this._clickTargets.push({
+            ...rumorTarget,
+            sx: x,
+            sy: y,
+            radiusPx: 18,
+            ringRadiusPx: radiusPx,
+            detail: bearing.detail,
+          });
+        } else if (fixed && bearing.courseTarget) {
           this._clickTargets.push({
             ...bearing.courseTarget,
             sx: x,
@@ -8267,7 +8339,8 @@ export const galaxyMapScreen = {
         }
 
         const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
-        const phaseLabel = bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        const phaseLabel = bearing.manualSearch ? 'RUMOR SEARCH'
+          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
@@ -8555,22 +8628,32 @@ export const galaxyMapScreen = {
         const point = bearing.fixedPos || bearing.center;
         if (!point) continue;
         const x = sx(point.x), y = sz(point.z);
+        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const rumorTarget = frontierRumorMapTarget(bearing);
         if (offView(x, y)) {
           pushEdgeTick(x, y, INK.gold, 'bearing', {
-            ...(bearing.courseTarget || {}),
-            kind: 'bearing',
-            id: bearing.wreckId,
+            ...(rumorTarget || bearing.courseTarget || {}),
+            kind: rumorTarget ? 'rumor' : 'bearing',
+            id: rumorTarget ? rumorTarget.id : bearing.wreckId,
             name: bearing.name,
             sectorId: bearing.sectorId,
-            detail: 'Read bearing · off-view survey fix',
+            detail: rumorTarget ? bearing.detail : 'Read bearing · off-view survey fix',
           });
           continue;
         }
-        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
         const selected = !!(this._selectedTarget && this._selectedTarget.id === bearing.wreckId);
         drawUniqueWreckBearingMarker(g, x, y, radiusPx, { fixed, selected, phase: bearing.phase });
 
-        if (fixed && bearing.courseTarget) {
+        if (rumorTarget) {
+          this._clickTargets.push({
+            ...rumorTarget,
+            sx: x,
+            sy: y,
+            radiusPx: 18,
+            ringRadiusPx: radiusPx,
+            detail: bearing.detail,
+          });
+        } else if (fixed && bearing.courseTarget) {
           this._clickTargets.push({
             ...bearing.courseTarget,
             sx: x,
@@ -8583,7 +8666,8 @@ export const galaxyMapScreen = {
         }
 
         const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
-        const phaseLabel = bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
+        const phaseLabel = bearing.manualSearch ? 'RUMOR SEARCH'
+          : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING';
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',

@@ -156,6 +156,7 @@ const CORE_SECTORS = [
       {
         id: 'poi_blackmkt', type: 'cache', name: 'Black Market Contact', hidden: true,
         factionId: 'faction_quiet', requiresActiveScan: true, scannerSignalKind: 'ambush',
+        manualInvestigation: true,
       },
       { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
       { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },

@@ -1510,6 +1510,7 @@ export const world = {
           ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
           ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
           ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
+          ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
           ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
           ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
           ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
@@ -1527,6 +1528,7 @@ export const world = {
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
         hidden, claimable: !!poi.claimable,
         ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+        manualInvestigation: poi.manualInvestigation === true,
         requiresActiveScan: poi.requiresActiveScan === true,
         requiresTriangulation: !!triangulation,
         triangulation,
@@ -3131,7 +3133,6 @@ export const world = {
     own.receipts.push(receipt);
     while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
     this.bus.emit('frontierRumor:contacted', { ...receipt, opportunity: { ...record.opportunity } });
-    this.bus.emit('toast', { text: 'Quiet contact remembered · Tethys has a risky capsule lead', kind: 'good', ttl: 4 });
     return true;
   },
 

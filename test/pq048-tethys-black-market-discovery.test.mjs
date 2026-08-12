@@ -133,7 +133,32 @@ test('PQ-048.11 requires a purchased approximate rumor, physical pulse, and inve
   assert.equal(t.state.world.frontierRumors.byId[offer.id].phase, 'rumored',
     'a pulse alone cannot create the contact');
 
-  t.bus.emit('signal:track', { signalId: signal.id });
+  const courseEventsBeforeManualInvestigation = t.log.filter((entry) => entry.event === 'ui:setCourse').length;
+  assert.equal(t.scanner._trackSignal({ signalId: signal.id }), false,
+    'the authored return declines the generic course-plot action');
+  assert.equal(t.log.filter((entry) => entry.event === 'ui:setCourse').length, courseEventsBeforeManualInvestigation,
+    'the generic action cannot mutate navigation for this lead');
+
+  t.bus.emit('signal:investigate', { signalId: signal.id });
+  assert.equal(t.state.signalInvestigation.trackedId, signal.id,
+    'manual investigation remains in the durable scanner state until the physical return is resolved');
+  assert.equal(t.log.filter((entry) => entry.event === 'signal:investigating'
+    && entry.payload.id === signal.id).length, 1, 'manual arming has its own presenter seam');
+  assert.equal(t.log.filter((entry) => entry.event === 'ui:setCourse').length, courseEventsBeforeManualInvestigation,
+    'manual investigation emits no course request');
+
+  const armedWorld = t.world.serialize();
+  const armedScanner = t.scanner.serialize();
+  const reloadedWhileSearching = boot();
+  reloadedWhileSearching.world.deserialize(armedWorld);
+  reloadedWhileSearching.scanner.deserialize(armedScanner);
+  assert.equal(reloadedWhileSearching.state.world.frontierRumors.byId[offer.id].phase, 'rumored',
+    'Continue retains the purchased clue before it is resolved');
+  assert.equal(reloadedWhileSearching.state.signalInvestigation.trackedId, signal.id,
+    'Continue retains the manually armed physical investigation');
+  assert.equal(reloadedWhileSearching.state.signalInvestigation.records[signal.id].manualInvestigation, true,
+    'the manual-only route is still protected after reload');
+
   t.scanner._updateTrackedSignal(t.state);
   const remembered = t.state.world.frontierRumors.byId[offer.id];
   assert.equal(remembered.phase, 'contacted');

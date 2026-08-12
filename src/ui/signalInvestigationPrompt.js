@@ -1,7 +1,9 @@
 // Compact scanner investigation card. Simulation owns detection, classification, tracking and
-// durable receipts; this presenter only renders public signal events and emits `signal:track`.
+// durable receipts; this presenter only renders public signal events and emits the matching
+// `signal:track` or manual `signal:investigate` intent.
 
 import { isUiInteractionFenced } from './input.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY } from '../data/frontierRumors.js';
 
 const STYLE_ID = 'sf-signal-investigation-style';
 const RESULT_TTL_S = 8;
@@ -40,6 +42,7 @@ function safeRecord(payload) {
     distance: Math.max(0, Number(row.distance) || 0),
     scanCount: Math.max(1, Math.round(Number(row.scanCount) || 1)),
     trackable: row.trackable !== false,
+    manualInvestigation: row.manualInvestigation === true,
     triangulation: row.triangulation && typeof row.triangulation === 'object'
       ? { ...row.triangulation }
       : null,
@@ -94,6 +97,7 @@ export function createSignalInvestigationPrompt(ctx) {
       mode: 'result',
       signalId: record.id,
       trackable: record.trackable,
+      manualInvestigation: record.manualInvestigation,
       hideAt: Number(state.simTime || 0) + RESULT_TTL_S,
     };
     root.className = 'sf-signal--result';
@@ -104,12 +108,15 @@ export function createSignalInvestigationPrompt(ctx) {
     text(el.detail, record.detail);
     const other = Math.max(0, Number(payload.total || (payload.signals && payload.signals.length) || 1) - 1);
     text(el.more, record.trackable
-      ? (other ? `+${other} OTHER RETURN${other === 1 ? '' : 'S'}` : 'PRIMARY RETURN')
+      ? (record.manualInvestigation
+        ? 'FLY THIS RETURN MANUALLY · NO COURSE SET'
+        : (other ? `+${other} OTHER RETURN${other === 1 ? '' : 'S'}` : 'PRIMARY RETURN'))
       : 'MOVE LATERALLY · PULSE AGAIN');
     el.track.hidden = !record.trackable;
     el.track.disabled = !record.trackable;
+    text(el.track, record.manualInvestigation ? 'A  INVESTIGATE MANUALLY' : 'A  TRACK / INVESTIGATE');
     root.setAttribute('aria-label', record.trackable
-      ? `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} Track or investigate.`
+      ? `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} ${record.manualInvestigation ? 'Investigate manually.' : 'Track or investigate.'}`
       : `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail}`);
     root.hidden = false;
     return true;
@@ -131,10 +138,49 @@ export function createSignalInvestigationPrompt(ctx) {
     return true;
   }
 
+  function showInvestigating(payload) {
+    if (!canSurface() || !payload || !payload.classification) return false;
+    active = {
+      mode: 'receipt', signalId: payload.id || payload.signalId,
+      hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S,
+    };
+    root.className = 'sf-signal--receipt';
+    text(el.flag, 'MANUAL INVESTIGATION ARMED');
+    text(el.confidence, 'FLY MANUALLY');
+    text(el.headline, String(payload.classification).toUpperCase());
+    text(el.meta, signalMetaText(payload));
+    text(el.detail, 'Fly to the scanner return yourself. Close range records the source; no course was set.');
+    text(el.more, 'NO WAYPOINT · NO AUTOPILOT');
+    el.track.hidden = true;
+    root.setAttribute('aria-label', `${payload.classification} manual investigation armed. Fly to the scanner return yourself; no course was set.`);
+    root.hidden = false;
+    return true;
+  }
+
+  function isTethysContactCompletion(payload) {
+    const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+    if (!payload || payload.sectorId !== discovery.sectorId || payload.sourceId !== discovery.poiId) return false;
+    const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+      && state.world.frontierRumors.byId[discovery.rumorId];
+    return !!(record && record.phase === 'contacted' && record.contactId === discovery.contactId);
+  }
+
   function showInvestigated(payload) {
     if (!canSurface() || !payload) return false;
     active = { mode: 'receipt', signalId: payload.signalId, hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
     root.className = 'sf-signal--receipt sf-signal--complete';
+    if (isTethysContactCompletion(payload)) {
+      text(el.flag, 'QUIET CONTACT REMEMBERED');
+      text(el.confidence, 'SAVED');
+      text(el.headline, 'TETHYS BLACK MARKET');
+      text(el.meta, 'DISCOVERY RECEIPT · SAVED');
+      text(el.detail, 'Return to Tethys Bar for the risky Capsule Run lead. Law attention can still leave you with no payout.');
+      text(el.more, 'NO COURSE SET · NO DUPLICATE REWARD');
+      el.track.hidden = true;
+      root.setAttribute('aria-label', 'Quiet contact remembered and saved. Return to Tethys Bar for the risky Capsule Run lead.');
+      root.hidden = false;
+      return true;
+    }
     text(el.flag, 'INVESTIGATION COMPLETE');
     text(el.confidence, 'LOGGED');
     text(el.headline, String(payload.classification || 'SIGNAL').toUpperCase());
@@ -152,7 +198,7 @@ export function createSignalInvestigationPrompt(ctx) {
       || active.trackable === false || !active.signalId) return false;
     const signalId = active.signalId;
     el.track.disabled = true;
-    bus.emit('signal:track', { signalId, source });
+    bus.emit(active.manualInvestigation ? 'signal:investigate' : 'signal:track', { signalId, source });
     return true;
   }
 
@@ -178,6 +224,7 @@ export function createSignalInvestigationPrompt(ctx) {
   el.track.addEventListener('click', onTrackClick);
   bus.on('signal:scanResults', showResults);
   bus.on('signal:tracked', showTracked);
+  bus.on('signal:investigating', showInvestigating);
   bus.on('signal:investigated', showInvestigated);
   bus.on('recovery:started', hide);
   bus.on('pirateParley:demand', hide);

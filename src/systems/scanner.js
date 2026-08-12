@@ -557,6 +557,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       triangulation: poi.triangulation || entityData.triangulation || null,
       resonanceScanResponse: entityData.resonanceScanResponse === true,
       repeatableScannerSignal: entityData.repeatableScannerSignal === true,
+      manualInvestigation: poi.manualInvestigation === true || entityData.manualInvestigation === true,
     });
   }
 
@@ -736,11 +737,13 @@ export const scanner = {
     this._contactHailLastTargetId = undefined;
     this._contactHailHeaveTo = null;
     this._onSignalTrack = (payload) => this._trackSignal(payload || {});
+    this._onSignalInvestigate = (payload) => this._investigateSignal(payload || {});
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('signal:track', this._onSignalTrack);
+      this.bus.on('signal:investigate', this._onSignalInvestigate);
       this.bus.on('contactHail:request', this._onContactHailRequest);
       this.bus.on('contactHail:choice', this._onContactHailChoice);
       this.bus.on('game:new', this._onContactHailReset);
@@ -998,6 +1001,7 @@ export const scanner = {
           candidate.distance,
         ),
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
+        manualInvestigation: candidate.manualInvestigation === true,
       };
       if (resonanceSignal) {
         const response = resonanceObeliskResponse(scanCount);
@@ -1039,10 +1043,36 @@ export const scanner = {
     const own = state && ensureSignalState(state);
     const id = String(payload.signalId || payload.id || '');
     const record = own && own.records[id];
-    if (!record || own.completed[id] || record.trackable === false || !record.pos) return false;
+    if (!record || own.completed[id] || record.trackable === false || !record.pos
+      || record.manualInvestigation === true) return false;
+    return this._armSignalInvestigation(record);
+  },
+
+  _investigateSignal(payload) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    const id = String(payload.signalId || payload.id || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id] || record.trackable === false || !record.pos
+      || record.manualInvestigation !== true) return false;
+    return this._armSignalInvestigation(record, { manual: true });
+  },
+
+  _armSignalInvestigation(record, { manual = false } = {}) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    if (!own || !record) return false;
     if (own.trackedId && own.records[own.trackedId]) own.records[own.trackedId].status = 'detected';
-    own.trackedId = id;
+    own.trackedId = record.id;
     record.status = 'tracked';
+    if (manual) {
+      this.bus.emit('signal:investigating', {
+        ...record,
+        pos: { ...record.pos },
+        manualInvestigation: true,
+      });
+      return true;
+    }
     const course = {
       pos: { x: record.pos.x, z: record.pos.z },
       targetEntityId: record.entityId,
@@ -1291,6 +1321,7 @@ export const scanner = {
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onSignalTrack) this.bus.off('signal:track', this._onSignalTrack);
+      if (this._onSignalInvestigate) this.bus.off('signal:investigate', this._onSignalInvestigate);
       if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
       if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
       if (this._onContactHailReset) {
@@ -1304,6 +1335,7 @@ export const scanner = {
     this._contactHailAvailability = null;
     this._contactHailAvailabilitySignature = '';
     this._onSignalTrack = null;
+    this._onSignalInvestigate = null;
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;
