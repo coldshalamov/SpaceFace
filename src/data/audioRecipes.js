@@ -135,6 +135,28 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.01, sustain: 0.02, release: 0.42 },
     filterType: 'highpass', filterFreq: 560, filterQ: 0.55,
   },
+  // Brawler commit: heavy hull pressure — low square growl, thudding break, low rumble withdraw.
+  // Deliberately not a flyby twin: no high sawtooth Doppler pass language.
+  {
+    id: 'sfx_doctrine_brawler_commit',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 110, freqSweep: [90, 220], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.02, sustain: 0.04, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 1.2,
+  },
+  {
+    id: 'sfx_doctrine_brawler_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 140, freqSweep: [140, 55], sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.006, sustain: 0.03, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 280, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_doctrine_brawler_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.015, sustain: 0.03, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
+  },
   // Tether raider: mechanical spool/clamp language, distinct from the massline's player rewards.
   {
     id: 'sfx_doctrine_tether_break', category: 'weapon', type: 'oscillator', wave: 'triangle',

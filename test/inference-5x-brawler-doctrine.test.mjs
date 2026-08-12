@@ -115,15 +115,87 @@ test('U2: brawler_commit runtime enters commit phase (not flyby strike/extend)',
   assert.equal(snap.phase, 'commit', 'sticky commit ignores flyby pass-geometry egress');
 });
 
-test('U2: engagement authority admits fire during brawler commit', () => {
-  // Structural proof on the shipped fire table — authorizeAIEngagement needs a full hostility
-  // graph; the causal defect was a missing DOCTRINE_FIRE_PHASES key, which this asserts.
-  const src = readFileSync(new URL('../src/ai/engagementAuthority.js', import.meta.url), 'utf8');
-  assert.match(src, /brawler_commit:\s*new Set\(\[\s*['"]commit['"]\s*\]\)/,
-    'DOCTRINE_FIRE_PHASES must admit brawler_commit during commit phase');
+test('U2: engagement authority admits fire during brawler commit on live authorize path', async () => {
+  const { authorizeAIEngagement } = await import('../src/ai/engagementAuthority.js');
+  const { ActivityKind, RulesOfEngagement, normalizeActivity } = await import('../src/ai/doctrine.js');
+
+  function ship(id, team, pos, ai = {}) {
+    return {
+      id, type: 'ship', alive: true, team,
+      pos: { ...pos }, vel: { x: 0, z: 0 }, rot: 0,
+      data: { ai: { ...ai }, intent: { fire: false }, combat: {} },
+    };
+  }
+
+  const player = ship(1, 0, { x: 1600, z: 0 });
+  const bruiser = ship(2, 1, { x: 1200, z: 0 }, {
+    passive: false,
+    lawful: false,
+    forcePlayerTarget: true,
+    hostileTeams: [0],
+    motive: 'cargo_extortion',
+    engagementTrigger: 'explicit_refusal',
+    zoneId: 'zone_ceres_ambush',
+    approachTelegraph: 'engine_flare',
+    noFireResponseWindowS: 1,
+    combatDoctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    activity: normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'brawler_commit_test',
+      anchor: { x: 1400, z: 0 },
+      leashRadius: 2200,
+      startedTick: 100,
+    }),
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  });
+  const state = {
+    tick: 200,
+    playerId: 1,
+    player: { heat: 0 },
+    world: { currentSectorId: 'sector_ceres_belt' },
+    entities: new Map([[1, player], [2, bruiser]]),
+    entityList: [player, bruiser],
+    combat: { trace: { events: [] } },
+  };
+
+  const deniedWrongPhase = authorizeAIEngagement({
+    state, self: bruiser, target: player, tick: 200,
+    objectiveReason: 'combat_doctrine:brawler_commit:engine_flare',
+    hostile: true,
+  });
+  assert.equal(deniedWrongPhase.ok, false);
+  assert.equal(deniedWrongPhase.reason, 'doctrine_fire_window',
+    'engine_flare is not a fire phase for brawler_commit');
+
+  const allowed = authorizeAIEngagement({
+    state, self: bruiser, target: player, tick: 200,
+    objectiveReason: 'combat_doctrine:brawler_commit:commit',
+    hostile: true,
+  });
+  assert.equal(allowed.ok, true, `commit must authorize fire; got ${allowed.reason}`);
+  assert.equal(allowed.reason, 'authorized');
+
+  // Missing fire-table key must fail closed (simulate wrong id not in DOCTRINE_FIRE_PHASES).
+  bruiser.data.ai.combatDoctrineId = 'not_a_real_doctrine';
+  const unknown = authorizeAIEngagement({
+    state, self: bruiser, target: player, tick: 200,
+    objectiveReason: 'combat_doctrine:not_a_real_doctrine:commit',
+    hostile: true,
+  });
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.reason, /doctrine|combat_doctrine/);
+});
+
+test('U2: brawler audio and choreography are not flyby aliases', () => {
+  const audio = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
+  assert.match(audio, /presentation\.combat\.brawler_commit\.setup':\s*'sfx_doctrine_brawler_commit'/);
+  assert.doesNotMatch(audio, /presentation\.combat\.brawler_commit\.setup':\s*'sfx_doctrine_flyby'/);
+  const recipes = readFileSync(new URL('../src/data/audioRecipes.js', import.meta.url), 'utf8');
+  assert.match(recipes, /id:\s*'sfx_doctrine_brawler_commit'/);
+  assert.match(recipes, /id:\s*'sfx_doctrine_brawler_break'/);
+  assert.match(recipes, /id:\s*'sfx_doctrine_brawler_withdraw'/);
   const choreo = readFileSync(new URL('../src/presentation/combatChoreography.js', import.meta.url), 'utf8');
-  assert.match(choreo, /brawler_commit:\s*grammar/,
-    'combat choreography must treat brawler_commit as a live doctrine');
+  assert.match(choreo, /brawler_commit:\s*grammar\('brawler_commit',\s*'ring'/);
 });
 
 test('U2: interceptor_flyby still uses strike for light fighters (no regression)', () => {

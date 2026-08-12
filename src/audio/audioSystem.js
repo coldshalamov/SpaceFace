@@ -91,14 +91,18 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
     recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
   }),
   [CombatDoctrineId.BRAWLER_COMMIT]: Object.freeze({
-    // Heavier, slower commit stamp — distinct from the light flyby pass.
-    recipeId: 'sfx_doctrine_flyby', fireRate: 0.82, fireGain: 0.96, fireDetune: -14,
+    // Heavy hull pressure recipe (not a retuned flyby pass).
+    recipeId: 'sfx_doctrine_brawler_commit', fireRate: 0.78, fireGain: 1.0, fireDetune: -18,
   }),
   [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
     recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
   }),
   [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
+  }),
+  [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER]: Object.freeze({
+    // Hold-the-ring language: lower charge than ranged, distinct from brawler growl.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.7, fireGain: 0.88, fireDetune: -22,
   }),
 });
 
@@ -449,9 +453,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.interceptor_flyby.setup': 'sfx_doctrine_flyby',
   'presentation.combat.interceptor_flyby.break': 'sfx_doctrine_flyby_break',
   'presentation.combat.interceptor_flyby.withdraw': 'sfx_doctrine_flyby_withdraw',
-  'presentation.combat.brawler_commit.setup': 'sfx_doctrine_flyby',
-  'presentation.combat.brawler_commit.break': 'sfx_doctrine_flyby_break',
-  'presentation.combat.brawler_commit.withdraw': 'sfx_doctrine_flyby_withdraw',
+  'presentation.combat.brawler_commit.setup': 'sfx_doctrine_brawler_commit',
+  'presentation.combat.brawler_commit.break': 'sfx_doctrine_brawler_break',
+  'presentation.combat.brawler_commit.withdraw': 'sfx_doctrine_brawler_withdraw',
   'presentation.combat.tether_control_raider.setup': 'sfx_doctrine_tether_spool',
   'presentation.combat.tether_control_raider.break': 'sfx_doctrine_tether_break',
   'presentation.combat.tether_control_raider.withdraw': 'sfx_doctrine_tether_withdraw',

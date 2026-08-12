@@ -21,8 +21,8 @@ export const DAMAGE_LAYERS = Object.freeze(['shield', 'armor', 'hull']);
 
 const DOCTRINE_GRAMMARS = Object.freeze({
   interceptor_flyby: grammar('interceptor_flyby', 'wedge', '#ffb35c', 'engine_flare', 'strike', 'extend'),
-  // Heavy commit shares the flyby wedge silhouette but action/aftermath map to commit/breakaway.
-  brawler_commit: grammar('brawler_commit', 'wedge', '#ff8a3c', 'engine_flare', 'commit', 'breakaway'),
+  // Heavy commit: distinct ring silhouette + orange pressure color (not flyby wedge).
+  brawler_commit: grammar('brawler_commit', 'ring', '#ff6a2a', 'engine_flare', 'commit', 'breakaway'),
   tether_control_raider: grammar('tether_control_raider', 'arc', '#8d66ff', 'attach_spool', 'action_attach', 'control'),
   ranged_disengager: grammar('ranged_disengager', 'bracket', '#ff5c5c', 'weapon_charge', 'fire_window', 'reset'),
 });
