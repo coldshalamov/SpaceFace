@@ -5712,6 +5712,37 @@
       "brief": "The existing Ceres tender physically approaches and holds beside the exact combat-disabled seam miner, repairs the drive through combat authority, and releases the original jobs to resume without adding actors, traffic cargo/economy writes, or a normal-success wreck aftermath."
     },
     {
+      "id": "PQ-048.05",
+      "parentId": "PQ-048",
+      "priority": 284,
+      "title": "Complete disabled-hauler recovery",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.03"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/contactHail.js",
+        "src/systems/surrenderRecovery.js",
+        "src/systems/traffic.js",
+        "src/ui/targetPanel.js",
+        "test/ceres-causal-chain.test.mjs",
+        "test/contact-hail-contract.test.mjs",
+        "test/inference-5x-target-work-readout.test.mjs",
+        "test/pq048-disabled-hauler-recovery.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-disabled-hauler-recovery.test.mjs",
+        "node --test test/ceres-causal-chain.test.mjs test/contact-hail-contract.test.mjs test/inference-5x-target-work-readout.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-05-disabled-hauler-recovery-REPORT.md"
+      ],
+      "brief": "The real PQ-048.03 transferred-manifest hauler becomes a readable disabled recovery incident: RECOVER uses existing civilian tether/tow settlement, STEAL releases conserved physical pickups to cargo/law/heat/freight owners, ABANDON/death/exit create one loss aftermath, tender response repairs after the player window, and Continue rebinds identity without duplicate settlement."
+    },
+    {
       "id": "PQ-048.08",
       "parentId": "PQ-048",
       "priority": 287,
