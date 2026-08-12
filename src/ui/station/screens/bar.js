@@ -7,6 +7,7 @@ import {
   generateContacts,
   getChoices,
   buildReply,
+  openDossArchiveMap,
   availableSurveyOffer,
   surveyOfferLabel,
   missionBoardSlots,
@@ -23,6 +24,7 @@ import {
   frontierRumorOwned,
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../../data/frontierRumors.js';
+import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -148,6 +150,14 @@ export function createBarScreen(ctx) {
     `</section>`;
   }
 
+  function dossArchiveMapOfferHtml(state, contact) {
+    if (!contact || contact.id !== DOSS_ARCHIVE_CONTACT_ID || !dossArchiveMapOffer(state)) return '';
+    return `<section class="sx-bar-offer" aria-label="Doss archive cross-reference">` +
+      `<div class="sx-bar-offer__state"><b>ARCHIVE CROSS-REFERENCE</b><span>The Candle Fleet is a map reference only. It does not set a course or create a mission.</span></div>` +
+      `<button type="button" class="sx-btn-primary" data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference">OPEN CANDLE FLEET MAP</button>` +
+    `</section>`;
+  }
+
   // ---------- rail ----------
   function renderRail(state) {
     const list = contacts(state);
@@ -199,7 +209,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
             : `<p class="sx-muted">They have nothing to say.</p>`) +
-        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) +
+        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
 
     const big = stageEl.querySelector('[data-bigpic]');
@@ -259,6 +269,10 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-open-doss-archive-map]')) {
+      if (openDossArchiveMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     if (ev.target.closest('[data-open-tethys-rumor-map]')) {
       if (openTethysRumorGuidanceMap(ctx, sid()) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;

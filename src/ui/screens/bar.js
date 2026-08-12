@@ -25,6 +25,12 @@ import {
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../data/frontierRumors.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import {
+  DOSS_ARCHIVE_CONTACT_ID,
+  dossArchiveEvidence,
+  dossArchiveMapOffer,
+} from '../../data/dossArchive.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -688,8 +694,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     }
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
-  if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   const state = ctx.state || {};
+  if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
+  if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
   // and the contact's normal canonical dialogue resumes.
@@ -930,6 +937,55 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
 }
 
+function dossSourceList(state) {
+  return dossArchiveEvidence(state).map((entry) => entry.copy);
+}
+
+function dossRecordCopy(state) {
+  const sources = dossSourceList(state);
+  if (!sources.length) return 'No verified primary source is in the archive yet.';
+  return `${sources.length} verified primary ${sources.length === 1 ? 'source' : 'sources'}: ${sources.join(' ')}`;
+}
+
+function buildDossArchiveReply(choiceId, state) {
+  const sources = dossSourceList(state);
+  const count = sources.length;
+  if (choiceId === 'document') {
+    if (!count) return { text: 'I cannot file a memory as a source. Bring a completed primary record, then I can cite it.' };
+    return { text: `Filed without alteration. ${dossRecordCopy(state)}` };
+  }
+  if (choiceId === 'changes') {
+    if (!count) return { text: 'Nothing in my copy has changed. The archive waits for a primary record, not a rumor.' };
+    return { text: `The record changes only where a durable source says it does. ${dossRecordCopy(state)}` };
+  }
+  if (choiceId === 'reward') {
+    const mapOffer = dossArchiveMapOffer(state);
+    if (!mapOffer) {
+      return {
+        text: `There is no credit allotment or mission attached. The Candle Fleet cross-reference opens after all three sources are verified. ${dossRecordCopy(state)}`,
+      };
+    }
+    return {
+      text: `There is no credit allotment or mission attached. All three sources are filed; the Candle Fleet is the archive's next public cross-reference. ${dossRecordCopy(state)}`,
+      dossArchiveMapOffer: mapOffer,
+    };
+  }
+  return { text: 'Primary sources, please. I will not turn a rumor into a record.' };
+}
+
+/** Optional, map-only Doss archive handoff. Revalidates current durable sources at click time. */
+export function openDossArchiveMap(ctx) {
+  const offer = dossArchiveMapOffer(ctx && ctx.state);
+  if (!offer) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: offer.sectorId,
+    pos: offer.pos,
+    label: offer.label,
+    source: 'station-bar:doss-archive',
+  });
+}
+
 function buildDepthContactReply(contact, choiceId, ctx) {
   const choice = (contact.choices || []).find((entry) => entry.id === choiceId);
   if (!choice) return { text: contact.line || 'No answer.' };
@@ -1049,6 +1105,10 @@ export function createBarPanel(ctx) {
 
   /* ── click handler (dialog choices + mission accept) ──────────── */
   list.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-open-doss-archive-map]')) {
+      if (openDossArchiveMap(ctx)) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     const logBtn = ev.target.closest('[data-open-mission-log]');
     if (logBtn) {
       openMissionLog(ctx);
@@ -1210,8 +1270,9 @@ export function createBarPanel(ctx) {
       ).join('');
     }
 
-    // Clear any previous mission buttons
-    const oldOffer = reply.parentNode.querySelector('.st-bar-offer');
+    // Clear only the transient reply offer. Doss's all-sources map handoff is a durable, optional
+    // archive reference and stays reachable after a different question is asked.
+    const oldOffer = reply.parentNode.querySelector('.st-bar-offer:not([data-doss-archive-map-offer])');
     if (oldOffer) oldOffer.remove();
 
     reply.textContent = result.text;
@@ -1288,6 +1349,25 @@ export function createBarPanel(ctx) {
       buyButton.setAttribute('aria-label', buyButton.title);
       offerWrap.appendChild(buyButton);
       reply.after(offerWrap);
+    } else if (result.dossArchiveMapOffer) {
+      if (!reply.parentNode.querySelector('[data-doss-archive-map-offer]')) {
+        const offerWrap = document.createElement('div');
+        offerWrap.className = 'st-bar-offer';
+        offerWrap.setAttribute('data-doss-archive-map-offer', '');
+        const note = document.createElement('div');
+        note.className = 'st-mission-preflight-warn st-bar-offer-warn';
+        note.textContent = 'Archive cross-reference only — opens the system map and does not set a course.';
+        offerWrap.appendChild(note);
+        const mapButton = document.createElement('button');
+        mapButton.type = 'button';
+        mapButton.className = 'st-bar-accept-btn';
+        mapButton.setAttribute('data-open-doss-archive-map', '');
+        mapButton.textContent = 'OPEN CANDLE FLEET MAP';
+        mapButton.title = 'Open the system map at The Candle Fleet archive cross-reference.';
+        mapButton.setAttribute('aria-label', mapButton.title);
+        offerWrap.appendChild(mapButton);
+        reply.after(offerWrap);
+      }
     } else if (result.surveyOffer) {
       const offer = result.surveyOffer;
       const offerWrap = document.createElement('div');
@@ -1331,6 +1411,9 @@ export function createBarPanel(ctx) {
       const body = document.createElement('div');
       body.className = 'st-bar-body';
       const memory = stationContactMemoryFor(ctx.state || {}, c.id);
+      const dossMapOffer = c.id === DOSS_ARCHIVE_CONTACT_ID
+        ? dossArchiveMapOffer(ctx.state || {})
+        : null;
       body.innerHTML =
         '<div class="st-bar-name">' + escapeHtml(c.name) +
           ' <span class="st-bar-role mono">' + escapeHtml(roleLabel) +
@@ -1345,8 +1428,11 @@ export function createBarPanel(ctx) {
           ).join('') +
         '</div>' +
         '<div class="st-bar-choices">' +
-          choices.map(ch => '<button data-choice="' + escapeHtml(ch.id) + '">' + escapeHtml(ch.label) + '</button>').join('') +
+        choices.map(ch => '<button data-choice="' + escapeHtml(ch.id) + '">' + escapeHtml(ch.label) + '</button>').join('') +
         '</div>' +
+        (dossMapOffer
+          ? '<div class="st-bar-offer" data-doss-archive-map-offer><div class="st-mission-preflight-warn st-bar-offer-warn">Archive cross-reference only — opens the system map and does not set a course.</div><button type="button" class="st-bar-accept-btn" data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference.">OPEN CANDLE FLEET MAP</button></div>'
+          : '') +
         '<div class="st-bar-reply mono" role="status" aria-live="polite" aria-atomic="true"></div>';
 
       mountContactPortrait(avatarHost, c, { className: 'st-bar-avatar', size: 64, factionColor: fac && fac.color });

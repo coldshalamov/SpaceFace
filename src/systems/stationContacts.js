@@ -8,6 +8,12 @@ import {
   normalizeStationContactCounters,
   normalizeStationContactRecord,
 } from '../data/stationContacts.js';
+import {
+  DOSS_ARCHIVE_CONTACT_ID,
+  DOSS_ARCHIVE_COUNTER_ID,
+  DOSS_ARCHIVE_SOURCES,
+  dossArchiveEvidence,
+} from '../data/dossArchive.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
 const MAX_TRAFFIC_RECEIPTS = 8;
@@ -46,6 +52,22 @@ function freightCommodity(payload) {
   return pressure && (pressure.commodityId || pressure.good) || null;
 }
 
+function sameFlags(a, b) {
+  const left = a || {};
+  const right = b || {};
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => left[key] === true && right[key] === true);
+}
+
+function isDossDiscoveryPlate(payload) {
+  const sectorId = String(payload && payload.sectorId || '');
+  const poiId = String(payload && payload.poiId || '');
+  return (sectorId === 'sector_veil_nebula' && poiId === 'poi_anomaly')
+    || (sectorId === 'sector_charon_expanse' && poiId === 'poi_charon_tether_wreck');
+}
+
 export const stationContacts = {
   name: 'stationContacts',
   state: null,
@@ -67,6 +89,14 @@ export const stationContacts = {
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('freight:arrival', (payload = {}) => this._recordFreight(payload, 'arrival'));
     on('freight:loss', (payload = {}) => this._recordFreight(payload, 'loss'));
+    on('vestaOreCache:resolved', (payload = {}) => {
+      if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
+    });
+    on('discovery:plateUnlocked', (payload = {}) => {
+      if (isDossDiscoveryPlate(payload)) this._reconcileDossArchive('discovery-plate');
+    });
+    on('save:loaded', () => this._reconcileDossArchive('save-loaded'));
+    this._reconcileDossArchive('init');
   },
 
   newGame() {
@@ -147,6 +177,50 @@ export const stationContacts = {
     model.traffic.unshift(rec);
     if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
     this.bus.emit('stationLife:trafficChanged', { ...rec });
+  },
+
+  // Doss's source count is a projection of independently owned physical receipts. Never send it
+  // through the generic delta path: duplicate/replayed events must leave exactly the same record.
+  _reconcileDossArchive(reason = 'reconcile') {
+    if (!this.state) return 0;
+    const evidence = dossArchiveEvidence(this.state);
+    const evidenceFlags = new Set(evidence.map((entry) => entry.flag));
+    const bag = ensureContactBag(this.state);
+    const hadRecord = !!bag[DOSS_ARCHIVE_CONTACT_ID];
+    const previous = normalizeStationContactRecord(bag[DOSS_ARCHIVE_CONTACT_ID]);
+    const flags = { ...previous.flags };
+    for (const source of DOSS_ARCHIVE_SOURCES) delete flags[source.flag];
+    for (const flag of evidenceFlags) flags[flag] = true;
+    const next = normalizeStationContactRecord({ ...previous, flags });
+    if (hadRecord || evidence.length) {
+      bag[DOSS_ARCHIVE_CONTACT_ID] = next;
+      if (!sameFlags(previous.flags, next.flags)) {
+        this.bus.emit('stationContact:changed', {
+          contactId: DOSS_ARCHIVE_CONTACT_ID,
+          record: { ...next, flags: { ...next.flags } },
+          reason,
+        });
+      }
+    }
+
+    const previousCounters = ensureCounterBag(this.state);
+    const previousCount = previousCounters[DOSS_ARCHIVE_COUNTER_ID];
+    const nextCounters = normalizeStationContactCounters({
+      ...previousCounters,
+      [DOSS_ARCHIVE_COUNTER_ID]: evidence.length,
+    });
+    this.state.player.stationContactCounters = nextCounters;
+    if (previousCount !== nextCounters[DOSS_ARCHIVE_COUNTER_ID]) {
+      const def = CONTACT_COUNTER_DEFS[DOSS_ARCHIVE_COUNTER_ID];
+      this.bus.emit('stationContact:counterChanged', {
+        trackerId: DOSS_ARCHIVE_COUNTER_ID,
+        contactId: def.contactId,
+        previous: previousCount,
+        value: nextCounters[DOSS_ARCHIVE_COUNTER_ID],
+        reason,
+      });
+    }
+    return evidence.length;
   },
 
   destroy() {
