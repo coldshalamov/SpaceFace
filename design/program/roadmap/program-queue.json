@@ -5597,7 +5597,7 @@
       "priority": 280,
       "title": "Make the Ceres ore cycle physically complete",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
