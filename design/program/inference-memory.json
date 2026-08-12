@@ -433,6 +433,19 @@
       "integration": "live",
       "commit": "79d9209c",
       "verification": "focused_green"
+    },
+    {
+      "id": "quiessence-census-discovery",
+      "date": "2026-08-12",
+      "wf": "WF-10",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "A physical close approach to the Quiessence now identifies its archival signal and adds the seventeen-hull census to the durable exploration journal.",
+      "fingerprint": "verb=approach-and-record,subject=quiessence,sector=sector_pallas_drift,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "1282ac57",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
