@@ -9,6 +9,7 @@ const COMBAT_DOCTRINES = new Set([
   'tether_control_raider',
   'ranged_disengager',
   'field_anchor_controller',
+  'capital_broadside',
 ]);
 const NORMALIZED_PROFILES = new WeakSet();
 const FROZEN_INPUT_CACHE = new WeakMap();

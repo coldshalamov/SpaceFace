@@ -13,9 +13,11 @@ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
+  BRAWLER_COMMIT: 'brawler_commit',
   TETHER_CONTROL_RAIDER: 'tether_control_raider',
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
+  CAPITAL_BROADSIDE: 'capital_broadside',
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
@@ -39,6 +41,8 @@ const FIELD_ANCHOR_RECOVER_TICKS = 75;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
+const CAPITAL_BROADSIDE_FIRE_TICKS = 60;
+const CAPITAL_BROADSIDE_SHIFT_TICKS = 90;
 const RUN_EGRESS_DISTANCE = 960;
 // A contact already on the end of a line is anchored, slowed, and predictable. That reads as a free
 // kill, so it should DRAW the swarm rather than repel it. See targetScore() for why this replaced a
@@ -118,10 +122,14 @@ export class CombatDoctrineRuntime {
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
       updateInterceptor(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
+      updateBrawler(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
       updateTetherRaider(record, tick, entityId, perception, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
       updateFieldAnchor(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+      updateCapitalBroadside(record, tick, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -304,6 +312,25 @@ function updateRanged(record, tick, self, target, distance) {
   else if (record.phase === 'reset' && age >= RANGED_RESET_TICKS) advanceCycle(record, tick, 'outer_standoff');
 }
 
+function updateCapitalBroadside(record, tick, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (distance > 1100 && record.phase !== 'broadside_approach') {
+    enter(record, 'broadside_approach', tick, null);
+    return;
+  }
+  if (record.phase === 'broadside_approach' && distance <= 900) {
+    enter(record, 'broadside_charge', tick, 'broadside_charge');
+  } else if (record.phase === 'broadside_charge' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+    enter(record, 'broadside_fire', tick, null);
+  } else if (record.phase === 'broadside_fire' && age >= CAPITAL_BROADSIDE_FIRE_TICKS) {
+    record.side *= -1;
+    enter(record, 'broadside_shift', tick, null);
+  } else if (record.phase === 'broadside_shift' && age >= CAPITAL_BROADSIDE_SHIFT_TICKS) {
+    record.cycle++;
+    enter(record, 'broadside_charge', tick, 'broadside_charge');
+  }
+}
+
 function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
   const record = {
     doctrineId,
@@ -338,7 +365,8 @@ function enter(record, phase, tick, telegraphKind) {
     ? Object.freeze({ kind: telegraphKind, durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: tick })
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
-  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window' || phase === 'anchor_hold';
+  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
+    || phase === 'anchor_hold' || phase === 'broadside_fire';
 }
 
 function advanceCycle(record, tick, phase) {
@@ -373,8 +401,8 @@ function snapshot(record, target, directive, factionBehavior = null) {
   let maneuverTargetId = target ? target.id : record.targetId;
   let lateralSign = record.side;
   let faceTarget = false;
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
-    const brawler = record.flightProfile === 'brawler_commit';
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
+    const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
     formationLocked = phase === 'ingress' || phase === 'reform';
     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
     if (phase === 'extend' || phase === 'breakaway') {
@@ -418,6 +446,13 @@ function snapshot(record, target, directive, factionBehavior = null) {
       preferredRange = 500;
     }
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+    maneuverKind = ManeuverKind.ORBIT;
+    preferredRange = 620;
+    lateralSign = record.side;
+    faceTarget = true;
+    formationLocked = true;
+    if (phase === 'broadside_fire') allowedActionId = 'action_burst';
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
@@ -518,10 +553,13 @@ function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_approach';
   return 'ingress';
 }
 
 function flightProfileFor(doctrineId, self) {
+  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'capital_broadside';
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
     return 'brawler_commit';

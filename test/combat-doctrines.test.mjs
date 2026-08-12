@@ -34,6 +34,7 @@ const {
 assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable typed vocabulary');
 assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'brawler_commit',
+  'capital_broadside',
   'field_anchor_controller',
   'interceptor_flyby',
   'ranged_disengager',
@@ -41,6 +42,47 @@ assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
 ]);
 assert.equal(DOCTRINE_TELEGRAPH_TICKS, 30, 'every attack telegraph lasts at least 30 fixed ticks');
 assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids fail closed');
+
+{
+  const runtime = new CombatDoctrineRuntime({ seed: 47 });
+  const frame = () => perception([shipContact(1, { x: 620, mobilityBand: 'high', threat: 1 })], {
+    id: 'iron_maw', combatDoctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+  });
+  let result = runtime.update({
+    tick: 0, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_charge');
+  assert.equal(result.telegraphStarted, true);
+  assert.equal(result.fireWindow, false);
+  const firstSide = result.side;
+
+  result = runtime.update({
+    tick: 30, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_fire');
+  assert.equal(result.fireWindow, true);
+  assert.equal(result.allowedActionId, 'action_burst');
+  assert.equal(result.maneuverKind, ManeuverKind.ORBIT);
+  assert.equal(result.faceTarget, true);
+
+  result = runtime.update({
+    tick: 90, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_shift');
+  assert.equal(result.fireWindow, false);
+  assert.equal(result.side, -firstSide, 'the capital crosses to its opposite firing side between salvos');
+
+  result = runtime.update({
+    tick: 180, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    perception: frame(), directive: baseDirective(),
+  });
+  assert.equal(result.phase, 'broadside_charge');
+  assert.equal(result.cycle, 1);
+  assert.equal(result.telegraphStarted, true, 'each capital salvo receives a fresh readable charge');
+}
 
 {
   const geometryForSide = (side, phase) => {
@@ -498,6 +540,10 @@ assert.equal(makeEnemySpawnSpec(mule.id, 1, { x: 20, z: -5 }).data.ai.combatDoct
   'noncombat trader spawn skips doctrine gating entirely');
 const sable = NAMED_CAPTAINS.find((captain) => captain.id === 'cap_sable_iask');
 assert.equal(sable.combatDoctrineId, CombatDoctrineId.RANGED_DISENGAGER, 'Sable Iask stages as the ranged doctrine');
+const ironMaw = makeEnemySpawnSpec('dreadnought_boss', 10, { x: 20, z: -5 });
+assert.equal(ironMaw.data.ai.combatDoctrineId, CombatDoctrineId.CAPITAL_BROADSIDE);
+assert.equal(ironMaw.data.ai.approachTelegraph, 'broadside_charge');
+assert.match(ironMaw.data.counterHint, /opposite flank/);
 const ambush = planEncounterShape(ENCOUNTERS.ambush_snare, {
   id: 'zone_ambush', name: 'Snare', type: 'ambush_lane', center: { x: 100, z: 20 }, radius: 240, danger: 0.4,
 }, 'sector_helios', 1, 1, seeded([0.2, 0.8, 0.3, 0.4, 0.6, 0.1, 0.7, 0.5]));

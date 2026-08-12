@@ -217,6 +217,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
 function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'attach_spool';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_spool';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_charge';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
   return 'engine_flare';
 }

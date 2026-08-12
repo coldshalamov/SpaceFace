@@ -150,7 +150,7 @@ export const ENEMY_TYPES = [
     id: 'dreadnought_boss', name: "Dreadnought 'Iron Maw'", shipId: 'ship_leviathan',
     silhouette: 'dreadnought_enemy', factionId: 'faction_vael',
     aiArchetype: 'miniboss_capital', levelRange: [10, 15],
-    combatDoctrineId: 'ranged_disengager',
+    combatDoctrineId: 'capital_broadside',
     hull: 6000, armor: 2200, armorFlat: 25, shield: 2400, shieldRegen: 60, shieldRegenCapable: true, shieldRegenDelay: 6, cap: 2000, capRegen: 40,
     maxSpeed: 49, accel: 21, turnRate: 0.3, collisionRadius: 60, mass: 2000,
     weapons: [
@@ -160,6 +160,12 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s',  count: 4, turret: true },
     ],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 620, leashRadius: 3400 },
+    telegraph: {
+      bark: 'warn',
+      line: 'Iron Maw is rolling broadside. Cross its bow before the batteries align.',
+      cue: 'broadside_charge',
+    },
+    counterHint: 'Cross the bow or stern during the charge; the next salvo shifts to the opposite flank.',
     subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
     reinforcements: {
       packageId: 'iron_maw_screen',
