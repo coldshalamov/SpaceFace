@@ -5855,6 +5855,37 @@
       "brief": "Vesta's physical relay evidence enables a manual scan-led approximate ring, then a gated physical cache choice whose durable map, ledger, faction, cargo, and recovery consequences stay source-owned; it uses PQ-048.19's landed manual-investigation behavior without inventing a new ledger type."
     },
     {
+      "id": "PQ-048.13",
+      "parentId": "PQ-048",
+      "priority": 292,
+      "title": "Complete Pallas hidden-cache discovery",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/pallasHiddenCache.js",
+        "src/data/sectors.js",
+        "src/systems/scanner.js",
+        "src/systems/shipLedger.js",
+        "src/systems/world.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/pallasHiddenCacheMapLayer.js",
+        "src/ui/recoveryEncounterPrompt.js",
+        "test/pq048-pallas-hidden-cache.test.mjs",
+        "test/scanner-signal-investigation.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-pallas-hidden-cache.test.mjs test/scanner-signal-investigation.test.mjs",
+        "npm run check:map-authority",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-13-pallas-hidden-cache-REPORT.md"
+      ],
+      "brief": "A physical Pallas wreck clue opens an approximate no-course ring; manual scan and physical cache investigation gate exactly RECOVER, REPORT, or CRIMINAL USE. World owns the durable map/ledger/outcome record, REPORT is station_drift-gated, finite pickups delegate cargo and criminal consequences to existing owners, and malformed save state fails closed."
+    },
+    {
       "id": "PQ-048.15",
       "parentId": "PQ-048",
       "priority": 294,
