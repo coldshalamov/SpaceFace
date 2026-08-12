@@ -3,15 +3,18 @@
 // Event-sourced mining memory: asteroid destruction in a field raises a durable depletion scalar,
 // and slow recovery lets belts heal over time. World already consumes field:depletedChanged.
 
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
 export const FIELD_DEPLETION_PER_YIELD_U = 0.0025;
 export const FIELD_DEPLETION_MAX_DELTA = 0.08;
 export const FIELD_DEPLETION_RECOVERY_PER_S = 1 / (45 * 60);
 export const FIELD_DEPLETION_RECOVERY_STEP_S = 5;
 export const FIELD_DEPLETION_MAX_RECEIPTS = 24;
+export const RICH_SEAM_OPPORTUNITY_SCHEMA = 'spaceface.richSeamOpportunity.v1';
+export const RICH_SEAM_OPPORTUNITY_WINDOW_S = 180;
+export const RICH_SEAM_BONUS_U = 8;
 
 function freshState() {
-  return { schemaVersion: STATE_VERSION, fields: {}, receipts: [] };
+  return { schemaVersion: STATE_VERSION, fields: {}, opportunities: {}, receipts: [] };
 }
 
 function clamp01(value) {
@@ -46,8 +49,144 @@ export function ensureFieldDepletionState(state) {
   const own = state.fieldDepletion;
   own.schemaVersion = STATE_VERSION;
   if (!own.fields || typeof own.fields !== 'object' || Array.isArray(own.fields)) own.fields = {};
+  if (!own.opportunities || typeof own.opportunities !== 'object' || Array.isArray(own.opportunities)) {
+    own.opportunities = {};
+  }
   if (!Array.isArray(own.receipts)) own.receipts = [];
   return own;
+}
+
+function opportunityKey(fieldId, activityObjectSlotId) {
+  const field = fieldIdOf(fieldId);
+  const slot = fieldIdOf(activityObjectSlotId);
+  return field && slot ? `${field}:${slot}` : null;
+}
+
+function finiteNonNegative(value, fallback = 0) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function normalizeRichSeamOpportunity(input, key = null) {
+  const rec = input && typeof input === 'object' ? input : {};
+  const fieldId = fieldIdOf(rec.fieldId);
+  const activityObjectSlotId = fieldIdOf(rec.activityObjectSlotId);
+  const stableKey = opportunityKey(fieldId, activityObjectSlotId) || key;
+  if (!stableKey || !fieldId || !activityObjectSlotId) return null;
+  const state = rec.state === 'worked' || rec.state === 'missed' ? rec.state : 'open';
+  const openedAtT = finiteNonNegative(rec.openedAtT);
+  const expiresAtT = Math.max(openedAtT, finiteNonNegative(rec.expiresAtT, openedAtT));
+  const bonusU = Math.max(1, Math.floor(finiteNonNegative(rec.bonusU, RICH_SEAM_BONUS_U)));
+  return {
+    schema: RICH_SEAM_OPPORTUNITY_SCHEMA,
+    opportunityId: typeof rec.opportunityId === 'string' && rec.opportunityId
+      ? rec.opportunityId
+      : `rich-seam:${stableKey}`,
+    key: stableKey,
+    fieldId,
+    activityObjectSlotId,
+    sectorId: fieldIdOf(rec.sectorId),
+    sourceEventId: fieldIdOf(rec.sourceEventId),
+    sourceCycle: Math.max(0, Math.floor(finiteNonNegative(rec.sourceCycle))),
+    state,
+    openedAtT,
+    expiresAtT,
+    bonusU,
+    claimedBonusU: state === 'worked'
+      ? Math.min(bonusU, Math.max(0, Math.floor(finiteNonNegative(rec.claimedBonusU, bonusU))))
+      : 0,
+    claimId: state === 'worked' && typeof rec.claimId === 'string' && rec.claimId ? rec.claimId : null,
+    claimedByKind: state === 'worked' && (rec.claimedByKind === 'npc' || rec.claimedByKind === 'player')
+      ? rec.claimedByKind
+      : null,
+    claimedById: state === 'worked' && rec.claimedById != null ? rec.claimedById : null,
+    resolvedAtT: state === 'open' ? null : finiteNonNegative(rec.resolvedAtT, openedAtT),
+  };
+}
+
+export function openRichSeamOpportunity(state, payload = {}) {
+  const key = opportunityKey(payload.fieldId, payload.activityObjectSlotId);
+  if (!key) return null;
+  const own = ensureFieldDepletionState(state);
+  const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
+  const sourceCycle = Math.max(0, Math.floor(finiteNonNegative(payload.sourceCycle)));
+  const opportunityId = typeof payload.opportunityId === 'string' && payload.opportunityId
+    ? payload.opportunityId
+    : `rich-seam:${key}:${sourceCycle}`;
+  const existing = normalizeRichSeamOpportunity(own.opportunities[key], key);
+  if (existing && (existing.state === 'open'
+    || existing.opportunityId === opportunityId
+    || sourceCycle <= existing.sourceCycle)) return { ...existing };
+  const durationS = Math.max(1, finiteNonNegative(payload.durationS, RICH_SEAM_OPPORTUNITY_WINDOW_S));
+  const rec = normalizeRichSeamOpportunity({
+    opportunityId,
+    fieldId: payload.fieldId,
+    activityObjectSlotId: payload.activityObjectSlotId,
+    sectorId: payload.sectorId || sectorIdOf(state, payload),
+    sourceEventId: payload.sourceEventId || 'ev_rich_seam_strike',
+    sourceCycle,
+    state: 'open',
+    openedAtT: now,
+    expiresAtT: now + durationS,
+    bonusU: payload.bonusU,
+  }, key);
+  own.opportunities[key] = rec;
+  return { ...rec };
+}
+
+export function richSeamOpportunityReadout(state, fieldId, activityObjectSlotId) {
+  const own = ensureFieldDepletionState(state);
+  const key = opportunityKey(fieldId, activityObjectSlotId);
+  const rec = key ? normalizeRichSeamOpportunity(own.opportunities[key], key) : null;
+  return rec ? { ...rec } : null;
+}
+
+export function richSeamOpportunityForEntity(state, entity) {
+  const data = entity && entity.data || {};
+  return richSeamOpportunityReadout(state, data.fieldId, data.activityObjectSlotId);
+}
+
+export function claimRichSeamOpportunity(state, payload = {}) {
+  const own = ensureFieldDepletionState(state);
+  const key = opportunityKey(payload.fieldId, payload.activityObjectSlotId);
+  const rec = key ? normalizeRichSeamOpportunity(own.opportunities[key], key) : null;
+  if (!rec || rec.state !== 'open') return null;
+  const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
+  if (now >= rec.expiresAtT) {
+    rec.state = 'missed';
+    rec.resolvedAtT = now;
+    own.opportunities[key] = rec;
+    return null;
+  }
+  if (typeof payload.claimId !== 'string' || !payload.claimId
+    || (payload.claimedByKind !== 'npc' && payload.claimedByKind !== 'player')) return null;
+  rec.state = 'worked';
+  rec.claimId = payload.claimId;
+  rec.claimedByKind = payload.claimedByKind;
+  rec.claimedById = payload.claimedById == null ? null : payload.claimedById;
+  rec.claimedBonusU = rec.bonusU;
+  rec.resolvedAtT = now;
+  own.opportunities[key] = rec;
+  return { ...rec };
+}
+
+export function expireRichSeamOpportunities(state, simTime = state && state.simTime) {
+  const own = ensureFieldDepletionState(state);
+  const now = finiteNonNegative(simTime);
+  const expired = [];
+  for (const key of Object.keys(own.opportunities)) {
+    const rec = normalizeRichSeamOpportunity(own.opportunities[key], key);
+    if (!rec) {
+      delete own.opportunities[key];
+      continue;
+    }
+    if (rec.state === 'open' && now >= rec.expiresAtT) {
+      rec.state = 'missed';
+      rec.resolvedAtT = now;
+      expired.push({ ...rec });
+    }
+    own.opportunities[key] = rec;
+  }
+  return expired;
 }
 
 function normalizeFieldRecord(input, fieldId) {
@@ -195,6 +334,10 @@ export const fieldDepletion = {
   },
 
   update(dt, state) {
+    const expired = expireRichSeamOpportunities(state);
+    for (const rec of expired) {
+      if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('field:richSeamMissed', rec);
+    }
     this._recoveryAccum = (this._recoveryAccum || 0) + Math.max(0, Number(dt) || 0);
     if (this._recoveryAccum < FIELD_DEPLETION_RECOVERY_STEP_S) return;
     const elapsed = this._recoveryAccum;
@@ -279,6 +422,7 @@ export const fieldDepletion = {
     return {
       schemaVersion: STATE_VERSION,
       fields,
+      opportunities: clonePlain(own.opportunities),
       receipts: clonePlain(own.receipts.slice(-FIELD_DEPLETION_MAX_RECEIPTS)),
     };
   },
@@ -289,6 +433,14 @@ export const fieldDepletion = {
     const fields = data && data.fields && typeof data.fields === 'object' ? data.fields : {};
     for (const fieldId of Object.keys(fields)) {
       own.fields[fieldId] = normalizeFieldRecord(fields[fieldId], fieldId);
+    }
+    own.opportunities = {};
+    const opportunities = data && data.opportunities && typeof data.opportunities === 'object'
+      ? data.opportunities
+      : {};
+    for (const key of Object.keys(opportunities)) {
+      const rec = normalizeRichSeamOpportunity(opportunities[key], key);
+      if (rec) own.opportunities[key] = rec;
     }
     own.receipts = Array.isArray(data && data.receipts)
       ? clonePlain(data.receipts).slice(-FIELD_DEPLETION_MAX_RECEIPTS)

@@ -32,6 +32,11 @@ import { describeEntity } from './interactionDescriptors.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { removeCargo, addCargo } from './cargo.js';
+import {
+  claimRichSeamOpportunity,
+  recordFieldExtraction,
+  richSeamOpportunityForEntity,
+} from './fieldDepletion.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
@@ -45,6 +50,7 @@ export const RICH_CORE_WINDOW_HI = 0.22;
 export const BULK_HAUL_MIN_U = 20;
 export const BULK_HAUL_PAY_MULT = 0.8;
 export const BULK_HAUL_REFINERY_FEE = 0.06;
+export const RICH_SEAM_HEAT_MULT = 1.35;
 // Fracture: the largest fragment is the CORE CHUNK — the piece that is visibly too big to scoop and
 // therefore has to be dragged home on the Massline (GDD §5.5's loop-lock; grammar §9.5.2 amputation
 // 2). Before this existed, chunk yield was `parentYield * ratio(0.35-0.5) / count(2-3)`, capped at
@@ -440,7 +446,15 @@ export const mining = {
     const wasOverheated = !!beam.overheated;
     let heat;
     if (working && !wasOverheated) {
-      heat = Math.min(heatMax, prev + (beam.heatRate > 0 ? beam.heatRate : BEAM_HEAT_RATE) * dt);
+      const target = this._lockTargetId != null && state.entities && state.entities.get
+        ? state.entities.get(this._lockTargetId)
+        : null;
+      const richSeam = target ? richSeamOpportunityForEntity(state, target) : null;
+      const heatMult = richSeam && richSeam.state === 'open' ? RICH_SEAM_HEAT_MULT : 1;
+      heat = Math.min(
+        heatMax,
+        prev + (beam.heatRate > 0 ? beam.heatRate : BEAM_HEAT_RATE) * heatMult * dt,
+      );
     } else {
       const cool = (beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE)
         * (wasOverheated ? BEAM_OVERHEAT_COOL_MULT : 1);
@@ -670,6 +684,39 @@ export const mining = {
     const yieldPerHp = hpMax > 0 ? yieldTotal / hpMax : 0;
     const delivered = lost * yieldPerHp * seam.yieldMult;
     d._oreCarry += delivered;
+    let richClaim = null;
+    if (destroyed && minerId === state.playerId) {
+      richClaim = claimRichSeamOpportunity(state, {
+        fieldId: d.fieldId,
+        activityObjectSlotId: d.activityObjectSlotId,
+        claimId: `player-rich-seam:${state.playerId}:${ast.id}:${state.tick | 0}`,
+        claimedByKind: 'player',
+        claimedById: state.playerId,
+        simTime: state.simTime,
+      });
+      if (richClaim) {
+        d._oreCarry += richClaim.claimedBonusU;
+        recordFieldExtraction(state, {
+          fieldId: d.fieldId,
+          sectorId: d.sectorId || (state.world && state.world.currentSectorId) || null,
+          extractedU: richClaim.claimedBonusU,
+          asteroidId: ast.id,
+          simTime: state.simTime,
+          tick: state.tick,
+          destroyed: false,
+          event: 'rich_seam_bonus',
+          source: 'player_mining',
+          jobId: richClaim.claimId,
+        });
+        this.bus.emit('field:richSeamWorked', {
+          ...richClaim,
+          minerId: state.playerId,
+          asteroidId: ast.id,
+          commodityId: d.commodityId || this._dominantOre(def),
+          extractedU: richClaim.claimedBonusU,
+        });
+      }
+    }
     // Vent bookkeeping: how much ore this beam-on window has produced so far, and from what. Only
     // the player runs the vent rhythm — mining drones reuse applyMining and must not bank a bonus.
     if (minerId === state.playerId) {

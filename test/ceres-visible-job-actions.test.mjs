@@ -570,8 +570,8 @@ test('real pre-patch save/Continue adopts canonical refs and resumes the miner o
       180,
     ), true, 'the adopted real miner reaches a legitimate visible completion');
     assert.equal(mining.length, 1);
-    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 8,
-      'the existing field-depletion owner consumes the adopted miner completion once');
+    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 16,
+      'the field owner consumes the adopted rich-seam completion once');
   } finally {
     sim.dispose();
   }
@@ -1096,7 +1096,7 @@ test('real save/Continue rewinds owner state and transient Ceres dedupe before t
 
     assert.equal(stepUntil(sim, () => mining.length === 1), true,
       'the real materialized kernel reaches the first miner completion');
-    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 8);
+    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 16);
     const firstMinerReceipt = receipts.find((receipt) => receipt.actorSlotId === 'ceres_seam_miner');
     assert.ok(firstMinerReceipt);
     assert.equal(sim.state.traffic.appliedMinerWorkIds.length > 0, true);
@@ -1118,7 +1118,7 @@ test('real save/Continue rewinds owner state and transient Ceres dedupe before t
 
     assert.equal(stepUntil(sim, () => mining.length === 2), true,
       'the restored real kernel surfaces the legitimate completion again');
-    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 8,
+    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 16,
       'the restored owner applies once rather than retaining or doubling the future action');
     const minerReceipts = receipts.filter((receipt) => receipt.actorSlotId === 'ceres_seam_miner');
     assert.equal(minerReceipts.length, 2);
@@ -1186,7 +1186,7 @@ test('reentrant real Continue during miner ownership discards the obsolete compl
     assert.equal(mining.length, 2);
     assert.equal(mining[1].workId, mining[0].workId,
       'the restored owner legitimately reuses the same stable effect identity');
-    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 8);
+    assert.equal(sim.state.fieldDepletion.fields.f_ceres_1.extractedU, 16);
   } finally {
     sim.dispose();
   }

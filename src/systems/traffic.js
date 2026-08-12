@@ -60,6 +60,11 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
+import {
+  claimRichSeamOpportunity,
+  openRichSeamOpportunity,
+  richSeamOpportunityForEntity,
+} from './fieldDepletion.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -78,6 +83,7 @@ const MINER_FIELD_SPREAD_CAP = 4;
 // ceiling. This is enough for one or two barges to contend a recovering field without strip-mining
 // it faster than the player can participate.
 const NPC_MINER_WORK_BATCH_U = 8;
+const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
 // General-population salvors (WF-01 / U03): demand-driven cleanup of live wrecks and loose
 // civilian-manifest payloads. Bounded small so aftermath never becomes a salvage fleet parade.
 // Ceres authored pockets are gated out separately — their cathedral salvor is cast choreography.
@@ -266,7 +272,7 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
     requires: Object.freeze([]),
     // Seeds after the strike phase so the hauler call can overlap the greed/haul window (cap=2).
     seedAtPhase: 'strike',
-    seeds: Object.freeze(['rich_seam', 'miner_loaded']),
+    seeds: Object.freeze(['rich_seam']),
     // Miner dies mid-strike: seam is known but the load never leaves the face — open the grave for
     // the salvor instead of staging a clean hauler call.
     interruptSeeds: Object.freeze(['rich_seam', 'aftermath_open']),
@@ -3441,13 +3447,24 @@ export const traffic = {
       return false;
     }
     const seq = Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : 0;
+    let richClaim = null;
     try {
       const commodityId = dominantAsteroidCommodity(asteroid);
       const authoredYield = Math.max(1, Math.floor(Number(asteroid.data && asteroid.data.yieldU) || NPC_MINER_WORK_BATCH_U));
-      // Keep the field-owner extraction batch at the ordinary parcel size. The rich-seam microevent
-      // advertises yield only through the chain ledger seeds (rich_seam / miner_loaded) — never by
-      // rewriting this quantum or minting a second cargo parcel. Owner tests pin the 8u batch.
-      const extractedU = Math.min(NPC_MINER_WORK_BATCH_U, authoredYield);
+      const isCeresRichSeamWork = context.slot && context.slot.id === CERES_SEAM_MINER_SLOT_ID
+        && asteroid.data && asteroid.data.activityObjectSlotId === CERES_RICH_SEAM_OBJECT_SLOT_ID;
+      if (isCeresRichSeamWork && richSeamOpportunityForEntity(this.state, asteroid)?.state === 'open') {
+        richClaim = claimRichSeamOpportunity(this.state, {
+          fieldId,
+          activityObjectSlotId: CERES_RICH_SEAM_OBJECT_SLOT_ID,
+          claimId: workId,
+          claimedByKind: 'npc',
+          claimedById: context.entity.id,
+          simTime: this.state.simTime,
+        });
+      }
+      const richBonusU = richClaim ? richClaim.claimedBonusU : 0;
+      const extractedU = Math.min(authoredYield, NPC_MINER_WORK_BATCH_U + richBonusU);
       const carrierRole = context.rec && context.rec.role === 'ore_carrier'
         ? 'ore_carrier'
         : 'miner';
@@ -3463,6 +3480,8 @@ export const traffic = {
               asteroidId: asteroid.id,
               fieldId: String(fieldId),
               sectorId: (this.state.world && this.state.world.currentSectorId) || null,
+              richOpportunityId: richClaim && richClaim.opportunityId || null,
+              richBonusU,
             }
           : null,
       );
@@ -3478,6 +3497,15 @@ export const traffic = {
         extractedU,
         seq,
       });
+      if (richClaim) {
+        this.bus.emit('field:richSeamWorked', {
+          ...richClaim,
+          minerId: context.entity.id,
+          asteroidId: asteroid.id,
+          commodityId,
+          extractedU,
+        });
+      }
       if (!stillCurrent()) {
         this._releaseCausalReservation(reservation, '_pendingMinerWorkIds', '_pendingMinerWorkTokens');
         return false;
@@ -3490,6 +3518,14 @@ export const traffic = {
     this._releaseCausalReservation(reservation, '_pendingMinerWorkIds', '_pendingMinerWorkTokens');
     if (context.slot && context.slot.id === CERES_SEAM_MINER_SLOT_ID) {
       this._committedCeresMinerWorkIds.add(workId);
+      if (this._ceresCausal && this._ceresCausal.seeds.miner_loaded !== true) {
+        this._ceresCausal.seeds.miner_loaded = true;
+        this._emitCeresCausalReceipt(null, 'seed', {
+          seeded: ['miner_loaded'],
+          source: 'mining:npcExtraction',
+          workId,
+        });
+      }
     }
     if (this.state.traffic.appliedMinerWorkIds.length > NPC_MINER_WORK_LEDGER_CAP) {
       this.state.traffic.appliedMinerWorkIds.splice(
@@ -3780,6 +3816,20 @@ export const traffic = {
     return list;
   },
 
+  _openCeresRichSeamOpportunity(live) {
+    if (!live || live.eventId !== 'ev_rich_seam_strike') return null;
+    const rec = openRichSeamOpportunity(this.state, {
+      fieldId: 'f_ceres_1',
+      activityObjectSlotId: CERES_RICH_SEAM_OBJECT_SLOT_ID,
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      sourceEventId: live.eventId,
+      sourceCycle: this._ceresCausal && this._ceresCausal.cycle || 0,
+      simTime: this.state && this.state.simTime,
+    });
+    if (rec && this.bus && typeof this.bus.emit === 'function') this.bus.emit('field:richSeamOpened', rec);
+    return rec;
+  },
+
   _emitCeresCausalReceipt(live, kind, extra = null) {
     if (!this.bus || typeof this.bus.emit !== 'function') return;
     const chain = this._ceresCausal;
@@ -4013,6 +4063,7 @@ export const traffic = {
     if (live.phase !== def.seedAtPhase) return;
     live.seeded = true;
     this._plantCeresCausalSeeds(def);
+    this._openCeresRichSeamOpportunity(live);
     this._applyCeresCausalPhaseEffects(def, live, live.phase);
     this._emitCeresCausalReceipt(live, 'seed', {
       seeded: def.seeds.slice(),
@@ -4029,6 +4080,7 @@ export const traffic = {
       live.seeded = true;
       live.phase = def.seedAtPhase;
       const seeded = this._plantCeresCausalOutcomeSeeds(def, outcome);
+      this._openCeresRichSeamOpportunity(live);
       this._emitCeresCausalReceipt(live, 'seed', {
         seeded: Array.isArray(seeded) ? seeded.slice() : [],
         forced: outcome !== 'complete',

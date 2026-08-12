@@ -26,9 +26,12 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../syste
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 
 // Damage triangle (BP-02): the player-facing E/K/X families mapped to the kernel's damage channels
 // (weights transcribed from scalarHitToDamagePacket in src/combat/damage.js — keep in sync). The panel
@@ -116,6 +119,48 @@ export function targetInteractionClass(e) {
   if (interaction.kind === 'wreck') return 'Salvage';
   if (interaction.kind === 'asteroid') return 'Mineable Asteroid';
   return '';
+}
+
+export function richSeamTargetReadout(target, state) {
+  if (!target) return null;
+  const data = target.data || {};
+  if (target.type === 'asteroid') {
+    const opportunity = richSeamOpportunityForEntity(state, target);
+    if (!opportunity) return null;
+    if (opportunity.state === 'open') {
+      return Object.freeze({
+        state: 'open',
+        text: `RICH SEAM · +${opportunity.bonusU}u · HOT CUT`,
+        opportunityId: opportunity.opportunityId,
+      });
+    }
+    if (opportunity.state === 'worked') {
+      return Object.freeze({
+        state: 'worked',
+        text: `WORKED SEAM · ${opportunity.claimedBonusU}u BONUS TAKEN`,
+        opportunityId: opportunity.opportunityId,
+      });
+    }
+    return Object.freeze({
+      state: 'missed',
+      text: 'MISSED SEAM · RICH POCKET COOLED',
+      opportunityId: opportunity.opportunityId,
+    });
+  }
+  if (target.type !== 'ship') return null;
+  const manifest = data.cargoManifest;
+  const source = manifest && manifest.lotSource;
+  if (!source || typeof source.richOpportunityId !== 'string' || !source.richOpportunityId
+    || !Array.isArray(manifest.lines) || !(manifest.totalQty > 0)) return null;
+  const line = manifest.lines.find((entry) => entry && entry.qty > 0);
+  if (!line) return null;
+  const commodity = COMMODITY_BY_ID.get(line.commodityId);
+  const name = commodity && commodity.name || String(line.commodityId || 'ORE').replace(/^cmdty_/, '').replace(/_/g, ' ');
+  return Object.freeze({
+    state: 'cargo',
+    text: `RICH ORE · ${name.toUpperCase()} ×${line.qty}`,
+    opportunityId: source.richOpportunityId,
+  });
 }
 
 function entityClass(e) {
@@ -487,8 +532,9 @@ export function createTargetPanel(ctx) {
     }
 
     // Gimmick / readable quirk tag (bounty hunters + named lane freighters)
+    const richSeam = richSeamTargetReadout(t, state);
     const gimmick = t.data && (t.data.bountyGimmick || t.data.gimmick || t.data.bountyTag);
-    const gimmickLabel = getGimmickLabel(gimmick);
+    const gimmickLabel = richSeam ? richSeam.text : getGimmickLabel(gimmick);
     if (gimmickLabel) {
       setText(elGimmick, gimmickLabel);
       if (elGimmick.style.display !== 'inline-block') elGimmick.style.display = 'inline-block';
