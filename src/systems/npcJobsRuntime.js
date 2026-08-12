@@ -65,6 +65,11 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import {
+  PRIORITY_COURIER_JOB_SCHEMA,
+  PRIORITY_COURIER_SERVICE,
+  isPriorityCourierItinerary,
+} from '../data/laneContacts.js';
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -100,6 +105,18 @@ const CERES_ESCORT_MAX_THROTTLE = 0.65;
 const CERES_ESCORT_TURN_ONLY_RAD = 0.4;
 const CERES_ESCORT_VELOCITY_EPSILON = 0.001;
 const CERES_ESCORT_RELATIVE_OVERSPEED_WU_S = 2;
+
+function isPriorityCourierTransitJob(job, entity) {
+  const marker = job && job.payload && job.payload.priorityCourierService;
+  const itinerary = entity && entity.data && entity.data.itinerary;
+  return job && job.kind === NPC_JOB_KIND.HAULER
+    && marker && typeof marker === 'object'
+    && marker.schema === PRIORITY_COURIER_JOB_SCHEMA
+    && marker.serviceId === PRIORITY_COURIER_SERVICE.id
+    && Number.isSafeInteger(marker.legSeq)
+    && isPriorityCourierItinerary(itinerary)
+    && itinerary.legSeq === marker.legSeq;
+}
 
 function ceresActivitySlot(slotId) {
   for (const pocket of CERES_ACTIVITY_POCKETS) {
@@ -2324,7 +2341,9 @@ export const npcJobsRuntime = {
           ? clamp(Math.max(speed / governedSpeed, deadInput + 0.001), 0, 1)
           : 0;
         const brake = speed > 0 && remaining <= speed * ROUTE_BRAKE_WINDOW_S;
-        this._writeIntent(entity, 0, brake ? 0 : throttle, false, aim, brake);
+        const prioritySprint = phase === NPC_JOB_PHASE.TRANSIT
+          && isPriorityCourierTransitJob(job, entity);
+        this._writeIntent(entity, 0, brake ? 0 : throttle, prioritySprint && !brake, aim, brake);
         return;
       }
     }

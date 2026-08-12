@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import {
+  PRIORITY_COURIER_ITINERARY_KIND,
+  PRIORITY_COURIER_SERVICE,
+  PRIORITY_COURIER_SERVICE_SCHEMA,
+} from '../src/data/laneContacts.js';
 
 const DATA_URL = new URL('../src/data/contactHail.js', import.meta.url);
 const PROMPT_URL = new URL('../src/ui/contactHailPrompt.js', import.meta.url);
@@ -234,6 +239,51 @@ test('a passive neutral trader answers from its real route and durable manifest'
   const text = emitted(bus, 'contactHail:response').at(-1).lines.join(' ');
   assert.match(text, /12 .*ORE COMMON/i);
   assert.match(text, /6 .*PROVISIONS/i);
+});
+
+test('the late Kess priority run exposes a saved status and one escort request without mutating authority', () => {
+  const target = trader('kess-span');
+  Object.assign(target.data, {
+    trafficRole: 'courier',
+    callsign: 'SPAN-HOLD',
+    namedLaneContactId: 'lane_kess_span',
+    priorityCourierState: 'LATE',
+    itinerary: {
+      kind: PRIORITY_COURIER_ITINERARY_KIND,
+      schema: PRIORITY_COURIER_SERVICE_SCHEMA,
+      serviceId: PRIORITY_COURIER_SERVICE.id,
+      contactId: PRIORITY_COURIER_SERVICE.contactId,
+      sectorId: PRIORITY_COURIER_SERVICE.sectorId,
+      originStationId: 'station_tethys',
+      destinationStationId: 'station_customs',
+      legSeq: 3,
+      departureAt: 20,
+      dueAt: 80,
+      escort: { legSeq: 3, active: false, heldS: 0, usedLegSeq: null, creditS: 0 },
+    },
+  });
+  const state = baseState(target);
+  state.world.currentSectorId = PRIORITY_COURIER_SERVICE.sectorId;
+  state.traffic.freighters.push({ id: target.id, role: 'courier', targetId: 'station_customs' });
+  state.entities.set('station_customs', entity('station_customs', {
+    type: 'station', data: { stationId: 'station_customs', name: 'Customs Gate' },
+  }));
+  state.entityList = [...state.entities.values()];
+  const before = authoritySnapshot(state);
+  const { bus } = mount(state);
+
+  bus.emit('contactHail:request', { targetId: target.id });
+  let offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['status', 'route', 'escort']);
+  bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: offer.targetId, choice: 'status' });
+  assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '), /PRIORITY COURIER LATE/i);
+
+  state.simTime += 0.1;
+  bus.emit('contactHail:request', { targetId: target.id });
+  offer = emitted(bus, 'contactHail:offer').at(-1);
+  bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: offer.targetId, choice: 'escort' });
+  assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '), /FORM UP/i);
+  assert.deepEqual(authoritySnapshot(state), before, 'hail remains presentation/request-only; traffic owns recovery state');
 });
 
 test('a disabled Ceres hauler hails its exact recovery need without mutating gameplay', () => {

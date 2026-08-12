@@ -3,6 +3,7 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { COMMODITIES } from './commodities.js';
+import { isPriorityCourierItinerary } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 
 export const CONTACT_HAIL_RANGE = 5200;
@@ -10,6 +11,7 @@ export const CONTACT_HAIL_REQUEST_TTL_S = 8;
 export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 export const CONTACT_HAIL_ACTION_HELP = 'help';
+export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
 const CERES_RICH_SEAM_OBJECT_SLOT_ID = 'ceres_seam_ore_clast';
@@ -182,6 +184,34 @@ function callsign(entity) {
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+function priorityCourierItinerary(state, entity) {
+  const itinerary = entity && entity.data && entity.data.itinerary;
+  if (!isPriorityCourierItinerary(itinerary)) return null;
+  if ((state && state.world && state.world.currentSectorId) !== itinerary.sectorId) return null;
+  return itinerary;
+}
+
+function priorityCourierState(state, entity, itinerary = priorityCourierItinerary(state, entity)) {
+  if (!itinerary) return null;
+  const stamped = String(entity && entity.data && entity.data.priorityCourierState || '').toUpperCase();
+  if (stamped === 'BERTH' || stamped === 'ON_TIME' || stamped === 'LATE' || stamped === 'INTERRUPTED') {
+    return stamped;
+  }
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : null;
+  const creditS = escort && Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
+  const now = Number(state && state.simTime) || 0;
+  if (now > itinerary.dueAt + creditS) return 'LATE';
+  return now < itinerary.departureAt ? 'BERTH' : 'ON_TIME';
+}
+
+function priorityCourierEscortAvailable(state, entity, itinerary = priorityCourierItinerary(state, entity)) {
+  if (!itinerary) return false;
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+  if (escort.usedLegSeq === itinerary.legSeq || escort.active === true) return false;
+  const status = priorityCourierState(state, entity, itinerary);
+  return status === 'LATE' || status === 'INTERRUPTED';
+}
+
 export function contactHailAvailability(state) {
   const targetId = state && state.player && state.player.targetId;
   const target = entityById(state, targetId);
@@ -208,6 +238,8 @@ export function contactHailAvailability(state) {
     parley: classification.parley,
     heaveToAvailable: contactHeaveToAvailable(state, target, classification.kind),
     richSeamHelpAvailable: richSeamHelpAvailable(state, target, classification.kind),
+    priorityCourierItinerary: priorityCourierItinerary(state, target),
+    priorityCourierEscortAvailable: priorityCourierEscortAvailable(state, target),
   };
 }
 
@@ -230,6 +262,21 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
       lines: [`${name} · WORKING TRAFFIC`, 'CHANNEL OPEN.'],
+      actions,
+    };
+  }
+  const priorityItinerary = availability.priorityCourierItinerary;
+  if (priorityItinerary) {
+    // Scanner/UI deliberately ships three compact choices. Keep manifest inspection in the normal
+    // state, then replace it with the time-sensitive recovery action instead of adding an unseen
+    // fourth/fifth choice below the presenter cap.
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'ROUTE' }];
+    actions.push(availability.priorityCourierEscortAvailable
+      ? { id: CONTACT_HAIL_ACTION_ESCORT, label: 'ESCORT' }
+      : { id: 'manifest', label: 'MANIFEST' });
+    return {
+      requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
+      lines: [`${name} · PRIORITY COURIER`, 'CHANNEL OPEN.'],
       actions,
     };
   }
@@ -425,6 +472,18 @@ function routeText(state, target) {
   return `ROUTE · ${stationLabel(state, destinationId)}`;
 }
 
+function priorityCourierStatusText(state, target) {
+  const itinerary = priorityCourierItinerary(state, target);
+  if (!itinerary) return null;
+  const status = priorityCourierState(state, target, itinerary);
+  const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+  if (status === 'INTERRUPTED') return 'STATUS · PRIORITY COURIER INTERRUPTED · ESCORT REQUEST OPEN';
+  if (status === 'LATE') return 'STATUS · PRIORITY COURIER LATE · ESCORT REQUEST OPEN';
+  if (status === 'BERTH') return 'STATUS · PRIORITY COURIER BERTHED · SCHEDULED DEPARTURE';
+  if (escort.usedLegSeq === itinerary.legSeq) return 'STATUS · PRIORITY SPRINT · ESCORT CREDIT CONFIRMED';
+  return 'STATUS · PRIORITY SPRINT · ON SCHEDULE';
+}
+
 export function createContactHailResponse(state, offer, choice, authority = {}) {
   if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker')) {
     return null;
@@ -458,6 +517,12 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
     line = opportunity ? `HELP · RICH SEAM +${opportunity.bonusU}u · MINER TAKING THE HOT CUT` : 'HELP · NO OPEN SEAM';
+  } else if (offer.kind === 'trader' && id === 'status') {
+    line = priorityCourierStatusText(state, target);
+  } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ESCORT) {
+    line = priorityCourierEscortAvailable(state, target)
+      ? 'ESCORT · FORM UP AND HOLD THE PRIORITY BURN.'
+      : 'ESCORT · NO RECOVERY WINDOW OPEN.';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
   } else if (offer.kind === 'trader' && id === 'manifest') {

@@ -59,6 +59,48 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
   }),
 ]);
 
+// PQ-048.09: one authored courier service, not a global scheduling vocabulary. Traffic owns the
+// mutable per-leg timetable in the courier's durable itinerary; this record names the stable route
+// and the bounded player-facing recovery terms.
+export const PRIORITY_COURIER_ITINERARY_KIND = 'priority_courier_service';
+export const PRIORITY_COURIER_SERVICE_SCHEMA = 'spaceface.priority-courier-service.v1';
+export const PRIORITY_COURIER_JOB_SCHEMA = 'spaceface.priority-courier-job.v1';
+export const PRIORITY_COURIER_SERVICE = Object.freeze({
+  id: 'priority-kess-span',
+  contactId: 'lane_kess_span',
+  sectorId: 'sector_tethys_junction',
+  stops: Object.freeze(['station_tethys', 'station_customs']),
+  dwellS: 14,
+  dueSlackS: 36,
+  sprintSpeedWU: 96,
+  escort: Object.freeze({
+    minRangeWU: 120,
+    maxRangeWU: 650,
+    holdS: 8,
+    recoveryCreditS: 24,
+  }),
+});
+
+/** True only for the one saved Kess service identity this data file authors. */
+export function isPriorityCourierItinerary(itinerary) {
+  if (!itinerary || typeof itinerary !== 'object' || Array.isArray(itinerary)) return false;
+  const [firstStop, secondStop] = PRIORITY_COURIER_SERVICE.stops;
+  const origin = itinerary.originStationId;
+  const destination = itinerary.destinationStationId;
+  return itinerary.kind === PRIORITY_COURIER_ITINERARY_KIND
+    && itinerary.schema === PRIORITY_COURIER_SERVICE_SCHEMA
+    && itinerary.serviceId === PRIORITY_COURIER_SERVICE.id
+    && itinerary.contactId === PRIORITY_COURIER_SERVICE.contactId
+    && itinerary.sectorId === PRIORITY_COURIER_SERVICE.sectorId
+    && (origin === firstStop || origin === secondStop)
+    && (destination === firstStop || destination === secondStop)
+    && origin !== destination
+    && Number.isSafeInteger(itinerary.legSeq) && itinerary.legSeq >= 0
+    && Number.isFinite(itinerary.departureAt)
+    && Number.isFinite(itinerary.dueAt)
+    && itinerary.dueAt >= itinerary.departureAt;
+}
+
 /**
  * Deterministic pick of one named lane contact for a sector (or null if none authored).
  * @param {string} sectorId

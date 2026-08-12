@@ -40,7 +40,15 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { FACTION_KITS } from '../data/factions.js';
-import { pickNamedLaneContact } from '../data/laneContacts.js';
+import {
+  PRIORITY_COURIER_ITINERARY_KIND,
+  PRIORITY_COURIER_JOB_SCHEMA,
+  PRIORITY_COURIER_SERVICE,
+  PRIORITY_COURIER_SERVICE_SCHEMA,
+  NAMED_LANE_CONTACTS,
+  isPriorityCourierItinerary,
+  pickNamedLaneContact,
+} from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
@@ -77,6 +85,22 @@ const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 const DOCK_RANGE = 60;         // how close before "docking" (trading)
 const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
 const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
+
+function priorityCourierServiceForSector(sectorId) {
+  return sectorId === PRIORITY_COURIER_SERVICE.sectorId ? PRIORITY_COURIER_SERVICE : null;
+}
+
+/** Reserve one normal ambient slot for the authored Tethys service without expanding population. */
+function reservePriorityCourierRole(roles, sectorId) {
+  if (!priorityCourierServiceForSector(sectorId) || !Array.isArray(roles) || !roles.length) return -1;
+  const existing = roles.indexOf('courier');
+  if (existing >= 0) return existing;
+  let replacement = roles.findIndex((role) => role !== 'patrol' && role !== 'express');
+  if (replacement < 0) replacement = roles.findIndex((role) => role !== 'patrol');
+  if (replacement < 0) return -1;
+  roles[replacement] = 'courier';
+  return replacement;
+}
 // How many neighbouring rock faces one refinery's barges will spread across before repeating. Small
 // on purpose: the point is that a shift works ONE seam together, close enough that the barges share
 // a frame with each other and with anything passing. See _pickWorkableAsteroidNear.
@@ -901,6 +925,7 @@ export const traffic = {
     const already = (this.state.traffic.freighters || []).length;
     const need = Math.max(0, count - already);
     if (need <= 0) {
+      this._ensurePriorityCourierService(sectorId, stations);
       this._ensureNamedLaneContact(sectorId, sector, stations);
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
@@ -911,6 +936,8 @@ export const traffic = {
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
     const pocketRoles = ensurePocketRoleMix(roles, sector);
+    const priorityService = priorityCourierServiceForSector(sectorId);
+    const priorityCourierSlot = reservePriorityCourierRole(pocketRoles, sectorId);
 
     // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
     // density holds for the first-hour Helios play space (not scattered to far yards only).
@@ -919,7 +946,10 @@ export const traffic = {
     for (let i = 0; i < need; i++) {
       const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
-      const station = (i < Math.min(4, need) && pocketStation)
+      const priorityCourier = !!priorityService && i === priorityCourierSlot;
+      const station = priorityCourier
+        ? (this._stationForPriorityCourier(stations, priorityService.stops[0]) || stations[0])
+        : (i < Math.min(4, need) && pocketStation)
         ? pocketStation
         : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
       // spawn near the station but offset so they don't overlap it
@@ -949,7 +979,9 @@ export const traffic = {
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, already + i);
-      const target = def.express
+      const target = priorityCourier
+        ? (this._stationForPriorityCourier(stations, priorityService.stops[1]) || station)
+        : def.express
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
@@ -964,7 +996,8 @@ export const traffic = {
         dockSeq: 0,
         manifest,
       };
-      if (def.express) this._stampExpressRoute(ent, rec, station, target, sectorId, already + i);
+      if (priorityCourier) this._stampPriorityCourierService(ent, rec, stations);
+      else if (def.express) this._stampExpressRoute(ent, rec, station, target, sectorId, already + i);
       this.state.traffic.freighters.push(rec);
       // World Site service routes reserve one existing ambient slot before the general NPC job
       // producer claims eligible haulers. Later spawns see the existing hook and remain available
@@ -975,8 +1008,9 @@ export const traffic = {
       // (not this ad-hoc stepper) then flies it; the update() dispatch yields for any hull with a
       // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
       // be built (no asteroid field / too few stations) — the hull keeps its ambient stepper.
-      this._maybeAssignJob(ent, role, station, target, stations, sectorId);
+      if (!priorityCourier) this._maybeAssignJob(ent, role, station, target, stations, sectorId);
     }
+    this._ensurePriorityCourierService(sectorId, stations);
     this._ensureNamedLaneContact(sectorId, sector, stations);
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
@@ -1582,6 +1616,33 @@ export const traffic = {
   _buildJobSpec(role, ent, originStation, target, stations, sectorId) {
     const home = originStation && originStation.pos ? originStation : (stations && stations[0]);
     if (!home || !home.pos) return null;
+    const priorityItinerary = role === 'courier'
+      ? this._priorityCourierItinerary(ent, sectorId)
+      : null;
+    if (priorityItinerary) {
+      const origin = this._stationForPriorityCourier(stations, priorityItinerary.originStationId);
+      const destination = this._stationForPriorityCourier(stations, priorityItinerary.destinationStationId);
+      if (!origin || !origin.pos || !destination || !destination.pos) return null;
+      const manifest = ent && ent.data && ent.data.cargoManifest;
+      if (!manifest || !Array.isArray(manifest.lines)) return null;
+      return {
+        kind: 'hauler',
+        sectorId,
+        speed: PRIORITY_COURIER_SERVICE.sprintSpeedWU,
+        route: [
+          { id: 'origin:' + stationIdentity(origin), pos: { x: origin.pos.x, z: origin.pos.z }, label: `${stationName(origin, 'Origin')} Berth` },
+          { id: 'dest:' + stationIdentity(destination), pos: { x: destination.pos.x, z: destination.pos.z }, label: `${stationName(destination, 'Destination')} Gate` },
+        ],
+        payload: {
+          manifest,
+          priorityCourierService: {
+            schema: PRIORITY_COURIER_JOB_SCHEMA,
+            serviceId: PRIORITY_COURIER_SERVICE.id,
+            legSeq: priorityItinerary.legSeq,
+          },
+        },
+      };
+    }
     if (role === 'miner' || role === 'ore_carrier') {
       // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit
       // sector. `spread` walks the nearest few faces so a shift's barges sit beside each other
@@ -1678,6 +1739,299 @@ export const traffic = {
     return null;
   },
 
+  _stationForPriorityCourier(stations, stationId) {
+    return (stations || []).find((station) => stationIdentity(station) === stationId) || null;
+  },
+
+  _priorityCourierItinerary(entity, sectorId = null) {
+    const data = entity && entity.data || {};
+    const itinerary = data.itinerary;
+    const activeSectorId = sectorId || (this.state.world && this.state.world.currentSectorId);
+    if (data.trafficRole !== 'courier'
+      || activeSectorId !== PRIORITY_COURIER_SERVICE.sectorId
+      || !isPriorityCourierItinerary(itinerary)) return null;
+    return this._normalizePriorityCourierItinerary(itinerary);
+  },
+
+  _normalizePriorityCourierItinerary(itinerary) {
+    const prior = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+    const legSeq = itinerary.legSeq;
+    const usedLegSeq = Number.isSafeInteger(prior.usedLegSeq) && prior.usedLegSeq >= 0
+      ? prior.usedLegSeq
+      : null;
+    const active = prior.active === true && prior.legSeq === legSeq && usedLegSeq !== legSeq;
+    itinerary.escort = {
+      legSeq,
+      active,
+      requestedAt: active && Number.isFinite(prior.requestedAt) ? prior.requestedAt : null,
+      heldS: active && Number.isFinite(prior.heldS) ? Math.max(0, Math.min(prior.heldS, PRIORITY_COURIER_SERVICE.escort.holdS)) : 0,
+      usedLegSeq,
+      creditS: usedLegSeq === legSeq && Number.isFinite(prior.creditS)
+        ? Math.max(0, Math.min(prior.creditS, PRIORITY_COURIER_SERVICE.escort.recoveryCreditS))
+        : 0,
+    };
+    return itinerary;
+  },
+
+  _priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt) {
+    const origin = this._stationForPriorityCourier(stations, originStationId);
+    const destination = this._stationForPriorityCourier(stations, destinationStationId);
+    if (!origin || !origin.pos || !destination || !destination.pos) return null;
+    const distance = Math.hypot(destination.pos.x - origin.pos.x, destination.pos.z - origin.pos.z);
+    // The existing one-shot hauler graph has commission/load/depart/approach/unload stops around
+    // its physical transit. Keep that observable work in the saved deadline rather than pretending
+    // a boost removes dock work.
+    const jobOverheadS = 2 + 8 + 3 + 4 + 6;
+    return departureAt + distance / PRIORITY_COURIER_SERVICE.sprintSpeedWU
+      + jobOverheadS + PRIORITY_COURIER_SERVICE.dueSlackS;
+  },
+
+  _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
+    const departureAt = (Number.isFinite(this.state.simTime) ? this.state.simTime : 0)
+      + PRIORITY_COURIER_SERVICE.dwellS;
+    const dueAt = this._priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt);
+    if (!Number.isFinite(dueAt)) return null;
+    return {
+      kind: PRIORITY_COURIER_ITINERARY_KIND,
+      schema: PRIORITY_COURIER_SERVICE_SCHEMA,
+      serviceId: PRIORITY_COURIER_SERVICE.id,
+      contactId: PRIORITY_COURIER_SERVICE.contactId,
+      sectorId: PRIORITY_COURIER_SERVICE.sectorId,
+      originStationId,
+      destinationStationId,
+      legSeq,
+      departureAt,
+      dueAt,
+      escort: {
+        legSeq,
+        active: false,
+        requestedAt: null,
+        heldS: 0,
+        usedLegSeq: null,
+        creditS: 0,
+      },
+    };
+  },
+
+  _priorityCourierContact() {
+    return NAMED_LANE_CONTACTS.find((contact) => contact.id === PRIORITY_COURIER_SERVICE.contactId) || null;
+  },
+
+  _priorityCourierStatus(entity, itinerary, jobEntry = null) {
+    const job = jobEntry && jobEntry.job;
+    if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
+    const escort = itinerary && itinerary.escort || {};
+    const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (now > itinerary.dueAt + creditS) return 'LATE';
+    if (!entity.data.jobId && now < itinerary.departureAt) return 'BERTH';
+    return 'ON_TIME';
+  },
+
+  _refreshPriorityCourierPresentation(entity, rec, stations, itinerary, jobEntry = null) {
+    const status = this._priorityCourierStatus(entity, itinerary, jobEntry);
+    const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+    const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
+    const route = `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
+    const stateLabel = status === 'BERTH' ? 'BERTHED'
+      : status === 'INTERRUPTED' ? 'INTERRUPTED'
+      : status === 'LATE' ? 'LATE SPRINT'
+      : 'PRIORITY SPRINT';
+    entity.data.priorityCourierState = status;
+    entity.data.trafficLabel = `SPAN-HOLD · ${stateLabel} · ${route}`;
+    entity.data.scanLabel = `${entity.data.trafficLabel} · OVERTAKE BURN`;
+    rec.itinerary = itinerary;
+    return status;
+  },
+
+  _stampPriorityCourierService(entity, rec, stations) {
+    if (!entity || !entity.data || !rec || rec.role !== 'courier') return false;
+    const current = this._priorityCourierItinerary(entity, PRIORITY_COURIER_SERVICE.sectorId);
+    const itinerary = current || this._newPriorityCourierItinerary(
+      stations,
+      PRIORITY_COURIER_SERVICE.stops[0],
+      PRIORITY_COURIER_SERVICE.stops[1],
+    );
+    if (!itinerary) return false;
+    entity.data.itinerary = itinerary;
+    const contact = this._priorityCourierContact();
+    if (contact) this._stampNamedLaneContact(entity, contact);
+    const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
+    rec.priorityCourierService = PRIORITY_COURIER_SERVICE.id;
+    rec.targetId = destination ? destination.id : rec.targetId;
+    this._refreshPriorityCourierPresentation(entity, rec, stations, itinerary);
+    return true;
+  },
+
+  _isPriorityCourierServiceCandidate(rec, entity) {
+    const data = entity && entity.data;
+    const flags = entity && entity.flags || {};
+    const manifest = rec && rec.manifest || data && data.cargoManifest;
+    const ai = data && data.ai;
+    const isExactLegacyKess = data && data.namedLaneContactId === PRIORITY_COURIER_SERVICE.contactId;
+    if (!rec || !entity || !data || entity.team !== TRAFFIC_ROLES.courier.team
+      || rec.role === 'express' || rec.role === 'miner' || rec.role === 'ore_carrier' || rec.role === 'salvor'
+      || (rec.role !== 'courier' && !isWorldSiteTrafficFallbackRole(rec.role))) return false;
+    if (typeof data.worldRecordId !== 'string' || !data.worldRecordId
+      || data.jobId || data.worldSiteTrafficHookId || data.claimTravelTrafficHookId
+      || data.activityActorSlotId || data.ceresActivityCast || data.ceresActivityJobOwned
+      || data.generalSalvor || (!isExactLegacyKess && data.namedLaneContactId) || data.missionId || data.missionTag
+      || data.missionPinned || data.missionTargetSlot || data.contractId || data.persistent
+      || data.worldRecordSlotId || data.hitchable || data.isBoss || data.encounterBoss || data.missionBoss
+      || data.scenarioActorId || data.scenarioRole || data.itinerary || flags.missionPinned || flags.persistent) return false;
+    if (rec.worldSiteRoute || rec.claimTravelRoute || rec.activityActorSlotId
+      || rec.ceresActivityCast || rec.ceresActivityJobOwned || rec.generalSalvor || rec.jobId
+      || rec.control || rec.controlLease || rec.itinerary) return false;
+    if (ai && (ai.lawful === true || ai.pirate === true || ai.hostile === true
+      || ai.spawnContext === 'patrol' || ai.isBoss === true || ai.missionTarget === true)) return false;
+    // Ordinary ambient freight is retained for the Kess leg. Custody/lot manifests belong to an
+    // active authored chain and must never be repurposed by this compatibility rebuild.
+    if (manifest && (manifest.active === true || manifest.custody || manifest.lotId || manifest.lotSource
+      || manifest.special === true || manifest.protected === true || manifest.reservedBy)) return false;
+    return true;
+  },
+
+  _rebuildPriorityCourierService(entity, rec, sectorId, stations) {
+    if (!this._isPriorityCourierServiceCandidate(rec, entity) || rec.role === 'courier') return false;
+    const contact = this._priorityCourierContact();
+    rec.role = 'courier';
+    entity.data.defId = (contact && contact.ship) || TRAFFIC_ROLES.courier.ship;
+    // Keep the durable record id. The ships owner refreshes physical hull stats when available;
+    // the compact traffic fixtures still receive the presentation invalidation without a second
+    // state writer or a replacement entity.
+    this._stampTrafficDurableIdentity(entity, sectorId, 'courier', TRAFFIC_ROLES.courier, 0);
+    const shipsSystem = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('ships')
+      : null;
+    if (shipsSystem && typeof shipsSystem.recomputeEntity === 'function') {
+      shipsSystem.recomputeEntity(entity.id, []);
+    } else if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ship:appearanceChanged', { id: entity.id });
+    }
+    return this._stampPriorityCourierService(entity, rec, stations);
+  },
+
+  _ensurePriorityCourierService(sectorId, stations) {
+    if (!priorityCourierServiceForSector(sectorId)) return false;
+    this._ensureState();
+    const list = this.state.traffic.freighters || [];
+    for (const rec of list) {
+      const entity = rec && liveEntity(this.state, rec.id);
+      if (entity && this._priorityCourierItinerary(entity, sectorId)) {
+        return this._stampPriorityCourierService(entity, rec, stations);
+      }
+    }
+    const candidates = list
+      .map((rec) => ({ rec, entity: rec && liveEntity(this.state, rec.id) }))
+      .filter(({ rec, entity }) => this._isPriorityCourierServiceCandidate(rec, entity))
+      .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+    // An exact, unowned legacy Kess courier wins before an ordinary fallback. Every other route
+    // through this method uses the same predicate, so protected records cannot be relabelled.
+    const candidate = candidates.find(({ rec }) => rec.role === 'courier') || candidates[0];
+    if (!candidate) return false;
+    if (candidate.rec.role === 'courier') {
+      return this._stampPriorityCourierService(candidate.entity, candidate.rec, stations);
+    }
+    // A full legacy/Continue roster can be at cap before this service existed. Rebuild the chosen
+    // idle civilian in place; never append a ninth contact.
+    return this._rebuildPriorityCourierService(
+      candidate.entity,
+      candidate.rec,
+      sectorId,
+      stations,
+    );
+  },
+
+  _priorityCourierJobEntry(entity) {
+    const get = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    const jobId = entity && entity.data && entity.data.jobId;
+    return typeof get === 'function' && typeof jobId === 'string' ? get(jobId) : null;
+  },
+
+  _advancePriorityCourierEscort(entity, itinerary, jobEntry, dt) {
+    const escort = itinerary && itinerary.escort;
+    if (!escort || escort.active !== true || escort.legSeq !== itinerary.legSeq
+      || escort.usedLegSeq === itinerary.legSeq) return false;
+    const job = jobEntry && jobEntry.job;
+    if (!job || job.phase !== NPC_JOB_PHASE.TRANSIT || jobEntry.control) return false;
+    const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
+    if (!player || player.alive === false || !player.pos || !entity.pos) return false;
+    const distance = Math.hypot(player.pos.x - entity.pos.x, player.pos.z - entity.pos.z);
+    const inEscortBand = distance >= PRIORITY_COURIER_SERVICE.escort.minRangeWU
+      && distance <= PRIORITY_COURIER_SERVICE.escort.maxRangeWU;
+    escort.heldS = inEscortBand
+      ? Math.min(PRIORITY_COURIER_SERVICE.escort.holdS, escort.heldS + Math.max(0, Number(dt) || 0))
+      : 0;
+    if (escort.heldS < PRIORITY_COURIER_SERVICE.escort.holdS) return false;
+    escort.active = false;
+    escort.usedLegSeq = itinerary.legSeq;
+    escort.creditS = PRIORITY_COURIER_SERVICE.escort.recoveryCreditS;
+    return true;
+  },
+
+  _stepPriorityCourierService(entity, rec, stations, dt) {
+    const itinerary = this._priorityCourierItinerary(entity);
+    if (!itinerary) return false;
+    const jobEntry = this._priorityCourierJobEntry(entity);
+    this._advancePriorityCourierEscort(entity, itinerary, jobEntry, dt);
+    const status = this._refreshPriorityCourierPresentation(entity, rec, stations, itinerary, jobEntry);
+    if (entity.data.jobId) return true; // npcJobsRuntime remains the sole movement writer.
+
+    const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+    const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
+    if (!origin || !destination) {
+      setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+      return true;
+    }
+    if (status === 'BERTH') {
+      rec.targetId = origin.id;
+      setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+      return true;
+    }
+    this._maybeAssignJob(entity, 'courier', origin, destination, stations, PRIORITY_COURIER_SERVICE.sectorId);
+    if (!entity.data.jobId) setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+    return true;
+  },
+
+  _requestPriorityCourierEscort(response) {
+    const target = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(response && response.targetId)
+      : null;
+    const rec = target && this.state.traffic && Array.isArray(this.state.traffic.freighters)
+      ? this.state.traffic.freighters.find((row) => row && row.id === target.id)
+      : null;
+    const itinerary = target && this._priorityCourierItinerary(target);
+    if (!target || !rec || !itinerary) return false;
+    const status = this._priorityCourierStatus(target, itinerary, this._priorityCourierJobEntry(target));
+    const escort = itinerary.escort || {};
+    if ((status !== 'LATE' && status !== 'INTERRUPTED')
+      || escort.active === true || escort.usedLegSeq === itinerary.legSeq) return false;
+    itinerary.escort = {
+      legSeq: itinerary.legSeq,
+      active: true,
+      requestedAt: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      heldS: 0,
+      usedLegSeq: Number.isSafeInteger(escort.usedLegSeq) ? escort.usedLegSeq : null,
+      creditS: 0,
+    };
+    this._refreshPriorityCourierPresentation(target, rec, this._sectorStations(), itinerary,
+      this._priorityCourierJobEntry(target));
+    return true;
+  },
+
+  _advancePriorityCourierLeg(entity, rec, stations, itinerary) {
+    const nextOrigin = itinerary.destinationStationId;
+    const nextDestination = itinerary.originStationId;
+    const nextLegSeq = itinerary.legSeq + 1;
+    const next = this._newPriorityCourierItinerary(stations, nextOrigin, nextDestination, nextLegSeq);
+    if (!next) return false;
+    entity.data.itinerary = next;
+    const origin = this._stationForPriorityCourier(stations, nextOrigin);
+    rec.targetId = origin ? origin.id : rec.targetId;
+    this._refreshPriorityCourierPresentation(entity, rec, stations, next);
+    return true;
+  },
+
   /**
    * Prefer Helios Station (or first station) as the pocket density anchor so ≥3 freighters
    * sit inside default radar/sensor range of the first-hour play space.
@@ -1727,6 +2081,12 @@ export const traffic = {
         }
       }
       if (miner) this._stampNamedLaneContact(miner, contact);
+      return;
+    }
+    // Tethys has one explicit Kess service. Never let the generic named-contact fallback append a
+    // second courier when an old/full ambient roster lacks a reusable courier slot.
+    if (priorityCourierServiceForSector(sectorId)) {
+      this._ensurePriorityCourierService(sectorId, stations);
       return;
     }
     // Already have a live named contact?
@@ -1880,8 +2240,11 @@ export const traffic = {
       tracked.add(e.id);
       this._active.push(e.id);
       const role = d.trafficRole || 'hauler';
+      const priorityItinerary = role === 'courier' ? this._priorityCourierItinerary(e, sectorId) : null;
       const target = (stations && stations.length)
-        ? (role === 'express'
+        ? (priorityItinerary
+          ? (this._stationForPriorityCourier(stations, priorityItinerary.destinationStationId) || this._pickStation(stations))
+          : role === 'express'
             ? (this._expressDestinationFromItinerary(stations, d.itinerary) || this._pickStation(stations))
             : this._pickStation(stations))
         : null;
@@ -1906,6 +2269,7 @@ export const traffic = {
         this._stampTrafficDurableIdentity(e, sectorId, role, TRAFFIC_ROLES.express, adoptIdx);
         this._stampExpressRoute(e, rec, null, target, sectorId, adoptIdx, true);
       }
+      if (priorityItinerary) this._stampPriorityCourierService(e, rec, stations);
       this.state.traffic.freighters.push(rec);
       adoptIdx++;
     }
@@ -2047,6 +2411,10 @@ export const traffic = {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
+      // One authored recurring courier owns a saved berth/departure timetable. It still delegates
+      // actual transit to npcJobsRuntime, but traffic keeps its service state readable while that
+      // job is live (or interrupted) instead of falling through to ambient random routing.
+      if (this._stepPriorityCourierService(e, rec, stations, dt)) continue;
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
       // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
       if (e.data && e.data.jobId) continue;
@@ -3952,7 +4320,10 @@ export const traffic = {
   },
 
   _onContactHailResponse(response) {
-    if (!response || String(response.choice || '').toLowerCase() !== 'help') return false;
+    if (!response) return false;
+    const choice = String(response.choice || '').toLowerCase();
+    if (choice === 'escort') return this._requestPriorityCourierEscort(response);
+    if (choice !== 'help') return false;
     const target = this.state.entities && this.state.entities.get
       ? this.state.entities.get(response.targetId)
       : null;
@@ -4928,7 +5299,7 @@ export const traffic = {
     if (intent.kind !== 'hauler' && intent.kind !== 'miner') return false;
     const context = intent.kind === 'miner'
       ? this._jobTrafficContext(intent, 'miner', ['miner', 'ore_carrier'])
-      : this._jobTrafficContext(intent, intent.kind);
+      : this._jobTrafficContext(intent, 'hauler', ['hauler', 'courier']);
     if (!context) return false;
 
     const destination = typeof intent.destination === 'string' ? intent.destination : '';
@@ -4938,11 +5309,26 @@ export const traffic = {
     const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === stationId);
     if (!station) return false;
 
+    const priorityItinerary = intent.kind === 'hauler' && context.rec.role === 'courier'
+      ? this._priorityCourierItinerary(context.entity)
+      : null;
+    if (intent.kind === 'hauler' && context.rec.role === 'courier') {
+      const marker = intent.payload && intent.payload.priorityCourierService;
+      if (!priorityItinerary || !marker || typeof marker !== 'object'
+        || marker.schema !== PRIORITY_COURIER_JOB_SCHEMA
+        || marker.serviceId !== PRIORITY_COURIER_SERVICE.id
+        || marker.legSeq !== priorityItinerary.legSeq
+        || stationId !== priorityItinerary.destinationStationId) return false;
+    }
+
     const manifest = intent.kind === 'hauler' && intent.payload && intent.payload.manifest;
     const applied = this._emitArrival(context.entity, context.rec, station, {
       dockSeq: Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : undefined,
       manifest,
     });
+    if (applied && priorityItinerary) {
+      this._advancePriorityCourierLeg(context.entity, context.rec, this._sectorStations(), priorityItinerary);
+    }
     if (applied && intent.kind === 'miner') {
       this._setTrafficManifest(
         context.entity,
