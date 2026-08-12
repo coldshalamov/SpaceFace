@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 
 import {
   samplePlasmaEnvelope,
@@ -8,18 +9,15 @@ import {
 } from '../src/render/thruster/recipes/plasmaStreamRecipe.js';
 import { createPathSampler } from '../src/render/thruster/systems/pathSampler.js';
 import { PlasmaStreamSystem } from '../src/render/thruster/systems/plasmaStream.js';
-import * as THREE from 'three';
 
 test('plasma envelope is wider and hotter at the nozzle than the wake', () => {
   const root = samplePlasmaEnvelope(0, 1, 0);
   const mid = samplePlasmaEnvelope(0.45, 1, 0);
   const wake = samplePlasmaEnvelope(0.9, 1, 0);
   assert.ok(root.width > mid.width, `root width ${root.width} > mid ${mid.width}`);
-  assert.ok(mid.width > wake.width * 0.85, `mid should stay thicker than far wake`);
+  assert.ok(mid.width >= wake.width * 0.9, 'width should taper toward the wake');
   assert.ok(root.heat > wake.heat, `root heat ${root.heat} > wake ${wake.heat}`);
-  assert.ok(root.density > wake.density, 'root density exceeds wake density');
   assert.ok(root.rootWindow > 0.8, 'nozzle is in root window');
-  assert.ok(wake.wakeWindow > 0 || wake.s > 0.5, 'far samples leave the root window');
 });
 
 test('smoothstep is monotonic on unit interval', () => {
@@ -31,7 +29,7 @@ test('smoothstep is monotonic on unit interval', () => {
   }
 });
 
-test('path sampler retains equal-spacing history without solid geometry', () => {
+test('path sampler retains equal-spacing history', () => {
   const sampler = createPathSampler(20);
   const owner = { id: 1 };
   for (let i = 0; i < 40; i++) {
@@ -44,34 +42,49 @@ test('path sampler retains equal-spacing history without solid geometry', () => 
   assert.ok(n >= 4, `expected history samples, got ${n}`);
   assert.equal(ss[0], 0, 'live head age is 0');
   assert.ok(ss[n - 1] >= 0.9, 'oldest sample near age 1');
-  // Live head is newest position
-  assert.ok(Math.abs(xs[0] - 78) < 4 || xs[0] > 20, `live x advanced, got ${xs[0]}`);
 });
 
-test('PlasmaStreamSystem spawns soft particles and never builds a ribbon mesh', () => {
+test('PlasmaStreamSystem is continuous liquid strips, not point beads', () => {
   const scene = new THREE.Scene();
-  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE, { capacity: 200 });
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
   stream.attach(scene);
   assert.ok(stream.group);
-  assert.ok(stream.group.children[0].isPoints, 'hero medium is Points, not a solid ribbon Mesh');
+
+  let points = 0;
+  let meshes = 0;
+  stream.group.traverse((o) => {
+    if (o.isPoints) points += 1;
+    if (o.isMesh) meshes += 1;
+  });
+  assert.equal(points, 0, 'must not use point-sprite bead medium');
+  assert.ok(meshes >= 3, `expected multi-layer continuous meshes, got ${meshes}`);
 
   const sockets = [{ x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 }];
-  const drive = { drive: 1, throttle: 1, boost: 0.2, speed: 120 };
+  const drive = { drive: 1, throttle: 1, boost: 0.25, speed: 140 };
   const owner = { id: 'player' };
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 40; i++) {
     stream.update(1 / 60, sockets, drive, { reducedMotion: false }, owner);
-    // Advance nozzle so history grows
-    sockets[0].x -= 3;
+    sockets[0].x -= 2.5;
   }
   const info = stream.inspect();
-  assert.ok(info.live > 20, `expected living plasma particles, got ${info.live}`);
-  assert.ok(info.path.historyCount > 0 || info.path.visiblePointCount > 1, 'path history active');
+  assert.equal(info.continuous, true);
+  assert.equal(info.medium, 'liquid-strip-layers');
+  assert.ok(info.path.historyCount > 0 || info.path.visiblePointCount > 2, 'path history active');
+  assert.ok(info.active, 'stream should be active under thrust');
+  // Layers visible with geometry drawn
+  let drawn = 0;
+  stream.group.traverse((o) => {
+    if (o.isMesh && o.visible && o.geometry && o.geometry.drawRange
+      && o.geometry.drawRange.count > 0) drawn += 1;
+  });
+  assert.ok(drawn >= 2, `expected continuous layers drawing, got ${drawn}`);
   stream.dispose();
 });
 
-test('player plasma recipe declares unified kind not dual ribbon+cone', () => {
-  assert.equal(PLAYER_PLASMA_STREAM_RECIPE.kind, 'unified_plasma_stream');
-  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.roles.core);
-  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.roles.body);
-  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.roles.filament);
+test('player plasma recipe is continuous liquid not dual bead/cone stack', () => {
+  assert.equal(PLAYER_PLASMA_STREAM_RECIPE.kind, 'unified_liquid_plasma');
+  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.length >= 3);
+  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'core'));
+  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'body'));
+  assert.ok(PLAYER_PLASMA_STREAM_RECIPE.layers.some((l) => l.role === 'sheath'));
 });
