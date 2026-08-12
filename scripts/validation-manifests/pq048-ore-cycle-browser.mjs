@@ -21,6 +21,7 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
       ...base.fastGateCommands.slice(1),
       'node --test test/pq048-ore-cycle-acceptance.test.mjs test/pq048-ore-cycle-manifest.test.mjs',
       'node --test test/ore-carrier-freight-route.test.mjs test/ceres-visible-job-actions.test.mjs test/freight-cargo-custody.test.mjs',
+      'node --test test/ai-engagement-authority.test.mjs test/law-security-escalation.test.mjs',
     ],
     scenarioPaths: unique(
       base.scenarioPaths,
@@ -33,6 +34,8 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
       'test/ceres-activity-traffic-cast.test.mjs',
       'test/ceres-visible-job-actions.test.mjs',
       'test/freight-cargo-custody.test.mjs',
+      'test/ai-engagement-authority.test.mjs',
+      'test/law-security-escalation.test.mjs',
       'test/ore-carrier-freight-route.test.mjs',
       'test/pq048-ore-cycle-acceptance.test.mjs',
       'test/pq048-ore-cycle-manifest.test.mjs',
@@ -40,8 +43,10 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
     productionSourcePaths: unique(
       base.productionSourcePaths,
       'src/core/eventBus.js',
+      'src/ai/engagementAuthority.js',
       'src/economy/freightCausality.js',
       'src/systems/economy.js',
+      'src/systems/lawSecurity.js',
       'src/systems/surrenderRecovery.js',
     ),
     harnessSourcePaths: unique(

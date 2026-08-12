@@ -45,6 +45,9 @@ test('PQ preflight and inherited shared gates run before broker claim issuance',
   }
   assert.ok(pq048Manifest.fastGateCommands.includes('node scripts/check-autopilot-v3.mjs'),
     'the regression that acknowledges a failed Throughline route must run before claim issuance');
+  assert.ok(pq048Manifest.fastGateCommands.includes(
+    'node --test test/ai-engagement-authority.test.mjs test/law-security-escalation.test.mjs',
+  ), 'the exact gate-sanctuary owner regressions must run before claim issuance');
   assert.equal(new Set(pq048Manifest.fastGateCommands).size, pq048Manifest.fastGateCommands.length,
     'fast gates must not burn time by repeating an identical command');
   const checker = readFileSync(path.join(ROOT, 'scripts/check-pq048-ore-cycle.mjs'), 'utf8');
@@ -66,16 +69,20 @@ test('manifest reuses the shared Ceres driver and binds every PQ product/harness
       'test/ceres-activity-traffic-cast.test.mjs',
       'test/ceres-visible-job-actions.test.mjs',
       'test/freight-cargo-custody.test.mjs',
+      'test/ai-engagement-authority.test.mjs',
+      'test/law-security-escalation.test.mjs',
       'test/ore-carrier-freight-route.test.mjs',
       'test/pq048-ore-cycle-acceptance.test.mjs',
       'test/pq048-ore-cycle-manifest.test.mjs',
     ],
     productionSourcePaths: [
       'package.json',
+      'src/ai/engagementAuthority.js',
       'src/core/eventBus.js',
       'src/data/sectorActivityPockets.js',
       'src/economy/freightCausality.js',
       'src/systems/economy.js',
+      'src/systems/lawSecurity.js',
       'src/systems/surrenderRecovery.js',
       'src/systems/traffic.js',
     ],
