@@ -48,6 +48,8 @@ test('PQ preflight and inherited shared gates run before broker claim issuance',
   assert.ok(pq048Manifest.fastGateCommands.includes(
     'node --test test/ai-engagement-authority.test.mjs test/law-security-escalation.test.mjs',
   ), 'the exact gate-sanctuary owner regressions must run before claim issuance');
+  assert.ok(pq048Manifest.fastGateCommands.includes('node --test test/validation-broker.test.mjs'),
+    'the stale-claim guard must run before issuing a replacement acceptance claim');
   assert.equal(new Set(pq048Manifest.fastGateCommands).size, pq048Manifest.fastGateCommands.length,
     'fast gates must not burn time by repeating an identical command');
   const checker = readFileSync(path.join(ROOT, 'scripts/check-pq048-ore-cycle.mjs'), 'utf8');
@@ -71,6 +73,7 @@ test('manifest reuses the shared Ceres driver and binds every PQ product/harness
       'test/freight-cargo-custody.test.mjs',
       'test/ai-engagement-authority.test.mjs',
       'test/law-security-escalation.test.mjs',
+      'test/validation-broker.test.mjs',
       'test/ore-carrier-freight-route.test.mjs',
       'test/pq048-ore-cycle-acceptance.test.mjs',
       'test/pq048-ore-cycle-manifest.test.mjs',

@@ -22,6 +22,7 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
       'node --test test/pq048-ore-cycle-acceptance.test.mjs test/pq048-ore-cycle-manifest.test.mjs',
       'node --test test/ore-carrier-freight-route.test.mjs test/ceres-visible-job-actions.test.mjs test/freight-cargo-custody.test.mjs',
       'node --test test/ai-engagement-authority.test.mjs test/law-security-escalation.test.mjs',
+      'node --test test/validation-broker.test.mjs',
     ],
     scenarioPaths: unique(
       base.scenarioPaths,
@@ -36,6 +37,7 @@ export function createPq048OreCycleBrowserManifest(overrides = {}) {
       'test/freight-cargo-custody.test.mjs',
       'test/ai-engagement-authority.test.mjs',
       'test/law-security-escalation.test.mjs',
+      'test/validation-broker.test.mjs',
       'test/ore-carrier-freight-route.test.mjs',
       'test/pq048-ore-cycle-acceptance.test.mjs',
       'test/pq048-ore-cycle-manifest.test.mjs',
