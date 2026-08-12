@@ -94,6 +94,50 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
     'duplicate receipts do not unlock duplicate plates');
 });
 
+test('physically approaching the Quiessence unlocks its durable census story', () => {
+  const t = harness();
+  t.state.world.currentSectorId = 'sector_pallas_drift';
+  t.state.world.activeSector = {
+    id: 'sector_pallas_drift',
+    pois: [{ id: 201, poiId: 'poi_quiessence', type: 'anomaly' }],
+  };
+  t.state.playerId = 1;
+  t.state.entities.set(1, {
+    id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 },
+    data: { derived: { scannerTier: 0 } },
+  });
+  t.state.entities.set(201, {
+    id: 201, type: 'fx', alive: true, pos: { x: 20, z: 0 },
+    data: { poi: true, poiId: 'poi_quiessence', name: 'The Quiessence', scanRange: 900 },
+  });
+
+  world._tickPOIScan(t.state);
+
+  const record = t.state.world.discovery.sector_pallas_drift.pois.poi_quiessence;
+  assert.equal(record.discovered, true);
+  assert.equal(record.identified, true);
+  const plate = explorationDiscoveryPlates(t.state)
+    .find((entry) => entry.poiId === 'poi_quiessence');
+  assert.ok(plate);
+  assert.equal(plate.title, 'The Quiessence Census');
+  assert.match(plate.body, /Seventeen intact freighters/);
+  assert.match(plate.body, /every bunk is warm/i);
+  assert.match(plate.note, /1\/4 authored sites found/);
+  assert.equal(
+    t.events.filter((event) => event.name === 'discovery:plateUnlocked'
+      && event.payload.poiId === 'poi_quiessence').length,
+    1,
+  );
+
+  world._tickPOIScan(t.state);
+  assert.equal(
+    t.events.filter((event) => event.name === 'discovery:plateUnlocked'
+      && event.payload.poiId === 'poi_quiessence').length,
+    1,
+    'the same physical landmark cannot create duplicate journal plates',
+  );
+});
+
 test('defeating Iron Maw records a durable exploration trophy', () => {
   const t = harness();
   t.state.simTime = 90;
