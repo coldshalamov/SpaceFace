@@ -85,7 +85,7 @@ test('top five has honest states, ordered gates, and no visual-acceptance fabric
   assert.match(rig.currentState, /Reaver\/Corsair identity split remain open/);
 });
 
-test('legacy recovery is tracked as a donor and the corrupt foreign clone remains protected', () => {
+test('legacy recovery is tracked as a donor and the corrupt Grok clone is classified deleted', () => {
   const catalog = buildVisualAssetCatalog();
   const lark = catalog.candidatesAndLegacyDonors.find((row) => row.id === 'helios_lark_stopped_remaster');
   const grok = catalog.unsafeForeign.find((row) => row.id === 'stopped_grok_worktree');
@@ -103,10 +103,9 @@ test('legacy recovery is tracked as a donor and the corrupt foreign clone remain
   assert.equal(sha256(larkBlend), lark.blendSha256);
   assert.equal(sha256(larkSource), lark.sourceSha256);
   assert.equal(grok.lifecycle, 'unsafe-foreign');
-  assert.match(grok.action, /Preserve read-only/);
-  assert.match(grok.action, /REC-GROK-KES-SALVAGE/);
-  assert.match(grok.finding, /independent corrupt\/incomplete clone/);
-  assert.match(grok.finding, /237 unique targeted Kestrel\/asset paths/);
+  assert.match(grok.action, /Deleted 2026-08-12/);
+  assert.match(grok.action, /Do not recreate/);
+  assert.match(grok.finding, /classified every unique Blender\/GLB family as DROP/i);
 });
 
 test('tracked catalog artifacts are deterministic products of current manifests and routing facts', () => {

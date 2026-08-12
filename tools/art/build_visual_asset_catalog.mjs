@@ -218,8 +218,8 @@ const UNSAFE_FOREIGN = Object.freeze([
     id: 'stopped_grok_worktree',
     lifecycle: 'unsafe-foreign',
     path: 'C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041',
-    finding: 'This is an independent corrupt/incomplete clone, not a registered worktree: HEAD is unresolved, referenced objects are missing, and a bounded index audit found 237 unique targeted Kestrel/asset paths among duplicated modified/deleted rows.',
-    action: 'Preserve read-only. Do not delete or promote from it. Run REC-GROK-KES-SALVAGE as a bounded hash-ledger pass over Blender, GLB, and evidence families; inspect only genuinely distinct results, preserve named donors, then remove the clone.',
+    finding: 'Former independent corrupt clone. REC-GROK-KES-SALVAGE Phase 2 classified every unique Blender/GLB family as DROP; the exact path was deleted 2026-08-12. No unique authored source was missing from master.',
+    action: 'Deleted 2026-08-12 after DROP closeout. Do not recreate, merge, or promote from it.',
   },
 ]);
 
@@ -399,7 +399,7 @@ export function buildVisualAssetCatalog() {
       'The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.',
       'Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.',
       'The stopped Lark source states are tracked as a non-runtime express-liner donor; accepted courier Lark identity is frozen and the historical refs are no longer production dependencies.',
-      'The stopped Grok directory is an independent corrupt clone with 237 unique targeted asset paths; it remains read-only until the bounded REC-GROK-KES-SALVAGE ledger preserves or rejects each distinct family.',
+      'The stopped Grok clone was classified DROP and deleted 2026-08-12; current master already owned later versions of the same families.',
       'Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.',
       'icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.',
     ],
@@ -446,7 +446,7 @@ export function validateVisualAssetCatalog(catalog) {
   validateFingerprint(lark, 'blend', 'blendSha256', 'blendBytes', failures);
   validateFingerprint(lark, 'source', 'sourceSha256', 'sourceBytes', failures);
   const grok = catalog?.unsafeForeign?.find((row) => row.id === 'stopped_grok_worktree');
-  if (!grok || !grok.action.includes('Preserve read-only')) failures.push('grok-preservation');
+  if (!grok || !grok.action.includes('Deleted 2026-08-12')) failures.push('grok-preservation');
   for (const row of [
     ...(catalog?.candidatesAndLegacyDonors || []),
     ...(catalog?.rejectedOrEvidenceOnly || []),
@@ -619,11 +619,9 @@ and independently accepted on its own exact hashes.
 
 ### Stopped Grok clone
 
-\`${catalog.unsafeForeign[0].path}\` still exists as an independent corrupt clone, not a registered
-worktree. HEAD/objects are incomplete, and a bounded index audit identified 237 unique targeted
-Kestrel/asset paths. Preserve it read-only until \`REC-GROK-KES-SALVAGE\` records a hash ledger,
-inspects only genuinely distinct Blender/GLB/evidence families, and preserves or rejects them before
-deleting the clone.
+\`${catalog.unsafeForeign[0].path}\` was an independent corrupt clone, not a registered worktree.
+\`REC-GROK-KES-SALVAGE\` classified every unique Blender/GLB family as DROP and deleted the exact
+path on 2026-08-12. Do not recreate or promote from it.
 
 ## Standalone and code-native visuals
 

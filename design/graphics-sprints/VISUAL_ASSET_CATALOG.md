@@ -134,11 +134,9 @@ and independently accepted on its own exact hashes.
 
 ### Stopped Grok clone
 
-`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` still exists as an independent corrupt clone, not a registered
-worktree. HEAD/objects are incomplete, and a bounded index audit identified 237 unique targeted
-Kestrel/asset paths. Preserve it read-only until `REC-GROK-KES-SALVAGE` records a hash ledger,
-inspects only genuinely distinct Blender/GLB/evidence families, and preserves or rejects them before
-deleting the clone.
+`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` was an independent corrupt clone, not a registered worktree.
+`REC-GROK-KES-SALVAGE` classified every unique Blender/GLB family as DROP and deleted the exact
+path on 2026-08-12. Do not recreate or promote from it.
 
 ## Standalone and code-native visuals
 
@@ -156,7 +154,7 @@ deleting the clone.
 - The release manifest has three Kestrel package records outside the source-manifest census: the ship reference plus LOD1 and LOD2.
 - Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.
 - The stopped Lark source states are tracked as a non-runtime express-liner donor; accepted courier Lark identity is frozen and the historical refs are no longer production dependencies.
-- The stopped Grok directory is an independent corrupt clone with 237 unique targeted asset paths; it remains read-only until the bounded REC-GROK-KES-SALVAGE ledger preserves or rejects each distinct family.
+- The stopped Grok clone was classified DROP and deleted 2026-08-12; current master already owned later versions of the same families.
 - Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.
 - icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.
 

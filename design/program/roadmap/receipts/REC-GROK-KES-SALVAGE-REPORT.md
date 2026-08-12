@@ -1,10 +1,9 @@
 <!-- LIFETIME: STABLE -->
 # REC-GROK-KES-SALVAGE — Corrupt Grok clone forensic ledger
 
-> **Phase 2 closeout (2026-08-12): classified DROP. No donors copied. Clone not deleted in this
-> pass.** The August 10 hash ledger (sections 1–4) remains the forensic record. The mechanistic
-> `PRESERVE`/`ADAPT` labels in that ledger meant “hash differs from master,” not “this is better
-> art.” Human inspection against current same-path owners overturns those labels. See **§5**.
+> **Closed 2026-08-12.** Classified DROP; no donors copied. The exact clone path was deleted the
+> same day after a no-live-writer check. The August 10 hash ledger (sections 1–4) remains the
+> forensic record. See **§5**.
 
 - **Authority:** `CANONICAL_BUILD_MAP.md` § REC-GROK-KES-SALVAGE; `design/program/WORKTREE_RECOVERY.md`.
 - **Source (frozen, read-only):** `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`
@@ -5256,10 +5255,13 @@ optimized live releases, not missing geometry.
 
 **Selected donors: none.** No `assets/ships/<family>/reference/recovered_grok/` copy is justified.
 
-### Deletion gate (not executed)
+### Deletion gate (executed 2026-08-12)
 
-The exact clone path may be deleted once this closeout is tracked and the path is re-checked for no
-live writer. Until then it stays read-only. Do not merge it. Do not promote from it.
+Deleted only
+`C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`
+after confirming it was not a registered worktree and no process held the path. The empty parent
+`C:/Users/93rob/.grok/worktrees/github-spaceface` was removed afterward. Path now absent. Do not
+recreate, merge, or promote from it.
 
 **ADAPT/PRESERVE families from the August 10 mechanistic ledger, all overturned to DROP**
 (sorted by kind then bytes descending; kept as the forensic index):
@@ -5783,11 +5785,10 @@ closeout: **512 DROP**, **0 ADAPT**, **0 PRESERVE**, **0 donors copied**.
 | 512 | md | 472 B | PRESERVE | `be1708990f541041` | `assets/ships/revamp-evidence/_k0_inspect/revamp/S…` | orphan md (472B); may correspond to a deleted index row (unknown) |
 
 The August 10 table above is the forensic index only. Human closeout overturns every row to DROP.
-No donor copy is required before deletion. Delete only the exact clone path after this closeout is
-tracked and the path is confirmed to have no live writer.
+The exact clone path was deleted 2026-08-12. No donor copy was made.
 
 ## 6. Tool run + idempotency
 
 - Command: `node tools/recovery/audit-corrupt-asset-clone.mjs` (August 10 ledger only).
-- Phase 2 closeout (2026-08-12) writes only this report. Writes nothing to the clone. No JSON sidecar.
-- Re-running the audit tool would regenerate the mechanistic ledger and must not overwrite §5.
+- Phase 2 closeout (2026-08-12) writes only this report. The exact clone was deleted the same day.
+- Do not re-run the audit tool; the source path is gone.

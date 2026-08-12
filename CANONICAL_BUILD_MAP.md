@@ -172,7 +172,6 @@ executable route:
 | Stable route | Size | Required outcome |
 |---|---:|---|
 | `GFX-MASSLINE-EXPRESS-LINER` | `XL`, about 4-8 focused artist-engineer days plus independent review | Adapt the tracked stopped-Lark donor into a **separate** express-only ship: new fiction/construction/material zones, DCC source, LOD/release/manifests/render package, express runtime maps, Browser/Electron route/tether/save proof, performance, and exact-hash G7. Never replace accepted courier Lark or fold it into the Massline presentation showcase. |
-| `REC-GROK-KES-SALVAGE` | `XS` remaining: delete the exact classified-DROP clone | Classification is complete in [`REC-GROK-KES-SALVAGE-REPORT.md`](./design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md): no unique authored source is missing from master, and no donor copy is justified. Delete only `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041` after that closeout is tracked. Do not merge or promote from it. |
 | `PQ-018.cathedral-reauthor` | existing multi-day active packet | Use the current packet for Cathedral DCC/release and exact route/art acceptance. Recovered Cathedral GLBs are rebuild variants, not alternative art, and no standalone PQ-018 broker harness should return. |
 
 `GFX-MASSLINE-EXPRESS-LINER` executes in this order:
@@ -199,15 +198,6 @@ executable route:
    manifest, boost, tether latch/reel/release, and save/Continue itinerary; run a matched dense-pocket
    and tether-close performance comparison; finish with independent exact-hash G7 and whole-asset
    G1/G2/G4. Any missing gate leaves the asset non-runtime.
-
-`REC-GROK-KES-SALVAGE` remaining action:
-
-1. Confirm the Phase 2 DROP closeout in
-   [`design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md`](./design/program/roadmap/receipts/REC-GROK-KES-SALVAGE-REPORT.md)
-   is tracked and the exact path still has no live writer.
-2. Delete only
-   `C:/Users/93rob/.grok/worktrees/github-spaceface/subagent-019f50fb-0f1e-7a41-84dc-20c752d5c041`.
-   Do not merge, promote, or copy from it. No donor path is required.
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, the massline presentation UVP packet when that is the explicit task, or the tracked worktree-recovery playbook when leftover agent work is the explicit task.
 
