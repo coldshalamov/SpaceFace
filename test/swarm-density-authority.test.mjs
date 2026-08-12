@@ -575,3 +575,38 @@ test('reinforcement faction enters makeEnemySpawnSpec before doctrine/contact de
     'the surviving wingmate keeps its own reservation');
   sim.dispose();
 });
+
+test('Iron Maw calls its authored Wasp screen once below half hull', () => {
+  const sim = createSimulation({ seed: 47, systems: [spawnBudget, aiEncounter] });
+  const boss = sim.helpers.spawnEntity(makeEnemySpawnSpec('dreadnought_boss', 10, { x: 400, z: -200 }));
+  boss.hull = boss.hullMax * 0.49;
+
+  sim.step();
+
+  const scheduled = sim.state.aiEncounter.owner.scheduled;
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].packageId, 'iron_maw_screen');
+  assert.equal(scheduled[0].callerId, boss.id);
+  assert.equal(boss.data.ai._calledReinforcements, true);
+  assert.ok(scheduled[0].count >= 2 && scheduled[0].count <= 4);
+  assert.equal(sim.state.aiEncounter.owner.pendingReinforcements.length, scheduled[0].count);
+
+  sim.runTicks(90);
+  const screen = sim.state.entityList.filter((entity) => (
+    entity.alive && entity.data?.ai?.spawnContext === 'sg06_reinforcement'
+      && entity.data?.encounter?.packageId === 'iron_maw_screen'
+  ));
+  assert.equal(screen.length, scheduled[0].count);
+  assert.ok(screen.every((entity) => entity.data.lootTableId === 'wasp_swarmer'));
+  assert.ok(screen.every((entity) => entity.factionId === 'faction_vael'));
+  assert.ok(screen.every((entity) => entity.data.reinforcements == null),
+    'screen ships cannot recursively call another wave');
+  assert.ok(screen.every((entity) => Math.hypot(entity.pos.x - boss.pos.x, entity.pos.z - boss.pos.z) >= 180),
+    'the wave arrives around Iron Maw rather than around the player');
+
+  boss.hull = boss.hullMax * 0.2;
+  sim.runTicks(120);
+  assert.equal(sim.state.aiEncounter.owner.scheduled.length, 1,
+    'later phase thresholds do not duplicate the authored one-shot wave');
+  sim.dispose();
+});

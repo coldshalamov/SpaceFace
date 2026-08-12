@@ -39,6 +39,17 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     factionId: 'faction_scn',
     squadPrefix: 'sg06_scn_interceptor',
   }),
+  iron_maw_screen: Object.freeze({
+    typeId: 'wasp_swarmer',
+    count: Object.freeze([2, 4]),
+    level: 10,
+    delayTicks: 90,
+    radiusMin: 180,
+    radiusMax: 300,
+    doctrine: 'scavenger',
+    factionId: 'faction_vael',
+    squadPrefix: 'iron_maw_screen',
+  }),
 });
 
 export const aiEncounter = {
@@ -55,6 +66,7 @@ export const aiEncounter = {
   update(_dt, state) {
     const encounter = ensureEncounterState(state);
     const owner = ensureOwnerState(state);
+    this._queueAuthoredReinforcements(encounter, state);
     const commands = Array.isArray(encounter.commands) ? encounter.commands : [];
     if (commandsOutOfOrder(commands)) commands.sort((a, b) => finiteInt(a && a.seq) - finiteInt(b && b.seq));
     for (const command of commands) {
@@ -81,6 +93,38 @@ export const aiEncounter = {
   newGame() {
     this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
     ensureOwnerState(this.state);
+  },
+
+  _queueAuthoredReinforcements(encounter, state) {
+    for (const entity of Array.isArray(state.entityList) ? state.entityList : []) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      const data = entity.data || {};
+      const ai = data.ai || (data.ai = {});
+      const authored = data.reinforcements;
+      if (!authored || !authored.packageId || ai._calledReinforcements === true) continue;
+      if (!(entity.hullMax > 0) || entity.hull / entity.hullMax >= finite(authored.hullThreshold, 0.3)) continue;
+      const seq = encounter.nextSeq++;
+      const command = Object.freeze({
+        version: AI_CONTRACT_VERSION,
+        seq,
+        tick: finiteInt(state.tick),
+        type: 'request_reinforcement',
+        packageId: String(authored.packageId),
+        budgetRemaining: this.helpers.spawnBudget && typeof this.helpers.spawnBudget.available === 'function'
+          ? this.helpers.spawnBudget.available() : 0,
+        callerId: entity.id,
+        anchor: Object.freeze({ x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) }),
+      });
+      encounter.commands.push(command);
+      ai._calledReinforcements = true;
+      emit(this.bus, 'ai:encounterCommand', command);
+      emit(this.bus, 'alert', {
+        key: 'reinforcements', sev: 'danger',
+        text: `${data.name || 'ENEMY CAPITAL'} CALLING REINFORCEMENTS`, ttl: 3,
+      });
+      emit(this.bus, 'toast', { text: 'Hostile screen ships inbound!', kind: 'danger', ttl: 3 });
+      emit(this.bus, 'audio:cue', { id: 'ui_alert' });
+    }
   },
 
   _applyCommand(command, owner, state) {
@@ -116,8 +160,8 @@ export const aiEncounter = {
       reject(owner, command, 'reinforcement_package_unknown');
       return;
     }
-    const anchor = spawnAnchor(state);
-    const count = Math.max(0, finiteInt(pkg.count));
+    const anchor = spawnAnchor(state, command);
+    const count = reinforcementCount(pkg, state, command);
     const dueTick = Math.max(finiteInt(state.tick) + 1, finiteInt(state.tick) + finiteInt(pkg.delayTicks, 1));
     const squadId = `${pkg.squadPrefix}_${String(command.seq).padStart(4, '0')}`;
     for (let index = 0; index < count; index++) {
@@ -135,6 +179,7 @@ export const aiEncounter = {
         doctrine: pkg.doctrine,
         factionId: pkg.factionId,
         squadId,
+        callerId: command.callerId == null ? null : command.callerId,
       });
     }
     pushCapped(owner.scheduled, {
@@ -144,6 +189,7 @@ export const aiEncounter = {
       count,
       dueTick,
       budgetRemaining: Math.max(0, finiteInt(command.budgetRemaining)),
+      callerId: command.callerId == null ? null : command.callerId,
     });
     emit(this.bus, 'ai:reinforcementScheduled', {
       seq: command.seq,
@@ -271,10 +317,22 @@ function reinforcementPackage(packageId) {
   return pkg ? Object.freeze({ ...pkg, id }) : null;
 }
 
-function spawnAnchor(state) {
+function spawnAnchor(state, command = null) {
+  const authored = command && command.anchor;
+  if (authored && Number.isFinite(authored.x) && Number.isFinite(authored.z)) {
+    return { x: authored.x, z: authored.z };
+  }
   const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   if (player && player.pos) return { x: finite(player.pos.x), z: finite(player.pos.z) };
   return { x: 0, z: 0 };
+}
+
+function reinforcementCount(pkg, state, command) {
+  if (!Array.isArray(pkg.count)) return Math.max(0, finiteInt(pkg.count));
+  const min = Math.max(0, finiteInt(pkg.count[0]));
+  const max = Math.max(min, finiteInt(pkg.count[1], min));
+  const roll = unitHash(state && state.meta && state.meta.seed || 1, command.seq, command.callerId, 'count');
+  return Math.min(max, min + Math.floor(roll * (max - min + 1)));
 }
 
 function spawnPosition(anchor, state, command, pkg, index) {

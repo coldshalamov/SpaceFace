@@ -161,7 +161,10 @@ export const ENEMY_TYPES = [
     ],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 620, leashRadius: 3400 },
     subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
-    reinforcements: { type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5 },
+    reinforcements: {
+      packageId: 'iron_maw_screen',
+      type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5,
+    },
     behavior: 'slow fortress, destructible turrets, spawns swarmers, phases at 66%/33%',
     bountyCr: 12000, shipClass: 'capital',
     loot: {
