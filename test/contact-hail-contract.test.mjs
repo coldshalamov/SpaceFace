@@ -260,6 +260,34 @@ test('a disabled Ceres hauler hails its exact recovery need without mutating gam
   assert.deepEqual(authoritySnapshot(state), before);
 });
 
+test('a serviced Ceres miner reports that it is offline without mutating gameplay', () => {
+  const target = entity('serviced-miner', {
+    data: {
+      trafficRole: 'miner',
+      callsign: 'SLUICE THREE',
+      ceresCausalEventId: 'ev_tender_services_miner',
+      ceresCausalPhase: 'work',
+      ceresCausalCue: 'hull_open',
+      ceresCausalServiceHold: true,
+      ai: { passive: true },
+    },
+  });
+  const state = baseState(target);
+  const before = authoritySnapshot(state);
+  const { bus } = mount(state);
+  bus.emit('contactHail:request', { targetId: target.id });
+  const offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.equal(offer.kind, 'worker');
+  bus.emit('contactHail:choice', {
+    requestId: offer.requestId,
+    targetId: offer.targetId,
+    choice: 'status',
+  });
+  assert.match(emitted(bus, 'contactHail:response').at(-1).lines.join(' '),
+    /SERVICE HOLD · MINER OFFLINE/i);
+  assert.deepEqual(authoritySnapshot(state), before);
+});
+
 test('an active toll pirate hands off the exact existing parley demand surface', () => {
   const pirate = entity('pirate-1', { team: 3, data: { ai: { squadId: 'sq-9' } } });
   const state = baseState(pirate);

@@ -90,3 +90,20 @@ test('disabled Ceres hauler advertises recovery need on the ordinary target pane
   assert.equal(intel.workStatus, 'WORK · DRIVE DISABLED');
   assert.equal(intel.motive, 'NONCOMBATANT');
 });
+
+test('serviced Ceres miner is visibly offline on the ordinary target panel', () => {
+  const player = entity('player', { team: 1, data: {} });
+  const miner = entity('miner-service', {
+    team: 2,
+    data: {
+      trafficRole: 'miner',
+      ceresCausalEventId: 'ev_tender_services_miner',
+      ceresCausalPhase: 'work',
+      ceresCausalCue: 'hull_open',
+      ceresCausalServiceHold: true,
+      ai: { passive: true },
+    },
+  });
+  const intel = targetIntelReadout(miner, player, { playerId: 'player' }, 350);
+  assert.equal(intel.workStatus, 'WORK · SERVICE HOLD');
+});

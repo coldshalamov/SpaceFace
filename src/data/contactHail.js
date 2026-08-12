@@ -294,6 +294,11 @@ export function livingWorkStatusText(entity, opts = {}) {
       ? 'WORK · DRIVE DISABLED'
       : 'WORK · DRIVE DISABLED · RECOVERY REQUIRED';
   }
+  if (data.ceresCausalServiceHold === true) {
+    return opts.depth === 'lock'
+      ? 'WORK · SERVICE HOLD'
+      : 'WORK · SERVICE HOLD · MINER OFFLINE';
+  }
   // Prefer explicit causal stamps; do not treat generic data.phase as work (false WORK risk).
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
@@ -335,6 +340,9 @@ function workerStatusText(target) {
   const data = target && target.data || {};
   if (data.ceresCausalDisabled === true) {
     return 'STATUS · DRIVE DISABLED · RECOVERY REQUIRED';
+  }
+  if (data.ceresCausalServiceHold === true) {
+    return 'STATUS · SERVICE HOLD · MINER OFFLINE';
   }
   const phase = data.ceresCausalPhase || data.jobPhase || null;
   const cue = data.ceresCausalCue || null;
