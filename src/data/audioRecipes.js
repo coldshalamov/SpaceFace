@@ -157,6 +157,16 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.015, sustain: 0.03, release: 0.3 },
     filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
   },
+  // Capital broadside: two immense, separated battery reports. The low sawtooth sweep stays
+  // distinct from the brawler's continuous square growl and from ordinary projectile fire.
+  {
+    id: 'sfx_doctrine_capital_broadside',
+    category: 'weapon', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 72, freqSweep: [72, 138], sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.016, sustain: 0.06, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 310, filterQ: 1.1,
+    repeatCount: 2, repeatIntervalS: 0.22,
+  },
   // Tether raider: mechanical spool/clamp language, distinct from the massline's player rewards.
   {
     id: 'sfx_doctrine_tether_break', category: 'weapon', type: 'oscillator', wave: 'triangle',

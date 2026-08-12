@@ -104,6 +104,9 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
     // Hold-the-ring language: lower charge than ranged, distinct from brawler growl.
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.7, fireGain: 0.88, fireDetune: -22,
   }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE]: Object.freeze({
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.62, fireGain: 1.08, fireDetune: -30,
+  }),
 });
 
 // The first-hour ear-training contract. These five foreground receipts deliberately occupy

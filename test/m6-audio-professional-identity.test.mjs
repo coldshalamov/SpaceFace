@@ -71,6 +71,10 @@ test('doctrine identities alter the same weapon without changing combat state', 
     signatures.add(`${signature.rate}:${signature.gain}:${signature.detune}`);
   }
   assert.equal(signatures.size, doctrines.length);
+  const capital = DOCTRINE_AUDIO_SIGNATURES[CombatDoctrineId.CAPITAL_BROADSIDE];
+  assert.equal(capital.recipeId, 'sfx_doctrine_capital_broadside');
+  assert.equal(AUDIO_RECIPE_BY_ID[capital.recipeId].repeatCount, 2);
+  assert(Number(AUDIO_RECIPE_BY_ID[capital.recipeId].gainEnvelope.release) <= 0.45);
 });
 
 test('player damage direction is ship-local and hull urgency is one-shot-scaled', () => {
