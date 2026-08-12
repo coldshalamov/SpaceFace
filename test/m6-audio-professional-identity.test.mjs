@@ -139,6 +139,31 @@ test('professional identity recipes are finite one-shots on the existing combat 
   assert.equal(resolveAudioCueRecipeId('presentation.tether.near_break'), 'sfx_tether_strain_creak');
 });
 
+test('an authored discovery earns a distinct finite wonder stinger', () => {
+  const recipe = AUDIO_RECIPE_BY_ID.sfx_discovery_reveal;
+  assert.ok(recipe);
+  assert.equal(recipe.category, 'ui');
+  assert.equal(recipe.type, 'oscillator');
+  assert.equal(recipe.wave, 'triangle');
+  assert(Number(recipe.gainEnvelope.release) <= 0.4);
+
+  const calls = [];
+  const harness = {
+    ...audio,
+    _duckMusic(seconds) { calls.push({ kind: 'duck', seconds }); },
+    play(recipeId, options) { calls.push({ kind: 'play', recipeId, options }); },
+  };
+  harness._onDiscoveryUnlocked({ sectorId: 'sector_ashfall_reach', poiId: 'poi_vault' });
+  assert.deepEqual(calls, [
+    { kind: 'duck', seconds: 1.1 },
+    { kind: 'play', recipeId: 'sfx_discovery_reveal', options: { gain: 0.72, critical: true } },
+  ]);
+
+  calls.length = 0;
+  harness._onDiscoveryUnlocked({ sectorId: 'sector_ashfall_reach' });
+  assert.deepEqual(calls, [], 'malformed discovery receipts cannot produce a false payoff');
+});
+
 test('live combat receipts route armor separately and pan player urgency', () => {
   const player = ship({ id: 'player' });
   const attacker = ship({ id: 'attacker', team: 1, x: 0, z: 100 });

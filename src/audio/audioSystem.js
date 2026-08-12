@@ -699,6 +699,7 @@ export const audio = {
     // sound). A short low deny cue signals the setback without celebration.
     bus.on('mission:failed', () => this._onCue('deny'));
     bus.on('mission:expired', () => this._onCue('deny'));
+    bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('dock:undocked', () => this._onUndocked());
     // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
@@ -1509,6 +1510,12 @@ export const audio = {
     if (!p || !p.encounterId) return;
     this.rt._activeCombatEncounters.delete(p.encounterId);
     this._markMusicDirty();
+  },
+
+  _onDiscoveryUnlocked(p) {
+    if (!p || !p.sectorId || !p.poiId) return;
+    this._duckMusic(1.1);
+    this.play('sfx_discovery_reveal', { gain: 0.72, critical: true });
   },
 
   _onCollision(p) {

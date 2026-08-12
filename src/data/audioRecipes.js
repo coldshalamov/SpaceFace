@@ -505,6 +505,19 @@ export const RECIPES = [
     repeatCount: 3, repeatIntervalS: 0.11,
     gainMult: 0.75,
   },
+  // Discovery resolve — a slow, glassy upward fifth. It sits below mission-complete in tempo and
+  // gain so finding a place reads as wonder rather than another contract payout.
+  {
+    id: 'sfx_discovery_reveal',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 392, freqSweep: [392, 587], sweepTimeS: 0.34,
+    gainEnvelope: { attack: 0.018, sustain: 0.04, release: 0.38 },
+    repeatCount: 2, repeatIntervalS: 0.16,
+    gainMult: 0.62,
+    reverbMix: 0.2, reverbDecay: 1.1,
+  },
 
   // --- UI hover (soft tick, higher than click) ---
   {
