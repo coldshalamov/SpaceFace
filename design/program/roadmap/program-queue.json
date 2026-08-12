@@ -5679,6 +5679,33 @@
         "design/program/roadmap/receipts/PQ-048-03-miner-hauler-handoff-REPORT.md"
       ],
       "brief": "A full miner requests a hauler, transfers its cargo physically through authoritative custody, resumes work, and sends the same lot toward a real sink without duplicating custody across Continue."
+    },
+    {
+      "id": "PQ-048.09",
+      "parentId": "PQ-048",
+      "priority": 288,
+      "title": "Make the priority courier lane consequential",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/contactHail.js",
+        "src/data/laneContacts.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/traffic.js",
+        "test/contact-hail-contract.test.mjs",
+        "test/pq048-priority-courier-lane.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-priority-courier-lane.test.mjs test/contact-hail-contract.test.mjs",
+        "node --test test/npc-job-freight-arrival.test.mjs test/m2-world-records.test.mjs test/npc-jobs-runtime-wiring.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-09-priority-courier-lane-REPORT.md"
+      ],
+      "brief": "One stable saved courier runs a scheduled Tethys-to-Customs freight leg with readable sprint and recovery, normal/late/interrupted outcomes, one bounded escort opportunity, and an idempotent arrival or loss consequence without expanding the legacy roster."
     }
   ]
 }

@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-12
-baseCommit: c321fbcee2c673a7b57bd2d3e445a2e359ebcb51
+baseCommit: f36201be6e71a165ceb1a1a81f008765b95931e8
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
