@@ -277,6 +277,19 @@
       "integration": "live",
       "commit": "60fdde59",
       "verification": "focused_green"
+    },
+    {
+      "id": "ceres-rich-seam-opportunity",
+      "date": "2026-08-12",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Ceres rich-seam strike now creates one saved material opportunity consumed by player mining or the authored Ore Barge",
+      "fingerprint": "verb=extract,subject=ceres-rich-seam,sector=ceres,layer=world-event,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "9dc1cd40",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

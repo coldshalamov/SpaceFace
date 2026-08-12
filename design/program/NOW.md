@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-12
-baseCommit: 51a3602cf42825b93919f6bbedf57c881b07dcc7
+baseCommit: 9dc1cd408230113bb4c40c8c4a106b743f6a5dbb
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| INFERENCE 20 sequential production | /root | MUTATING | `design/program/inference-memory.json`, `design/program/NOW.md` | Record the completed field-anchor production unit, then select and implement the next eligible player-facing unit |
 
 ## Uncommitted work without a confirmed live thread
 
