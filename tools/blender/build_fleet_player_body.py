@@ -1052,7 +1052,10 @@ def build_one(ship_id: str, spec: dict, texture_dir: Path) -> dict:
         "renders": renders,
     }
     (out_dir / "evidence").mkdir(parents=True, exist_ok=True)
-    (out_dir / "evidence" / "build_report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    report_path = out_dir / "evidence" / "build_report.json"
+    with report_path.open("w", encoding="utf-8", newline="\n") as stream:
+        json.dump(report, stream, indent=2)
+        stream.write("\n")
     if any(entry["hullTriangles"] < 800 for entry in reports):
         raise RuntimeError(f"{ship_id} hull below 800 tris")
     return report
