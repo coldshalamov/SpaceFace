@@ -66,10 +66,10 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycles 16–23.** Gold bowl and crate tail are gone. Drive
+- **Hornet is on cycles 16–24.** Gold bowl and crate tail are gone. Drive
   sits in a real well with vanes you can see into. Tail tapers. Wings are
-  thick folded plate. Mid-body still origami. Reviews still REVISE. Hitch
-  still wins. Not wired.
+  thick folded plate. Large skins cover more of the mid-body; the needle
+  is still origami. Reviews still REVISE. Hitch still wins. Not wired.
 - **Every player ship and every NPC/traffic ship has a form-rebuild cycle
   (11+).** None beat Hitch. None wired. Live maps still load the old
   factory wholeships.
