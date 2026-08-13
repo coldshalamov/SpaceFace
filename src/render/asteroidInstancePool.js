@@ -89,6 +89,16 @@ export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
   return true;
 }
 
+export function isBorrowedAsteroidInstanceResource(object) {
+  const userData = object && object.userData;
+  return !!(userData && (
+    userData.borrowedGeometryMaterial
+    || userData.asteroidInstancePool
+    || userData.asteroidInstanceTypeId
+    || userData.asteroidInstanceAdopted
+  ));
+}
+
 export function releaseAsteroidInstancesForEntity(pool, entityId) {
   const owned = pool && pool.byEntity.get(entityId);
   if (!owned) return false;
@@ -157,6 +167,14 @@ export function syncAsteroidInstancePool(pool, options = {}) {
     let matrixDirty = false;
     const matrixArray = bucket.mesh.instanceMatrix.array;
     const dynamicBufferOwner = bucket.dynamicBufferOwner;
+    if (dynamicBufferOwner && dynamicBufferOwner.invalid) {
+      if (bucket.mesh) {
+        bucket.mesh.count = 0;
+        bucket.mesh.visible = false;
+      }
+      variantStats.submitted = 0;
+      continue;
+    }
     assertDynamicBufferOwnerWritable(dynamicBufferOwner);
     for (let index = 0; index < bucket.records.length; index++) {
       const record = bucket.records[index];
@@ -168,7 +186,9 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       leaf.updateWorldMatrix(true, false);
       if (viewFrustumReady || shadowFrustumReady) {
         const geometry = leaf.geometry;
+        if (!geometry || !geometry.attributes || !geometry.attributes.position) continue;
         if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+        if (!geometry.boundingSphere) continue;
         const localSphere = geometry.boundingSphere;
         _worldSphere.center.copy(localSphere.center).applyMatrix4(leaf.matrixWorld);
         _worldSphere.radius = localSphere.radius * leaf.matrixWorld.getMaxScaleOnAxis();

@@ -201,13 +201,27 @@ test('destroying a latched asteroid clears the HUD Massline mirror without NaN m
   h.rock.alive = false;
   h.state.entities.delete(h.rock.id);
   h.attachments.breakAttachment(attachmentId, 'entity_destroyed', h.rock.id);
-  h.system.update(DT, h.state);
 
   assert.equal(h.events.broke.length, 1);
   assert.notEqual(h.events.broke[0].reason, 'tether_cut');
-  assert.equal(h.state.player.tether.active, false);
+  assert.equal(h.state.player.tether.active, false, 'HUD mirror must drop LOCKED on the break, not the next tick');
+  h.system.update(DT, h.state);
   assert.equal(Number.isFinite(h.p.pos.x) && Number.isFinite(h.p.pos.z), true);
   assert.equal(Number.isFinite(h.p.vel.x) && Number.isFinite(h.p.vel.z), true);
+});
+
+test('a player cut does not emit MASSLINE BROKEN and clears LOCKED immediately', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  assert.equal(h.state.player.tether.active, true);
+  h.events.broke.length = 0;
+
+  h.state.input.actions.massline = { cut: true };
+  h.system.update(DT, h.state);
+  h.state.input.actions.massline = null;
+
+  assert.equal(h.events.broke.length, 0, 'ordinary player cut must not toast MASSLINE BROKEN');
+  assert.equal(h.state.player.tether.active, false);
 });
 
 test('HUD overlay still paints the broken Massline after a VFX throw', (t) => {
@@ -215,7 +229,7 @@ test('HUD overlay still paints the broken Massline after a VFX throw', (t) => {
   const h = buildLatchHarness();
   fireLatch(h);
   h.attachments.breakAttachment(activeAttachmentId(h), 'entity_destroyed', h.rock.id);
-  h.system.update(DT, h.state);
+  assert.equal(h.state.player.tether.active, false);
 
   let paintedActive = null;
   const accepted = runRenderUpdatePhase({

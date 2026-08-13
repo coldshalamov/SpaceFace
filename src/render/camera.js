@@ -728,7 +728,7 @@ export function createChaseCamera(state) {
   const _safeFocusScratch = { x: 0, z: 0, clamped: false, safeX: 0, safeZ: 0 };
 
   function snapToEntity(p) {
-    if (!p || !p.pos) return false;
+    if (!p || !p.pos || !Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return false;
     const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
     globalToFrame(p.pos, frameOrigin, _playerLocalScratch);
     const px = _playerLocalScratch.x;
@@ -821,7 +821,7 @@ export function createChaseCamera(state) {
       let bankForLean = 0;
       let playerSpeed = 0;
       let directorOwnsComposition = false;
-      if (p && p.pos) {
+      if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
           snapToEntity(p);
         }

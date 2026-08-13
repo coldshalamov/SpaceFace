@@ -8,6 +8,7 @@ import {
   clearAsteroidInstancePool,
   createAsteroidInstancePool,
   disposeAsteroidInstancePool,
+  isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
   releaseAsteroidInstancesForEntity,
   resolveAsteroidInstanceEntityId,
@@ -120,11 +121,44 @@ assert.equal(
   'destroyed asteroid leaves no ghost instance',
 );
 
+const releasedRoot = roots[hitId - 1];
+assert.equal(isBorrowedAsteroidInstanceResource(leaves[hitId - 1]), true);
+releasedRoot.traverse((child) => {
+  if (isBorrowedAsteroidInstanceResource(child)) return;
+  if (child.geometry && typeof child.geometry.dispose === 'function') child.geometry.dispose();
+  if (child.material && typeof child.material.dispose === 'function') child.material.dispose();
+});
+assert.equal(geometryDisposals, 0, 'destroying one rock must not dispose the pooled variant geometry');
+assert.equal(materialDisposals, 0, 'destroying one rock must not dispose the pooled variant material');
+assert.equal(
+  syncAsteroidInstancePool(pool, { camera: viewCamera, shadowCamera }).submitted,
+  shadowSubmitted - 1,
+  'remaining common rocks still submit after a destroyed source root is disposed',
+);
+
+const liveLeaf = leaves.find((leaf, index) => index !== hitId - 1 && leaf.userData.asteroidInstanceAdopted);
+assert.ok(liveLeaf, 'at least one remaining adopted rock');
+const savedGeometry = liveLeaf.geometry;
+liveLeaf.geometry = null;
+pool.dirty = true;
+assert.doesNotThrow(() => syncAsteroidInstancePool(pool, { camera: viewCamera, shadowCamera }));
+liveLeaf.geometry = savedGeometry;
+const liveBucket = pool.variants.find((bucket) => bucket.mesh && bucket.records.length);
+assert.ok(liveBucket, 'at least one remaining instance batch');
+const previousOwner = liveBucket.dynamicBufferOwner;
+liveBucket.dynamicBufferOwner = { invalid: true, diagnostics: { lastError: 'test-invalid' } };
+pool.dirty = true;
+assert.doesNotThrow(() => syncAsteroidInstancePool(pool, { camera: viewCamera, shadowCamera }));
+liveBucket.dynamicBufferOwner = previousOwner;
+pool.dirty = true;
+syncAsteroidInstancePool(pool, { camera: viewCamera, shadowCamera });
+
 const visualFactorySource = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
 const rendererSource = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const poolSource = readFileSync(new URL('../src/render/asteroidInstancePool.js', import.meta.url), 'utf8');
 assert.match(visualFactorySource, /asteroidInstanceBody = mesh/);
 assert.match(rendererSource, /syncAsteroidInstancePool\(this\._asteroidInstancePool,/);
+assert.match(rendererSource, /isBorrowedAsteroidInstanceResource/);
 for (const forbidden of ['renderScale', 'pixelRatioCap', 'particleQuality', 'bloomStrength']) {
   assert.equal(poolSource.includes(forbidden), false, `pool must not alter ${forbidden}`);
 }

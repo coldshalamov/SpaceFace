@@ -41,6 +41,7 @@ import {
 import {
   createAsteroidInstancePool,
   invalidateAsteroidInstancePool,
+  isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
   releaseAsteroidInstancesForEntity,
   resolveAsteroidInstanceEntityId,
@@ -2532,10 +2533,10 @@ export const render = {
     bus.on('world:residency', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
       this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
+      releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       const m = this._meshes.get(id);
       if (m) {
         this._unbindPresentationMesh(id, m);
-        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
         this._shadowReceiversDirty = true;
         this._publishAssetResidencyDiagnostics();
@@ -4922,12 +4923,16 @@ function disposeObject(obj) {
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
-    if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function') c.dispose();
-    if (!c.isBatchedMesh
-        && c.geometry
-        && !(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))) {
+    if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
+        && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
+    const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))
+      || isBorrowedAsteroidInstanceResource(c);
+    if (!c.isBatchedMesh && c.geometry && !shared) {
       c.geometry.dispose();
     }
-    if (c.material && !(c.userData && c.userData.sharedContactShadow)) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
+    if (c.material && !shared) {
+      const mm = Array.isArray(c.material) ? c.material : [c.material];
+      mm.forEach((m) => m.dispose());
+    }
   });
 }

@@ -106,6 +106,22 @@ export const tetherGameplay = {
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
     };
+    this._insideTetherUpdate = false;
+    const onAuthorityBroken = (payload) => {
+      // Cuts that happen inside update() already own their emit protocol. Authority breaks that
+      // land later in the same tick (target gone, physics cut) must drop the HUD mirror immediately
+      // so a freeze after MASSLINE BROKEN cannot keep painting TETHER LOCKED.
+      if (this._insideTetherUpdate) return;
+      if (payload && payload.reason === 'tether_cut') return;
+      const state = this.state;
+      const kernel = combatKernel(this);
+      const attachments = kernel && kernel.attachments;
+      if (!attachments || !state) return;
+      this._reconcileActive(attachments, state);
+      const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+      const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+      if (player) this._reconcileTwinBridle(attachments, state, player, now);
+    };
     this._acquisitionUnsubs = typeof this.bus?.on === 'function'
       ? [
           this.bus.on('save:loaded', resetAfterLoad),
@@ -113,12 +129,19 @@ export const tetherGameplay = {
           this.bus.on('game:started', resetForNewGame),
           this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
           this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
+          this.bus.on('tether:broken', onAuthorityBroken),
         ]
       : [];
     this._resetPhaseMirror();
   },
 
   update(dt, state) {
+    this._insideTetherUpdate = true;
+    try { this._updateTetherGameplay(dt, state); }
+    finally { this._insideTetherUpdate = false; }
+  },
+
+  _updateTetherGameplay(dt, state) {
     this._tickSlingshotState(state, dt);
     if (state.mode !== 'flight') { this._endTwinBridleForBoundary(state, 'flight_exit'); this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -881,6 +904,8 @@ export const tetherGameplay = {
     }
     this._lastStrainT = -Infinity;
     this._resetPhaseMirror();
+    this._mirror(state, null, 0);
+    this._clearAcquisitionPreview(state);
   },
 
   _reelActive(attachments, reelDelta, dt, state, player, target) {
