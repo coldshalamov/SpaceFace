@@ -1,15 +1,15 @@
 [
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
-    "assetId": "SF_ATLAS_PRODUCTION_V1",
-    "defId": "ship_atlas",
-    "shipId": "atlas",
-    "iteration": 1,
+    "assetId": "SF_DRIFTER_PRODUCTION_V1",
+    "defId": "ship_drifter",
+    "shipId": "drifter",
+    "iteration": 4,
     "lods": [
       {
         "lod": 0,
-        "triangles": 13716,
-        "hullTriangles": 1444,
+        "triangles": 34500,
+        "hullTriangles": 1756,
         "draws": 8,
         "materials": [
           "Material_Accent",
@@ -18,6 +18,509 @@
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/drifter_production_v1_lod0.glb",
+        "bytes": 1783608,
+        "sha256": "C898ED1131B50EA1F3C91D44D078BE1484227D1556BE457F093270D2636B41B2"
+      },
+      {
+        "lod": 1,
+        "triangles": 8276,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/drifter_production_v1_lod1.glb",
+        "bytes": 414004,
+        "sha256": "280A0D0D266369813659D9D0F2BB909D3116E36147B792D313D22C8BC1BB033F"
+      },
+      {
+        "lod": 2,
+        "triangles": 6548,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/drifter_production_v1_lod2.glb",
+        "bytes": 316848,
+        "sha256": "9BA72207830A5F7E86E678721551532EAE0695456885EA5AB5EB58435382A2D8"
+      }
+    ],
+    "renders": [
+      {
+        "view": "drifter_three_quarter",
+        "path": "evidence/iter04/drifter_three_quarter.png",
+        "bytes": 883552
+      },
+      {
+        "view": "drifter_starboard",
+        "path": "evidence/iter04/drifter_starboard.png",
+        "bytes": 918260
+      },
+      {
+        "view": "drifter_rear",
+        "path": "evidence/iter04/drifter_rear.png",
+        "bytes": 990483
+      },
+      {
+        "view": "drifter_grazing",
+        "path": "evidence/iter04/drifter_grazing.png",
+        "bytes": 948987
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_HORNET_PRODUCTION_V1",
+    "defId": "ship_hornet",
+    "shipId": "hornet",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 26832,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/hornet_production_v1_lod0.glb",
+        "bytes": 1388488,
+        "sha256": "B8755E074A0EFAF8CC4CD3441421BE2296125B0DA3EF27120A8A87323AD87BC2"
+      },
+      {
+        "lod": 1,
+        "triangles": 7568,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/hornet_production_v1_lod1.glb",
+        "bytes": 388004,
+        "sha256": "0637AD86E9B5B39D6B591AD36A59F1341DCFC163BE60CD901B63D641003C4998"
+      },
+      {
+        "lod": 2,
+        "triangles": 6704,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/hornet_production_v1_lod2.glb",
+        "bytes": 339428,
+        "sha256": "3AEAAC77C50C3CA2D04D7E3FD08ECAB157F4EC89428655178A35AF2E8B9DD1F6"
+      }
+    ],
+    "renders": [
+      {
+        "view": "hornet_three_quarter",
+        "path": "evidence/iter04/hornet_three_quarter.png",
+        "bytes": 856288
+      },
+      {
+        "view": "hornet_starboard",
+        "path": "evidence/iter04/hornet_starboard.png",
+        "bytes": 894806
+      },
+      {
+        "view": "hornet_rear",
+        "path": "evidence/iter04/hornet_rear.png",
+        "bytes": 1008143
+      },
+      {
+        "view": "hornet_grazing",
+        "path": "evidence/iter04/hornet_grazing.png",
+        "bytes": 897640
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_IRONBACK_PRODUCTION_V1",
+    "defId": "ship_ironback",
+    "shipId": "ironback",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 39156,
+        "hullTriangles": 1972,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod0.glb",
+        "bytes": 2042524,
+        "sha256": "9C985719A90A9A08068AFCD9F3A1680EF060A0BFC5E0BE0DB63FB1416C0245BF"
+      },
+      {
+        "lod": 1,
+        "triangles": 9476,
+        "hullTriangles": 1972,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod1.glb",
+        "bytes": 482720,
+        "sha256": "B537122BC4BFEE5F88378A9AD0B3120DC97207D9CD5FEEAB68C9E77F45FB7179"
+      },
+      {
+        "lod": 2,
+        "triangles": 7748,
+        "hullTriangles": 1972,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod2.glb",
+        "bytes": 383408,
+        "sha256": "AC40D0B94222D045362C750C5F5671D6359E6473608A8F64622009BE182FC342"
+      }
+    ],
+    "renders": [
+      {
+        "view": "ironback_three_quarter",
+        "path": "evidence/iter04/ironback_three_quarter.png",
+        "bytes": 942315
+      },
+      {
+        "view": "ironback_starboard",
+        "path": "evidence/iter04/ironback_starboard.png",
+        "bytes": 958937
+      },
+      {
+        "view": "ironback_rear",
+        "path": "evidence/iter04/ironback_rear.png",
+        "bytes": 1043006
+      },
+      {
+        "view": "ironback_grazing",
+        "path": "evidence/iter04/ironback_grazing.png",
+        "bytes": 983926
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_BASTION_PRODUCTION_V1",
+    "defId": "ship_bastion",
+    "shipId": "bastion",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 34520,
+        "hullTriangles": 1540,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod0.glb",
+        "bytes": 1792680,
+        "sha256": "F16702392BDF81EA3E5E69D7DC3F3A148DDD18E241F9992AC1D2657C2EC61547"
+      },
+      {
+        "lod": 1,
+        "triangles": 8296,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod1.glb",
+        "bytes": 423104,
+        "sha256": "BBCE7097DEA1A6953FBB9393BD43B2A3EC94789C9A889FC85283E0F0675136FC"
+      },
+      {
+        "lod": 2,
+        "triangles": 6568,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod2.glb",
+        "bytes": 325948,
+        "sha256": "F28C7EA03B191E177D236D30874053363A6B55117582D3EAC70266E8675C8E33"
+      }
+    ],
+    "renders": [
+      {
+        "view": "bastion_three_quarter",
+        "path": "evidence/iter04/bastion_three_quarter.png",
+        "bytes": 899495
+      },
+      {
+        "view": "bastion_starboard",
+        "path": "evidence/iter04/bastion_starboard.png",
+        "bytes": 918050
+      },
+      {
+        "view": "bastion_rear",
+        "path": "evidence/iter04/bastion_rear.png",
+        "bytes": 979241
+      },
+      {
+        "view": "bastion_grazing",
+        "path": "evidence/iter04/bastion_grazing.png",
+        "bytes": 965669
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ATLAS_PRODUCTION_V1",
+    "defId": "ship_atlas",
+    "shipId": "atlas",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 56220,
+        "hullTriangles": 1540,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster",
           "Material_Warning"
         ],
@@ -35,20 +538,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/atlas_production_v1_lod0.glb",
-        "bytes": 745872,
-        "sha256": "14A0C2EEA3530E1425B8B1FB093DF4C7927E72696E3637EC63FA1E319EF9384E"
+        "bytes": 2928408,
+        "sha256": "D8ED98D45D788693F7943D95C70BC7E065CFCE1E2AFA4516429610242D499497"
       },
       {
         "lod": 1,
-        "triangles": 5600,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 13484,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -65,20 +569,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/atlas_production_v1_lod1.glb",
-        "bytes": 288056,
-        "sha256": "0228F95F0400C03CCED7F4539B9A6DC3E04C908E2AF9346349DD6B7B3736AD89"
+        "bytes": 668956,
+        "sha256": "2AD798B8F252FC601C9ECA6E1F43657F9322443AA46BED01CBA96550B6E70380"
       },
       {
         "lod": 2,
-        "triangles": 5600,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 10028,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -95,30 +600,30 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/atlas_production_v1_lod2.glb",
-        "bytes": 288056,
-        "sha256": "ABD22BEC7594EAE60D4A254F936481378E49554D09C97A299897D80D3B59E40A"
+        "bytes": 474652,
+        "sha256": "68CFC18A1FD4A018C4E814E0747580F857F9E41588E26B30D232F5F7CABE8163"
       }
     ],
     "renders": [
       {
         "view": "atlas_three_quarter",
-        "path": "evidence/iter01/atlas_three_quarter.png",
-        "bytes": 865147
+        "path": "evidence/iter04/atlas_three_quarter.png",
+        "bytes": 974036
       },
       {
         "view": "atlas_starboard",
-        "path": "evidence/iter01/atlas_starboard.png",
-        "bytes": 889495
+        "path": "evidence/iter04/atlas_starboard.png",
+        "bytes": 998409
       },
       {
         "view": "atlas_rear",
-        "path": "evidence/iter01/atlas_rear.png",
-        "bytes": 959798
+        "path": "evidence/iter04/atlas_rear.png",
+        "bytes": 1090853
       },
       {
         "view": "atlas_grazing",
-        "path": "evidence/iter01/atlas_grazing.png",
-        "bytes": 967265
+        "path": "evidence/iter04/atlas_grazing.png",
+        "bytes": 1089843
       }
     ]
   },
@@ -127,13 +632,13 @@
     "assetId": "SF_RANGER_PRODUCTION_V1",
     "defId": "ship_ranger",
     "shipId": "ranger",
-    "iteration": 1,
+    "iteration": 4,
     "lods": [
       {
         "lod": 0,
-        "triangles": 6596,
-        "hullTriangles": 1660,
-        "draws": 7,
+        "triangles": 34296,
+        "hullTriangles": 1756,
+        "draws": 8,
         "materials": [
           "Material_Accent",
           "Material_Armor",
@@ -141,6 +646,7 @@
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -157,20 +663,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ranger_production_v1_lod0.glb",
-        "bytes": 362204,
-        "sha256": "B9291F17D313D2688B5083F3181BB7AC60018D979576917152EE3EB9796CC989"
+        "bytes": 1782380,
+        "sha256": "5CAE5660304550832BA00BAE7BC2E556835C127A9826ECF074EDA1AB222F145C"
       },
       {
         "lod": 1,
-        "triangles": 3664,
-        "hullTriangles": 1660,
-        "draws": 6,
+        "triangles": 8072,
+        "hullTriangles": 1756,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -187,20 +694,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ranger_production_v1_lod1.glb",
-        "bytes": 194784,
-        "sha256": "FFD9C7E010405125C1B8CC2F0DE286D418875116BD26DF55F7B85531E16F2715"
+        "bytes": 410084,
+        "sha256": "416DE1370220A37922760CFA912AFF3D2F699D1CB97B32609BC5980824F651D6"
       },
       {
         "lod": 2,
-        "triangles": 3664,
-        "hullTriangles": 1660,
-        "draws": 6,
+        "triangles": 6344,
+        "hullTriangles": 1756,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -217,152 +725,30 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ranger_production_v1_lod2.glb",
-        "bytes": 194784,
-        "sha256": "E0D10524227BBEDC318C5F1FA76749189F28D1DBCC583974BD5C10B88C51F05E"
+        "bytes": 312932,
+        "sha256": "DC73C15D331BB61EEE40F54E3CB4BFA34E447EA294F7F6C993AB1B61F4165CAF"
       }
     ],
     "renders": [
       {
         "view": "ranger_three_quarter",
-        "path": "evidence/iter01/ranger_three_quarter.png",
-        "bytes": 766004
+        "path": "evidence/iter04/ranger_three_quarter.png",
+        "bytes": 871226
       },
       {
         "view": "ranger_starboard",
-        "path": "evidence/iter01/ranger_starboard.png",
-        "bytes": 783231
+        "path": "evidence/iter04/ranger_starboard.png",
+        "bytes": 889839
       },
       {
         "view": "ranger_rear",
-        "path": "evidence/iter01/ranger_rear.png",
-        "bytes": 846150
+        "path": "evidence/iter04/ranger_rear.png",
+        "bytes": 971776
       },
       {
         "view": "ranger_grazing",
-        "path": "evidence/iter01/ranger_grazing.png",
-        "bytes": 816761
-      }
-    ]
-  },
-  {
-    "schema": "spaceface.fleetPlayerBody.build.v1",
-    "assetId": "SF_BASTION_PRODUCTION_V1",
-    "defId": "ship_bastion",
-    "shipId": "bastion",
-    "iteration": 1,
-    "lods": [
-      {
-        "lod": 0,
-        "triangles": 6820,
-        "hullTriangles": 1444,
-        "draws": 7,
-        "materials": [
-          "Material_Accent",
-          "Material_Armor",
-          "Material_Canopy",
-          "Material_Ceramic",
-          "Material_Hull",
-          "Material_Mechanical",
-          "Material_Thruster"
-        ],
-        "sockets": [
-          "SOCKET_Camera_Focus",
-          "SOCKET_Cargo_Ventral",
-          "SOCKET_Engine_Main",
-          "SOCKET_Mining_Front",
-          "SOCKET_RCS_Port",
-          "SOCKET_RCS_Starboard",
-          "SOCKET_Trail_Main",
-          "SOCKET_Trail_Port",
-          "SOCKET_Trail_Starboard",
-          "SOCKET_Utility_Dorsal",
-          "SOCKET_Weapon_Front"
-        ],
-        "path": "source/wholeships/bastion_production_v1_lod0.glb",
-        "bytes": 375156,
-        "sha256": "C8D089D64A974B4049753B05452149E2C45AD4FA1D6CCC4E15EDC34297FEE5B8"
-      },
-      {
-        "lod": 1,
-        "triangles": 3888,
-        "hullTriangles": 1444,
-        "draws": 6,
-        "materials": [
-          "Material_Armor",
-          "Material_Canopy",
-          "Material_Ceramic",
-          "Material_Hull",
-          "Material_Mechanical",
-          "Material_Thruster"
-        ],
-        "sockets": [
-          "SOCKET_Camera_Focus",
-          "SOCKET_Cargo_Ventral",
-          "SOCKET_Engine_Main",
-          "SOCKET_Mining_Front",
-          "SOCKET_RCS_Port",
-          "SOCKET_RCS_Starboard",
-          "SOCKET_Trail_Main",
-          "SOCKET_Trail_Port",
-          "SOCKET_Trail_Starboard",
-          "SOCKET_Utility_Dorsal",
-          "SOCKET_Weapon_Front"
-        ],
-        "path": "source/wholeships/bastion_production_v1_lod1.glb",
-        "bytes": 207740,
-        "sha256": "45DF54DE660EDE06C6C963AF21A979688FD89AF4B616D906EA313642E37E05DE"
-      },
-      {
-        "lod": 2,
-        "triangles": 3888,
-        "hullTriangles": 1444,
-        "draws": 6,
-        "materials": [
-          "Material_Armor",
-          "Material_Canopy",
-          "Material_Ceramic",
-          "Material_Hull",
-          "Material_Mechanical",
-          "Material_Thruster"
-        ],
-        "sockets": [
-          "SOCKET_Camera_Focus",
-          "SOCKET_Cargo_Ventral",
-          "SOCKET_Engine_Main",
-          "SOCKET_Mining_Front",
-          "SOCKET_RCS_Port",
-          "SOCKET_RCS_Starboard",
-          "SOCKET_Trail_Main",
-          "SOCKET_Trail_Port",
-          "SOCKET_Trail_Starboard",
-          "SOCKET_Utility_Dorsal",
-          "SOCKET_Weapon_Front"
-        ],
-        "path": "source/wholeships/bastion_production_v1_lod2.glb",
-        "bytes": 207740,
-        "sha256": "8920217433E841C501B7CF442E1DFE8ED5828696EE0D9C953C07A520EBF1B255"
-      }
-    ],
-    "renders": [
-      {
-        "view": "bastion_three_quarter",
-        "path": "evidence/iter01/bastion_three_quarter.png",
-        "bytes": 780978
-      },
-      {
-        "view": "bastion_starboard",
-        "path": "evidence/iter01/bastion_starboard.png",
-        "bytes": 808941
-      },
-      {
-        "view": "bastion_rear",
-        "path": "evidence/iter01/bastion_rear.png",
-        "bytes": 866878
-      },
-      {
-        "view": "bastion_grazing",
-        "path": "evidence/iter01/bastion_grazing.png",
-        "bytes": 842894
+        "path": "evidence/iter04/ranger_grazing.png",
+        "bytes": 930363
       }
     ]
   },
@@ -371,13 +757,13 @@
     "assetId": "SF_WARDEN_PRODUCTION_V1",
     "defId": "ship_warden",
     "shipId": "warden",
-    "iteration": 1,
+    "iteration": 4,
     "lods": [
       {
         "lod": 0,
-        "triangles": 8656,
-        "hullTriangles": 1444,
-        "draws": 7,
+        "triangles": 43920,
+        "hullTriangles": 1540,
+        "draws": 8,
         "materials": [
           "Material_Accent",
           "Material_Armor",
@@ -385,6 +771,7 @@
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -401,20 +788,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/warden_production_v1_lod0.glb",
-        "bytes": 470404,
-        "sha256": "3A8BDD7CB59D3F1ABAB8D3A297A83C9868147B337BDACDBBCF41F9B4C27509D7"
+        "bytes": 2277888,
+        "sha256": "DBAE4BFEC0CC79B025680674BF6536E714605DFC6F080439A1EC924A7BBE8F54"
       },
       {
         "lod": 1,
-        "triangles": 4428,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 10736,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -431,20 +819,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/warden_production_v1_lod1.glb",
-        "bytes": 230716,
-        "sha256": "0859305309EA1B56711A7246EE04E54408AD5D5D01D61C5B6158B9ADF30931A0"
+        "bytes": 537924,
+        "sha256": "0BCF66FD78FCD235E74AC9F139B61ADD64B524255B96A8CC76178A2C43861B3B"
       },
       {
         "lod": 2,
-        "triangles": 4428,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 8144,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -461,30 +850,30 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/warden_production_v1_lod2.glb",
-        "bytes": 230716,
-        "sha256": "982372B14D7361778C81635B5F3C4AE0795AA17E4359CDAE5406C6C860783D44"
+        "bytes": 392196,
+        "sha256": "AF77667B536C03A0C99706F8010E65A00E834F5D5F51742447434E3959EEF677"
       }
     ],
     "renders": [
       {
         "view": "warden_three_quarter",
-        "path": "evidence/iter01/warden_three_quarter.png",
-        "bytes": 798804
+        "path": "evidence/iter04/warden_three_quarter.png",
+        "bytes": 916939
       },
       {
         "view": "warden_starboard",
-        "path": "evidence/iter01/warden_starboard.png",
-        "bytes": 820557
+        "path": "evidence/iter04/warden_starboard.png",
+        "bytes": 930155
       },
       {
         "view": "warden_rear",
-        "path": "evidence/iter01/warden_rear.png",
-        "bytes": 891851
+        "path": "evidence/iter04/warden_rear.png",
+        "bytes": 1005362
       },
       {
         "view": "warden_grazing",
-        "path": "evidence/iter01/warden_grazing.png",
-        "bytes": 843982
+        "path": "evidence/iter04/warden_grazing.png",
+        "bytes": 968835
       }
     ]
   },
@@ -493,13 +882,13 @@
     "assetId": "SF_COLOSSUS_PRODUCTION_V1",
     "defId": "ship_colossus",
     "shipId": "colossus",
-    "iteration": 1,
+    "iteration": 4,
     "lods": [
       {
         "lod": 0,
-        "triangles": 10708,
-        "hullTriangles": 1444,
-        "draws": 7,
+        "triangles": 53536,
+        "hullTriangles": 1540,
+        "draws": 8,
         "materials": [
           "Material_Accent",
           "Material_Armor",
@@ -507,6 +896,7 @@
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -523,20 +913,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/colossus_production_v1_lod0.glb",
-        "bytes": 578480,
-        "sha256": "14F2C799DCD4BFB77A057071614AC330D254848ECE319D8BF192662B2C8D5E30"
+        "bytes": 2774252,
+        "sha256": "04856BD9FDE9DE5457E5BF459C8D087BEDABA43881DAAFAF934BBB92ACB03518"
       },
       {
         "lod": 1,
-        "triangles": 5184,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 13392,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -553,20 +944,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/colossus_production_v1_lod1.glb",
-        "bytes": 266496,
-        "sha256": "FC5E2F85D6FB372683FEC38F837E1AA7EBDF45A839D434198DACC8886825A606"
+        "bytes": 665628,
+        "sha256": "DEC13B0AE48FC017E3376FB980A246F8FD0A4FCD957C507D6E9479E9284C3D51"
       },
       {
         "lod": 2,
-        "triangles": 5184,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 9936,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -583,30 +975,30 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/colossus_production_v1_lod2.glb",
-        "bytes": 266496,
-        "sha256": "423B04824AB1623E83F276D86655BFFE953D5BC2EB8A2353D1ACA5137BF4EBDD"
+        "bytes": 471324,
+        "sha256": "88DE175F1D9046CBC3DD3C3D203F7F96844E5979B36460A597DDBA9818C11530"
       }
     ],
     "renders": [
       {
         "view": "colossus_three_quarter",
-        "path": "evidence/iter01/colossus_three_quarter.png",
-        "bytes": 827994
+        "path": "evidence/iter04/colossus_three_quarter.png",
+        "bytes": 928439
       },
       {
         "view": "colossus_starboard",
-        "path": "evidence/iter01/colossus_starboard.png",
-        "bytes": 843470
+        "path": "evidence/iter04/colossus_starboard.png",
+        "bytes": 933211
       },
       {
         "view": "colossus_rear",
-        "path": "evidence/iter01/colossus_rear.png",
-        "bytes": 908237
+        "path": "evidence/iter04/colossus_rear.png",
+        "bytes": 985864
       },
       {
         "view": "colossus_grazing",
-        "path": "evidence/iter01/colossus_grazing.png",
-        "bytes": 874573
+        "path": "evidence/iter04/colossus_grazing.png",
+        "bytes": 977320
       }
     ]
   },
@@ -615,13 +1007,13 @@
     "assetId": "SF_LEVIATHAN_PRODUCTION_V1",
     "defId": "ship_leviathan",
     "shipId": "leviathan",
-    "iteration": 1,
+    "iteration": 4,
     "lods": [
       {
         "lod": 0,
-        "triangles": 10708,
-        "hullTriangles": 1444,
-        "draws": 7,
+        "triangles": 53536,
+        "hullTriangles": 1540,
+        "draws": 8,
         "materials": [
           "Material_Accent",
           "Material_Armor",
@@ -629,6 +1021,7 @@
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -645,20 +1038,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/leviathan_production_v1_lod0.glb",
-        "bytes": 577840,
-        "sha256": "C7D395DDE9ED3D246C77E0FEBDF491696A0FD5FBF4DEB8BE0A565A55490ED46C"
+        "bytes": 2773832,
+        "sha256": "6BD202F50F2D40876708CF442CB75C0F142102E0E2A7625767A9E469BCF6FD7A"
       },
       {
         "lod": 1,
-        "triangles": 5184,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 13392,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -675,20 +1069,21 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/leviathan_production_v1_lod1.glb",
-        "bytes": 265852,
-        "sha256": "D43AFBC478FD358E2DDCAFF51A863BE553F02D278CA518FA1E631588FAB00F8B"
+        "bytes": 665016,
+        "sha256": "687201E98CFE5511D5E0C5B2A49DA3800E70B7BB87C94A7AA78C21FAC46F791D"
       },
       {
         "lod": 2,
-        "triangles": 5184,
-        "hullTriangles": 1444,
-        "draws": 6,
+        "triangles": 9936,
+        "hullTriangles": 1540,
+        "draws": 7,
         "materials": [
           "Material_Armor",
           "Material_Canopy",
           "Material_Ceramic",
           "Material_Hull",
           "Material_Mechanical",
+          "Material_Radiator",
           "Material_Thruster"
         ],
         "sockets": [
@@ -705,30 +1100,1284 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/leviathan_production_v1_lod2.glb",
-        "bytes": 265852,
-        "sha256": "9E5C9B186FFCEA3FF12610C287D2AD9AABFCF5DD143334AAF8F0DB18CB10C694"
+        "bytes": 470708,
+        "sha256": "57D905289D17D208127B366E968553F85C5DEACF8DFC9268F656BF53B5A079A8"
       }
     ],
     "renders": [
       {
         "view": "leviathan_three_quarter",
-        "path": "evidence/iter01/leviathan_three_quarter.png",
-        "bytes": 840810
+        "path": "evidence/iter04/leviathan_three_quarter.png",
+        "bytes": 933232
       },
       {
         "view": "leviathan_starboard",
-        "path": "evidence/iter01/leviathan_starboard.png",
-        "bytes": 845090
+        "path": "evidence/iter04/leviathan_starboard.png",
+        "bytes": 925025
       },
       {
         "view": "leviathan_rear",
-        "path": "evidence/iter01/leviathan_rear.png",
-        "bytes": 914144
+        "path": "evidence/iter04/leviathan_rear.png",
+        "bytes": 969938
       },
       {
         "view": "leviathan_grazing",
-        "path": "evidence/iter01/leviathan_grazing.png",
-        "bytes": 874952
+        "path": "evidence/iter04/leviathan_grazing.png",
+        "bytes": 976955
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ASHLINE_DART_V1",
+    "defId": "wasp_swarmer",
+    "shipId": "ashline_dart",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 26592,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_dart_production_v1_lod0.glb",
+        "bytes": 1375672,
+        "sha256": "A036641C7930B47087FD8131F632A1A1EEF711F6E263A1258953785FA7CED256"
+      },
+      {
+        "lod": 1,
+        "triangles": 7328,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_dart_production_v1_lod1.glb",
+        "bytes": 376724,
+        "sha256": "25244FE4BF7A241C8E55C2781CDF956F5D559E7C51F26C702C9A89F04E79D7F6"
+      },
+      {
+        "lod": 2,
+        "triangles": 6464,
+        "hullTriangles": 2052,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_dart_production_v1_lod2.glb",
+        "bytes": 328148,
+        "sha256": "66F5518C823AAA9A1FBB7AEA8013F9A29DBE01FF72F12BDEACD48FEC63A46D54"
+      }
+    ],
+    "renders": [
+      {
+        "view": "ashline_dart_three_quarter",
+        "path": "evidence/iter04/ashline_dart_three_quarter.png",
+        "bytes": 846554
+      },
+      {
+        "view": "ashline_dart_starboard",
+        "path": "evidence/iter04/ashline_dart_starboard.png",
+        "bytes": 901964
+      },
+      {
+        "view": "ashline_dart_rear",
+        "path": "evidence/iter04/ashline_dart_rear.png",
+        "bytes": 1027576
+      },
+      {
+        "view": "ashline_dart_grazing",
+        "path": "evidence/iter04/ashline_dart_grazing.png",
+        "bytes": 902520
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ASHLINE_LODE_V1",
+    "defId": "bruiser_brawler",
+    "shipId": "ashline_lode",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 34072,
+        "hullTriangles": 1540,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_lode_production_v1_lod0.glb",
+        "bytes": 1766200,
+        "sha256": "2B95CBAEACC0FEFDE196F7AD1900D295A88EA052FAEF3A16D09614B8A7461C06"
+      },
+      {
+        "lod": 1,
+        "triangles": 7848,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_lode_production_v1_lod1.glb",
+        "bytes": 396720,
+        "sha256": "975A249C8847BA1698F7A51CD0A3733A2E241279B817ED705A353D01115C1FED"
+      },
+      {
+        "lod": 2,
+        "triangles": 6120,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_lode_production_v1_lod2.glb",
+        "bytes": 299564,
+        "sha256": "8F8623C339800E1874CF7F8242D3C26A46D537494F81A26DCB255CFCD1A46444"
+      }
+    ],
+    "renders": [
+      {
+        "view": "ashline_lode_three_quarter",
+        "path": "evidence/iter04/ashline_lode_three_quarter.png",
+        "bytes": 910027
+      },
+      {
+        "view": "ashline_lode_starboard",
+        "path": "evidence/iter04/ashline_lode_starboard.png",
+        "bytes": 929545
+      },
+      {
+        "view": "ashline_lode_rear",
+        "path": "evidence/iter04/ashline_lode_rear.png",
+        "bytes": 1024926
+      },
+      {
+        "view": "ashline_lode_grazing",
+        "path": "evidence/iter04/ashline_lode_grazing.png",
+        "bytes": 970420
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ASHLINE_RIG_V1",
+    "defId": "reaver_pirate",
+    "shipId": "ashline_rig",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 33964,
+        "hullTriangles": 1756,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_rig_production_v1_lod0.glb",
+        "bytes": 1765440,
+        "sha256": "17037913C6233119AFA742A068BAA7C3D23B7E423422AAC23FCB99000101111E"
+      },
+      {
+        "lod": 1,
+        "triangles": 7740,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_rig_production_v1_lod1.glb",
+        "bytes": 391028,
+        "sha256": "4F5DA6EE0B0A5B70C4B18E9242F5734C0A0FE773F92AAD8B8F6A64C662683663"
+      },
+      {
+        "lod": 2,
+        "triangles": 6012,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ashline_rig_production_v1_lod2.glb",
+        "bytes": 293868,
+        "sha256": "64D5FB2F7A8554CA7F69FC620489A9F7EC12304060F679584B3F7154F91A179C"
+      }
+    ],
+    "renders": [
+      {
+        "view": "ashline_rig_three_quarter",
+        "path": "evidence/iter04/ashline_rig_three_quarter.png",
+        "bytes": 893182
+      },
+      {
+        "view": "ashline_rig_starboard",
+        "path": "evidence/iter04/ashline_rig_starboard.png",
+        "bytes": 919508
+      },
+      {
+        "view": "ashline_rig_rear",
+        "path": "evidence/iter04/ashline_rig_rear.png",
+        "bytes": 1027391
+      },
+      {
+        "view": "ashline_rig_grazing",
+        "path": "evidence/iter04/ashline_rig_grazing.png",
+        "bytes": 939718
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_HELIOS_LARK_V1",
+    "defId": "courier",
+    "shipId": "helios_lark",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 24488,
+        "hullTriangles": 1756,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_lark_production_v1_lod0.glb",
+        "bytes": 1272792,
+        "sha256": "14F2D745882E60DAE5700C6B2A94B1594BA08EB6E886B4167518D04CD5781ECE"
+      },
+      {
+        "lod": 1,
+        "triangles": 5224,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_lark_production_v1_lod1.glb",
+        "bytes": 270376,
+        "sha256": "85C268AF19CEE3C2871F4888F2BBB667E65C47A91AD724F2A284F7568B8B490A"
+      },
+      {
+        "lod": 2,
+        "triangles": 4360,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_lark_production_v1_lod2.glb",
+        "bytes": 221792,
+        "sha256": "C47B63F9DEA5241DCD3D3A97D48624FB69DF625361A1620388959009D3A8F3AC"
+      }
+    ],
+    "renders": [
+      {
+        "view": "helios_lark_three_quarter",
+        "path": "evidence/iter04/helios_lark_three_quarter.png",
+        "bytes": 817187
+      },
+      {
+        "view": "helios_lark_starboard",
+        "path": "evidence/iter04/helios_lark_starboard.png",
+        "bytes": 861061
+      },
+      {
+        "view": "helios_lark_rear",
+        "path": "evidence/iter04/helios_lark_rear.png",
+        "bytes": 946313
+      },
+      {
+        "view": "helios_lark_grazing",
+        "path": "evidence/iter04/helios_lark_grazing.png",
+        "bytes": 910563
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_HELIOS_CRADLE_V1",
+    "defId": "miner",
+    "shipId": "helios_cradle",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 36452,
+        "hullTriangles": 1756,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_cradle_production_v1_lod0.glb",
+        "bytes": 1898820,
+        "sha256": "39DF03AA250306F949A351FCCEA66A905CB0ECD6CC3834EAD626E0BC1B1F5D21"
+      },
+      {
+        "lod": 1,
+        "triangles": 8500,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_cradle_production_v1_lod1.glb",
+        "bytes": 431880,
+        "sha256": "E2903DB262EBC40B5C39774513E00E2DD90ACEBD211650F720F3B3FB3F96B03B"
+      },
+      {
+        "lod": 2,
+        "triangles": 6772,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_cradle_production_v1_lod2.glb",
+        "bytes": 332616,
+        "sha256": "221E3E467DAE436D9B33981BDB0D94C36CAFA55740DE0610164595669BFD22C5"
+      }
+    ],
+    "renders": [
+      {
+        "view": "helios_cradle_three_quarter",
+        "path": "evidence/iter04/helios_cradle_three_quarter.png",
+        "bytes": 879530
+      },
+      {
+        "view": "helios_cradle_starboard",
+        "path": "evidence/iter04/helios_cradle_starboard.png",
+        "bytes": 911744
+      },
+      {
+        "view": "helios_cradle_rear",
+        "path": "evidence/iter04/helios_cradle_rear.png",
+        "bytes": 1000603
+      },
+      {
+        "view": "helios_cradle_grazing",
+        "path": "evidence/iter04/helios_cradle_grazing.png",
+        "bytes": 935906
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_HELIOS_SPAN_V1",
+    "defId": "hauler",
+    "shipId": "helios_span",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 36016,
+        "hullTriangles": 1540,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_span_production_v1_lod0.glb",
+        "bytes": 1878640,
+        "sha256": "57CE1E2CDE40B8C5CF344A0779239663BA5D91D3CDB35D6F71B788A5E3C83C50"
+      },
+      {
+        "lod": 1,
+        "triangles": 8064,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_span_production_v1_lod1.glb",
+        "bytes": 410664,
+        "sha256": "F78EB45770D568FB243CEE831318F8D5D1998E1F73A1796209E0D8206AC84DA3"
+      },
+      {
+        "lod": 2,
+        "triangles": 6336,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/helios_span_production_v1_lod2.glb",
+        "bytes": 311440,
+        "sha256": "E064DC3831B45737CC81E88D954BE2E337CA9E7599C1D4138C70D3977CAC8858"
+      }
+    ],
+    "renders": [
+      {
+        "view": "helios_span_three_quarter",
+        "path": "evidence/iter04/helios_span_three_quarter.png",
+        "bytes": 905631
+      },
+      {
+        "view": "helios_span_starboard",
+        "path": "evidence/iter04/helios_span_starboard.png",
+        "bytes": 937775
+      },
+      {
+        "view": "helios_span_rear",
+        "path": "evidence/iter04/helios_span_rear.png",
+        "bytes": 1043900
+      },
+      {
+        "view": "helios_span_grazing",
+        "path": "evidence/iter04/helios_span_grazing.png",
+        "bytes": 1021208
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ORE_BARGE_V1",
+    "defId": "ore_carrier",
+    "shipId": "ore_barge",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 35044,
+        "hullTriangles": 1540,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ore_barge_production_v1_lod0.glb",
+        "bytes": 1824288,
+        "sha256": "FDD1D5355BD4AA4F9AF9DB932BB1163F740F0C19088ADB7A27708D3DFCAE4882"
+      },
+      {
+        "lod": 1,
+        "triangles": 7956,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ore_barge_production_v1_lod1.glb",
+        "bytes": 404560,
+        "sha256": "C8C8C46EC56FB75B451B720FA79EB5813E4631F4B5A8E318F072B6DD90A05FD5"
+      },
+      {
+        "lod": 2,
+        "triangles": 6228,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ore_barge_production_v1_lod2.glb",
+        "bytes": 305288,
+        "sha256": "9EADACB3A1CD6B3468ED44B99B163298E3012B0C79F0D873FB386B6661525F00"
+      }
+    ],
+    "renders": [
+      {
+        "view": "ore_barge_three_quarter",
+        "path": "evidence/iter04/ore_barge_three_quarter.png",
+        "bytes": 906597
+      },
+      {
+        "view": "ore_barge_starboard",
+        "path": "evidence/iter04/ore_barge_starboard.png",
+        "bytes": 932349
+      },
+      {
+        "view": "ore_barge_rear",
+        "path": "evidence/iter04/ore_barge_rear.png",
+        "bytes": 1012455
+      },
+      {
+        "view": "ore_barge_grazing",
+        "path": "evidence/iter04/ore_barge_grazing.png",
+        "bytes": 978149
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_REPAIR_TENDER_V1",
+    "defId": "tender",
+    "shipId": "repair_tender",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 33464,
+        "hullTriangles": 1540,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/repair_tender_production_v1_lod0.glb",
+        "bytes": 1730784,
+        "sha256": "1DC94156801EAEB724D85A1ABC97DAD3919719FB7E957885273167E60437E0E3"
+      },
+      {
+        "lod": 1,
+        "triangles": 7240,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/repair_tender_production_v1_lod1.glb",
+        "bytes": 363312,
+        "sha256": "D16EC14EA5561F14BBD77F0B1C1C0C48887A7D01AFE9CE6739DE25E827F933E7"
+      },
+      {
+        "lod": 2,
+        "triangles": 5512,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/repair_tender_production_v1_lod2.glb",
+        "bytes": 265384,
+        "sha256": "868786B767CF36AA3501D981B9FE6E7A0745C746414E0EB26EF7AD5A5D22184B"
+      }
+    ],
+    "renders": [
+      {
+        "view": "repair_tender_three_quarter",
+        "path": "evidence/iter04/repair_tender_three_quarter.png",
+        "bytes": 876020
+      },
+      {
+        "view": "repair_tender_starboard",
+        "path": "evidence/iter04/repair_tender_starboard.png",
+        "bytes": 903934
+      },
+      {
+        "view": "repair_tender_rear",
+        "path": "evidence/iter04/repair_tender_rear.png",
+        "bytes": 1002186
+      },
+      {
+        "view": "repair_tender_grazing",
+        "path": "evidence/iter04/repair_tender_grazing.png",
+        "bytes": 919463
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_SALVAGE_CUTTER_V1",
+    "defId": "salvor",
+    "shipId": "salvage_cutter",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 36344,
+        "hullTriangles": 1756,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/salvage_cutter_production_v1_lod0.glb",
+        "bytes": 1894328,
+        "sha256": "F6C3A20CB58EEF021A3B46E9D040B5B0EE8715FE83554E8AFB696B524D1B810C"
+      },
+      {
+        "lod": 1,
+        "triangles": 8392,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/salvage_cutter_production_v1_lod1.glb",
+        "bytes": 426716,
+        "sha256": "B494C70C51FBDB3F26F32213822E55430560E9D174940D4C4DDA32700CE2EC20"
+      },
+      {
+        "lod": 2,
+        "triangles": 6664,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/salvage_cutter_production_v1_lod2.glb",
+        "bytes": 327500,
+        "sha256": "B81932DFADF53D12BEF51B0DC02F19F8AE099AD9E1612C394D2B3E83CA2B4C49"
+      }
+    ],
+    "renders": [
+      {
+        "view": "salvage_cutter_three_quarter",
+        "path": "evidence/iter04/salvage_cutter_three_quarter.png",
+        "bytes": 878187
+      },
+      {
+        "view": "salvage_cutter_starboard",
+        "path": "evidence/iter04/salvage_cutter_starboard.png",
+        "bytes": 906317
+      },
+      {
+        "view": "salvage_cutter_rear",
+        "path": "evidence/iter04/salvage_cutter_rear.png",
+        "bytes": 1001659
+      },
+      {
+        "view": "salvage_cutter_grazing",
+        "path": "evidence/iter04/salvage_cutter_grazing.png",
+        "bytes": 924991
+      }
+    ]
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_SURVEY_PIN_V1",
+    "defId": "surveyor",
+    "shipId": "survey_pin",
+    "iteration": 4,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 24464,
+        "hullTriangles": 1540,
+        "draws": 8,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/survey_pin_production_v1_lod0.glb",
+        "bytes": 1271520,
+        "sha256": "65BE5AB8D29B5E906A54C3843C3D66B06E5C6A6E4C288184D3FD4921CA4EF0D4"
+      },
+      {
+        "lod": 1,
+        "triangles": 5200,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/survey_pin_production_v1_lod1.glb",
+        "bytes": 272108,
+        "sha256": "9CCBC526805664EBDD558746712F32914BC199E51D1BC5E6F419F0E2AF890BA7"
+      },
+      {
+        "lod": 2,
+        "triangles": 4336,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/survey_pin_production_v1_lod2.glb",
+        "bytes": 222468,
+        "sha256": "519E2AA971D8CDDE3A412842D5A5286EE7A5330357CF22025C866A4DA41A54A3"
+      }
+    ],
+    "renders": [
+      {
+        "view": "survey_pin_three_quarter",
+        "path": "evidence/iter04/survey_pin_three_quarter.png",
+        "bytes": 822644
+      },
+      {
+        "view": "survey_pin_starboard",
+        "path": "evidence/iter04/survey_pin_starboard.png",
+        "bytes": 876481
+      },
+      {
+        "view": "survey_pin_rear",
+        "path": "evidence/iter04/survey_pin_rear.png",
+        "bytes": 966428
+      },
+      {
+        "view": "survey_pin_grazing",
+        "path": "evidence/iter04/survey_pin_grazing.png",
+        "bytes": 933257
       }
     ]
   }

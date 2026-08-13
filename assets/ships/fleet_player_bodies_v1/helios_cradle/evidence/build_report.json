@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_HELIOS_CRADLE_V1",
+  "defId": "miner",
+  "shipId": "helios_cradle",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 36452,
+      "hullTriangles": 1756,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_cradle_production_v1_lod0.glb",
+      "bytes": 1898820,
+      "sha256": "39DF03AA250306F949A351FCCEA66A905CB0ECD6CC3834EAD626E0BC1B1F5D21"
+    },
+    {
+      "lod": 1,
+      "triangles": 8500,
+      "hullTriangles": 1756,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_cradle_production_v1_lod1.glb",
+      "bytes": 431880,
+      "sha256": "E2903DB262EBC40B5C39774513E00E2DD90ACEBD211650F720F3B3FB3F96B03B"
+    },
+    {
+      "lod": 2,
+      "triangles": 6772,
+      "hullTriangles": 1756,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_cradle_production_v1_lod2.glb",
+      "bytes": 332616,
+      "sha256": "221E3E467DAE436D9B33981BDB0D94C36CAFA55740DE0610164595669BFD22C5"
+    }
+  ],
+  "renders": [
+    {
+      "view": "helios_cradle_three_quarter",
+      "path": "evidence/iter04/helios_cradle_three_quarter.png",
+      "bytes": 879530
+    },
+    {
+      "view": "helios_cradle_starboard",
+      "path": "evidence/iter04/helios_cradle_starboard.png",
+      "bytes": 911744
+    },
+    {
+      "view": "helios_cradle_rear",
+      "path": "evidence/iter04/helios_cradle_rear.png",
+      "bytes": 1000603
+    },
+    {
+      "view": "helios_cradle_grazing",
+      "path": "evidence/iter04/helios_cradle_grazing.png",
+      "bytes": 935906
+    }
+  ]
+}

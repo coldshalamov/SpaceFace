@@ -25,7 +25,7 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 23792,
+      "triangles": 26368,
       "hullTriangles": 1216,
       "draws": 8,
       "materials": [
@@ -63,12 +63,12 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod0.glb",
-      "bytes": 1309136,
-      "sha256": "6207B9DA2747A0B967A84753D164A41DE9C52C935D7A037BFBCBCB529B5C9D60"
+      "bytes": 1462020,
+      "sha256": "62CAA9D562A919D1783E182412CD6D2160B3C8B343BA44AAEC722EC389F900CE"
     },
     {
       "lod": 1,
-      "triangles": 9520,
+      "triangles": 11496,
       "hullTriangles": 1216,
       "draws": 8,
       "materials": [
@@ -106,8 +106,8 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod1.glb",
-      "bytes": 509680,
-      "sha256": "DBAA72057D2BBA281CBBB10CF6029E4D861B6A54CDB7DB6EA7A25F9C9177CD7F"
+      "bytes": 602560,
+      "sha256": "E05DB5D874724D334F183BA161C5BCA5186FC8954026659C69D3F74797428866"
     },
     {
       "lod": 2,
@@ -148,15 +148,15 @@
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod2.glb",
       "bytes": 333528,
-      "sha256": "834309A038ADE50F577E479A91BAE3F7D1A0FB0B4FB43F3C9C90D19A739D2A7A"
+      "sha256": "17E71C5E82069CDB6BAD900BC19454D42786DE3EFA2F4E948809D21980BA38CD"
     }
   ],
   "renders": [
     {
       "view": "mule_three_quarter",
       "path": "evidence/iter03/mule_three_quarter.png",
-      "bytes": 965119,
-      "sha256": "ADFDCF6CF637023620EC704866E10CA682876E7BCD21377124B72F26000CEFDD",
+      "bytes": 965341,
+      "sha256": "FD493A63FFCCDE0BF01F8FDF2F0591810BBA839989375BE41FDA3D2D0982EE84",
       "camera": [
         20,
         -22,
@@ -172,8 +172,8 @@
     {
       "view": "mule_starboard",
       "path": "evidence/iter03/mule_starboard.png",
-      "bytes": 1056213,
-      "sha256": "2BFE67B24BEF52252F0CD6318218539913247B95C486BEAC53830F17F78154AE",
+      "bytes": 1056281,
+      "sha256": "6AE3C3E03F5B7F833169868E4F00A410B735DD60D146004F105735828F9B94B7",
       "camera": [
         16,
         22,
@@ -189,8 +189,8 @@
     {
       "view": "mule_front",
       "path": "evidence/iter03/mule_front.png",
-      "bytes": 956358,
-      "sha256": "41C4E6ABE4C47323E01FAB210C214C18C44A5E7131D3A37149D12BD9BC29C61B",
+      "bytes": 956479,
+      "sha256": "26E8788A45B6F9C796DF47E1564A367FB67EDE84D890A4A23736AFDD242D55E3",
       "camera": [
         24,
         0,
@@ -206,8 +206,8 @@
     {
       "view": "mule_rear",
       "path": "evidence/iter03/mule_rear.png",
-      "bytes": 1011522,
-      "sha256": "C0F0EBC5E9A4B0B3EF1E644C812810D77082C2D1DD5BAF12340BC2AD31DFAB39",
+      "bytes": 1011357,
+      "sha256": "83BE430BED1126101609F15703E77E568C5E4CDF00AB2435405AA17079226296",
       "camera": [
         -22,
         -8,
@@ -223,8 +223,8 @@
     {
       "view": "mule_top",
       "path": "evidence/iter03/mule_top.png",
-      "bytes": 1051326,
-      "sha256": "91E8E4D83B6DFB3D58740B29C3473B8A0AF0FF578DFF65B0FC044ABFF3224ADD",
+      "bytes": 1051873,
+      "sha256": "EBE6485E5F76CF9A2B3A02D63C93CED60FABB508DD6ED602F114608CD9E93A95",
       "camera": [
         0,
         0,
@@ -240,8 +240,8 @@
     {
       "view": "mule_grazing",
       "path": "evidence/iter03/mule_grazing.png",
-      "bytes": 1005879,
-      "sha256": "EAF20C19D481581F2D99B62D94B3B695CF163D3C6A29F6E7BFC8BFE3D578491D",
+      "bytes": 1005729,
+      "sha256": "F52F943E1863943E7B315B3BFF6D1CDB24397E372D6093B05F99822C548496A1",
       "camera": [
         6,
         -18,
@@ -257,8 +257,8 @@
     {
       "view": "mule_drive_close",
       "path": "evidence/iter03/mule_drive_close.png",
-      "bytes": 1033297,
-      "sha256": "868EA9215362DBE2CB7E5AF0F3BAAD9DCDB57AC333002C58D0FF5C6B1F24166F",
+      "bytes": 1033267,
+      "sha256": "6B83EF9AA7DD38FCA2D56622C12BF4882D7E2F8FAA88687E6CE9C014FE3AA303",
       "camera": [
         -13,
         -4,
@@ -274,8 +274,8 @@
     {
       "view": "mule_bridge_close",
       "path": "evidence/iter03/mule_bridge_close.png",
-      "bytes": 1050715,
-      "sha256": "C94F95D82A0F8B3A2D1D0DD51B4790E0E9F50EB70C0BE34881FF8C2180C8AF2B",
+      "bytes": 1050375,
+      "sha256": "8BC71E22BE54DEFE5DDF3D4FEF851EBA0FA7EADC2CAD28C988557427575A0B56",
       "camera": [
         14,
         -6,

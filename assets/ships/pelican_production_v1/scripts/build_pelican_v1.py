@@ -22,6 +22,16 @@ from mathutils import Vector
 
 FAMILY = Path(__file__).resolve().parents[1]
 ROOT = FAMILY.parents[2]
+TOOLS = ROOT / "tools" / "blender"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+from fleet_construction import (  # noqa: E402
+    add_radiator_cassette,
+    add_rcs_cluster,
+    add_sensor_dish,
+    add_service_pipe,
+    add_tapered_vane,
+)
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
 PACKET = "SF-PELICAN-PRODUCTION-V1-001"
 ASSET_ID = "SF_PELICAN_PRODUCTION_V1"
@@ -323,13 +333,21 @@ def add_drive(side_name: str, y: float, lod: int, mats, collection) -> None:
                 (angle, 0, 0),
             )
     if lod == 0:
-        for index in range(16):
-            angle = math.tau * index / 16
-            add_box(
+        for index in range(12):
+            angle = math.tau * index / 12
+            add_tapered_vane(
                 f"Drive_Vane_{side_name}_{index}",
-                (-6.68, y + math.cos(angle) * 0.21, 0.08 + math.sin(angle) * 0.21),
-                (0.055, 0.008, 0.055),
+                (-6.66, y, 0.08),
                 armor,
+                collection,
+                angle,
+                scale=0.95,
+            )
+            add_box(
+                f"Drive_Hinge_{side_name}_{index}",
+                (-6.52, y + math.cos(angle) * 0.30, 0.08 + math.sin(angle) * 0.30),
+                (0.045, 0.028, 0.022),
+                mech,
                 collection,
                 0.003,
                 (angle, 0, 0),
@@ -453,8 +471,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
     add_mining_arm("Starboard", 1.0, lod, mats, collection)
     add_filter_drums(lod, mats, collection)
 
-    add_cylinder("Survey_Mast", (2.55, 0.0, 1.95), 0.055, 0.85, mech, collection, vertices=10, bevel=0.01, rot=(0, 0, 0))
-    add_box("Survey_Head", (2.55, 0.0, 2.42), (0.18, 0.12, 0.10), armor, collection, 0.015)
+    add_sensor_dish("Survey", (2.55, 0.0, 2.15), mats, collection)
     add_box("Claim_Stake", (4.85, -1.55, 0.15), (0.35, 0.12, 0.10), mech, collection, 0.02)
     add_extruded_polygon("Return_Chevron", [
         (2.35, -2.05), (1.55, -2.18), (1.85, -2.05), (1.55, -1.92),
@@ -465,18 +482,8 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
         add_box("Hatch_Rim", (-0.35, -0.05, 1.46), (0.72, 0.62, 0.06), mech, collection, 0.02)
         add_box("Hatch_Lid", (-0.35, -0.05, 1.52), (0.58, 0.48, 0.04), armor, collection, 0.015)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
-            add_box(f"Radiator_Well_{side}", (-2.35, 1.62 * sign, 0.72), (1.05, 0.06, 0.28), radiator, collection, 0.01)
-            add_box(f"Radiator_Frame_{side}", (-2.35, 1.70 * sign, 0.72), (1.10, 0.03, 0.32), mech, collection, 0.008)
+            add_radiator_cassette(side, (-2.35, 1.68 * sign, 0.72), lod, mats, collection, length=1.35, height=0.34)
             if lod == 0:
-                for fin in range(7):
-                    add_box(
-                        f"Radiator_Fin_{side}_{fin}",
-                        (-2.85 + fin * 0.16, 1.62 * sign, 0.72),
-                        (0.018, 0.07, 0.24),
-                        radiator,
-                        collection,
-                        0.003,
-                    )
                 add_box(f"Hatch_Latch_{side}", (-0.35, 0.28 * sign, 1.58), (0.08, 0.05, 0.05), mech, collection, 0.006)
         add_box("Shoulder_Plate_Port", (0.8, -1.85, 0.72), (1.4, 0.12, 0.35), armor, collection, 0.03)
         add_box("Shoulder_Plate_Starboard", (0.8, 1.85, 0.72), (1.4, 0.12, 0.35), armor, collection, 0.03)
@@ -485,8 +492,8 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
         for index, x in enumerate((3.4, 1.8, 0.2, -1.4, -3.0)):
             add_box(f"Hull_Seam_{index}", (x, 0, 1.08), (0.03, 1.55, 0.03), mech, collection, 0.006)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
-            add_cylinder(f"RCS_{side}", (-1.6, 2.55 * sign, 0.15), 0.10, 0.18, mech, collection, vertices=10, bevel=0.008, rot=(math.pi / 2, 0, 0))
-            add_box(f"Service_Cable_{side}", (1.2, 1.95 * sign, 0.35), (1.6, 0.03, 0.03), mech, collection, 0.004, (0, 0.08 * sign, 0))
+            add_rcs_cluster(side, (-1.6, 2.55 * sign, 0.15), mats, collection, sign=sign)
+            add_service_pipe(f"Service_Pipe_{side}", (2.4, 1.95 * sign, 0.28), (-2.8, 1.95 * sign, 0.22), mech, collection, radius=0.02)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
@@ -502,7 +509,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
                 poly.use_smooth = True
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.uv.cube_project(cube_size=2.6, correct_aspect=True)
+        bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02, scale_to_bounds=True)
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.select_set(False)
 
@@ -645,7 +652,7 @@ def render_evidence(collection):
     for other in bpy.data.collections:
         other.hide_render = other is not collection
     camera, floor = setup_studio()
-    out_dir = FAMILY / "evidence" / "iter03"
+    out_dir = FAMILY / "evidence" / "iter04"
     out_dir.mkdir(parents=True, exist_ok=True)
     views = [
         ("pelican_three_quarter", (18, -20, 10), (0, 0, 0.2), 52),
@@ -720,7 +727,7 @@ def main() -> int:
         "packet": PACKET,
         "assetId": ASSET_ID,
         "status": "isolated_candidate",
-        "iteration": 3,
+        "iteration": 4,
         "textureSourceHashes": texture_hashes,
         "productionBlend": str(production_blend.relative_to(FAMILY)).replace("\\", "/"),
         "lods": reports,

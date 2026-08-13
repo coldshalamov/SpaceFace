@@ -974,16 +974,16 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
 // enemy roles intentionally share player-facing chassis stats while requiring different combat
 // silhouettes. This presentation map changes no doctrine, hostility, movement, or damage data.
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
-  wasp_swarmer: 'wholeships/ashline_dart.glb',
-  bruiser_brawler: 'wholeships/ashline_lode.glb',
-  reaver_pirate: 'wholeships/ashline_rig.glb',
-  corsair_raider: 'wholeships/ashline_rig.glb',
+  wasp_swarmer: 'wholeships/ashline_dart_production_v1.glb',
+  bruiser_brawler: 'wholeships/ashline_lode_production_v1.glb',
+  reaver_pirate: 'wholeships/ashline_rig_production_v1.glb',
+  corsair_raider: 'wholeships/ashline_rig_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
-  wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
-  bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
-  reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
-  corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
+  wasp_swarmer: 'SF_ASHLINE_DART_V1',
+  bruiser_brawler: 'SF_ASHLINE_LODE_V1',
+  reaver_pirate: 'SF_ASHLINE_RIG_V1',
+  corsair_raider: 'SF_ASHLINE_RIG_V1',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
@@ -997,22 +997,22 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
 // gates on the separate `slot.jobKind`, never on presentationRole, so Ceres freight slots keep
 // their hauler jobs intact.
 const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
-  courier: 'wholeships/helios_lark.glb',
-  miner: 'wholeships/helios_cradle.glb',
-  hauler: 'wholeships/helios_span.glb',
-  ore_carrier: 'wholeships/ore_barge.glb',
-  tender: 'wholeships/repair_tender.glb',
-  salvor: 'wholeships/salvage_cutter.glb',
-  surveyor: 'wholeships/survey_pin.glb',
+  courier: 'wholeships/helios_lark_production_v1.glb',
+  miner: 'wholeships/helios_cradle_production_v1.glb',
+  hauler: 'wholeships/helios_span_production_v1.glb',
+  ore_carrier: 'wholeships/ore_barge_production_v1.glb',
+  tender: 'wholeships/repair_tender_production_v1.glb',
+  salvor: 'wholeships/salvage_cutter_production_v1.glb',
+  surveyor: 'wholeships/survey_pin_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
-  courier: 'SF_WHOLESHIP_HELIOS_LARK',
-  miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
-  hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
-  ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
-  tender: 'SF_WHOLESHIP_REPAIR_TENDER',
-  salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
-  surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
+  courier: 'SF_HELIOS_LARK_V1',
+  miner: 'SF_HELIOS_CRADLE_V1',
+  hauler: 'SF_HELIOS_SPAN_V1',
+  ore_carrier: 'SF_ORE_BARGE_V1',
+  tender: 'SF_REPAIR_TENDER_V1',
+  salvor: 'SF_SALVAGE_CUTTER_V1',
+  surveyor: 'SF_SURVEY_PIN_V1',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),

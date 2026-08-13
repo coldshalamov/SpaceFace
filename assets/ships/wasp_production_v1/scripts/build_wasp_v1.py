@@ -25,6 +25,11 @@ from mathutils import Matrix, Vector
 
 
 FAMILY = Path(__file__).resolve().parents[1]
+ROOT = FAMILY.parents[2]
+TOOLS = ROOT / "tools" / "blender"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+from fleet_construction import add_radiator_cassette, add_tapered_vane  # noqa: E402
 DEFAULT_ZIP = Path(r"C:\Users\93rob\Downloads\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip")
 EXPECTED_ZIP_SHA256 = "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000"
 ZIP_PREFIX = "SpaceFace_SF-K0_Borrowed-Time_Revamp/textures/"
@@ -79,6 +84,16 @@ def reset_scene() -> None:
 
 
 def extract_material_maps(source_zip: Path) -> tuple[Path, dict[str, str]]:
+    target = FAMILY / "textures"
+    if not source_zip.exists():
+        hashes = {}
+        for prefix in TEXTURE_SETS.values():
+            for suffix in ("basecolor.png", "normal.png", "orm.png"):
+                out = target / f"{prefix}_{suffix}"
+                if not out.exists():
+                    raise RuntimeError(f"Missing packet texture and no source zip: {out.name}")
+                hashes[out.name] = sha256(out)
+        return target, hashes
     zip_hash = sha256(source_zip)
     if zip_hash != EXPECTED_ZIP_SHA256:
         raise RuntimeError(f"Borrowed-Time source hash mismatch: {zip_hash}")
@@ -346,6 +361,17 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]) -> tuple[bpy.types
         ], armor, collection, sides=12, bevel=0.08)
         add_cylinder(f"Engine_Ring_{side}", (-9.45, yc, 0), 0.89, 0.38, mech, collection, vertices=32, bevel=0.04)
         add_cylinder(f"Engine_Inner_{side}", (-9.69, yc, 0), 0.63, 0.12, thruster, collection, vertices=32, bevel=0.02)
+        if lod == 0:
+            for index in range(12):
+                angle = math.tau * index / 12
+                add_tapered_vane(
+                    f"Engine_Vane_{side}_{index}",
+                    (-9.78, yc, 0.0),
+                    armor,
+                    collection,
+                    angle,
+                    scale=2.15,
+                )
         add_cylinder(f"Gun_Housing_{side}", (4.4, 4.0 * sign, 0.2), 0.44, 3.1, mech, collection, vertices=20, bevel=0.06)
         add_cylinder(f"Gun_Barrel_{side}", (6.2, 4.0 * sign, 0.2), 0.16, 1.4, armor, collection, vertices=16, bevel=0.03)
         add_extruded_polygon(f"Nacelle_Strake_{side}", mirror([
@@ -382,6 +408,8 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]) -> tuple[bpy.types
                 add_box(f"Engine_Vent_{side}_{index}", (x, 5.52 * sign, 1.09), (0.30, 0.70, 0.07), mech, collection, 0.025)
         add_extruded_polygon("Rear_Armor_Crown", [(-3.5, -1.2), (-7.3, -0.85), (-9.0, 0), (-7.3, 0.85), (-3.5, 1.2), (-4.4, 0)],
                              1.03, 1.28, armor, collection, 0.05)
+        add_radiator_cassette("Port", (-3.4, -2.15, 1.08), lod, mats, collection, length=2.4, height=0.34)
+        add_radiator_cassette("Starboard", (-3.4, 2.15, 1.08), lod, mats, collection, length=2.4, height=0.34)
         for x in (0.8, -1.0, -2.8, -4.6):
             add_box(f"Dorsal_Service_Band_{x}", (x, 0, 1.39), (0.10, 1.55, 0.045), mech, collection, 0.018)
 
@@ -633,8 +661,8 @@ def main() -> int:
         "packet": PACKET,
         "assetId": ASSET_ID,
         "status": "isolated_candidate_no_promote",
-        "sourceZip": str(args.source_zip),
-        "sourceZipSha256": sha256(args.source_zip),
+        "sourceZip": str(args.source_zip) if args.source_zip.exists() else "packet-textures",
+        "sourceZipSha256": sha256(args.source_zip) if args.source_zip.exists() else "PACKET_TEXTURES",
         "sourceUse": "first-party PBR material treatment only; no geometry copied",
         "textureSourceHashes": texture_hashes,
         "productionBlend": str(production_blend.relative_to(FAMILY)).replace("\\", "/"),

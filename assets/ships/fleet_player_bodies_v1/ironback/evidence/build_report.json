@@ -3,13 +3,13 @@
   "assetId": "SF_IRONBACK_PRODUCTION_V1",
   "defId": "ship_ironback",
   "shipId": "ironback",
-  "iteration": 1,
+  "iteration": 4,
   "lods": [
     {
       "lod": 0,
-      "triangles": 10700,
-      "hullTriangles": 1120,
-      "draws": 7,
+      "triangles": 39156,
+      "hullTriangles": 1972,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -17,6 +17,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -33,20 +34,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod0.glb",
-      "bytes": 582140,
-      "sha256": "1D6D55503C532BB1F0CBAFF87975CD903F580DCFB8C1768746973BDED159AF27"
+      "bytes": 2042524,
+      "sha256": "9C985719A90A9A08068AFCD9F3A1680EF060A0BFC5E0BE0DB63FB1416C0245BF"
     },
     {
       "lod": 1,
-      "triangles": 4312,
-      "hullTriangles": 1120,
-      "draws": 6,
+      "triangles": 9476,
+      "hullTriangles": 1972,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -63,20 +65,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod1.glb",
-      "bytes": 222532,
-      "sha256": "5A8F64528AAE88809EE9149D31A46D2F33D11D98C8C7AF9C390FE220825E3CC6"
+      "bytes": 482720,
+      "sha256": "B537122BC4BFEE5F88378A9AD0B3120DC97207D9CD5FEEAB68C9E77F45FB7179"
     },
     {
       "lod": 2,
-      "triangles": 4312,
-      "hullTriangles": 1120,
-      "draws": 6,
+      "triangles": 7748,
+      "hullTriangles": 1972,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -93,30 +96,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod2.glb",
-      "bytes": 222532,
-      "sha256": "74035D720E989B1F6AB6193F0750B9E409EB8FDCA836E835630943828A84CBAC"
+      "bytes": 383408,
+      "sha256": "AC40D0B94222D045362C750C5F5671D6359E6473608A8F64622009BE182FC342"
     }
   ],
   "renders": [
     {
       "view": "ironback_three_quarter",
-      "path": "evidence/iter01/ironback_three_quarter.png",
-      "bytes": 801373
+      "path": "evidence/iter04/ironback_three_quarter.png",
+      "bytes": 942315
     },
     {
       "view": "ironback_starboard",
-      "path": "evidence/iter01/ironback_starboard.png",
-      "bytes": 816850
+      "path": "evidence/iter04/ironback_starboard.png",
+      "bytes": 958937
     },
     {
       "view": "ironback_rear",
-      "path": "evidence/iter01/ironback_rear.png",
-      "bytes": 871943
+      "path": "evidence/iter04/ironback_rear.png",
+      "bytes": 1043006
     },
     {
       "view": "ironback_grazing",
-      "path": "evidence/iter01/ironback_grazing.png",
-      "bytes": 822791
+      "path": "evidence/iter04/ironback_grazing.png",
+      "bytes": 983926
     }
   ]
 }

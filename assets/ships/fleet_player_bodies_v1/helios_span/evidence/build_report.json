@@ -1,0 +1,126 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_HELIOS_SPAN_V1",
+  "defId": "hauler",
+  "shipId": "helios_span",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 36016,
+      "hullTriangles": 1540,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_span_production_v1_lod0.glb",
+      "bytes": 1878640,
+      "sha256": "57CE1E2CDE40B8C5CF344A0779239663BA5D91D3CDB35D6F71B788A5E3C83C50"
+    },
+    {
+      "lod": 1,
+      "triangles": 8064,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_span_production_v1_lod1.glb",
+      "bytes": 410664,
+      "sha256": "F78EB45770D568FB243CEE831318F8D5D1998E1F73A1796209E0D8206AC84DA3"
+    },
+    {
+      "lod": 2,
+      "triangles": 6336,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/helios_span_production_v1_lod2.glb",
+      "bytes": 311440,
+      "sha256": "E064DC3831B45737CC81E88D954BE2E337CA9E7599C1D4138C70D3977CAC8858"
+    }
+  ],
+  "renders": [
+    {
+      "view": "helios_span_three_quarter",
+      "path": "evidence/iter04/helios_span_three_quarter.png",
+      "bytes": 905631
+    },
+    {
+      "view": "helios_span_starboard",
+      "path": "evidence/iter04/helios_span_starboard.png",
+      "bytes": 937775
+    },
+    {
+      "view": "helios_span_rear",
+      "path": "evidence/iter04/helios_span_rear.png",
+      "bytes": 1043900
+    },
+    {
+      "view": "helios_span_grazing",
+      "path": "evidence/iter04/helios_span_grazing.png",
+      "bytes": 1021208
+    }
+  ]
+}

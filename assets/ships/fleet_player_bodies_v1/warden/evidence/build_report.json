@@ -3,13 +3,13 @@
   "assetId": "SF_WARDEN_PRODUCTION_V1",
   "defId": "ship_warden",
   "shipId": "warden",
-  "iteration": 1,
+  "iteration": 4,
   "lods": [
     {
       "lod": 0,
-      "triangles": 8656,
-      "hullTriangles": 1444,
-      "draws": 7,
+      "triangles": 43920,
+      "hullTriangles": 1540,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -17,6 +17,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -33,20 +34,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod0.glb",
-      "bytes": 470404,
-      "sha256": "3A8BDD7CB59D3F1ABAB8D3A297A83C9868147B337BDACDBBCF41F9B4C27509D7"
+      "bytes": 2277888,
+      "sha256": "DBAE4BFEC0CC79B025680674BF6536E714605DFC6F080439A1EC924A7BBE8F54"
     },
     {
       "lod": 1,
-      "triangles": 4428,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 10736,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -63,20 +65,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod1.glb",
-      "bytes": 230716,
-      "sha256": "0859305309EA1B56711A7246EE04E54408AD5D5D01D61C5B6158B9ADF30931A0"
+      "bytes": 537924,
+      "sha256": "0BCF66FD78FCD235E74AC9F139B61ADD64B524255B96A8CC76178A2C43861B3B"
     },
     {
       "lod": 2,
-      "triangles": 4428,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 8144,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -93,30 +96,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod2.glb",
-      "bytes": 230716,
-      "sha256": "982372B14D7361778C81635B5F3C4AE0795AA17E4359CDAE5406C6C860783D44"
+      "bytes": 392196,
+      "sha256": "AF77667B536C03A0C99706F8010E65A00E834F5D5F51742447434E3959EEF677"
     }
   ],
   "renders": [
     {
       "view": "warden_three_quarter",
-      "path": "evidence/iter01/warden_three_quarter.png",
-      "bytes": 798804
+      "path": "evidence/iter04/warden_three_quarter.png",
+      "bytes": 916939
     },
     {
       "view": "warden_starboard",
-      "path": "evidence/iter01/warden_starboard.png",
-      "bytes": 820557
+      "path": "evidence/iter04/warden_starboard.png",
+      "bytes": 930155
     },
     {
       "view": "warden_rear",
-      "path": "evidence/iter01/warden_rear.png",
-      "bytes": 891851
+      "path": "evidence/iter04/warden_rear.png",
+      "bytes": 1005362
     },
     {
       "view": "warden_grazing",
-      "path": "evidence/iter01/warden_grazing.png",
-      "bytes": 843982
+      "path": "evidence/iter04/warden_grazing.png",
+      "bytes": 968835
     }
   ]
 }

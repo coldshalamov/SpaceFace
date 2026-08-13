@@ -29,7 +29,7 @@ Hitch V4/V6 material-truth refs and audit are the construction/material floor:
 - Causal wear, quiet plate areas, size hierarchy (macro / meso / micro).
 - Forbidden P0/P1: plastic, clay, leather grain on metal, glowing disks, LEGO bricks, DCC-default surfaces.
 
-The live Hitch body is still catching up to those refs (another agent is raising it). Remasters must beat the current live Hitch **and** chase the A-list 2026 bar shown in the Hitch component refs (drive vane assembly, midship plate construction).
+Live Hitch is now the V7 remaster (another agent shipped it). Remasters must beat that live body **and** chase the A-list 2026 bar shown in the Hitch component refs (drive vane assembly, midship plate construction, radiator cassette).
 
 ## Hitch paths this lane will not touch
 

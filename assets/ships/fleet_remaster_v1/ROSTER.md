@@ -7,18 +7,18 @@ Hitch (`ship_kestrel`) is excluded.
 
 | Def | Name | Role | Live visual today | Shared with | Remaster unit |
 |---|---|---|---|---|---|
-| ship_pelican | Pelican | mining T1 | modular `hull_miner.glb` | Ironback | Distinct wholeship (roles must read as themselves) |
-| ship_wasp | Wasp | fighter T1 | wholeship `wasp_production_v1.glb` | — | Upgrade existing wholeship |
-| ship_mule | Mule | freighter T1 | modular `hull_freighter.glb` | Atlas | Distinct wholeship |
-| ship_drifter | Drifter | multirole T2 | modular `hull_multirole.glb` | Ranger | Distinct wholeship |
-| ship_hornet | Hornet | interceptor T2 | modular `hull_interceptor.glb` | — | Distinct wholeship |
-| ship_ironback | Ironback | mining_barge T2 | modular `hull_miner.glb` | Pelican | Distinct wholeship |
-| ship_bastion | Bastion | corvette T3 | modular `hull_corvette.glb` | — | Distinct wholeship |
-| ship_atlas | Atlas | heavy_hauler T3 | modular `hull_freighter.glb` | Mule | Distinct wholeship |
-| ship_ranger | Ranger | explorer T3 | modular `hull_multirole.glb` | Drifter | Distinct wholeship |
-| ship_warden | Warden | gunship T4 | modular `hull_frigate.glb` | — | Distinct wholeship |
-| ship_colossus | Colossus | battlecruiser T4 | modular `hull_capital.glb` | Leviathan | Distinct wholeship |
-| ship_leviathan | Leviathan | flagship T5 | modular `hull_capital.glb` | Colossus | Distinct wholeship |
+| ship_pelican | Pelican | mining T1 | `pelican_production_v1.glb` | — | Live remaster, more loops |
+| ship_wasp | Wasp | fighter T1 | `wasp_production_v1.glb` | — | Live remaster, more loops |
+| ship_mule | Mule | freighter T1 | `mule_production_v1.glb` | — | Live remaster, more loops |
+| ship_drifter | Drifter | multirole T2 | `drifter_production_v1.glb` | — | Factory remaster |
+| ship_hornet | Hornet | interceptor T2 | `hornet_production_v1.glb` | — | Factory remaster |
+| ship_ironback | Ironback | mining_barge T2 | `ironback_production_v1.glb` | — | Factory remaster |
+| ship_bastion | Bastion | corvette T3 | `bastion_production_v1.glb` | — | Factory remaster |
+| ship_atlas | Atlas | heavy_hauler T3 | `atlas_production_v1.glb` | — | Factory remaster |
+| ship_ranger | Ranger | explorer T3 | `ranger_production_v1.glb` | — | Factory remaster |
+| ship_warden | Warden | gunship T4 | `warden_production_v1.glb` | — | Factory remaster |
+| ship_colossus | Colossus | battlecruiser T4 | `colossus_production_v1.glb` | — | Factory remaster |
+| ship_leviathan | Leviathan | flagship T5 | `leviathan_production_v1.glb` | — | Factory remaster |
 
 Unwired / blocked wholeships (do **not** wire): `wholeships/pelican.glb`, `wholeships/wasp.glb` — accessory-only, no Material_Hull body.
 
@@ -26,16 +26,16 @@ Unwired / blocked wholeships (do **not** wire): `wholeships/pelican.glb`, `whole
 
 | Presentation | File | Notes |
 |---|---|---|
-| wasp_swarmer | `wholeships/ashline_dart.glb` | Ashline Dart |
-| bruiser_brawler | `wholeships/ashline_lode.glb` | Ashline Lode |
-| reaver_pirate / corsair_raider | `wholeships/ashline_rig.glb` | Shared hostile body (already shared live) |
-| courier | `wholeships/helios_lark.glb` | Helios Lark |
-| miner | `wholeships/helios_cradle.glb` | Helios Cradle |
-| hauler | `wholeships/helios_span.glb` | Helios Span |
-| ore_carrier | `wholeships/ore_barge.glb` | Work fleet |
-| tender | `wholeships/repair_tender.glb` | Work fleet |
-| salvor | `wholeships/salvage_cutter.glb` | Work fleet |
-| surveyor | `wholeships/survey_pin.glb` | Work fleet |
+| wasp_swarmer | `ashline_dart_production_v1.glb` | Ashline Dart |
+| bruiser_brawler | `ashline_lode_production_v1.glb` | Ashline Lode |
+| reaver_pirate / corsair_raider | `ashline_rig_production_v1.glb` | Shared hostile body (already shared live) |
+| courier | `helios_lark_production_v1.glb` | Helios Lark |
+| miner | `helios_cradle_production_v1.glb` | Helios Cradle |
+| hauler | `helios_span_production_v1.glb` | Helios Span |
+| ore_carrier | `ore_barge_production_v1.glb` | Work fleet |
+| tender | `repair_tender_production_v1.glb` | Work fleet |
+| salvor | `salvage_cutter_production_v1.glb` | Work fleet |
+| surveyor | `survey_pin_production_v1.glb` | Work fleet |
 
 ## Modular kit parts that remain visible
 

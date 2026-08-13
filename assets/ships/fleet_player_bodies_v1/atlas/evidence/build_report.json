@@ -3,13 +3,13 @@
   "assetId": "SF_ATLAS_PRODUCTION_V1",
   "defId": "ship_atlas",
   "shipId": "atlas",
-  "iteration": 1,
+  "iteration": 4,
   "lods": [
     {
       "lod": 0,
-      "triangles": 13716,
-      "hullTriangles": 1444,
-      "draws": 8,
+      "triangles": 56220,
+      "hullTriangles": 1540,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -17,6 +17,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster",
         "Material_Warning"
       ],
@@ -34,20 +35,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/atlas_production_v1_lod0.glb",
-      "bytes": 745872,
-      "sha256": "14A0C2EEA3530E1425B8B1FB093DF4C7927E72696E3637EC63FA1E319EF9384E"
+      "bytes": 2928408,
+      "sha256": "D8ED98D45D788693F7943D95C70BC7E065CFCE1E2AFA4516429610242D499497"
     },
     {
       "lod": 1,
-      "triangles": 5600,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 13484,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -64,20 +66,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/atlas_production_v1_lod1.glb",
-      "bytes": 288056,
-      "sha256": "0228F95F0400C03CCED7F4539B9A6DC3E04C908E2AF9346349DD6B7B3736AD89"
+      "bytes": 668956,
+      "sha256": "2AD798B8F252FC601C9ECA6E1F43657F9322443AA46BED01CBA96550B6E70380"
     },
     {
       "lod": 2,
-      "triangles": 5600,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 10028,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -94,30 +97,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/atlas_production_v1_lod2.glb",
-      "bytes": 288056,
-      "sha256": "ABD22BEC7594EAE60D4A254F936481378E49554D09C97A299897D80D3B59E40A"
+      "bytes": 474652,
+      "sha256": "68CFC18A1FD4A018C4E814E0747580F857F9E41588E26B30D232F5F7CABE8163"
     }
   ],
   "renders": [
     {
       "view": "atlas_three_quarter",
-      "path": "evidence/iter01/atlas_three_quarter.png",
-      "bytes": 865147
+      "path": "evidence/iter04/atlas_three_quarter.png",
+      "bytes": 974036
     },
     {
       "view": "atlas_starboard",
-      "path": "evidence/iter01/atlas_starboard.png",
-      "bytes": 889495
+      "path": "evidence/iter04/atlas_starboard.png",
+      "bytes": 998409
     },
     {
       "view": "atlas_rear",
-      "path": "evidence/iter01/atlas_rear.png",
-      "bytes": 959798
+      "path": "evidence/iter04/atlas_rear.png",
+      "bytes": 1090853
     },
     {
       "view": "atlas_grazing",
-      "path": "evidence/iter01/atlas_grazing.png",
-      "bytes": 967265
+      "path": "evidence/iter04/atlas_grazing.png",
+      "bytes": 1089843
     }
   ]
 }

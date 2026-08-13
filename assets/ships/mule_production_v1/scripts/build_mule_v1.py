@@ -22,6 +22,10 @@ from mathutils import Vector
 
 FAMILY = Path(__file__).resolve().parents[1]
 ROOT = FAMILY.parents[2]
+TOOLS = ROOT / "tools" / "blender"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+from fleet_construction import add_radiator_cassette, add_tapered_vane  # noqa: E402
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
 PACKET = "SF-MULE-PRODUCTION-V1-001"
 ASSET_ID = "SF_MULE_PRODUCTION_V1"
@@ -323,16 +327,15 @@ def add_drive(side_name: str, y: float, lod: int, mats, collection) -> None:
                 (angle, 0, 0),
             )
     if lod == 0:
-        for index in range(16):
-            angle = math.tau * index / 16
-            add_box(
+        for index in range(12):
+            angle = math.tau * index / 12
+            add_tapered_vane(
                 f"Drive_Vane_{side_name}_{index}",
-                (-6.68, y + math.cos(angle) * 0.21, 0.08 + math.sin(angle) * 0.21),
-                (0.055, 0.008, 0.055),
+                (-6.66, y, 0.08),
                 armor,
                 collection,
-                0.003,
-                (angle, 0, 0),
+                angle,
+                scale=0.95,
             )
 
 
@@ -479,10 +482,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
         add_box("Hatch_Rim", (2.4, 0.0, 1.18), (0.70, 0.55, 0.06), mech, collection, 0.02)
         add_box("Hatch_Lid", (2.4, 0.0, 1.24), (0.56, 0.42, 0.04), armor, collection, 0.015)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
-            add_box(f"Radiator_Well_{side}", (-4.4, 1.55 * sign, 0.65), (1.05, 0.06, 0.28), radiator, collection, 0.01)
-            if lod == 0:
-                for fin in range(6):
-                    add_box(f"Radiator_Fin_{side}_{fin}", (-4.85 + fin * 0.16, 1.55 * sign, 0.65), (0.018, 0.07, 0.24), radiator, collection, 0.003)
+            add_radiator_cassette(side, (-4.4, 1.58 * sign, 0.65), lod, mats, collection, length=1.35, height=0.32)
         add_box("Bridge_Antenna", (4.85, 0.22, 2.85), (0.04, 0.04, 0.28), mech, collection, 0.006)
 
     if lod == 0:

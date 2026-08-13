@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_ASHLINE_RIG_V1",
+  "defId": "reaver_pirate",
+  "shipId": "ashline_rig",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 33964,
+      "hullTriangles": 1756,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_rig_production_v1_lod0.glb",
+      "bytes": 1765440,
+      "sha256": "17037913C6233119AFA742A068BAA7C3D23B7E423422AAC23FCB99000101111E"
+    },
+    {
+      "lod": 1,
+      "triangles": 7740,
+      "hullTriangles": 1756,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_rig_production_v1_lod1.glb",
+      "bytes": 391028,
+      "sha256": "4F5DA6EE0B0A5B70C4B18E9242F5734C0A0FE773F92AAD8B8F6A64C662683663"
+    },
+    {
+      "lod": 2,
+      "triangles": 6012,
+      "hullTriangles": 1756,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_rig_production_v1_lod2.glb",
+      "bytes": 293868,
+      "sha256": "64D5FB2F7A8554CA7F69FC620489A9F7EC12304060F679584B3F7154F91A179C"
+    }
+  ],
+  "renders": [
+    {
+      "view": "ashline_rig_three_quarter",
+      "path": "evidence/iter04/ashline_rig_three_quarter.png",
+      "bytes": 893182
+    },
+    {
+      "view": "ashline_rig_starboard",
+      "path": "evidence/iter04/ashline_rig_starboard.png",
+      "bytes": 919508
+    },
+    {
+      "view": "ashline_rig_rear",
+      "path": "evidence/iter04/ashline_rig_rear.png",
+      "bytes": 1027391
+    },
+    {
+      "view": "ashline_rig_grazing",
+      "path": "evidence/iter04/ashline_rig_grazing.png",
+      "bytes": 939718
+    }
+  ]
+}

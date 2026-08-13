@@ -1,0 +1,126 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_ORE_BARGE_V1",
+  "defId": "ore_carrier",
+  "shipId": "ore_barge",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 35044,
+      "hullTriangles": 1540,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod0.glb",
+      "bytes": 1824288,
+      "sha256": "FDD1D5355BD4AA4F9AF9DB932BB1163F740F0C19088ADB7A27708D3DFCAE4882"
+    },
+    {
+      "lod": 1,
+      "triangles": 7956,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod1.glb",
+      "bytes": 404560,
+      "sha256": "C8C8C46EC56FB75B451B720FA79EB5813E4631F4B5A8E318F072B6DD90A05FD5"
+    },
+    {
+      "lod": 2,
+      "triangles": 6228,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod2.glb",
+      "bytes": 305288,
+      "sha256": "9EADACB3A1CD6B3468ED44B99B163298E3012B0C79F0D873FB386B6661525F00"
+    }
+  ],
+  "renders": [
+    {
+      "view": "ore_barge_three_quarter",
+      "path": "evidence/iter04/ore_barge_three_quarter.png",
+      "bytes": 906597
+    },
+    {
+      "view": "ore_barge_starboard",
+      "path": "evidence/iter04/ore_barge_starboard.png",
+      "bytes": 932349
+    },
+    {
+      "view": "ore_barge_rear",
+      "path": "evidence/iter04/ore_barge_rear.png",
+      "bytes": 1012455
+    },
+    {
+      "view": "ore_barge_grazing",
+      "path": "evidence/iter04/ore_barge_grazing.png",
+      "bytes": 978149
+    }
+  ]
+}

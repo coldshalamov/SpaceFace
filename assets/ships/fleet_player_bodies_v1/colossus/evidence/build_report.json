@@ -3,13 +3,13 @@
   "assetId": "SF_COLOSSUS_PRODUCTION_V1",
   "defId": "ship_colossus",
   "shipId": "colossus",
-  "iteration": 1,
+  "iteration": 4,
   "lods": [
     {
       "lod": 0,
-      "triangles": 10708,
-      "hullTriangles": 1444,
-      "draws": 7,
+      "triangles": 53536,
+      "hullTriangles": 1540,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -17,6 +17,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -33,20 +34,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod0.glb",
-      "bytes": 578480,
-      "sha256": "14F2C799DCD4BFB77A057071614AC330D254848ECE319D8BF192662B2C8D5E30"
+      "bytes": 2774252,
+      "sha256": "04856BD9FDE9DE5457E5BF459C8D087BEDABA43881DAAFAF934BBB92ACB03518"
     },
     {
       "lod": 1,
-      "triangles": 5184,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 13392,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -63,20 +65,21 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod1.glb",
-      "bytes": 266496,
-      "sha256": "FC5E2F85D6FB372683FEC38F837E1AA7EBDF45A839D434198DACC8886825A606"
+      "bytes": 665628,
+      "sha256": "DEC13B0AE48FC017E3376FB980A246F8FD0A4FCD957C507D6E9479E9284C3D51"
     },
     {
       "lod": 2,
-      "triangles": 5184,
-      "hullTriangles": 1444,
-      "draws": 6,
+      "triangles": 9936,
+      "hullTriangles": 1540,
+      "draws": 7,
       "materials": [
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -93,30 +96,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod2.glb",
-      "bytes": 266496,
-      "sha256": "423B04824AB1623E83F276D86655BFFE953D5BC2EB8A2353D1ACA5137BF4EBDD"
+      "bytes": 471324,
+      "sha256": "88DE175F1D9046CBC3DD3C3D203F7F96844E5979B36460A597DDBA9818C11530"
     }
   ],
   "renders": [
     {
       "view": "colossus_three_quarter",
-      "path": "evidence/iter01/colossus_three_quarter.png",
-      "bytes": 827994
+      "path": "evidence/iter04/colossus_three_quarter.png",
+      "bytes": 928439
     },
     {
       "view": "colossus_starboard",
-      "path": "evidence/iter01/colossus_starboard.png",
-      "bytes": 843470
+      "path": "evidence/iter04/colossus_starboard.png",
+      "bytes": 933211
     },
     {
       "view": "colossus_rear",
-      "path": "evidence/iter01/colossus_rear.png",
-      "bytes": 908237
+      "path": "evidence/iter04/colossus_rear.png",
+      "bytes": 985864
     },
     {
       "view": "colossus_grazing",
-      "path": "evidence/iter01/colossus_grazing.png",
-      "bytes": 874573
+      "path": "evidence/iter04/colossus_grazing.png",
+      "bytes": 977320
     }
   ]
 }

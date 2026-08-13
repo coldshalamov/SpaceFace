@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_REPAIR_TENDER_V1",
+  "defId": "tender",
+  "shipId": "repair_tender",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 33464,
+      "hullTriangles": 1540,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod0.glb",
+      "bytes": 1730784,
+      "sha256": "1DC94156801EAEB724D85A1ABC97DAD3919719FB7E957885273167E60437E0E3"
+    },
+    {
+      "lod": 1,
+      "triangles": 7240,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod1.glb",
+      "bytes": 363312,
+      "sha256": "D16EC14EA5561F14BBD77F0B1C1C0C48887A7D01AFE9CE6739DE25E827F933E7"
+    },
+    {
+      "lod": 2,
+      "triangles": 5512,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod2.glb",
+      "bytes": 265384,
+      "sha256": "868786B767CF36AA3501D981B9FE6E7A0745C746414E0EB26EF7AD5A5D22184B"
+    }
+  ],
+  "renders": [
+    {
+      "view": "repair_tender_three_quarter",
+      "path": "evidence/iter04/repair_tender_three_quarter.png",
+      "bytes": 876020
+    },
+    {
+      "view": "repair_tender_starboard",
+      "path": "evidence/iter04/repair_tender_starboard.png",
+      "bytes": 903934
+    },
+    {
+      "view": "repair_tender_rear",
+      "path": "evidence/iter04/repair_tender_rear.png",
+      "bytes": 1002186
+    },
+    {
+      "view": "repair_tender_grazing",
+      "path": "evidence/iter04/repair_tender_grazing.png",
+      "bytes": 919463
+    }
+  ]
+}

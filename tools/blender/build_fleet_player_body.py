@@ -20,6 +20,20 @@ import bpy
 import bmesh
 from mathutils import Vector
 
+TOOLS = Path(__file__).resolve().parent
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+from fleet_construction import (  # noqa: E402
+    add_armor_tile,
+    add_manufactured_drive,
+    add_panel_seams,
+    add_radiator_cassette,
+    add_rcs_cluster,
+    add_sensor_dish,
+    add_service_hatch,
+    add_service_pipe,
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1"
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
@@ -105,6 +119,66 @@ SPECS = {
         "tower": True, "broadsides": True, "fins": True,
         "guns": "triple_front",
     },
+    "ashline_dart": {
+        "assetId": "SF_ASHLINE_DART_V1", "defId": "wasp_swarmer",
+        "hullTint": (0.22, 0.10, 0.08, 1.0), "role": "hostile_dart",
+        "length": 12.0, "halfW": 1.6, "height": 0.55,
+        "drives": [(-5.2, 0.0)], "wings": True, "canards": True, "guns": "twin_front",
+    },
+    "ashline_lode": {
+        "assetId": "SF_ASHLINE_LODE_V1", "defId": "bruiser_brawler",
+        "hullTint": (0.24, 0.12, 0.08, 1.0), "role": "hostile_bruiser",
+        "length": 16.0, "halfW": 2.1, "height": 0.95,
+        "drives": [(-6.6, -1.2), (-6.6, 1.2)], "tower": True, "guns": "twin_front",
+    },
+    "ashline_rig": {
+        "assetId": "SF_ASHLINE_RIG_V1", "defId": "reaver_pirate",
+        "hullTint": (0.18, 0.10, 0.08, 1.0), "role": "hostile_rig",
+        "length": 15.0, "halfW": 2.0, "height": 0.85,
+        "drives": [(-6.2, -1.1), (-6.2, 1.1)], "winglets": True, "guns": "front_rear",
+    },
+    "helios_lark": {
+        "assetId": "SF_HELIOS_LARK_V1", "defId": "courier",
+        "hullTint": (0.55, 0.52, 0.46, 1.0), "role": "courier",
+        "length": 13.0, "halfW": 1.3, "height": 0.62,
+        "drives": [(-5.6, 0.0)], "winglets": True,
+    },
+    "helios_cradle": {
+        "assetId": "SF_HELIOS_CRADLE_V1", "defId": "miner",
+        "hullTint": (0.42, 0.40, 0.34, 1.0), "role": "civilian_miner",
+        "length": 15.0, "halfW": 1.9, "height": 0.95,
+        "drives": [(-6.2, -1.2), (-6.2, 1.2)], "arms": 2, "hoppers": True,
+    },
+    "helios_span": {
+        "assetId": "SF_HELIOS_SPAN_V1", "defId": "hauler",
+        "hullTint": (0.48, 0.46, 0.40, 1.0), "role": "civilian_hauler",
+        "length": 18.0, "halfW": 2.0, "height": 1.05,
+        "drives": [(-7.6, -1.3), (-7.6, 1.3)], "bridge": True, "pods": 2,
+    },
+    "ore_barge": {
+        "assetId": "SF_ORE_BARGE_V1", "defId": "ore_carrier",
+        "hullTint": (0.28, 0.22, 0.14, 1.0), "role": "ore_barge",
+        "length": 19.0, "halfW": 2.4, "height": 1.2,
+        "drives": [(-8.0, -1.5), (-8.0, 1.5)], "hoppers": True, "pods": 1,
+    },
+    "repair_tender": {
+        "assetId": "SF_REPAIR_TENDER_V1", "defId": "tender",
+        "hullTint": (0.32, 0.34, 0.28, 1.0), "role": "tender",
+        "length": 14.0, "halfW": 1.6, "height": 0.8,
+        "drives": [(-5.8, -1.0), (-5.8, 1.0)], "bridge": True,
+    },
+    "salvage_cutter": {
+        "assetId": "SF_SALVAGE_CUTTER_V1", "defId": "salvor",
+        "hullTint": (0.26, 0.22, 0.16, 1.0), "role": "salvor",
+        "length": 15.0, "halfW": 1.8, "height": 0.85,
+        "drives": [(-6.2, -1.1), (-6.2, 1.1)], "arms": 2,
+    },
+    "survey_pin": {
+        "assetId": "SF_SURVEY_PIN_V1", "defId": "surveyor",
+        "hullTint": (0.34, 0.36, 0.32, 1.0), "role": "surveyor",
+        "length": 11.0, "halfW": 1.1, "height": 0.55,
+        "drives": [(-4.6, 0.0)], "mast": True,
+    },
 }
 
 
@@ -161,7 +235,7 @@ def make_pbr_material(name, prefix, texture_dir, tint, metallic, roughness):
     base.image.colorspace_settings.name = "sRGB"
     mix = nodes.new("ShaderNodeMixRGB")
     mix.blend_type = "MIX"
-    mix.inputs[0].default_value = 0.62
+    mix.inputs[0].default_value = 0.74
     mix.inputs[2].default_value = tint
     links.new(mapping.outputs["Vector"], base.inputs["Vector"])
     links.new(base.outputs["Color"], mix.inputs[1])
@@ -172,7 +246,7 @@ def make_pbr_material(name, prefix, texture_dir, tint, metallic, roughness):
     normal.image.colorspace_settings.name = "Non-Color"
     links.new(mapping.outputs["Vector"], normal.inputs["Vector"])
     nmap = nodes.new("ShaderNodeNormalMap")
-    nmap.inputs["Strength"].default_value = 0.22
+    nmap.inputs["Strength"].default_value = 0.42
     links.new(normal.outputs["Color"], nmap.inputs["Color"])
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     orm = nodes.new("ShaderNodeTexImage")
@@ -198,10 +272,13 @@ def create_materials(texture_dir, hull_tint):
     }
     canopy = bpy.data.materials.new("Material_Canopy")
     bsdf = principled(canopy)
-    bsdf.inputs["Base Color"].default_value = (0.008, 0.018, 0.028, 1)
-    bsdf.inputs["Metallic"].default_value = 0.12
-    bsdf.inputs["Roughness"].default_value = 0.14
-    bsdf.inputs["Coat Weight"].default_value = 0.78
+    bsdf.inputs["Base Color"].default_value = (0.02, 0.07, 0.10, 1)
+    bsdf.inputs["Metallic"].default_value = 0.05
+    bsdf.inputs["Roughness"].default_value = 0.08
+    bsdf.inputs["Coat Weight"].default_value = 1.0
+    bsdf.inputs["Coat Roughness"].default_value = 0.04
+    if "Transmission Weight" in bsdf.inputs:
+        bsdf.inputs["Transmission Weight"].default_value = 0.35
     canopy["spacefaceRole"] = "glass"
     mats[canopy.name] = canopy
     thruster = bpy.data.materials.new("Material_Thruster")
@@ -219,6 +296,13 @@ def create_materials(texture_dir, hull_tint):
     bsdf.inputs["Roughness"].default_value = 0.58
     ceramic["spacefaceRole"] = "ceramic"
     mats[ceramic.name] = ceramic
+    radiator = bpy.data.materials.new("Material_Radiator")
+    bsdf = principled(radiator)
+    bsdf.inputs["Base Color"].default_value = (0.22, 0.18, 0.14, 1)
+    bsdf.inputs["Metallic"].default_value = 0.72
+    bsdf.inputs["Roughness"].default_value = 0.62
+    radiator["spacefaceRole"] = "radiator"
+    mats[radiator.name] = radiator
     return mats
 
 
@@ -287,6 +371,36 @@ def add_chamfer_loft(name, stations, material, collection, bevel=0.04):
     return finish_mesh(obj, material, bevel)
 
 
+def span_ring(x, y, z, hx, hz, chamfer):
+    c = min(chamfer, hx * 0.45, hz * 0.45)
+    return [
+        (x + hx - c, y, z + hz), (x + hx, y, z + hz - c),
+        (x + hx, y, z - hz + c), (x + hx - c, y, z - hz),
+        (x - hx + c, y, z - hz), (x - hx, y, z - hz + c),
+        (x - hx, y, z + hz - c), (x - hx + c, y, z + hz),
+    ]
+
+
+def add_span_loft(name, stations, material, collection, bevel=0.02):
+    """Loft along +Y so wings have a real root-to-tip section, not a flat card."""
+    rings = [span_ring(*station) for station in stations]
+    sides = 8
+    verts = [vert for ring in rings for vert in ring]
+    faces = [tuple(range(sides - 1, -1, -1)), tuple(range((len(rings) - 1) * sides, len(rings) * sides))]
+    for station in range(len(rings) - 1):
+        a = station * sides
+        b = (station + 1) * sides
+        for i in range(sides):
+            j = (i + 1) % sides
+            faces.append((a + i, a + j, b + j, b + i))
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    return finish_mesh(obj, material, bevel)
+
+
 def add_empty(name, loc, collection, parent=None):
     obj = bpy.data.objects.new(name, None)
     collection.objects.link(obj)
@@ -300,21 +414,7 @@ def add_empty(name, loc, collection, parent=None):
 
 
 def add_drive(tag, x, y, lod, mats, collection):
-    mech = mats["Material_Mechanical"]
-    armor = mats["Material_Armor"]
-    ceramic = mats["Material_Ceramic"]
-    thruster = mats["Material_Thruster"]
-    add_cylinder(f"Drive_Casing_{tag}", (x + 0.35, y, 0.08), 0.44, 0.85, mech, collection, vertices=18, bevel=0.02)
-    add_cylinder(f"Drive_Collar_{tag}", (x - 0.10, y, 0.08), 0.36, 0.12, ceramic, collection, vertices=14, bevel=0.01)
-    add_cylinder(f"Drive_Throat_{tag}", (x - 0.28, y, 0.08), 0.16, 0.07, thruster, collection, vertices=14, bevel=0.006)
-    if lod == 0:
-        for index in range(12):
-            angle = math.tau * index / 12
-            add_box(
-                f"Drive_Vane_{tag}_{index}",
-                (x - 0.34, y + math.cos(angle) * 0.20, 0.08 + math.sin(angle) * 0.20),
-                (0.05, 0.008, 0.05), armor, collection, 0.003, (angle, 0, 0),
-            )
+    add_manufactured_drive(tag, x, y, lod, mats, collection, scale=1.0, z=0.08)
 
 
 def add_cutter_arm(tag, x, y, z, lod, mats, collection):
@@ -366,11 +466,13 @@ def build_ship(ship_id, spec, lod, mats):
     }
     add_chamfer_loft("Pressure_Hull", [
         (half, 0, 0.08, hw * 0.28, hh * 0.38, 0.08),
-        (half * 0.55, 0, 0.10, hw * 0.78, hh * 0.82, 0.16),
+        (half * 0.72, 0, 0.10, hw * 0.62, hh * 0.68, 0.14),
+        (half * 0.40, 0, 0.11, hw * 0.88, hh * 0.90, 0.18),
         (0.0, 0, 0.08, hw, hh, 0.20),
-        (-half * 0.45, 0, 0.08, hw * 0.92, hh * 0.90, 0.18),
-        (-half + 0.4, 0, 0.10, hw * 0.48, hh * 0.55, 0.10),
-    ], hull, collection, 0.05)
+        (-half * 0.32, 0, 0.08, hw * 0.94, hh * 0.92, 0.18),
+        (-half * 0.68, 0, 0.10, hw * 0.70, hh * 0.72, 0.14),
+        (-half + 0.85, 0, 0.12, hw * 0.38, hh * 0.42, 0.08),
+    ], hull, collection, 0.045)
     course_xs = [half * t for t in (0.72, 0.48, 0.24, 0.0, -0.24, -0.48, -0.68)]
     for i, x in enumerate(course_xs):
         add_box(f"Hull_Course_{i}", (x, 0, 0.08), (0.045, hw * 0.88, hh * 0.78), hull, collection, 0.01)
@@ -378,6 +480,7 @@ def build_ship(ship_id, spec, lod, mats):
     add_box("Hull_Chine_Starboard", (0, hw * 0.92, 0.05), (half * 0.7, 0.05, hh * 0.45), hull, collection, 0.012)
     add_box("Hull_Belly_Plate", (0, 0, -hh * 0.85), (half * 0.6, hw * 0.55, 0.05), hull, collection, 0.012)
     add_box("Ventral_Keel", (0, 0, -hh - 0.08), (half * 0.75, hw * 0.28, 0.07), mech, collection, 0.025)
+    add_cylinder("Tail_Fairing", (-half + 0.15, 0, 0.10), max(0.28, hw * 0.28), 0.42, armor, collection, vertices=16, bevel=0.015)
 
     if spec.get("bridge"):
         add_box("Bridge_Pedestal", (half * 0.55, 0, hh + 0.15), (0.85, 0.65, 0.45), armor, collection, 0.025)
@@ -389,20 +492,35 @@ def build_ship(ship_id, spec, lod, mats):
         add_box("Bridge_Brow", (half * 0.54, 0, hh + 1.22), (0.45, 0.40, 0.05), armor, collection, 0.01)
     else:
         add_chamfer_loft("Canopy_Glass", [
-            (half * 0.42, 0, hh + 0.15, 0.22, 0.08, 0.03),
-            (half * 0.22, 0, hh + 0.42, 0.58, 0.24, 0.05),
-            (half * 0.02, 0, hh + 0.22, 0.36, 0.12, 0.03),
+            (half * 0.48, 0, hh + 0.18, 0.28, 0.10, 0.04),
+            (half * 0.28, 0, hh + 0.52, 0.72, 0.28, 0.06),
+            (half * 0.08, 0, hh + 0.38, 0.48, 0.16, 0.04),
         ], canopy, collection, 0.012)
-        add_box("Canopy_Brow", (half * 0.28, 0, hh + 0.58), (0.42, 0.32, 0.05), armor, collection, 0.01)
+        add_box("Canopy_Frame_Fore", (half * 0.46, 0, hh + 0.28), (0.04, 0.42, 0.10), armor, collection, 0.006)
+        add_box("Canopy_Frame_Aft", (half * 0.10, 0, hh + 0.42), (0.04, 0.50, 0.10), armor, collection, 0.006)
+        add_box("Canopy_Frame_Center", (half * 0.28, 0, hh + 0.62), (0.85, 0.03, 0.03), armor, collection, 0.004)
+        add_box("Canopy_Brow", (half * 0.32, 0, hh + 0.68), (0.48, 0.36, 0.05), armor, collection, 0.01)
 
     for index, (x, y) in enumerate(spec["drives"]):
-        add_drive(f"{index}", x, y, lod, mats, collection)
+        drive_x = min(x, -half - 0.35)
+        add_manufactured_drive(f"{index}", drive_x, y, lod, mats, collection, scale=1.7, z=0.08)
 
     if spec.get("wings"):
         for sign, side in ((-1, "Port"), (1, "Starboard")):
-            add_box(f"Wing_{side}", (-0.4, (hw + 1.1) * sign, 0.05), (2.6, 1.15, 0.08), hull, collection, 0.03)
-            add_box(f"Wing_Armor_{side}", (-0.2, (hw + 1.1) * sign, 0.16), (2.1, 0.85, 0.04), armor, collection, 0.02)
-            add_box(f"Accent_Rail_{side}", (-0.3, (hw + 1.15) * sign, 0.22), (1.8, 0.04, 0.03), accent, collection, 0.008)
+            add_span_loft(f"Wing_{side}", [
+                (-0.20, hw * 0.95 * sign, 0.05, 1.55, 0.16, 0.05),
+                (-0.55, (hw + 1.15) * sign, 0.03, 1.25, 0.10, 0.04),
+                (-1.15, (hw + 2.25) * sign, 0.00, 0.78, 0.045, 0.02),
+            ], hull, collection, 0.018)
+            add_span_loft(f"WingArmor_{side}", [
+                (-0.10, (hw + 0.35) * sign, 0.10, 1.05, 0.04, 0.02),
+                (-0.40, (hw + 1.15) * sign, 0.08, 0.88, 0.03, 0.015),
+                (-0.75, (hw + 1.85) * sign, 0.05, 0.55, 0.02, 0.01),
+            ], armor, collection, 0.012)
+            add_box(f"WingFlap_{side}", (-1.45, (hw + 1.25) * sign, 0.0), (0.28, 0.55, 0.022), mech, collection, 0.006)
+            add_box(f"WingFence_{side}", (-0.35, (hw + 0.85) * sign, 0.14), (0.7, 0.018, 0.09), armor, collection, 0.005)
+            add_box(f"Hardpoint_{side}", (-0.2, (hw + 1.05) * sign, -0.14), (0.42, 0.07, 0.055), mech, collection, 0.007)
+            add_box(f"Accent_Rail_{side}", (-0.3, (hw + 1.10) * sign, 0.12), (0.7, 0.025, 0.016), accent, collection, 0.003)
     if spec.get("canards"):
         for sign, side in ((-1, "Port"), (1, "Starboard")):
             add_box(f"Canard_{side}", (half * 0.35, (hw * 0.7) * sign, 0.12), (0.85, 0.35, 0.05), armor, collection, 0.015)
@@ -459,7 +577,20 @@ def build_ship(ship_id, spec, lod, mats):
     if lod == 0:
         add_box("Accent_Plate", (half * 0.05, -hw + 0.08, 0.35), (0.45, 0.02, 0.12), accent, collection, 0.006)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
-            add_cylinder(f"RCS_{side}", (-1.2, (hw + 0.25) * sign, 0.15), 0.09, 0.14, mech, collection, vertices=10, bevel=0.006, rot=(math.pi / 2, 0, 0))
+            add_rcs_cluster(side, (-1.2, (hw + 0.28) * sign, 0.15), mats, collection, sign=sign)
+        add_sensor_dish("Dorsal", (half * 0.18, 0.0, hh + 0.72), mats, collection)
+        add_service_hatch("Dorsal", (-half * 0.12, 0.0, hh + 0.12), mats, collection, sx=0.38, sy=0.28)
+        add_service_hatch("PortShoulder", (half * 0.08, -hw * 0.82, hh * 0.35), mats, collection, sx=0.28, sy=0.18)
+        add_radiator_cassette("Port", (-half * 0.18, -hw * 0.55, hh + 0.10), lod, mats, collection, length=min(2.4, half * 0.75), height=0.38)
+        add_radiator_cassette("Starboard", (-half * 0.18, hw * 0.55, hh + 0.10), lod, mats, collection, length=min(2.4, half * 0.75), height=0.38)
+        add_radiator_cassette("Dorsal", (-half * 0.38, 0.0, hh + 0.16), lod, mats, collection, length=min(2.0, half * 0.55), height=0.28)
+        add_panel_seams("Hull", [half * t for t in (0.62, 0.28, -0.08, -0.42)], hw * 0.78, hh * 0.92, mech, collection)
+        add_service_pipe("Pipe_Port_A", (half * 0.35, -hw * 0.88, -hh * 0.15), (-half * 0.35, -hw * 0.88, -hh * 0.05), mech, collection)
+        add_service_pipe("Pipe_Stbd_A", (half * 0.35, hw * 0.88, -hh * 0.15), (-half * 0.35, hw * 0.88, -hh * 0.05), mech, collection)
+        add_armor_tile("Armor_Dorsal_Fore", (half * 0.28, 0.0, hh + 0.06), (half * 0.22, hw * 0.42, 0.035), armor, collection, 0.01)
+        add_armor_tile("Armor_Dorsal_Aft", (-half * 0.22, 0.0, hh + 0.05), (half * 0.18, hw * 0.38, 0.032), armor, collection, 0.01)
+        add_armor_tile("Armor_Cheek_Port", (half * 0.12, -hw * 0.98, hh * 0.25), (half * 0.16, 0.04, hh * 0.28), armor, collection, 0.01)
+        add_armor_tile("Armor_Cheek_Starboard", (half * 0.12, hw * 0.98, hh * 0.25), (half * 0.16, 0.04, hh * 0.28), armor, collection, 0.01)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
@@ -575,9 +706,9 @@ def render_evidence(collection, out_dir: Path, ship_id: str, spec):
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (18, -22, 16), 4800, (0.85, 0.9, 1), 12),
-        ("Fill", (6, 20, 10), 2400, (0.55, 0.62, 0.72), 10),
-        ("Rim", (-18, -8, 8), 3000, (1.0, 0.62, 0.28), 8),
+        ("Key", (14, -16, 11), 7200, (0.88, 0.92, 1), 10),
+        ("Fill", (5, 14, 8), 3600, (0.55, 0.62, 0.72), 8),
+        ("Rim", (-12, -6, 6), 4200, (1.0, 0.62, 0.28), 7),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
@@ -587,14 +718,14 @@ def render_evidence(collection, out_dir: Path, ship_id: str, spec):
         scene.collection.objects.link(obj)
         obj.location = loc
         look_at(obj)
-    evidence = out_dir / "evidence" / "iter01"
+    evidence = out_dir / "evidence" / "iter04"
     evidence.mkdir(parents=True, exist_ok=True)
     half = spec["length"] * 0.45
     views = [
-        (f"{ship_id}_three_quarter", (half + 10, -half - 8, 8), (0, 0, 0.2), 50),
-        (f"{ship_id}_starboard", (half + 6, half + 8, 7), (0, 0.3, 0.2), 50),
-        (f"{ship_id}_rear", (-half - 10, -6, 5), (-1, 0, 0.1), 52),
-        (f"{ship_id}_grazing", (4, -half - 6, 1.4), (0, 0, 0.2), 48),
+        (f"{ship_id}_three_quarter", (half + 6.5, -half - 5.5, 4.8), (0, 0, 0.15), 46),
+        (f"{ship_id}_starboard", (half + 3.5, half + 5.5, 3.8), (0, 0.2, 0.15), 46),
+        (f"{ship_id}_rear", (-half - 6.5, -3.5, 3.2), (-0.6, 0, 0.1), 48),
+        (f"{ship_id}_grazing", (2.2, -half - 3.8, 0.9), (0, 0, 0.15), 42),
     ]
     receipts = []
     for name, loc, target, lens in views:
@@ -625,7 +756,7 @@ def build_one(ship_id: str, spec: dict, texture_dir: Path) -> dict:
         "assetId": spec["assetId"],
         "defId": spec["defId"],
         "shipId": ship_id,
-        "iteration": 1,
+        "iteration": 4,
         "lods": reports,
         "renders": renders,
     }

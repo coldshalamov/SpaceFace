@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_ASHLINE_LODE_V1",
+  "defId": "bruiser_brawler",
+  "shipId": "ashline_lode",
+  "iteration": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 34072,
+      "hullTriangles": 1540,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod0.glb",
+      "bytes": 1766200,
+      "sha256": "2B95CBAEACC0FEFDE196F7AD1900D295A88EA052FAEF3A16D09614B8A7461C06"
+    },
+    {
+      "lod": 1,
+      "triangles": 7848,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod1.glb",
+      "bytes": 396720,
+      "sha256": "975A249C8847BA1698F7A51CD0A3733A2E241279B817ED705A353D01115C1FED"
+    },
+    {
+      "lod": 2,
+      "triangles": 6120,
+      "hullTriangles": 1540,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod2.glb",
+      "bytes": 299564,
+      "sha256": "8F8623C339800E1874CF7F8242D3C26A46D537494F81A26DCB255CFCD1A46444"
+    }
+  ],
+  "renders": [
+    {
+      "view": "ashline_lode_three_quarter",
+      "path": "evidence/iter04/ashline_lode_three_quarter.png",
+      "bytes": 910027
+    },
+    {
+      "view": "ashline_lode_starboard",
+      "path": "evidence/iter04/ashline_lode_starboard.png",
+      "bytes": 929545
+    },
+    {
+      "view": "ashline_lode_rear",
+      "path": "evidence/iter04/ashline_lode_rear.png",
+      "bytes": 1024926
+    },
+    {
+      "view": "ashline_lode_grazing",
+      "path": "evidence/iter04/ashline_lode_grazing.png",
+      "bytes": 970420
+    }
+  ]
+}

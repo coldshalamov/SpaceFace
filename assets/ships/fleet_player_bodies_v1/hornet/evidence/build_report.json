@@ -3,13 +3,13 @@
   "assetId": "SF_HORNET_PRODUCTION_V1",
   "defId": "ship_hornet",
   "shipId": "hornet",
-  "iteration": 1,
+  "iteration": 4,
   "lods": [
     {
       "lod": 0,
-      "triangles": 4700,
-      "hullTriangles": 904,
-      "draws": 7,
+      "triangles": 26832,
+      "hullTriangles": 2052,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -17,6 +17,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -33,14 +34,14 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod0.glb",
-      "bytes": 260700,
-      "sha256": "CC47E7DC418510D758AC1EDAC8A8824F5893BDF7FC89C50BD0AC33EF29BE8F54"
+      "bytes": 1388488,
+      "sha256": "B8755E074A0EFAF8CC4CD3441421BE2296125B0DA3EF27120A8A87323AD87BC2"
     },
     {
       "lod": 1,
-      "triangles": 3064,
-      "hullTriangles": 904,
-      "draws": 7,
+      "triangles": 7568,
+      "hullTriangles": 2052,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -48,6 +49,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -64,14 +66,14 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod1.glb",
-      "bytes": 166836,
-      "sha256": "4D75DCE983802D8CE329B7C382FA3B5CE6BB16D240B704B81B2DA04C1B2A8C9C"
+      "bytes": 388004,
+      "sha256": "0637AD86E9B5B39D6B591AD36A59F1341DCFC163BE60CD901B63D641003C4998"
     },
     {
       "lod": 2,
-      "triangles": 3064,
-      "hullTriangles": 904,
-      "draws": 7,
+      "triangles": 6704,
+      "hullTriangles": 2052,
+      "draws": 8,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -79,6 +81,7 @@
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
+        "Material_Radiator",
         "Material_Thruster"
       ],
       "sockets": [
@@ -95,30 +98,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod2.glb",
-      "bytes": 166836,
-      "sha256": "2629EE91EC9C44DDFEE99A9387ACE448ABC28F7F4F284E19139F2FDBE06703C3"
+      "bytes": 339428,
+      "sha256": "3AEAAC77C50C3CA2D04D7E3FD08ECAB157F4EC89428655178A35AF2E8B9DD1F6"
     }
   ],
   "renders": [
     {
       "view": "hornet_three_quarter",
-      "path": "evidence/iter01/hornet_three_quarter.png",
-      "bytes": 766439
+      "path": "evidence/iter04/hornet_three_quarter.png",
+      "bytes": 856288
     },
     {
       "view": "hornet_starboard",
-      "path": "evidence/iter01/hornet_starboard.png",
-      "bytes": 814097
+      "path": "evidence/iter04/hornet_starboard.png",
+      "bytes": 894806
     },
     {
       "view": "hornet_rear",
-      "path": "evidence/iter01/hornet_rear.png",
-      "bytes": 843403
+      "path": "evidence/iter04/hornet_rear.png",
+      "bytes": 1008143
     },
     {
       "view": "hornet_grazing",
-      "path": "evidence/iter01/hornet_grazing.png",
-      "bytes": 792679
+      "path": "evidence/iter04/hornet_grazing.png",
+      "bytes": 897640
     }
   ]
 }
