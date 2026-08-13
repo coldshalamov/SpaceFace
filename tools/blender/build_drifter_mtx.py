@@ -528,13 +528,13 @@ def build_lod(lod, mats):
     }
     # Utility: blunt bow, tall cabin, wide nacelle carry, twin-drive aft. Not a needle.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.10, 0.52, 0.40),
-        diamond_ring(half * 0.72, 0, 0.18, 0.95, 0.72),
-        diamond_ring(half * 0.38, 0, 0.14, 1.25, 0.78),
-        diamond_ring(0.10, 0, 0.10, 1.55, 0.72),
-        diamond_ring(-half * 0.28, 0, 0.10, 1.62, 0.68),
-        diamond_ring(-half * 0.62, 0, 0.10, 1.28, 0.58),
-        diamond_ring(-half + 0.70, 0, 0.10, 0.88, 0.48),
+        diamond_ring(half, 0, 0.10, 0.48, 0.38),
+        diamond_ring(half * 0.72, 0, 0.20, 0.88, 0.78),
+        diamond_ring(half * 0.38, 0, 0.16, 1.12, 0.82),
+        diamond_ring(0.10, 0, 0.10, 1.28, 0.68),
+        diamond_ring(-half * 0.28, 0, 0.08, 1.10, 0.58),
+        diamond_ring(-half * 0.62, 0, 0.08, 0.82, 0.48),
+        diamond_ring(-half + 0.70, 0, 0.08, 0.58, 0.38),
     ], hull, collection, 0.018)
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (3.40, 0.0, 0.88), 1.45, 0.70, 0.52, (0, 0, 1), mats, collection, kit="cockpit")
@@ -545,40 +545,57 @@ def build_lod(lod, mats):
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
 
-    add_thin_canopy("Canopy", 3.40, 0.0, 0.92, 1.40, 0.62, 0.42, mats, collection)
+    add_thin_canopy("Canopy", 3.55, 0.0, 0.98, 1.25, 0.52, 0.38, mats, collection)
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         loft_from_rings(f"Nacelle_{side}", [
-            diamond_ring(-3.2, 1.82 * sign, 0.08, 0.40, 0.32),
-            diamond_ring(-5.0, 1.82 * sign, 0.08, 0.50, 0.38),
-            diamond_ring(-6.4, 1.82 * sign, 0.08, 0.44, 0.34),
-            diamond_ring(-7.3, 1.82 * sign, 0.08, 0.36, 0.28),
+            diamond_ring(-3.0, 2.05 * sign, 0.06, 0.36, 0.30),
+            diamond_ring(-4.8, 2.15 * sign, 0.06, 0.48, 0.38),
+            diamond_ring(-6.4, 2.15 * sign, 0.06, 0.44, 0.34),
+            diamond_ring(-7.5, 2.10 * sign, 0.06, 0.34, 0.26),
         ], armor, collection, 0.012)
-        add_manufactured_drive(side, -7.45, 1.82 * sign, lod, mats, collection, scale=1.22, z=0.08)
-        add_cylinder(f"NacelleCollar_{side}", (-6.95, 1.82 * sign, 0.08), 0.42, 0.10, ceramic, collection, vertices=14, bevel=0.006)
+        add_manufactured_drive(side, -7.65, 2.10 * sign, lod, mats, collection, scale=1.18, z=0.06)
+        add_cylinder(f"NacelleCollar_{side}", (-7.10, 2.10 * sign, 0.06), 0.40, 0.10, ceramic, collection, vertices=14, bevel=0.006)
+        loft_from_rings(f"NacelleSaddle_{side}", [
+            diamond_ring(-4.6, 1.15 * sign, 0.06, 0.28, 0.18),
+            diamond_ring(-5.2, 1.65 * sign, 0.06, 0.22, 0.16),
+            diamond_ring(-5.6, 2.00 * sign, 0.06, 0.18, 0.14),
+        ], mech, collection, 0.008)
         loft_from_rings(f"Winglet_{side}", [
-            airfoil_ring(-1.10, 1.70 * sign, 0.22, 1.15, 0.14),
-            airfoil_ring(-1.55, 2.55 * sign, 0.42, 0.72, 0.06),
+            airfoil_ring(-1.00, 1.35 * sign, 0.18, 1.25, 0.16),
+            airfoil_ring(-1.55, 2.35 * sign, 0.48, 0.85, 0.08),
+            airfoil_ring(-1.95, 2.95 * sign, 0.62, 0.48, 0.04),
         ], hull, collection, 0.008)
-        add_box(f"Pylon_{side}", (-1.20, 1.72 * sign, 0.06), (0.55, 0.08, 0.10), mech, collection, 0.006)
+        add_box(f"Pylon_{side}", (-1.15, 1.45 * sign, 0.04), (0.60, 0.09, 0.12), mech, collection, 0.006)
+        add_box(f"DorsalTile_{side}", (0.55, 0.42 * sign, 0.72), (0.70, 0.28, 0.018), armor, collection, 0.004)
+        add_box(f"BowCheek_{side}", (5.4, 0.55 * sign, 0.12), (0.85, 0.06, 0.18), armor, collection, 0.006)
         add_cylinder(f"GunHouse_{side}", (5.55, 0.42 * sign, -0.06), 0.08, 0.95, mech, collection, vertices=10, bevel=0.005)
         add_cylinder(f"GunBarrel_{side}", (6.40, 0.42 * sign, -0.06), 0.032, 0.70, armor, collection, vertices=8, bevel=0.003)
         add_cylinder(f"RearGun_{side}", (-6.10, 0.55 * sign, 0.42), 0.04, 0.55, mech, collection, vertices=8, bevel=0.003)
         add_rcs_cluster(side, (-1.6, 1.72 * sign, 0.18), mats, collection, sign=sign)
 
     add_box("Cabin_Shoulder", (3.2, 0.0, 0.92), (0.85, 0.55, 0.05), armor, collection, 0.008)
+    add_box("DeckPlate_A", (-1.4, 0.18, 0.64), (0.95, 0.42, 0.02), armor, collection, 0.005)
+    add_box("DeckPlate_B", (-2.8, -0.22, 0.58), (0.80, 0.36, 0.018), hull, collection, 0.005)
+    add_box("DeckPlate_C", (-4.2, 0.12, 0.52), (0.70, 0.30, 0.016), armor, collection, 0.004)
+    add_box("AftWalk", (-3.4, 0.0, 0.50), (1.6, 0.16, 0.014), mech, collection, 0.003)
+    add_box("CargoLip_Fore", (0.55, 0.0, -0.78), (0.08, 0.70, 0.05), mech, collection, 0.004)
+    add_box("CargoLip_Aft", (-0.95, 0.0, -0.78), (0.08, 0.70, 0.05), mech, collection, 0.004)
     add_box("Repair_Patch", (1.15, -0.55, 0.78), (0.32, 0.16, 0.012), warning, collection, 0.002)
     add_box("Accent_Flash", (0.55, -1.42, 0.28), (0.50, 0.016, 0.08), accent, collection, 0.002)
     add_sensor_dish("Dorsal", (1.35, 0.28, 1.05), mats, collection)
+    add_cylinder("Comm_Mast", (-0.35, 0.0, 1.15), 0.035, 0.72, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
+    add_box("Comm_Head", (-0.28, 0.0, 1.52), (0.10, 0.14, 0.06), armor, collection, 0.003)
+    add_box("DeckCrate", (-2.05, 0.38, 0.68), (0.18, 0.12, 0.10), warning, collection, 0.003)
     add_box("Hatch_Lid", (-1.10, 0.32, 0.72), (0.32, 0.20, 0.016), armor, collection, 0.004)
     add_box("Hatch_Hinge", (-1.36, 0.32, 0.73), (0.03, 0.15, 0.018), mech, collection, 0.002)
     add_box("Keel_Spine", (0.20, 0.0, -0.82), (2.8, 0.24, 0.045), mech, collection, 0.01)
     if lod == 0:
-        add_curve_hose("Hose_Port", [(0.1, -1.40, 0.08), (-2.2, -1.55, 0.10), (-5.0, -1.70, 0.12), (-6.9, -1.82, 0.16)], mech, collection, 0.016)
-        add_curve_hose("Hose_Stbd", [(0.1, 1.40, 0.08), (-2.2, 1.55, 0.10), (-5.0, 1.70, 0.12), (-6.9, 1.82, 0.16)], mech, collection, 0.016)
+        add_curve_hose("Hose_Port", [(0.1, -1.40, 0.08), (-2.4, -1.65, 0.08), (-5.2, -1.95, 0.10), (-7.1, -2.10, 0.14)], mech, collection, 0.016)
+        add_curve_hose("Hose_Stbd", [(0.1, 1.40, 0.08), (-2.4, 1.65, 0.08), (-5.2, 1.95, 0.10), (-7.1, 2.10, 0.14)], mech, collection, 0.016)
         add_box("HoseFit_P0", (0.05, -1.40, 0.08), (0.03, 0.03, 0.03), mech, collection, 0.002)
-        add_box("HoseFit_P1", (-6.85, -1.82, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
+        add_box("HoseFit_P1", (-7.05, -2.10, 0.14), (0.03, 0.03, 0.03), mech, collection, 0.002)
         add_box("HoseFit_S0", (0.05, 1.40, 0.08), (0.03, 0.03, 0.03), mech, collection, 0.002)
-        add_box("HoseFit_S1", (-6.85, 1.82, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
+        add_box("HoseFit_S1", (-7.05, 2.10, 0.14), (0.03, 0.03, 0.03), mech, collection, 0.002)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
