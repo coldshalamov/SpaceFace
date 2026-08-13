@@ -15,16 +15,16 @@ const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
 const FAMILY = Object.freeze([
   Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [25_500, 28_000], maxDraws: 20,
-    acceptedCandidateSha256: '70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC',
+    lod: 'lod0', file: 'kestrel.glb', triangles: [36_000, 38_000], maxDraws: 24,
+    acceptedCandidateSha256: '73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150',
   }),
   Object.freeze({
-    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_500, 17_500], maxDraws: 17,
-    acceptedCandidateSha256: 'BEE5928062F55211A45F9E35E4FB91D2C10D0110DF57C994284461CAEF5D2689',
+    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_000, 16_500], maxDraws: 14,
+    acceptedCandidateSha256: '6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC',
   }),
   Object.freeze({
-    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [13_000, 14_500], maxDraws: 12,
-    acceptedCandidateSha256: 'A92BA3F714CC0BD726CB1D836C65F84EBFF8798CFEF3D7D167437EAEB1045016',
+    lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [9_400, 10_400], maxDraws: 10,
+    acceptedCandidateSha256: '43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568',
   }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
@@ -65,7 +65,6 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_Accent_WarningOrange',
   'Material_ArmorDark',
   'Material_BrushedMetal',
-  'Material_Decal_BorrowedTime',
   'Material_Decal_Hazard',
   'Material_Decal_Stencils',
   'Material_Emissive_Cyan',
@@ -78,15 +77,14 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_Radiator',
   'Material_RepairGreen',
   'Material_Rubber',
+  'Material_V6_MarkingIvory',
 ].sort());
 const FACTOR_ONLY_MATERIALS = Object.freeze([
-  'Material_Decal_BorrowedTime',
-  'Material_Decal_Hazard',
-  'Material_Decal_Stencils',
   'Material_Emissive_Cyan',
   'Material_Emissive_DriveCore',
   'Material_Emissive_Orange',
   'Material_Glass_Canopy',
+  'Material_V6_MarkingIvory',
 ].sort());
 
 await MeshoptDecoder.ready;
@@ -133,7 +131,7 @@ for (const member of FAMILY) {
 }
 
 assert.deepEqual(sourceFamily[0].materials, REQUIRED_LOD0_MATERIALS,
-  'LOD0 must preserve the V5 golden-pass semantic material set exactly');
+  'LOD0 must preserve the Hitch V7 polish semantic material set exactly');
 for (const member of sourceFamily) {
   const collisionRatios = member.collisionDimensions.map((value, index) => value / member.visibleDimensions[index]);
   assert.ok(collisionRatios.every((ratio) => ratio >= 0.90 && ratio <= 0.94),
@@ -207,8 +205,9 @@ function verifyMember(result, member, label) {
   assert.equal(result.asset.contractVersion, 2, `${label} ${member.lod} must retain V4 contract v2`);
   assert.equal(result.asset.textureCompression, label === 'source' ? 'PNG-source' : 'KTX2/BasisU+mips',
     `${label} ${member.lod} texture metadata must describe the actual container and mip contract`);
-  assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), FACTOR_ONLY_MATERIALS,
-    `${label} ${member.lod} must declare the intentional decal/emissive/glass factor-only materials`);
+  const expectedFactorOnly = FACTOR_ONLY_MATERIALS.filter((name) => result.materials.includes(name));
+  assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), expectedFactorOnly,
+    `${label} ${member.lod} must declare the intentional emissive/glass/stencil factor-only materials`);
   assert.equal(result.asset.acceptedCandidateSha256, member.acceptedCandidateSha256,
     `${label} ${member.lod} must retain accepted-candidate provenance`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',

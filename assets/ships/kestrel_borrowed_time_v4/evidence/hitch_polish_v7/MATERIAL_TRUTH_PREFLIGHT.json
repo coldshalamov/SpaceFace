@@ -1,0 +1,70 @@
+{
+  "schema": "spaceface.blenderMaterialTruth.preflight.v1",
+  "asset": "Hitch",
+  "passId": "kestrel-hitch-polish-v7",
+  "tier": "A",
+  "fictionName": "DIE LAUGHING",
+  "frozen": {
+    "silhouette": true,
+    "sockets": 9,
+    "collisionFingerprint": "canonical V4/V6 hull",
+    "forward": "+X",
+    "scale": "metre"
+  },
+  "supportedViews": [
+    "whole-ship three-quarter",
+    "drive grazing close",
+    "midship",
+    "DIE LAUGHING ortho and grazing",
+    "gameplay 120px",
+    "gameplay under-45px"
+  ],
+  "zones": [
+    {
+      "id": "drive",
+      "class": "billed",
+      "fiction": "Free Frontier axial drive: refractory vanes, heat collar, coolant pipes, ignition core",
+      "substrate": "heat-darkened drive alloy and ceramic isolator",
+      "forbidden": ["toy torus", "chiclet nozzle teeth", "neon hoop"]
+    },
+    {
+      "id": "sensor",
+      "class": "billed",
+      "fiction": "dorsal dish on a yoke with a machined feed horn",
+      "substrate": "coated sensor metal and service steel bearings"
+    },
+    {
+      "id": "shoulders",
+      "class": "billed",
+      "fiction": "brake-formed armor courses with stand-offs and a crew stencil",
+      "substrate": "coated armor over structural metal"
+    },
+    {
+      "id": "radiators",
+      "class": "billed",
+      "fiction": "recessed folded-sheet cassettes with return stubs",
+      "substrate": "oxidized radiator sheet"
+    },
+    {
+      "id": "identity",
+      "class": "billed",
+      "fiction": "DIE LAUGHING as dirty warm-ivory spray through a hand-cut stencil",
+      "substrate": "paint on port aft shoulder armor",
+      "forbidden": ["bolted nameplate", "inventory BORROWED label"]
+    },
+    {
+      "id": "canopy",
+      "class": "retained_reviewed",
+      "fiction": "dark cockpit glass, realtime clearcoat policy"
+    },
+    {
+      "id": "hull-paint",
+      "class": "billed",
+      "fiction": "coated hull paint with travel abrasion and recess grime"
+    }
+  ],
+  "componentReferenceDecision": "not_needed",
+  "referenceNote": "Use existing family mockups in reference/; they have no DIE LAUGHING. Keep the stencil as extra identity.",
+  "workingScene": "blender/kestrel_hitch_polish_v7_production.blend",
+  "allSupportedViewZonesClassified": true
+}

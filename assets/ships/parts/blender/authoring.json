@@ -270,11 +270,11 @@
     "wholeship_kestrel": {
       "method": "blender_generic",
       "production_whole_ship": true,
-      "blend_path": "assets/ships/kestrel_borrowed_time_v4/blender/kestrel_borrowed_time_v4_production.blend",
-      "exporter_path": "assets/ships/kestrel_borrowed_time_v4/scripts/build_v4.py",
+      "blend_path": "assets/ships/kestrel_borrowed_time_v4/blender/kestrel_hitch_polish_v7_production.blend",
+      "exporter_path": "assets/ships/kestrel_borrowed_time_v4/scripts/build_hitch_polish_v7.py",
       "texture_role_owner": "blender-source-v1",
       "provenance_path": "assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json",
-      "semantic_note": "Accepted source-faithful K0 Borrowed Time V4; canonical player-only LOD0 plus retained independently authored LOD1/LOD2 family, stable sockets, collision proxy, semantic materials, no embedded plume",
+      "semantic_note": "Hitch V7 polish live player whole-ship; same boat as V4/V5 with manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, nine sockets, collision proxy, no embedded plume",
       "min_tris": 1500
     },
     "place_asteroid_rock_a": {

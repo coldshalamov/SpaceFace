@@ -1,0 +1,1171 @@
+{
+  "schema": "spaceface.hitchPolishV7.baseline.v1",
+  "capturedAt": "2026-08-12T23:16:41.688Z",
+  "hashes": {
+    "v6ProductionBlend": "3B4AD8D971555E78FF3B92EDB03081853BB35CA889112F9F337D3EF244D49987",
+    "v5ProductionBlend": "CE830C5D6FA50902DC9A9C629C95378698168F24844C5938218E58793E1B1CD4"
+  },
+  "liveSource": {
+    "path": "assets/ships/parts/wholeships/kestrel.glb",
+    "bytes": 44916544,
+    "sha256": "0C0BE004FBF77202380384E7D925318262A2F9B75D886F592AF9620E7F8DA586",
+    "triangles": 27318,
+    "draws": 17,
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "hooks": [],
+    "plume": [],
+    "canopy": [
+      "LOD0_static_Glass_Canopy"
+    ],
+    "materials": [
+      {
+        "name": "Material_Accent_FrontierCyan",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Accent_WarningOrange",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_ArmorDark",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_BrushedMetal",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_Decal_BorrowedTime",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Decal_Hazard",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Decal_Stencils",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_Cyan",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.18000000715255737,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_DriveCore",
+        "metallic": 0.019999999552965164,
+        "roughness": 0.10000000149011612,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_Orange",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.1599999964237213,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_EngineCeramic",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "engine_ceramic",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceCoatingRole": "sealed_refractory"
+        }
+      },
+      {
+        "name": "Material_Glass_Canopy",
+        "metallic": 0,
+        "roughness": 0.14000000059604645,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceGlassRole": "sensor_canopy_reflective_nonemissive",
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "canopy"
+          }
+        }
+      },
+      {
+        "name": "Material_Hull",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Mechanical",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_Radiator",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "radiator",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_RepairGreen",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Rubber",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {}
+      }
+    ],
+    "nodeCount": 31,
+    "asset": {
+      "contractVersion": 2,
+      "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "partId": "kestrel_borrowed_time_v4",
+      "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+      "family": "kestrel_borrowed_time_v4",
+      "category": "wholeships",
+      "slot": "hull",
+      "lod": "lod0",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "tangentConvention": "MikkTSpace",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "chamfered": true,
+      "factorOnlyMaterials": [
+        "Material_Decal_BorrowedTime",
+        "Material_Decal_Hazard",
+        "Material_Decal_Stencils",
+        "Material_Emissive_Cyan",
+        "Material_Emissive_DriveCore",
+        "Material_Emissive_Orange",
+        "Material_Glass_Canopy"
+      ],
+      "textureCompression": "PNG-source",
+      "geometrySource": "user Revamp ZIP source blend",
+      "sourceGeometryPreservation": "85-95 percent",
+      "embeddedPlume": false,
+      "deliverableRole": "source-faithful-runtime-lod0",
+      "surfaceRemasterId": "kestrel-role-surface-v5",
+      "goldenPassId": "kestrel-golden-asset-v5",
+      "acceptedCandidateSha256": "70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC",
+      "acceptanceClaim": true,
+      "wiringStatus": "live_player_only"
+    }
+  },
+  "liveRelease": {
+    "path": "assets/ships/release/parts/wholeships/kestrel.glb",
+    "bytes": 31799928,
+    "sha256": "DC4B841191E76E175F9E3AAC93F30A9B4A1578B2F4DA4127B83146468185C1A2",
+    "triangles": 27318,
+    "draws": 17,
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "hooks": [],
+    "plume": [],
+    "canopy": [
+      "LOD0_static_Glass_Canopy"
+    ],
+    "materials": [
+      {
+        "name": "Material_Accent_FrontierCyan",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Accent_WarningOrange",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_ArmorDark",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_BrushedMetal",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_Decal_BorrowedTime",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Decal_Hazard",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Decal_Stencils",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.5799999833106995,
+        "hasBase": true,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "decal"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_Cyan",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.18000000715255737,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_DriveCore",
+        "metallic": 0.019999999552965164,
+        "roughness": 0.10000000149011612,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_Emissive_Orange",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.1599999964237213,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "emissive"
+          }
+        }
+      },
+      {
+        "name": "Material_EngineCeramic",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "engine_ceramic",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceCoatingRole": "sealed_refractory"
+        }
+      },
+      {
+        "name": "Material_Glass_Canopy",
+        "metallic": 0,
+        "roughness": 0.14000000059604645,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceGlassRole": "sensor_canopy_reflective_nonemissive",
+          "spaceface": {
+            "factorOnly": true,
+            "materialRole": "canopy"
+          }
+        }
+      },
+      {
+        "name": "Material_Hull",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Mechanical",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_Radiator",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "radiator",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceManufacturingGrain": "directional"
+        }
+      },
+      {
+        "name": "Material_RepairGreen",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Rubber",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {}
+      }
+    ],
+    "nodeCount": 31,
+    "asset": {
+      "contractVersion": 2,
+      "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "partId": "kestrel_borrowed_time_v4",
+      "packet": "SF-K0-BORROWED-TIME-V4-SOURCE-REMASTER-001",
+      "family": "kestrel_borrowed_time_v4",
+      "category": "wholeships",
+      "slot": "hull",
+      "lod": "lod0",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "tangentConvention": "MikkTSpace",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "chamfered": true,
+      "factorOnlyMaterials": [
+        "Material_Decal_BorrowedTime",
+        "Material_Decal_Hazard",
+        "Material_Decal_Stencils",
+        "Material_Emissive_Cyan",
+        "Material_Emissive_DriveCore",
+        "Material_Emissive_Orange",
+        "Material_Glass_Canopy"
+      ],
+      "textureCompression": "KTX2/BasisU+mips",
+      "geometrySource": "user Revamp ZIP source blend",
+      "sourceGeometryPreservation": "85-95 percent",
+      "embeddedPlume": false,
+      "deliverableRole": "source-faithful-runtime-lod0",
+      "surfaceRemasterId": "kestrel-role-surface-v5",
+      "goldenPassId": "kestrel-golden-asset-v5",
+      "acceptedCandidateSha256": "70DA3992DE98FAE65E3C2C274355B7D51AAABB613D95E623EEB645A820504BAC",
+      "acceptanceClaim": true,
+      "wiringStatus": "live_player_only"
+    }
+  },
+  "v6Source": {
+    "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+    "bytes": 35503012,
+    "sha256": "1F8D4B050BBE8FCF9D928B98CDE75DCE30356E04670F3674CF4F0D4DAA03D976",
+    "triangles": 21093,
+    "draws": 17,
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "hooks": [],
+    "plume": [],
+    "canopy": [
+      "LOD0_static_Glass_Canopy"
+    ],
+    "materials": [
+      {
+        "name": "Material_Accent_FrontierCyan",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Accent_WarningOrange",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_ArmorDark",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_BrushedMetal",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Decal_Hazard",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceSurfaceRole": "warning_orange",
+          "spacefaceDecalPbrRepair": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Decal_Stencils",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceSurfaceRole": "hull",
+          "spacefaceDecalPbrRepair": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Emissive_Cyan",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.18000000715255737,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_Emissive_DriveCore",
+        "metallic": 0.019999999552965164,
+        "roughness": 0.10000000149011612,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_Emissive_Orange",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.1599999964237213,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_EngineCeramic",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "engine_ceramic",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceCoatingRole": "sealed_refractory",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Glass_Canopy",
+        "metallic": 0,
+        "roughness": 0.14000000059604645,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceGlassRole": "sensor_canopy_reflective_nonemissive"
+        }
+      },
+      {
+        "name": "Material_Hull",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Mechanical",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Radiator",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "radiator",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_RepairGreen",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Rubber",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_V6_MarkingIvory",
+        "metallic": 0,
+        "roughness": 1,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      }
+    ],
+    "nodeCount": 31,
+    "asset": null
+  },
+  "v6Release": {
+    "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/material_truth_v6/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+    "bytes": 12101140,
+    "sha256": "66D778A4EDA56765D75C0DB8395D44F9192F82DF441FC10F0D5C2D4B8AC6CEE9",
+    "triangles": 21093,
+    "draws": 17,
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "hooks": [],
+    "plume": [],
+    "canopy": [
+      "LOD0_static_Glass_Canopy"
+    ],
+    "materials": [
+      {
+        "name": "Material_Accent_FrontierCyan",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_Accent_WarningOrange",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint"
+        }
+      },
+      {
+        "name": "Material_ArmorDark",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_BrushedMetal",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Decal_Hazard",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceSurfaceRole": "warning_orange",
+          "spacefaceDecalPbrRepair": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Decal_Stencils",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceSurfaceRole": "hull",
+          "spacefaceDecalPbrRepair": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Emissive_Cyan",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.18000000715255737,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_Emissive_DriveCore",
+        "metallic": 0.019999999552965164,
+        "roughness": 0.10000000149011612,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_Emissive_Orange",
+        "metallic": 0.05000000074505806,
+        "roughness": 0.1599999964237213,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {}
+      },
+      {
+        "name": "Material_EngineCeramic",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "engine_ceramic",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceCoatingRole": "sealed_refractory",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Glass_Canopy",
+        "metallic": 0,
+        "roughness": 0.14000000059604645,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceGlassRole": "sensor_canopy_reflective_nonemissive"
+        }
+      },
+      {
+        "name": "Material_Hull",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Mechanical",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Radiator",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialRole": "radiator",
+          "spacefaceSurfaceRemaster": "kestrel-role-surface-v5",
+          "spacefaceManufacturingGrain": "directional",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_RepairGreen",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceCoatingRole": "maintained_paint",
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_Rubber",
+        "metallic": 1,
+        "roughness": 1,
+        "hasBase": true,
+        "hasNormal": true,
+        "hasOrm": true,
+        "hasOcclusion": true,
+        "extras": {
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      },
+      {
+        "name": "Material_V6_MarkingIvory",
+        "metallic": 0,
+        "roughness": 1,
+        "hasBase": false,
+        "hasNormal": false,
+        "hasOrm": false,
+        "hasOcclusion": false,
+        "extras": {
+          "spacefaceMaterialTruthPass": "kestrel-material-truth-v6"
+        }
+      }
+    ],
+    "nodeCount": 31,
+    "asset": {
+      "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "partId": "kestrel_borrowed_time_v4",
+      "packet": "SF-K0-BORROWED-TIME-V6-MATERIAL-TRUTH-001",
+      "lod": "lod0",
+      "slot": "hull",
+      "category": "wholeships",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "surfaceRemasterId": "kestrel-role-surface-v6-material-truth",
+      "goldenPassId": "kestrel-golden-asset-v5",
+      "materialTruthPassId": "kestrel-material-truth-v6",
+      "embeddedPlume": false,
+      "wiringStatus": "isolated_candidate_no_promote",
+      "generationFingerprint": "AD08B58D0DE4C11CA21BA5FE204F931681D82603559F83FB7382E483589C472B",
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_DriveCore",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_EngineCeramic"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_Decal_Hazard",
+          "Material_Decal_Stencils",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal",
+          "Material_Radiator"
+        ],
+        "refractory_vane": [
+          "Material_BrushedMetal",
+          "Material_EngineCeramic"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "contractVersion": 2,
+      "textureCompression": "KTX2/BasisU+mips",
+      "meshCompression": "EXT_meshopt_compression",
+      "factorOnlyMaterials": [
+        "Material_Emissive_Cyan",
+        "Material_Emissive_DriveCore",
+        "Material_Emissive_Orange",
+        "Material_Glass_Canopy",
+        "Material_V6_MarkingIvory"
+      ],
+      "acceptanceClaim": false
+    }
+  },
+  "mockups": [
+    "reference/kestrel_drive_material_truth_reference_v1.png",
+    "reference/kestrel_midship_material_truth_reference_v1.png",
+    "reference/kestrel_sensor_material_truth_reference_v1.png",
+    "reference/kestrel_bow_weapon_spine_reference_v1.png",
+    "reference/kestrel_repair_pod_material_truth_reference_v1.png",
+    "reference/kestrel_radiator_cassette_reference_v1.png",
+    "reference/kestrel_die_laughing_stencil_reference_v2.png"
+  ],
+  "gaps": [
+    "Live still shows toy drive ring, chiclet vanes, neon hoop, BORROWED label.",
+    "V6 rebuilds those families and adds DIE LAUGHING, but is unwired.",
+    "V6 role maps are near-flat (finalize warnings); game camera cannot show new construction.",
+    "Live has nine sockets, collision, LOD family, no baked plume — V6 already preserves these.",
+    "Live GLB hooks array is empty in the parts manifest; authored damage states need HOOK_* meshes.",
+    "Mockups have no DIE LAUGHING; keep and polish the stencil as extra identity, not a plaque.",
+    "Drive/midship still sit below mockup construction (pipes, tapered vanes, heat tint, plate courses)."
+  ]
+}

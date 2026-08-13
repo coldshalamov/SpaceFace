@@ -692,6 +692,8 @@ def repair_tangent_space(obj: bpy.types.Object) -> dict:
 
 
 def source_role(obj: bpy.types.Object, lod: int) -> str:
+    if lod == 0 and str(obj.name).startswith("HOOK_"):
+        return f"hook_{obj.name}"
     if lod >= 1:
         return "static"
     parent_names = set()
@@ -809,26 +811,42 @@ def create_lod(
     targets = []
     for (role, material), objects in sorted(groups.items()):
         safe = "".join(c if c.isalnum() else "_" for c in material.replace("Material_", ""))
+        if material == "Material_Glass_Canopy":
+            safe = "CANOPY"
         target = join_group(objects, f"LOD{lod}_{role}_{safe}")
         if target:
+            if material == "Material_Glass_Canopy":
+                extras = dict(target.get("spaceface") or {})
+                extras["canopy"] = True
+                target["spaceface"] = extras
+                target["sf_canopy"] = True
             targets.append((role, target))
     v6_active = any(
         obj.get("sf_material_truth_pass") == MATERIAL_TRUTH_PASS_ID
         for obj in source.all_objects
     )
+    v7_active = any(
+        obj.get("sf_polish_pass") == "kestrel-hitch-polish-v7"
+        for obj in source.all_objects
+    )
     # V6 carries substantially more authored component structure than V5.
-    # Its screen-space LODs therefore use separately measured consolidation
-    # ratios instead of inheriting the old fixed percentages.
+    # V7 keeps more of that construction at LOD0 so the mockup-facing vanes
+    # and pipes survive the game camera instead of collapsing back to a tube.
     ratio = (
-        {0: 0.262, 1: 0.25, 2: 0.62}[lod]
+        {0: 0.40, 1: 0.28, 2: 0.58}[lod]
+        if v7_active
+        else {0: 0.262, 1: 0.25, 2: 0.62}[lod]
         if v6_active
         else {0: 0.50, 1: 0.40, 2: 1.0}[lod]
     )
     for role, obj in targets:
         preserve_identity_geometry = (
-            obj.data.materials
-            and obj.data.materials[0]
-            and obj.data.materials[0].name == "Material_V6_MarkingIvory"
+            role.startswith("hook_")
+            or (
+                obj.data.materials
+                and obj.data.materials[0]
+                and obj.data.materials[0].name == "Material_V6_MarkingIvory"
+            )
         )
         if ratio < 0.999 and len(obj.data.polygons) >= 80 and not preserve_identity_geometry:
             modifier = obj.modifiers.new("V4_LOD_Decimate", "DECIMATE")
@@ -849,11 +867,14 @@ def create_lod(
     }
     root["spacefaceAsset"] = {
         "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4", "partId": "kestrel_borrowed_time_v4",
-        "packet": PACKET, "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
+        "packet": "SF-K0-HITCH-POLISH-V7-001" if v7_active else PACKET,
+        "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "up": "+Y", "starboard": "+Z", "unit": "metre",
         "normalConvention": "OpenGL", "ormChannels": "R=AO,G=Roughness,B=Metallic",
-        "surfaceRemasterId": SURFACE_REMASTER_ID, "goldenPassId": GOLDEN_PASS_ID,
+        "surfaceRemasterId": "kestrel-hitch-polish-v7-surface" if v7_active else SURFACE_REMASTER_ID,
+        "goldenPassId": GOLDEN_PASS_ID,
         "materialTruthPassId": MATERIAL_TRUTH_PASS_ID,
+        "polishPassId": "kestrel-hitch-polish-v7" if v7_active else None,
         "embeddedPlume": False, "wiringStatus": "isolated_candidate_no_promote",
         "generationFingerprint": generation_fingerprint,
         "materialBillRuntimeMap": bill_runtime_receipt,

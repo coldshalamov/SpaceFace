@@ -1,0 +1,1033 @@
+{
+  "schema": "spaceface.hitchPolishV7.finalize.v1",
+  "status": "complete",
+  "packet": "SF-K0-HITCH-POLISH-V7-001",
+  "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+  "finalizer": {
+    "path": "assets/ships/kestrel_borrowed_time_v4/scripts/finalize_hitch_polish_v7.mjs",
+    "sha256": "0550EAE6160113CFC7A334B028DCD141134EC4FCA29231EC984130FFF430CADA"
+  },
+  "sources": [
+    {
+      "lod": 0,
+      "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 53066304,
+      "sha256": "73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150",
+      "triangles": 36902,
+      "draws": 23,
+      "collisionFingerprint": "7B3A260C90A77FCDACC047198B3C4090F4F15CCACC010B5A5F162B7649C24644",
+      "identityMaterial": true,
+      "textureAudit": {
+        "summary": {
+          "materials": 17,
+          "images": 32,
+          "boundImages": 32,
+          "errors": 0,
+          "warnings": 0,
+          "info": 0
+        },
+        "findings": []
+      },
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 38524968,
+      "sha256": "6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC",
+      "triangles": 15725,
+      "draws": 13,
+      "collisionFingerprint": "7B3A260C90A77FCDACC047198B3C4090F4F15CCACC010B5A5F162B7649C24644",
+      "identityMaterial": true,
+      "textureAudit": {
+        "summary": {
+          "materials": 13,
+          "images": 24,
+          "boundImages": 24,
+          "errors": 0,
+          "warnings": 0,
+          "info": 0
+        },
+        "findings": []
+      },
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 32971704,
+      "sha256": "43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568",
+      "triangles": 9856,
+      "draws": 9,
+      "collisionFingerprint": "7B3A260C90A77FCDACC047198B3C4090F4F15CCACC010B5A5F162B7649C24644",
+      "identityMaterial": true,
+      "textureAudit": {
+        "summary": {
+          "materials": 9,
+          "images": 21,
+          "boundImages": 21,
+          "errors": 0,
+          "warnings": 0,
+          "info": 0
+        },
+        "findings": []
+      },
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    }
+  ],
+  "releases": [
+    {
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 16030668,
+      "sha256": "7751BF9281BB01CE5B435A6A5CB3DE21575EB4019E999244D8CC08C4949D5CC0",
+      "triangles": 36902,
+      "draws": 23,
+      "meshoptViews": 93,
+      "imageCount": 32,
+      "allImagesKtx2": true,
+      "ktx2MaterialRoles": {
+        "textureCount": 32,
+        "textures": [
+          {
+            "textureIndex": 0,
+            "image": "armor_dark_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 1,
+            "image": "armor_dark_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 2,
+            "image": "armor_dark_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 3,
+            "image": "repair_green_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 4,
+            "image": "repair_green_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 5,
+            "image": "repair_green_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 6,
+            "image": "frontier_cyan_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 7,
+            "image": "frontier_cyan_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 8,
+            "image": "frontier_cyan_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 9,
+            "image": "warning_orange_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 10,
+            "image": "warning_orange_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 11,
+            "image": "warning_orange_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 12,
+            "image": "brushed_metal_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 13,
+            "image": "brushed_metal_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 14,
+            "image": "brushed_metal_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 15,
+            "image": "decal_hazard_stripes",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 256,
+            "levels": 11
+          },
+          {
+            "textureIndex": 16,
+            "image": "decal_stencils",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 512,
+            "levels": 11
+          },
+          {
+            "textureIndex": 17,
+            "image": "hull_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 18,
+            "image": "hull_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 19,
+            "image": "engine_ceramic_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 20,
+            "image": "engine_ceramic_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 21,
+            "image": "engine_ceramic_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 22,
+            "image": "hull_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 23,
+            "image": "mechanical_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 24,
+            "image": "mechanical_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 25,
+            "image": "mechanical_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 26,
+            "image": "radiator_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 27,
+            "image": "radiator_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 28,
+            "image": "radiator_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 29,
+            "image": "rubber_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 30,
+            "image": "rubber_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 31,
+            "image": "rubber_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          }
+        ]
+      },
+      "identityMaterial": true,
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    },
+    {
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 12121256,
+      "sha256": "AF85141B6CECD1DD22A769CDD26BF59BB7D807BE6C3FD103DF703B020280F2A2",
+      "triangles": 15725,
+      "draws": 13,
+      "meshoptViews": 55,
+      "imageCount": 24,
+      "allImagesKtx2": true,
+      "ktx2MaterialRoles": {
+        "textureCount": 24,
+        "textures": [
+          {
+            "textureIndex": 0,
+            "image": "frontier_cyan_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 1,
+            "image": "frontier_cyan_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 2,
+            "image": "frontier_cyan_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 3,
+            "image": "warning_orange_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 4,
+            "image": "warning_orange_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 5,
+            "image": "warning_orange_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 6,
+            "image": "armor_dark_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 7,
+            "image": "armor_dark_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 8,
+            "image": "armor_dark_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 9,
+            "image": "brushed_metal_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 10,
+            "image": "brushed_metal_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 11,
+            "image": "brushed_metal_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 12,
+            "image": "hull_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 13,
+            "image": "hull_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 14,
+            "image": "hull_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 15,
+            "image": "mechanical_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 16,
+            "image": "mechanical_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 17,
+            "image": "mechanical_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 18,
+            "image": "repair_green_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 19,
+            "image": "repair_green_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 20,
+            "image": "repair_green_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 21,
+            "image": "rubber_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 22,
+            "image": "rubber_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 23,
+            "image": "rubber_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          }
+        ]
+      },
+      "identityMaterial": true,
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    },
+    {
+      "path": "assets/ships/kestrel_borrowed_time_v4/release_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 10395840,
+      "sha256": "D7ED09EF16C0B8B4582381A0621F71F09C2D9AB7F22FFA1300C12CC6F3F28DD8",
+      "triangles": 9856,
+      "draws": 9,
+      "meshoptViews": 39,
+      "imageCount": 21,
+      "allImagesKtx2": true,
+      "ktx2MaterialRoles": {
+        "textureCount": 21,
+        "textures": [
+          {
+            "textureIndex": 0,
+            "image": "frontier_cyan_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 1,
+            "image": "frontier_cyan_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 2,
+            "image": "frontier_cyan_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 3,
+            "image": "armor_dark_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 4,
+            "image": "armor_dark_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 5,
+            "image": "armor_dark_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 6,
+            "image": "brushed_metal_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 7,
+            "image": "brushed_metal_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 8,
+            "image": "brushed_metal_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 9,
+            "image": "hull_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 10,
+            "image": "hull_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 11,
+            "image": "hull_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 12,
+            "image": "mechanical_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 13,
+            "image": "mechanical_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 14,
+            "image": "mechanical_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 15,
+            "image": "repair_green_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 16,
+            "image": "repair_green_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 17,
+            "image": "repair_green_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 18,
+            "image": "rubber_basecolor",
+            "roles": [
+              "baseColorTexture"
+            ],
+            "profile": "ETC1S-sRGB",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 19,
+            "image": "rubber_normal",
+            "roles": [
+              "normalTexture"
+            ],
+            "profile": "UASTC-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          },
+          {
+            "textureIndex": 20,
+            "image": "rubber_orm",
+            "roles": [
+              "metallicRoughnessTexture",
+              "occlusionTexture"
+            ],
+            "profile": "ETC1S-linear",
+            "width": 1024,
+            "height": 1024,
+            "levels": 11
+          }
+        ]
+      },
+      "identityMaterial": true,
+      "vertexContract": {
+        "degenerateMappedUvTriangles": 0
+      }
+    }
+  ],
+  "browserCapture": {
+    "value": null,
+    "requiresHeaded": true
+  },
+  "electronCapture": {
+    "value": null,
+    "requiresHeaded": true
+  },
+  "runtimePerformance": {
+    "value": null,
+    "requiresHeaded": true
+  },
+  "independentG7": {
+    "value": null,
+    "requiresHuman": true
+  },
+  "candidateOnly": true,
+  "livePromotion": false
+}

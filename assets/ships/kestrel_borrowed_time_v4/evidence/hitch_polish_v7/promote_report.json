@@ -1,0 +1,47 @@
+{
+  "schema": "spaceface.hitchPolishV7.livePromotion.v1",
+  "status": "complete",
+  "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+  "packet": "SF-K0-HITCH-POLISH-V7-001",
+  "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+  "playerOnly": true,
+  "runtimeLod": "lod0",
+  "members": [
+    {
+      "lod": 0,
+      "acceptedCandidateSha256": "73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150",
+      "liveSource": "assets/ships/parts/wholeships/kestrel.glb",
+      "liveSourceSha256": "47D66E1256577833F1E5F31F63F1B8EB5ECBFE9EB20962DDB7521632484422D2",
+      "liveSourceBytes": 53067412,
+      "liveRelease": "assets/ships/release/parts/wholeships/kestrel.glb",
+      "liveReleaseSha256": "24F1CB48DCF8C1E4A8E35B09C8F0F76EA92277B04FA0127D102927E10D068AAE",
+      "liveReleaseBytes": 16031316,
+      "triangles": 36902,
+      "draws": 23
+    },
+    {
+      "lod": 1,
+      "acceptedCandidateSha256": "6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC",
+      "liveSource": "assets/ships/parts/wholeships/kestrel_lod1.glb",
+      "liveSourceSha256": "B781D1C9A500D90212565C8B2EEDFD65369D77358A3FB7EF65F140506E2F3895",
+      "liveSourceBytes": 38526088,
+      "liveRelease": "assets/ships/release/parts/wholeships/kestrel_lod1.glb",
+      "liveReleaseSha256": "C88807A05DD0AE0C1E7DAD5AC64984B53301B14BE921B9F19DC95C2E85362399",
+      "liveReleaseBytes": 12121916,
+      "triangles": 15725,
+      "draws": 13
+    },
+    {
+      "lod": 2,
+      "acceptedCandidateSha256": "43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568",
+      "liveSource": "assets/ships/parts/wholeships/kestrel_lod2.glb",
+      "liveSourceSha256": "8F4BF34A931BA66A6B6B2DAC228424982880054F563037652FA6BC2A7957FF9B",
+      "liveSourceBytes": 32972556,
+      "liveRelease": "assets/ships/release/parts/wholeships/kestrel_lod2.glb",
+      "liveReleaseSha256": "4313192F1EE4DA77C293D6EA84C2DDEAA10E3F91175C045F58A0C72F3E70824A",
+      "liveReleaseBytes": 10396232,
+      "triangles": 9856,
+      "draws": 9
+    }
+  ]
+}

@@ -1,0 +1,1442 @@
+{
+  "schema": "spaceface.hitchPolishV7.build.v1",
+  "status": "complete",
+  "packet": "SF-K0-HITCH-POLISH-V7-001",
+  "baseline": "blender/kestrel_material_truth_v6_production.blend",
+  "baselineSha256": "3B4AD8D971555E78FF3B92EDB03081853BB35CA889112F9F337D3EF244D49987",
+  "generation": {
+    "baselineSha256": "3B4AD8D971555E78FF3B92EDB03081853BB35CA889112F9F337D3EF244D49987",
+    "polishPassId": "kestrel-hitch-polish-v7",
+    "surfaceRemasterId": "kestrel-hitch-polish-v7-surface",
+    "scriptSha256": {
+      "scripts/build_hitch_polish_v7.py": "A01BC346136DD3653C057D0F23B52DC31495BE5FE6F7D2B4CEE8D05B31550DB1",
+      "scripts/build_v4.py": "DD7A85E9E7649E64F5F963EA41948CC4031712BBC059472AE86B7F9C67AD10B2",
+      "scripts/hitch_polish_v7.py": "4F7347A908083BA256A00DC01AF4E85A2DB63F04972420E63FAB0A898A37646F",
+      "scripts/surface_maps_v7.py": "AFB6D341E3EB772375FBBE3F66AE5B50DD0E1FB191226A506ABB57C09685BED4",
+      "scripts/material_truth_v6.py": "A83EBCEED0A2EACC13B418B322BE701B2751B4E5E08C14711023C134171948E2"
+    },
+    "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465"
+  },
+  "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+  "polishPassId": "kestrel-hitch-polish-v7",
+  "surfaceRemasterId": "kestrel-hitch-polish-v7-surface",
+  "surfaceRemaster": [
+    {
+      "image": "hull_basecolor.png",
+      "role": "hull",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.28375765681266785,
+        0.30573156476020813,
+        0.3226607143878937
+      ],
+      "std": [
+        0.018019745126366615,
+        0.016860244795680046,
+        0.0155906081199646
+      ],
+      "directionality": 0.9949685645425106,
+      "metallicTarget": null,
+      "macroWaviness": 0.042,
+      "orangePeel": 0.028,
+      "scratchDensity": 22,
+      "chipDensity": 0.018,
+      "recessDust": 0.22
+    },
+    {
+      "image": "hull_orm.png",
+      "role": "hull",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8324224948883057,
+        0.4356849491596222,
+        0.03617803007364273
+      ],
+      "std": [
+        0.12190043926239014,
+        0.08981732279062271,
+        0.08211633563041687
+      ],
+      "directionality": 1.0008940730197944,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.042,
+      "orangePeel": 0.028,
+      "scratchDensity": 22,
+      "chipDensity": 0.018,
+      "recessDust": 0.22
+    },
+    {
+      "image": "hull_normal.png",
+      "role": "hull",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000105500221252,
+        0.4999852180480957,
+        0.9999674558639526
+      ],
+      "std": [
+        0.01600276306271553,
+        0.01616188883781433,
+        0.0010629481403157115
+      ],
+      "directionality": 0.8206970672865831,
+      "metallicTarget": null,
+      "macroWaviness": 0.042,
+      "orangePeel": 0.028,
+      "scratchDensity": 22,
+      "chipDensity": 0.018,
+      "recessDust": 0.22
+    },
+    {
+      "image": "mechanical_basecolor.png",
+      "role": "mechanical",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.20499679446220398,
+        0.22607101500034332,
+        0.24261021614074707
+      ],
+      "std": [
+        0.006241184659302235,
+        0.0035961477551609278,
+        0.0017110235057771206
+      ],
+      "directionality": 1.2166944678913478,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.01,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.2
+    },
+    {
+      "image": "mechanical_orm.png",
+      "role": "mechanical",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.831995964050293,
+        0.3855627477169037,
+        0.8199471831321716
+      ],
+      "std": [
+        0.12331996858119965,
+        0.08384615182876587,
+        0.032744549214839935
+      ],
+      "directionality": 1.3177531550734216,
+      "metallicTarget": 0.82,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.01,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.2
+    },
+    {
+      "image": "mechanical_normal.png",
+      "role": "mechanical",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999879002571106,
+        0.4999884068965912,
+        0.9999593496322632
+      ],
+      "std": [
+        0.018124382942914963,
+        0.020822186022996902,
+        0.0013363371836021543
+      ],
+      "directionality": 1.0657508009871457,
+      "metallicTarget": null,
+      "macroWaviness": 0.018,
+      "orangePeel": 0.01,
+      "scratchDensity": 42,
+      "chipDensity": 0.0,
+      "recessDust": 0.2
+    },
+    {
+      "image": "armor_dark_basecolor.png",
+      "role": "armor_dark",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2536850869655609,
+        0.2805008590221405,
+        0.31044870615005493
+      ],
+      "std": [
+        0.017440324649214745,
+        0.016077585518360138,
+        0.014386341907083988
+      ],
+      "directionality": 0.9998316255980444,
+      "metallicTarget": null,
+      "macroWaviness": 0.038,
+      "orangePeel": 0.022,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.16
+    },
+    {
+      "image": "armor_dark_orm.png",
+      "role": "armor_dark",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8324251770973206,
+        0.5842088460922241,
+        0.28539660573005676
+      ],
+      "std": [
+        0.12304775416851044,
+        0.08431944251060486,
+        0.04905210807919502
+      ],
+      "directionality": 1.0012771850421134,
+      "metallicTarget": 0.28,
+      "macroWaviness": 0.038,
+      "orangePeel": 0.022,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.16
+    },
+    {
+      "image": "armor_dark_normal.png",
+      "role": "armor_dark",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.500008761882782,
+        0.5000096559524536,
+        0.999952495098114
+      ],
+      "std": [
+        0.017819160595536232,
+        0.017756452783942223,
+        0.0012904803734272718
+      ],
+      "directionality": 0.8116841689582683,
+      "metallicTarget": null,
+      "macroWaviness": 0.038,
+      "orangePeel": 0.022,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.16
+    },
+    {
+      "image": "brushed_metal_basecolor.png",
+      "role": "brushed_metal",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4708867371082306,
+        0.4920283257961273,
+        0.49998486042022705
+      ],
+      "std": [
+        0.00683625740930438,
+        0.005565311759710312,
+        0.003453620709478855
+      ],
+      "directionality": 1.3366729030234104,
+      "metallicTarget": null,
+      "macroWaviness": 0.014,
+      "orangePeel": 0.008,
+      "scratchDensity": 48,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "brushed_metal_orm.png",
+      "role": "brushed_metal",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.831932544708252,
+        0.34135884046554565,
+        0.9199298620223999
+      ],
+      "std": [
+        0.12255936115980148,
+        0.08049596846103668,
+        0.03625503554940224
+      ],
+      "directionality": 1.3182804881410168,
+      "metallicTarget": 0.92,
+      "macroWaviness": 0.014,
+      "orangePeel": 0.008,
+      "scratchDensity": 48,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "brushed_metal_normal.png",
+      "role": "brushed_metal",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999978244304657,
+        0.5000120997428894,
+        0.9997969269752502
+      ],
+      "std": [
+        0.024569811299443245,
+        0.029374927282333374,
+        0.0025922025088220835
+      ],
+      "directionality": 1.0481380247771672,
+      "metallicTarget": null,
+      "macroWaviness": 0.014,
+      "orangePeel": 0.008,
+      "scratchDensity": 48,
+      "chipDensity": 0.0,
+      "recessDust": 0.08
+    },
+    {
+      "image": "frontier_cyan_basecolor.png",
+      "role": "frontier_cyan",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.14437083899974823,
+        0.4362143874168396,
+        0.47056299448013306
+      ],
+      "std": [
+        0.02701004222035408,
+        0.007890683598816395,
+        0.006035035941749811
+      ],
+      "directionality": 0.9893920217754785,
+      "metallicTarget": null,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.12
+    },
+    {
+      "image": "frontier_cyan_orm.png",
+      "role": "frontier_cyan",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8327112793922424,
+        0.48313575983047485,
+        0.04109325259923935
+      ],
+      "std": [
+        0.12259408086538315,
+        0.09407934546470642,
+        0.060958053916692734
+      ],
+      "directionality": 0.9976274474991004,
+      "metallicTarget": 0.035,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.12
+    },
+    {
+      "image": "frontier_cyan_normal.png",
+      "role": "frontier_cyan",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999900460243225,
+        0.500001072883606,
+        0.9999457597732544
+      ],
+      "std": [
+        0.020919742062687874,
+        0.02109351195394993,
+        0.001523348269984126
+      ],
+      "directionality": 0.8445610184564963,
+      "metallicTarget": null,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 12,
+      "chipDensity": 0.008,
+      "recessDust": 0.12
+    },
+    {
+      "image": "warning_orange_basecolor.png",
+      "role": "warning_orange",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5997332334518433,
+        0.3137165904045105,
+        0.11579699069261551
+      ],
+      "std": [
+        0.013069305568933487,
+        0.014111229218542576,
+        0.03074558824300766
+      ],
+      "directionality": 0.9930198799972689,
+      "metallicTarget": null,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.14
+    },
+    {
+      "image": "warning_orange_orm.png",
+      "role": "warning_orange",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8326354026794434,
+        0.5235835313796997,
+        0.03760142996907234
+      ],
+      "std": [
+        0.12292096763849258,
+        0.1019362062215805,
+        0.06762301921844482
+      ],
+      "directionality": 1.000613380384337,
+      "metallicTarget": 0.03,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.14
+    },
+    {
+      "image": "warning_orange_normal.png",
+      "role": "warning_orange",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.49999067187309265,
+        0.5000043511390686,
+        0.9999358057975769
+      ],
+      "std": [
+        0.02277391217648983,
+        0.022958870977163315,
+        0.0018406508024781942
+      ],
+      "directionality": 0.8435547071305964,
+      "metallicTarget": null,
+      "macroWaviness": 0.032,
+      "orangePeel": 0.04,
+      "scratchDensity": 16,
+      "chipDensity": 0.012,
+      "recessDust": 0.14
+    },
+    {
+      "image": "repair_green_basecolor.png",
+      "role": "repair_green",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.2080126255750656,
+        0.35763758420944214,
+        0.25407880544662476
+      ],
+      "std": [
+        0.029647881165146828,
+        0.015390191227197647,
+        0.022562265396118164
+      ],
+      "directionality": 0.9992499183442664,
+      "metallicTarget": null,
+      "macroWaviness": 0.048,
+      "orangePeel": 0.07,
+      "scratchDensity": 18,
+      "chipDensity": 0.016,
+      "recessDust": 0.28
+    },
+    {
+      "image": "repair_green_orm.png",
+      "role": "repair_green",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8323202133178711,
+        0.6772032380104065,
+        0.03662527725100517
+      ],
+      "std": [
+        0.12291091680526733,
+        0.10272403806447983,
+        0.08505738526582718
+      ],
+      "directionality": 0.9993688385284062,
+      "metallicTarget": 0.025,
+      "macroWaviness": 0.048,
+      "orangePeel": 0.07,
+      "scratchDensity": 18,
+      "chipDensity": 0.016,
+      "recessDust": 0.28
+    },
+    {
+      "image": "repair_green_normal.png",
+      "role": "repair_green",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000087022781372,
+        0.5000003576278687,
+        0.9998494982719421
+      ],
+      "std": [
+        0.028103381395339966,
+        0.027974063530564308,
+        0.0024779813829809427
+      ],
+      "directionality": 0.8844099599986851,
+      "metallicTarget": null,
+      "macroWaviness": 0.048,
+      "orangePeel": 0.07,
+      "scratchDensity": 18,
+      "chipDensity": 0.016,
+      "recessDust": 0.28
+    },
+    {
+      "image": "rubber_basecolor.png",
+      "role": "rubber",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.12069249153137207,
+        0.14238761365413666,
+        0.15131168067455292
+      ],
+      "std": [
+        0.024819739162921906,
+        0.007610580883920193,
+        0.006405602674931288
+      ],
+      "directionality": 1.008759431747474,
+      "metallicTarget": null,
+      "macroWaviness": 0.028,
+      "orangePeel": 0.09,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.1
+    },
+    {
+      "image": "rubber_orm.png",
+      "role": "rubber",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8326790928840637,
+        0.841285228729248,
+        0.003982654772698879
+      ],
+      "std": [
+        0.12330017238855362,
+        0.06769218295812607,
+        0.005771116353571415
+      ],
+      "directionality": 0.9994191873472551,
+      "metallicTarget": 0.0,
+      "macroWaviness": 0.028,
+      "orangePeel": 0.09,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.1
+    },
+    {
+      "image": "rubber_normal.png",
+      "role": "rubber",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.5000026226043701,
+        0.4999886751174927,
+        0.9997400045394897
+      ],
+      "std": [
+        0.03249228745698929,
+        0.03242471069097519,
+        0.0028143643867224455
+      ],
+      "directionality": 0.8930960312215053,
+      "metallicTarget": null,
+      "macroWaviness": 0.028,
+      "orangePeel": 0.09,
+      "scratchDensity": 8,
+      "chipDensity": 0.0,
+      "recessDust": 0.1
+    },
+    {
+      "image": "engine_ceramic_basecolor.png",
+      "role": "engine_ceramic",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.23827876150608063,
+        0.2330620139837265,
+        0.20474039018154144
+      ],
+      "std": [
+        0.11846274137496948,
+        0.039247386157512665,
+        0.12424958497285843
+      ],
+      "directionality": 1.0008464022832155,
+      "metallicTarget": null,
+      "macroWaviness": 0.036,
+      "orangePeel": 0.04,
+      "scratchDensity": 10,
+      "chipDensity": 0.0,
+      "recessDust": 0.18
+    },
+    {
+      "image": "engine_ceramic_orm.png",
+      "role": "engine_ceramic",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8326417207717896,
+        0.7251185774803162,
+        0.02008063718676567
+      ],
+      "std": [
+        0.12270215153694153,
+        0.10797163844108582,
+        0.009798198007047176
+      ],
+      "directionality": 1.000542410041167,
+      "metallicTarget": 0.02,
+      "macroWaviness": 0.036,
+      "orangePeel": 0.04,
+      "scratchDensity": 10,
+      "chipDensity": 0.0,
+      "recessDust": 0.18
+    },
+    {
+      "image": "engine_ceramic_normal.png",
+      "role": "engine_ceramic",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999988377094269,
+        0.49999162554740906,
+        0.9995692372322083
+      ],
+      "std": [
+        0.036193665117025375,
+        0.03597637638449669,
+        0.0035560298711061478
+      ],
+      "directionality": 0.8440260678577198,
+      "metallicTarget": null,
+      "macroWaviness": 0.036,
+      "orangePeel": 0.04,
+      "scratchDensity": 10,
+      "chipDensity": 0.0,
+      "recessDust": 0.18
+    },
+    {
+      "image": "radiator_basecolor.png",
+      "role": "radiator",
+      "channel": "basecolor",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.17447498440742493,
+        0.1925206184387207,
+        0.20464472472667694
+      ],
+      "std": [
+        0.01576252281665802,
+        0.006196044385433197,
+        0.0032580143306404352
+      ],
+      "directionality": 1.289261798753975,
+      "metallicTarget": null,
+      "macroWaviness": 0.022,
+      "orangePeel": 0.012,
+      "scratchDensity": 30,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "radiator_orm.png",
+      "role": "radiator",
+      "channel": "orm",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.8322980403900146,
+        0.5044844746589661,
+        0.7001626491546631
+      ],
+      "std": [
+        0.1222962886095047,
+        0.10255732387304306,
+        0.027962202206254005
+      ],
+      "directionality": 1.3206572399683059,
+      "metallicTarget": 0.7,
+      "macroWaviness": 0.022,
+      "orangePeel": 0.012,
+      "scratchDensity": 30,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    },
+    {
+      "image": "radiator_normal.png",
+      "role": "radiator",
+      "channel": "normal",
+      "width": 1024,
+      "height": 1024,
+      "mean": [
+        0.4999980628490448,
+        0.49999284744262695,
+        0.9997681379318237
+      ],
+      "std": [
+        0.028018351644277573,
+        0.03058118373155594,
+        0.0027447203174233437
+      ],
+      "directionality": 1.0873415622511269,
+      "metallicTarget": null,
+      "macroWaviness": 0.022,
+      "orangePeel": 0.012,
+      "scratchDensity": 30,
+      "chipDensity": 0.0,
+      "recessDust": 0.16
+    }
+  ],
+  "polish": {
+    "schema": "spaceface.hitchPolish.v7",
+    "passId": "kestrel-hitch-polish-v7",
+    "objectsAdded": 133,
+    "objectNames": [
+      "V7_NozzleVane_00",
+      "V7_NozzleVaneEdgeA_00",
+      "V7_NozzleVaneEdgeB_00",
+      "V7_NozzleHinge_00",
+      "V7_NozzleVane_01",
+      "V7_NozzleVaneEdgeA_01",
+      "V7_NozzleVaneEdgeB_01",
+      "V7_NozzleHinge_01",
+      "V7_NozzleVane_02",
+      "V7_NozzleVaneEdgeA_02",
+      "V7_NozzleVaneEdgeB_02",
+      "V7_NozzleHinge_02",
+      "V7_NozzleVane_03",
+      "V7_NozzleVaneEdgeA_03",
+      "V7_NozzleVaneEdgeB_03",
+      "V7_NozzleHinge_03",
+      "V7_NozzleVane_04",
+      "V7_NozzleVaneEdgeA_04",
+      "V7_NozzleVaneEdgeB_04",
+      "V7_NozzleHinge_04",
+      "V7_NozzleVane_05",
+      "V7_NozzleVaneEdgeA_05",
+      "V7_NozzleVaneEdgeB_05",
+      "V7_NozzleHinge_05",
+      "V7_NozzleVane_06",
+      "V7_NozzleVaneEdgeA_06",
+      "V7_NozzleVaneEdgeB_06",
+      "V7_NozzleHinge_06",
+      "V7_NozzleVane_07",
+      "V7_NozzleVaneEdgeA_07",
+      "V7_NozzleVaneEdgeB_07",
+      "V7_NozzleHinge_07",
+      "V7_NozzleVane_08",
+      "V7_NozzleVaneEdgeA_08",
+      "V7_NozzleVaneEdgeB_08",
+      "V7_NozzleHinge_08",
+      "V7_NozzleVane_09",
+      "V7_NozzleVaneEdgeA_09",
+      "V7_NozzleVaneEdgeB_09",
+      "V7_NozzleHinge_09",
+      "V7_NozzleVane_10",
+      "V7_NozzleVaneEdgeA_10",
+      "V7_NozzleVaneEdgeB_10",
+      "V7_NozzleHinge_10",
+      "V7_NozzleVane_11",
+      "V7_NozzleVaneEdgeA_11",
+      "V7_NozzleVaneEdgeB_11",
+      "V7_NozzleHinge_11",
+      "V7_DriveCoolantPipe_00_00",
+      "V7_DrivePipeClamp_00_00",
+      "V7_DriveCoolantPipe_00_01",
+      "V7_DrivePipeClamp_00_01",
+      "V7_DriveCoolantPipe_00_02",
+      "V7_DrivePipeClamp_00_02",
+      "V7_DriveCoolantPipe_00_03",
+      "V7_DrivePipeClamp_00_03",
+      "V7_DriveCoolantPipe_00_04",
+      "V7_DrivePipeClamp_00_04",
+      "V7_DriveCoolantPipe_00_05",
+      "V7_DrivePipeClamp_00_05",
+      "V7_DriveCoolantPipe_00_06",
+      "V7_DrivePipeClamp_00_06",
+      "V7_DriveCoolantPipe_00_07",
+      "V7_DrivePipeClamp_00_07",
+      "V7_DriveCoolantPipe_01_00",
+      "V7_DrivePipeClamp_01_00",
+      "V7_DriveCoolantPipe_01_01",
+      "V7_DrivePipeClamp_01_01",
+      "V7_DriveCoolantPipe_01_02",
+      "V7_DrivePipeClamp_01_02",
+      "V7_DriveCoolantPipe_01_03",
+      "V7_DrivePipeClamp_01_03",
+      "V7_DriveCoolantPipe_01_04",
+      "V7_DrivePipeClamp_01_04",
+      "V7_DriveCoolantPipe_01_05",
+      "V7_DrivePipeClamp_01_05",
+      "V7_DriveCoolantPipe_01_06",
+      "V7_DrivePipeClamp_01_06",
+      "V7_DriveCoolantPipe_01_07",
+      "V7_DrivePipeClamp_01_07",
+      "V7_DriveCoolantPipe_02_00",
+      "V7_DrivePipeClamp_02_00",
+      "V7_DriveCoolantPipe_02_01",
+      "V7_DrivePipeClamp_02_01",
+      "V7_DriveCoolantPipe_02_02",
+      "V7_DrivePipeClamp_02_02",
+      "V7_DriveCoolantPipe_02_03",
+      "V7_DrivePipeClamp_02_03",
+      "V7_DriveCoolantPipe_02_04",
+      "V7_DrivePipeClamp_02_04",
+      "V7_DriveCoolantPipe_02_05",
+      "V7_DrivePipeClamp_02_05",
+      "V7_DriveCoolantPipe_02_06",
+      "V7_DrivePipeClamp_02_06",
+      "V7_DriveCoolantPipe_02_07",
+      "V7_DrivePipeClamp_02_07",
+      "V7_NozzleHeatCollar",
+      "V7_SensorFeedHorn",
+      "V7_SensorFeedCollar",
+      "V7_RadiatorCassetteLip_Port",
+      "V7_RadiatorReturnStub_Port_00",
+      "V7_RadiatorReturnStub_Port_01",
+      "V7_RadiatorReturnStub_Port_02",
+      "V7_RadiatorCassetteLip_Starboard",
+      "V7_RadiatorReturnStub_Starboard_00",
+      "V7_RadiatorReturnStub_Starboard_01",
+      "V7_RadiatorReturnStub_Starboard_02",
+      "V7_SpineConduit_00",
+      "V7_SpineClamp_00",
+      "V7_SpineConduit_01",
+      "V7_SpineClamp_01",
+      "V7_SpineConduit_02",
+      "V7_SpineClamp_02",
+      "V7_SpineConduit_03",
+      "V7_SpineClamp_03",
+      "V7_SpineConduit_04",
+      "V7_SpineClamp_04",
+      "V7_ShoulderCable_Port",
+      "V7_ShoulderStandoff_Port_00",
+      "V7_ShoulderStandoff_Port_01",
+      "V7_ShoulderStandoff_Port_02",
+      "V7_ShoulderCable_Starboard",
+      "V7_ShoulderStandoff_Starboard_00",
+      "V7_ShoulderStandoff_Starboard_01",
+      "V7_ShoulderStandoff_Starboard_02",
+      "HOOK_NAV_PORT",
+      "HOOK_NAV_STARBOARD",
+      "HOOK_DRIVE_CORE",
+      "HOOK_SENSOR_DISH",
+      "HOOK_ARMOR_PORT",
+      "HOOK_SECONDARY_POD",
+      "V7_HeroMark_DieLaughing",
+      "V7_HeroMark_DieLaughing_Wear"
+    ],
+    "canopyTagged": [
+      "Cockpit_Recessed_Laminate"
+    ],
+    "heroMarking": "DIE LAUGHING",
+    "heroMarkingContract": {
+      "mainObject": "V7_HeroMark_DieLaughing",
+      "wearObject": "V7_HeroMark_DieLaughing_Wear",
+      "method": "conventionally-authored-vector-stencil-v7",
+      "style": "original-protest-punk-hand-cut-stencil",
+      "targetSurface": "V6_ShoulderArmor_Port_Aft",
+      "generatedPixelsShipped": false,
+      "mainDetailLevel": 0,
+      "wearDetailLevel": 2,
+      "wearLodPolicy": "LOD0_only_detail2",
+      "surfaceOffsetMeters": 0.0003,
+      "minMeasuredSurfaceOffsetMeters": 0.000299992671719318,
+      "maxMeasuredSurfaceOffsetMeters": 0.00030000757288051183,
+      "missingPaintBreaks": 23,
+      "oversprayFragments": 72
+    },
+    "hooks": [
+      "HOOK_NAV_PORT",
+      "HOOK_NAV_STARBOARD",
+      "HOOK_DRIVE_CORE",
+      "HOOK_SENSOR_DISH",
+      "HOOK_ARMOR_PORT",
+      "HOOK_SECONDARY_POD"
+    ]
+  },
+  "meshAo": {},
+  "decalPbrRoles": [
+    {
+      "material": "Material_Decal_Hazard",
+      "baseColorAlpha": "decal_hazard_stripes.png",
+      "normal": "warning_orange_normal.png",
+      "orm": "warning_orange_orm.png",
+      "surfaceRole": "warning_orange",
+      "emissive": false
+    },
+    {
+      "material": "Material_Decal_Stencils",
+      "baseColorAlpha": "decal_stencils.png",
+      "normal": "hull_normal.png",
+      "orm": "hull_orm.png",
+      "surfaceRole": "hull",
+      "emissive": false
+    }
+  ],
+  "socketContract": [
+    {
+      "name": "SOCKET_Weapon_Front",
+      "position": [
+        12.62,
+        1.43,
+        0.0
+      ],
+      "role": "weapon_muzzle",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Mining_Front",
+      "position": [
+        12.26,
+        -1.08,
+        0.0
+      ],
+      "role": "mining_emitter",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Engine_Main",
+      "position": [
+        -13.85,
+        0.0,
+        0.0
+      ],
+      "role": "engine_exhaust",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Trail_Main",
+      "position": [
+        -14.05,
+        0.0,
+        0.0
+      ],
+      "role": "engine_trail",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Utility_Dorsal",
+      "position": [
+        -1.45,
+        1.95,
+        -3.8
+      ],
+      "role": "utility_dorsal",
+      "forward": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Cargo_Ventral",
+      "position": [
+        -0.8,
+        -2.1,
+        0.0
+      ],
+      "role": "cargo_ventral",
+      "forward": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Camera_Focus",
+      "position": [
+        0.0,
+        0.35,
+        0.0
+      ],
+      "role": "camera_focus",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Port",
+      "position": [
+        1.6,
+        0.45,
+        -6.6
+      ],
+      "role": "rcs_port",
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Starboard",
+      "position": [
+        1.6,
+        0.45,
+        6.6
+      ],
+      "role": "rcs_starboard",
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "canonicalCollisionBoundsBlenderXYZ": {
+    "min": [
+      -14.205,
+      -7.02,
+      -2.77
+    ],
+    "max": [
+      13.905536,
+      7.02,
+      4.398539
+    ],
+    "dimensions": [
+      28.110536,
+      14.04,
+      7.168539
+    ],
+    "center": [
+      -0.149732,
+      0.0,
+      0.814269
+    ]
+  },
+  "visibleBoundsBlenderXYZ": {
+    "min": [
+      -14.32,
+      -7.02,
+      -3.610658
+    ],
+    "max": [
+      13.905536,
+      7.02,
+      4.398539
+    ],
+    "dimensions": [
+      28.225535,
+      14.04,
+      8.009197
+    ],
+    "center": [
+      -0.207232,
+      0.0,
+      0.39394
+    ]
+  },
+  "productionBlend": "blender/kestrel_hitch_polish_v7_production.blend",
+  "productionBlendBytes": 49121754,
+  "productionBlendSha256": "7B75A2AA8345AE50926F3764AC3BD77CD260391F734B2E001A3F57EFEF5CAD2F",
+  "productionBlendCollectionVisibility": {
+    "KESTREL_V4_PRODUCTION_SOURCE": true,
+    "KESTREL_V5_GOLDEN_DETAIL": true,
+    "KESTREL_V6_MATERIAL_TRUTH": true,
+    "KESTREL_V7_HITCH_POLISH": true,
+    "RIG_AND_SOCKETS": true,
+    "STUDIO": false
+  },
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 36902,
+      "draws": 23,
+      "animatedRoleException": 6,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD0_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 96,
+          "collapsedUvTriangles": 96,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_BrushedMetal",
+          "removedDegenerateTriangles": 904,
+          "patchedTriangles": 49,
+          "collapsedUvTriangles": 49,
+          "canonicalUvTriangles": 6,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_CANOPY",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 1,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 55,
+          "collapsedUvTriangles": 55,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Rubber",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 4,
+          "collapsedUvTriangles": 4,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_DriveCore",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_EngineCeramic"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_Decal_Hazard",
+          "Material_Decal_Stencils",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal",
+          "Material_Radiator"
+        ],
+        "refractory_vane": [
+          "Material_BrushedMetal",
+          "Material_EngineCeramic"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 53066304,
+      "sha256": "73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150",
+      "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+      "uniqueBake": []
+    },
+    {
+      "lod": 1,
+      "triangles": 15728,
+      "draws": 13,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD1_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 26,
+          "collapsedUvTriangles": 26,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_CANOPY",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 2,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 1,
+          "customNormalLoopRepairs": 1,
+          "badBefore": 1,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 36,
+          "collapsedUvTriangles": 36,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_DriveCore",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 38524968,
+      "sha256": "6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC",
+      "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+      "uniqueBake": []
+    },
+    {
+      "lod": 2,
+      "triangles": 9856,
+      "draws": 9,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD2_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 83,
+          "collapsedUvTriangles": 83,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD2_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 53,
+          "collapsedUvTriangles": 53,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_Accent_FrontierCyan",
+          "Material_Emissive_DriveCore"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_ArmorDark"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 32971704,
+      "sha256": "43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568",
+      "generationFingerprint": "AD803A55AFE6D3AB567E51DB34B7F83F739C62D9A53B3F5F7F2728B16B761465",
+      "uniqueBake": []
+    }
+  ],
+  "outputs": [
+    "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+    "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+    "source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod2.glb"
+  ],
+  "candidateOnly": true,
+  "livePromotion": false
+}

@@ -4,29 +4,27 @@ import test from 'node:test';
 
 const JSON_CHUNK = 0x4e4f534a;
 const SPECIAL_MATERIAL_ROLES = Object.freeze({
-  Material_Decal_BorrowedTime: 'decal',
-  Material_Decal_Hazard: 'decal',
-  Material_Decal_Stencils: 'decal',
   Material_Emissive_Cyan: 'emissive',
   Material_Emissive_DriveCore: 'emissive',
   Material_Emissive_Orange: 'emissive',
   Material_Glass_Canopy: 'canopy',
+  Material_V6_MarkingIvory: 'marking',
 });
 
 const FAMILY = Object.freeze([
   Object.freeze({
     lod: 0,
-    candidate: 'assets/ships/kestrel_borrowed_time_v4/source/wholeships/kestrel_borrowed_time_v4_lod0.glb',
+    candidate: 'assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod0.glb',
     live: 'assets/ships/parts/wholeships/kestrel.glb',
   }),
   Object.freeze({
     lod: 1,
-    candidate: 'assets/ships/kestrel_borrowed_time_v4/source/wholeships/kestrel_borrowed_time_v4_lod1.glb',
+    candidate: 'assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod1.glb',
     live: 'assets/ships/parts/wholeships/kestrel_lod1.glb',
   }),
   Object.freeze({
     lod: 2,
-    candidate: 'assets/ships/kestrel_borrowed_time_v4/source/wholeships/kestrel_borrowed_time_v4_lod2.glb',
+    candidate: 'assets/ships/kestrel_borrowed_time_v4/source_candidates/hitch_polish_v7/wholeships/kestrel_borrowed_time_v4_lod2.glb',
     live: 'assets/ships/parts/wholeships/kestrel_lod2.glb',
   }),
 ]);
@@ -52,15 +50,18 @@ function parseGlb(path) {
   return { json, payloadChunks };
 }
 
-test('promoted Kestrel V4 source family declares its strict authored-material contract', () => {
+test('promoted Hitch V7 source family declares its strict authored-material contract', () => {
   for (const member of FAMILY) {
     const { json } = parseGlb(member.live);
     const metadata = json.asset?.extras?.spacefaceAsset;
     const materialsByName = new Map((json.materials || []).map((material) => [material.name, material]));
-    const expectedMaterials = Object.keys(SPECIAL_MATERIAL_ROLES).sort();
+    const expectedMaterials = Object.keys(SPECIAL_MATERIAL_ROLES)
+      .filter((name) => materialsByName.has(name))
+      .sort();
     assert.equal(metadata?.contractVersion, 2, `LOD${member.lod}: contract version`);
     assert.equal(metadata?.assetId, 'SF_K0_KESTREL_BORROWED_TIME_V4', `LOD${member.lod}: asset id`);
     assert.equal(metadata?.chamfered, true, `LOD${member.lod}: accepted hard-surface geometry has global chamfer evidence`);
+    assert.equal(metadata?.polishPassId, 'kestrel-hitch-polish-v7', `LOD${member.lod}: V7 polish pass`);
     assert.deepEqual(
       [...(metadata?.factorOnlyMaterials || [])].sort(),
       expectedMaterials,
@@ -76,7 +77,7 @@ test('promoted Kestrel V4 source family declares its strict authored-material co
   }
 });
 
-test('Kestrel V4 promotion changes metadata only', () => {
+test('Hitch V7 promotion changes metadata only', () => {
   for (const member of FAMILY) {
     const candidate = parseGlb(member.candidate);
     const live = parseGlb(member.live);

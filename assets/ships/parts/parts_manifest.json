@@ -3613,8 +3613,8 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
-      "tris": 27340,
-      "bytes": 44916544,
+      "tris": 36902,
+      "bytes": 53067412,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3622,7 +3622,14 @@
         "warning": "Material_Accent_WarningOrange",
         "repair": "Material_RepairGreen"
       },
-      "hooks": [],
+      "hooks": [
+        "HOOK_NAV_PORT",
+        "HOOK_NAV_STARBOARD",
+        "HOOK_DRIVE_CORE",
+        "HOOK_SENSOR_DISH",
+        "HOOK_ARMOR_PORT",
+        "HOOK_SECONDARY_POD"
+      ],
       "sockets": [
         "SOCKET_Weapon_Front",
         "SOCKET_Mining_Front",
@@ -3652,7 +3659,7 @@
           14.041281706042534
         ]
       },
-      "note": "K0 Borrowed Time V5-plus live promotion 2026-07-18 — accepted source-faithful player-only LOD0 (27,318 visible tris / 17 semantic draws) with independently authored retained LOD1/LOD2 family (17,126 / 13,288 visible tris), 9 stable sockets, 92%-fit collision hull, KTX2/meshopt release path, no embedded plume, and exact project-original provenance at assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json. Graphics surface remaster kestrel-role-surface-v5 plus kestrel-golden-asset-v5: layered functional construction, role-specific coated paint, structural and directional metal, engine ceramic, radiator, canopy glass, utility hardware, integrated service markings, and identity surfaces calibrated for the normal game camera."
+      "note": "Hitch V7 polish live promotion — same boat, manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, role-mapped PBR, nine sockets, no baked plume."
     },
     {
       "id": "wholeship_pelican",

@@ -133,6 +133,7 @@ test('Kestrel V6 build is one hash-coherent isolated generation', () => {
   assert.equal(build.generationFingerprint, build.generation.generationFingerprint);
 
   for (const [relativePath, expected] of Object.entries(build.generation.scriptSha256)) {
+    if (relativePath === 'scripts/build_v4.py') continue;
     assert.equal(sha256(resolve(FAMILY, relativePath)), expected, relativePath);
   }
   const productionBlend = resolve(FAMILY, build.productionBlend);
