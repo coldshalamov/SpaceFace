@@ -40,6 +40,7 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
 import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
+import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
@@ -322,6 +323,10 @@ export const ui = {
       this.encounterChoicePrompt.destroy();
     }
     this.encounterChoicePrompt = null;
+    if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.destroy === 'function') {
+      this.lawfulInspectionPrompt.destroy();
+    }
+    this.lawfulInspectionPrompt = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -372,6 +377,7 @@ export const ui = {
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
+    this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
     this.wingmanRadial = createWingmanRadial(ctx);
@@ -1082,6 +1088,9 @@ export const ui = {
       if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.tick === 'function') {
         this.encounterChoicePrompt.tick();
       }
+      if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.tick === 'function') {
+        this.lawfulInspectionPrompt.tick();
+      }
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       // comms feed fade sweep + graffiti (narrative overlay; cheap, runs every frame)
       if (this.comms && this.comms.tick) this.comms.tick();
@@ -1115,6 +1124,10 @@ export const ui = {
       this.encounterChoicePrompt.destroy();
     }
     this.encounterChoicePrompt = null;
+    if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.destroy === 'function') {
+      this.lawfulInspectionPrompt.destroy();
+    }
+    this.lawfulInspectionPrompt = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();

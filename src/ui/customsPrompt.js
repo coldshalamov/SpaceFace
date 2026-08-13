@@ -120,7 +120,11 @@ export const customsPrompt = {
     this._panelEl = null;
     this._hideTimer = null;
     this._onScanned = (p) => this._handleScan(p);
-    this._onResolved = () => this._dismiss(); // a bust/scan clears the panel
+    this._onResolved = (p) => {
+      // PQ-048.06 owns the correlated decision surface. Do not let a real lawful-inspection
+      // result clear or replace an unrelated legacy customs panel.
+      if (!(p && p.lawfulInspectionCaseId)) this._dismiss();
+    }; // a generic bust/scan clears the generic panel
     if (this._bus && this._bus.on) {
       this._bus.on('player:scannedByPatrol', this._onScanned);
       this._bus.on('contraband:scanned', this._onResolved);
@@ -136,6 +140,10 @@ export const customsPrompt = {
   _handleScan(p) {
     const state = this._state;
     if (!state) return;
+    // The durable lawful inspection route has its own actionable prompt. This legacy surface's
+    // submit/run events have no live controller, so showing it for a correlated scan would offer
+    // a false choice after economy has already resolved the owner path.
+    if (p && p.lawfulInspectionCaseId) return;
     // Debounce: the same ping inside the window is ONE panel (no double-hail, deterministic).
     const now = state.simTime || 0;
     if ((now - this._last.t) < DEBOUNCE_S) return;

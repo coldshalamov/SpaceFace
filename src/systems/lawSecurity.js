@@ -19,8 +19,10 @@ import {
   is47aScavengerCounterplayAuthorized,
   protectedStationAt,
 } from '../ai/engagementAuthority.js';
+import { hotUntilActive } from '../economy/customsRisk.js';
 import { isPlayerWanted } from './heat.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { patrolCanInitiateScan } from './encounterScripts.js';
 import { effectiveRegionalSecurity } from './regionalEcology.js';
 import {
   authorityResponsePolicy,
@@ -64,6 +66,21 @@ const LAW_RESPONSE_AI_FIELDS = Object.freeze([
 const LAW_RESPONSE_COMBAT_FIELDS = Object.freeze(['targetId', 'lockTarget']);
 const LAW_RESPONSE_INTENT_FIELDS = Object.freeze(['fire', 'fireGroup']);
 
+// PQ-048.06 is deliberately one concrete lawful route, not a generic encounter framework. The
+// starter sector guarantees an ambient patrol with a durable world record, so the case can survive
+// a save rematerialization without borrowing the numeric runtime id of that actor. These physical
+// thresholds intentionally match patrolScan in encounterScripts.js; that script is 1 Hz while this
+// registered system is 60 Hz, so this route measures the same two seconds from simTime instead.
+const LAWFUL_INSPECTION_SECTOR_ID = 'sector_helios_prime';
+const LAWFUL_INSPECTION_STATION_ID = 'station_helios';
+const LAWFUL_INSPECTION_FACTION_ID = 'faction_scn';
+const LAWFUL_INSPECTION_SCAN_RANGE = 700;
+const LAWFUL_INSPECTION_BREAK_S = 2;
+const LAWFUL_INSPECTION_OFFER_S = 10;
+const LAWFUL_INSPECTION_POLL_TICKS = 30;
+const LAWFUL_INSPECTION_REBIND_PASSES = 3;
+const LAWFUL_INSPECTION_SETTLED_PATROL_CAP = 12;
+
 export const lawSecurity = {
   name: 'lawSecurity',
 
@@ -71,13 +88,32 @@ export const lawSecurity = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     this._jobResponseClaims = new Map();
+    this._nextInspectionTick = 0;
+    this._inspectionRebindPasses = 0;
     ensureState(this.state);
     this._onDamage = (payload) => this._handleDamage(payload);
     this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
-    this._onResponderGone = (payload) => this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
-    this._onSectorExit = (payload) => this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
-    this._onSaveRestoring = () => this._releaseAllJobResponses('save_restoring');
+    this._onResponderGone = (payload) => {
+      this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
+      this._observeInspectionPatrolGone(payload);
+    };
+    this._onSectorExit = (payload) => {
+      this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
+      this._observeInspectionSectorExit(payload);
+    };
+    this._onSaveRestoring = () => {
+      this._releaseAllJobResponses('save_restoring');
+      this._resetInspectionTransient();
+    };
+    this._onSaveLoaded = () => {
+      this._resetInspectionTransient();
+      normalizePersistedLawfulInspection(this.state);
+    };
+    this._onInspectionChoice = (payload) => this._chooseInspection(payload);
+    this._onInspectionScanned = (payload) => this._observeInspectionScan(payload);
+    this._onPlayerDeath = () => this._interruptInspection('interrupted_player_death');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('entity:spawned', this._onSpawned);
@@ -85,12 +121,18 @@ export const lawSecurity = {
       this.bus.on('entity:destroyed', this._onResponderGone);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('save:restoring', this._onSaveRestoring);
+      this.bus.on('save:loaded', this._onSaveLoaded);
+      this.bus.on('lawfulInspection:choose', this._onInspectionChoice);
+      this.bus.on('contraband:scanned', this._onInspectionScanned);
+      this.bus.on('player:death', this._onPlayerDeath);
     }
   },
 
   newGame() {
     this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
+    if (this.state && this.state.player) delete this.state.player.lawfulInspection;
+    this._resetInspectionTransient();
   },
 
   update(_dt, state) {
@@ -98,6 +140,7 @@ export const lawSecurity = {
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
     this._enforceSanctuaryWithdrawals(state);
+    this._updateLawfulInspection(state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
       for (const entity of state.entityList || []) this._stampAmbient(entity);
@@ -105,6 +148,231 @@ export const lawSecurity = {
     if ((state.tick | 0) < (own.nextIncidentTick | 0)) return;
     own.nextIncidentTick = (state.tick | 0) + 15;
     for (const key of Object.keys(own.incidents)) this._updateIncident(key, own.incidents[key]);
+  },
+
+  // ── PQ-048.06: one durable Helios cargo-inspection route ───────────────────────────────────
+
+  _resetInspectionTransient() {
+    this._nextInspectionTick = 0;
+    this._inspectionRebindPasses = 0;
+  },
+
+  _updateLawfulInspection(state) {
+    const active = activeLawfulInspection(state);
+    if (active) {
+      this._updateActiveLawfulInspection(state, active);
+      return;
+    }
+    if ((state.tick | 0) < (this._nextInspectionTick | 0)) return;
+    this._nextInspectionTick = (state.tick | 0) + LAWFUL_INSPECTION_POLL_TICKS;
+    if (!canOfferLawfulInspection(state) || hasLivePatrolScan(state)) return;
+
+    const suspicion = lawfulInspectionSuspicion(state, this._economy());
+    if (!suspicion) return;
+    const player = entityById(state, state.playerId);
+    const normalized = normalizedLawfulInspectionLedger(state);
+    // A malformed persisted history must never be treated as permission to mint a new case. Old
+    // saves have no field at all and normalize from `last`; malformed new-shape saves stop here.
+    if (!normalized.valid) return;
+    const patrol = selectHeliosInspectionPatrol(state, player, settledPatrolIds(normalized.ledger));
+    if (!patrol) return;
+
+    const ledger = normalized.ledger || ensureLawfulInspectionLedger(state);
+    if (!ledger) return;
+    const sequence = ledger.sequence + 1;
+    ledger.sequence = sequence;
+    const patrolWorldRecordId = patrol.data.worldRecordId;
+    const now = inspectionNow(state);
+    const activeCase = {
+      id: `lawful-inspection:${patrolWorldRecordId}:${sequence}`,
+      patrolWorldRecordId,
+      stationId: LAWFUL_INSPECTION_STATION_ID,
+      sectorId: LAWFUL_INSPECTION_SECTOR_ID,
+      factionId: LAWFUL_INSPECTION_FACTION_ID,
+      suspicion,
+      phase: 'offered',
+      offeredAt: now,
+      deadlineAt: now + LAWFUL_INSPECTION_OFFER_S,
+    };
+    ledger.active = activeCase;
+    this._inspectionRebindPasses = 0;
+    this._emit('lawfulInspection:offered', publicLawfulInspection(activeCase));
+    this._say('bark', 'CONCORD PATROL: HOLD FOR CARGO INSPECTION.',
+      `lawful-inspection:offer:${activeCase.id}`, activeCase.factionId);
+  },
+
+  _updateActiveLawfulInspection(state, activeCase) {
+    if (hasLivePatrolScan(state)) {
+      this._interruptInspection('interrupted_encounter');
+      return;
+    }
+    const patrol = inspectionPatrolByWorldRecord(state, activeCase.patrolWorldRecordId);
+    if (!patrol) {
+      this._inspectionRebindPasses++;
+      if (this._inspectionRebindPasses >= LAWFUL_INSPECTION_REBIND_PASSES) {
+        this._interruptInspection('interrupted_patrol_unavailable');
+      }
+      return;
+    }
+    this._inspectionRebindPasses = 0;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false) {
+      this._interruptInspection('interrupted_player_death');
+      return;
+    }
+
+    // Escape is a physical Flight V3 outcome: this system neither changes movement input nor
+    // moves either hull. A continuous sector handoff therefore preserves the case long enough for
+    // the actual separation to settle as escape, while a hard exit ends it in the event handler.
+    const outsideRange = distance2(player.pos, patrol.pos)
+      > LAWFUL_INSPECTION_SCAN_RANGE * LAWFUL_INSPECTION_SCAN_RANGE;
+    if (outsideRange) {
+      if (!Number.isFinite(activeCase.breakRangeSince)) {
+        activeCase.breakRangeSince = inspectionNow(state);
+      } else if (inspectionNow(state) - activeCase.breakRangeSince >= LAWFUL_INSPECTION_BREAK_S) {
+        if (this._resolveLawfulInspection(activeCase, 'escaped')) {
+          this._emit('faction:repDelta', {
+            factionId: activeCase.factionId,
+            delta: -3,
+            reason: 'lawful_inspection_escape',
+          });
+        }
+        return;
+      }
+    } else if (Object.hasOwn(activeCase, 'breakRangeSince')) {
+      delete activeCase.breakRangeSince;
+    }
+
+    if (activeCase.phase === 'offered' && inspectionNow(state) >= activeCase.deadlineAt) {
+      this._beginLawfulInspectionScan(activeCase, 'deadline');
+    }
+  },
+
+  _chooseInspection(payload) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase || !payload || payload.caseId !== activeCase.id
+      || payload.choice !== 'comply' || activeCase.phase !== 'offered') return false;
+    return this._beginLawfulInspectionScan(activeCase, payload.source || 'ui');
+  },
+
+  _beginLawfulInspectionScan(activeCase, source) {
+    const state = this.state;
+    const player = entityById(state, state.playerId);
+    const patrol = inspectionPatrolByWorldRecord(state, activeCase.patrolWorldRecordId);
+    if (!player || !patrol) {
+      this._interruptInspection('interrupted_patrol_unavailable');
+      return false;
+    }
+    if (!isEligibleHeliosInspectionPatrol(state, patrol, player)) {
+      this._interruptInspection('interrupted_jurisdiction_lost');
+      return false;
+    }
+    if (!patrolCanInitiateScan(state, patrol, player)) {
+      this._resolveLawfulInspection(activeCase, 'cloak_evaded');
+      return false;
+    }
+
+    activeCase.phase = 'scanning';
+    delete activeCase.breakRangeSince;
+    this._emit('lawfulInspection:scanning', {
+      ...publicLawfulInspection(activeCase),
+      source: String(source || 'unknown'),
+    });
+    // Economy owns both the read and every confiscation/fine effect. The correlation id is only a
+    // stable return address for this player case; it is not a second customs result channel.
+    this._emit('patrol:proximity', {
+      patrolId: patrol.id,
+      stationId: activeCase.stationId,
+      factionId: activeCase.factionId,
+      security: 0.98,
+      lawfulInspectionCaseId: activeCase.id,
+    });
+    // economy.runScan emits contraband:scanned synchronously when it finds cargo. If no matching
+    // owner event arrived, the authoritative scan cleared the player (including a successful cloak
+    // evasion roll); do not invent a cargo or heat result here.
+    if (activeLawfulInspection(state) === activeCase && activeCase.phase === 'scanning') {
+      if (this._resolveLawfulInspection(activeCase, 'cleared')) {
+        this._emit('faction:repDelta', {
+          factionId: activeCase.factionId,
+          delta: 1,
+          reason: 'lawful_inspection_clear',
+        });
+      }
+    }
+    return true;
+  },
+
+  _observeInspectionScan(payload) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase || !payload || payload.lawfulInspectionCaseId !== activeCase.id
+      || activeCase.phase !== 'scanning' || payload.found !== true) return;
+    this._resolveLawfulInspection(activeCase, 'contraband_discovered');
+  },
+
+  _observeInspectionPatrolGone(payload) {
+    const state = this.state;
+    const activeCase = activeLawfulInspection(state);
+    if (!activeCase || !inspectionEventMatchesPatrol(state, payload, activeCase.patrolWorldRecordId)) return;
+    this._inspectionRebindPasses = 0;
+    if (payload && payload.killerId === state.playerId) {
+      this._resolveLawfulInspection(activeCase, 'collateral_patrol_destroyed');
+    } else {
+      this._interruptInspection('interrupted_patrol_unavailable');
+    }
+  },
+
+  _observeInspectionSectorExit(payload) {
+    // The residency/world owners deliberately mark free-flight handoffs. Preserve the durable case
+    // there; separation from the patrol is what makes the player an escaper. Intentional jumps and
+    // loads are hard exits and cannot keep an actor-local inspection open.
+    if (payload && (payload.continuous === true || payload.noTeleport === true)) return;
+    const activeCase = activeLawfulInspection(this.state);
+    if (activeCase && (!payload || payload.sectorId === activeCase.sectorId)) {
+      this._interruptInspection('interrupted_sector_exit');
+    }
+  },
+
+  _observeInspectionCollateral(payload, attacker, target) {
+    const state = this.state;
+    const activeCase = activeLawfulInspection(state);
+    if (!activeCase || !attacker || attacker.id !== state.playerId || !target
+      || target.data?.worldRecordId !== activeCase.patrolWorldRecordId) return;
+    // Existing combat → lawSecurity/heat listeners own the actual jurisdiction and heat result.
+    // This case only records why its prompt stopped; it deliberately does not report a second
+    // incident or write cargo, credits, faction standing, or heat.
+    this._resolveLawfulInspection(activeCase, 'collateral_assault');
+  },
+
+  _interruptInspection(outcome) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase) return false;
+    return this._resolveLawfulInspection(activeCase, outcome);
+  },
+
+  _resolveLawfulInspection(activeCase, outcome) {
+    const state = this.state;
+    const ledger = lawfulInspectionLedger(state);
+    if (!ledger || ledger.active !== activeCase) return false;
+    const resolvedAt = inspectionNow(state);
+    recordSettledPatrolId(ledger, activeCase.patrolWorldRecordId);
+    ledger.active = null;
+    ledger.last = {
+      id: activeCase.id,
+      patrolWorldRecordId: activeCase.patrolWorldRecordId,
+      stationId: activeCase.stationId,
+      sectorId: activeCase.sectorId,
+      factionId: activeCase.factionId,
+      outcome,
+      resolvedAt,
+    };
+    this._emit('lawfulInspection:resolved', { ...ledger.last });
+    return true;
+  },
+
+  _economy() {
+    return this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('economy')
+      : null;
   },
 
   _stampAmbient(entity) {
@@ -237,6 +505,8 @@ export const lawSecurity = {
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
     const player = entityById(state, state.playerId);
+
+    this._observeInspectionCollateral(payload, attacker, target);
 
     // Shooting a parley squad is an explicit refusal, not an unlabelled hostility transition.
     if (attacker.id === state.playerId && target.data && target.data.ai && target.data.ai.parleySquadId) {
@@ -1101,6 +1371,192 @@ function restoreOwnFields(value, snapshot) {
 function eventEntityId(payload) {
   if (!payload || typeof payload !== 'object') return null;
   return payload.entityId ?? payload.id ?? payload.entity?.id ?? null;
+}
+
+function inspectionNow(state) {
+  const value = Number(state && state.simTime);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function lawfulInspectionLedger(state) {
+  const ledger = state && state.player && state.player.lawfulInspection;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : null;
+}
+
+function normalizedLawfulInspectionLedger(state) {
+  const player = state && state.player;
+  if (!player || player.lawfulInspection == null) return { ledger: null, valid: true };
+  const ledger = lawfulInspectionLedger(state);
+  if (!ledger) return { ledger: null, valid: false };
+  if (Object.hasOwn(ledger, 'settledPatrolIds') && !Array.isArray(ledger.settledPatrolIds)) {
+    return { ledger, valid: false };
+  }
+  if (!Number.isSafeInteger(ledger.sequence) || ledger.sequence < 0) ledger.sequence = 0;
+  ledger.settledPatrolIds = normalizedSettledPatrolIds(ledger.settledPatrolIds, ledger.last);
+  return { ledger, valid: true };
+}
+
+function normalizePersistedLawfulInspection(state) {
+  const normalized = normalizedLawfulInspectionLedger(state);
+  if (!normalized.valid || !normalized.ledger) return normalized;
+  const active = normalized.ledger.active;
+  // A partial/forged active case is never resumed across Continue. Its valid `last` record still
+  // seeds the settled set, while an unreadable live case produces no scan or owner effects.
+  if (active && !validLawfulInspectionCase(active)) normalized.ledger.active = null;
+  return normalized;
+}
+
+function normalizedSettledPatrolIds(rawIds, last) {
+  const normalized = [];
+  const append = (value) => {
+    const id = durableInspectionWorldRecordId(value);
+    if (!id) return;
+    const prior = normalized.indexOf(id);
+    if (prior >= 0) normalized.splice(prior, 1);
+    normalized.push(id);
+  };
+  if (Array.isArray(rawIds)) {
+    for (const value of rawIds) append(value);
+  }
+  // PQ-048.06's first released save shape had only `last`. Treat that valid durable receipt as
+  // the first settled actor, so old saves cannot reopen the same patrol after Continue.
+  append(last && last.patrolWorldRecordId);
+  return normalized.slice(-LAWFUL_INSPECTION_SETTLED_PATROL_CAP);
+}
+
+function settledPatrolIds(ledger) {
+  return new Set(Array.isArray(ledger && ledger.settledPatrolIds)
+    ? ledger.settledPatrolIds.filter(durableInspectionWorldRecordId)
+    : []);
+}
+
+function recordSettledPatrolId(ledger, worldRecordId) {
+  const id = durableInspectionWorldRecordId(worldRecordId);
+  if (!ledger || !id || !Array.isArray(ledger.settledPatrolIds)) return false;
+  ledger.settledPatrolIds = normalizedSettledPatrolIds([...ledger.settledPatrolIds, id], null);
+  return true;
+}
+
+function durableInspectionWorldRecordId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 256 && value.trim() === value
+    ? value
+    : null;
+}
+
+function validLawfulInspectionCase(active) {
+  return !!(active && typeof active === 'object' && !Array.isArray(active)
+    && typeof active.id === 'string' && active.id
+    && durableInspectionWorldRecordId(active.patrolWorldRecordId)
+    && typeof active.stationId === 'string' && active.stationId
+    && typeof active.factionId === 'string' && active.factionId
+    && (active.phase === 'offered' || active.phase === 'scanning'));
+}
+
+function ensureLawfulInspectionLedger(state) {
+  if (!state || !state.player) return null;
+  const normalized = normalizedLawfulInspectionLedger(state);
+  if (normalized.ledger || !normalized.valid) return normalized.valid ? normalized.ledger : null;
+  const ledger = { sequence: 0, active: null, last: null, settledPatrolIds: [] };
+  state.player.lawfulInspection = ledger;
+  return ledger;
+}
+
+function activeLawfulInspection(state) {
+  const active = lawfulInspectionLedger(state)?.active;
+  return validLawfulInspectionCase(active) ? active : null;
+}
+
+function canOfferLawfulInspection(state) {
+  if (!state || state.mode !== 'flight' || state.ui?.docked) return false;
+  if (currentSectorId(state) !== LAWFUL_INSPECTION_SECTOR_ID) return false;
+  const player = entityById(state, state.playerId);
+  return !!(player && player.alive !== false && player.pos);
+}
+
+function lawfulInspectionSuspicion(state, economySystem) {
+  if (economySystem && typeof economySystem.illicitCargo === 'function') {
+    const illicit = economySystem.illicitCargo(state);
+    if (Array.isArray(illicit) && illicit.length > 0) return 'illicit_cargo';
+  }
+  if (hotUntilActive(state?.player?.customsHotUntil, inspectionNow(state), LAWFUL_INSPECTION_FACTION_ID)) {
+    return 'customs_hot';
+  }
+  return null;
+}
+
+function hasLivePatrolScan(state) {
+  const live = state?.encounterDirector?.live;
+  if (!live || typeof live !== 'object') return false;
+  return Object.values(live).some((entry) => entry
+    && (entry.script === 'patrolScan' || entry.shapeId === 'patrol_scan'));
+}
+
+function selectHeliosInspectionPatrol(state, player, alreadySettled = new Set()) {
+  if (!player || !player.pos) return null;
+  const candidates = [];
+  for (const entity of state.entityList || []) {
+    const worldRecordId = entity && entity.data && entity.data.worldRecordId;
+    if (!alreadySettled.has(worldRecordId)
+      && isEligibleHeliosInspectionPatrol(state, entity, player)
+      && distance2(player.pos, entity.pos) <= LAWFUL_INSPECTION_SCAN_RANGE * LAWFUL_INSPECTION_SCAN_RANGE) {
+      candidates.push(entity);
+    }
+  }
+  candidates.sort((a, b) => {
+    const d = distance2(a.pos, player.pos) - distance2(b.pos, player.pos);
+    if (d) return d;
+    return String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId));
+  });
+  return candidates[0] || null;
+}
+
+function isEligibleHeliosInspectionPatrol(state, patrol, player) {
+  if (!patrol || patrol.alive === false || patrol.type !== 'ship' || !patrol.pos || !player || !player.pos) return false;
+  if (currentSectorId(state) !== LAWFUL_INSPECTION_SECTOR_ID || patrol.factionId !== LAWFUL_INSPECTION_FACTION_ID) return false;
+  const data = patrol.data || {};
+  const ai = data.ai || {};
+  if (data.trafficRole !== 'patrol' || ai.lawful !== true
+    || !durableInspectionWorldRecordId(data.worldRecordId)) return false;
+  const homeSectorId = patrol.homeSectorId || data.homeSectorId || data.sectorId || null;
+  if (homeSectorId && homeSectorId !== LAWFUL_INSPECTION_SECTOR_ID) return false;
+  const playerProtection = protectedStationAt(state, player);
+  const patrolProtection = protectedStationAt(state, patrol);
+  return playerProtection?.stationId === LAWFUL_INSPECTION_STATION_ID
+    && patrolProtection?.stationId === LAWFUL_INSPECTION_STATION_ID;
+}
+
+function inspectionPatrolByWorldRecord(state, worldRecordId) {
+  if (!durableInspectionWorldRecordId(worldRecordId)) return null;
+  let match = null;
+  for (const entity of state?.entityList || []) {
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || entity.data?.worldRecordId !== worldRecordId) continue;
+    // A duplicate stable record is a corrupted/ambiguous rebind, never permission to inspect an
+    // arbitrary numeric entity. Wait for the small restore pass and then terminate cleanly.
+    if (match) return null;
+    match = entity;
+  }
+  return match;
+}
+
+function inspectionEventMatchesPatrol(state, payload, worldRecordId) {
+  if (!payload || !durableInspectionWorldRecordId(worldRecordId)) return false;
+  const eventEntity = payload.entity || entityById(state, eventEntityId(payload));
+  return !!(eventEntity && eventEntity.data?.worldRecordId === worldRecordId);
+}
+
+function publicLawfulInspection(activeCase) {
+  return {
+    id: activeCase.id,
+    patrolWorldRecordId: activeCase.patrolWorldRecordId,
+    stationId: activeCase.stationId,
+    sectorId: activeCase.sectorId,
+    factionId: activeCase.factionId,
+    suspicion: activeCase.suspicion,
+    phase: activeCase.phase,
+    offeredAt: activeCase.offeredAt,
+    deadlineAt: activeCase.deadlineAt,
+  };
 }
 
 function freshState() {

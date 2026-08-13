@@ -165,6 +165,32 @@ export function richSeamTargetReadout(target, state) {
   });
 }
 
+// PQ-048.06 keeps actor identity durable across Continue. The target panel deliberately keys this
+// readout by the patrol's world record, never the numeric entity id that world rematerialization
+// replaces. It is pure presentation: lawSecurity owns the case and the target panel writes none of it.
+export function lawfulInspectionStatusText(target, state) {
+  if (!target || target.type !== 'ship') return null;
+  const worldRecordId = target.data && target.data.worldRecordId;
+  if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const ledger = state && state.player && state.player.lawfulInspection;
+  if (!ledger || typeof ledger !== 'object') return null;
+  const active = ledger.active;
+  if (active && active.patrolWorldRecordId === worldRecordId) {
+    if (active.phase === 'scanning') return 'LAW · HOLD FOR SCAN';
+    if (active.phase === 'offered') return 'LAW · INSPECTION REQUESTED';
+  }
+  const last = ledger.last;
+  if (!last || last.patrolWorldRecordId !== worldRecordId) return null;
+  switch (last.outcome) {
+    case 'cleared': return 'LAW · HOLD CLEAR';
+    case 'contraband_discovered': return 'LAW · CONTRABAND SEIZED';
+    case 'escaped': return 'LAW · ESCAPED';
+    case 'collateral_assault': return 'LAW · COLLATERAL ASSAULT';
+    case 'collateral_patrol_destroyed': return 'LAW · PATROL DESTROYED';
+    default: return 'LAW · INSPECTION INTERRUPTED';
+  }
+}
+
 function entityClass(e) {
   if (!e) return '';
   if (e.type === 'ship') {
@@ -276,7 +302,8 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
   if (!motive) motive = 'UNRESOLVED';
   const threatTier = contactThreatTier(target, hostile);
   // Lock surface stays thin (phase only); hail STATUS carries tactical means (U3/U5 hierarchy).
-  const workStatus = livingWorkStatusText(target, { depth: 'lock', state });
+  const workStatus = lawfulInspectionStatusText(target, state)
+    || livingWorkStatusText(target, { depth: 'lock', state });
   const disabledHauler = ceresDisabledHaulerTruth(state, target);
   const recoveryPrompt = disabledHauler && !disabledHauler.choice
     ? 'HAIL · RECOVER / STEAL / ABANDON'

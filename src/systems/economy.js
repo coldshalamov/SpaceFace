@@ -1670,7 +1670,15 @@ export const economy = {
     const state = this.state;
     const illicit = this.illicitCargo(state);
     const hasContraband = illicit.length > 0;
-    this.bus.emit('player:scannedByPatrol', { hasContraband });
+    // A lawfulInspectionCaseId is a caller-owned correlation token, not a new scan result. Keep
+    // ordinary scan packets byte-for-byte shaped as before so existing customs/UI consumers retain
+    // their contract, while the durable lawSecurity case can distinguish its synchronous return.
+    const lawfulInspectionCaseId = typeof p.lawfulInspectionCaseId === 'string' && p.lawfulInspectionCaseId
+      ? p.lawfulInspectionCaseId
+      : null;
+    const scannedPayload = { hasContraband };
+    if (lawfulInspectionCaseId) scannedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
     const security = p.security != null ? p.security : this.currentSecurity();
     const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
@@ -1718,11 +1726,13 @@ export const economy = {
     // reputation hit with the scanning faction
     const repHit = -clamp(fine / 2000, REP_HIT_LO, REP_HIT_HI);
     if (factionId) this.bus.emit('faction:repDelta', { factionId, delta: round(repHit), reason: 'contraband' });
-    this.bus.emit('contraband:scanned', {
+    const contrabandPayload = {
       stationId: p.stationId || null, patrolId: p.patrolId || null,
       found: true, fine, confiscated, factionId: factionId || null, units,
       bribeCost: round(fine * BRIBE_FRAC),
-    });
+    };
+    if (lawfulInspectionCaseId) contrabandPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    this.bus.emit('contraband:scanned', contrabandPayload);
     return { found: true, fine, confiscated, factionId, repHit };
   },
 
