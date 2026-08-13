@@ -40,12 +40,10 @@
 ## DOM layering (ARCHITECTURE §1.2)
 
 ```
-canvas (z0) < vignette (z5) < hud (z10) < modal-backdrop (z90) < screens (z100) < toasts (z1000) < alerts (z1100)
+canvas (z0) < vignette (z5) < hud+receipts (z10–11) < modal-backdrop (z90) < screens (z100) < alerts (z1100)
 ```
 `#ui-root` is `pointer-events:none`; interactive children opt back in with `pointer-events:auto`.
-The activated HUD pass (`design/HUD_FLIGHT_ATTENTION.md`) moves receipts into the HUD layer and
-retires website toast cards + the always-on `#control-hints` laundry. Update this comment when that
-lands. The active-objective panel still omits generic map-key copy; Help/Settings own the bind sheet.
+Receipts live in the HUD layer (`#toasts` reparented into `#hud`). Help/Settings own the bind sheet.
 
 ## Verification
 

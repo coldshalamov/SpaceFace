@@ -277,26 +277,8 @@ check('onboarding panel does not duplicate the HUD B0 objective command', () => 
 // ── 3. firstFlight cannot fire while B0 is active ─────────────────────────────
 
 check('firstFlight control-hint wall is deferred until B0 is complete/silent', () => {
-  assert.match(ONBOARDING_SRC, /_showHint\(\s*'firstFlight'/, 'firstFlight hint path exists');
-  assert.match(ONBOARDING_SRC, /_firstFlightPending/, 'firstFlight is scheduled via pending flag');
-
-  // Inspect the live update block, not the earlier init/reset occurrence of
-  // `_firstFlightPending` (which is intentionally far from the showHint call).
-  const showAt = ONBOARDING_SRC.indexOf("_showHint('firstFlight'");
-  const gateAt = ONBOARDING_SRC.lastIndexOf('_firstFlightB0Released(state)', showAt);
-  assert.ok(showAt >= 0 && gateAt >= 0 && gateAt < showAt,
-    'firstFlight schedule must pass the explicit B0-release gate before _showHint');
-  const block = ONBOARDING_SRC.slice(Math.max(0, gateAt - 400), showAt + 80);
-
-  assert.match(block, /_firstFlightB0Released\(state\)/,
-    'firstFlight must pass the explicit training-release gate');
-
-  // Stronger: gate must mention wake completion, beatDoneAt, or equivalent B0 silence.
-  assert.match(
-    block,
-    /_firstFlightB0Released|finished/i,
-    'firstFlight deferral must reference training completion (not only mode===flight)',
-  );
+  assert.doesNotMatch(ONBOARDING_SRC, /_showHint\(\s*'firstFlight'/,
+    'firstFlight windshield laundry is gone; B0 cannot flash a bind wall');
 });
 
 // ── 4. Voice: one concise tutorial beat ───────────────────────────────────────

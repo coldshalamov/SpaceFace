@@ -14,7 +14,6 @@ import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
-import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
@@ -425,43 +424,13 @@ export const ui = {
     let lastEndpointCy = null;
     let lastFlightPathDrawing = null;
 
-    // Always-visible (when in flight) control hints. The default text below is the open-flight set;
-    // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
-    // hints based on the player's current activity (mining, combat, near station, near gate).
+    // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
       && this.state.settings.gameplay.controlScheme);
-    let HINTS_KBM = controlPrompt('flight', 'kbm');
-    const HINTS_PAD = controlPrompt('flight', 'gamepad');
-    const hints = document.createElement('div');
-    hints.id = 'control-hints';
-    hints.textContent = HINTS_KBM;
-    document.getElementById('ui-root').appendChild(hints);
-    // Control-scheme changes re-key every kbm prompt (helm-assist vs classic copy).
     this.bus.on('settings:changed', () => {
       setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
         && this.state.settings.gameplay.controlScheme);
-      HINTS_KBM = controlPrompt('flight', 'kbm');
-      const gpConnected = this.ctx && this.ctx.gamepad && typeof this.ctx.gamepad.isConnected === 'function'
-        && this.ctx.gamepad.isConnected();
-      if (!gpConnected) hints.textContent = HINTS_KBM;
     });
-
-    // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
-    // showHints: briefly show the control bar then fade out.
-    // ms = how long to keep it visible before fading (default 8s on flight start, 3.5s on context change).
-    let _hintFadeTimer = null;
-    const showHints = (ms = 8000) => {
-      if (!hints) return;
-      clearTimeout(_hintFadeTimer);
-      hints.classList.add('sf-hint-visible');
-      _hintFadeTimer = setTimeout(() => hints.classList.remove('sf-hint-visible'), ms);
-    };
-    // Expose so onboarding can flash hints on context change
-    window._sfShowHints = showHints;
-
-    // Swap the hint bar when a gamepad connects/disconnects so the pilot always sees the right cues.
-    this.bus.on('gamepad:connected', () => { hints.textContent = HINTS_PAD; showHints(5000); });
-    this.bus.on('gamepad:disconnected', () => { hints.textContent = HINTS_KBM; showHints(3000); });
 
     const syncFlightCursor = (visible) => {
       const st = this.state;
@@ -549,11 +518,6 @@ export const ui = {
     };
     this._syncFlightCursor = syncFlightCursor;
     const setFlightUI = (visible) => {
-      if (hints) {
-        // Keep hard-hidden (display:none) when outside flight so the modal override still works.
-        hints.style.display = visible ? '' : 'none';
-        if (visible) showHints(8000); else { clearTimeout(_hintFadeTimer); hints.classList.remove('sf-hint-visible'); }
-      }
       syncFlightCursor(visible);
     };
     const refreshFlightUI = () => {
@@ -1321,7 +1285,6 @@ function injectHudCss() {
   #hud > .sf-cargo-panel { pointer-events: auto; }
   body.ui-modal-open #aim-reticle,
   body.ui-modal-open #pilot-portrait { display: none !important; }
-  body.ui-modal-open #control-hints,
   body.ui-modal-open #alerts,
   body.ui-modal-open #toasts { opacity: 0 !important; pointer-events: none !important; }
 
@@ -1542,14 +1505,15 @@ function injectHudCss() {
   .sf-objarrow[data-edge="bottom"] .sf-objarrow__label { left:50%; bottom:20px; transform:translateX(-50%); }
   .sf-objarrow--compact .sf-objarrow__label { display:none; }
 
-  /* ===== toasts ===== */
-  .sf-toast { display:flex; align-items:center; gap:9px; width:280px; padding:9px 12px;
-    background:rgba(11,18,32,.92); border:1px solid var(--panel-edge); border-left:3px solid var(--accent);
-    border-radius:6px; color:var(--ink); font-size:13px; box-shadow:0 6px 22px rgba(0,0,0,.5);
-    pointer-events:auto; cursor:pointer; transform:translateX(120%); opacity:0; transition:transform .16s ease, opacity .16s ease; }
+  /* ===== receipts (HUD layer; not website cards) ===== */
+  #hud #toasts, #toasts.sf-receipts { z-index:11; pointer-events:none; }
+  .sf-toast { display:flex; align-items:center; gap:6px; width:100%; max-width:360px; padding:2px 0;
+    background:none; border:none; border-radius:0; color:var(--hud-paper, var(--ink)); font-size:13px;
+    box-shadow:none; text-shadow:0 1px 3px #000, 0 0 8px rgba(0,0,0,.8);
+    pointer-events:auto; cursor:pointer; transform:none; opacity:0; transition:opacity .16s ease; }
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
-  .sf-toast--in { transform:translateX(0); opacity:1; }
-  .sf-toast--out { transform:translateX(120%); opacity:0; }
+  .sf-toast--in { transform:none; opacity:1; }
+  .sf-toast--out { transform:none; opacity:0; }
   .sf-toast__icon { font-family:var(--mono); font-size:13px; color:var(--accent); }
   .sf-toast--success, .sf-toast--good { border-left-color:var(--good); }
   .sf-toast--success .sf-toast__icon, .sf-toast--good .sf-toast__icon { color:var(--good); }
@@ -1697,15 +1661,12 @@ function injectHudCss() {
     font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--ink-dim); }
 
   @media (max-width: 760px), (max-height: 620px) {
-    #control-hints { display:none !important; }
     #pilot-portrait { width:54px; height:54px; top:10px; right:10px; }
-    #toasts { left:10px; right:74px; top:10px; align-items:stretch; }
+    #toasts { left:12px; right:12px; width:auto; transform:none; }
     .sf-toast { width:auto; max-width:none; font-size:12px; padding:8px 10px; }
     #alerts { top:84px; width:calc(100vw - 20px); }
     .sf-alert { max-width:100%; font-size:10px; letter-spacing:.08em; white-space:normal; text-align:center; justify-content:center; }
 
-    /* The action bar maps keyboard/mouse binds — meaningless on touch, where the touch system
-       draws its own on-screen controls. Hide it (mirrors #control-hints above). */
     #action-bar { display:none !important; }
 
     .sf-fuel { left:10px; top:10px; }
@@ -1859,25 +1820,14 @@ function injectHudCss() {
   .sf-bars {
     width:272px; max-width:100%; display:grid;
     grid-template-columns:92px minmax(0, 1fr); grid-template-rows:auto repeat(4, 17px);
-    gap:4px 10px; align-items:center; padding:9px 11px 10px;
-    background:var(--hud-glass);
-    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:var(--hud-radius);
-    box-shadow:var(--hud-shadow), var(--hud-inset) !important;
-    overflow:hidden;
+    gap:4px 10px; align-items:center; padding:4px 2px 2px;
+    background:none; border:none; box-shadow:none !important; overflow:visible;
   }
-  /* Signal trace along the top edge — the thin power-rail shared with the menu plates. */
-  .sf-bars::before {
-    content:''; position:absolute; left:0; top:0; width:100%; height:1px;
-    background:var(--hud-trace); pointer-events:none;
-  }
-  .sf-bars::after {
-    content:''; position:absolute; left:11px; right:11px; top:31px; height:1px;
-    background:linear-gradient(90deg, var(--hud-line-strong), rgba(148,178,205,.06));
-  }
+  .sf-bars::before, .sf-bars::after { display:none; }
   .sf-condition-head {
-    grid-column:1 / -1; min-height:18px; display:flex; align-items:center; justify-content:space-between;
-    font-family:var(--hud-display); font-size:8px; font-weight:700; letter-spacing:.16em;
-    color:var(--hud-copy); border-bottom:1px solid rgba(148,178,205,.14); padding-bottom:4px; margin-bottom:1px;
+    grid-column:1 / -1; min-height:0; display:flex; align-items:center; justify-content:flex-start;
+    font-family:var(--hud-display); font-size:11px; font-weight:700; letter-spacing:.06em;
+    color:var(--hud-copy); border:none; padding:0; margin:0;
   }
   .sf-condition-title-group {
     display:flex; align-items:center; gap:8px;
@@ -1935,7 +1885,7 @@ function injectHudCss() {
     transition:height .15s ease-out;
   }
   .sf-sch-ship--fill {
-    position:absolute; left:0; bottom:0; width:80px; height:96px; max-width:none;
+    position:absolute; left:0; bottom:0; width:62px; height:74px; max-width:none;
     filter:drop-shadow(0 0 6px rgba(78, 195, 230, 0.4)) saturate(1.25) brightness(1.2);
     transition:filter .22s ease;
   }
@@ -2002,15 +1952,10 @@ function injectHudCss() {
      keycaps were removed — general keys live in Settings → Controls / Help. */
   .sf-command-deck {
     position:absolute; left:50%; bottom:12px; transform:translateX(-50%); width:min(360px, calc(100vw - 640px));
-    min-width:220px; padding:6px 12px 7px;
-    background:var(--hud-glass);
-    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:var(--hud-radius);
-    box-shadow:var(--hud-shadow), var(--hud-inset) !important;
+    min-width:220px; padding:4px 8px 2px;
+    background:none; border:none; box-shadow:none !important;
   }
-  .sf-command-deck::after {
-    content:''; position:absolute; left:0; top:-1px; width:100%; height:1px;
-    background:var(--hud-trace); pointer-events:none;
-  }
+  .sf-command-deck::after { display:none; }
   .sf-cluster {
     position:relative; left:auto; bottom:auto; transform:none; max-width:none; min-height:20px;
     display:flex; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 14px;
@@ -2104,12 +2049,23 @@ function injectHudCss() {
   .sf-radar-objective-key { width:232px; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; font-size:8px; letter-spacing:.14em; }
 
   .sf-toast {
-    width:300px; padding:9px 12px; border:1px solid rgba(148,178,205,.3); border-top-color:rgba(148,178,205,.5);
-    border-left-width:1px; border-radius:2px;
-    background:linear-gradient(112deg, rgba(18,27,39,.95), rgba(8,13,21,.92));
-    color:var(--hud-paper); font-family:var(--hud-body); font-size:13px; line-height:1.35;
-    box-shadow:0 12px 28px rgba(0,0,0,.4);
+    width:100%; padding:2px 0; border:none; background:none; box-shadow:none;
+    color:var(--hud-paper); font-family:var(--hud-data); font-size:13px; line-height:1.3;
   }
+  .sf-ml-instrument { width:100%; margin-top:4px; }
+  .sf-ml-instrument[hidden] { display:none !important; }
+  .sf-ml-instrument__row { display:flex; align-items:center; gap:8px; }
+  .sf-ml-instrument__k { font-family:var(--hud-display); font-size:10px; letter-spacing:.1em; color:var(--hud-muted); }
+  .sf-ml-instrument__track { flex:1; height:3px; background:rgba(164,181,197,.18); }
+  .sf-ml-instrument__fill { display:block; height:100%; width:100%; transform-origin:left center; background:var(--hud-amber, #dfa04e); }
+  .sf-ml-instrument__v { font-size:11px; color:var(--hud-paper); }
+  .sf-ml-instrument__release { text-align:center; font-size:11px; letter-spacing:.12em; color:var(--hud-amber, #dfa04e); margin-top:3px; }
+  .sf-firstuse {
+    position:absolute; left:0; top:0; max-width:240px; padding:2px 0;
+    color:var(--hud-paper); font-family:var(--hud-data); font-size:13px;
+    text-shadow:0 1px 3px #000; pointer-events:none; white-space:nowrap;
+  }
+  .sf-firstuse[hidden] { display:none !important; }
   .sf-toast__icon { font-family:var(--hud-data); color:var(--hud-cyan); }
   .sf-toast--success, .sf-toast--good, .sf-toast--error, .sf-toast--danger, .sf-toast--warn { border-left-width:1px; }
   .sf-alert {

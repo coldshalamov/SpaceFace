@@ -212,24 +212,14 @@ check('first-run splash is a single full-screen line then B0 (spec2/03 §3)', 'S
 check('B0 waits for first-run splash; generic firstFlight waits for the staged rail', 'SOURCE', () => {
   assert.doesNotMatch(onboardingSrc, /_showIntro/, 'intro modal must be gone (B0: no modal)');
   assert.doesNotMatch(onboardingSrc, /sf-ob-intro/, 'intro modal CSS/DOM must be gone');
-  assert.match(onboardingSrc, /_firstFlightB0Released/,
-    'firstFlight control wall must use the rail release helper');
-  assert.match(onboardingSrc, /return !ob \|\| !ob\.active \|\| !!ob\.finished/,
-    'firstFlight must wait until B0-B5 onboarding is inactive/finished');
+  assert.doesNotMatch(onboardingSrc, /_showHint\('firstFlight'/,
+    'firstFlight windshield laundry is retired; staged rail + Help own binds');
   assert.match(newGameSrc, /ui:firstRunSplash:active/,
     'first-run splash must announce active ownership before New Game boots');
   assert.match(newGameSrc, /ui:firstRunSplash:done/,
     'first-run splash must release ownership after physical removal');
   assert.match(onboardingSrc, /nextIndex === 0 && this\._firstRunSplashPending/,
     'B0 entry must wait while the splash owns the opening line');
-  // Timer path must consult the gate before _showHint('firstFlight'
-  const ffTimerIdx = onboardingSrc.search(/_firstFlightPending\s*&&\s*state\.mode\s*===\s*['"]flight['"]/);
-  assert.ok(ffTimerIdx >= 0, 'firstFlight pending timer must exist in flight mode');
-  const ffShowIdx = onboardingSrc.indexOf("_showHint('firstFlight'", ffTimerIdx);
-  assert.ok(ffShowIdx > ffTimerIdx, 'firstFlight timer must still call _showHint');
-  const gateSpan = onboardingSrc.slice(ffTimerIdx, ffShowIdx);
-  assert.match(gateSpan, /_firstFlightB0Released/,
-    'firstFlight must not fire on a bare timer while the tutorial rail owns the floor');
 });
 
 check('B0 one-verb: single tutorial chokepoint + HUD tracker owns persistent command', 'SOURCE', () => {
@@ -265,8 +255,8 @@ check('active objective owns attention without suppressing combat/mining targeti
     'only neutral target cards yield; combat and mining targeting remain available');
   assert.match(hudSrc, /__active-objective-owns-attention__[\s\S]*setDisplay\(objWrap, false\)/,
     'active objective must hide the competing multi-mission list');
-  assert.match(hudSrc, /setDisplay\(elNavReadout, !objectiveOwnsAttention\)/,
-    'active objective must hide the duplicate nav readout');
+  assert.match(hudSrc, /setDisplay\(elNavReadout, false\)/,
+    'duplicate nav readout stays off; destination lives on the one objective line');
   assert.match(hudSrc, /setClass\(elNavReadout, 'sf-nav--lock', false\)/,
     'mission/navigation fixes must not be framed as combat TARGET LOCK cards');
   assert.match(commsSrc, /attentionGateActive\(\)/, 'comms must have an actionable-attention gate');
@@ -453,8 +443,8 @@ check('player-facing control prompts bind from BINDINGS / promptLabel (no hard d
     'starmap prompts must use live BINDINGS.starmap.label');
   assert.match(alertsSrc, /promptLabel\('dock'\)/,
     'dock status pill must use promptLabel so rebinds stay truthful');
-  assert.match(onboardingSrc, /controlPrompt\('firstFlight'/,
-    'firstFlight wall must pull from controlPrompt modality table');
+  assert.doesNotMatch(onboardingSrc, /controlPrompt\('firstFlight'/,
+    'firstFlight laundry must not remount from the modality table');
   assert.match(onboardingSrc, /controlPrompt\('firstStation'/,
     'firstStation hint must pull from controlPrompt modality table');
 });

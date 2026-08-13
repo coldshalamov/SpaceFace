@@ -164,7 +164,10 @@ function installDom() {
 }
 
 function toastCards(dom) {
-  return dom.toasts.children.filter((c) => c.className && String(c.className).includes('sf-toast'));
+  return dom.toasts.children.filter((c) => {
+    const name = c.className && String(c.className);
+    return name && name.includes('sf-toast') && !name.includes('sf-toast--out');
+  });
 }
 
 function floorPills(dom) {
@@ -258,7 +261,7 @@ check('runtime: transaction ACK / mechanical toasts still render and announce on
   bus.emit('toast', { text: 'Enemy Destroyed · +800 CR', kind: 'credits', ttl: 3.5 });
 
   const cards = toastCards(dom);
-  assert.equal(cards.length, 3, 'transaction/ACK toasts must still render');
+  assert.equal(cards.length, 2, 'receipts keep the newest two ACKs');
   assert.match(dom.toastLive.textContent, /Enemy Destroyed|REP|Sold/);
   for (const card of cards) {
     assert.equal(card.getAttribute('role'), 'button');

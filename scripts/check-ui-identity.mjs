@@ -28,6 +28,10 @@ const checks = [
       'sf-overview',
       'createTargetPanel(ctx)',
       'sf-target-arcs',
+      'formatDestinationLine',
+    ],
+    forbids: [
+      'SHIP CONDITION',
     ],
   },
 

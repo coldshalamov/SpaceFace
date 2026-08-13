@@ -268,8 +268,8 @@ check('hud.source.imports_INPUT_DEFAULTS_for_flight_bindings', () => {
 });
 
 check('hud.source.buildTetherControlPrompt_uses_action_ids', () => {
-  assert.match(hudSrc, /function buildTetherControlPrompt\(tether\)/,
-    'HUD owns buildTetherControlPrompt');
+  assert.match(hudSrc, /masslineInstrumentReadout/,
+    'HUD owns the latched Massline analog instrument');
   assert.match(hudSrc, /resolveActionLabel\(state,\s*'tether'\)/,
     'cut/latch label from action tether');
   assert.match(hudSrc, /resolveActionLabel\(state,\s*'reelIn'\)/,
@@ -289,18 +289,12 @@ check('hud.source.buildTetherControlPrompt_uses_action_ids', () => {
 });
 
 check('hud.source.reel_cut_only_while_tether_active', () => {
-  assert.match(hudSrc, /if\s*\(!tether\s*\|\|\s*!tether\.active\)\s*return\s*''/,
-    'buildTetherControlPrompt returns empty when inactive');
-  assert.match(hudSrc, /const active = !!\(tether && tether\.active\)/,
-    'tether stat visibility gates on tether.active');
-  // Live path uses setStyle helper (same active gate; avoids direct .style assignment).
-  assert.match(hudSrc, /setStyle\(elTetherStat,\s*'display',\s*active \? '' : 'none'\)/,
-    'tether stat element hidden when inactive');
-  assert.match(hudSrc, /const controls = buildTetherControlPrompt\(tether\)/,
-    'active path builds control prompt from live tether mirror');
-  assert.match(hudSrc, /paintTetherControlChips/,
-    'player-facing chips own presentation; status value stays short');
-  // Guard: no alternate always-on hard-coded reel/cut chip in the HUD.
+  assert.match(hudSrc, /masslineInstrumentVisible\(tether\)/,
+    'Massline instrument visibility gates on the live tether');
+  assert.match(hudSrc, /masslineInstrumentReadout\(tether\)/,
+    'latched HUD reads analog load/length from the tether mirror');
+  assert.doesNotMatch(hudSrc, /paintTetherControlChips/,
+    'key chips stay off the windshield; Help owns binds');
   assert.doesNotMatch(hudSrc, /HOLD \[F\] REEL/,
     'HUD must not hard-code HOLD [F] REEL outside the resolver');
   assert.doesNotMatch(hudSrc, /TAP \[F\] CUT/,

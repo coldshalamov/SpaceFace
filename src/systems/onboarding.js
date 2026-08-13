@@ -154,7 +154,7 @@ export const onboarding = {
     this._modalAriaHidden = null;
     this._accum = 0;
     this._lastTextAtS = -Infinity;
-    this._controlHintsEl = null;
+
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._derelictId = null;
@@ -350,12 +350,6 @@ export const onboarding = {
         'Brake and throw to drop aft. Press R to detonate.');
     });
 
-    // First flight: triggered a few seconds after the game starts (handled in update via a timer).
-    this._firstFlightTimer = 0;
-    this._firstFlightPending = false;
-    bus.on('game:started', () => { this._firstFlightPending = true; this._firstFlightTimer = 0; });
-
-    // ── Contextual control bar state ─────────────────────────────────────────────────────────
     this._lastControlMode = null;
   },
 
@@ -371,13 +365,11 @@ export const onboarding = {
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints[key]) return;
     st.player.hints[key] = true;
-    // Contextual first-time hints are tutorial-tier too — routed through the one-voice arbiter so a
-    // hint never stacks on top of a beat line or a danger alert. Distinct id per hint key. Toast
-    // fallback only when the arbiter helper is absent.
     const voice = this.helpers && this.helpers.voice;
-    const said = voice && typeof voice.say === 'function'
-      && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 7, id: 'tutorial:hint:' + key });
-    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 7 });
+    if (voice && typeof voice.say === 'function') {
+      voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 7, id: 'tutorial:hint:' + key });
+    }
+    this.bus.emit('hud:firstUse', { verbId: key, text });
   },
 
   _tutorialRailOwnsVoice() {
@@ -775,25 +767,6 @@ export const onboarding = {
     // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
 
-    // ── First-flight control-hint wall ───────────────────────────────────────────────────
-    // The staged tutorial already teaches every opening verb. The generic control wall waits until
-    // the entire rail finishes, then appears after three seconds of free flight for skippers/returners.
-    if (this._firstFlightPending && state.mode === 'flight') {
-      if (!this._firstFlightB0Released(state)) {
-        this._firstFlightTimer = 0;
-      } else {
-        this._firstFlightTimer += dt;
-        if (this._firstFlightTimer > 3.0) {
-          this._firstFlightPending = false;
-          this._showHint('firstFlight',
-            controlPrompt('firstFlight', this._promptModality()));
-        }
-      }
-    }
-
-    // ── Contextual control bar ───────────────────────────────────────────────────────────
-    try { this._updateControlBar(state); } catch (_) { /* non-critical */ }
-
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
     if (!ob || !ob.active) return;
@@ -806,66 +779,6 @@ export const onboarding = {
       this._resolveProximityDone();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
-  },
-
-  // True when firstFlight may fire without stacking on any staged teaching beat.
-  _firstFlightB0Released(state) {
-    const ob = state && state.onboarding;
-    return !ob || !ob.active || !!ob.finished;
-  },
-
-  // Determine the player's current activity and update the bottom control hint bar to show
-  // relevant keys. Modes: 'mining' (beam active), 'combat' (hostile targeted or taking fire),
-  // 'station' (near a station), 'gate' (near a gate), 'flight' (default open-space cruising).
-  _updateControlBar(state) {
-    if (state.mode !== 'flight') return;
-    let el = this._controlHintsEl;
-    if (!el || !el.isConnected) {
-      el = document.getElementById('control-hints');
-      this._controlHintsEl = el || null;
-    }
-    if (!el) return;
-
-    // During the staged rail the HUD objective + one attention line own instruction. Hide the multi-verb
-    // control laundry; it returns automatically after the rail finishes.
-    const onboardingState = state.onboarding;
-    if (onboardingState && onboardingState.active && !onboardingState.finished) {
-      if (el.textContent) el.textContent = '';
-      this._lastControlMode = 'tutorial-rail';
-      return;
-    }
-
-    let mode = 'flight';
-
-    if (state.input && state.input.fireGroup === 2) mode = 'mining';
-
-    // Check for hostile target or incoming fire (combat takes priority over mining).
-    const tid = state.player.targetId;
-    if (tid != null) {
-      const target = state.entities.get(tid);
-      if (target && target.alive && target.team != null) {
-        const player = state.entities.get(state.playerId);
-        if (player && target.team !== player.team) mode = 'combat';
-      }
-    }
-
-    // Check for station/gate proximity (overrides flight, not combat/mining).
-    if (mode === 'flight') {
-      if (this._dockControlInRange) mode = 'station';
-      else if (this._gateControlInRange) mode = 'gate';
-    }
-
-    const modality = this._promptModality();
-    const controlSig = `${modality}:${mode}`;
-    if (controlSig === this._lastControlMode) return;
-    this._lastControlMode = controlSig;
-
-    el.textContent = controlPrompt(mode, modality);
-    // Flash the bar for 3.5s on context change so the player sees the relevant hint, then it fades.
-    // Skips flash on the generic 'flight' mode restore so returning from combat doesn't re-surface it.
-    if (mode !== 'flight' && typeof window._sfShowHints === 'function') {
-      window._sfShowHints(3500);
-    }
   },
 
   _promptModality() {

@@ -1,6 +1,6 @@
-// Toasts (ARCHITECTURE §5, spec "Toasts") — transient bottom-right notifications.
-// Driven by the `toast` event {text,kind,ttl}. Max 5 rendered, slide-in, auto-dismiss,
-// click to dismiss. Purely cosmetic → uses performance.now() / DOM only (no sim state).
+// Receipts (design/HUD_FLIGHT_ATTENTION.md) — thin HUD-layer lines, never website cards.
+// Driven by the `toast` event {text,kind,ttl}. Max 2 rendered. Danger and Target: lines
+// are refused here; alerts.js owns the top-center voice.
 //
 // A11y: visual toast cards are interactive dismiss controls (role=button). Status text is
 // announced once through a dedicated polite live region (#toast-live) so assistive tech
@@ -18,13 +18,19 @@
 // control / active-screen fallback — never silently to body when a restorable target exists.
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
+import { admitReceipt, RECEIPT_MAX } from './hudAttention.js';
 
-const MAX = 5;
+const MAX = RECEIPT_MAX;
 const KIND_ICON = { success: '✓', good: '✓', error: '✕', danger: '✕', warn: '!', info: '›', credits: '¢', rep: '◈' };
 
 export function createToasts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('toasts');
+  const hud = typeof document !== 'undefined' ? document.getElementById('hud') : null;
+  if (root && hud && root.parentNode && root.parentNode !== hud) {
+    hud.appendChild(root);
+  }
+  if (root && root.classList) root.classList.add('sf-receipts');
   const liveRegion = document.getElementById('toast-live');
   const live = []; // { el, born, ttl }
   let nextWakeAt = Infinity;
@@ -140,6 +146,11 @@ export function createToasts(ctx) {
     // floatingText and legacy bridges may still emit these; the floor already speaks them once.
     // Long tutorial lines and transaction ACKs are not in the owned set and still render.
     if (isVoiceOwnedAlertToast(text)) return;
+    const job = typeof document !== 'undefined' && document.body && document.body.dataset
+      ? document.body.dataset.sfHudJob
+      : '';
+    const decision = admitReceipt({ text, kind, _fromVoice, combat: job === 'fight' || job === 'hurt' });
+    if (!decision.admit) return;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
@@ -206,13 +217,8 @@ export function createToasts(ctx) {
     if (i >= 0) live.splice(i, 1);
     rec.el.classList.remove('sf-toast--in');
     rec.el.classList.add('sf-toast--out');
+    if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
-    setTimeout(() => {
-      const stillFocused = elementHoldsFocus(rec.el);
-      if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
-      // If restore could not run earlier (or focus re-landed on the exiting card), re-home once.
-      if (stillFocused) restoreFocusAfterDismiss(0);
-    }, 180);
     recomputeNextWake();
   }
 

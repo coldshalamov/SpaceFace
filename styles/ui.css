@@ -76,7 +76,7 @@ body.sf-flight-cursor #hud { cursor: none; }
   opacity: 0; transition: opacity 0.4s ease-in-out; }
 #sf-dock-overlay[hidden] { display: none !important; }
 #sf-dock-overlay.active { opacity: 1; }
-#toasts { right: 16px; top: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+#toasts { left: 50%; bottom: 96px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
 #alerts { left: 50%; top: 13%; transform: translateX(-50%); z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
@@ -222,28 +222,6 @@ button:active { translate: 0 1px; }
   height: 100%;
   image-rendering: pixelated;
 }
-
-/* Flight control hint bar — fades in on flight start / context change, auto-fades after a few seconds */
-#control-hints {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: var(--t-sm);
-  letter-spacing: .04em;
-  color: var(--ink-dim);
-  background: var(--glass);
-  padding: 6px 18px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--glass-edge);
-  white-space: nowrap;
-  z-index: 12;
-  pointer-events: none;
-  user-select: none;
-  /* Keep the hint visible without paying for live blur/shadow compositing during flight. */
-  opacity: 0;
-}
-#control-hints.sf-hint-visible { opacity: 1; }
 
 /* Better toasts / feedback for fun factor (mining hits, kills, yields feel satisfying) */
 .toast {
@@ -406,7 +384,7 @@ button:active { translate: 0 1px; }
 
 /* Contrast safety: caption + flat control hints over bright raw nebulae. */
 #hud .sf-caption { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7) !important; }
-#control-hints { color:#eaf6ff; background:rgba(3,7,14,.86); border-color:rgba(122,247,208,.32); }
+
 
 /* ============================================================================================
    CURRENT CONSOLE COMPATIBILITY TOKENS (UI full-pass Slice 1 foundation)

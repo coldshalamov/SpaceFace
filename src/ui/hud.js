@@ -53,6 +53,17 @@ import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
   buildCorridorOpeningWaypoint,
 } from '../systems/missions.js';
+import {
+  contactRosterExpanded,
+  firstUseAttachKind,
+  formatDestinationLine,
+  formatRosterCount,
+  hudJobFromState,
+  masslineInstrumentReadout,
+  masslineInstrumentVisible,
+  receiptLaneRect,
+  vitalNumericVisible,
+} from './hudAttention.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -388,7 +399,7 @@ export function resolveObjectiveHudLayout(width, height) {
   const rightHeight = compact ? 320 : 472;
   const actionWidth = Math.min(compact ? 420 : 520, w - edge * 2);
   const actionHeight = compact ? 64 : 76;
-  return {
+  const layout = {
     viewport: { x: 0, y: 0, width: w, height: h },
     objective: {
       x: edge,
@@ -411,6 +422,8 @@ export function resolveObjectiveHudLayout(width, height) {
       height: Math.max(0, h * 0.56),
     },
   };
+  layout.receipt = receiptLaneRect(layout);
+  return layout;
 }
 
 /** Maximum persistent contact rows before truthful category overflow takes over. */
@@ -988,13 +1001,9 @@ export function createHud(ctx, alerts) {
   const conditionHead = document.createElement('div');
   conditionHead.className = 'sf-condition-head';
   conditionHead.innerHTML =
-    '<div class="sf-condition-title-group">' +
-      '<span>SHIP CONDITION</span>' +
-      '<span class="sf-condition-state">NOMINAL</span>' +
-    '</div>' +
     '<div class="sf-condition-metrics mono">' +
-      '<span class="sf-cond-stat">HULL <strong class="sf-cond-hull-val">0</strong></span>' +
-      '<span class="sf-cond-stat">SHD <strong class="sf-cond-shd-val">0</strong></span>' +
+      '<span class="sf-cond-stat" data-vital="hull" hidden>HULL <strong class="sf-cond-hull-val">0</strong></span>' +
+      '<span class="sf-cond-stat" data-vital="shield" hidden>SHD <strong class="sf-cond-shd-val">0</strong></span>' +
     '</div>';
   bars.appendChild(conditionHead);
 
@@ -1016,7 +1025,8 @@ export function createHud(ctx, alerts) {
   const schShield = schematic.querySelector('.sf-sch-shield');
   const schHullVal = conditionHead.querySelector('.sf-cond-hull-val');
   const schShdVal = conditionHead.querySelector('.sf-cond-shd-val');
-  const schState = conditionHead.querySelector('.sf-condition-state');
+  const schHullStat = conditionHead.querySelector('[data-vital="hull"]');
+  const schShdStat = conditionHead.querySelector('[data-vital="shield"]');
 
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
@@ -1128,12 +1138,22 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   // Massline line-control chips — only while latched. Separate from the status value so the
   // instrument row never overflows with a tutorial paragraph of binds.
-  const tetherControls = document.createElement('div');
-  tetherControls.className = 'sf-tether-controls';
-  tetherControls.hidden = true;
-  tetherControls.setAttribute('aria-label', 'Massline controls');
+  const masslineInstrument = document.createElement('div');
+  masslineInstrument.className = 'sf-ml-instrument';
+  masslineInstrument.hidden = true;
+  masslineInstrument.setAttribute('aria-label', 'Massline');
+  masslineInstrument.innerHTML =
+    '<div class="sf-ml-instrument__row">' +
+      '<span class="sf-ml-instrument__k">LINE</span>' +
+      '<span class="sf-ml-instrument__track"><span class="sf-ml-instrument__fill" data-k="mlfill"></span></span>' +
+      '<span class="sf-ml-instrument__v mono" data-k="mllen">—</span>' +
+    '</div>' +
+    '<div class="sf-ml-instrument__release mono" data-k="mlrel" hidden>RELEASE</div>';
   commandDeck.prepend(center);
-  commandDeck.appendChild(tetherControls);
+  commandDeck.appendChild(masslineInstrument);
+  const mlFill = masslineInstrument.querySelector('[data-k=mlfill]');
+  const mlLen = masslineInstrument.querySelector('[data-k=mllen]');
+  const mlRel = masslineInstrument.querySelector('[data-k=mlrel]');
 
   // ---- Travel Burn instrument (atlas D5 / W1-6 / W1-9) -----------------------------------------
   // A CONTEXTUAL instrument, not a new permanent panel. D9.9 forbids permanent panels because the
@@ -1389,6 +1409,24 @@ export function createHud(ctx, alerts) {
   arrow.innerHTML = '<span class="sf-objarrow__glyph" aria-hidden="true"></span><span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
   const arrowLabel = arrow.querySelector('.sf-objarrow__label');
+  const firstUse = document.createElement('div');
+  firstUse.className = 'sf-firstuse';
+  firstUse.hidden = true;
+  firstUse.setAttribute('role', 'status');
+  root.appendChild(firstUse);
+  let firstUseHint = null;
+  ctx.bus.on('hud:firstUse', (payload) => {
+    if (!payload || !payload.text) return;
+    firstUseHint = {
+      verbId: payload.verbId,
+      text: payload.text,
+      kind: firstUseAttachKind(payload.verbId),
+      entityId: payload.entityId,
+      until: (state.simTime || 0) + 7,
+    };
+    firstUse.textContent = payload.text;
+    firstUse.hidden = false;
+  });
   // The ordinary navigation marker paints at the retained overlay cadence for as long as a live
   // waypoint exists. Keep its projection and presenter records with this HUD instance so the hot
   // path rewrites scalar fields rather than constructing four (on-screen) or five (edge) records.
@@ -1899,96 +1937,6 @@ export function createHud(ctx, alerts) {
       if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
-    }
-  }
-
-  // Line-control grammar while the Massline is held (discoverability + hold-mode axes).
-  // Kept as a named constant so Settings/Help/HUD stay one-voice about the axes.
-  const LINE_CONTROL_HINT = '↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP';
-
-  function buildTetherControlPrompt(tether) {
-    if (!tether || !tether.active) return '';
-    const cutLabel = resolveActionLabel(state, 'tether');
-    if (tether.kind === 'transverse_snare') {
-      return cutLabel ? `TAP [${cutLabel}] CUT SNARE` : 'SNARE CUT UNBOUND';
-    }
-    if (tether.kind === 'twin_bridle') {
-      return cutLabel ? `TAP [${cutLabel}] CUT BRIDLE` : 'BRIDLE CUT UNBOUND';
-    }
-    const reelInLabel = resolveActionLabel(state, 'reelIn');
-    const reelOutLabel = resolveActionLabel(state, 'reelOut');
-    const parts = [];
-    // Default scheme: hold tether for line control, tap to cut. Dedicated reel binds replace HOLD REEL.
-    if (reelInLabel) parts.push(`[${reelInLabel}] REEL IN`);
-    else if (cutLabel) parts.push(`HOLD [${cutLabel}] REEL`);
-    if (reelOutLabel) parts.push(`[${reelOutLabel}] PAY OUT`);
-    if (cutLabel && !reelInLabel) parts.push(LINE_CONTROL_HINT);
-    if (cutLabel) parts.push(`TAP [${cutLabel}] CUT`);
-    // Intentionally unbound tether: omit HOLD/TAP key copy; say UNBOUND truthfully when nothing else.
-    if (!parts.length) return 'TETHER UNBOUND';
-    return parts.join(' · ');
-  }
-
-  // Rebuild chips only when bind labels / active state change (not every 10 Hz status tick).
-  let _tetherChipSig = '';
-
-  /** Paint compact keycap chips for the active Massline (never a single overflowing sentence). */
-  function paintTetherControlChips(tether) {
-    if (!tether || !tether.active) {
-      if (_tetherChipSig !== '') {
-        _tetherChipSig = '';
-        tetherControls.hidden = true;
-        tetherControls.textContent = '';
-      }
-      return;
-    }
-    const cutLabel = resolveActionLabel(state, 'tether');
-    const reelInLabel = resolveActionLabel(state, 'reelIn');
-    const reelOutLabel = resolveActionLabel(state, 'reelOut');
-    const remoteOnly = tether.kind === 'transverse_snare' || tether.kind === 'twin_bridle';
-    const remoteVerb = tether.kind === 'twin_bridle' ? 'CUT BRIDLE' : 'CUT SNARE';
-    const sig = `${cutLabel}|${remoteOnly ? '' : reelInLabel}|${remoteOnly ? '' : reelOutLabel}|${remoteOnly ? tether.kind : 'local'}`;
-    if (sig === _tetherChipSig) {
-      tetherControls.hidden = false;
-      return;
-    }
-    _tetherChipSig = sig;
-    const chips = [];
-    if (!remoteOnly && reelInLabel) {
-      chips.push({ bind: reelInLabel, verb: 'REEL IN' });
-    } else if (!remoteOnly && cutLabel) {
-      // Hold-mode axes sit under the keycap so the status line stays a short load/target readout.
-      chips.push({ bind: `HOLD ${cutLabel}`, hint: LINE_CONTROL_HINT });
-    }
-    if (!remoteOnly && reelOutLabel) chips.push({ bind: reelOutLabel, verb: 'PAY OUT' });
-    if (cutLabel) chips.push({ bind: `TAP ${cutLabel}`, verb: remoteOnly ? remoteVerb : 'CUT' });
-    if (!chips.length) {
-      tetherControls.hidden = false;
-      tetherControls.textContent = 'TETHER UNBOUND';
-      return;
-    }
-    tetherControls.hidden = false;
-    tetherControls.replaceChildren();
-    for (const chip of chips) {
-      const el = document.createElement('span');
-      el.className = chip.hint ? 'sf-tchip sf-tchip--wide' : 'sf-tchip';
-      const kbd = document.createElement('kbd');
-      kbd.className = 'sf-tchip__bind';
-      kbd.textContent = chip.bind;
-      el.appendChild(kbd);
-      if (chip.verb) {
-        const verb = document.createElement('span');
-        verb.className = 'sf-tchip__verb';
-        verb.textContent = chip.verb;
-        el.appendChild(verb);
-      }
-      if (chip.hint) {
-        const hint = document.createElement('span');
-        hint.className = 'sf-tchip__hint';
-        hint.textContent = chip.hint;
-        el.appendChild(hint);
-      }
-      tetherControls.appendChild(el);
     }
   }
 
@@ -3636,6 +3584,30 @@ export function createHud(ctx, alerts) {
     }
 
     const targetId = state.player.targetId;
+    const expanded = contactRosterExpanded({
+      pinned,
+      nearbyHostile,
+      revealActive: nowMs < _overviewRevealUntil,
+      selected: targetId != null,
+    });
+    if (!expanded) {
+      setDisplay(elOverview, true, 'flex');
+      elOverview.classList.add('sf-overview--count');
+      const countText = formatRosterCount(contacts);
+      if (!overviewFooter) {
+        overviewFooter = document.createElement('div');
+        overviewFooter.className = 'sf-overview-footer';
+      }
+      setText(overviewFooter, countText);
+      if (!overviewFooter.parentNode) elOverview.appendChild(overviewFooter);
+      overviewFooterAttached = true;
+      for (const rec of overviewRows.values()) {
+        if (rec.attached && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+        rec.attached = false;
+      }
+      return;
+    }
+    elOverview.classList.remove('sf-overview--count');
     contacts.sort((a, b) => {
       const bandDelta = contactDisplayBand(a, targetId) - contactDisplayBand(b, targetId);
       if (bandDelta) return bandDelta;
@@ -3972,7 +3944,8 @@ export function createHud(ctx, alerts) {
 
       const heatRow = rowEls.heat;
       if (heatRow) {
-        setStyle(heatRow, 'display', wpnHeat.armed ? '' : 'none');
+        const heatHot = !!(wpnHeat.armed && (heatFrac > 0.04 || wpnHeat.overheated));
+        setStyle(heatRow, 'display', heatHot ? '' : 'none');
         setClass(heatRow.querySelector('.sf-bar'), 'sf-bar--overheated', wpnHeat.overheated);
       }
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
@@ -3981,12 +3954,12 @@ export function createHud(ctx, alerts) {
       syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
+        const showHull = vitalNumericVisible(hullFrac);
+        const showShield = vitalNumericVisible(shieldFrac);
         if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');
         if (schShdVal) setText(schShdVal, Math.max(0, Math.round(p.shield)) + '');
-        setText(schState,
-          hullFrac < 0.25 ? 'CRITICAL' :
-          shieldFrac < 0.25 ? 'SHIELD LOW' :
-          heatFrac > 0.85 ? 'HEAT HIGH' : 'NOMINAL');
+        if (schHullStat) schHullStat.hidden = !showHull;
+        if (schShdStat) schShdStat.hidden = !showShield;
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
@@ -4046,25 +4019,25 @@ export function createHud(ctx, alerts) {
       const localTether = state.player && state.player.tether;
       const remoteTether = state.player && state.player.remoteMassline;
       const tether = localTether && localTether.active ? localTether : remoteTether;
-      if (elTetherStat) {
-        const active = !!(tether && tether.active);
-        setStyle(elTetherStat, 'display', active ? '' : 'none');
-        if (active) {
-          const targetEnt = state.entities.get(tether.targetId);
-          const sourceEnt = tether.sourceId != null ? state.entities.get(tether.sourceId) : null;
-          const targetName = sourceEnt
-            ? `${hudEntityName(sourceEnt)} ↔ ${hudEntityName(targetEnt)}`
-            : hudEntityName(targetEnt);
+      const ml = masslineInstrumentReadout(tether);
+      const latching = masslineInstrumentVisible(tether);
+      if (document.body && document.body.dataset) {
+        document.body.dataset.sfHudJob = hudJobFromState(state, tether);
+      }
+      setClass(commandDeck, 'sf-command-deck--latch', latching);
+      if (masslineInstrument) masslineInstrument.hidden = !latching;
+      if (latching && ml) {
+        if (mlFill) setStyle(mlFill, 'transform', `scaleX(${ml.load.toFixed(3)})`);
+        if (mlLen) setText(mlLen, Math.round(ml.length) + 'u');
+        if (mlRel) mlRel.hidden = !ml.releaseOpen;
+        if (elTetherStat) {
           const tetherStatus = masslineTetherStatus(tether);
-          const nameBit = targetName ? ' · ' + String(targetName).toUpperCase() : '';
-          // Status only on the instrument value. Control chips + rebind-truth prompt string are
-          // separate so the deck never overflows with a keybind paragraph.
-          const controls = buildTetherControlPrompt(tether);
-          setText(elTether, `${tetherStatus.text}${nameBit}`);
+          setStyle(elTetherStat, 'display', '');
+          setText(elTether, tetherStatus.text);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
-          if (controls) setAttr(tetherControls, 'aria-label', controls);
         }
-        paintTetherControlChips(active ? tether : null);
+      } else if (elTetherStat) {
+        setStyle(elTetherStat, 'display', 'none');
       }
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
@@ -4102,12 +4075,20 @@ export function createHud(ctx, alerts) {
       // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
       const navWaypoint = state.nav && state.nav.waypoint;
       const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
+      const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
       if (command && command.owner === 'tracked-mission') {
         const tracked = command.mission;
         const waypoint = command.waypoint;
+        const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
+        const travel = objectiveTravelReadout(state, waypoint);
         setText(mtTitle, coreText('currentObjective'));
-        setText(mtObj, mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint));
+        setText(mtObj, formatDestinationLine({
+          action,
+          distanceText: travel.distanceText,
+          etaText: travel.etaText,
+          bearing: objectiveBearingGlyph(state, waypoint),
+        }));
         if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
           const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
           setText(mtTime, mtMarkerLine(state, waypoint, mtFmtTime(remaining)));
@@ -4122,8 +4103,14 @@ export function createHud(ctx, alerts) {
       } else if (command && command.owner === 'navigation') {
         const wp = command.waypoint;
         const routeGuide = mtRouteGuidance(state, wp);
-        setText(mtTitle, coreText(wp.onboarding ? 'tutorialObjective' : 'currentObjective'));
-        setText(mtObj, mtObjectiveAction(wp.reason || wp.label || 'Follow the marked route', wp));
+        const travel = objectiveTravelReadout(state, wp);
+        setText(mtTitle, coreText(navWaypoint && navWaypoint.onboarding ? 'tutorialObjective' : 'currentObjective'));
+        setText(mtObj, formatDestinationLine({
+          action: mtObjectiveAction(onboardingVerb || wp.reason || wp.label || 'Follow the marked route', wp),
+          distanceText: travel.distanceText,
+          etaText: travel.etaText,
+          bearing: objectiveBearingGlyph(state, wp),
+        }));
         setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
         setClass(mtTime, 'sf-mt-urgent', false);
         setDisplay(mtTime, true);
@@ -4196,6 +4183,8 @@ export function createHud(ctx, alerts) {
 
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
+    if (overlayTick || slow) updateFirstUseHint(p);
+    if (slow) placeReceiptLane();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
@@ -4284,7 +4273,7 @@ export function createHud(ctx, alerts) {
     const etaS = speed > 5 ? dist / speed : Infinity;
     // A mission/navigation fix is not a combat target lock. Keep this legacy readout hidden while
     // the active-objective tracker owns the same label/distance; the off-screen arrow still guides.
-    setDisplay(elNavReadout, !objectiveOwnsAttention);
+    setDisplay(elNavReadout, false);
     setClass(elNavReadout, 'sf-nav--lock', false);
     const label = wpLabel || '—';
     setTitle(arrow, label);
@@ -4313,7 +4302,7 @@ export function createHud(ctx, alerts) {
       const overlapsActionAnchor = y > h - 125 && x > w * 0.28 && x < w * 0.72;
       setClass(arrow, 'sf-objarrow--onscreen', true);
       setClass(arrow, 'sf-objarrow--edge', false);
-      setClass(arrow, 'sf-objarrow--compact', overlapsLeftAnchor || overlapsRightAnchor || overlapsActionAnchor);
+      setClass(arrow, 'sf-objarrow--compact', true);
       setDataEdge(arrow, x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left'));
       setStyle(arrow, 'transform', `translate3d(${x}px,${y}px,0)`);
       setDisplay(arrow, true);
@@ -4330,12 +4319,58 @@ export function createHud(ctx, alerts) {
     const edgeOverlapsRightAnchor = edgePlacement.x > w - 300 && edgePlacement.y > h - 520;
     const edgeOverlapsActionAnchor = edgePlacement.y > h - 135
       && edgePlacement.x > w * 0.27 && edgePlacement.x < w * 0.73;
-    setClass(arrow, 'sf-objarrow--compact',
-      edgeOverlapsLeftAnchor || edgeOverlapsRightAnchor || edgeOverlapsActionAnchor);
+    setClass(arrow, 'sf-objarrow--compact', true);
     setDataEdge(arrow, edgePlacement.edge);
     setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);
     setStyle(arrow, 'transform', `translate3d(${edgePlacement.x}px,${edgePlacement.y}px,0)`);
+  }
+
+  function placeReceiptLane() {
+    const laneRoot = document.getElementById('toasts');
+    if (!laneRoot) return;
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 720;
+    const layout = resolveObjectiveHudLayout(w, h);
+    const lane = layout.receipt;
+    if (!lane) return;
+    setStyle(laneRoot, 'left', `${Math.round(lane.x)}px`);
+    setStyle(laneRoot, 'top', `${Math.round(lane.y)}px`);
+    setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
+    setStyle(laneRoot, 'bottom', 'auto');
+    setStyle(laneRoot, 'right', 'auto');
+    setStyle(laneRoot, 'transform', 'none');
+  }
+
+  function updateFirstUseHint(player) {
+    if (!firstUseHint) {
+      if (!firstUse.hidden) firstUse.hidden = true;
+      return;
+    }
+    if ((state.simTime || 0) > firstUseHint.until) {
+      firstUseHint = null;
+      firstUse.hidden = true;
+      return;
+    }
+    firstUse.hidden = false;
+    firstUse.textContent = firstUseHint.text;
+    let pos = player && player.pos;
+    if (firstUseHint.entityId != null && state.entities && state.entities.get) {
+      const ent = state.entities.get(firstUseHint.entityId);
+      if (ent && ent.pos) pos = ent.pos;
+    } else if (firstUseHint.kind === 'station' && state.nav && state.nav.waypoint && state.nav.waypoint.pos) {
+      pos = state.nav.waypoint.pos;
+    }
+    if (!pos || !helpers.worldToScreen) {
+      setHudScreenTransform(firstUse, 24, 120);
+      return;
+    }
+    const proj = helpers.worldToScreen({ x: pos.x, y: 0, z: pos.z });
+    if (!proj || !proj.onScreen) {
+      setHudScreenTransform(firstUse, 24, 120);
+      return;
+    }
+    setHudScreenTransform(firstUse, proj.x, proj.y - 28);
   }
 
   function setVisible(v) {

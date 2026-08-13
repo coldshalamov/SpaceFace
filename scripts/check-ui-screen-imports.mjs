@@ -278,30 +278,17 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
   console.log('ok   missionLogScreen - completed ledger refreshes on empty active state');
   ok++;
 }
-// The dominant active-objective panel intentionally omits the generic Local Map hint; the
-// always-mounted control prompt below owns that route so one objective does not compete with a
-// second navigation instruction. Assert only the binding-backed labels hud.js actually renders,
-// then assert the complete flight-control route through controlPrompts.js.
-//
-// `BINDINGS.dock.label` is asserted through the dedicated near-dock route below and NOT on hudSrc,
-// for the same
-// reason as localmap: `40ab48d3` ("Retire permanent flight-control keybind bar") deliberately
-// removed the always-on DOCK/DRILL keycap strip from hud.js — those are general keys learned from
-// Settings/Help, not a hotbar — and handed the dock route to controlPrompts.js. This exemption was
-// already applied to localmap in the same pass and dock was missed, which left the check red on
-// master. Do not re-add it here without also restoring the retired strip.
+// Bind labels live in Help / Settings / controlPrompts. The flight windshield does not mount a key laundry.
 if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !hudSrc.includes('BINDINGS.starmap.label')
   || !hudSrc.includes('BINDINGS.missionLog.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
   || !alertsSrc.includes('BINDINGS.starmap.label')
-  || !uiRootSrc.includes("import { controlPrompt } from './controlPrompts.js'")
-  || !uiRootSrc.includes("controlPrompt('flight', 'kbm')")
-  || !uiRootSrc.includes("controlPrompt('flight', 'gamepad')")
   || !controlPromptsSrc.includes("import { BINDINGS } from './bindings.js'")
   || !controlPromptsSrc.includes('BINDINGS.localmap.label')
   || !controlPromptsSrc.includes('BINDINGS.starmap.label')
-  || !controlPromptsSrc.includes('BINDINGS.codex.label')) {
+  || !controlPromptsSrc.includes('BINDINGS.codex.label')
+  || uiRootSrc.includes("controlPrompt('flight', 'kbm')")) {
   console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must read src/ui/bindings.js');
   fail++;
 } else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map|K codex/.test(hudSrc + alertsSrc + uiRootSrc + controlPromptsSrc)) {
@@ -313,8 +300,9 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
 }
 const stationKbmPrompt = controlPrompt('station', 'kbm');
 if (!onboardingSrc.includes("import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js'")
-  || !onboardingSrc.includes("if (this._dockControlInRange) mode = 'station'")
-  || !onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')
+  || !onboardingSrc.includes("controlPrompt('firstStation'")
+  || !onboardingSrc.includes('_dockControlInRange')
+  || onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')
   || !stationKbmPrompt.includes(`${BINDINGS.dock.label} dock`)
   || !stationKbmPrompt.includes(`${BINDINGS.dock.label}/Esc undock`)) {
   console.log('FAIL station control prompt - near-dock mode must render the binding-backed dock/undock route');

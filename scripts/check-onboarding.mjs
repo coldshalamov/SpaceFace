@@ -47,7 +47,7 @@ assert.match(src, /st\.player\.hints\[key\]/, '_showHint must dedupe via state.p
 // frame. Dock/gate proximity is already available from the physics-owned range events.
 assert.match(src, /_dockControlInRange/, 'control bar should track dock range from dock:range events');
 assert.match(src, /_gateControlInRange/, 'control bar should track gate range from gate:range events');
-assert.match(src, /_controlHintsEl/, 'control bar should cache the #control-hints element');
+assert.doesNotMatch(src, /_controlHintsEl/, 'flight windshield must not cache a #control-hints laundry bar');
 assert.ok(!src.includes("document.querySelector('.sf-alert--dock')"),
   'control bar must not query the dock alert DOM during flight updates');
 assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
