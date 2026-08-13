@@ -438,9 +438,11 @@ while state is not accepted and state is not blocked:
   request independent review after G0-G6 pass
 ```
 
-The loop has no arbitrary pass count. One excellent pass may suffice; twenty superficial passes do
-not. When a late discovery exposes an early failure, return to the early gate and invalidate/rebuild
-affected bakes/materials/LODs.
+The standard itself imposes no global arbitrary pass count. One excellent pass may suffice; twenty
+superficial passes do not. An activated packet may require a bounded adversarial-review cycle count
+for its specific risk (PQ-050 does); that packet requirement remains mandatory but does not spread to
+unrelated assets. When a late discovery exposes an early failure, return to the early gate and
+invalidate/rebuild affected bakes/materials/LODs.
 
 Do not weaken checks, hand-edit generated release metadata, destroy concurrent work, or wire an
 unaccepted candidate merely to force green reachability. If Blender/GPU/browser/source/lock/decision
